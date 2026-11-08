@@ -37,12 +37,45 @@ export function resolveE2EWorkers(
 const PROJECT_WORKER_LIMITS: Readonly<Partial<Record<E2ETargetName, number>>> =
   Object.freeze({ admin: 1 });
 
-const toProjects = ({
-  target,
-  testDir,
-  setupProjectName,
-}: E2EProjectPlan): Project[] => {
-  const workers = PROJECT_WORKER_LIMITS[target.name];
+// 直列の組の1つの手順。testMatchはその対象のディレクトリにあるE2Eテストのファイル名
+export interface E2ESerialStep {
+  readonly target: E2ETargetName;
+  readonly testMatch: string;
+}
+
+// 同じ共有の行を書き換えるなどの理由で、手順の順に1つずつ実行するE2Eテストの組
+export interface E2ESerialGroup {
+  readonly name: string;
+  readonly steps: readonly E2ESerialStep[];
+}
+
+interface SerialProjectsState {
+  readonly projects: readonly Project[];
+  readonly previousStepProjectName: string | undefined;
+}
+
+const workerLimitOf = (
+  targetName: E2ETargetName,
+): Readonly<Pick<Project, 'workers'>> => {
+  const workers = PROJECT_WORKER_LIMITS[targetName];
+  return workers === undefined ? {} : { workers };
+};
+
+const serialStepFilesOf = (
+  serialGroups: readonly E2ESerialGroup[],
+  targetName: E2ETargetName,
+): readonly string[] =>
+  serialGroups
+    .flatMap((group) => group.steps)
+    .filter((step) => step.target === targetName)
+    .map((step) => step.testMatch);
+
+// 直列の組の手順のファイルは組のプロジェクトだけが実行するよう、対象のテストのプロジェクトから外す
+const toProjects = (
+  { target, testDir, setupProjectName }: E2EProjectPlan,
+  serialGroups: readonly E2ESerialGroup[],
+): Project[] => {
+  const testIgnore = serialStepFilesOf(serialGroups, target.name);
   return [
     {
       name: setupProjectName,
@@ -54,18 +87,70 @@ const toProjects = ({
       name: target.name,
       testDir,
       testMatch: [...TEST_FILE_PATTERNS.e2e],
+      ...(testIgnore.length === 0 ? {} : { testIgnore: [...testIgnore] }),
       dependencies: [setupProjectName],
       use: { baseURL: target.baseURL },
-      ...(workers === undefined ? {} : { workers }),
+      ...workerLimitOf(target.name),
     },
   ];
 };
+
+const serialStepProjectName = (
+  group: E2ESerialGroup,
+  stepIndex: number,
+  targetName: E2ETargetName,
+): string => `${group.name}-${String(stepIndex + 1)}-${targetName}`;
+
+// 並列数の上限は「同じ対象のテストを並行させない」ためのもので、別のプロジェクトに分けた手順は対象のプロジェクトの上限の外で動く。上限のある対象の手順は対象のテストのプロジェクトにも依存させ、対象のテストの後に動かして上限の意味を保つ
+const serialStepDependenciesOf = (
+  plan: E2EProjectPlan,
+  previousStepProjectName: string | undefined,
+): string[] => [
+  plan.setupProjectName,
+  ...(PROJECT_WORKER_LIMITS[plan.target.name] === undefined
+    ? []
+    : [plan.target.name]),
+  ...(previousStepProjectName === undefined ? [] : [previousStepProjectName]),
+];
+
+// 手順ごとに、対象の到達確認と1つ前の有効な手順に依存するプロジェクトを作る。対象がプロジェクト構成に無い手順は作らず、順の番号は元の並びのまま次の手順を1つ前の有効な手順に繋ぐ
+const toSerialGroupProjects = (
+  group: E2ESerialGroup,
+  plansByTarget: ReadonlyMap<E2ETargetName, E2EProjectPlan>,
+): readonly Project[] =>
+  group.steps.reduce<SerialProjectsState>(
+    (state, step, stepIndex) => {
+      const plan = plansByTarget.get(step.target);
+      if (plan === undefined) {
+        return state;
+      }
+      const name = serialStepProjectName(group, stepIndex, step.target);
+      const project: Project = {
+        name,
+        testDir: plan.testDir,
+        testMatch: step.testMatch,
+        dependencies: serialStepDependenciesOf(
+          plan,
+          state.previousStepProjectName,
+        ),
+        use: { baseURL: plan.target.baseURL },
+        ...workerLimitOf(step.target),
+      };
+      return {
+        projects: [...state.projects, project],
+        previousStepProjectName: name,
+      };
+    },
+    { projects: [], previousStepProjectName: undefined },
+  ).projects;
 
 export function createPlaywrightConfig(
   plans: readonly E2EProjectPlan[],
   launchOptions: BrowserLaunchOptions,
   workers: number,
+  serialGroups: readonly E2ESerialGroup[] = [],
 ): PlaywrightTestConfig {
+  const plansByTarget = new Map(plans.map((plan) => [plan.target.name, plan]));
   return {
     outputDir: OUTPUT_DIR,
     workers,
@@ -76,6 +161,11 @@ export function createPlaywrightConfig(
       [ZERO_TESTS_REPORTER_PATH],
     ],
     use: { launchOptions },
-    projects: plans.flatMap(toProjects),
+    projects: [
+      ...plans.flatMap((plan) => toProjects(plan, serialGroups)),
+      ...serialGroups.flatMap((group) =>
+        toSerialGroupProjects(group, plansByTarget),
+      ),
+    ],
   };
 }

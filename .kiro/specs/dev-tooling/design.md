@@ -64,7 +64,7 @@
 - 主要パッケージの一覧の版の変更(特にVitest・TypeScript・Playwright)。
 - compose.yamlのマウント構成の変更。
 - 開発サーバーとプレビューの両方のE2Eのコマンド(`test:e2e:dev-and-preview`)の手順と前提の変更(承認後の改訂2)。frontend-platformの判断47で加え、infra-deliveryの検査のE2Eがこのコマンドを呼ぶ(infra-deliveryの承認後の改訂3)。E2Eの対象のアプリとポート(`resolveE2ETargets`)と、画面を持つアプリの`dev`・`build`・`preview`のスクリプトの名前と`--port`の受け方を前提にする。
-- E2Eの設定の組み立て(`createPlaywrightConfig`)の変更。ultras-subscriptionのタスク10.1が、指定したE2Eのファイルを対象ごとのプロジェクトから外して別のプロジェクトに分け、`dependencies`で直列にする組み立てを加え、本文書のE2EConfigの契約を新しい形に合わせて直す。承認後の改訂3(frontend-platformの判断51)で`createPlaywrightConfig`は並列数(`workers`)を受け取るため、ultras-subscriptionの10.1は並列数の上限を保ったまま組み立てを加える。
+- E2Eの設定の組み立て(`createPlaywrightConfig`)の変更。ultras-subscriptionのタスク10.1(承認後の改訂5)で、省略可能な4つ目の引数`serialGroups`(直列の組)を加えた。組の手順のE2Eのファイルを対象ごとのプロジェクトから外し(`testIgnore`)、手順ごとのプロジェクト`<組の名前>-<順>-<対象名>`を`dependencies`で直列に繋ぐ。承認後の改訂3(frontend-platformの判断51)の並列数(`workers`)の上限は保ち、`PROJECT_WORKER_LIMITS`の対象の上限は組の手順のプロジェクトにも同じく適用する。組の定義はルートの`playwright.config.ts`が持ち、共有の補助には特定のファイル名を置かない。引数を省けば対象ごとのプロジェクトの並びと中身は変わらない。組の形・プロジェクトの名前の規則・依存の繋ぎ方を変えるときは、組を渡しているspecのE2Eとその設定を確かめ直す。
 - E2Eの並列数の上限(2)と上書きの変数`E2E_WORKERS`(承認後の改訂3)。infra-deliveryの検査のE2Eとstagingのスモークテストは`E2E_WORKERS`を設定せず、ローカルと同じ上限で実行する。上限を変える場合は、開発サーバーでの安定(workerdの負荷)とCIの所要時間を確かめ直す。
 - 承認後の改訂4(両方のE2Eのコマンドの後のシークレットのファイルの削除)は取り消した。frontend-platformの13.1で、画面を持つアプリのビルドがシークレットのファイルを出力に含めず、ビルド後のプレビューが注入した値を`process.env`から受け取る形にしたため、両方のE2Eのコマンドは削除の段階を持たない。frontend-platformがこの形をやめてビルド結果にファイルが残るようになれば、要件6.11を満たすために見直す。
 
@@ -192,7 +192,7 @@ graph TB
 │   └── support/
 │       ├── targets.ts              # 対象アプリのURL解決と、テストのある対象だけのプロジェクト構成
 │       ├── targets.unit.test.ts
-│       ├── playwright-config.ts    # プロジェクト構成と並列数(上限と`E2E_WORKERS`、承認後の改訂3)からPlaywrightの設定値を組み立てる純粋関数
+│       ├── playwright-config.ts    # プロジェクト構成と並列数(上限と`E2E_WORKERS`、承認後の改訂3)と直列の組(承認後の改訂5)からPlaywrightの設定値を組み立てる純粋関数
 │       ├── playwright-config.unit.test.ts
 │       ├── reachability.ts         # 対象URLへの到達確認の判定
 │       ├── reachability.unit.test.ts
@@ -904,10 +904,10 @@ export declare function findMisnamedTestFiles(
 
 #### E2EConfig
 
-| Field        | Detail                                                                                       |
-| ------------ | -------------------------------------------------------------------------------------------- |
-| Intent       | 対象アプリごとのプロジェクトと到達確認を構成し、テストが追加されるだけで実行できる状態にする |
-| Requirements | 6.4, 6.7, 6.8, 6.9, 6.10, 6.13(承認後の改訂3)                                                |
+| Field        | Detail                                                                                                                                                      |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Intent       | 対象アプリごとのプロジェクトと到達確認を構成し、テストが追加されるだけで実行できる状態にする。同じ共有の行を書き換えるテストは直列の組で繋ぐ(承認後の改訂5) |
+| Requirements | 6.4, 6.7, 6.8, 6.9, 6.10, 6.13(承認後の改訂3)                                                                                                               |
 
 **Contracts**: Service [x]
 
@@ -939,6 +939,14 @@ export declare function createE2ETestFileDetector(
 ): (testDir: string) => boolean;
 
 // e2e/support/playwright-config.ts
+export interface E2ESerialStep {
+  readonly target: E2ETargetName;
+  readonly testMatch: string;
+}
+export interface E2ESerialGroup {
+  readonly name: string;
+  readonly steps: readonly E2ESerialStep[];
+}
 export declare const DEFAULT_E2E_WORKERS: 2;
 export declare function resolveE2EWorkers(
   env: Readonly<Record<string, string | undefined>>,
@@ -947,6 +955,7 @@ export declare function createPlaywrightConfig(
   plans: readonly E2EProjectPlan[],
   launchOptions: BrowserLaunchOptions,
   workers: number,
+  serialGroups?: readonly E2ESerialGroup[],
 ): PlaywrightTestConfig;
 
 // e2e/support/reachability.ts
@@ -968,11 +977,12 @@ export default class ZeroTestsReporter implements Reporter {
 - `resolveE2ETargets`: 既定値は`client`が`http://localhost:48044`、`admin`が`http://localhost:48045`。`E2E_CLIENT_URL`・`E2E_ADMIN_URL`で上書きでき、staging検証にも使える。空文字は未設定と同じ扱いにする。
 - `resolveE2EProjects`: `e2e/<対象>/`に`*.e2e.test.ts`が1つ以上ある対象だけをプロジェクトにする。テストが1つも無ければプロジェクトは0になり、`--pass-with-no-tests`で正常終了する(6.7)。`testDir`は`e2e/<対象>`、`setupProjectName`は`<対象>-reachability`とする。
 - `createE2ETestFileDetector`: `hasTestFiles`の実体。`rootDir`からの相対パスを`TEST_FILE_PATTERNS.e2e`と照合し、`testDir`が無いかディレクトリでなければ偽を返す。`playwright.config.ts`は単体テストを持たないため、判定をこちらに置く。
-- `playwright.config.ts`は`createPlaywrightConfig(resolveE2EProjects(resolveE2ETargets(process.env), createE2ETestFileDetector(import.meta.dirname)), resolveBrowserLaunchOptions(process.env), resolveE2EWorkers(process.env))`を`defineConfig`に渡すだけの入口とする。組み立ては単体テストできる`createPlaywrightConfig`が持つ。
+- `playwright.config.ts`は`createPlaywrightConfig(resolveE2EProjects(resolveE2ETargets(process.env), createE2ETestFileDetector(import.meta.dirname)), resolveBrowserLaunchOptions(process.env), resolveE2EWorkers(process.env), <直列の組の配列>)`を`defineConfig`に渡すだけの入口とする。組み立ては単体テストできる`createPlaywrightConfig`が持つ。直列の組の定義(組の名前と、手順の対象名・ファイル名)は、それを要するspecがこの入口に置く(承認後の改訂5)。共有の補助(`e2e/support/`)には特定のファイル名を置かない。
 - `resolveE2EWorkers`(承認後の改訂3、6.13): `E2E_WORKERS`が未設定か空文字なら`DEFAULT_E2E_WORKERS`(2)を返し、正の整数の文字列(`^[1-9][0-9]*$`)ならその値を返す。それ以外(`0`・負の数・小数・百分率・数字でない文字列)は、変数の名前と受け付ける形を示す例外を投げ、Playwrightの設定の読み込みを失敗させる。上限は、開発サーバーでE2Eを並列に多く実行すると機械の負荷でworkerdが落ちることがあり、2では安定したため(frontend-platformの判断51)。Playwrightの既定(CPUのコア数の半分)は機械によって並列数が変わるため使わない。ローカルとCIは変数を設定せず同じ上限で実行し、一時的に変えたい時だけ設定する。コマンドの`--workers`の引数はPlaywrightの規則どおり設定より優先される。
 - `createPlaywrightConfig`
   - 対象ごとに、到達確認のセットアッププロジェクト(名前は`setupProjectName`、`testDir: 'e2e/support'`・`testMatch: 'reachability.setup.ts'`)と、それを`dependencies`に持つテストのプロジェクト(名前は対象名)をこの順に作る。両方の`use.baseURL`は対象のURLとする。
   - テストのプロジェクトの`testMatch`には`TEST_FILE_PATTERNS.e2e`を使う。Playwrightは`**/`で始まらない文字列パターンの先頭に`**/`を補い、絶対パスと照合するため、`testDir`が`e2e/<対象>`でも一致する。
+  - 直列の組(承認後の改訂5): 4つ目の引数`serialGroups`(省略可能、既定は空)を受け取る。組の手順(`{ target, testMatch }`)のファイル名は、その対象のテストのプロジェクトの`testIgnore`に加える(その対象の手順が無ければ`testIgnore`を付けない。`testMatch`と同じく`**/`が補われる)。組の手順ごとに、`<組の名前>-<順(1始まり)>-<対象名>`のプロジェクトを、対象ごとのプロジェクトの後に組の順で作る。手順のプロジェクトは、`testDir`に対象の`testDir`、`testMatch`に手順のファイル名、`use.baseURL`に対象のURL、`dependencies`に対象の到達確認のプロジェクトと1つ前の有効な手順のプロジェクト(最初の手順は到達確認だけ)を持ち、`PROJECT_WORKER_LIMITS`の対象の上限を同じく適用する。`PROJECT_WORKER_LIMITS`に上限のある対象の手順は、`dependencies`にその対象のテストのプロジェクト(`<対象名>`)も持ち、対象のテストの後に動く。上限は同じ対象のテストを並行させないためのもので、別のプロジェクトに分けた手順が対象のテストと並行すると上限の意味が失われるためである(上限の無い対象の手順は対象のテストのプロジェクトに依存しない)。手順の`target`がプロジェクト構成(`plans`)に無ければその手順のプロジェクトを作らず、順の番号は元の並びのまま次の手順を1つ前の有効な手順に繋ぐ。有効な手順が1つも無い組はプロジェクトを作らない。引数を省くと、対象ごとのプロジェクトの並びと中身は変わらない。`--project <対象名>`では組の手順のファイルは実行されず、組は`--project '<組の名前>-*'`で実行する。
   - 成果物は`outputDir: 'test-results'`とHTMLレポート`playwright-report`(いずれもgitignore済み)に出力する。HTMLレポートは`open: 'never'`とし、失敗時に配信サーバーが待ち続けてコマンドが終わらない状態を避ける。
   - `use.launchOptions`には受け取った起動オプション(`resolveBrowserLaunchOptions(process.env)`)を使う。
   - `workers`には受け取った並列数(`resolveE2EWorkers(process.env)`)を使う(承認後の改訂3)。
@@ -1125,7 +1135,7 @@ export declare function createBaseConfig(
   - ワークスペース機能を使わない共有ディレクトリの配置方式と、利用側で解決する理由。
   - 共有ディレクトリ直下にtsconfigを置かない規則(8.3)。
   - CIでのコピー配置、検証手順と結果(8.7)。
-- `testing/001-test-strategy.md`: 4種の棲み分けと命名、実行コマンド、カバレッジの規約(閾値・除外・出力先・`coverage.include`の指定)、TDDの進め方、シークレットの実行時注入(6.11)、開発サーバーとプレビューの両方でE2Eを続けて実行するコマンドと前提(APIサーバーを先に起動し、画面を持つアプリは起動しないでおく、6.12、承認後の改訂2)、E2Eの並列数の上限と`E2E_WORKERS`による上書き(6.13、承認後の改訂3)。
+- `testing/001-test-strategy.md`: 4種の棲み分けと命名、実行コマンド、カバレッジの規約(閾値・除外・出力先・`coverage.include`の指定)、TDDの進め方、シークレットの実行時注入(6.11)、開発サーバーとプレビューの両方でE2Eを続けて実行するコマンドと前提(APIサーバーを先に起動し、画面を持つアプリは起動しないでおく、6.12、承認後の改訂2)、E2Eの並列数の上限と`E2E_WORKERS`による上書き(6.13、承認後の改訂3)、同じ共有の行を書き換えるE2Eを直列の組(`serialGroups`)で繋ぐ規約と`--project '<組の名前>-*'`での実行(承認後の改訂5)。
 - `testing/002-browser-tool-versions.md`: E2Eテストツール関連の4箇所、更新順序、両MCPサーバーの起動確認手順(9.6)。
 - 記述規則: プロジェクト名、サービス固有の仕様、本プロジェクト固有の値(ドメイン・ポート番号・リソース名・絶対パス)を書かない(10.6)。
 
@@ -1196,7 +1206,7 @@ TDDで進め、ルートの単体テスト(`bun run test:unit`)はカバレッ�
   - `check-test-names.unit-filter.unit.test.ts`: ルートの`test:unit`のフィルタでBunが実行する候補のうち、単体テストの命名に一致しないものがすべて命名規約外として検出される(6.1・6.6)。
   - `config/test-patterns.unit.test.ts`・`config/vitest/test-kind-preset.unit.test.ts`: bunfigの`coverageThreshold`・`coverageReporter`が、単一定義の閾値とプリセットの出力形式と一致する(7.1・7.4)。
   - `targets.unit.test.ts`: 環境変数でURLを上書きでき、テストの無い対象はプロジェクトにならない。既定のURLのポートがcompose.yamlで各対象として公開しているポートと一致する(6.7・6.9)。
-  - `playwright-config.unit.test.ts`: 対象ごとに到達確認とテストのプロジェクトが依存付きで作られ、命名パターン・出力先・起動オプション・レポーターが設定どおりで、出力先がGit管理外である(6.4・6.8・6.9)。`workers`が受け取った並列数になり、`resolveE2EWorkers`が未設定と空文字で2、正の整数の文字列でその値を返し、`0`・負の数・小数・百分率・数字でない文字列で変数の名前を示して失敗する(6.13、承認後の改訂3)。
+  - `playwright-config.unit.test.ts`: 対象ごとに到達確認とテストのプロジェクトが依存付きで作られ、命名パターン・出力先・起動オプション・レポーターが設定どおりで、出力先がGit管理外である(6.4・6.8・6.9)。`workers`が受け取った並列数になり、`resolveE2EWorkers`が未設定と空文字で2、正の整数の文字列でその値を返し、`0`・負の数・小数・百分率・数字でない文字列で変数の名前を示して失敗する(6.13、承認後の改訂3)。直列の組を渡さなければ(空で渡しても)構成が変わらず、組の手順のファイルが対象のテストのプロジェクトの`testIgnore`に入り(手順の無い対象には付かない)、手順ごとのプロジェクトが対象ごとのプロジェクトの後に組の順で並び、対象の`testDir`・`baseURL`・並列数の上限と到達確認・1つ前の手順への依存を持ち、プロジェクト構成に無い対象の手順を順の番号を保ったまま飛ばして次の手順を繋ぎ、すべての手順が無効な組はプロジェクトを作らない(承認後の改訂5)。
   - `reachability.unit.test.ts`: 一時HTTPサーバーへの応答で成功し、接続拒否・応答待ちの時間切れ・URLの解釈失敗で到達できなかったURLを示して失敗する(6.10)。
   - `zero-tests-reporter.unit.test.ts`: 実行対象が0件のときだけ0件であることを表示する(6.7)。
   - `e2e-dev-and-preview.unit.test.ts`(承認後の改訂2、6.12): 偽の子プロセスと偽の到達の確認で、ポートの確認→開発サーバーの起動→待ち合わせ→`test:e2e`→停止→`build`→プレビューの起動→待ち合わせ→`test:e2e`→停止の順になること、開発サーバーのE2Eが失敗してもプレビューの段階を実行して終了コード1になること、使われているポートがあれば何も起動せずに失敗すること、起動しない対象があればその名前と出力の末尾50行を表示してすべての対象を止めること、ローカルでないURLの対象で失敗すること、アプリの無い対象を飛ばすこと。

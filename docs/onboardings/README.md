@@ -293,6 +293,20 @@ infisical --telemetry=false run --env dev -- bun run test:e2e --project admin # 
 - 決済画面の入力欄はStripeの埋め込み枠の中にあるため、手順(`e2e/client/checkout-steps.ts`)は入力欄の名前(`number`・`expiry`・`cvc`・`addressLine1`など)を持つStripeの枠を探して入力する。請求先住所は米国の住所で入力する。
 - 決済履歴と決済画面の手順は`e2e/client/billing-steps.ts`・`e2e/client/checkout-steps.ts`にある。同意の記録はローカルのD1(`e2e/support/local-d1.ts`)で、購入確認メールはMailpitで確かめるため、`@smoke`タグを付けない。
 
+利用者側のUltrasの料金ページとプラン管理画面(機能フラグがオンのとき、未ログインの`/pricing`にUltrasの区画が出て、特典の3箇条・価格(価格を照会できなければ「現在表示できません」)・加入のボタン・法的通知へのリンクが見える、フラグがオフのとき区画が出ずページの題名と法的通知へのリンクは出る、ログイン後に設定のナビゲーションの「プラン」から`/settings/plan`を開くとその項目が現在の項目として示され未加入の旨が出る、確認済みの利用者が「Ultrasに加入」からテストカードで加入→決済後のランディングの完了の表示→プラン管理画面の「加入状態: 有効」→「解約・支払い方法の管理」でStripeのCustomer Portalへ移る)は`e2e/client/ultras.e2e.test.ts`で、管理者側のUltras導線の機能フラグ(最上位管理者が`/settings`でスイッチを切り替え→確認のダイアログで理由を入れて確定→トースト→区画に新しい値と変更した管理者が出る→監査ログの一覧に「Ultras導線の機能フラグの変更」の記録が理由と新しい値とともに出る)は`e2e/admin/ultras-promotion.e2e.test.ts`で確かめる。
+
+- 実行の前に、`apps/api`で`bun run db:migrate:local`を実行し、APIサーバー・イベントサーバー・利用者側・管理者側をクイックスタートの手順13のとおり起動しておく。確認メールと招待のメールはイベントサーバーがMailpit(コンテナの起動時に起動済み)へ送る。
+- 2つのファイルは同じ機能フラグの行(`ultras_settings`の`setting_key = 'ultras_promotion'`)を書き換えるため、ルートの`playwright.config.ts`の直列の組`ultras`で、利用者側の手順(`ultras-1-client`)の後に管理者側の手順(`ultras-2-admin`)を1つずつ実行する(「[E2Eテストの実行](../GUIDES/tech/testing/001-test-strategy.md#e2eテストの実行)」)。組のファイルは`--project client`・`--project admin`では実行されず、組は`--project 'ultras-*'`で実行する。管理者側の手順は`admin`のテストのプロジェクトにも依存するため、組だけを指定しても`admin`のテストが先に実行される。
+
+  ```sh
+  cd /workspace
+  infisical --telemetry=false run --env dev -- bun run test:e2e --project 'ultras-*'
+  ```
+
+- 機能フラグの行は、各テストの直前にローカルのD1(`e2e/support/local-d1.ts`)で書き換え、管理者側のテストは`finally`で元の値へ戻す。利用者側のテストは値を戻さないため、実行の後のローカルのフラグは最後に設定した値(オン)になる。ローカルのD1への直接の投入を前提にするため、`@smoke`タグを付けない。
+- 加入の経路は、プラン管理画面の「Ultrasに加入」が価格なしの理由で無効なら(Infisicalの`dev`にStripeのsandboxのキーが無い、またはsandboxに価格`ultras_monthly`が無い)、`test.skip`で理由を示して飛ばす。加入の開始がAPIサーバーから`payments_unavailable`を返した場合も同じく飛ばす。
+- 加入の経路を実行すると、実行のたびに新しい確認済みの利用者がsandboxで定期課金を作り、sandboxとローカルのD1に`active`な加入が残る(実行のたびに増える)。不要になったらStripeのダッシュボードで解約する。
+
 管理画面とメールをまたぐ問い合わせの流れ(モデレーターがログインの問い合わせへ返信→Mailpitの件名「お問い合わせに返信がありました」の通知メールに返信の本文が無く、そのリンクで開いたチャットに返信と管理者のニックネームが出て、最初のメッセージの添付ファイルを元のファイル名と内容でダウンロードできる、対応済にした問い合わせへ利用者が追加メッセージを送ると利用者側と管理画面の対応ステータスが「未対応」へ戻りダッシュボードの未対応の件数が増える、未ログインの問い合わせが一覧に「未ログイン」として出て詳細にニックネーム・連絡先メールアドレス・メッセージとシステム外のメールで回答する旨が出て返信のフォームが出ない、カテゴリのページで追加したカテゴリを利用者が問い合わせで選べ、削除の確認に紐付く件数と監査ログの旨が出て、削除すると問い合わせのカテゴリが「その他」に付け替わり「その他」に削除の操作が無い)は、`e2e/admin/inquiries.e2e.test.ts`・`e2e/admin/inquiry-categories.e2e.test.ts`で確かめる。
 
 - 実行の前に、`apps/api`で`bun run db:migrate:local`を実行し、APIサーバー・イベントサーバー・利用者側・管理者側をクイックスタートの手順13のとおり起動しておく。返信の通知メールはイベントサーバー(Queueの受信側)が送るため、イベントサーバーを起動していないと通知メールの待ちの期限(20秒)で失敗する。管理者側のプロジェクトのテストのため、`--project admin`で実行する(`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/admin/inquiries.e2e.test.ts e2e/admin/inquiry-categories.e2e.test.ts --project admin`)。
