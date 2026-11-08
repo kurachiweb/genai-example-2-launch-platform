@@ -46,6 +46,12 @@ export type GuestInquiryInput = {
   nickname: string;
 };
 
+/** ハンドルの使用可否。INVALIDは形式の違反 */
+export type HandleAvailability =
+  | 'AVAILABLE'
+  | 'INVALID'
+  | 'UNAVAILABLE';
+
 /** 追加メッセージの送信 */
 export type InquiryMessageInput = {
   body: string;
@@ -106,6 +112,18 @@ export type PaymentRecordStatus =
   | 'PENDING'
   | 'SUCCEEDED';
 
+/** 公開プロフィールの閲覧者と表示される利用者の関係 */
+export type ProfileViewerRelation =
+  | 'FOLLOWING'
+  | 'GUEST'
+  | 'NOT_FOLLOWING'
+  | 'OWNER';
+
+export type ProfileWebsiteInput = {
+  name?: string | null | undefined;
+  url: string;
+};
+
 /** 購入種別 */
 export type PurchaseKind =
   | 'PAYMENTS_SMOKE'
@@ -165,6 +183,18 @@ export type UltrasPlanStatus =
   | 'ENDED'
   /** 支払いの再試行中 */
   | 'PAST_DUE';
+
+export type UpdateMyProfileInput = {
+  /** 保存後の画像。現在の画像のIDなら維持し、nullなら削除する */
+  avatarFileId?: string | number | null | undefined;
+  bio?: string | null | undefined;
+  /** 画面を開いた時点のハンドル。保存の間に変更されていれば保存しない */
+  expectedHandle: string;
+  handle: string;
+  headline?: string | null | undefined;
+  nickname: string;
+  websites: Array<ProfileWebsiteInput>;
+};
 
 export type ClientCompleteSecondFactorLoginMutationVariables = Exact<{
   input: CompleteSecondFactorLoginInput;
@@ -396,6 +426,65 @@ export type ClientStartSmokeCheckoutMutationVariables = Exact<{ [key: string]: n
 
 export type ClientStartSmokeCheckoutMutation = { startSmokeCheckout: { purchaseId: string } };
 
+export type ClientFollowUserMutationVariables = Exact<{
+  handle: string;
+}>;
+
+
+export type ClientFollowUserMutation = { followUser: { handle: string, following: boolean, followerCount: number } };
+
+export type ClientHandleAvailabilityQueryVariables = Exact<{
+  handle: string;
+}>;
+
+
+export type ClientHandleAvailabilityQuery = { handleAvailability: HandleAvailability };
+
+export type ClientMyFollowersQueryVariables = Exact<{
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientMyFollowersQuery = { myFollowers: { nodes: Array<{ followedAt: string, user: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } }>, pageInfo: { endCursor: string | null, hasNextPage: boolean } } };
+
+export type ClientMyFollowingQueryVariables = Exact<{
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientMyFollowingQuery = { myFollowing: { nodes: Array<{ followedAt: string, user: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } }>, pageInfo: { endCursor: string | null, hasNextPage: boolean } } };
+
+export type ClientMyProfileQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientMyProfileQuery = { myProfile: { nickname: string, handle: string, previousHandle: string | null, headline: string | null, bio: string | null, suspended: boolean, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, websites: Array<{ name: string | null, url: string }> } };
+
+export type ClientPublicProfileQueryVariables = Exact<{
+  handle: string;
+}>;
+
+
+export type ClientPublicProfileQuery = { publicProfile:
+    | { __typename: 'PublicProfile', handle: string, nickname: string, headline: string | null, bio: string | null, followerCount: number, ultras: boolean, suspended: boolean, viewerRelation: ProfileViewerRelation, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, websites: Array<{ name: string | null, url: string }> }
+    | { __typename: 'PublicProfileRedirect', handle: string }
+   | null };
+
+export type ClientUnfollowUserMutationVariables = Exact<{
+  handle: string;
+}>;
+
+
+export type ClientUnfollowUserMutation = { unfollowUser: { handle: string, following: boolean, followerCount: number } };
+
+export type ClientUpdateMyProfileMutationVariables = Exact<{
+  input: UpdateMyProfileInput;
+}>;
+
+
+export type ClientUpdateMyProfileMutation = { updateMyProfile: { nickname: string, handle: string, previousHandle: string | null, headline: string | null, bio: string | null, suspended: boolean, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, websites: Array<{ name: string | null, url: string }> } };
+
 export type ClientSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -456,6 +545,14 @@ export const ClientConfirmCheckoutReturnDocument = {"__meta__":{"hash":"sha256:2
 export const ClientPaymentHistoryDocument = {"__meta__":{"hash":"sha256:723fccc8cbea4146117d0a1b8aee0a88b01acc1488cf7fb836a129079e19b1c5"}} as unknown as DocumentNode<ClientPaymentHistoryQuery, ClientPaymentHistoryQueryVariables>;
 export const ClientRecordCheckoutConsentDocument = {"__meta__":{"hash":"sha256:5beeb2e6d0d838279f1012328c32c5bae9446e4fb8d7c1370d5b895445c97e05"}} as unknown as DocumentNode<ClientRecordCheckoutConsentMutation, ClientRecordCheckoutConsentMutationVariables>;
 export const ClientStartSmokeCheckoutDocument = {"__meta__":{"hash":"sha256:453e7f92f82cd9485779ddbee4a1b98898e55fb933896727e1efcb3dcd8a2eaf"}} as unknown as DocumentNode<ClientStartSmokeCheckoutMutation, ClientStartSmokeCheckoutMutationVariables>;
+export const ClientFollowUserDocument = {"__meta__":{"hash":"sha256:61a8982e76108e2990bc30c68e7a92f50347977c1eb33942b96e1e3eed669c74"}} as unknown as DocumentNode<ClientFollowUserMutation, ClientFollowUserMutationVariables>;
+export const ClientHandleAvailabilityDocument = {"__meta__":{"hash":"sha256:02205eb34fb97582363b5f973f14b2d6ff8f33b9ba36ea3bdcf1bb4eeaa5d55a"}} as unknown as DocumentNode<ClientHandleAvailabilityQuery, ClientHandleAvailabilityQueryVariables>;
+export const ClientMyFollowersDocument = {"__meta__":{"hash":"sha256:154e09d711ae0f920e4c3e21a71eab5935c360df6016cb11f3ff8416cdeb5569"}} as unknown as DocumentNode<ClientMyFollowersQuery, ClientMyFollowersQueryVariables>;
+export const ClientMyFollowingDocument = {"__meta__":{"hash":"sha256:099d0901102d00e05d4c6bd5909e77146da5b907feb3e87fb21215e2829c3e2c"}} as unknown as DocumentNode<ClientMyFollowingQuery, ClientMyFollowingQueryVariables>;
+export const ClientMyProfileDocument = {"__meta__":{"hash":"sha256:2d8dcc4cbd827168505049febf76ebdbf27d7bd06017077cc5c77b9a86a7b53e"}} as unknown as DocumentNode<ClientMyProfileQuery, ClientMyProfileQueryVariables>;
+export const ClientPublicProfileDocument = {"__meta__":{"hash":"sha256:9e0a702a4409301cdc80cf6c15909853192438e5c412885781b39ca96fd1accb"}} as unknown as DocumentNode<ClientPublicProfileQuery, ClientPublicProfileQueryVariables>;
+export const ClientUnfollowUserDocument = {"__meta__":{"hash":"sha256:aa4354a0a4ef140b06a8ea4cae4d21d7494c10aed37765d81671355d708c922a"}} as unknown as DocumentNode<ClientUnfollowUserMutation, ClientUnfollowUserMutationVariables>;
+export const ClientUpdateMyProfileDocument = {"__meta__":{"hash":"sha256:b33ca7211146ea6c901810ca374cd5e6c8aaee313997e027dfe31e606d359d18"}} as unknown as DocumentNode<ClientUpdateMyProfileMutation, ClientUpdateMyProfileMutationVariables>;
 export const ClientSystemStatusDocument = {"__meta__":{"hash":"sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e"}} as unknown as DocumentNode<ClientSystemStatusQuery, ClientSystemStatusQueryVariables>;
 export const ClientCreateUltrasPortalSessionDocument = {"__meta__":{"hash":"sha256:44f95f5ac6a34b577e87ec3fb6dbb20363fe8011c4c59f2b36028724f89262ab"}} as unknown as DocumentNode<ClientCreateUltrasPortalSessionMutation, ClientCreateUltrasPortalSessionMutationVariables>;
 export const ClientStartUltrasCheckoutDocument = {"__meta__":{"hash":"sha256:0a375f8e36296fbd5183b733275bf56caf25b57a4c1e8cc70d7a20c1332c810b"}} as unknown as DocumentNode<ClientStartUltrasCheckoutMutation, ClientStartUltrasCheckoutMutationVariables>;

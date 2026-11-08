@@ -1,0 +1,22 @@
+query ClientMyFollowing($first: Int!, $after: String) {
+  myFollowing(first: $first, after: $after) {
+    nodes {
+      user {
+        handle
+        nickname
+        avatar {
+          id
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+      }
+      followedAt
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

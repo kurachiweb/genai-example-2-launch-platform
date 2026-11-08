@@ -43,6 +43,10 @@ const INQUIRY_RESOLVER_SUPPORT =
   'apps/api/src/presentation/graphql/modules/inquiry/resolver-support.ts';
 const CLIENT_INQUIRY_BOT_ACTIONS =
   'apps/client/src/components/inquiry/bot-actions.ts';
+const PROFILE_RESOLVER_SUPPORT =
+  'apps/api/src/presentation/graphql/modules/profile/resolver-support.ts';
+const CLIENT_PROFILE_BOT_ACTIONS =
+  'apps/client/src/components/profile/bot-actions.ts';
 
 type ExtractedValue =
   | string
@@ -602,6 +606,10 @@ const BOT_ACTION_COPIES: readonly BotActionCopy[] = [
   {
     api: { path: INQUIRY_RESOLVER_SUPPORT, name: 'INQUIRY_BOT_ACTIONS' },
     copy: { path: CLIENT_INQUIRY_BOT_ACTIONS, name: 'INQUIRY_BOT_ACTIONS' },
+  },
+  {
+    api: { path: PROFILE_RESOLVER_SUPPORT, name: 'PROFILE_BOT_ACTIONS' },
+    copy: { path: CLIENT_PROFILE_BOT_ACTIONS, name: 'PROFILE_BOT_ACTIONS' },
   },
 ];
 
