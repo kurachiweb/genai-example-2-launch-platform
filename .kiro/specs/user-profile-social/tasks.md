@@ -217,7 +217,7 @@
   - _Depends: 8.2_
   - _Requirements: 10.1, 10.2, 10.3, 10.5, 10.6, 10.8_
 
-- [ ] 9. 文書
+- [x] 9. 文書
 - [x] 9.1 (P) 技術ドキュメントを書き、CLAUDE.mdから参照する
   - `backend/011-handle-namespaces.md`(ハンドルの対象の記述、文字種と大文字小文字の同一視、予約語、旧ハンドルの保持と置き換え、他の対象の旧ハンドルは使用中に数えず、それを現在のハンドルとして保存する一括の書き込みで解放する規約(解放できない保存だけは旧ハンドルも避ける)、同時の保存の`CASE`式による取り消し、解決と302の転送、新しい対象を足す手順(照合規則は作成時に指定))と`db/006-user-relationship-lists.md`(利用者間の関係の組の一意とCHECK、解除の物理削除と退会の論理削除、可視性で絞った数とカーソルの一覧、物理削除の上限件数ずつの削除)を本プロジェクト固有の値を含めずに書き、`backend/007`に「保有者単位で上限件数ずつ処理する操作の対応付け」(残りの有無を続きへ、外部キーを持たないファイルのIDの規約)の節を加え、`backend`・`db`のREADMEの文書一覧に行を加える
   - CLAUDE.mdの「技術規則の参照先」に「ハンドル(URLの識別子)を持つテーブルを定義する前に: `backend/011`」を、作った見出しへのリンクで加える
@@ -225,7 +225,7 @@
   - _Boundary: `docs/GUIDES/tech/backend/011-handle-namespaces.md`・`db/006-user-relationship-lists.md`・`backend/007-user-lifecycle-events.md`・`backend/README.md`・`db/README.md`・`CLAUDE.md`_
   - _Requirements: 3.7, 13.4_
 
-- [ ] 9.2 (P) サービス仕様とオンボーディングの残りを更新する
+- [x] 9.2 (P) サービス仕様とオンボーディングの残りを更新する
   - 準拠方針の旧ハンドルの行と注5に、他の利用者(対象)が同じ文字列を設定した時点で旧ハンドルを削除すること(仮2)を、データエクスポートの文書に`websites[].name`が未入力なら空文字列であることを、日次タイムラインの4:21の表に`user-profile-social.orphaned-file-sweep`(600、仮1)を、`docs/onboardings/project-values.md`に波及処理とジョブの名前と`order`・用途`user-avatar`・bot対策の`action`を加える
   - 完了状態: 文書が整形の検査を通り、日次タイムラインの4:21の表の順序が登録したジョブの`order`と一致する
   - _Boundary: `docs/GUIDES/service/legal/001-compliance-policy.md`・`features/001-user-data-export.md`・`overview/007-daily-timeline.md`・`docs/onboardings/project-values.md`_
@@ -282,3 +282,4 @@
 - 8.2: ルートは`apps/client/src/routes/_authenticated/settings/profile.tsx`、画面は`ProfileEditPage`・`ProfileEditContent`(`key={savedCount}`でフォームを作り直す)、取得は`graphql/my-profile.ts`(`myProfileQueryOptions(viewerId)`・`loadMyProfile`、`staleTime: 0`)、保存は`use-profile-save.ts`の`useProfileSave`。保存の成功では公開プロフィールのキャッシュを`PUBLIC_PROFILE_QUERY_PREFIX`で`removeQueries`する(`staleTime: 'static'`の取得は`invalidateQueries`では取り直されない)。編集のリンクは型付きの`Link to="/settings/profile"`、`FOLLOWERS_LIST_HREF`は8.3で経路ができるまで`PathLink`。E2Eの`openAccountSettings`は「設定」→`/settings/profile`→ナビの「アカウント」で`/settings/account`。`settings-routes.browser.test.tsx`の経路の組み立てには各設定ページのloaderを足す。ローカルの`checkout.e2e.test.ts`とUltrasの加入の経路のE2Eは、dev用sandboxに`payments_smoke`の価格が無いこと等(payments 1.4の開発者の準備)で失敗し、本specとは無関係。
 - 8.3: ルートは`apps/client/src/routes/_authenticated/settings/follows.tsx`(`loaderDeps`は`tab`、開いているタブだけを`staleTime: 0`で読む)、部品は`components/profile/`の`FollowListPage`・`FollowList`(`useInfiniteQuery`、`key={direction}`)・`FollowListItem`・`use-follow-list-focus.ts`、データは`graphql/follow-list.ts`(`followListQueryOptions(viewerId, direction)`・`loadFollowList`・`toFollowListEntries`、2つの操作を`FollowListPageData`に正規化)。初回の失敗は`ErrorState`、続きの失敗は`PartialErrorState`(設計・002・003に従い、006の記述とは異なる)。`profile-paths.ts`は削除し、`follower-count.tsx`は型付きの`Link to="/settings/follows" search={{ tab: 'followers' }}`。9.2で`project-values.md`の設定のナビゲーションに`/settings/follows`(order 50)を加える。
 - 9.1: 技術文書は`docs/GUIDES/tech/backend/011-handle-namespaces.md`(CLAUDE.mdの参照先は`#新しい対象を足す手順`)・`db/006-user-relationship-lists.md`・`backend/007`の「保有者単位で上限件数ずつ処理する操作の対応付け」。011・006は`<予約語の一覧>`・旧ハンドルの保持の期限・関係のテーブル名と呼び名の値の置き場所を`project-values.md`としているので、9.2でそれらの値も加える。`docs/GUIDES/tech/README.md`・`/workspace/README.md`の範囲の写し、`004-logging-and-error-tracking.md`のprofileのロガーの行、002の自己紹介の見出しの記述は9.1・9.2の境界外で、親が別に揃える。
+- 9.2: `project-values.md`の末尾に「公開プロフィールとフォロー」の節(ハンドルの規則・旧ハンドルの保持の期限・関係の呼び名とテーブル名・可視の条件・画面の登録箇所・設定のナビゲーション・共有の束縛)を足し、非同期の波及処理・定期実行・bot判定の行を拡張した。準拠方針の旧ハンドルの行と注5の論理削除・物理削除の区別の曖昧さ、データ保持期間の一覧に4:21の安全網の行が無いことは既存の記述で、本タスクでは変えていない。

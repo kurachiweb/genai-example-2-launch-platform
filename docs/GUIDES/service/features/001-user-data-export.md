@@ -219,7 +219,7 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 | `avatarOriginalFileName` | 文字列/null | プロフィール画像の元ファイル名。未設定なら`null`                            |
 | `avatarContentType`      | 文字列/null | プロフィール画像のMIMEタイプ。未設定なら`null`                              |
 | `avatarSize`             | 整数/null   | プロフィール画像のバイト数。未設定なら`null`                                |
-| `websites[].name`        | 文字列      | 外部Webサイトの表示名                                                       |
+| `websites[].name`        | 文字列      | 外部Webサイトの表示名。未入力なら空文字列                                   |
 | `websites[].url`         | 文字列      | 外部WebサイトのURL                                                          |
 | `updatedAt`              | 日時        | プロフィール最終更新日時                                                    |
 
