@@ -60,7 +60,7 @@
   - _Depends: 2.2_
   - _Requirements: 12.4, 12.5_
 
-- [ ] 2.5 プロダクトの共有の束縛を作り、apiとeventに組み込む
+- [x] 2.5 プロダクトの共有の束縛を作り、apiとeventに組み込む
   - 2.2〜2.4の照会と記録のD1の実装を`core/product`の識別子に処理単位で束縛するモジュール(`workers/product/product-platform-module.ts`)を作り、apiとeventの束縛の一覧へ同時に加える
   - 完了状態: 3経路(api・eventの`fetch`・eventの`queue`)のDIの解決の検査が成功し、両アプリで照会を解決できる
   - _Requirements: 14.7_
@@ -343,3 +343,4 @@
 - 2.2: 照会の`not-deleted`は`products.deleted_at`だけで絞り、退会済み・停止中の投稿者のプロダクトは`visible: false`で返す。`listLaunches`はローンチの無いプロダクト・論理削除済み・不在のIDをMapに含めず(呼び出し側は`get(id) ?? []`)、非公開化中のプロダクトのローンチは返す。番号は取消を除き(ローンチ日, ID)の昇順に1から、取消は0、返す並びは(ローンチ日, ID)の降順。後続のWorkers統合テストは共通のフィクスチャ`apps/backend-lib/workers/product/testing/product-fixtures.ts`を使う(初期データの「その他」は消さない)
 - 2.3: 結果の記録は1〜200件で、空・201件以上・同じ`launchId`の重複は`RangeError`。変更0件の項目は読み直し、不在・取消・論理削除を`not-recordable`として先に返し、残りは同じ結果なら`already-recorded`・違えば`conflict`。非公開化中・停止中の投稿者のローンチにも記録できる(マッチの即時の終了のため)。`db.batch()`で同じ名前の列を読むと値がずれるため別名を付ける(db/002に追記済み)
 - 2.4: ストアは関数`createProductLifecycleStore(db, ids)`(2.2・2.3のD1の実装はクラス)。2.5の束縛は`toDynamicValue`で包む。`createPurgeDueEvents`は読んでから挿入するため、その間に物理削除されると外部キーの違反で一括全体が取り消されて例外になる(呼び出し側の再試行で回復する)。物理削除の境界は呼び出し側が業務日付の0:00を計算して渡し、`deleted_at < 境界`で比べる。フィクスチャにイベントの補助(`insertProductEvent(s)`・`readProductEvent`・`readProductHandlerRuns`など)を追加
+- 2.5: `PRODUCT_PLATFORM_MODULE`(名前`product-platform`)を両アプリの`MODULES`の`PROFILE_PLATFORM_MODULE`の直後に置いた。2.6は`product-platform-module.worker.test.ts`の`AdminProductDirectory`が未束縛であることの検査と除外(と40行目付近のコメント)を外し、束縛の数を7から8にし、apiとeventの`product-platform.worker.test.ts`にも加える。種データの補助は`testing/product-platform-fixtures.ts`。11.2で`project-values.md`の「両アプリ共通の束縛」に`PRODUCT_PLATFORM_MODULE`の行を加える
