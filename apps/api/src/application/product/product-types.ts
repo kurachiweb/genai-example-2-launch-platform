@@ -17,10 +17,18 @@ const LaunchSummarySources: unique symbol = Symbol.for(
 
 const ProductSaveHooks: unique symbol = Symbol.for('product.ProductSaveHooks');
 
+const ProductStore: unique symbol = Symbol.for('product.ProductStore');
+
+const ProductRegistration: unique symbol = Symbol.for(
+  'product.ProductRegistration',
+);
+
 export const PRODUCT_TYPES = Object.freeze({
   ProductStateEvaluator,
   RelaunchConditionSources,
   ProductLockSources,
   LaunchSummarySources,
   ProductSaveHooks,
+  ProductStore,
+  ProductRegistration,
 });

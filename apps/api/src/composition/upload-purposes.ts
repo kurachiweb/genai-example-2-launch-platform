@@ -11,6 +11,12 @@ import {
   IMAGE_MEDIA_TYPES,
 } from '../../common-lib/media/media-types.ts';
 import {
+  PRODUCT_LOGO_MAX_BYTES,
+  PRODUCT_LOGO_PURPOSE,
+  PRODUCT_SCREENSHOT_MAX_BYTES,
+  PRODUCT_SCREENSHOT_PURPOSE,
+} from '../../common-lib/product/product-input-rules.ts';
+import {
   USER_AVATAR_MAX_BYTES,
   USER_AVATAR_PURPOSE,
 } from '../../common-lib/profile/profile-input-rules.ts';
@@ -33,6 +39,20 @@ export const UPLOAD_PURPOSES: readonly UploadPurpose[] = [
     uploaderKinds: ['user'],
     allowedTypes: ATTACHMENT_MEDIA_TYPES,
     maxBytes: INQUIRY_ATTACHMENT_LIMITS.maxFileBytes,
+  }),
+  defineUploadPurpose({
+    name: PRODUCT_LOGO_PURPOSE,
+    storage: 'images',
+    uploaderKinds: ['user'],
+    allowedTypes: IMAGE_MEDIA_TYPES,
+    maxBytes: PRODUCT_LOGO_MAX_BYTES,
+  }),
+  defineUploadPurpose({
+    name: PRODUCT_SCREENSHOT_PURPOSE,
+    storage: 'images',
+    uploaderKinds: ['user'],
+    allowedTypes: IMAGE_MEDIA_TYPES,
+    maxBytes: PRODUCT_SCREENSHOT_MAX_BYTES,
   }),
   defineUploadPurpose({
     name: USER_AVATAR_PURPOSE,

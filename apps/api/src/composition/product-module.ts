@@ -1,0 +1,75 @@
+import type { Hono } from 'hono';
+import { ContainerModule } from 'inversify';
+
+import type { AppModule } from '../../lib/core/di/app-module.ts';
+import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
+import {
+  type LaunchSummarySource,
+  type ProductLockSource,
+  type RegisteredDecisionSource,
+  type RelaunchConditionSource,
+  resolveDecisionSources,
+} from '../application/product/decision-sources.ts';
+import type { ProductStore } from '../application/product/ports.ts';
+import {
+  type ProductRegistration,
+  StoreProductRegistration,
+} from '../application/product/product-registration.ts';
+import {
+  DefaultProductStateEvaluator,
+  type ProductStateEvaluator,
+} from '../application/product/product-state-evaluator.ts';
+import { PRODUCT_TYPES } from '../application/product/product-types.ts';
+import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
+import {
+  createProductSaveHooks,
+  type ProductSaveHooks,
+} from '../infrastructure/product/product-save-hooks.ts';
+import {
+  LAUNCH_SUMMARY_SOURCES,
+  PRODUCT_LOCK_SOURCES,
+  RELAUNCH_CONDITION_SOURCES,
+} from './product-decision-sources.ts';
+import { PRODUCT_SAVE_HOOKS } from './product-save-hooks.ts';
+
+// 表示用の照会とハンドルの対象(PRODUCT_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・時計とID生成とデータベース(PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)は各機能の共通の束縛を使う
+export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
+  name: 'product',
+  bindings: new ContainerModule(({ bind }) => {
+    bind<readonly RegisteredDecisionSource<RelaunchConditionSource>[]>(
+      PRODUCT_TYPES.RelaunchConditionSources,
+    ).toDynamicValue((context) =>
+      resolveDecisionSources(RELAUNCH_CONDITION_SOURCES, (identifier) =>
+        context.get(identifier),
+      ),
+    );
+    bind<readonly RegisteredDecisionSource<ProductLockSource>[]>(
+      PRODUCT_TYPES.ProductLockSources,
+    ).toDynamicValue((context) =>
+      resolveDecisionSources(PRODUCT_LOCK_SOURCES, (identifier) =>
+        context.get(identifier),
+      ),
+    );
+    bind<readonly RegisteredDecisionSource<LaunchSummarySource>[]>(
+      PRODUCT_TYPES.LaunchSummarySources,
+    ).toDynamicValue((context) =>
+      resolveDecisionSources(LAUNCH_SUMMARY_SOURCES, (identifier) =>
+        context.get(identifier),
+      ),
+    );
+    bind<ProductStateEvaluator>(PRODUCT_TYPES.ProductStateEvaluator).to(
+      DefaultProductStateEvaluator,
+    );
+    // 保存の登録口はD1ProductStoreだけが受け取り、ユースケースには渡さない
+    bind<ProductSaveHooks>(PRODUCT_TYPES.ProductSaveHooks).toDynamicValue(
+      (context) =>
+        createProductSaveHooks(PRODUCT_SAVE_HOOKS, (identifier) =>
+          context.get(identifier),
+        ),
+    );
+    bind<ProductStore>(PRODUCT_TYPES.ProductStore).to(D1ProductStore);
+    bind<ProductRegistration>(PRODUCT_TYPES.ProductRegistration).to(
+      StoreProductRegistration,
+    );
+  }),
+};

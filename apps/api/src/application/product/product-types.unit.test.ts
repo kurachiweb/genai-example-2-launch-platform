@@ -9,6 +9,8 @@ const EXPECTED_NAMES = [
   'ProductLockSources',
   'LaunchSummarySources',
   'ProductSaveHooks',
+  'ProductStore',
+  'ProductRegistration',
 ] as const;
 
 describe('PRODUCT_TYPES', () => {
