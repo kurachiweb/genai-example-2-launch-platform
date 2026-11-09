@@ -182,7 +182,7 @@
   - _Depends: 4.4_
   - _Requirements: 2.6, 7.1, 7.4, 7.5, 9.1, 9.2, 14.5_
 
-- [ ] 7.2 登録・編集・削除のミューテーションを加える
+- [x] 7.2 登録・編集・削除のミューテーションを加える
   - 先に、Workers統合テストで、`registerProduct`の入力の検証(名称・タグライン・ハンドル・外部URL・説明文20,000文字・スクリーンショット20件・ローンチ日の形式)と欄ごとの詳細、未ログイン・未確認・停止中・bot対策(`product_save`)の順の拒否、`updateProduct`・`deleteProduct`(`product_delete`)の各エラーコード(固定・競合・予約の禁止・非公開化・確認できない状態・不在)、未確認の利用者が編集・削除できることを確かめる
   - bot対策の操作名`PRODUCT_BOT_ACTIONS`(`product_save`・`product_delete`)を`modules/product/resolver-support.ts`に置き、`assertHuman`へ渡す。clientへの写しは9.1で作る
   - 完了状態: Workers統合テストとスキーマの検査が成功する
@@ -360,4 +360,5 @@
 - 6.2: `StoreLaunchHistoryReader.list`(`application/product/launch-history-reader.ts`)と`D1LaunchHistoryStore`。ストアの`list`は`LaunchHistoryProductRecord`(要約に`latestLaunchDate`を加えたもの、カーソル用)を返し、ユースケースの`product`は要約の型。カーソルは`my-products-cursor.ts`を共有、1ページの上限は`LAUNCH_HISTORY_PAGE_MAX = 20`(7.3の`first`の検証に使う)。旧ハンドルはその利用者として扱い、形式違反はnull。要約の列は`workers/product/product-summary-columns.ts`へ切り出し`D1ProductDirectory`と共有。6.3は対象の判定と供給元の呼び出し(`#summarize`)を共通化して`awards`を加える
 - 6.3: `awards(session, { userHandle })`は対象のプロダクトを90件ずつ(`LAUNCH_HISTORY_AWARDS_PAGE_SIZE`)全ページ読み、ラベルは`'<名称> <受賞のラベル>'`(半角空白)、対象のページ外のプロダクトの受賞は除く。7.4の`profileAwards`はこの戻り値(`AwardGroup[] | null`)をそのまま使う
 - 7.1: スキーマモジュールは`apps/api/src/presentation/graphql/modules/product/`。ページの引数は`inputs.ts`の`productPageArgsOf(maxPageSize)`(7.3は`LAUNCH_HISTORY_PAGE_MAX`で使う)。`clientOnly`・`adminOnly`は`resolver-support.ts`(`adminOnly`は7.3で初めて使う)。`errors.ts`は`callerForbiddenError`だけで、7.2が入力の文言と`INPUT_ARGUMENT`を加える。SDLは7.1の照会に要る型だけで、ミューテーションと入力の型は7.2・7.3が加える。所有者向けの`latestLaunch.summary`は`fallbackLaunchSummary`で供給元を呼ばない(`toProductLaunch(launch, summary?)`で7.3が供給元の要約を渡せる)。`kickoffAt`はmapperで計算し、`MyProduct.category`は`MyProductView.category`から読む(design.mdの`ProductViews`の`productCategoryLoader`とは相違)。7.3は`productCategoryLoader`を`product-views.ts`に作り`LaunchHistoryProduct.category`に使う(directory-discoveryも読む)。directory-discoveryの`OwnerCard`の見出しは`productOwnerStatus`の要約が予選の結果からの要約になるため、トーナメントの状態は`LaunchHighlightsReader`から作る必要がある(directory-discoveryへの申し送り)。テストの補助`apps/api/test/support/product-graphql-operations.ts`は`Clock`を設定可能な時計に束縛し直す
+- 7.2: ミューテーションは`modules/product/product-mutation-resolvers.ts`。順は呼び出し元→入力の検証→利用者の状態(登録`requireVerifiedUser`、編集・削除`requireWritableUser`)→bot判定→ユースケース。詳細の欄は`input.fields.<名前>`と`input.launchDate`(`launch_date_unavailable`だけ`input`の直下)。未確認かつ停止中は上流の`AccountGuard`が`account_unavailable`を先に返す。`PRODUCT_BOT_ACTIONS`は`resolver-support.ts`で、9.1の写しを作ったら`project-values.md`の「bot判定のaction」の行に画面の写しの場所を加える。テストの補助に`failProductDecisionSources()`
 - 11.2への申し送り(`docs/onboardings/project-values.md`): GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

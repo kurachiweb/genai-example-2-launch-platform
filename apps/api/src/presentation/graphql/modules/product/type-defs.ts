@@ -153,6 +153,49 @@ export const PRODUCT_TYPE_DEFS = /* GraphQL */ `
     plan: ProductLaunchPlan!
   }
 
+  "プロダクトの登録・編集で全件を送る項目"
+  input ProductFieldsInput {
+    "前後の空白を除いて1〜50文字"
+    name: String!
+    "前後の空白を除いて1〜100文字"
+    tagline: String!
+    categoryId: ID!
+    handle: String!
+    "httpかhttpsの2,048文字以内の絶対URL"
+    websiteUrl: String!
+    "マークダウンの説明文(1〜20,000文字)"
+    description: String!
+    "本人がアップロードしたロゴの画像"
+    logoFileId: ID!
+    "表示順。0〜20件で重複なし"
+    screenshotFileIds: [ID!]!
+  }
+
+  input RegisterProductInput {
+    fields: ProductFieldsInput!
+    "最初のローンチのローンチ日(YYYY-MM-DD)"
+    launchDate: String!
+  }
+
+  input UpdateProductInput {
+    "編集画面を開いたときの現在のハンドル"
+    productHandle: String!
+    "編集画面を開いたときの版"
+    expectedVersion: Int!
+    fields: ProductFieldsInput!
+    "予定のローンチの日の変更か次回のローンチの予約のローンチ日(YYYY-MM-DD)。nullはローンチを変えない"
+    launchDate: String
+  }
+
+  type Mutation {
+    "メールアドレスを確認済みの利用者がプロダクトと最初のローンチを登録する。bot判定の操作名はproduct_save"
+    registerProduct(input: RegisterProductInput!): MyProduct!
+    "停止していない利用者が自分のプロダクトを保存する。bot判定の操作名はproduct_save"
+    updateProduct(input: UpdateProductInput!): MyProduct!
+    "停止していない利用者が自分のプロダクトを論理削除する。bot判定の操作名はproduct_delete"
+    deleteProduct(productHandle: String!, expectedVersion: Int!): Boolean!
+  }
+
   type Query {
     "ログイン中の利用者(停止中を含む)の論理削除していないプロダクトを最新のローンチ日の新しい順に返す。firstは1〜20"
     myProducts(first: Int!, after: String): MyProductConnection!

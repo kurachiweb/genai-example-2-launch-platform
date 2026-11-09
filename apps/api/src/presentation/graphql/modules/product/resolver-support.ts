@@ -6,6 +6,22 @@ import type { CallerKind } from '../../../gateway/gateway-headers.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { callerForbiddenError } from './errors.ts';
 
+// 期待する操作名は、利用者側の画面がbot判定の部品に渡す名前と同じにする
+export const PRODUCT_BOT_ACTIONS = Object.freeze({
+  save: 'product_save',
+  delete: 'product_delete',
+});
+
+export type ProductBotAction =
+  (typeof PRODUCT_BOT_ACTIONS)[keyof typeof PRODUCT_BOT_ACTIONS];
+
+export function assertHuman(
+  context: GraphQLContext,
+  action: ProductBotAction,
+): Promise<void> {
+  return context.assertHuman(action);
+}
+
 type Resolver<TParent, TArgs, TResult> = (
   parent: TParent,
   args: TArgs,

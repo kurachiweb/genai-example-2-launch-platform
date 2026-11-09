@@ -728,6 +728,9 @@ type Mutation {
   """カテゴリの削除。紐付く問い合わせを標準カテゴリへ付け替える。モデレーター以上"""
   deleteInquiryCategory(id: ID!, reason: String): Boolean!
 
+  """停止していない利用者が自分のプロダクトを論理削除する。bot判定の操作名はproduct_delete"""
+  deleteProduct(expectedVersion: Int!, productHandle: String!): Boolean!
+
   """多要素認証の無効化"""
   disableTotp(input: ReAuthenticationInput!): Boolean!
 
@@ -763,6 +766,9 @@ type Mutation {
 
   """リカバリコードの再発行"""
   regenerateRecoveryCodes(input: ReAuthenticationInput!): RecoveryCodeSet!
+
+  """メールアドレスを確認済みの利用者がプロダクトと最初のローンチを登録する。bot判定の操作名はproduct_save"""
+  registerProduct(input: RegisterProductInput!): MyProduct!
 
   """利用者の登録"""
   registerUser(input: RegisterUserInput!): Viewer!
@@ -848,6 +854,9 @@ type Mutation {
 
   """メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない"""
   updateMyProfile(input: UpdateMyProfileInput!): MyProfile!
+
+  """停止していない利用者が自分のプロダクトを保存する。bot判定の操作名はproduct_save"""
+  updateProduct(input: UpdateProductInput!): MyProduct!
 
   """機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者"""
   updateUltrasPromotionSetting(input: UpdateUltrasPromotionSettingInput!): UltrasPromotionSetting!
@@ -976,6 +985,30 @@ type ProductCategory {
 
   """標準カテゴリ「その他」なら真。変更・削除できない"""
   systemDefault: Boolean!
+}
+
+"""プロダクトの登録・編集で全件を送る項目"""
+input ProductFieldsInput {
+  categoryId: ID!
+
+  """マークダウンの説明文(1〜20,000文字)"""
+  description: String!
+  handle: String!
+
+  """本人がアップロードしたロゴの画像"""
+  logoFileId: ID!
+
+  """前後の空白を除いて1〜50文字"""
+  name: String!
+
+  """表示順。0〜20件で重複なし"""
+  screenshotFileIds: [ID!]!
+
+  """前後の空白を除いて1〜100文字"""
+  tagline: String!
+
+  """httpかhttpsの2,048文字以内の絶対URL"""
+  websiteUrl: String!
 }
 
 type ProductLaunch {
@@ -1217,6 +1250,13 @@ type RecoveryCodeSet {
   codes: [String!]!
 }
 
+input RegisterProductInput {
+  fields: ProductFieldsInput!
+
+  """最初のローンチのローンチ日(YYYY-MM-DD)"""
+  launchDate: String!
+}
+
 input RegisterUserInput {
   """利用規約とプライバシーポリシー(18歳以上であることの表明を含む)への同意"""
   agreedToTerms: Boolean!
@@ -1364,6 +1404,18 @@ input UpdateMyProfileInput {
   headline: String
   nickname: String!
   websites: [ProfileWebsiteInput!]!
+}
+
+input UpdateProductInput {
+  """編集画面を開いたときの版"""
+  expectedVersion: Int!
+  fields: ProductFieldsInput!
+
+  """予定のローンチの日の変更か次回のローンチの予約のローンチ日(YYYY-MM-DD)。nullはローンチを変えない"""
+  launchDate: String
+
+  """編集画面を開いたときの現在のハンドル"""
+  productHandle: String!
 }
 
 """機能フラグの変更の入力"""

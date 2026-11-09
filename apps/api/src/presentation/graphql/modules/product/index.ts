@@ -1,5 +1,6 @@
 import { defineSchemaModule } from '../../schema-module.ts';
 import { myProductResolvers } from './my-product-resolvers.ts';
+import { productMutationResolvers } from './product-mutation-resolvers.ts';
 import { productViewResolvers } from './product-views.ts';
 import { PRODUCT_TYPE_DEFS } from './type-defs.ts';
 
@@ -9,5 +10,6 @@ export const productSchemaModule = defineSchemaModule({
   resolvers: {
     ...productViewResolvers,
     Query: { ...myProductResolvers.Query },
+    Mutation: { ...productMutationResolvers.Mutation },
   },
 });

@@ -704,6 +704,8 @@ export type Mutation = {
   deleteAdmin: Scalars['Boolean']['output'];
   /** カテゴリの削除。紐付く問い合わせを標準カテゴリへ付け替える。モデレーター以上 */
   deleteInquiryCategory: Scalars['Boolean']['output'];
+  /** 停止していない利用者が自分のプロダクトを論理削除する。bot判定の操作名はproduct_delete */
+  deleteProduct: Scalars['Boolean']['output'];
   /** 多要素認証の無効化 */
   disableTotp: Scalars['Boolean']['output'];
   /** 下書きの破棄。最上位管理者 */
@@ -728,6 +730,8 @@ export type Mutation = {
   regenerateAdminRecoveryCodes: AdminRecoveryCodeSet;
   /** リカバリコードの再発行 */
   regenerateRecoveryCodes: RecoveryCodeSet;
+  /** メールアドレスを確認済みの利用者がプロダクトと最初のローンチを登録する。bot判定の操作名はproduct_save */
+  registerProduct: MyProduct;
   /** 利用者の登録 */
   registerUser: Viewer;
   /** カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上 */
@@ -778,6 +782,8 @@ export type Mutation = {
   updateAdminProfile: AdminAccount;
   /** メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない */
   updateMyProfile: MyProfile;
+  /** 停止していない利用者が自分のプロダクトを保存する。bot判定の操作名はproduct_save */
+  updateProduct: MyProduct;
   /** 機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者 */
   updateUltrasPromotionSetting: UltrasPromotionSetting;
   /** メールアドレスの確認の確定 */
@@ -873,6 +879,12 @@ export type MutationDeleteInquiryCategoryArgs = {
 };
 
 
+export type MutationDeleteProductArgs = {
+  expectedVersion: Scalars['Int']['input'];
+  productHandle: Scalars['String']['input'];
+};
+
+
 export type MutationDisableTotpArgs = {
   input: ReAuthenticationInput;
 };
@@ -927,6 +939,11 @@ export type MutationRegenerateAdminRecoveryCodesArgs = {
 
 export type MutationRegenerateRecoveryCodesArgs = {
   input: ReAuthenticationInput;
+};
+
+
+export type MutationRegisterProductArgs = {
+  input: RegisterProductInput;
 };
 
 
@@ -1044,6 +1061,11 @@ export type MutationUpdateAdminProfileArgs = {
 
 export type MutationUpdateMyProfileArgs = {
   input: UpdateMyProfileInput;
+};
+
+
+export type MutationUpdateProductArgs = {
+  input: UpdateProductInput;
 };
 
 
@@ -1174,6 +1196,24 @@ export type ProductCategory = {
   name: Scalars['String']['output'];
   /** 標準カテゴリ「その他」なら真。変更・削除できない */
   systemDefault: Scalars['Boolean']['output'];
+};
+
+/** プロダクトの登録・編集で全件を送る項目 */
+export type ProductFieldsInput = {
+  categoryId: Scalars['ID']['input'];
+  /** マークダウンの説明文(1〜20,000文字) */
+  description: Scalars['String']['input'];
+  handle: Scalars['String']['input'];
+  /** 本人がアップロードしたロゴの画像 */
+  logoFileId: Scalars['ID']['input'];
+  /** 前後の空白を除いて1〜50文字 */
+  name: Scalars['String']['input'];
+  /** 表示順。0〜20件で重複なし */
+  screenshotFileIds: Array<Scalars['ID']['input']>;
+  /** 前後の空白を除いて1〜100文字 */
+  tagline: Scalars['String']['input'];
+  /** httpかhttpsの2,048文字以内の絶対URL */
+  websiteUrl: Scalars['String']['input'];
 };
 
 export type ProductLaunch = {
@@ -1480,6 +1520,12 @@ export type RecoveryCodeSet = {
   codes: Array<Scalars['String']['output']>;
 };
 
+export type RegisterProductInput = {
+  fields: ProductFieldsInput;
+  /** 最初のローンチのローンチ日(YYYY-MM-DD) */
+  launchDate: Scalars['String']['input'];
+};
+
 export type RegisterUserInput = {
   /** 利用規約とプライバシーポリシー(18歳以上であることの表明を含む)への同意 */
   agreedToTerms: Scalars['Boolean']['input'];
@@ -1619,6 +1665,16 @@ export type UpdateMyProfileInput = {
   headline?: InputMaybe<Scalars['String']['input']>;
   nickname: Scalars['String']['input'];
   websites: Array<ProfileWebsiteInput>;
+};
+
+export type UpdateProductInput = {
+  /** 編集画面を開いたときの版 */
+  expectedVersion: Scalars['Int']['input'];
+  fields: ProductFieldsInput;
+  /** 予定のローンチの日の変更か次回のローンチの予約のローンチ日(YYYY-MM-DD)。nullはローンチを変えない */
+  launchDate?: InputMaybe<Scalars['String']['input']>;
+  /** 編集画面を開いたときの現在のハンドル */
+  productHandle: Scalars['String']['input'];
 };
 
 /** 機能フラグの変更の入力 */
@@ -1854,6 +1910,7 @@ export type ResolversTypes = {
   PaymentRecordKind: PaymentRecordKind;
   PaymentRecordStatus: PaymentRecordStatus;
   ProductCategory: ResolverTypeWrapper<ProductCategory>;
+  ProductFieldsInput: ProductFieldsInput;
   ProductLaunch: ResolverTypeWrapper<ProductLaunch>;
   ProductLaunchPlan: ResolverTypeWrapper<ProductLaunchPlan>;
   ProductLockView: ResolverTypeWrapper<ProductLockView>;
@@ -1871,6 +1928,7 @@ export type ResolversTypes = {
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: ResolverTypeWrapper<RecoveryCodeSet>;
+  RegisterProductInput: RegisterProductInput;
   RegisterUserInput: RegisterUserInput;
   RelaunchBlockView: ResolverTypeWrapper<RelaunchBlockView>;
   RequestEmailChangeInput: RequestEmailChangeInput;
@@ -1889,6 +1947,7 @@ export type ResolversTypes = {
   UltrasPortalSession: ResolverTypeWrapper<UltrasPortalSession>;
   UltrasPromotionSetting: ResolverTypeWrapper<UltrasPromotionSetting>;
   UpdateMyProfileInput: UpdateMyProfileInput;
+  UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UserSessionSummary: ResolverTypeWrapper<UserSessionSummary>;
   UserSummary: ResolverTypeWrapper<UserSummarySource>;
@@ -1972,6 +2031,7 @@ export type ResolversParentTypes = {
   PaymentRecord: PaymentRecord;
   PaymentRecordConnection: PaymentRecordConnection;
   ProductCategory: ProductCategory;
+  ProductFieldsInput: ProductFieldsInput;
   ProductLaunch: ProductLaunch;
   ProductLaunchPlan: ProductLaunchPlan;
   ProductLockView: ProductLockView;
@@ -1986,6 +2046,7 @@ export type ResolversParentTypes = {
   Query: Record<PropertyKey, never>;
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: RecoveryCodeSet;
+  RegisterProductInput: RegisterProductInput;
   RegisterUserInput: RegisterUserInput;
   RelaunchBlockView: RelaunchBlockView;
   RequestEmailChangeInput: RequestEmailChangeInput;
@@ -2002,6 +2063,7 @@ export type ResolversParentTypes = {
   UltrasPortalSession: UltrasPortalSession;
   UltrasPromotionSetting: UltrasPromotionSetting;
   UpdateMyProfileInput: UpdateMyProfileInput;
+  UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UserSessionSummary: UserSessionSummary;
   UserSummary: UserSummarySource;
@@ -2366,6 +2428,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   createUltrasPortalSession?: Resolver<ResolversTypes['UltrasPortalSession'], ParentType, ContextType>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
   deleteInquiryCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteInquiryCategoryArgs, 'id'>>;
+  deleteProduct?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductArgs, 'expectedVersion' | 'productHandle'>>;
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
   discardLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationDiscardLegalDocumentDraftArgs, 'input'>>;
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
@@ -2378,6 +2441,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   recordCheckoutConsent?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<MutationRecordCheckoutConsentArgs, 'purchaseId'>>;
   regenerateAdminRecoveryCodes?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateAdminRecoveryCodesArgs, 'reAuthentication'>>;
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
+  registerProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationRegisterProductArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
   renameInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationRenameInquiryCategoryArgs, 'id' | 'name'>>;
   replyToInquiry?: Resolver<ResolversTypes['InquiryReplyResult'], ParentType, ContextType, RequireFields<MutationReplyToInquiryArgs, 'body' | 'inquiryId'>>;
@@ -2403,6 +2467,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
   updateMyProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType, RequireFields<MutationUpdateMyProfileArgs, 'input'>>;
+  updateProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationUpdateProductArgs, 'input'>>;
   updateUltrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType, RequireFields<MutationUpdateUltrasPromotionSettingArgs, 'input'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;

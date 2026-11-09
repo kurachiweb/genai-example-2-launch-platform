@@ -1,6 +1,7 @@
 import { resetSync } from '@logtape/logtape';
 import { createExecutionContext } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
+import { eq } from 'drizzle-orm';
 import { ContainerModule } from 'inversify';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
@@ -11,16 +12,28 @@ import {
   parseBusinessDate,
 } from '../../lib/core/time/business-time.ts';
 import type { Clock } from '../../lib/core/time/clock.ts';
+import { PRODUCT_CATEGORY_OTHER_ID } from '../../common-lib/product/product-category-constants.ts';
+import { users } from '../../db/schema/identity/users.ts';
+import { products } from '../../db/schema/product/products.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { clearMediaTables } from '../../lib/workers/media/testing/media-file-store-fixtures.ts';
 import { kickoffAt } from '../../lib/core/product/launch-status.ts';
 import {
   clearProductTables,
+  db,
   insertLaunch,
   insertProduct,
+  logoFileIdOf,
+  productIdOf,
   T0,
   userIdOf,
 } from '../../lib/workers/product/testing/product-fixtures.ts';
+import type {
+  ProductLockSource,
+  RegisteredDecisionSource,
+  RelaunchConditionSource,
+} from '../../src/application/product/decision-sources.ts';
+import { PRODUCT_TYPES } from '../../src/application/product/product-types.ts';
 import { IDENTITY_TYPES } from '../../src/application/identity/identity-types.ts';
 import type { SessionIssuer } from '../../src/application/identity/session-issuer.ts';
 import { MODULES } from '../../src/composition/modules.ts';
@@ -271,6 +284,34 @@ export const PRODUCT_OWNER_STATUS = /* GraphQL */ `
   }
 `;
 
+export const REGISTER_PRODUCT = /* GraphQL */ `
+  mutation ClientRegisterProduct($input: RegisterProductInput!) {
+    registerProduct(input: $input) {
+      ${MY_PRODUCT_FIELDS}
+    }
+  }
+`;
+
+export const UPDATE_PRODUCT = /* GraphQL */ `
+  mutation ClientUpdateProduct($input: UpdateProductInput!) {
+    updateProduct(input: $input) {
+      ${MY_PRODUCT_FIELDS}
+    }
+  }
+`;
+
+export const DELETE_PRODUCT = /* GraphQL */ `
+  mutation ClientDeleteProduct(
+    $productHandle: String!
+    $expectedVersion: Int!
+  ) {
+    deleteProduct(
+      productHandle: $productHandle
+      expectedVersion: $expectedVersion
+    )
+  }
+`;
+
 // 選べる日とローンチの状態が実行の時刻で変わらないよう、時計を業務時刻の2026-11-10 12:00に固定する
 export const PRODUCT_TEST_NOW = fromBusinessDateTime(
   parseBusinessDate('2026-11-10'),
@@ -292,6 +333,43 @@ const fixedClockModule: AppModule<GatewayApp> = {
   }),
 };
 
+let decisionSourcesFailing = false;
+
+// 判定の供給元の失敗を再現する。次回の予約の禁止と固定の供給元を1つずつ登録し、この関数を呼んだテストの間だけ例外を投げさせる
+export function failProductDecisionSources(): void {
+  decisionSourcesFailing = true;
+}
+
+async function answerOrFail<T>(answer: T): Promise<T> {
+  await Promise.resolve();
+  if (decisionSourcesFailing) {
+    throw new Error('判定の供給元に接続できません');
+  }
+  return answer;
+}
+
+const testRelaunchSource: RelaunchConditionSource = {
+  findBlocks: () => answerOrFail([]),
+};
+
+const testLockSource: ProductLockSource = {
+  findLocks: () => answerOrFail([]),
+};
+
+const decisionSourcesModule: AppModule<GatewayApp> = {
+  name: 'product-graphql-test-decision-sources',
+  bindings: new ContainerModule(({ rebind }) => {
+    rebind<readonly RegisteredDecisionSource<RelaunchConditionSource>[]>(
+      PRODUCT_TYPES.RelaunchConditionSources,
+    ).toConstantValue([
+      { name: 'product-test.relaunch', source: testRelaunchSource },
+    ]);
+    rebind<readonly RegisteredDecisionSource<ProductLockSource>[]>(
+      PRODUCT_TYPES.ProductLockSources,
+    ).toConstantValue([{ name: 'product-test.lock', source: testLockSource }]);
+  }),
+};
+
 const productGateway = createGraphQLGateway({
   documents: [
     MY_PRODUCTS,
@@ -299,9 +377,12 @@ const productGateway = createGraphQLGateway({
     NEW_PRODUCT_LAUNCH_WINDOW,
     PRODUCT_HANDLE_AVAILABILITY,
     PRODUCT_OWNER_STATUS,
+    REGISTER_PRODUCT,
+    UPDATE_PRODUCT,
+    DELETE_PRODUCT,
   ],
   schemaModules: [mediaSchemaModule, profileSchemaModule, productSchemaModule],
-  overrides: [fixedClockModule],
+  overrides: [fixedClockModule, decisionSourcesModule],
 });
 
 export interface ProductTestContext {
@@ -318,6 +399,7 @@ export function installProductGraphQLTest(): ProductTestContext {
 
   beforeEach(async () => {
     currentNow = PRODUCT_TEST_NOW;
+    decisionSourcesFailing = false;
     await clearMediaTables();
     await clearProductTables();
     logs.splice(0);
@@ -437,4 +519,100 @@ export function fetchProductOwnerStatus(
   return productGateway.call<{
     productOwnerStatus: ProductOwnerStatusFields | null;
   }>(PRODUCT_OWNER_STATUS, { productHandle }, options);
+}
+
+export interface ProductFieldsVariables {
+  readonly name: string;
+  readonly tagline: string;
+  readonly categoryId: string;
+  readonly handle: string;
+  readonly websiteUrl: string;
+  readonly description: string;
+  readonly logoFileId: string;
+  readonly screenshotFileIds: readonly string[];
+}
+
+export function registerProduct(
+  input: {
+    readonly fields: ProductFieldsVariables;
+    readonly launchDate: string;
+  },
+  options?: GatewayCallOptions,
+) {
+  return productGateway.call<{ registerProduct: MyProductFields | null }>(
+    REGISTER_PRODUCT,
+    { input },
+    options,
+  );
+}
+
+export function updateProduct(
+  input: {
+    readonly productHandle: string;
+    readonly expectedVersion: number;
+    readonly fields: ProductFieldsVariables;
+    readonly launchDate?: string | null;
+  },
+  options?: GatewayCallOptions,
+) {
+  return productGateway.call<{ updateProduct: MyProductFields | null }>(
+    UPDATE_PRODUCT,
+    { input },
+    options,
+  );
+}
+
+export function deleteProduct(
+  variables: {
+    readonly productHandle: string;
+    readonly expectedVersion: number;
+  },
+  options?: GatewayCallOptions,
+) {
+  return productGateway.call<{ deleteProduct: boolean | null }>(
+    DELETE_PRODUCT,
+    variables,
+    options,
+  );
+}
+
+export async function suspendProductUser(userIndex: number): Promise<void> {
+  await db
+    .update(users)
+    .set({ status: 'suspended', suspendedAt: T0 })
+    .where(eq(users.id, userIdOf(userIndex)));
+}
+
+// フィクスチャのinsertProductが作るプロダクトの現在の項目
+export function fixtureProductFields(
+  index: number,
+  overrides: Partial<ProductFieldsVariables> = {},
+): ProductFieldsVariables {
+  return {
+    name: `プロダクト${String(index)}`,
+    tagline: `タグライン${String(index)}`,
+    categoryId: PRODUCT_CATEGORY_OTHER_ID,
+    handle: `product${String(index)}`,
+    websiteUrl: `https://product${String(index)}.example/`,
+    description: `説明文${String(index)}`,
+    logoFileId: logoFileIdOf(index),
+    screenshotFileIds: [],
+    ...overrides,
+  };
+}
+
+export async function readProductRow(index: number) {
+  const [row] = await db
+    .select({
+      name: products.name,
+      version: products.version,
+      deletedAt: products.deletedAt,
+    })
+    .from(products)
+    .where(eq(products.id, productIdOf(index)));
+  return row;
+}
+
+export async function countProducts(): Promise<number> {
+  return (await db.select({ id: products.id }).from(products)).length;
 }
