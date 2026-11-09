@@ -2,6 +2,7 @@ import { Popover as PopoverPrimitive } from 'radix-ui';
 import type { ComponentProps } from 'react';
 
 import { cn } from '../../../utilities/class-names.ts';
+import { stopSubmitPropagation } from '../stop-submit-propagation.ts';
 
 export function PopoverContent({
   className,
@@ -22,10 +23,7 @@ export function PopoverContent({
         )}
         {...props}
         // ポータルの中のフォームの送信はReactの木に沿って外側のフォームへも伝わるため、ここで止める
-        onSubmit={(event) => {
-          onSubmit?.(event);
-          event.stopPropagation();
-        }}
+        onSubmit={stopSubmitPropagation(onSubmit)}
       />
     </PopoverPrimitive.Portal>
   );

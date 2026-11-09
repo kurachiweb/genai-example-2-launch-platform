@@ -3,6 +3,7 @@ import { Dialog as DialogPrimitive } from 'radix-ui';
 import type { ComponentProps } from 'react';
 
 import { cn } from '../../../utilities/class-names.ts';
+import { stopSubmitPropagation } from '../stop-submit-propagation.ts';
 import { DialogOverlay } from './dialog-overlay.tsx';
 import { DialogPortal } from './dialog-portal.tsx';
 
@@ -32,10 +33,7 @@ export function DialogContent({
         )}
         {...props}
         // ポータルの中のフォームの送信はReactの木に沿って外側のフォームへも伝わるため、ここで止める
-        onSubmit={(event) => {
-          onSubmit?.(event);
-          event.stopPropagation();
-        }}
+        onSubmit={stopSubmitPropagation(onSubmit)}
       >
         {children}
         {showCloseButton && (

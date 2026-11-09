@@ -2,11 +2,13 @@ import { Tooltip as TooltipPrimitive } from 'radix-ui';
 import type { ComponentProps } from 'react';
 
 import { cn } from '../../../utilities/class-names.ts';
+import { stopSubmitPropagation } from '../stop-submit-propagation.ts';
 
 export function TooltipContent({
   className,
   sideOffset = 0,
   children,
+  onSubmit,
   ...props
 }: ComponentProps<typeof TooltipPrimitive.Content>) {
   return (
@@ -19,6 +21,8 @@ export function TooltipContent({
           className,
         )}
         {...props}
+        // ポータルの中のフォームの送信はReactの木に沿って外側のフォームへも伝わるため、ここで止める
+        onSubmit={stopSubmitPropagation(onSubmit)}
       >
         {children}
         <TooltipPrimitive.Arrow className="z-50 size-2.5 translate-y-[calc(-50%-2px)] rotate-45 rounded-xs bg-foreground fill-foreground" />

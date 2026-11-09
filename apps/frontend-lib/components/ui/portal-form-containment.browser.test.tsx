@@ -8,13 +8,25 @@ import { Dialog } from './dialog/dialog.tsx';
 import { DialogContent } from './dialog/dialog-content.tsx';
 import { DialogTitle } from './dialog/dialog-title.tsx';
 import { DialogTrigger } from './dialog/dialog-trigger.tsx';
+import { DropdownMenu } from './dropdown-menu/dropdown-menu.tsx';
+import { DropdownMenuContent } from './dropdown-menu/dropdown-menu-content.tsx';
+import { DropdownMenuTrigger } from './dropdown-menu/dropdown-menu-trigger.tsx';
 import { Popover } from './popover/popover.tsx';
 import { PopoverContent } from './popover/popover-content.tsx';
 import { PopoverTrigger } from './popover/popover-trigger.tsx';
+import { Select } from './select/select.tsx';
+import { SelectContent } from './select/select-content.tsx';
+import { SelectItem } from './select/select-item.tsx';
+import { SelectTrigger } from './select/select-trigger.tsx';
+import { SelectValue } from './select/select-value.tsx';
 import { Sheet } from './sheet/sheet.tsx';
 import { SheetContent } from './sheet/sheet-content.tsx';
 import { SheetTitle } from './sheet/sheet-title.tsx';
 import { SheetTrigger } from './sheet/sheet-trigger.tsx';
+import { Tooltip } from './tooltip/tooltip.tsx';
+import { TooltipContent } from './tooltip/tooltip-content.tsx';
+import { TooltipProvider } from './tooltip/tooltip-provider.tsx';
+import { TooltipTrigger } from './tooltip/tooltip-trigger.tsx';
 
 interface InnerFormProps {
   readonly onInnerSubmit: () => void;
@@ -59,6 +71,7 @@ function OuterForm({ onOuterSubmit, children }: OuterFormProps) {
 const containers = [
   {
     name: 'ダイアログ',
+    opener: { role: 'button', name: '開く' },
     element: (props: InnerFormProps) => (
       <Dialog>
         <DialogTrigger asChild>
@@ -73,6 +86,7 @@ const containers = [
   },
   {
     name: 'シート',
+    opener: { role: 'button', name: '開く' },
     element: (props: InnerFormProps) => (
       <Sheet>
         <SheetTrigger asChild>
@@ -87,6 +101,7 @@ const containers = [
   },
   {
     name: 'ポップオーバー',
+    opener: { role: 'button', name: '開く' },
     element: (props: InnerFormProps) => (
       <Popover>
         <PopoverTrigger asChild>
@@ -98,10 +113,55 @@ const containers = [
       </Popover>
     ),
   },
+  {
+    name: 'ドロップダウンメニュー',
+    opener: { role: 'button', name: '開く' },
+    element: (props: InnerFormProps) => (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button">開く</button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <InnerForm {...props} />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ),
+  },
+  {
+    name: 'セレクト',
+    opener: { role: 'combobox' },
+    element: (props: InnerFormProps) => (
+      <Select>
+        <SelectTrigger>
+          <SelectValue placeholder="開く" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="a">項目</SelectItem>
+          <InnerForm {...props} />
+        </SelectContent>
+      </Select>
+    ),
+  },
+  {
+    name: 'ツールチップ',
+    opener: { role: 'button', name: '開く', hover: true },
+    element: (props: InnerFormProps) => (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button">開く</button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <InnerForm {...props} />
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    ),
+  },
 ] as const;
 
 describe('外側のフォームの中に置いたポータルの中のフォーム', () => {
-  describe.each(containers)('$name', ({ element }) => {
+  describe.each(containers)('$name', ({ element, opener }) => {
     test.each([
       [
         '送信ボタンの押下',
@@ -116,8 +176,16 @@ describe('外側のフォームの中に置いたポータルの中のフォー�
           {element({ onInnerSubmit })}
         </OuterForm>,
       );
-      await userEvent.click(page.getByRole('button', { name: '開く' }));
-      await userEvent.click(page.getByRole('textbox', { name: '名前' }));
+      const openerLocator =
+        'name' in opener
+          ? page.getByRole(opener.role, { name: opener.name })
+          : page.getByRole(opener.role);
+      await ('hover' in opener
+        ? userEvent.hover(openerLocator)
+        : userEvent.click(openerLocator));
+      await userEvent.click(
+        page.getByRole('textbox', { name: '名前' }).first(),
+      );
 
       await submit();
 

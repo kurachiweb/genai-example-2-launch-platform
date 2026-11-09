@@ -2,6 +2,7 @@ import { Select as SelectPrimitive } from 'radix-ui';
 import type { ComponentProps } from 'react';
 
 import { cn } from '../../../utilities/class-names.ts';
+import { stopSubmitPropagation } from '../stop-submit-propagation.ts';
 import { SelectScrollDownButton } from './select-scroll-down-button.tsx';
 import { SelectScrollUpButton } from './select-scroll-up-button.tsx';
 
@@ -10,6 +11,7 @@ export function SelectContent({
   children,
   position = 'item-aligned',
   align = 'center',
+  onSubmit,
   ...props
 }: ComponentProps<typeof SelectPrimitive.Content>) {
   return (
@@ -25,6 +27,8 @@ export function SelectContent({
         position={position}
         align={align}
         {...props}
+        // ポータルの中のフォームの送信はReactの木に沿って外側のフォームへも伝わるため、ここで止める
+        onSubmit={stopSubmitPropagation(onSubmit)}
       >
         <SelectScrollUpButton />
         <SelectPrimitive.Viewport

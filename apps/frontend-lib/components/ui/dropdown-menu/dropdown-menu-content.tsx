@@ -2,10 +2,12 @@ import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 import type { ComponentProps } from 'react';
 
 import { cn } from '../../../utilities/class-names.ts';
+import { stopSubmitPropagation } from '../stop-submit-propagation.ts';
 
 export function DropdownMenuContent({
   className,
   sideOffset = 4,
+  onSubmit,
   ...props
 }: ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   return (
@@ -18,6 +20,8 @@ export function DropdownMenuContent({
           className,
         )}
         {...props}
+        // ポータルの中のフォームの送信はReactの木に沿って外側のフォームへも伝わるため、ここで止める
+        onSubmit={stopSubmitPropagation(onSubmit)}
       />
     </DropdownMenuPrimitive.Portal>
   );

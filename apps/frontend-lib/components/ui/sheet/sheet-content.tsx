@@ -3,6 +3,7 @@ import { Dialog as SheetPrimitive } from 'radix-ui';
 import type { ComponentProps } from 'react';
 
 import { cn } from '../../../utilities/class-names.ts';
+import { stopSubmitPropagation } from '../stop-submit-propagation.ts';
 import {
   type SheetSide,
   sheetContentVariants,
@@ -33,10 +34,7 @@ export function SheetContent({
         className={cn(sheetContentVariants({ side, className }))}
         {...props}
         // ポータルの中のフォームの送信はReactの木に沿って外側のフォームへも伝わるため、ここで止める
-        onSubmit={(event) => {
-          onSubmit?.(event);
-          event.stopPropagation();
-        }}
+        onSubmit={stopSubmitPropagation(onSubmit)}
       >
         {children}
         {showCloseButton && (
