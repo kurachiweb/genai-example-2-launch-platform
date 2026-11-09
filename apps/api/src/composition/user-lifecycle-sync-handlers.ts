@@ -1,4 +1,5 @@
 import { INQUIRY_TYPES } from '../application/inquiry/inquiry-types.ts';
+import { PRODUCT_TYPES } from '../application/product/product-types.ts';
 import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
 import type { UserLifecycleSyncRegistration } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 
@@ -14,5 +15,15 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       name: 'user-profile-social.withdrawal',
       events: ['withdrawn'],
       handler: PROFILE_TYPES.ProfileWithdrawalSyncHandler,
+    },
+    {
+      name: 'product-launch.withdrawal',
+      events: ['withdrawn'],
+      handler: PRODUCT_TYPES.ProductWithdrawalSyncHandler,
+    },
+    {
+      name: 'product-launch.launch-cancellation',
+      events: ['suspended'],
+      handler: PRODUCT_TYPES.LaunchCancellationSyncHandler,
     },
   ];

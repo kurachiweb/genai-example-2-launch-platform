@@ -50,12 +50,15 @@ import {
   type ProductVisibilityControl,
   StoreProductVisibilityControl,
 } from '../application/product/product-visibility-control.ts';
+import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { createD1ProductLifecycleCommitter } from '../infrastructure/product/d1-product-lifecycle-committer.ts';
 import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
+import { LaunchCancellationSyncHandler } from '../infrastructure/product/launch-cancellation-sync-handler.ts';
 import {
   createProductSaveHooks,
   type ProductSaveHooks,
 } from '../infrastructure/product/product-save-hooks.ts';
+import { ProductWithdrawalSyncHandler } from '../infrastructure/product/product-withdrawal-sync-handler.ts';
 import {
   LAUNCH_SUMMARY_SOURCES,
   PRODUCT_LOCK_SOURCES,
@@ -130,5 +133,11 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ProductVisibilityControl>(PRODUCT_TYPES.ProductVisibilityControl).to(
       StoreProductVisibilityControl,
     );
+    bind<UserLifecycleSyncHandler>(
+      PRODUCT_TYPES.ProductWithdrawalSyncHandler,
+    ).to(ProductWithdrawalSyncHandler);
+    bind<UserLifecycleSyncHandler>(
+      PRODUCT_TYPES.LaunchCancellationSyncHandler,
+    ).to(LaunchCancellationSyncHandler);
   }),
 };

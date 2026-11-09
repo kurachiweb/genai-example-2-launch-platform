@@ -18,6 +18,8 @@ const EXPECTED_NAMES = [
   'ProductLifecycleCommitter',
   'ProductDeletion',
   'ProductVisibilityControl',
+  'ProductWithdrawalSyncHandler',
+  'LaunchCancellationSyncHandler',
 ] as const;
 
 describe('PRODUCT_TYPES', () => {

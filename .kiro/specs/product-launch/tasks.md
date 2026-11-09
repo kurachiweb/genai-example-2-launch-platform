@@ -137,7 +137,7 @@
   - 完了状態: 単体テストとDIの解決の検査が成功し、ugc-moderationが操作口を識別子で解決でき、application層に`**/lib/workers/**`の読み込みが無い(静的解析が成功する)
   - _Requirements: 6.1, 6.2, 6.5, 8.1, 12.6, 12.7, 12.9_
 
-- [ ] 5.3 退会・停止の同期の波及処理を作る
+- [x] 5.3 退会・停止の同期の波及処理を作る
   - 先に、Workers統合テストで、identity-authの退会の確定と同じ一括の書き込みで利用者の全プロダクトと旧ハンドルが論理削除され、ローンチが照会と予定の一覧から消えること、停止の確定で未開始のローンチだけが取消になり、停止解除で戻らないこと、退会の確定の競合で波及処理の文も取り消されることを確かめる
   - 2つの波及処理の識別子・束縛をapiのプロダクトのモジュールへ、登録をidentity-authの同期の波及処理の登録箇所へ同時に加える。利用者IDを条件にした集合の更新の文だけを返す
   - 完了状態: Workers統合テストが成功する
@@ -354,4 +354,5 @@
 - 4.4: `MyProductsReader`(`list`・`find`・`newProductWindow(user, at)`・`ownerStatus`)と`ProductHandleAvailabilityChecker`(`invalid`・`unavailable`・`available`の3値。予約語と使用中はどちらも`unavailable`)。カーソルは`application/product/my-products-cursor.ts`(presentationの`encodeCursor`と同じバイト列、不正なら`invalid_cursor`)。`first`が1〜20外なら`RangeError`(7.xが`validation_error`にする)。7.xは`myProduct`で`find`の`redirect`を`MyProductRedirect`へ変え、`newProductLaunchWindow`は`PLATFORM_TYPES.Clock`の時刻を渡す
 - 5.1: 確定は`createD1ProductLifecycleCommitter(db, ids, registrations, resolve)`(`toDynamicValue`+`inSingletonScope`、identity-authの前例の形)で`PRODUCT_TYPES.ProductLifecycleCommitter`に束縛。同期の登録口は`composition/product-lifecycle-sync-handlers.ts`の`PRODUCT_LIFECYCLE_SYNC_HANDLERS`(契約は`infrastructure/product/product-lifecycle-sync-handler.ts`、呼び名「プロダクトライフサイクルの同期の処理」、汎用の`createLifecycleRegistry`に登録の位置を`order`として渡す)。確定の前に1回読み、不在・論理削除は`not-found`、同じ状態は`unchanged`(イベントも同期の処理の呼び出しも作らない)。削除の分類はnot-found→account-unavailable→conflict→locked。`expectedVersion`を省いた削除は版を条件にしない。非公開化・復元は投稿者の状態を条件にせず、非公開化は今日の業務日付より後の未確定のローンチを取消にする。5.2は`committed`のときだけ`RUN_PRODUCT_LIFECYCLE_MESSAGE`を送る。11.1の`backend/012`にこの登録口・契約の置き場所・一括の並び・分類・呼び名を書く
 - 5.2: 送信のポート`ProductMessagePublisher`(`application/product/ports.ts`、`@inject(PLATFORM_TYPES.MessagePublisher)`)と共通の送信部品`dispatchProductLifecycleEvent`(`product-lifecycle-dispatch.ts`)。送信の失敗は`logger.error`(「プロダクトライフサイクルイベントの送信を要求できませんでした」、`{ error, eventId, productId }`)だけでSentryへは送らず、日次の送り直しで回復する(identity-authは`AuthIncidentReporter`でSentryへも送る=前例との相違)。5.4は要件12.5の「滞ったイベントを運営者が検知できる」を送り直しのジョブで満たすか確かめる。`hide`・`unhide`は呼び出し元を検査せず`changed`・`unchanged`を返し、論理削除・不在は`product_not_found`。偽物は`application/product/testing/product-lifecycle-fakes.ts`。削除のbot対策(`product_delete`)は7.2のリゾルバ
+- 5.3: 退会(`product-launch.withdrawal`)はプロダクトと旧ハンドルの集合の論理削除の2文(上流の`previousHandleSoftDelete`は1プロダクト単位のため使わない)で、プロダクトのライフサイクルイベントは作らずローンチの行も変えない。停止(`product-launch.launch-cancellation`)は5.1の非公開化と同じ規則(停止の業務日付より後の未確定のローンチ)を取消にし、停止解除には登録しない。登録は`USER_LIFECYCLE_SYNC_HANDLERS`の末尾(project-values.mdも更新済み)
 - 11.2への申し送り(`docs/onboardings/project-values.md`): ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

@@ -45,6 +45,14 @@ const ProductVisibilityControl: unique symbol = Symbol.for(
   'product.ProductVisibilityControl',
 );
 
+const ProductWithdrawalSyncHandler: unique symbol = Symbol.for(
+  'product.ProductWithdrawalSyncHandler',
+);
+
+const LaunchCancellationSyncHandler: unique symbol = Symbol.for(
+  'product.LaunchCancellationSyncHandler',
+);
+
 export const PRODUCT_TYPES = Object.freeze({
   ProductStateEvaluator,
   RelaunchConditionSources,
@@ -60,4 +68,6 @@ export const PRODUCT_TYPES = Object.freeze({
   ProductLifecycleCommitter,
   ProductDeletion,
   ProductVisibilityControl,
+  ProductWithdrawalSyncHandler,
+  LaunchCancellationSyncHandler,
 });
