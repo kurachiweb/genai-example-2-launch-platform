@@ -360,3 +360,220 @@ cross-spec reviewの指摘による、承認の後の改訂である。仮13・�
 - **保存の登録口**: `ProductSaveHook`・`ProductSaveHookRegistration`・`ProductSaveHooks`・`createProductSaveHooks`は接続と文を扱うため、apiの`application/product/product-save-hooks.ts`から`infrastructure/product/product-save-hooks.ts`へ移した(`ProductLifecycleSyncHandler`・identity-authの`UserLifecycleSyncHandler`と同じ配置)。`D1ProductStore`が`ProductSaveHooks`を受け取り、`insert`・`save`・`updateDescription`の一括の書き込みの末尾に文を加え、確定して`saved`のときだけ同じメソッドの中で`runAfterCommit`を呼ぶ。ユースケース(`ProductRegistration`・`ProductEditor`・`ProductDescriptionEditor`)は登録口と接続を受け取らない。directory-discoveryの`ProductSaveHook`の実装はapiの`infrastructure/directory/`に置く(directory-discoveryが反映する)。
 - **新しいポート**: apiの`application/product/ports.ts`とeventの`application/product/ports.ts`に`ProductMessagePublisher`を置き、`ProductDeletion`・`ProductVisibilityControl`・`ProductMaintenanceJobs`(api)と`UserProductErasureHandler`(event)が`@inject(PLATFORM_TYPES.MessagePublisher)`で受け取る(識別子は持たない)。`ProductLifecycleCommitter`のポートをapplication層の`ports.ts`に置くことを明記した(D1の実装はinfrastructure層)。他specの契約(`MediaFiles`・`MediaQuarantine`・`UltrasEntitlements`・`UserProfileDirectory`・`PROFILE_PLATFORM_TYPES`)は`core/media`・`core/ultras`・`core/profile`から読み込む。
 - **変えた箇所**: design.mdのImpact、This Spec Owns、Allowed Dependencies(user-profile-social・media-pipeline・ultras-subscriptionの置き場所と後続specの依存)、Revalidation Triggers(`PRODUCT_SAVE_HOOKS`・`AdminProductDirectory`の置き場所と`core/product`の置き場所の項の追加)、Architecture Integration、Dependency direction、File Structure Plan(`core/product`・`workers/product`・apiの`application/product`・`infrastructure/product`・eventの`application/product`)、System Flows(次回の予約と保存の図と説明、プロダクトライフサイクルイベントの説明)、コンポーネントの表(Layer・Key Dependencies)、`backend-lib/core/product・workers/product`の節(見出し・置き場所・コードのファイルの注記・`PRODUCT_PLATFORM_TYPES`の定義)、ProductSaveHooks(api/infrastructureの節へ移動)、ProductRegistration・ProductEditor・ProductDeletion・ProductDescriptionEditor、LaunchHistoryReader、ProductVisibilityControl・ProductMaintenanceJobs(`ProductMessagePublisher`)、D1ProductStore、ProductLifecycleSyncHandlerContract・D1ProductLifecycleCommitter、eventの節、Testing Strategy。tasks.mdの2.1(契約と識別子と識別子の単体テスト)・2.2〜2.6(D1の実装の置き場所)・3.2・3.3(infrastructure層、Workers統合テスト)・4.1(確定の後の処理の確かめをストアへ)・4.2・4.3(ユースケースの単体テストから確定の後の処理を外す)・5.1・5.2(`ProductMessagePublisher`)・5.4(依存に5.2を追加)・6.2・8.1・8.2・8.3・12.3(層の規則の静的解析)。要件と受け入れ条件は変えていない。
+
+---
+
+## 上流の実装の完了後のギャップ分析(2026-11-09)
+
+### 前提と方法
+
+- **状態**: 本specの要件・設計・タスクは承認済みで、実装は未着手(tasks 0/57)。前回の分析(2026-10-23)の時点で実装済みだったのはdev-toolingだけだった。現在は、本specが依存する上流のbackend-platform・api-gateway・identity-auth・user-profile-social・media-pipeline・content-processing・ultras-subscription・admin-foundation・inquiry-chat・frontend-platformの実装がすべて完了している(help-centerだけが未実装で、本specとは依存しない)。
+- **目的**: 設計が前提にした上流の契約の名前・置き場所・形と、設計の後に加わった技術ドキュメントの規則を、実装済みのコードと照合し、実装を始める前に直すべき設計の記述を洗い出す。
+- **方法**: 4つの独立した読み取り専用の調査を並行して行い、影響の大きい主張はコードで確かめ直した。照合の範囲は次の4つ。
+  1. backend-platform・api-gateway・identity-auth
+  2. user-profile-social・media-pipeline・ultras-subscription
+  3. admin-foundation・inquiry-chat・content-processing・frontend-platform
+  4. DB・技術ドキュメントの番号と規則・他specからの申し送り・roadmap
+- **steering**: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替した(前回と同じ)。
+
+### 結論の要約
+
+- 上流の主要な契約は、名前・置き場所・形とも設計どおりに実装されている。設計が前提にした改訂(user-profile-socialの仮2(B)の`previousHandleRelease`と`isHandleOccupied`の意味、隔離理由`product_hidden`)と、登録箇所(`PUBLIC_PROFILE_TABS`・`PUBLIC_PROFILE_BADGES`・`CATEGORY_SECTIONS`の10番)も含む。
+- 帯の値は空いている。4:21の1000・1010、ユーザーの`purge_due`の1000。
+- 他spec(match-engine・directory-discovery・tournament-week/year・ugc-moderation・sponsorship・engagement・data-export・public-api、11月に作られたnotifications・content-reporting)が本specへ求める契約は、すべて設計に反映済みである。
+- 一方で、設計の記述が実装済みの上流と食い違う箇所(相違)と、設計の後に加わった規則に合わない箇所(規約)が見つかった。ほとんどは記述の修正で済むが、次の4件は開発者の判断を要する。
+  1. 上流に無い画面部品(カード・アラートダイアログ)の扱い
+  2. カテゴリの操作の理由を入力できないこと
+  3. `frontend/011`が欠番になること
+  4. `backend/012`と`backend/007`の関係
+
+### 要件と既存の資産の対応
+
+| 要件                        | 使う既存の資産(実装済み)                                                                                                                                                           | ギャップ                                                                                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1 登録                      | `AccountGuard.requireVerifiedUser`、`assertHuman`、`checkExternalUrl`、`countGraphemes`・`hasForbiddenCharacters`、`useAppForm`・`AppForm`・`sendWithTurnstile`                    | Constraint: bot対策の操作名の写しの規約(後述の相違4)。入力規則の文言の置き場所(規約1)                                                                  |
+| 2 ハンドル                  | `common-lib/handles`、`defineHandleNamespace`・`resolveHandle`・`isHandleOccupied`・`handleOccupiedCondition`・`previousHandle*`・`previousHandleRelease`、`previousHandleColumns` | 相違: `previousHandleColumns`の`references`の形(相違5)                                                                                                 |
+| 3 画像                      | `UPLOAD_PURPOSES`、`MediaFiles`・`MediaQuarantine`、`ImageUploadField`、`MediaPicture`、`product_hidden`                                                                           | 相違: `ImageUploadField`の引数の形(相違6)。Unknown: 保存の失敗時に紐付け済みで参照されない画像が残る(要確認3)                                          |
+| 4〜6 ローンチ日・予約・固定 | `BusinessTime`、`UltrasEntitlements.isEntitledAt`                                                                                                                                  | Missing: 業務日付の日の足し引きの公開関数が無い(相違7)。Missing: `Calendar`と`react-day-picker`(予定どおり)。Constraint: 表示中の境界の取り直し(規約4) |
+| 7 編集                      | `MarkdownEditor`・`useMarkdownOptions`、`FormField`の`disabled`                                                                                                                    | 相違: `MarkdownEditor`の必須の引数(相違9)                                                                                                              |
+| 8 削除                      | ユーザーライフサイクルの登録口と実行器の型                                                                                                                                         | Missing: 削除の確認に使うアラートダイアログが上流に無い(要確認1)                                                                                       |
+| 9 自分のプロダクト          | `_authenticated`、`/my/products`・`/my/products/new`へのリンク(既にあり、今は404)、`UltrasPromotionGate`                                                                           | 規約: 一覧の失敗の表示(規約3)。Missing: カードの部品が上流に無い(要確認1)                                                                              |
+| 10 ローンチ履歴             | `PUBLIC_PROFILE_TABS`・`PUBLIC_PROFILE_BADGES`、`RecoverableSlot`                                                                                                                  | 規約: 規約3。Constraint: タブのパネルは`RecoverableSlot`が包み、受賞バッジの区画はエラー境界なしで描かれる                                             |
+| 11 カテゴリ                 | `requireAdmin`・`adminOnly`、`AuditLogRecorder`・`buildAuditLogStatements`、`defineAuditAction`、`CategoryMasterEditor`、`CATEGORY_SECTIONS`                                       | 相違: `requireAdmin`の引数(相違2)、`CategoryMasterEditor`の引数(相違8)。Unknown: 理由の入力欄が無い(要確認2)                                           |
+| 12 プロダクトライフサイクル | `createAsyncLifecycleRegistry`・`LifecycleHandlerOutcome`・`USER_LIFECYCLE_RETRY_POLICY`の型、`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`                                              | Missing: 期限超過をSentryへ送るポート(相違10)                                                                                                          |
+| 13 ユーザーライフサイクル   | `USER_LIFECYCLE_SYNC_HANDLERS`・`USER_LIFECYCLE_ASYNC_HANDLERS`(1000は空き)                                                                                                        | Constraint: 処理名の並びを完全一致で確かめる既存テストの更新(相違11)                                                                                   |
+| 14 照会口                   | `core/<ドメイン>`と`workers/<ドメイン>`の分け方、層の静的解析                                                                                                                      | 一致(2026-11-02の改訂で反映済み)                                                                                                                       |
+| 15 文書とテスト             | `docs/GUIDES/tech`の番号は`backend/012`・`backend/013`・`frontend/012`が空き                                                                                                       | Constraint: `frontend/011`の欠番(要確認4)。`backend/007`との重なり(要確認5)                                                                            |
+
+### 設計の記述と実装済みの上流の相違
+
+型の検査で落ちる、または誤った箇所を読み込ませるもの。
+
+| #   | 箇所                                            | 設計の記述                                                                                       | 実装                                                                                                                                                                                                                                                                                                                                                                                                        | 直し方                                                                                                                                                                                                                                                                                                                                            |
+| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Allowed Dependencies(identity-auth)             | `IDENTITY_TYPES`                                                                                 | `AccountGuard`は`IDENTITY_PLATFORM_TYPES.AccountGuard`(`backend-lib/core/identity/identifiers.ts`)。`IDENTITY_TYPES`はapi内部の識別子で`AccountGuard`を持たない                                                                                                                                                                                                                                             | `IDENTITY_PLATFORM_TYPES`へ直す。リゾルバは`context.resolve<AccountGuard>(IDENTITY_PLATFORM_TYPES.AccountGuard)`(`modules/profile/resolver-support.ts`の形)                                                                                                                                                                                       |
+| 2   | ProductCategoryService                          | `requireAdmin(session, caller, 'moderator')`                                                     | GraphQLの入口は`requireAdmin(context, minimum)`(`api/src/presentation/graphql/admin-guard.ts`)。3つの引数の形は`AdminAuthorizer.requireAdmin`のもの。security/007は`adminOnly(withValidatedArgs(...))`の内側で呼ぶ形を定める                                                                                                                                                                                | `adminOnly`・`clientOnly`をモジュールの`resolver-support.ts`に置き、`requireAdmin(context, 'moderator')`にする                                                                                                                                                                                                                                    |
+| 3   | ProductRegistration ほか                        | `AppError({ kind: 'not_found', code: 'product_not_found' })`                                     | `AppErrorInit.message`が必須(`core/errors/app-error.ts`)                                                                                                                                                                                                                                                                                                                                                    | 全ての`AppError`に文言を持たせる。`profile-errors.ts`のようなコードと文言の対応表を経由する                                                                                                                                                                                                                                                       |
+| 4   | bot対策                                         | `assertHuman`へ`product_save`・`product_delete`を渡すだけ                                        | 既存の機能はapiの`*_BOT_ACTIONS`をclientの`components/<領域>/bot-actions.ts`へ写し、`config/contract-copies.unit.test.ts`で一致を確かめる                                                                                                                                                                                                                                                                   | `PRODUCT_BOT_ACTIONS`と写しを作り、写しの照合の試験への登録をModified Filesとタスクに加える                                                                                                                                                                                                                                                       |
+| 5   | Physical Data Model                             | `previousHandleColumns({ ..., references: products.id })`と別の`deleted_at`                      | `references: () => AnySQLiteColumn`(関数)。`softDelete()`は部品が既に含む                                                                                                                                                                                                                                                                                                                                   | `references: () => products.id`へ直し、別の`deleted_at`を外す                                                                                                                                                                                                                                                                                     |
+| 6   | LogoField・ScreenshotsField                     | `maxBytes`・`maxCount`・`maxTotalBytes`・`existingCount`・`existingTotalBytes`を直接の引数に書く | これらは`constraints: UploadConstraints`の項目。`constraints`の`purpose`・`allowedTypes`・`subjectLabel`と、`label`・`onUploaded`・`edit.maxLongSide`は必須                                                                                                                                                                                                                                                 | 例: `constraints: { purpose: 'product-screenshot', allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: 5242880, subjectLabel: 'スクリーンショット', maxCount: 20, maxTotalBytes: 10485760, existingCount, existingTotalBytes }`、`edit: { aspect: 'free', maxLongSide: 1920 }`。表示は`MediaPicture`の`display={{ kind: 'screenshot', variant: 'thumb' }}` |
+| 7   | LaunchDateRules                                 | 今日+90日、7日・2日の間隔、実行日−12日を計算する                                                 | `core/time/business-time.ts`が公開するのは`parseBusinessDate`・`toBusinessDateTime`・`fromBusinessDateTime`・`businessWeekOf`・`toUtcCronExpression`だけ(`addDays`は非公開)                                                                                                                                                                                                                                 | 上流の形を変えずに、domain層に日の足し引きの小さな補助を置く(identityの`purgeBoundaryOf`と同じ計算)                                                                                                                                                                                                                                               |
+| 8   | ProductCategorySection                          | `withHandle`・`canEdit`・`systemDefault`を部品の引数にし、名前の検証を呼ぶ側で行う               | `systemDefault`は各項目(`CategoryMasterItem`)の値。名前の検証は部品の中の`CategoryFormDialog`が`checkCategoryName`を呼ぶ。ハンドルは`validateHandle: (handle) => string \| undefined`。削除の説明は`deleteDescriptionOf`、監査の旨は`deleteAudited`                                                                                                                                                         | 引数を実装に合わせ、14日の注記を`deleteDescriptionOf`に、記録の旨を`deleteAudited`に割り当てる                                                                                                                                                                                                                                                    |
+| 9   | ProductForm                                     | `MarkdownEditor`を他の欄と同じ形で置く                                                           | `onValueChange`・`onBlur`・`placeholder`が必須                                                                                                                                                                                                                                                                                                                                                              | `value`・`onValueChange`・`onBlur`・`ref`・`labelId`・`describedById`・`invalid`・`placeholder`を明示して渡す(上流の利用箇所の形)                                                                                                                                                                                                                 |
+| 10  | ProductMaintenanceJobs                          | 期限超過の件数をSentryへ通知する                                                                 | 各ドメインがポートを持つ(`AuthIncidentReporter`と`infrastructure/auth/sentry-auth-incident-reporter.ts`)                                                                                                                                                                                                                                                                                                    | `ProductIncidentReporter`のポートをapplication層に、Sentryの実装を`infrastructure/product/`に加える                                                                                                                                                                                                                                               |
+| 11  | Modified Files・タスク                          | 登録箇所への追記だけ                                                                             | 追記で、登録を完全一致で確かめる既存テストが失敗する。対象は`api/test/config/media-registrations.unit.test.ts`(`UPLOAD_PURPOSES`)、`client/src/components/profile/public-profile-section-order.unit.test.ts`(タブと受賞バッジが空)、`event/src/composition/{profile,payments,ultras}-module.worker.test.ts`(`purge_due`の処理名の並び)、`common-lib/admin/audit-actions/index.unit.test.ts`(操作種別の並び) | 各テストの更新をModified Filesと該当するタスク(1.1・4.2・8.3・9.8・9.9)に加える                                                                                                                                                                                                                                                                   |
+| 12  | 自分のプロダクトの一覧・ローンチ履歴            | `first`は1〜20                                                                                   | `CURSOR_PAGE_ARGS`の`first`は1〜`MAX_PAGE_SIZE`(100)                                                                                                                                                                                                                                                                                                                                                        | `follow-inputs.ts`と同じように上限20の`first`を自前で定義する                                                                                                                                                                                                                                                                                     |
+| 13  | ProductAuditActions                             | `defineAuditAction`で3つの操作種別を作る                                                         | `label`が必須。集約の名前は`<SPEC>_AUDIT_ACTIONS`。inquiryは名前の変更を`inquiry-category.rename`と呼ぶ                                                                                                                                                                                                                                                                                                     | `label`を加え、`PRODUCT_LAUNCH_AUDIT_ACTIONS`にする。`update`と`rename`のどちらにするか決める(更新はハンドルも変えるため`update`のままでもよい)                                                                                                                                                                                                   |
+| 14  | Existing Architecture Analysis・ProductTechDocs | 「実装済みはdev-toolingだけ」、help-centerが`frontend/011`を先に使う前提                         | 上流は実装済み。help-centerは未実装                                                                                                                                                                                                                                                                                                                                                                         | 記述を現状に合わせる                                                                                                                                                                                                                                                                                                                              |
+
+### 設計の後に加わった・確かめ直した規則
+
+設計の作成後に加わった規則と、設計が名前で参照していなかった規則に合わない箇所。
+
+1. **入力規則の文言の置き場所(coding/005)**: 上流(`admin-input-rules.ts`・`inquiry-input-rules.ts`・`legal-input-rules.ts`)は、判定の関数と違反の文言の対応表`*_MESSAGES`をどちらもcommon-libに置き、禁止文字→必須→上限の順で判定する。設計(ProductInputRules)は判定の関数だけを置く。文言の対応表と判定の順を加える。
+2. **初期データ(db/003)**: 設計は「その他」の初期データを作成と同じ`<日時>_product_launch`に入れるとしている。規則は別のカスタムマイグレーション`--custom --name=product_launch_seed`を求める。行には固定のIDの時刻部から求めた`created_at`・`updated_at`、全列の明示、一意の列への`ON CONFLICT ... DO NOTHING`を書く(`20261105014904_inquiry_chat_seed`・`20261106115514_ultras_subscription_seed`が手本)。Workers統合テストは初期データの行がある前提で書き、書き換えるテストは固定の値で入れ直す。
+3. **続けて読み込む一覧の失敗の表示(frontend/006、11-06)**: 一覧は`infiniteQueryOptions`(キーに閲覧者のIDを入れる)で取得し、`loader`で`queryClient.infiniteQuery(...).catch(() => undefined)`を待つ。最初の取得の失敗は一覧の位置の`PartialErrorState`、続きの失敗はボタンの近くの`role="alert"`で示し、読み込み後のフォーカスの移動も定める。設計は`MyProductListPage`の取得の失敗を`ErrorState`、`LaunchHistoryPanel`の続きの失敗を`PartialErrorState`にしており、規則と逆になっている。
+4. **表示中の境界の取り直し(frontend/010・004)**: 設計は23:40の`LaunchDateField`の取り直しだけを書いている。抜けている境界は次の2つ。
+   - 23:45: 編集画面の固定(カテゴリと削除の無効化)
+   - 0:00: `LaunchStatusText`の`in_progress`への切り替え
+
+   010の定期の取り直し(`refetchInterval`)は自動更新のスイッチを要するため、境界の時刻にタイマーで`invalidateQueries`する形が合う。取り直しで無効になる削除のボタンは、フォーカスのある間は`aria-disabled`にし、フォーカスが離れてから`disabled`にする(010・004)。`product_update_conflict`・`launch_date_unavailable`では対応する取得を無効にし、最新を示してから選び直させる(010)。
+
+5. **画面部品の配置(frontend/005)**: 部品は`components/ui/<部品>/<部分>.tsx`に置く。カレンダーは`components/ui/calendar/calendar.tsx`にし、次のことも書く。
+   - `react-day-picker`を3つのアプリの`vitest.browser.config.ts`の`optimizeDeps.include`に加え、005の部品の一覧に`Calendar`を足す。
+   - Popoverで開くなら`stopSubmitPropagation`を付ける。
+   - 日のボタンには`buttonVariants`の`aria-disabled:pointer-events-none`を付けない。付けると、選べない日の理由のツールチップが開かない(004)。
+6. **ページのhead**: clientのページは`buildPageHead`を直接使わず、`client/src/head/page-heads.ts`の`buildSitePageHead`で作る。
+7. **adminとclientの取得の補助**: 生成物の型を画面の型へ変える処理は`src/graphql/<領域>.ts`に置く(frontend-platformの操作の追加手順)。File Structure Planに次の3つのファイルを、単体テスト付きで加える。
+   - adminの`src/graphql/admin-product-categories.ts`
+   - clientの`src/graphql/my-products.ts`
+   - clientの`src/graphql/launch-history.ts`
+8. **4:21の所要時間の予算**: `SCHEDULED_RUN_BUDGETS`は4:21の起動全体に300秒の予算を置く。本specの2つのジョブ(200件の作成と送り直し)が加わる内訳をPerformanceに添える。identity-authの送り直しは、4:21のメールの後始末と重ならないよう16:21へ移されている。本specの送り直しはメールに関わらないため、4:21・1010のままでよい。
+9. **業務日付の表示**: ローンチ日(業務日付の文字列)を`DateTime`の表示部品へ渡すと、利用者のタイムゾーンで日がずれる。frontend-libに業務日付を整形する関数は無いため、整形の方法を`frontend/012`で定める。
+10. **Ultrasへの導線のE2E**: `UltrasPromotionGate`の表示は機能フラグで変わる。ultras-subscriptionのE2Eがフラグを書き換えるため、導線を確かめるE2Eは同じ直列の組に入れるか、フラグで変わる部分を確かめないようにする(ultras-subscriptionの申し送り)。
+
+### 開発者の判断を要する事項
+
+| #       | 論点                                                                                                                                    | 選択肢                                                                                                                                                                                                                                             | 推奨                                                                                                                                                |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 要確認1 | 上流に無いカード・アラートダイアログ                                                                                                    | (A)削除の確認は`Dialog`と`destructive`のボタンで組み(clientの`withdrawal-section.tsx`と同じ)、カードは`<article>`に見た目のクラスを付けて描く / (B)`ui/card`・`ui/alert-dialog`をfrontend-libへ新しく加える(ストーリー・ブラウザテスト・005の一覧) | (A)。既存の画面と同じ作りで、新しい共通部品の作業と検査が要らない                                                                                   |
+| 要確認2 | カテゴリの操作の理由(要件11.8「理由は任意」)                                                                                            | (A)理由を送らず、`deleteAudited`で監査ログに記録する旨だけを示す(inquiryの区画と同じ) / (B)admin-foundationの`CategoryMasterEditor`に理由の欄を加える                                                                                              | (A)。要件の理由は任意で、問い合わせカテゴリと振る舞いがそろう。要件11.8の文言に合うかを確かめる                                                     |
+| 要確認3 | 保存の前の`claim`で、保存の失敗・離脱の後に紐付け済みで参照されない画像が残る(ロゴとスクリーンショットで2回呼ぶため、2回目の失敗も同じ) | (A)既知の制限として設計に書く(user-profile-socialと同じ作り。退会後の物理削除(610)で消える) / (B)保存の一括の書き込みの後に`claim`を移す・参照されない画像を定期的に消す                                                                           | (A)。上流の作りと同じ(media-pipelineに利用者ごとの保存の合計の上限は無く、残る量は保存の失敗と離脱の回数に比例する。2026-11-09の改訂で記述を直した) |
+| 要確認4 | `frontend/011`(help-centerの予定)の欠番                                                                                                 | (A)help-centerの予定を変えず、本specは`frontend/012`を使い、011の欠番を許す / (B)本specが先に実装するため011を使い、help-centerの番号を改める                                                                                                      | (A)。後続specの設計(match-engineの`frontend/013`・directory-discoveryの`frontend/014`)が番号を前提にしており、改番の範囲が広がる                    |
+| 要確認5 | `backend/012`(集約のライフサイクル)と`backend/007`(ユーザーライフサイクルイベント)の重なり                                              | (A)`backend/012`は007との差分(プロダクトの種類・物理削除の順・同じプロダクトの順序)だけを書き、共通の規約は007を参照する / (B)007を集約一般の規約に一般化し、012を本specの値の読み替えにする                                                       | (A)。上流の文書を書き換えない。`docs/GUIDES/tech`の丸写しできる性格も保てる                                                                         |
+
+### 対応の進め方の選択肢
+
+- **案A: 実装の前に設計とタスクを改訂する**: 上の相違1〜14・規約1〜10・要確認1〜5の決定を、design.mdとtasks.mdへ反映してから`/kiro-impl`を始める。
+  - ✅ 実装者(サブエージェント)が誤った名前や形を前提にしない。誤った形で書かれたテストを直す手戻りが無い。
+  - ❌ 240KBの設計の多くの箇所を直すため、改訂とその確認に時間を要する。
+- **案B: 設計を変えず、実装の中で吸収する**: 実装者が各タスクで実装済みの上流に合わせ、相違を最終の報告と本書に記録する。
+  - ✅ すぐに実装を始められる。
+  - ❌ 57のタスクを並行して進めると、同じ相違(`IDENTITY_PLATFORM_TYPES`・`AppError`の`message`・`requireAdmin`)を各タスクがばらばらに直す。規約の違反(初期データ・一覧の失敗の表示)は、設計どおりに作ると検査やレビューで初めて見つかる。
+- **案C: 混合**: 型の検査や規則の違反になるものと、判断を要するもの(相違1〜8・10〜12、規約1〜5・7、要確認1〜5)だけを設計とタスクへ反映する。記述の補足(相違9・13・14、規約6・8〜10)は該当するタスクの注記に1行ずつ加える。
+  - ✅ 改訂の範囲を絞りつつ、並行するタスクで同じ誤りを繰り返さない。
+  - ❌ 設計の本文に軽微な古い記述が一部残る。
+
+### 工数とリスク
+
+- **工数: XL(2週間超)**。7テーブル、api・event・client・adminの4アプリ、57のタスク、E2Eがある。上流の部品はそろっているため、新しい基盤の作業はカレンダーと判定の拡張点に限られる。
+- **リスク: Medium**。上流の契約は実装と一致しており、未知の技術は`react-day-picker`だけである。残るリスクは次の3つ。
+  - 業務時刻の境界(23:40・23:45・0:00)の画面とサーバーの一致
+  - プロダクトライフサイクルの物理削除の順序
+  - 後続specの供給元が未実装の間の縮退
+
+### 設計の段階への推奨
+
+- 推奨は案C。要確認1〜5を開発者が決めた後に、design.md・tasks.mdの該当箇所を直し、変更部分を独立したレビューで確かめてから`/kiro-impl product-launch`へ進む。
+- Research Needed:
+  - `react-day-picker`の9系の最新の安定版と、shadcn/uiのカレンダーの現行の作り(`components`の差し替え・`disabled`の関数・ツールチップの載せ方)。実装のタスク1.4の時点で確かめる。
+  - 23:45・0:00の境界の取り直しのタイマーを、表示中の画面のどこに置くか(ルートの`loader`の取り直し、または部品ごとの`invalidateQueries`)。`frontend/012`の設計で決める。
+
+## ギャップ分析の決定と設計・タスクへの反映(2026-11-09、開発者の判断)
+
+### 開発者の決定
+
+開発者が要確認1〜5を1件ずつ確定した。すべて推奨どおり(A)である。
+
+| #       | 決定                                                                                                                                                                            |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 要確認1 | カードとアラートダイアログをfrontend-libに加えない。削除の確認は`Dialog`と`destructive`のボタンで組み、カードと状態の区画は`<article>`・`<section>`に見た目のクラスを付けて描く |
+| 要確認2 | カテゴリの区画は理由を送らない。監査ログには理由なしで記録し、記録される旨を`deleteAudited`で示す。上流の`CategoryMasterEditor`は変えず、APIの`reason`の引数は任意のまま残す    |
+| 要確認3 | 保存の前の`claim`で残る、紐付け済みで参照されない画像を、既知の制限として設計に書く。後始末の仕組みは設けない                                                                   |
+| 要確認4 | 本specは`frontend/012`のまま使い、`frontend/011`の欠番を許す。help-centerと後続specの番号は改めない                                                                             |
+| 要確認5 | `backend/012`は共通の規約を`backend/007`の参照に任せ、007との差分だけを書く。`backend/007`は変更しない                                                                          |
+
+要件11.8は「任意の理由(500文字以内)」をAPIの引数として受け付けることを定めるだけで、画面から理由を送らなくても矛盾しない。要件と受け入れ基準は変えていない(138件のまま)。
+
+### 反映の範囲
+
+前回の分析の案C(型の検査や規則の違反になるものと、判断を要するものを設計とタスクへ反映する)に従った。
+
+- **design.md**:
+  - Allowed Dependencies: `IDENTITY_PLATFORM_TYPES`、GraphQLの入口の`requireAdmin(context, minimum)`と`adminOnly`、`sendWithTurnstile`・`buildSitePageHead`、カードとアラートダイアログが無いこと(要確認1)。
+  - Existing Architecture Analysis: 上流の実装の完了を反映した。
+  - File Structure Plan: 次のものを加えた。
+    - カレンダーの置き場所`components/ui/calendar/calendar.tsx`
+    - `application/product/product-errors.ts`
+    - `modules/product/resolver-support.ts`(`PRODUCT_BOT_ACTIONS`・`clientOnly`・`adminOnly`)
+    - clientの`src/graphql/my-products.ts`・`launch-history.ts`・`components/product/bot-actions.ts`、adminの`src/graphql/admin-product-categories.ts`
+    - 番号の欠番の注記(要確認4)
+  - Modified Files: 次のものを加えた。
+    - 初期データの別のマイグレーション`<日時>_product_launch_seed`
+    - 登録を完全一致で確かめる既存のテスト6本(監査の操作種別・用途・公開プロフィールの区画・`purge_due`の処理名の並び)
+    - `config/contract-copies.unit.test.ts`
+    - 3つの`vitest.browser.config.ts`とfrontend/005の部品の一覧
+    - project-valuesのハンドルの値
+    - CLAUDE.mdの参照の文言
+  - System Flows: `claim`の既知の制限(要確認3)を加えた。
+  - ProductInputRules: 判定の順と`PRODUCT_NAME_MESSAGES`・`PRODUCT_TAGLINE_MESSAGES`(coding/005の「入力規則と文言を共有する」置き方)を加えた。監査の操作種別に`label`と`PRODUCT_LAUNCH_AUDIT_ACTIONS`を加え、`update`の名前を残す理由を書いた。
+  - LaunchDateRules: `addBusinessDays`を加えた。
+  - ユースケース: `productError`を経由して`AppError`を作る形と、`product_not_found`の文言「プロダクトが見つかりません。」を加えた。
+  - ProductCategoryService: `adminOnly`と`requireAdmin(context, 'moderator')`の形にした。
+  - ProductMaintenanceJobs: `ProductIncidentReporter`と、送り直しの時刻(4:21のまま)と所要時間の予算を加えた。
+  - ProductSchemaModule: `first`の上限20(`FOLLOW_LIST_ARGS`と同じ形)と`PRODUCT_BOT_ACTIONS`の写しを加えた。
+  - Calendar: 配置、`aria-disabled:pointer-events-none`を付けないこと、事前バンドルの一覧を加えた。
+  - client: 次のものを直した。
+    - 一覧の取得の形と失敗の表示(frontend/006)
+    - `buildSitePageHead`
+    - `MarkdownEditor`へ渡す引数
+    - `ImageUploadField`の`constraints`と`MediaPicture`の`display`
+    - 業務日付の表示
+    - 表示中の境界の取り直し(23:40・23:45・0:00、タイマーによる無効化、`aria-disabled`から`disabled`への切り替え、競合の後の取り直し)
+    - `Dialog`による削除の確認、`<article>`のカード
+    - ローンチ履歴のパネルの失敗の扱いと`RecoverableSlot`
+  - admin: `CategoryMasterEditor`の実装の引数(`systemDefault`は項目の値、名前の検証は部品の中、`validateHandle`・`deleteDescriptionOf`・`deleteAudited`)と、理由を送らないこと(要確認2)を書いた。
+  - docs: `backend/012`の範囲を007との差分にした(要確認5)。
+  - Physical Data Model: `previousHandleColumns`の`references: () => products.id`と、初期データの`INSERT`の形(全列・`created_at`の`1731945562112`・`ON CONFLICT (name) DO NOTHING`)を書いた。
+  - Error Handling: `product_not_found`の文言を書いた。
+  - Testing Strategy: 入力規則と`product-errors`の単体テスト、`addBusinessDays`、境界の取り直しのブラウザテストを加えた。
+  - Migration Strategy: 初期データのマイグレーションを書いた。
+- **tasks.md**:
+  - 1.1: 文言の対応・判定の順・`label`・`index.unit.test.ts`
+  - 1.2: `previousHandleColumns`と初期データの別のマイグレーション
+  - 1.4: 配置・ポインターのツールチップ・事前バンドル・005の一覧
+  - 3.1: `addBusinessDays`
+  - 4.2: `productError`・用途のテストの期待値
+  - 4.3: `productError('product_hidden')`
+  - 5.4: `ProductIncidentReporter`・所要時間の確認
+  - 6.1: 理由と初期データの行のテスト
+  - 7.1: `resolver-support.ts`・`first`の上限20
+  - 7.2: `PRODUCT_BOT_ACTIONS`
+  - 7.3: `adminOnly`・`requireAdmin(context, ...)`・`first`の上限20
+  - 8.3: `purge_due`の処理名の並びのテスト
+  - 9.1: 取得の補助のファイル・bot対策の写し
+  - 9.3: 一覧の取得と失敗の表示・`buildSitePageHead`・カード・0:00の取り直し
+  - 9.4: `ImageUploadField`・`MediaPicture`の引数
+  - 9.5: タイマーによる取り直しと業務日付の表示
+  - 9.6: `MarkdownEditor`の引数
+  - 9.7: 23:45の取り直しと`aria-disabled`・競合の後の取り直し・`Dialog`・状態の区画
+  - 9.8: 失敗の表示・区画の順のテスト・`RecoverableSlot`
+  - 9.9: 区画の順のテスト・suspenseを使わない読み込み
+  - 10: `CategoryMasterEditor`の引数・理由を送らないこと・取得の補助のファイル
+  - 11.1: `backend/012`の範囲・`frontend/012`の内容・CLAUDE.mdの文言・番号の欠番
+  - 11.2: project-valuesのハンドルの値
+- **反映しなかったもの**:
+  - Ultrasへの導線のE2E: 設計のE2Eは機能フラグで変わる表示を確かめないため、ultras-subscriptionのE2Eとの直列の組は不要である。
+  - 監査の操作種別の`rename`への改名: 更新は名前とハンドルを変えるため`update`のまま残した。
+  - user-profile-socialのresearch.mdに残る古い名前`UserHandleResolver`: 上流の文書のため本specでは直さない。
+- **相違点(既存のドキュメントとコード)**: 今回の改訂は実装済みの上流のコードに合わせた。上流の文書で見つけた相違は、user-profile-socialのresearch.md:225の`UserHandleResolver`(実装は`UserProfileDirectory.resolveHandle`)だけである。

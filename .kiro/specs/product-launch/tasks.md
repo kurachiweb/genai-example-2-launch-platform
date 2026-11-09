@@ -2,16 +2,17 @@
 
 - [ ] 1. 基盤: 共有の規則・テーブル・文言・カレンダー
 - [ ] 1.1 プロダクトの入力規則・定数・監査の操作種別を共有定義として作る
-  - 前提: dev-tooling〜user-profile-socialの15specの全タスクが完了していること(`users`の列とライフサイクルの登録口・`AccountGuard`・ハンドル基盤(user-profile-socialの仮2(B)の改訂を含む: 他の対象の旧ハンドルを使用中としない判定と、元の保持者の旧ハンドルを消す文`previousHandleRelease`)・外部URLの規則・公開プロフィールのタブの登録口・画像のアップロードと隔離理由・マークダウンの部品・`UltrasEntitlements`・`UltrasPromotionGate`・監査ログと`CategoryMasterEditor`・`CATEGORY_SECTIONS`・E2Eの`e2e/support/mailpit.ts`・`e2e/support/admin-bootstrap.ts`)。無ければ該当するタスクを保留して開発者へ報告する
-  - 先に、名称50・タグライン100書記素の境界と空・禁止文字、ハンドル50・51文字と予約語の14語、カテゴリのハンドルに予約語が無いこと、スクリーンショットの20・21枚と10,485,760・10,485,761バイト、ロゴ512,000バイト・スクリーンショット5,242,880バイト、ローンチ日の上限90日(仮4)、標準カテゴリの固定のID・名前・ハンドル`other`、3つの監査の操作種別(対象`category`・理由は任意・詳細なし)の単体テストを書く
-  - 4アプリが読み込める共有ディレクトリに置き、zodを使わず、書記素・禁止文字・ハンドルの形式・カテゴリ名の判定は上流の部品を使う。監査の操作種別は操作種別の連結へ加える
-  - 完了状態: 単体テストが成功し、client・admin・api・eventの型検査で配置先から読み込め、監査の操作種別の一覧の重複の検査が成功する
+  - 前提: dev-tooling〜user-profile-socialの15specの全タスクが完了していること(2026-11-09のギャップ分析で、help-centerを除く上流の実装の完了と契約の一致を確かめた。`users`の列とライフサイクルの登録口・`AccountGuard`・ハンドル基盤(user-profile-socialの仮2(B)の改訂を含む: 他の対象の旧ハンドルを使用中としない判定と、元の保持者の旧ハンドルを消す文`previousHandleRelease`)・外部URLの規則・公開プロフィールのタブの登録口・画像のアップロードと隔離理由・マークダウンの部品・`UltrasEntitlements`・`UltrasPromotionGate`・監査ログと`CategoryMasterEditor`・`CATEGORY_SECTIONS`・E2Eの`e2e/support/mailpit.ts`・`e2e/support/admin-bootstrap.ts`)。無ければ該当するタスクを保留して開発者へ報告する
+  - 先に、名称50・タグライン100書記素の境界と空・禁止文字、ハンドル50・51文字と予約語の14語、カテゴリのハンドルに予約語が無いこと、スクリーンショットの20・21枚と10,485,760・10,485,761バイト、ロゴ512,000バイト・スクリーンショット5,242,880バイト、ローンチ日の上限90日(仮4)、標準カテゴリの固定のID・名前・ハンドル`other`、3つの監査の操作種別(対象`category`・理由は任意・詳細なし・必須の`label`)の単体テストを書く。名称・タグラインは、判定の順(禁止文字→必須→上限。空白だけで上限を超える入力は必須の違反)と、違反の種類から文言への対応(`PRODUCT_NAME_MESSAGES`・`PRODUCT_TAGLINE_MESSAGES`、上限の数は定数から組み立てる)の全ての戻り値を確かめる(coding/005)
+  - 4アプリが読み込める共有ディレクトリに置き、zodを使わず、書記素・禁止文字・ハンドルの形式・カテゴリ名の判定は上流の部品を使う。監査の操作種別は`PRODUCT_LAUNCH_AUDIT_ACTIONS`として操作種別の連結へ加え、種別の並びを完全一致で確かめる`audit-actions/index.unit.test.ts`の期待値を更新する
+  - 完了状態: 単体テストが成功し、client・admin・api・eventの型検査で配置先から読み込め、監査の操作種別の一覧の重複の検査と`audit-actions/index.unit.test.ts`が成功する
   - _Requirements: 1.1, 1.2, 2.1, 3.1, 3.2, 4.3, 11.1, 11.8_
 
 - [ ] 1.2 7テーブルと可視性の条件を定義し、マイグレーションを作る
   - 先に、テーブルの定義の単体テストで、ハンドル・カテゴリの名前とハンドル・旧ハンドルの列が大文字小文字を区別しない照合規則で定義されていること、部分一意索引・CHECK・外部キー(`ON DELETE`の指定なし、画像のIDに外部キーが無いこと)の定義を確かめる。ローカルD1のWorkers統合テストで、大文字小文字だけが違うハンドル・カテゴリ名を作れないこと、未確定かつ取消でないローンチを同じプロダクトに2つ作れないこと、`purge_due`を同じプロダクトに2つ作れないこと、スクリーンショットの位置20を拒否すること、可視の条件・勝利のローンチの条件・カテゴリの条件の結果(カテゴリの条件と可視・勝利の条件を組み合わせた絞り込みとカテゴリごとの件数)を確かめる
-  - 可視のプロダクトの条件(論理削除・非公開化・投稿者の退会と停止を除く)と勝利のローンチがある条件と、カテゴリの条件(仮11、directory-discoveryの依頼)を、他specが問い合わせに組み込める部品として作る。スキーマの集約点へ加え、mainの最新を取り込んでからマイグレーションを生成し、標準カテゴリ「その他」の初期データを加える
-  - 完了状態: 単体テストとWorkers統合テストが成功し、マイグレーションをローカルに適用でき、「その他」が1行ある
+  - 可視のプロダクトの条件(論理削除・非公開化・投稿者の退会と停止を除く)と勝利のローンチがある条件と、カテゴリの条件(仮11、directory-discoveryの依頼)を、他specが問い合わせに組み込める部品として作る。スキーマの集約点へ加え、mainの最新を取り込んでからマイグレーションを生成する。旧ハンドルのテーブルは`previousHandleColumns({ ownerColumnName: 'product_id', references: () => products.id })`で定義する(`deleted_at`は部品が含む)
+  - 標準カテゴリ「その他」の初期データは、作成のマイグレーションに書き足さず、続けて`drizzle-kit generate --custom --name=product_launch_seed`で作る別のカスタムマイグレーションに書く(db/003の「初期データ」)。全列を明示し、`id`は`01JD0000000000000000000000`、`created_at`・`updated_at`はその時刻部の`1731945562112`、`ON CONFLICT (name) DO NOTHING`とする(`20261105014904_inquiry_chat_seed`と同じ形)。Workers統合テストは初期データの行がある前提で書き、同じ名前・ハンドルの行を追加しない
+  - 完了状態: 単体テストとWorkers統合テストが成功し、2つのマイグレーション(`<日時>_product_launch`・`<日時>_product_launch_seed`)をローカルに順に適用でき、「その他」が1行ある
   - _Requirements: 2.2, 5.10, 11.1, 14.1, 14.10_
 
 - [ ] 1.3 (P) ページ配置・文言規則・再ローンチ規則に、本specの画面と文言を先に書く
@@ -23,9 +24,10 @@
 
 - [ ] 1.4 (P) カレンダーの部品をfrontend-libに加える
   - `react-day-picker`は仮10として2026-10-24に開発者が承認して確定している。実装時点の9系の最新の安定版(プレリリースを除く)を`bun pm view react-day-picker versions`で調べ、依存パッケージの版管理の文書の「版を明示した追加手順」のコマンドで、`apps/frontend-lib/package.json`・`apps/client/package.json`・`apps/admin/package.json`へ同じ版を`--exact`で実行時の依存として(`--dev`を付けずに)追加する。依存パッケージの版管理の文書の主要パッケージの一覧の対象(版が食い違うと基底設定・プリセットが動かない、または組み合わせられる版の範囲が狭いもの)ではないため一覧には載せず、同文書の「一覧に無いパッケージでも、共有ディレクトリのコードが実行時に使うものは、利用側アプリが共有ディレクトリ側と同じ版で宣言する」と共有ディレクトリの文書の規則に従う。tech-stack.mdの行は追加済みのため変更しない
-  - 先に、ブラウザテスト(axeの違反0件)で、月の切り替え、矢印キーでの日の移動、無効の日の扱い(フォーカスでき選べない)、選択の通知を確かめる。Storybookに載せる
+  - 先に、ブラウザテスト(axeの違反0件)で、月の切り替え、矢印キーでの日の移動、無効の日の扱い(フォーカスでき選べない、ポインターを重ねると理由のツールチップが開く)、選択の通知を確かめる。Storybookに載せる
+  - 部品は`apps/frontend-lib/components/ui/calendar/calendar.tsx`に置く(frontend/005の`ui/<部品>/<部分>.tsx`)。日のボタンには`buttonVariants`の`aria-disabled:pointer-events-none`を付けない(付けると選べない日の理由のツールチップが開かない、frontend/004)。`react-day-picker`を3つのアプリの`vitest.browser.config.ts`の`optimizeDeps.include`へ加え、frontend/005の部品の一覧に`Calendar`を足す
   - 完了状態: ブラウザテストとStorybookのビルドが成功し、clientとadminから読み込め、3つの`package.json`の`react-day-picker`が`^`・`~`の無い同じ版で、`git grep`で確かめた各`bun.lock`の`react-day-picker@`の版もそれと同じである
-  - _Boundary: Calendar、`apps/frontend-lib/package.json`・`apps/client/package.json`・`apps/admin/package.json`と各`bun.lock`_
+  - _Boundary: Calendar、`apps/frontend-lib/package.json`・`apps/client/package.json`・`apps/admin/package.json`と各`bun.lock`、3つの`vitest.browser.config.ts`、`docs/GUIDES/tech/frontend/005-shared-components.md`の部品の一覧_
   - _Requirements: 4.8_
 
 - [ ] 2. 契約と共有部品
@@ -75,6 +77,7 @@
 - [ ] 3. APIサーバーの規則と判定
 - [ ] 3.1 選べる日・予約の計画・変更の決定の規則を作る
   - 先に、単体テストで、23:39で翌日・23:40で翌々日、今日から90日後と91日後、敗北(2026-09-07)で未加入は09-14・Ultrasは09-09、勝利と基準なしで間隔を掛けないこと(仮1)、日付の検査の理由と最も早い日、直近のローンチの状態ごとの計画(変更・予約の禁止の2つの文言・非公開化・供給元の失敗と該当)、取消の除外、変更の基準が前の終了したローンチであること、固定の判定(予選・供給元・失敗)、ハンドルの変更の種類・ロゴの差し替え・スクリーンショットの追加と削除と順序・同じ日付の変更なし・計画と合わない日付の拒否を確かめる
+  - 業務日付の日の足し引きは、上流の`BusinessTime`が公開していないため(形を変えない)、選べる日の規則のファイルに`addBusinessDays`を置き(`fromBusinessDateTime`に日数分のミリ秒を足して`toBusinessDateTime`で戻す)、月末・年末・うるう日をまたぐ値を単体テストで確かめる
   - 完了状態: 単体テストが成功し、規則がデータベースと実時間に依存しない
   - _Requirements: 2.7, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3, 4.4, 4.5, 4.11, 4.12, 5.1, 5.2, 5.7, 5.8, 5.9, 6.1, 15.2_
 
@@ -101,14 +104,14 @@
   - _Requirements: 2.3, 2.4, 2.5, 2.7, 2.11, 3.5, 5.8, 5.10, 6.1, 6.6, 7.3, 7.9, 14.9_
 
 - [ ] 4.2 登録のユースケースを作り、画像の用途とapiのプロダクトのモジュールを登録する
-  - 先に、模擬のポートの単体テストで、登録の判定の順序(カテゴリ→予約語→使用中→ローンチ日→画像の紐付けと枚数・合計の上限→保存)、存在しないカテゴリ・選べない日(選べる最も早い日の詳細)・紐付けの失敗・上限の超過で保存しないこと、ストアの結果(`handle-unavailable`・`account-unavailable`)をエラーコードへ変えることを確かめる(保存の登録口の確定の後の処理は4.1のストアが呼ぶため、ユースケースの単体テストでは扱わない)
-  - media-pipelineの用途の登録箇所に`product-logo`(512,000バイト)・`product-screenshot`(5,242,880バイト)を加え、apiのプロダクトのモジュールを作って3.2の判定・3.3の保存の登録口の部品(`PRODUCT_SAVE_HOOKS`から組み立て、4.1のストアにだけ渡す)・4.1のストア・登録のユースケースを束縛し、束縛の一覧へ加える。画像の部品の型は`core/media`から読み込む
+  - 先に、模擬のポートの単体テストで、登録の判定の順序(カテゴリ→予約語→使用中→ローンチ日→画像の紐付けと枚数・合計の上限→保存)、存在しないカテゴリ・選べない日(選べる最も早い日の詳細)・紐付けの失敗・上限の超過で保存しないこと、ストアの結果(`handle-unavailable`・`account-unavailable`)をエラーコードへ変えることを確かめる(保存の登録口の確定の後の処理は4.1のストアが呼ぶため、ユースケースの単体テストでは扱わない)。コードと文言の対応`PRODUCT_ERRORS`・`productError`(`application/product/product-errors.ts`、user-profile-socialの`profile-errors.ts`と同じ形。`AppError`は`message`が必須)の全てのコードの`kind`と文言が文言規則と一致することも確かめ、ユースケースは`AppError`を直接組み立てない
+  - media-pipelineの用途の登録箇所に`product-logo`(512,000バイト)・`product-screenshot`(5,242,880バイト)を加え、用途の並びを完全一致で確かめる`apps/api/test/config/media-registrations.unit.test.ts`の期待値を更新する。apiのプロダクトのモジュールを作って3.2の判定・3.3の保存の登録口の部品(`PRODUCT_SAVE_HOOKS`から組み立て、4.1のストアにだけ渡す)・4.1のストア・登録のユースケースを束縛し、束縛の一覧へ加える。画像の部品の型は`core/media`から読み込む
   - 完了状態: 単体テスト・DIの解決の検査が成功し、`product-logo`の用途で512,001バイトの画像が413になり、application層に`**/lib/workers/**`の読み込みが無い(静的解析が成功する)
   - _Depends: 3.2, 4.1_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 4.7, 14.9_
 
 - [ ] 4.3 編集と説明文の更新のユースケースを作る
-  - 先に、模擬のポートの単体テストで、編集の判定の順序(版→状態の判定→計画→固定(カテゴリかローンチを変えるときだけ)→ローンチ日→ハンドル→画像→保存→以前の画像の削除)、固定の期間でも名称などの保存が通ること、予約の禁止・確認できない状態のコード、自分の旧ハンドルへの戻し、差し替えたロゴの即時の削除と取り除いたスクリーンショットの14日後の削除の依頼(失敗はファイルのIDだけをログ)、説明文の更新が同じ検証の規則を使いbot対策を含まないこと、ストアの結果が`hidden`なら`AppError({ kind: 'conflict', code: 'product_hidden' })`を文言「このプロダクトは公開が停止されているため、説明文を更新できません。」で、`not-found`なら`product_not_found`、`account-unavailable`なら`account_unavailable`を投げること(仮12、public-apiの依頼)を確かめる(保存の登録口の確定の後の処理は4.1のストアが呼び、4.1のWorkers統合テストで確かめる)
+  - 先に、模擬のポートの単体テストで、編集の判定の順序(版→状態の判定→計画→固定(カテゴリかローンチを変えるときだけ)→ローンチ日→ハンドル→画像→保存→以前の画像の削除)、固定の期間でも名称などの保存が通ること、予約の禁止・確認できない状態のコード、自分の旧ハンドルへの戻し、差し替えたロゴの即時の削除と取り除いたスクリーンショットの14日後の削除の依頼(失敗はファイルのIDだけをログ)、説明文の更新が同じ検証の規則を使いbot対策を含まないこと、ストアの結果が`hidden`なら`productError('product_hidden')`(`kind: 'conflict'`、文言「このプロダクトは公開が停止されているため、説明文を更新できません。」)を、`not-found`なら`product_not_found`、`account-unavailable`なら`account_unavailable`を投げること(仮12、public-apiの依頼)を確かめる(保存の登録口の確定の後の処理は4.1のストアが呼び、4.1のWorkers統合テストで確かめる)
   - 2つのユースケースの識別子と束縛をapiのプロダクトのモジュールへ加える
   - 完了状態: 単体テストとDIの解決の検査が成功する
   - _Requirements: 2.3, 3.3, 3.4, 3.6, 3.7, 4.7, 5.1, 6.4, 7.2, 7.8, 7.9, 14.9_
@@ -141,8 +144,10 @@
   - _Requirements: 13.1, 13.2, 13.3_
 
 - [ ] 5.4 4:21の物理削除の作成と送り直しのジョブを作る
-  - 先に、模擬のポートの単体テストで、業務日付で13日以上前に論理削除したプロダクトに`purge_due`を作って送ること(12日前は作らない)、200件の上限、2回の実行で重複しないこと、14日を過ぎて行の残るプロダクトがあれば`product-purge-overdue`を報告すること、1時間以上滞ったイベントを100件まで送り直して回数を増やすことを確かめる
+  - 先に、模擬のポートの単体テストで、業務日付で13日以上前に論理削除したプロダクトに`purge_due`を作って送ること(12日前は作らない)、200件の上限、2回の実行で重複しないこと、14日を過ぎて行の残るプロダクトがあれば偽の`ProductIncidentReporter`へ`product-purge-overdue`と件数を報告すること、1時間以上滞ったイベントを100件まで送り直して回数を増やすことを確かめる
   - 2つのジョブ(4:21、`order` 1000・1010)の識別子と束縛をapiのプロダクトのモジュールへ、登録を定期実行の登録箇所へ加え、apiのCronの式の一致の検査を通す。記録は`core/product`の`ProductLifecycleStore`の型、送信は5.2の`ProductMessagePublisher`で受け取る
+  - 期限超過の報告のポート`ProductIncidentReporter`をapplication層の`ports.ts`に、Sentryへ送る実装を`infrastructure/product/sentry-product-incident-reporter.ts`に置き(identity-authの`AuthIncidentReporter`と同じ形)、`PRODUCT_TYPES.ProductIncidentReporter`で束縛する
+  - 4:21の起動全体の予算(`SCHEDULED_RUN_BUDGETS`の300秒)に対し、上限の件数(200件・100件)での所要時間をローカルで確かめ、12.3の運用の報告に記録する
   - 完了状態: 単体テストと定期実行の登録の検査(同じ時刻での`order`の重複なし)が成功し、application層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 2.4, 5.2_
   - _Requirements: 8.4, 8.6, 12.5, 13.5_
@@ -150,7 +155,7 @@
 - [ ] 6. APIサーバーのカテゴリとローンチ履歴
 - [ ] 6.1 プロダクトカテゴリのマスタのストアとユースケースを作る
   - 先に、Workers統合テストで、追加・名前とハンドルの変更・削除が監査ログと同じ一括の書き込みで確定すること、名前とハンドルの大文字小文字を区別しない重複の拒否、「その他」の変更・削除の拒否、論理削除後に物理削除されていないプロダクトを含む紐付くプロダクトがあるカテゴリの削除の拒否と監査ログが残らないこと、ハンドルの変更で旧ハンドルを保持しないことを確かめる。模擬のポートの単体テストで、名前とハンドルの形式の違反と拒否のコードを確かめる
-  - ストアとユースケースの識別子と束縛をapiのプロダクトのモジュールへ加える
+  - ストアとユースケースの識別子と束縛をapiのプロダクトのモジュールへ加える。理由は任意の引数のまま受け付ける(管理画面の区画は理由を送らない、10)。初期データの「その他」の行を書き換えるテストは、各テストの前に固定のIDと日時の値で入れ直す(db/003)
   - 完了状態: Workers統合テスト・単体テスト・DIの解決の検査が成功する
   - _Requirements: 11.2, 11.3, 11.4, 11.5, 11.6, 11.8, 11.9, 11.11_
 
@@ -171,19 +176,22 @@
 - [ ] 7. APIサーバーのGraphQL
 - [ ] 7.1 スキーマモジュール`product`の土台と、自分のプロダクトの照会を加える
   - 先に、Workers統合テストで、`myProducts`の件数の検証とカーソル、`myProduct`の転送とnull、`newProductLaunchWindow`、`productHandleAvailability`の3値、`productOwnerStatus`が本人以外にnull、ローンチの状態・キックオフの日時・計画・固定の項目、ロゴとスクリーンショットの画像が隔離中で`objectKey`がnullになること、`client`以外の呼び出し元の拒否を確かめる
-  - 型の定義・エラーの定義・入力の検証規則・ローンチと計画とカテゴリの項目のリゾルバを作り、スキーマモジュールの一覧へ加える
+  - 型の定義・エラーの定義・入力の検証規則・ローンチと計画とカテゴリの項目のリゾルバを作り、スキーマモジュールの一覧へ加える。`modules/product/resolver-support.ts`に`clientOnly`・`adminOnly`と、`AccountGuard`を`IDENTITY_PLATFORM_TYPES.AccountGuard`から取り出す補助(`modules/profile/resolver-support.ts`の形)を置く
+  - `myProducts`の引数は`CURSOR_PAGE_ARGS`(`first`は1〜100)を使わず、user-profile-socialの`FOLLOW_LIST_ARGS`と同じ形で`first`を1〜20(定数から組み立てた文言付き)、`after`を上限256文字の任意の文字列にする。21で`validation_error`になることを確かめる
   - 完了状態: Workers統合テストとスキーマの検査が成功する
   - _Depends: 4.4_
   - _Requirements: 2.6, 7.1, 7.4, 7.5, 9.1, 9.2, 14.5_
 
 - [ ] 7.2 登録・編集・削除のミューテーションを加える
   - 先に、Workers統合テストで、`registerProduct`の入力の検証(名称・タグライン・ハンドル・外部URL・説明文20,000文字・スクリーンショット20件・ローンチ日の形式)と欄ごとの詳細、未ログイン・未確認・停止中・bot対策(`product_save`)の順の拒否、`updateProduct`・`deleteProduct`(`product_delete`)の各エラーコード(固定・競合・予約の禁止・非公開化・確認できない状態・不在)、未確認の利用者が編集・削除できることを確かめる
+  - bot対策の操作名`PRODUCT_BOT_ACTIONS`(`product_save`・`product_delete`)を`modules/product/resolver-support.ts`に置き、`assertHuman`へ渡す。clientへの写しは9.1で作る
   - 完了状態: Workers統合テストとスキーマの検査が成功する
   - _Depends: 4.3, 5.2_
   - _Requirements: 1.2, 1.3, 1.6, 1.7, 1.8, 4.7, 5.2, 5.8, 6.1, 7.3, 8.1_
 
 - [ ] 7.3 ローンチ履歴とカテゴリの操作を加える
-  - 先に、Workers統合テストで、`launchHistory`の他人・本人・停止中の本人とnull・件数・カーソル、`productCategories`の並び、管理者のカテゴリの4操作の権限(閲覧のみの拒否・モデレーター以上の許可)と拒否のコード、`admin`以外の呼び出し元の拒否を確かめる
+  - 先に、Workers統合テストで、`launchHistory`の他人・本人・停止中の本人とnull・件数・カーソル、`productCategories`の並び、管理者のカテゴリの4操作の権限(閲覧のみの拒否・モデレーター以上の許可)と拒否のコード、`admin`以外の呼び出し元の拒否、`launchHistory`の`first`が21で`validation_error`になることを確かめる
+  - 管理者の操作は`adminOnly(withValidatedArgs(...))`で包み、内側で`requireAdmin(context, 'moderator')`(照会は`'viewer'`)を呼ぶ(security/007)。`launchHistory`の引数は7.1と同じ形で`first`を1〜20にする
   - 完了状態: Workers統合テストとスキーマの検査が成功する
   - _Requirements: 10.2, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.9_
 
@@ -212,14 +220,17 @@
 - [ ] 8.3 ユーザーの物理削除の波及処理を作る
   - 先に、模擬のポートの単体テストで、利用者のプロダクトが無ければ完了、あれば`purge_due`の無いものに作って送り続きを返すこと、作成から10分を過ぎて行が残れば例外を投げることを確かめる(送信は偽の`ProductMessagePublisher`で受ける)。ローカルD1のWorkers統合テストで、2つのプロダクトを持つ退会者の`purge_due`で2つのプロダクトの`purge_due`が作られ、実行器の処理の後に呼び直すと完了になることを確かめる
   - `product-launch.product-erasure`(`purge_due`、`order` 1000)をeventの束縛とidentity-authの非同期の波及処理の登録箇所へ同時に加える(8.2の後に行い、eventの束縛の変更が並行しないようにする)
-  - 完了状態: 単体テスト・Workers統合テストと、identity-authの非同期の波及処理の登録の検証が成功する
+  - ユーザーの`purge_due`の処理名の並びを完全一致で確かめる既存のテスト(`apps/event/src/composition/profile-module.worker.test.ts`・`payments-module.worker.test.ts`・`ultras-module.worker.test.ts`)の期待値に`product-launch.product-erasure`を加える
+  - 完了状態: 単体テスト・Workers統合テストと、identity-authの非同期の波及処理の登録の検証と、上の3つの既存のテストが成功する
   - _Requirements: 13.4, 13.5_
 
 - [ ] 9. 利用者側の画面
 - [ ] 9.1 クライアントの操作と、画面の区画・削除の注意書きの登録口を作る
   - 自分のプロダクト・登録と編集と削除・カテゴリ・ローンチ履歴・公開プロフィールの受賞(仮14)の操作をclientの`src/graphql/operations/product/`に1ファイル1操作の`*.graphql`(操作名は`Client`で始める)で加え、clientで`bun run graphql:generate`を実行して型と`<操作名>Document`とpersisted operationsを生成する
   - 区画に渡す文脈と2つの登録の型、2つの登録口(初版は空)を作り、`order`順の並べ替えの単体テストを書く
-  - 完了状態: 型の生成と単体テストが成功し、`graphql:allowlist`でapiの許可リストを再生成して`graphql:check`が成功し、後続specが登録口に1行足すだけで区画と注意書きを加えられる
+  - 取得の設定と、生成物の型から画面の型への変換・無効化を`src/graphql/my-products.ts`・`src/graphql/launch-history.ts`に置き、単体テストを書く(frontend-platformの操作の追加手順)。続けて読み込む一覧は`infiniteQueryOptions`で、キーに閲覧者のIDを入れる(frontend/006)
+  - apiの`PRODUCT_BOT_ACTIONS`を`src/components/product/bot-actions.ts`へ写し、`config/contract-copies.unit.test.ts`の`BOT_ACTION_COPIES`に登録する
+  - 完了状態: 型の生成と単体テストと`config/contract-copies.unit.test.ts`が成功し、`graphql:allowlist`でapiの許可リストを再生成して`graphql:check`が成功し、後続specが登録口に1行足すだけで区画と注意書きを加えられる
   - _Depends: 7.2, 7.3, 7.4_
   - _Requirements: 8.3, 9.4, 10.11_
 
@@ -229,46 +240,46 @@
   - _Requirements: 5.2, 5.4, 9.8_
 
 - [ ] 9.3 自分のプロダクトの一覧の画面を作る
-  - 先に、ブラウザテスト(axeの違反0件)で、項目のロゴ(プレースホルダーを含む)・名称・ハンドル・カテゴリ・公開停止中のバッジ・状態と案内・編集と詳細の導線(非公開化中は詳細を出さない)、テスト用の登録で区画が`order`順に出て1つの失敗が他を止めないこと、「さらに読み込む」、0件・初回ローディング・取得エラー、停止中の案内と導線の無効を確かめる
-  - `/my/products`を`_authenticated`の下に作る
+  - 先に、ブラウザテスト(axeの違反0件)で、項目のロゴ(プレースホルダーを含む)・名称・ハンドル・カテゴリ・公開停止中のバッジ・状態と案内・編集と詳細の導線(非公開化中は詳細を出さない)、テスト用の登録で区画が`order`順に出て1つの失敗が他を止めないこと、「さらに読み込む」、0件・初回ローディング、最初の取得の失敗が一覧の位置の`PartialErrorState`になり続きの取得の失敗が「さらに読み込む」の近くの`role="alert"`になること(frontend/006)、表示中に0:00を越えるとカードの状態がマッチ中に変わること(偽の時計)、停止中の案内と導線の無効を確かめる
+  - `/my/products`を`_authenticated`の下に作り、`loader`で`queryClient.infiniteQuery(...).catch(() => undefined)`を待ち、`head`は`buildSitePageHead`で作る。カードは`<article>`に見た目のクラスを付けて描く(frontend-libにカードの部品は無い)。表示中の境界の取り直しは設計の「表示中の境界の取り直し」に従う
   - 完了状態: ブラウザテストが成功し、ローカルでユーザーメニューの「自身のプロダクト」から開ける
   - _Requirements: 1.11, 3.8, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
 
 - [ ] 9.4 プロダクトのフォームの基本の欄の部品を作る
-  - 先に、ブラウザテスト(axeの違反0件)で、ハンドルの欄の`/p/`の接頭辞・フォーカスアウトの形式と使用可否・使用中の文言・旧ハンドルの案内(次にハンドルを変更するか他のプロダクトが同じハンドルを設定するまで転送される旨)、カテゴリの選択の並びと、`FormField`の`disabled`による無効(入力要素が`disabled`になること)と理由、ロゴの500kBの超過と形式の違反の事前の表示と正方形の切り取り、スクリーンショットの20枚・合計10MBの事前の表示と取り除き・枚数と合計の表示、ロゴとスクリーンショットの入力欄に`contactAvailable`として`CLIENT_PROFILE.contactAvailable`を渡すことを確かめる
+  - 先に、ブラウザテスト(axeの違反0件)で、ハンドルの欄の`/p/`の接頭辞・フォーカスアウトの形式と使用可否・使用中の文言・旧ハンドルの案内(次にハンドルを変更するか他のプロダクトが同じハンドルを設定するまで転送される旨)、カテゴリの選択の並びと、`FormField`の`disabled`による無効(入力要素が`disabled`になること)と理由、ロゴの500kBの超過と形式の違反の事前の表示と正方形の切り取り、スクリーンショットの20枚・合計10MBの事前の表示と取り除き・枚数と合計の表示、ロゴとスクリーンショットの入力欄に`contactAvailable`として`CLIENT_PROFILE.contactAvailable`を渡すことを確かめる。`ImageUploadField`の上限は`constraints`(`purpose`・`allowedTypes`・`maxBytes`・`subjectLabel`・`maxCount`・`maxTotalBytes`・`existingCount`・`existingTotalBytes`)にまとめて渡し、`label`・`onUploaded`・`edit.maxLongSide`も渡す。スクリーンショットの一覧は`MediaPicture`の`display={{ kind: 'screenshot', variant: 'thumb' }}`で描く
   - 完了状態: ブラウザテストが成功する
   - _Requirements: 2.6, 2.10, 3.1, 3.2, 3.3, 6.3_
 
 - [ ] 9.5 ローンチ日の欄を作る
-  - 先に、ブラウザテスト(axeの違反0件)で、選べない日の理由(ツールチップと読み上げ)とフォーカスできること、選んだ日のキックオフの日時と相対表現、Ultrasの導線の出し分け(導線の表示の可否を模擬)、23:40を過ぎた時点の取り直し(偽の時計)、計画ごとの表示(変更・予約・禁止・固定で9.2の案内)を確かめる
+  - 先に、ブラウザテスト(axeの違反0件)で、選べない日の理由(ツールチップと読み上げ)とフォーカスできること、選んだ日のキックオフの日時と相対表現、Ultrasの導線の出し分け(導線の表示の可否を模擬)、23:40を過ぎた時点のタイマーによる取り直し(偽の時計。定期の取り直しの`refetchInterval`は使わない)、ローンチ日が業務日付のまま表示され利用者のタイムゾーンで日がずれないこと、計画ごとの表示(変更・予約・禁止・固定で9.2の案内)を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Depends: 1.4, 9.2_
   - _Requirements: 4.8, 4.9, 4.10_
 
 - [ ] 9.6 登録・編集の共通のフォームと登録画面を作る
   - フォームの値は`RegisterProductInput`・`UpdateProductInput`と同じく編集する値を`fields`の下(欄の名前は`fields.<名前>`)、ローンチ日を`fields`の外の`launchDate`に置く。スキーマはローンチ日の欄を描くかで分け(描かない間は`launchDate`を含めず`onSubmit`で`null`を足す)、編集の`productHandle`・`expectedVersion`はスキーマの入力に含めず`onSubmit`で読み込んだ値から足し、編集のスキーマはカテゴリ(`fields.categoryId`)を任意にする
-  - 先に、フォームの検証規則の単体テスト(サーバーと同じ定数と判定から組み立てていること、名称・タグライン・外部URL・説明文・スクリーンショットの件数、ローンチ日を含むスキーマと含まないスキーマ、編集のスキーマがカテゴリの無い値を通すこと)と、ブラウザテスト(axeの違反0件)で、区画の並び、各欄のフォーカスアウトの検証、説明文のマークダウンの入力欄とプレビュー、未確認の利用者の入力と送信の無効と再送の導線、送信時のbot対策のトークン(ウィジェットは非表示で、判定の枠と場所を設けない)、サーバーのエラーの欄への表示(`input.fields.<名前>`・`input.launchDate`の詳細がその欄に出ること、`input.fields`そのものの詳細はフォーム全体の失敗になり送信ボタンが無効のまま残らないこと)と選べる最も早い日の表示、`GraphQLClientError`でない例外の`errorMessageOf`の文言、未確認の利用者で全欄が`FormField`の`disabled`で無効になり送信ボタンが`SubmitButton`の`disabled`で無効であること、登録の成功のトーストと`/my/products`への移動を確かめる
+  - 先に、フォームの検証規則の単体テスト(サーバーと同じ定数と判定から組み立てていること、名称・タグライン・外部URL・説明文・スクリーンショットの件数、ローンチ日を含むスキーマと含まないスキーマ、編集のスキーマがカテゴリの無い値を通すこと)と、ブラウザテスト(axeの違反0件)で、区画の並び、各欄のフォーカスアウトの検証、説明文のマークダウンの入力欄とプレビュー(`MarkdownEditor`へ`value`・`onValueChange`・`onBlur`・`ref`・`labelId`・`describedById`・`invalid`・`placeholder`を明示して渡し、ラベルの押下でフォーカスできること)、未確認の利用者の入力と送信の無効と再送の導線、送信時のbot対策のトークン(ウィジェットは非表示で、判定の枠と場所を設けない)、サーバーのエラーの欄への表示(`input.fields.<名前>`・`input.launchDate`の詳細がその欄に出ること、`input.fields`そのものの詳細はフォーム全体の失敗になり送信ボタンが無効のまま残らないこと)と選べる最も早い日の表示、`GraphQLClientError`でない例外の`errorMessageOf`の文言、未確認の利用者で全欄が`FormField`の`disabled`で無効になり送信ボタンが`SubmitButton`の`disabled`で無効であること、登録の成功のトーストと`/my/products`への移動を確かめる
   - `/my/products/new`を`_authenticated`の下に作る
   - 完了状態: テストが成功し、ローカルでヘッダーの「ローンチする」から登録画面が開き、登録したプロダクトが一覧に出る
   - _Depends: 9.3, 9.4, 9.5_
   - _Requirements: 1.1, 1.2, 1.3, 1.5, 1.7, 1.9, 1.10, 1.11_
 
 - [ ] 9.7 編集画面と削除の確認を作る
-  - 先に、ブラウザテスト(axeの違反0件)で、状態のカード(ローンチの状態・次回の予約・固定・非公開化中の案内)、固定の期間のカテゴリ・ローンチ日・削除の無効と理由と他の欄の編集(カテゴリは`FormField`の`disabled`で無効になり、保存で読み込んだカテゴリと`launchDate: null`を送ること。カテゴリの詳細はフォーム全体の失敗になり送信ボタンが無効のまま残らないこと)、`blocked`・`unknown`でローンチ日を含まないスキーマのフォームになり`launchDate: null`を送ること、`productHandle`・`expectedVersion`を読み込んだ値から送ること、版の競合の再読み込みの案内、保存の成功とハンドルの変更でのURLの置き換え、削除の確認ダイアログの文言と、テスト用の登録の注意書きの表示とbot対策(`product_delete`)、削除の成功で一覧へ戻ることを確かめる
-  - `/my/products/$handle/edit`を作り、null(404)と旧ハンドルの302を`loader`で扱う
+  - 先に、ブラウザテスト(axeの違反0件)で、状態の区画(ローンチの状態・次回の予約・固定・非公開化中の案内)、表示中に23:45を越えるとカテゴリと削除が無効に変わり、フォーカスのある削除のボタンはフォーカスが離れるまで`aria-disabled`のままであること(偽の時計、frontend/010・004)、保存の`product_update_conflict`・`launch_date_unavailable`で`myProduct`と選べる日が取り直されること、固定の期間のカテゴリ・ローンチ日・削除の無効と理由と他の欄の編集(カテゴリは`FormField`の`disabled`で無効になり、保存で読み込んだカテゴリと`launchDate: null`を送ること。カテゴリの詳細はフォーム全体の失敗になり送信ボタンが無効のまま残らないこと)、`blocked`・`unknown`でローンチ日を含まないスキーマのフォームになり`launchDate: null`を送ること、`productHandle`・`expectedVersion`を読み込んだ値から送ること、版の競合の再読み込みの案内、保存の成功とハンドルの変更でのURLの置き換え、削除の確認ダイアログの文言と、テスト用の登録の注意書きの表示とbot対策(`product_delete`)、削除の成功で一覧へ戻ることを確かめる
+  - `/my/products/$handle/edit`を作り、null(404)と旧ハンドルの302を`loader`で扱う。削除の確認はfrontend-libの`Dialog`と`destructive`のボタンで組み(アラートダイアログは無い。clientの`withdrawal-section.tsx`と同じ作り)、状態の区画は`<section>`に見た目のクラスを付けて描く
   - 完了状態: ブラウザテストが成功し、ローカルで一覧の「編集」から開いて保存と削除ができる
   - _Requirements: 6.3, 6.4, 7.1, 7.4, 7.5, 7.6, 7.7, 8.2, 8.3_
 
 - [ ] 9.8 公開プロフィールのローンチ履歴のタブを作る
-  - 先に、ブラウザテスト(axeの違反0件)で、タブの件数、項目のロゴ・受賞バッジ(Yearが先頭・回数・ツールチップ)・項目全体のリンク・タグラインの省略・カテゴリのリンク・「サイトを開く」の`rel`(掲載済みは`noopener`、未掲載は`noopener ugc`)・本人の「編集」、ローンチの3件と「他◯回を表示」・マッチ中の「トップページで見る」・キックオフ予定の日時、本人の未掲載のバッジと案内文、停止中の本人の薄い表示とリンクの非表示、0件(本人と他人)・タブの取得エラー・続きの取得エラーを確かめる
-  - ローンチの状態の文言とキックオフの日時の表示には9.2の部品を使う。項目の受賞バッジは、9.9が公開プロフィールの区画でも使う共用の部品`AwardBadgeList`(`components/launch-history/award-badge-list.tsx`)として作る。公開プロフィールのタブの登録箇所に`launches`(10)を加える
+  - 先に、ブラウザテスト(axeの違反0件)で、タブの件数、項目のロゴ・受賞バッジ(Yearが先頭・回数・ツールチップ)・項目全体のリンク・タグラインの省略・カテゴリのリンク・「サイトを開く」の`rel`(掲載済みは`noopener`、未掲載は`noopener ugc`)・本人の「編集」、ローンチの3件と「他◯回を表示」・マッチ中の「トップページで見る」・キックオフ予定の日時、本人の未掲載のバッジと案内文、停止中の本人の薄い表示とリンクの非表示、0件(本人と他人)、最初の取得の失敗が一覧の位置の`PartialErrorState`(本specの文言と再試行)になり、続きの取得の失敗が「さらに読み込む」の近くの`role="alert"`になること(frontend/006)を確かめる
+  - ローンチの状態の文言とキックオフの日時の表示には9.2の部品を使う。項目の受賞バッジは、9.9が公開プロフィールの区画でも使う共用の部品`AwardBadgeList`(`components/launch-history/award-badge-list.tsx`)として作る。公開プロフィールのタブの登録箇所に`launches`(10)を加え、タブと受賞バッジが空であることを確かめる既存の`apps/client/src/components/profile/public-profile-section-order.unit.test.ts`のタブの期待値を更新する。タブのパネルは`RecoverableSlot`が包むが、本specの文言を出すためパネルが自分で失敗を扱う
   - 完了状態: ブラウザテストが成功し、ローカルで`/@<ハンドル>`を開くと既定のタブとしてローンチ履歴が出る
   - _Depends: 9.2_
   - _Requirements: 10.1, 10.3, 10.4, 10.5, 10.7, 10.8, 10.9, 10.10_
 
 - [ ] 9.9 公開プロフィールの受賞バッジの区画を作り、登録する(仮14)
   - 先に、ブラウザテスト(axeの違反0件)で、受賞の照会の結果からYearが先頭の種類ごとのゴールドのバッジと2回以上の「×N」、ツールチップと読み上げ用の文言に受賞したプロダクト名と週・年が並ぶこと、キーボードでバッジにフォーカスしてツールチップが開くこと、結果が空・null・取得エラー・読み込み中のときに何も描かれないこと(取得エラーで再試行の操作も出ないこと)を確かめる
-  - 9.1の受賞の操作を読み、9.8の`AwardBadgeList`で描く区画を作り、公開プロフィールの受賞バッジの登録箇所(user-profile-socialの`PUBLIC_PROFILE_BADGES`)に`{ id: 'product-launch.award-badges', order: 10, Section: ProfileAwardBadges }`を加える
+  - 9.1の受賞の操作を読み、9.8の`AwardBadgeList`で描く区画を作り、公開プロフィールの受賞バッジの登録箇所(user-profile-socialの`PUBLIC_PROFILE_BADGES`)に`{ id: 'product-launch.award-badges', order: 10, Section: ProfileAwardBadges }`を加え、`public-profile-section-order.unit.test.ts`の受賞バッジの期待値を更新する。受賞バッジの区画はエラー境界とSuspenseなしで描かれるため、suspenseを使わない`useQuery`で読み、失敗を区画の中で捕まえる
   - 完了状態: ブラウザテストが成功し、ローカルで受賞のある利用者の`/@<ハンドル>`を開くとフォロワー数の下に受賞バッジが出て、受賞の無い利用者では区画が出ない
   - _Depends: 9.1, 9.8_
   - _Boundary: ProfileAwardBadges、`apps/client/src/composition/public-profile-sections.ts`_
@@ -276,7 +287,9 @@
 
 - [ ] 10. (P) 管理画面のプロダクトカテゴリの区画を作る
   - 9.1の後に行い、許可リストの再生成が並行しないようにする。管理画面のカテゴリの操作をadminの`src/graphql/operations/product/`に1ファイル1操作の`*.graphql`(操作名は`Admin`で始める)で加え、adminで`bun run graphql:generate`を実行して型とpersisted operationsを生成し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する
-  - 先に、ブラウザテスト(axeの違反0件)で、一覧(名前・ハンドル・「その他」の印)、モデレーター以上だけの追加・変更・削除、ハンドルの形式の検証、拒否の文言の表示(`GraphQLClientError`でない例外は問い合わせを促さない`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言)、理由の任意入力と監査ログの案内、区画の失敗が他の区画を止めないことを確かめる
+  - 先に、ブラウザテスト(axeの違反0件)で、一覧(名前・ハンドル・「その他」の印)、モデレーター以上だけの追加・変更・削除、ハンドルの形式の検証、拒否の文言の表示(`GraphQLClientError`でない例外は問い合わせを促さない`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言)、削除の確認の説明(論理削除から14日以内のプロダクトも数える旨、`deleteDescriptionOf`)と監査ログに記録される旨(`deleteAudited`)、理由を送らないこと、区画の失敗が他の区画を止めないことを確かめる
+  - `CategoryMasterEditor`の実装の引数に合わせる。「その他」は各項目の`systemDefault`、名前の検証は部品の中で行われる(呼ぶ側から渡さない)、ハンドルの検証は`validateHandle`に`checkHandleFormat(PRODUCT_CATEGORY_HANDLE_RULE)`の結果を文言に直す関数を渡す。部品に理由の入力欄が無いため、理由は送らない(2026-11-09に開発者が確定。問い合わせカテゴリの区画と同じ)
+  - 取得の設定・変換・無効化を`src/graphql/admin-product-categories.ts`に置き、単体テストを書く(inquiryの`src/graphql/admin-inquiry-categories.ts`と同じ形)
   - カテゴリのページの区画の登録箇所に`product-launch.product-categories`(10)を加える
   - 完了状態: ブラウザテストと`graphql:check`が成功し、ローカルで管理画面の`/categories`の先頭にプロダクトカテゴリの区画が出る
   - _Boundary: ProductCategorySection、`apps/admin/src/composition/category-sections.ts`_
@@ -286,13 +299,16 @@
 - [ ] 11. 文書
 - [ ] 11.1 (P) 技術ドキュメントを書き、CLAUDE.mdから参照する
   - `backend/012-aggregate-lifecycle-events.md`・`backend/013-pluggable-decision-sources.md`・`frontend/012-business-date-calendar.md`を設計のProductTechDocsの内容(`backend/013`には、判定の供給元の規約に加えて、保存の登録口の規約: 同時の文は対象のIDを条件にした更新だけ・確定の後の処理は冪等にし失敗で保存を失敗させない・削除や復元はライフサイクルで伝える・処理の契約と実装は文と接続を扱うためinfrastructure層に置き、保存の一括の書き込みを行うストアの実装が文を加えて確定の後の処理を呼ぶ)で、本プロジェクト固有の値を含めずに書き、`backend`・`frontend`のREADMEの文書一覧に行を加える。help-centerが節を加える`backend/011-handle-namespaces.md`は変更しない
-  - CLAUDE.mdの「技術規則の参照先」に「集約の状態の変化を他の機能へ伝える処理を作る前に: `backend/012`」を、作った見出しへのリンクで加える
+  - `backend/012`は、共通の規約(イベントの記録と状態の条件付きの確定・同期と非同期の処理・完了の記録と冪等・`done`・`continue`と再試行・日次の送り直し・`order`の帯)をbackend/007へのリンクで参照し、007との差分(集約ごとのイベントの種類と登録口・同じ集約の発生順・物理削除を最後に行うこと・親の集約の物理削除から子の集約の物理削除のイベントを作って待つこと・子の集約を外部キーで参照する行を子の物理削除の処理で消すこと)だけを書く。backend/007は変更しない(2026-11-09に開発者が確定)
+  - `frontend/012`には、表示中の画面が業務時刻の境界を越えたときのタイマーによる取り直しと、業務日付の表示の整形(利用者のタイムゾーンで日をずらさない)を含める
+  - CLAUDE.mdの「技術規則の参照先」に「ユーザー以外の集約の状態の変化を他の機能へ伝える処理を作る前に: `backend/012`」を、作った見出しへのリンクで加える
+  - 番号: help-centerは未実装のため`frontend/011`が欠番になるが、本specは`frontend/012`のまま使う(2026-11-09に開発者が欠番を許すと確定)
   - 完了状態: 文書とREADMEが整形の検査を通り、本プロジェクト名とサービス固有の仕様を含まず、CLAUDE.mdのリンクの見出しが実在する
   - _Boundary: `docs/GUIDES/tech/backend/012-aggregate-lifecycle-events.md`・`backend/013-pluggable-decision-sources.md`・`frontend/012-business-date-calendar.md`・`backend/README.md`・`frontend/README.md`・`CLAUDE.md`_
   - _Requirements: 15.4_
 
 - [ ] 11.2 (P) 日次タイムライン・準拠方針・オンボーディングを更新する
-  - 日次タイムラインの4:21の表に`product-launch.purge-orchestrator`(1000)・`product-launch.lifecycle-redispatch`(1010)を、準拠方針の注5に論理削除したプロダクトのハンドルの扱いと、プロダクトの旧ハンドルは他のプロダクトが設定した時点で消えること(仮5)を、`docs/onboardings/project-values.md`に波及処理・処理・ジョブの名前と`order`・用途・bot対策の`action`・メッセージ種別を加える
+  - 日次タイムラインの4:21の表に`product-launch.purge-orchestrator`(1000)・`product-launch.lifecycle-redispatch`(1010)を、準拠方針の注5に論理削除したプロダクトのハンドルの扱いと、プロダクトの旧ハンドルは他のプロダクトが設定した時点で消えること(仮5)を、`docs/onboardings/project-values.md`に波及処理・処理・ジョブの名前と`order`・用途・bot対策の`action`・メッセージ種別と、backend/011の値の表へプロダクトのハンドル(上限50、予約語は`IMPERSONATION_RESERVED_HANDLES`)とカテゴリのハンドル(上限50、予約語なし)を加える
   - 完了状態: 文書が整形の検査を通り、2026-10-24に確定した決定(仮4・仮5など)に合っている
   - _Boundary: `docs/GUIDES/service/overview/007-daily-timeline.md`・`docs/GUIDES/service/legal/001-compliance-policy.md`・`docs/onboardings/project-values.md`_
   - _Requirements: 15.5_
