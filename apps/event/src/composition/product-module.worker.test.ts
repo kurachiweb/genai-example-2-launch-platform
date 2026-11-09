@@ -28,6 +28,7 @@ import {
   type ProductLifecycleAsyncHandler,
   type ProductLifecycleAsyncRegistration,
   type ProductLifecycleEvent,
+  type ProductLifecycleEventType,
 } from '../../lib/core/product/product-lifecycle.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { createQueueDispatcher } from '../../lib/workers/messaging/queue-consumer.ts';
@@ -49,6 +50,8 @@ import {
 } from '../../lib/workers/product/testing/product-fixtures.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import type { ProductPurgeStore } from '../application/product/ports.ts';
+import { ProductImageErasureHandler } from '../application/product/product-image-erasure-handler.ts';
+import { ProductImageQuarantineHandler } from '../application/product/product-image-quarantine-handler.ts';
 import {
   PRODUCT_LIFECYCLE_ORDER_WAIT_SECONDS,
   ProductLifecycleRunner,
@@ -321,7 +324,7 @@ describe('イベントサーバーのモジュールの一覧へのプロダク�
   });
 
   test.each(INVOCATION_KINDS)(
-    '%s経路の処理単位のコンテナから、物理削除のストアと実行器を実装のクラスに解決する',
+    '%s経路の処理単位のコンテナから、物理削除のストア・実行器・画像の隔離と削除の処理を実装のクラスに解決する',
     (kind) => {
       const container = createContainer(kind);
 
@@ -331,19 +334,56 @@ describe('イベントサーバーのモジュールの一覧へのプロダク�
       expect(
         container.get(EVENT_PRODUCT_TYPES.ProductLifecycleRunner),
       ).toBeInstanceOf(ProductLifecycleRunner);
+      expect(
+        container.get<ProductLifecycleAsyncHandler>(
+          EVENT_PRODUCT_TYPES.ProductImageQuarantineHandler,
+        ),
+      ).toBeInstanceOf(ProductImageQuarantineHandler);
+      expect(
+        container.get<ProductLifecycleAsyncHandler>(
+          EVENT_PRODUCT_TYPES.ProductImageErasureHandler,
+        ),
+      ).toBeInstanceOf(ProductImageErasureHandler);
     },
   );
 });
 
 describe('プロダクトライフサイクルの非同期の処理の登録口', () => {
-  test('初版の登録口は空の凍結済みの配列で、登録の検証を通る', () => {
-    expect(PRODUCT_LIFECYCLE_ASYNC_HANDLERS).toEqual([]);
+  test('非公開化・復元に画像の隔離を、物理削除の時期の到来に画像の削除を、どちらも順序1000で凍結済みの配列に登録する', () => {
+    expect(PRODUCT_LIFECYCLE_ASYNC_HANDLERS).toStrictEqual([
+      {
+        name: 'product-launch.image-quarantine',
+        events: ['hidden', 'unhidden'],
+        order: 1000,
+        handler: EVENT_PRODUCT_TYPES.ProductImageQuarantineHandler,
+      },
+      {
+        name: 'product-launch.image-erasure',
+        events: ['purge_due'],
+        order: 1000,
+        handler: EVENT_PRODUCT_TYPES.ProductImageErasureHandler,
+      },
+    ]);
     expect(Object.isFrozen(PRODUCT_LIFECYCLE_ASYNC_HANDLERS)).toBe(true);
-    expect(
-      createProductLifecycleRegistry(
-        PRODUCT_LIFECYCLE_ASYNC_HANDLERS,
-      ).handlersFor('purge_due'),
-    ).toEqual([]);
+  });
+
+  test('登録の検証を通り、種類ごとに本specの処理だけが並ぶ', () => {
+    const registry = createProductLifecycleRegistry(
+      PRODUCT_LIFECYCLE_ASYNC_HANDLERS,
+    );
+    const namesOf = (type: ProductLifecycleEventType) =>
+      registry.handlersFor(type).map(({ name }) => name);
+
+    expect(namesOf('hidden')).toStrictEqual([
+      'product-launch.image-quarantine',
+    ]);
+    expect(namesOf('unhidden')).toStrictEqual([
+      'product-launch.image-quarantine',
+    ]);
+    expect(namesOf('purge_due')).toStrictEqual([
+      'product-launch.image-erasure',
+    ]);
+    expect(namesOf('deleted')).toStrictEqual([]);
   });
 
   test('同じ種類でorderが重複した登録は、最初のメッセージではなくモジュールの組み立ての時点で例外になる', () => {
@@ -389,7 +429,7 @@ describe('プロダクトライフサイクルのメッセージの処理の登�
 });
 
 describe('プロダクトライフサイクルのメッセージの処理', () => {
-  test('登録が空の初版でも、物理削除の時期の到来でプロダクトとその子の行・イベントを物理削除し、同じ投稿者の他のプロダクトは残す', async () => {
+  test('画像の記録が無くても、物理削除の時期の到来でプロダクトとその子の行・イベントを物理削除し、同じ投稿者の他のプロダクトは残す', async () => {
     await insertDeletedProductWithRows(PRODUCT);
     await insertDeletedProductWithRows(OTHER_PRODUCT);
     await insertProductEvent(EVENT, PRODUCT, {
@@ -416,7 +456,7 @@ describe('プロダクトライフサイクルのメッセージの処理', () =
     await expect(productExists(PRODUCT)).resolves.toBe(false);
   });
 
-  test('論理削除のイベントは登録が空でも完了にし、プロダクトの行は残す', async () => {
+  test('論理削除のイベントは処理の登録が無くても完了にし、プロダクトの行は残す', async () => {
     await insertDeletedProductWithRows(PRODUCT);
     await insertProductEvent(EVENT, PRODUCT, { type: 'deleted' });
 

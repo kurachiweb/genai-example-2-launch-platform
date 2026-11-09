@@ -16,6 +16,8 @@ import type { Clock } from '../../lib/core/time/clock.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import type { ProductPurgeStore } from '../application/product/ports.ts';
+import { ProductImageErasureHandler } from '../application/product/product-image-erasure-handler.ts';
+import { ProductImageQuarantineHandler } from '../application/product/product-image-quarantine-handler.ts';
 import { ProductLifecycleRunner } from '../application/product/product-lifecycle-runner.ts';
 import { D1ProductPurgeStore } from '../infrastructure/product/d1-product-purge-store.ts';
 import type { EventEnv } from './env-schema.ts';
@@ -27,7 +29,7 @@ export interface EventProductModuleOptions {
   readonly asyncHandlers: readonly ProductLifecycleAsyncRegistration[];
 }
 
-// 共通の束縛(PRODUCT_PLATFORM_MODULE)が登録されている前提で、プロダクトライフサイクルの実行器と物理削除のストアを束縛する
+// 共通の束縛(PRODUCT_PLATFORM_MODULE・EVENT_MEDIA_PLATFORM_MODULE)が登録されている前提で、プロダクトライフサイクルの実行器・物理削除のストア・画像の隔離と削除の処理を束縛する
 export function createEventProductModule(
   options: EventProductModuleOptions,
 ): EventAppModule {
@@ -39,6 +41,12 @@ export function createEventProductModule(
       bind<ProductPurgeStore>(EVENT_PRODUCT_TYPES.ProductPurgeStore).to(
         D1ProductPurgeStore,
       );
+      bind<ProductLifecycleAsyncHandler>(
+        EVENT_PRODUCT_TYPES.ProductImageQuarantineHandler,
+      ).to(ProductImageQuarantineHandler);
+      bind<ProductLifecycleAsyncHandler>(
+        EVENT_PRODUCT_TYPES.ProductImageErasureHandler,
+      ).to(ProductImageErasureHandler);
       bind<MessageHandler<RunProductLifecycleBody>>(
         EVENT_PRODUCT_TYPES.ProductLifecycleRunner,
       ).toDynamicValue(

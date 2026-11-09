@@ -211,7 +211,7 @@
   - _Depends: 2.5_
   - _Requirements: 8.4, 8.5, 8.8, 12.4, 12.5_
 
-- [ ] 8.2 本specの画像の隔離と削除の処理を作る
+- [x] 8.2 本specの画像の隔離と削除の処理を作る
   - 先に、模擬のポート(`core/media`の`MediaFiles`・`MediaQuarantine`の偽物)の単体テストで、非公開化でロゴとスクリーンショットに非公開化の隔離理由を加え、復元で取り除き、プロダクトの行が無ければ完了すること、物理削除で画像を即時に消すことを確かめる。ローカルD1のWorkers統合テストで、media-pipelineの実装を使い、隔離理由が付き外れること、ユーザー停止の理由も持つ画像が隔離のまま残ること、既に消えた画像の削除が失敗しないことを確かめる
   - 2つの処理(`order` 1000)をeventの束縛と8.1の非同期の処理の登録口へ加える
   - 完了状態: 単体テスト・Workers統合テスト・登録の検証が成功する
@@ -364,4 +364,5 @@
 - 7.3: `launchHistory`(client・ログイン不要)と`productCategories`(client・admin)、`adminProductCategories`(viewer)と作成・更新・削除(moderator、理由は任意の引数で500文字、監査ログの`reason`の列)。`productCategoryLoader`は`modules/product/product-views.ts`(directory-discoveryも使う)。ローンチ履歴の項目の受賞のラベルは週・年だけで、公開プロフィールの受賞(`profileAwards`)だけ名称を前に付ける(003の行の範囲も明記した)。テストの補助に設定可能な`LaunchSummarySource`
 - 7.4: `profileAwards(userHandle)`はハンドルの形式の違反を`validation_error`(欄`userHandle`)で拒否し、`launchHistory`は同じ違反をnullにする(どちらも設計どおり、design.mdの表の記述を明確にした)。テストの補助は`apps/api/test/support/product-graphql-documents.ts`(操作の文書と応答の型)と`product-graphql-operations.ts`に分割した
 - 8.1: eventのモジュールは`createEventProductModule({ asyncHandlers })`(`EVENT_PRODUCT_MODULE`、`MODULES`の末尾)。識別子`EVENT_PRODUCT_TYPES`は接頭辞`product.event.`。非同期の処理の登録口は`apps/event/src/composition/product-lifecycle-async-handlers.ts`の`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`で、8.2・8.3は処理を`createEventProductModule`で束縛して1行登録する。`purge_due`は全処理の後に物理削除し、物理削除がイベントの行を消すため完了を記録しない(ユーザーライフサイクルの実行器との違い、11.1の`backend/012`に書く)。物理削除のストア`EVENT_PRODUCT_TYPES.ProductPurgeStore`の`imageFileIds`は論理削除・非公開化中も返す。eventの`ProductMessagePublisher`は`application/product/ports.ts`で`@inject(PLATFORM_TYPES.MessagePublisher)`。ログのカテゴリ`['event', 'product', 'lifecycle']`(11.2で`project-values.md`へ、メッセージ種別の行と登録口も)
+- 8.2: `product-launch.image-quarantine`(`hidden`・`unhidden`、1000)と`product-launch.image-erasure`(`purge_due`、1000)をeventに束縛し登録した。ログは8.1のカテゴリ。統合テストは`apps/event/src/composition/product-image-handlers.worker.test.ts`。開発者への報告事項: 非公開化中も編集でき(仮7)、その間に追加・差し替えたロゴ・スクリーンショットには`product_hidden`が付かず、画像配信のドメインから配信され得る(FR-ADMUG-047に厳密には合わない。公開の画面からは到達できずURLは推測できない)。直す場所はapiの保存の経路で、保存と復元の競合を含めた設計の判断が要る
 - 11.2への申し送り(`docs/onboardings/project-values.md`): GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

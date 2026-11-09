@@ -5,8 +5,16 @@ const ProductPurgeStore: unique symbol = Symbol.for(
 const ProductLifecycleRunner: unique symbol = Symbol.for(
   'product.event.ProductLifecycleRunner',
 );
+const ProductImageQuarantineHandler: unique symbol = Symbol.for(
+  'product.event.ProductImageQuarantineHandler',
+);
+const ProductImageErasureHandler: unique symbol = Symbol.for(
+  'product.event.ProductImageErasureHandler',
+);
 
 export const EVENT_PRODUCT_TYPES = Object.freeze({
   ProductPurgeStore,
   ProductLifecycleRunner,
+  ProductImageQuarantineHandler,
+  ProductImageErasureHandler,
 });

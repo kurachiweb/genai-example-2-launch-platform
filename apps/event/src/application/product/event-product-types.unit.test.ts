@@ -4,11 +4,13 @@ import { PRODUCT_PLATFORM_TYPES } from '../../../lib/core/product/identifiers.ts
 import { EVENT_PRODUCT_TYPES } from './event-product-types.ts';
 
 describe('EVENT_PRODUCT_TYPES', () => {
-  test('物理削除のストアとプロダクトライフサイクルの実行器の識別子を持つ', () => {
+  test('物理削除のストア・プロダクトライフサイクルの実行器・画像の隔離と削除の処理の識別子を持つ', () => {
     const names = new Set(Object.keys(EVENT_PRODUCT_TYPES));
 
     expect(names.has('ProductPurgeStore')).toBe(true);
     expect(names.has('ProductLifecycleRunner')).toBe(true);
+    expect(names.has('ProductImageQuarantineHandler')).toBe(true);
+    expect(names.has('ProductImageErasureHandler')).toBe(true);
   });
 
   test('識別子はグローバルのシンボル登録簿のproduct.event.<名前>である', () => {
