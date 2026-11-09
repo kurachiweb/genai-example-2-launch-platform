@@ -31,7 +31,7 @@
   - _Requirements: 4.8_
 
 - [ ] 2. 契約と共有部品
-- [ ] 2.1 ローンチの状態とプロダクトライフサイクルの契約を作る
+- [x] 2.1 ローンチの状態とプロダクトライフサイクルの契約を作る
   - 先に、単体テストで、状態の導出(取消→結果→ローンチ日の0:00→前日23:45の順、前日23:44と23:45・0:00の前後)、固定の閾値の日(23:44は今日・23:45は明日)、キックオフの日時、処理の登録の検証(名前の形式・重複・同じ種類での`order`の重複の例外と`order`昇順の並び)、再試行の方針の値、メッセージ種別の本文の検証(ULID)、予選の結果からの要約の規則(予定・ペアリング済みはキックオフ予定、マッチ中は予選マッチ中で`inMatch`、勝利はディレクトリ掲載、敗北は予選敗北、取消)と受賞のまとめ(Yearが先頭・数・ラベルの順)を確かめる
   - 要約と受賞のまとめの規則は、ローンチ履歴とdirectory-discoveryが同じ文言で使える純粋な関数として置く
   - 業務時刻の計算はbackend-platformの部品、結果の型と名前の検証はidentity-authの部品を再利用し、メッセージの契約を契約の一覧へ加える
@@ -339,3 +339,4 @@
 - 1.2: テーブルは`apps/db/schema/product/`、条件の部品は`visibility.ts`の`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`。マイグレーションは`20261109042627_product_launch`・`20261109042637_product_launch_seed`。`apps/db`は`common-lib`を読めないため、標準カテゴリの値とスクリーンショットの位置のCHECK(0〜19)を直書きし、`PRODUCT_SCREENSHOTS_MAX`と手で同期する。`outcome`・`type`の値の一覧はdb内だけの定数のため、2.1で作るbackend-libのイベントの種類と手で一致させる。`products.version`の既定値は0、ライフサイクルイベントは`status`の既定値`pending`・`dispatch_count`の既定値1(`user_lifecycle_events`と同じ)。部分一意索引は`product_launches_product_id_open_unique`・`product_lifecycle_events_product_id_purge_due_unique`
 - 1.3: 画面の文言は`docs/GUIDES/service/design/003-text-and-copy-rules.md`を正とする(9〜11の実装はここから一字一句写す)。設計が決めていなかった文言(登録のトーストの1文「プロダクトを登録しました。キックオフは…です。」、キックオフの表示「キックオフ: 9月15日(火) 0:00(あと2日)」(上流の`formatRemaining`)、「ローンチ日を選んでください。」、Ultrasの導線「料金を見る」、見出し「ローンチの状態」「危険な操作」、取り除くボタン「スクリーンショット<n>を取り除く」、今年の日付は年を省く、カレンダーの理由は句点なし)は003で決めた。カテゴリの名前の重複は「このカテゴリ名は既に使われています。」。要件定義書の番号は改訂後(仮4はFR-PRDCT-003、仮7はFR-PRDCT-025・026、仮1はFR-RELCH-005)
 - 1.4: `react-day-picker`は9.14.0(9系の最新の安定版)。`Calendar`は選べない日をDayPickerの`disabled`ではなく独自の`unavailableReasonOf?: (date: Date) => string | undefined`で受け取る(`disabled`はフォーカスできず矢印キーで飛ばされるため)。理由のある日は`aria-disabled="true"`・`aria-label`の末尾に「、<理由>」・理由の`Tooltip`。9.5は`earliest`〜`latest`の外と`unavailable`の範囲をこの関数で渡し、受け取る`Date`は利用者のローカルの0時なので業務日付へ写してから比べる。選択中かつ選べない日の配色はコントラストが不足し得るため、9.5でその状態が起こるならブラウザテストで確かめる。ブラウザテストで`aria-disabled`の日を押すときは`click({ force: true })`
+- 2.1: 登録の検証は上流の`core/identity/user-lifecycle.ts`から切り出した汎用の`createLifecycleRegistry(registrations, { handlerLabel })`を使い、プロダクトは`PRODUCT_LIFECYCLE_HANDLER_LABEL`(「プロダクトライフサイクルの処理」)を渡す(ユーザーは「波及処理」のまま)。11.1の`backend/012`でこの汎用の登録口と呼び名の渡し方を扱う。DBの`type`・`status`・`outcome`とcoreの一覧の一致は`workers/product/product-lifecycle-columns.unit.test.ts`が確かめる。追加した値: `PRODUCT_LIFECYCLE_EVENT_STATUSES`・`QUALIFIER_OUTCOMES`、型`ProductLifecycleEventStatus`・`AwardKind`・`AwardEntry`・`AwardGroup`。`fallbackLaunchSummary`は`finished`で結果がnullなら`RangeError`

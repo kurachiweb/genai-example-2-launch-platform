@@ -13,6 +13,7 @@ import {
   RUN_USER_LIFECYCLE_MESSAGE,
 } from './identity.ts';
 import { MESSAGE_CONTRACTS } from './index.ts';
+import { RUN_PRODUCT_LIFECYCLE_MESSAGE } from './product.ts';
 import { SEARCH_INDEX_REFRESH_MESSAGE } from './search-index-refresh.ts';
 
 describe('MESSAGE_CONTRACTS', () => {
@@ -63,6 +64,10 @@ describe('MESSAGE_CONTRACTS', () => {
 
   test('加入が有効になった知らせの処理の契約ultras.run-activation-handlersを集約している', () => {
     expect(MESSAGE_CONTRACTS).toContain(ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE);
+  });
+
+  test('プロダクトライフサイクルの実行の契約product.run-product-lifecycleを集約している', () => {
+    expect(MESSAGE_CONTRACTS).toContain(RUN_PRODUCT_LIFECYCLE_MESSAGE);
   });
 
   test('集約点は凍結されていて実行時に契約を追加できない', () => {
