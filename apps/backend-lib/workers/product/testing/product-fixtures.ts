@@ -7,7 +7,11 @@ import { productLifecycleHandlerRuns } from '../../../../db/schema/product/produ
 import { productPreviousHandles } from '../../../../db/schema/product/product-previous-handles.ts';
 import { productScreenshots } from '../../../../db/schema/product/product-screenshots.ts';
 import { products } from '../../../../db/schema/product/products.ts';
-import { PRODUCT_CATEGORY_OTHER_ID } from '../../../../common-lib/product/product-category-constants.ts';
+import {
+  PRODUCT_CATEGORY_OTHER_HANDLE,
+  PRODUCT_CATEGORY_OTHER_ID,
+  PRODUCT_CATEGORY_OTHER_NAME,
+} from '../../../../common-lib/product/product-category-constants.ts';
 import type { IdGenerator } from '../../../core/ids/id-generator.ts';
 import {
   after,
@@ -286,4 +290,20 @@ export async function clearProductTables(): Promise<void> {
     .delete(productCategories)
     .where(ne(productCategories.id, PRODUCT_CATEGORY_OTHER_ID));
   await clearIdentityTables();
+}
+
+// マイグレーション(_seed)が入れる標準カテゴリの行と同じ固定のIDと日時
+export const PRODUCT_CATEGORY_SEED_ROW: CategoryRow = Object.freeze({
+  id: PRODUCT_CATEGORY_OTHER_ID,
+  name: PRODUCT_CATEGORY_OTHER_NAME,
+  handle: PRODUCT_CATEGORY_OTHER_HANDLE,
+  systemDefault: true,
+  createdAt: new Date(1_731_945_562_112),
+  updatedAt: new Date(1_731_945_562_112),
+});
+
+// 標準カテゴリの行を書き換え得るテストの前に、全てのカテゴリを消して初期データの行へ戻す。外部キーのため、プロダクトの行を消した後に呼ぶ
+export async function restoreProductCategorySeed(): Promise<void> {
+  await db.delete(productCategories);
+  await db.insert(productCategories).values(PRODUCT_CATEGORY_SEED_ROW);
 }

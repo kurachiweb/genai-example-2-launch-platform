@@ -1,3 +1,4 @@
+import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import type { MessageContract } from '../../../lib/core/messaging/message-contract.ts';
 import type {
   LaunchRecord,
@@ -132,6 +133,45 @@ export interface ProductStore {
   updateDescription(
     input: ProductDescriptionUpdateInput,
   ): Promise<ProductDescriptionUpdateResult>;
+}
+
+export interface ProductCategoryWriteInput {
+  readonly id: string;
+  // 前後の空白を除いた値
+  readonly name: string;
+  readonly handle: string;
+  readonly at: Date;
+}
+
+// 名前とハンドルは大文字小文字を区別せずに他のカテゴリと重なれば拒否する
+export type ProductCategoryInsertResult =
+  'created' | 'name-taken' | 'handle-taken';
+
+export type ProductCategoryUpdateResult =
+  'updated' | 'name-taken' | 'handle-taken' | 'not-found' | 'protected';
+
+// 論理削除後に物理削除されていないプロダクトが紐付く場合もin-use
+export type ProductCategoryDeleteResult =
+  'deleted' | 'in-use' | 'not-found' | 'protected';
+
+// 書き込みは監査ログと1つの一括の書き込みで確定し、拒否のときは監査ログも残さない
+export interface ProductCategoryStore {
+  // 追加の順で、標準カテゴリを末尾に置く
+  list(): Promise<readonly ProductCategoryRecord[]>;
+  findById(id: string): Promise<ProductCategoryRecord | undefined>;
+  insert(
+    input: ProductCategoryWriteInput,
+    audit: PreparedAuditEntry,
+  ): Promise<ProductCategoryInsertResult>;
+  // 変更前のハンドルを旧ハンドルとして保持しない
+  update(
+    input: ProductCategoryWriteInput,
+    audit: PreparedAuditEntry,
+  ): Promise<ProductCategoryUpdateResult>;
+  delete(
+    id: string,
+    audit: PreparedAuditEntry,
+  ): Promise<ProductCategoryDeleteResult>;
 }
 
 export interface ProductLifecycleCommand {

@@ -11,6 +11,8 @@ import { IDENTITY_ERRORS } from '../identity/identity-errors.ts';
 import {
   launchDateUnavailableError,
   PRODUCT_ERRORS,
+  productCategoryInputRejectedError,
+  productCategoryNotFoundError,
   productDescriptionRejectedError,
   productError,
   relaunchBlockedError,
@@ -120,7 +122,17 @@ describe('productError', () => {
     },
   );
 
-  test('ハンドル以外のコードは詳細を持たない', () => {
+  test('カテゴリ名の重複はカテゴリ名の欄の詳細を持つ', () => {
+    expect(productError('product_category_name_taken').details).toEqual([
+      {
+        field: 'name',
+        code: 'unavailable',
+        message: 'このカテゴリ名は既に使われています。',
+      },
+    ]);
+  });
+
+  test('ハンドルとカテゴリ名以外のコードは詳細を持たない', () => {
     expect(productError('invalid_upload').details).toBeUndefined();
     expect(productError('category_not_found').details).toBeUndefined();
   });
@@ -289,5 +301,42 @@ describe('productDescriptionRejectedError', () => {
         message: '説明文を入力してください。',
       },
     ]);
+  });
+});
+
+describe('productCategoryNotFoundError', () => {
+  test('操作する問い合わせカテゴリが無い場合と同じ文言のnot_found(404)にする', () => {
+    const error = productCategoryNotFoundError();
+
+    expect(error.code).toBe('not_found');
+    expect(error.kind).toBe('not_found');
+    expect(STATUS_BY_KIND[error.kind]).toBe(404);
+    expect(error.message).toBe('カテゴリが見つかりません。');
+    expect(error.details).toBeUndefined();
+  });
+});
+
+describe('productCategoryInputRejectedError', () => {
+  test('受け取った欄の詳細を順に持つvalidation_error(400)にする', () => {
+    const details = [
+      {
+        field: 'name',
+        code: 'empty',
+        message: 'カテゴリ名を入力してください。',
+      },
+      {
+        field: 'handle',
+        code: 'too-long',
+        message: 'ハンドルは50文字以内で入力してください。',
+      },
+    ] as const;
+
+    const error = productCategoryInputRejectedError(details);
+
+    expect(error.code).toBe('validation_error');
+    expect(error.kind).toBe('bad_request');
+    expect(STATUS_BY_KIND[error.kind]).toBe(400);
+    expect(error.message).toBe('入力内容を確認してください。');
+    expect(error.details).toEqual(details);
   });
 });

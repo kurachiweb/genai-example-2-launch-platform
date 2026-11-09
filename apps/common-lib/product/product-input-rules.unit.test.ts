@@ -11,9 +11,11 @@ import {
   checkScreenshotTotals,
   checkTagline,
   LAUNCH_DATE_HORIZON_DAYS,
+  PRODUCT_CATEGORY_HANDLE_MESSAGES,
   PRODUCT_CATEGORY_HANDLE_RULE,
   PRODUCT_DESCRIPTION_MAX_GRAPHEMES,
   PRODUCT_DESCRIPTION_RULE,
+  PRODUCT_HANDLE_MESSAGES,
   PRODUCT_HANDLE_RULE,
   PRODUCT_LOGO_MAX_BYTES,
   PRODUCT_LOGO_PURPOSE,
@@ -125,6 +127,45 @@ describe('PRODUCT_CATEGORY_HANDLE_RULE', () => {
     expect(Object.isFrozen(PRODUCT_CATEGORY_HANDLE_RULE)).toBe(true);
     expect(Object.isFrozen(PRODUCT_CATEGORY_HANDLE_RULE.reservedWords)).toBe(
       true,
+    );
+  });
+});
+
+describe('ハンドルの違反の文言', () => {
+  const EXPECTED_HANDLE_MESSAGES = {
+    ok: undefined,
+    empty: 'ハンドルを入力してください。',
+    'too-long': 'ハンドルは50文字以内で入力してください。',
+    'invalid-characters':
+      'ハンドルは英数字で始め、英数字・ハイフン・アンダースコアのみで入力してください。',
+  };
+
+  test.each([
+    ['プロダクト', PRODUCT_HANDLE_MESSAGES],
+    ['プロダクトカテゴリ', PRODUCT_CATEGORY_HANDLE_MESSAGES],
+  ] as const)(
+    '%sのハンドルの全ての判定の結果に対応する文言規則の文言を持ち、凍結されている',
+    (_, messages) => {
+      expect(messages).toEqual(EXPECTED_HANDLE_MESSAGES);
+      expect(Object.isFrozen(messages)).toBe(true);
+    },
+  );
+
+  test.each([
+    ['プロダクト', PRODUCT_HANDLE_RULE, PRODUCT_HANDLE_MESSAGES],
+    [
+      'プロダクトカテゴリ',
+      PRODUCT_CATEGORY_HANDLE_RULE,
+      PRODUCT_CATEGORY_HANDLE_MESSAGES,
+    ],
+  ] as const)('%sのハンドルの判定の結果で文言を引ける', (_, rule, messages) => {
+    expect(messages[checkHandleFormat('pitch-notes', rule)]).toBeUndefined();
+    expect(messages[checkHandleFormat('', rule)]).toBe(messages.empty);
+    expect(messages[checkHandleFormat('a'.repeat(51), rule)]).toBe(
+      messages['too-long'],
+    );
+    expect(messages[checkHandleFormat('-notes', rule)]).toBe(
+      messages['invalid-characters'],
     );
   });
 });

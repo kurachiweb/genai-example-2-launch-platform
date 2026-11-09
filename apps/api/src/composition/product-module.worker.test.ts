@@ -5,6 +5,11 @@ import type { Hono } from 'hono';
 import { type Container, ContainerModule } from 'inversify';
 import { beforeEach, describe, expect, test } from 'vitest';
 
+import {
+  PRODUCT_CATEGORY_CREATE_ACTION,
+  PRODUCT_CATEGORY_DELETE_ACTION,
+  PRODUCT_CATEGORY_UPDATE_ACTION,
+} from '../../common-lib/admin/audit-actions/product-launch.ts';
 import { IMAGE_MEDIA_TYPES } from '../../common-lib/media/media-types.ts';
 import { UPLOAD_FILE_NAME_HEADER } from '../../common-lib/media/upload-protocol.ts';
 import { PRODUCT_CATEGORY_OTHER_ID } from '../../common-lib/product/product-category-constants.ts';
@@ -16,6 +21,7 @@ import {
 } from '../../common-lib/product/product-input-rules.ts';
 import { productLaunches } from '../../db/schema/product/product-launches.ts';
 import { products } from '../../db/schema/product/products.ts';
+import type { CurrentAdmin } from '../../lib/core/admin/current-admin.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
 import type { CurrentUser } from '../../lib/core/identity/account-guard.ts';
@@ -59,10 +65,15 @@ import type {
 import { ProductLifecycleRedispatchJob } from '../application/product/jobs/product-lifecycle-redispatch-job.ts';
 import { ProductPurgeOrchestratorJob } from '../application/product/jobs/product-purge-orchestrator-job.ts';
 import type {
+  ProductCategoryStore,
   ProductIncidentReporter,
   ProductLifecycleCommitter,
   ProductStore,
 } from '../application/product/ports.ts';
+import {
+  type ProductCategoryService,
+  StoreProductCategoryService,
+} from '../application/product/product-category-service.ts';
 import {
   type MyProductsReader,
   StoreMyProductsReader,
@@ -97,6 +108,13 @@ import {
   StoreProductVisibilityControl,
 } from '../application/product/product-visibility-control.ts';
 import { computeLaunchDateWindow } from '../domain/product/launch-date-rules.ts';
+import {
+  adminIdOf,
+  clearAdminTables,
+  readAuditLogSummaries,
+  readAuditLogTargetIds,
+} from '../infrastructure/admin/testing/admin-store-fixtures.ts';
+import { D1ProductCategoryStore } from '../infrastructure/product/d1-product-category-store.ts';
 import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
 import type { ProductSaveHooks } from '../infrastructure/product/product-save-hooks.ts';
 import { SentryProductIncidentReporter } from '../infrastructure/product/sentry-product-incident-reporter.ts';
@@ -568,5 +586,75 @@ describe('プロダクトの画像のアップロードの用途', () => {
 
     expect(response.status).toBe(413);
     expect(await countRecords()).toBe(0);
+  });
+});
+
+describe('プロダクトカテゴリのマスタ(実物の束縛)', () => {
+  const ADMIN: CurrentAdmin = {
+    id: adminIdOf(1),
+    role: 'moderator',
+    nickname: '運営の管理者',
+    sessionId: 'session-1',
+  };
+
+  test('ストアとユースケースを処理単位のコンテナからそれぞれの実装に解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<ProductCategoryStore>(PRODUCT_TYPES.ProductCategoryStore),
+    ).toBeInstanceOf(D1ProductCategoryStore);
+    expect(
+      container.get<ProductCategoryService>(
+        PRODUCT_TYPES.ProductCategoryService,
+      ),
+    ).toBeInstanceOf(StoreProductCategoryService);
+  });
+
+  test('追加・変更・削除を、本物の監査ログの記録で操作種別と対象を検証してD1へ確定する', async () => {
+    await clearAdminTables();
+    const service = createContainer().get<ProductCategoryService>(
+      PRODUCT_TYPES.ProductCategoryService,
+    );
+
+    const created = await service.create(
+      ADMIN,
+      { name: ' 開発ツール ', handle: 'dev-tools' },
+      undefined,
+    );
+    await service.update(
+      ADMIN,
+      created.id,
+      { name: '開発者ツール', handle: 'developer-tools' },
+      '表記の統一',
+    );
+    await expect(service.list()).resolves.toEqual([
+      expect.objectContaining({
+        id: created.id,
+        name: '開発者ツール',
+        handle: 'developer-tools',
+      }),
+      expect.objectContaining({ id: PRODUCT_CATEGORY_OTHER_ID }),
+    ]);
+    await service.delete(ADMIN, created.id, undefined);
+
+    await expect(service.list()).resolves.toEqual([
+      expect.objectContaining({ id: PRODUCT_CATEGORY_OTHER_ID }),
+    ]);
+    const summaries = await readAuditLogSummaries();
+    expect(summaries.map((summary) => summary.action).toSorted()).toEqual(
+      [
+        PRODUCT_CATEGORY_CREATE_ACTION.name,
+        PRODUCT_CATEGORY_UPDATE_ACTION.name,
+        PRODUCT_CATEGORY_DELETE_ACTION.name,
+      ].toSorted(),
+    );
+    expect(
+      summaries.every((summary) => summary.operatorAdminId === ADMIN.id),
+    ).toBe(true);
+    await expect(readAuditLogTargetIds()).resolves.toEqual([
+      created.id,
+      created.id,
+      created.id,
+    ]);
   });
 });

@@ -23,6 +23,8 @@ const EXPECTED_NAMES = [
   'ProductIncidentReporter',
   'ProductPurgeOrchestratorJob',
   'ProductLifecycleRedispatchJob',
+  'ProductCategoryStore',
+  'ProductCategoryService',
 ] as const;
 
 describe('PRODUCT_TYPES', () => {

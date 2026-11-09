@@ -65,6 +65,14 @@ const ProductLifecycleRedispatchJob: unique symbol = Symbol.for(
   'product.ProductLifecycleRedispatchJob',
 );
 
+const ProductCategoryStore: unique symbol = Symbol.for(
+  'product.ProductCategoryStore',
+);
+
+const ProductCategoryService: unique symbol = Symbol.for(
+  'product.ProductCategoryService',
+);
+
 export const PRODUCT_TYPES = Object.freeze({
   ProductStateEvaluator,
   RelaunchConditionSources,
@@ -85,4 +93,6 @@ export const PRODUCT_TYPES = Object.freeze({
   ProductIncidentReporter,
   ProductPurgeOrchestratorJob,
   ProductLifecycleRedispatchJob,
+  ProductCategoryStore,
+  ProductCategoryService,
 });

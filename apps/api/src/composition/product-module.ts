@@ -19,10 +19,15 @@ import {
   StoreMyProductsReader,
 } from '../application/product/my-products-reader.ts';
 import type {
+  ProductCategoryStore,
   ProductIncidentReporter,
   ProductLifecycleCommitter,
   ProductStore,
 } from '../application/product/ports.ts';
+import {
+  type ProductCategoryService,
+  StoreProductCategoryService,
+} from '../application/product/product-category-service.ts';
 import {
   type ProductDeletion,
   StoreProductDeletion,
@@ -55,6 +60,7 @@ import {
   StoreProductVisibilityControl,
 } from '../application/product/product-visibility-control.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
+import { D1ProductCategoryStore } from '../infrastructure/product/d1-product-category-store.ts';
 import { createD1ProductLifecycleCommitter } from '../infrastructure/product/d1-product-lifecycle-committer.ts';
 import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
 import { LaunchCancellationSyncHandler } from '../infrastructure/product/launch-cancellation-sync-handler.ts';
@@ -72,7 +78,7 @@ import {
 import { PRODUCT_LIFECYCLE_SYNC_HANDLERS } from './product-lifecycle-sync-handlers.ts';
 import { PRODUCT_SAVE_HOOKS } from './product-save-hooks.ts';
 
-// 表示用の照会とハンドルの対象(PRODUCT_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・時計とID生成とデータベース(PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)は各機能の共通の束縛を使う
+// 表示用の照会とハンドルの対象(PRODUCT_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・時計とID生成とデータベース(PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)・監査ログの記録(ADMIN_PLATFORM_TYPES)は各機能の共通の束縛を使う
 export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'product',
   bindings: new ContainerModule(({ bind }) => {
@@ -152,6 +158,12 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<ScheduledJobHandler>(PRODUCT_TYPES.ProductLifecycleRedispatchJob).to(
       ProductLifecycleRedispatchJob,
+    );
+    bind<ProductCategoryStore>(PRODUCT_TYPES.ProductCategoryStore).to(
+      D1ProductCategoryStore,
+    );
+    bind<ProductCategoryService>(PRODUCT_TYPES.ProductCategoryService).to(
+      StoreProductCategoryService,
     );
   }),
 };

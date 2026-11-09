@@ -627,6 +627,12 @@ export declare const PRODUCT_NAME_MESSAGES: Readonly<
 export declare const PRODUCT_TAGLINE_MESSAGES: Readonly<
   Record<RequiredTextCheck, string | undefined>
 >;
+export declare const PRODUCT_HANDLE_MESSAGES: Readonly<
+  Record<HandleFormatCheck, string | undefined>
+>; // checkHandleFormat(PRODUCT_HANDLE_RULE)の結果の文言。ok: undefined、上限の数は規則から組み立てる
+export declare const PRODUCT_CATEGORY_HANDLE_MESSAGES: Readonly<
+  Record<HandleFormatCheck, string | undefined>
+>; // checkHandleFormat(PRODUCT_CATEGORY_HANDLE_RULE)の結果の文言
 export declare function checkScreenshotTotals(
   sizes: readonly number[],
 ): 'ok' | 'too-many' | 'too-large';
@@ -1533,7 +1539,8 @@ export interface ProductCategoryService {
 ```
 
 - 権限はリゾルバで確かめる(11.7)。管理者の操作のリゾルバは`adminOnly(withValidatedArgs(...))`で包み、その内側で`requireAdmin(context, 'moderator')`(照会は`'viewer'`)を呼ぶ(security/007、`api/src/presentation/graphql/admin-guard.ts`)。`adminOnly`・`clientOnly`は`modules/product/resolver-support.ts`に置く。`checkCategoryName`(11.2・11.3)・`checkHandleFormat(PRODUCT_CATEGORY_HANDLE_RULE)`(11.4)→「その他」は更新・削除を`product_category_protected`(11.5)→`AuditLogRecorder.prepare`(11.8)→ストア。名前・ハンドルの一意索引の違反は`product_category_name_taken`・`product_category_handle_taken`(11.3・11.4)。ハンドルの変更で旧ハンドルを保持しない(11.11)。
-- 削除: ストアの一括の書き込みの先頭で、`UPDATE product_categories SET name = CASE WHEN system_default = 0 AND NOT EXISTS (SELECT 1 FROM products WHERE category_id = ?) THEN name ELSE NULL END WHERE id = ?`(`name`はNOT NULL)により、紐付く行(論理削除済みを含む、仮9)があれば監査ログを含めて取り消す。読み直しで`product_category_in_use`・`product_category_protected`・`not_found`に分ける(11.6)。
+- 入力の違反は`validation_error`で、詳細はカテゴリ名(`name`、`CATEGORY_NAME_MESSAGES`)・ハンドル(`handle`、`PRODUCT_CATEGORY_HANDLE_MESSAGES`)の順に違反のある欄を全て返す(`productCategoryInputRejectedError`)。名前の重複は`name`欄、ハンドルの重複は`handle`欄の詳細を持つ。不在は`productCategoryNotFoundError()`(コード`not_found`、「カテゴリが見つかりません。」)。更新・削除は、記録の準備の前に`findById`で不在・標準カテゴリを拒否する。
+- 削除: 監査ログの`{ kind: 'condition' }`の条件に「標準でないカテゴリが存在し、`EXISTS (SELECT 1 FROM products WHERE category_id = ?)`でない」を渡し(論理削除済みを含む、仮9)、続く`DELETE`も含めて書き込みの時点で取り消す。読み直しで`product_category_in_use`・`product_category_protected`・`not_found`に分ける(11.6)。更新も同じ形で、条件は「標準でないカテゴリが存在する」。
 
 #### ProductVisibilityControl・ProductMaintenanceJobs
 
@@ -1703,7 +1710,7 @@ export interface ProductCategoryStore {
 - `insert`・`save`・`updateDescription`は、`ProductSaveHooks.statementsFor({ productId, at: now }, db)`の文を一括の書き込みの末尾に加える(14.9、仮11)。条件の`CASE`式で取り消されれば、登録された処理の文も一緒に取り消される。一括の書き込みが確定して結果が`saved`のときだけ、同じメソッドの中で`ProductSaveHooks.runAfterCommit({ productId })`を呼ぶ(例外は`runAfterCommit`が`warn`のログにして続けるため、保存の結果を変えない)。`ProductSaveHooks`は`PRODUCT_TYPES.ProductSaveHooks`で受け取り、ユースケースには渡さない。
 - `updateDescription`の一括の書き込み: (1)`products`の更新(`description_markdown`・`version + 1`・`updated_at`)。`user_id`を`CASE WHEN notDeleted AND ownerWritable AND notHidden THEN user_id ELSE NULL END`にし、満たさなければ全体を取り消す(仮12)。(2)保存の登録口の文。取り消しは読み直しで、優先の順に、論理削除済み・不在を`not-found`、投稿者が書き込めない状態(呼び出し元の`requireWritableUser`の後の同時の停止・退会)を`account-unavailable`(`save`の分類と同じ)、`hidden_at`があれば`hidden`に分ける。事前の判定(public-apiの`MyProductsReader.find`の`hidden`)と書き込みの間に非公開化されても、説明文は書き込まれない(7.9)。
 - `D1LaunchHistoryStore`: `products`と`users`を結合し、`public`は`visibleProducts() AND wonLaunchExists()`、`owner`は`products.deleted_at IS NULL AND products.hidden_at IS NULL`。並びは`(latest_launch_date DESC, id DESC)`で、索引`(user_id, latest_launch_date, id)`を使う。
-- `D1ProductCategoryStore`: 一意索引の違反を列で`name-taken`・`handle-taken`に変換する。監査ログは`buildAuditLogStatements`で同じ一括の書き込みに含める。
+- `D1ProductCategoryStore`: 一意索引の違反を列で`name-taken`・`handle-taken`に変換する。監査ログは`buildAuditLogStatements`で同じ一括の書き込みの先頭に含め、更新・削除の条件は監査ログの`condition`に渡す(ProductCategoryService)。旧ハンドルのテーブルを持たず、ハンドルの変更は現在の列の更新だけである(11.11)。書き込みの入力は`ProductCategoryWriteInput`、結果の型は`ProductCategoryInsertResult`・`ProductCategoryUpdateResult`・`ProductCategoryDeleteResult`(`application/product/ports.ts`)。
 
 #### ProductSaveHooks
 
@@ -2249,7 +2256,7 @@ erDiagram
 | `product_category_protected`                                                                                                                                          | unprocessable(422) | 「その他」の変更・削除(11.5)                      | 「標準カテゴリ「その他」は変更・削除できません。」                                                                                                                                                                                                 |
 | `product_category_in_use`                                                                                                                                             | conflict(409)      | 紐付くプロダクト(11.6)                            | 「このカテゴリにはプロダクトが紐付いているため削除できません。削除から14日以内のプロダクトも含みます。」                                                                                                                                           |
 | `validation_error`                                                                                                                                                    | bad_request(400)   | 入力                                              | 欄ごとの文言。文字数は既存の「文字数超過」の形、外部URLは既存の「外部WebサイトURLの形式違反」                                                                                                                                                      |
-| `email_not_verified`・`account_unavailable`・`unauthenticated`・`bot_verification_failed`・`bot_verification_unavailable`・`forbidden`・`invalid_cursor`・`not_found` | 既存               | 既存                                              | 既存の文言                                                                                                                                                                                                                                         |
+| `email_not_verified`・`account_unavailable`・`unauthenticated`・`bot_verification_failed`・`bot_verification_unavailable`・`forbidden`・`invalid_cursor`・`not_found` | 既存               | 既存                                              | 既存の文言(プロダクトカテゴリの操作の`not_found`は「カテゴリが見つかりません。」)                                                                                                                                                                  |
 
 - 状態・トーストの文言(文言規則に追加): 「プロダクトを登録しました。」(キックオフの日時を添える)、「変更を保存しました。」、「次回のローンチを予約しました。」、「プロダクトを削除しました。」、自分のプロダクトの0件「まだプロダクトはありません。」、非公開化中「このプロダクトは公開が停止されています。内容を直したら、お問い合わせから確認を依頼してください。」、停止中「このアカウントは停止されているため、プロダクトは登録・変更できません。」、削除の確認(「プロダクト『◯◯』を削除しますか?」・「ローンチ予定と過去のローンチの記録が削除され、元に戻せません。」)、カレンダーの理由(「ペアリングの締め切りを過ぎています」「敗北後の間隔のため選べません」「選べる期間の外です」)、Ultrasの導線「Ultrasなら敗北後2日で再ローンチできます。」、ローンチ履歴の要約(「キックオフ予定」「予選マッチ中」「ディレクトリ掲載」「予選敗北」)。
 

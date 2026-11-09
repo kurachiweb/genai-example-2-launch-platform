@@ -2,6 +2,7 @@ import { PRODUCT_CATEGORY_OTHER_NAME } from '../../../common-lib/product/product
 import {
   AppError,
   type AppErrorKind,
+  type FieldErrorDetail,
 } from '../../../lib/core/errors/app-error.ts';
 import {
   type BusinessDate,
@@ -80,23 +81,35 @@ export const PRODUCT_ERRORS = Object.freeze({
 
 export type ProductErrorCode = keyof typeof PRODUCT_ERRORS;
 
-const HANDLE_FIELD_CODES: ReadonlySet<ProductErrorCode> = new Set([
-  'handle_unavailable',
-  'product_category_handle_taken',
-]);
+// 入力欄に理由を示すため、重複の拒否は欄の詳細を持つ
+const FIELD_OF_CODE: Partial<Readonly<Record<ProductErrorCode, string>>> =
+  Object.freeze({
+    handle_unavailable: 'handle',
+    product_category_handle_taken: 'handle',
+    product_category_name_taken: 'name',
+  });
 
 export const productError = (code: ProductErrorCode): AppError => {
   const { kind, message } = PRODUCT_ERRORS[code];
-  if (HANDLE_FIELD_CODES.has(code)) {
+  const field = FIELD_OF_CODE[code];
+  if (field !== undefined) {
     return new AppError({
       kind,
       code,
       message,
-      details: [{ field: 'handle', code: 'unavailable', message }],
+      details: [{ field, code: 'unavailable', message }],
     });
   }
   return new AppError({ kind, code, message });
 };
+
+// 文言規則の「操作するプロダクトカテゴリが無い」の文言を、共通のnot_foundで返す
+export const productCategoryNotFoundError = (): AppError =>
+  new AppError({
+    kind: 'not_found',
+    code: 'not_found',
+    message: 'カテゴリが見つかりません。',
+  });
 
 export interface LaunchDateRejection {
   readonly reason: LaunchDateUnavailableReason;
@@ -143,6 +156,17 @@ export const relaunchBlockedError = (block: PlanBlock): AppError =>
   });
 
 const VALIDATION_ERROR_MESSAGE = '入力内容を確認してください。';
+
+// GraphQLの引数の検証(withValidatedArgs)と同じ形の詳細にする
+export const productCategoryInputRejectedError = (
+  details: readonly FieldErrorDetail[],
+): AppError =>
+  new AppError({
+    kind: 'bad_request',
+    code: 'validation_error',
+    message: VALIDATION_ERROR_MESSAGE,
+    details,
+  });
 
 // GraphQLの引数の検証(withValidatedArgs)と同じ形の詳細にする
 export const productDescriptionRejectedError = (message: string): AppError =>

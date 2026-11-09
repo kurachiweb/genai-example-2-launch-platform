@@ -1,4 +1,5 @@
 import {
+  type HandleFormatCheck,
   type HandleRule,
   IMPERSONATION_RESERVED_HANDLES,
 } from '../handles/handle-rules.ts';
@@ -28,6 +29,23 @@ export const PRODUCT_CATEGORY_HANDLE_RULE: HandleRule = Object.freeze({
   maxLength: 50,
   reservedWords: Object.freeze([]),
 });
+
+const handleMessagesOf = (
+  rule: HandleRule,
+): Readonly<Record<HandleFormatCheck, string | undefined>> =>
+  Object.freeze({
+    ok: undefined,
+    empty: 'ハンドルを入力してください。',
+    'too-long': `ハンドルは${String(rule.maxLength)}文字以内で入力してください。`,
+    'invalid-characters':
+      'ハンドルは英数字で始め、英数字・ハイフン・アンダースコアのみで入力してください。',
+  });
+
+export const PRODUCT_HANDLE_MESSAGES = handleMessagesOf(PRODUCT_HANDLE_RULE);
+
+export const PRODUCT_CATEGORY_HANDLE_MESSAGES = handleMessagesOf(
+  PRODUCT_CATEGORY_HANDLE_RULE,
+);
 
 export const PRODUCT_LOGO_PURPOSE = 'product-logo';
 
