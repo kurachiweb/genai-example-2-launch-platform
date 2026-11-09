@@ -81,7 +81,7 @@
   - 完了状態: 単体テストが成功し、規則がデータベースと実時間に依存しない
   - _Requirements: 2.7, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3, 4.4, 4.5, 4.11, 4.12, 5.1, 5.2, 5.7, 5.8, 5.9, 6.1, 15.2_
 
-- [ ] 3.2 判定の供給元の契約・登録口と、プロダクトの状態の判定を作る
+- [x] 3.2 判定の供給元の契約・登録口と、プロダクトの状態の判定を作る
   - 先に、模擬の供給元の単体テストで、3種類の供給元がプロダクトの一覧につき`order`順に1回ずつ呼ばれること、該当した次回の予約の禁止の理由と解除の日時・固定の理由が計画に入ること、供給元の例外がその種類を確認できない状態にしてログに供給元の名前だけを残すこと、敗北が基準のときだけUltrasの判定を1回呼び、判定の失敗を確認できない状態にすること、Ultrasの判定の結果で選べる日が変わることを確かめる
   - 3つの登録口(初版は空)を作り、登録の名前の形式と重複を検証する単体テストを置く。apiのプロダクトのDIの識別子の一覧をこのタスクで作り、以後のapiのタスクは識別子をここへ加える。Ultrasの判定の型と識別子は`core/ultras`から読み込む
   - 完了状態: 単体テストが成功し、後続specが登録口に1行足すだけで条件を加えられ、application層に`**/lib/workers/**`の読み込みが無い
@@ -346,3 +346,4 @@
 - 2.5: `PRODUCT_PLATFORM_MODULE`(名前`product-platform`)を両アプリの`MODULES`の`PROFILE_PLATFORM_MODULE`の直後に置いた。2.6は`product-platform-module.worker.test.ts`の`AdminProductDirectory`が未束縛であることの検査と除外(と40行目付近のコメント)を外し、束縛の数を7から8にし、apiとeventの`product-platform.worker.test.ts`にも加える。種データの補助は`testing/product-platform-fixtures.ts`。11.2で`project-values.md`の「両アプリ共通の束縛」に`PRODUCT_PLATFORM_MODULE`の行を加える
 - 2.6: `D1AdminProductDirectory`の不正なカーソルは`invalidCursorError()`(`invalid_cursor`、backend/004と`D1AdminUserDirectory`の前例。design.mdも直した)、`limit`の範囲外(1〜50)は`validation_error`。返す状態は`deriveLaunchStatus`から導出し、絞り込みは同じ境界のSQLの条件。カーソルとLIKEのエスケープは`D1AdminUserDirectory`と同じ形を写した。ugc-moderationのGraphQLのエラーコードの一覧に共通の`invalid_cursor`が無い(既に`AdminUserDirectory`から受け取り得る。ugc-moderationへの申し送り)
 - 3.1: 規則は`apps/api/src/domain/product/`の`launch-date-rules.ts`(`addBusinessDays`・`computeLaunchDateWindow`・`checkLaunchDate`)・`launch-plan.ts`(`decideLaunchPlan`・`decideLocks`・`LAUNCH_PLAN_MESSAGES`)・`product-edit-plan.ts`(`planProductEdit`)。計画の基準は`LaunchBasis`(`{ launchDate, outcome }`、design.mdも直した)。`relaunchIntervalDays`は間隔が最も早い日を実際に後ろへずらすときだけ非null(Ultrasの導線の条件)。`decideLocks`は供給元の失敗で`unknown: true`(本specの固定は残す)で、呼び出し側は`locked || unknown`で拒否する。過去・今日の日は`pairing_deadline`。計画が`blocked`・`unknown`のときクライアントは`launchDate: null`を送る(現在の日を送ると`launch-not-allowed`)
+- 3.2: DIの識別子`PRODUCT_TYPES`(`apps/api/src/application/product/product-types.ts`、記号の接頭辞は`PRODUCT_PLATFORM_TYPES`と同じ`product.`なので名前を衝突させない)。評価器は解決済みの供給元の一覧を`PRODUCT_TYPES.RelaunchConditionSources`・`ProductLockSources`で受け取るため、4.2はこの2つと`LaunchSummarySources`を`toDynamicValue((ctx) => resolveDecisionSources(<登録口>, (id) => ctx.get(id)))`で、`ProductStateEvaluator`も束縛する。共通部品`callDecisionSources`(成功分と`failed`を返す)は6.2も使う。評価は20件まで(`PRODUCT_STATE_BATCH_MAX`)。`ProductState.latestLaunch`は取消を除いた直近のローンチ(要件の用語、002のカードの表も直した)で、自分のプロダクトのカードには`canceled`が渡らない(9.2の`LaunchStatusText`の`canceled`はローンチ履歴などの共通の値として残す)。ログのカテゴリ`['api', 'application', 'product']`を11.2で`project-values.md`に加える
