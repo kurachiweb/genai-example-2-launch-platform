@@ -64,6 +64,10 @@ import {
   StoreMyProductsReader,
 } from '../application/product/my-products-reader.ts';
 import {
+  type ProductDeletion,
+  StoreProductDeletion,
+} from '../application/product/product-deletion.ts';
+import {
   type ProductDescriptionEditor,
   StoreProductDescriptionEditor,
 } from '../application/product/product-description-editor.ts';
@@ -84,6 +88,10 @@ import {
   type ProductStateEvaluator,
 } from '../application/product/product-state-evaluator.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
+import {
+  type ProductVisibilityControl,
+  StoreProductVisibilityControl,
+} from '../application/product/product-visibility-control.ts';
 import { computeLaunchDateWindow } from '../domain/product/launch-date-rules.ts';
 import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
 import type { ProductSaveHooks } from '../infrastructure/product/product-save-hooks.ts';
@@ -230,6 +238,43 @@ describe('APIサーバーのプロダクトのモジュールの束縛', () => {
         occurredAt: REGISTRATION_NOW,
       },
     });
+  });
+
+  test('削除と非公開化・復元の操作口を、後続specが識別子で解決できるそれぞれの実装に解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<ProductDeletion>(PRODUCT_TYPES.ProductDeletion),
+    ).toBeInstanceOf(StoreProductDeletion);
+    expect(
+      container.get<ProductVisibilityControl>(
+        PRODUCT_TYPES.ProductVisibilityControl,
+      ),
+    ).toBeInstanceOf(StoreProductVisibilityControl);
+  });
+
+  test('非公開化・復元の操作口は、実物の確定と送信の部品で非公開化を確定し、同じ状態ならunchangedを返す', async () => {
+    await insertUser(OWNER, { emailVerifiedAt: T0 });
+    await insertProduct(1, OWNER);
+    const control = createContainer().get<ProductVisibilityControl>(
+      PRODUCT_TYPES.ProductVisibilityControl,
+    );
+
+    expect(await control.hide(productIdOf(1), REGISTRATION_NOW)).toBe(
+      'changed',
+    );
+    expect(await control.hide(productIdOf(1), REGISTRATION_NOW)).toBe(
+      'unchanged',
+    );
+    const [hidden] = await db
+      .select({ hiddenAt: products.hiddenAt })
+      .from(products)
+      .where(eq(products.id, productIdOf(1)));
+    expect(hidden?.hiddenAt).toEqual(REGISTRATION_NOW);
+
+    expect(await control.unhide(productIdOf(1), REGISTRATION_NOW)).toBe(
+      'changed',
+    );
   });
 
   test('保存の登録口は、初版の空の登録口から組み立てた部品に解決し、文を加えない', async () => {

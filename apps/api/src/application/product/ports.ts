@@ -1,3 +1,4 @@
+import type { MessageContract } from '../../../lib/core/messaging/message-contract.ts';
 import type {
   LaunchRecord,
   ProductCategoryRecord,
@@ -155,4 +156,12 @@ export interface ProductLifecycleCommitter {
   commit(
     command: ProductLifecycleCommand,
   ): Promise<ProductLifecycleCommitResult>;
+}
+
+// application層は共通ライブラリのworkersの送信部品を読み込めないため、PLATFORM_TYPES.MessagePublisherに束縛された部品をこの形で受け取る
+export interface ProductMessagePublisher {
+  publish<TType extends string, TBody>(
+    contract: MessageContract<TType, TBody>,
+    body: TBody,
+  ): Promise<string>;
 }

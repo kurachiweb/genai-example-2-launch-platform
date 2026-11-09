@@ -22,6 +22,10 @@ import type {
   ProductStore,
 } from '../application/product/ports.ts';
 import {
+  type ProductDeletion,
+  StoreProductDeletion,
+} from '../application/product/product-deletion.ts';
+import {
   type ProductDescriptionEditor,
   StoreProductDescriptionEditor,
 } from '../application/product/product-description-editor.ts';
@@ -42,6 +46,10 @@ import {
   type ProductStateEvaluator,
 } from '../application/product/product-state-evaluator.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
+import {
+  type ProductVisibilityControl,
+  StoreProductVisibilityControl,
+} from '../application/product/product-visibility-control.ts';
 import { createD1ProductLifecycleCommitter } from '../infrastructure/product/d1-product-lifecycle-committer.ts';
 import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
 import {
@@ -116,5 +124,11 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
         ),
       )
       .inSingletonScope();
+    bind<ProductDeletion>(PRODUCT_TYPES.ProductDeletion).to(
+      StoreProductDeletion,
+    );
+    bind<ProductVisibilityControl>(PRODUCT_TYPES.ProductVisibilityControl).to(
+      StoreProductVisibilityControl,
+    );
   }),
 };
