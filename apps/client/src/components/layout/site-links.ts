@@ -46,6 +46,10 @@ export const myProductEditHref = (productHandle: string): string =>
 export const productDetailHref = (productHandle: string): string =>
   `${DIRECTORY_HREF}/${productHandle}`;
 
+// 他の条件を付けずに、ディレクトリをそのカテゴリで絞り込む
+export const directoryCategoryHref = (categoryHandle: string): string =>
+  `${DIRECTORY_HREF}?${new URLSearchParams({ category: categoryHandle }).toString()}`;
+
 export const PROFILE_LABEL = 'プロフィール';
 
 export const profileHref = (handle: string): string => `/@${handle}`;

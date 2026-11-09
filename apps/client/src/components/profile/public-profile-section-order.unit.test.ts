@@ -5,6 +5,8 @@ import {
   PUBLIC_PROFILE_MENU_ITEMS,
   PUBLIC_PROFILE_TABS,
 } from '../../composition/public-profile-sections.ts';
+import { LaunchHistoryCount } from '../launch-history/launch-history-count.tsx';
+import { LaunchHistoryPanel } from '../launch-history/launch-history-panel.tsx';
 import {
   orderPublicProfileSections,
   profileTabQueryValue,
@@ -80,10 +82,24 @@ describe('タブのクエリの値の解決', () => {
 });
 
 describe('登録箇所', () => {
-  test('初版の3つの登録箇所は空である', () => {
-    expect(PUBLIC_PROFILE_TABS).toStrictEqual([]);
+  test('タブにはproduct-launchのローンチ履歴を登録し、受賞バッジと「…」メニューの項目の登録箇所は空である', () => {
+    expect(PUBLIC_PROFILE_TABS).toStrictEqual([
+      {
+        id: 'launches',
+        label: 'ローンチ履歴',
+        order: 10,
+        Count: LaunchHistoryCount,
+        Panel: LaunchHistoryPanel,
+      },
+    ]);
     expect(PUBLIC_PROFILE_BADGES).toStrictEqual([]);
     expect(PUBLIC_PROFILE_MENU_ITEMS).toStrictEqual([]);
+  });
+
+  test('ローンチ履歴はorderが最小のため既定のタブになる', () => {
+    expect(resolveProfileTab(PUBLIC_PROFILE_TABS, undefined)?.id).toBe(
+      'launches',
+    );
   });
 
   test.each([

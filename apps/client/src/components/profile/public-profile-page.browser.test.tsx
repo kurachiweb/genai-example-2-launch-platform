@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page } from 'vitest/browser';
 
 import '../../styles.css';
+import { executeGraphQL } from '../../../lib/start/graphql/execute-graphql.ts';
 import { runAxe } from '../../../lib/test/a11y.ts';
 import {
   applyColorScheme,
@@ -97,12 +98,17 @@ describe('PublicProfilePage', () => {
       await expect.element(tabList()).not.toBeInTheDocument();
       await expect.element(page.getByRole('tabpanel')).not.toBeInTheDocument();
     });
+  });
 
-    test('登録箇所の既定(初版は空)でも人物情報だけを表示する', async () => {
+  describe('登録箇所の既定', () => {
+    test('ローンチ履歴を既定のタブとして選ぶ', async () => {
+      vi.mocked(executeGraphQL).mockReturnValue(new Promise(() => undefined));
       await renderPublicProfilePage(publicProfileOf());
 
       await expect.element(card()).toBeVisible();
-      await expect.element(tabList()).not.toBeInTheDocument();
+      await expect
+        .element(page.getByRole('tab', { name: /ローンチ履歴/ }))
+        .toHaveAttribute('aria-selected', 'true');
     });
   });
 
@@ -140,7 +146,7 @@ describe('PublicProfilePage', () => {
     test('停止中の本人には「プロフィールを編集」の導線を出さない', async () => {
       await renderPublicProfilePage(
         publicProfileOf({ viewerRelation: 'OWNER', suspended: true }),
-        { cachedViewer: OWNER_VIEWER },
+        { cachedViewer: OWNER_VIEWER, tabs: TABS },
       );
 
       await expect

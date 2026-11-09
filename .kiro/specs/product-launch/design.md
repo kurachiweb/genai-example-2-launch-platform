@@ -355,8 +355,11 @@ apps/
 │   │   └── product-delete-dialog.tsx                     # 確認と登録された注意書き
 │   ├── components/launch-history/
 │   │   ├── launch-history-count.tsx                      # タブの件数
-│   │   ├── launch-history-panel.tsx                      # 一覧・案内・状態・続き
-│   │   ├── launch-history-item.tsx                       # 1件(ローンチ3件と「他◯回を表示」)
+│   │   ├── launch-history-panel.tsx                      # 最初の取得の失敗と再試行(パネルの境界)
+│   │   ├── launch-history-list.tsx                       # 一覧・案内・0件・続き
+│   │   ├── launch-history-item.tsx                       # 1件(ロゴ・受賞・名称・タグライン・カテゴリ・サイト・編集)
+│   │   ├── launch-history-launches.tsx                   # 項目のローンチ(3件と「他◯回を表示」)
+│   │   ├── launch-history-messages.ts                    # ローンチ履歴と受賞バッジの文言(テストなし)
 │   │   ├── award-badge-list.tsx                          # 受賞バッジの並び(LaunchHistoryItemと公開プロフィールの区画で共用、仮14)
 │   │   └── profile-award-badges.tsx                      # 公開プロフィールの受賞バッジの区画(仮14)
 │   ├── composition/public-profile-sections.ts            # (変更)PUBLIC_PROFILE_TABSにlaunches 10、PUBLIC_PROFILE_BADGESにproduct-launch.award-badges 10を追記
@@ -2187,7 +2190,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 
 - 登録: `PUBLIC_PROFILE_TABS`に`{ id: 'launches', label: 'ローンチ履歴', order: 10, Count: LaunchHistoryCount, Panel: LaunchHistoryPanel }`(10.1)。最小の`order`のため既定のタブになる。
 - `LaunchHistoryCount`・`LaunchHistoryPanel`は同じ問い合わせ(`launchHistory`、`first: 20`)を使い、件数は`totalCount`。パネルは`infiniteQueryOptions`の「さらに読み込む」で続きを後ろに加える(10.3、frontend/006の続けて読み込む一覧)。取得の設定と変換は`src/graphql/launch-history.ts`(単体テスト付き)に置く。本人で未掲載のプロダクトがあれば一覧の上に「未掲載のプロダクトはあなたにだけ表示されています。予選で勝利するとディレクトリに掲載され、誰でも見られるようになります。」(10.8)。0件は「まだローンチしたプロダクトはありません。」と、本人には説明とローンチの予約への導線(10.10)。最初の取得の失敗は一覧の位置の`PartialErrorState`(「ローンチしたプロダクトを読み込めませんでした。時間をおいて再度お試しください。」と再試行)、続きの取得の失敗は「さらに読み込む」の近くの`role="alert"`の文言で示す(frontend/006)。タブのパネルは`RecoverableSlot`が包むが、この文言を出すためにパネルが自分で失敗を扱う。
-- `LaunchHistoryItem`: ロゴ(`square` 64)・受賞バッジ(`AwardBadgeList`。ゴールド、Yearを先頭、複数は「×3」、ツールチップにラベル)・名称(`/p/<ハンドル>`へのリンクを項目全体に広げる)・タグライン(2行で省略)・カテゴリ(`/p?category=<ハンドル>`)・「サイトを開く」(`target="_blank"`、`listed`なら`rel="noopener"`、それ以外は`rel="noopener ugc"`、10.7)・本人に「編集」(10.4)。ローンチは「第◯回」・ローンチ日・要約を3件まで、残りは「他◯回を表示」(10.5)。`inMatch`は「トップページで見る」、キックオフ予定は利用者のタイムゾーンの日時と相対表現。本人で未掲載は「未掲載・あなたにだけ表示」のバッジ(10.8)。閲覧者が停止中の本人なら「非公開」のバッジを付けて薄く表示し、リンク・「サイトを開く」・「編集」を出さない(10.9)。
+- `LaunchHistoryItem`: ロゴ(`square` 64)・受賞バッジ(`AwardBadgeList`。ゴールド、Yearを先頭、複数は「×3」、ツールチップにラベル)・名称(`/p/<ハンドル>`へのリンクを項目全体に広げる)・タグライン(2行で省略)・カテゴリ(`/p?category=<ハンドル>`)・「サイトを開く」(`target="_blank"`、`listed`なら`rel="noopener"`、それ以外は`rel="noopener ugc"`、10.7)・本人に「編集」(10.4)。ローンチは「第◯回」・ローンチ日・要約を3件まで、残りは「他◯回を表示」(10.5)。`inMatch`は「トップページで見る」、キックオフ予定は利用者のタイムゾーンの日時と相対表現。ローンチの行は要約に`summary.label`(トーナメントの要約を含む)を使い、ローンチ日・キックオフの日時・「トップページで見る」は9.2の`LaunchDateText`・`KickoffTime`・`WATCH_ON_TOP_LABEL`で描く(`LaunchStatusText`は終了したローンチを予選の結果の文言で示すため使わない)。本人で未掲載は「未掲載・あなたにだけ表示」のバッジ(10.8)。閲覧者が停止中の本人なら「非公開」のバッジを付けて薄く表示し、リンク・「サイトを開く」・「編集」を出さない(10.9)。
 
 #### ProfileAwardBadges・AwardBadgeList
 
