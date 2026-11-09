@@ -2,6 +2,10 @@ import type {
   LaunchRecord,
   ProductCategoryRecord,
 } from '../../../lib/core/product/ports.ts';
+import type {
+  ProductLifecycleEvent,
+  SyncProductLifecycleEventType,
+} from '../../../lib/core/product/product-lifecycle.ts';
 import type { BusinessDate } from '../../../lib/core/time/business-time.ts';
 import type { ProductEditPlan } from '../../domain/product/product-edit-plan.ts';
 import type { ProductState } from './product-state-evaluator.ts';
@@ -127,4 +131,28 @@ export interface ProductStore {
   updateDescription(
     input: ProductDescriptionUpdateInput,
   ): Promise<ProductDescriptionUpdateResult>;
+}
+
+export interface ProductLifecycleCommand {
+  readonly type: SyncProductLifecycleEventType;
+  readonly productId: string;
+  // deletedだけが使い、省けば版を条件にしない
+  readonly expectedVersion?: number;
+  readonly at: Date;
+}
+
+export type ProductLifecycleRejection =
+  'not-found' | 'conflict' | 'locked' | 'account-unavailable';
+
+export type ProductLifecycleCommitResult =
+  | { readonly kind: 'committed'; readonly event: ProductLifecycleEvent }
+  // hidden・unhiddenで既に同じ状態
+  | { readonly kind: 'unchanged' }
+  | { readonly kind: 'rejected'; readonly reason: ProductLifecycleRejection };
+
+// 状態の変更・イベントの記録・同期の処理の文を1つの一括の書き込みで確定する。送信は呼び出し側が確定の後に行う
+export interface ProductLifecycleCommitter {
+  commit(
+    command: ProductLifecycleCommand,
+  ): Promise<ProductLifecycleCommitResult>;
 }

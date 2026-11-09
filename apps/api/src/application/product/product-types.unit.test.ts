@@ -15,6 +15,7 @@ const EXPECTED_NAMES = [
   'ProductDescriptionEditor',
   'MyProductsReader',
   'ProductHandleAvailabilityChecker',
+  'ProductLifecycleCommitter',
 ] as const;
 
 describe('PRODUCT_TYPES', () => {

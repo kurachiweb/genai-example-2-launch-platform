@@ -1,7 +1,10 @@
 import type { Hono } from 'hono';
 import { ContainerModule } from 'inversify';
 
+import type { Database } from '../../db/client.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
+import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
+import type { IdGenerator } from '../../lib/core/ids/id-generator.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
   type LaunchSummarySource,
@@ -14,7 +17,10 @@ import {
   type MyProductsReader,
   StoreMyProductsReader,
 } from '../application/product/my-products-reader.ts';
-import type { ProductStore } from '../application/product/ports.ts';
+import type {
+  ProductLifecycleCommitter,
+  ProductStore,
+} from '../application/product/ports.ts';
 import {
   type ProductDescriptionEditor,
   StoreProductDescriptionEditor,
@@ -36,6 +42,7 @@ import {
   type ProductStateEvaluator,
 } from '../application/product/product-state-evaluator.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
+import { createD1ProductLifecycleCommitter } from '../infrastructure/product/d1-product-lifecycle-committer.ts';
 import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
 import {
   createProductSaveHooks,
@@ -46,6 +53,7 @@ import {
   PRODUCT_LOCK_SOURCES,
   RELAUNCH_CONDITION_SOURCES,
 } from './product-decision-sources.ts';
+import { PRODUCT_LIFECYCLE_SYNC_HANDLERS } from './product-lifecycle-sync-handlers.ts';
 import { PRODUCT_SAVE_HOOKS } from './product-save-hooks.ts';
 
 // 表示用の照会とハンドルの対象(PRODUCT_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・時計とID生成とデータベース(PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)は各機能の共通の束縛を使う
@@ -97,5 +105,16 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ProductHandleAvailabilityChecker>(
       PRODUCT_TYPES.ProductHandleAvailabilityChecker,
     ).to(StoreProductHandleAvailabilityChecker);
+    // 同期の処理の登録口は確定の部品だけが受け取り、操作口のユースケースには渡さない
+    bind<ProductLifecycleCommitter>(PRODUCT_TYPES.ProductLifecycleCommitter)
+      .toDynamicValue((context) =>
+        createD1ProductLifecycleCommitter(
+          context.get<Database>(PLATFORM_TYPES.Database),
+          context.get<IdGenerator>(PLATFORM_TYPES.IdGenerator),
+          PRODUCT_LIFECYCLE_SYNC_HANDLERS,
+          (identifier) => context.get(identifier),
+        ),
+      )
+      .inSingletonScope();
   }),
 };

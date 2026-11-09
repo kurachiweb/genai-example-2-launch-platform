@@ -35,6 +35,10 @@ const ProductHandleAvailabilityChecker: unique symbol = Symbol.for(
   'product.ProductHandleAvailabilityChecker',
 );
 
+const ProductLifecycleCommitter: unique symbol = Symbol.for(
+  'product.ProductLifecycleCommitter',
+);
+
 export const PRODUCT_TYPES = Object.freeze({
   ProductStateEvaluator,
   RelaunchConditionSources,
@@ -47,4 +51,5 @@ export const PRODUCT_TYPES = Object.freeze({
   ProductDescriptionEditor,
   MyProductsReader,
   ProductHandleAvailabilityChecker,
+  ProductLifecycleCommitter,
 });

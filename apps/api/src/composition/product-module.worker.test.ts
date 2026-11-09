@@ -40,7 +40,9 @@ import {
 import {
   clearProductTables,
   db,
+  insertProduct,
   insertUser,
+  productIdOf,
   T0,
   userIdOf,
 } from '../../lib/workers/product/testing/product-fixtures.ts';
@@ -53,7 +55,10 @@ import type {
   RegisteredDecisionSource,
   RelaunchConditionSource,
 } from '../application/product/decision-sources.ts';
-import type { ProductStore } from '../application/product/ports.ts';
+import type {
+  ProductLifecycleCommitter,
+  ProductStore,
+} from '../application/product/ports.ts';
 import {
   type MyProductsReader,
   StoreMyProductsReader,
@@ -201,6 +206,30 @@ describe('APIサーバーのプロダクトのモジュールの束縛', () => {
         PRODUCT_TYPES.LaunchSummarySources,
       ),
     ).toEqual([]);
+  });
+
+  test('ライフサイクルの確定は、初版の空の同期の処理の登録口で組み立てた部品に解決し、非公開化をD1へ確定する', async () => {
+    await insertUser(OWNER, { emailVerifiedAt: T0 });
+    await insertProduct(1, OWNER);
+    const committer = createContainer().get<ProductLifecycleCommitter>(
+      PRODUCT_TYPES.ProductLifecycleCommitter,
+    );
+
+    const result = await committer.commit({
+      type: 'hidden',
+      productId: productIdOf(1),
+      at: REGISTRATION_NOW,
+    });
+
+    expect(result).toMatchObject({
+      kind: 'committed',
+      event: {
+        productId: productIdOf(1),
+        ownerUserId: userIdOf(OWNER),
+        type: 'hidden',
+        occurredAt: REGISTRATION_NOW,
+      },
+    });
   });
 
   test('保存の登録口は、初版の空の登録口から組み立てた部品に解決し、文を加えない', async () => {
