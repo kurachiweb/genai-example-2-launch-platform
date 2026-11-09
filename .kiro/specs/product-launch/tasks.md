@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共有の規則・テーブル・文言・カレンダー
-- [ ] 1.1 プロダクトの入力規則・定数・監査の操作種別を共有定義として作る
+- [x] 1.1 プロダクトの入力規則・定数・監査の操作種別を共有定義として作る
   - 前提: dev-tooling〜user-profile-socialの15specの全タスクが完了していること(2026-11-09のギャップ分析で、help-centerを除く上流の実装の完了と契約の一致を確かめた。`users`の列とライフサイクルの登録口・`AccountGuard`・ハンドル基盤(user-profile-socialの仮2(B)の改訂を含む: 他の対象の旧ハンドルを使用中としない判定と、元の保持者の旧ハンドルを消す文`previousHandleRelease`)・外部URLの規則・公開プロフィールのタブの登録口・画像のアップロードと隔離理由・マークダウンの部品・`UltrasEntitlements`・`UltrasPromotionGate`・監査ログと`CategoryMasterEditor`・`CATEGORY_SECTIONS`・E2Eの`e2e/support/mailpit.ts`・`e2e/support/admin-bootstrap.ts`)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、名称50・タグライン100書記素の境界と空・禁止文字、ハンドル50・51文字と予約語の14語、カテゴリのハンドルに予約語が無いこと、スクリーンショットの20・21枚と10,485,760・10,485,761バイト、ロゴ512,000バイト・スクリーンショット5,242,880バイト、ローンチ日の上限90日(仮4)、標準カテゴリの固定のID・名前・ハンドル`other`、3つの監査の操作種別(対象`category`・理由は任意・詳細なし・必須の`label`)の単体テストを書く。名称・タグラインは、判定の順(禁止文字→必須→上限。空白だけで上限を超える入力は必須の違反)と、違反の種類から文言への対応(`PRODUCT_NAME_MESSAGES`・`PRODUCT_TAGLINE_MESSAGES`、上限の数は定数から組み立てる)の全ての戻り値を確かめる(coding/005)
   - 4アプリが読み込める共有ディレクトリに置き、zodを使わず、書記素・禁止文字・ハンドルの形式・カテゴリ名の判定は上流の部品を使う。監査の操作種別は`PRODUCT_LAUNCH_AUDIT_ACTIONS`として操作種別の連結へ加え、種別の並びを完全一致で確かめる`audit-actions/index.unit.test.ts`の期待値を更新する
@@ -332,3 +332,7 @@
   - api・eventの静的解析で、application層とdomain層に`**/lib/workers/**`の読み込み(型だけの読み込みを含む)が無く、`core/product`が`workers`・`apps/db`を読み込まないことを確かめる
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告にmatch-engineの実装までの運用の事項が載っている
   - _Requirements: 14.8, 15.1, 15.2_
+
+## Implementation Notes
+
+- 1.1: 名称・タグラインの文言の主語は「名称」「タグライン」(「名称を入力してください。」「名称は50文字以内で入力してください。」「名称に使用できない文字が含まれています。」、タグラインは100文字)。1.3で文言規則003へこの6文言をそのまま加える。`checkScreenshotTotals`は枚数を先に判定し(両方の超過は`too-many`)、1枚の5MBの上限は用途の`maxBytes`に任せる。入力規則は`apps/common-lib/product/product-input-rules.ts`、標準カテゴリは`product-category-constants.ts`、監査の操作種別は`admin/audit-actions/product-launch.ts`
