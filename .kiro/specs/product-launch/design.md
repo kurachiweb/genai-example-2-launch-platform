@@ -314,6 +314,12 @@ apps/
 │   │   ├── my-product-card.tsx                           # 1件の項目と登録された区画
 │   │   ├── launch-status-text.tsx                        # ローンチの状態の文言とキックオフの日時
 │   │   ├── launch-plan-notice.tsx                        # 次回の予約・固定・非公開化の案内
+│   │   ├── launch-messages.ts                            # ローンチの状態と予約の案内の文言(テストなし)
+│   │   ├── launch-date-format.ts                         # 業務日付の月日の表記(今年は年を省く)と利用者のタイムゾーンの年(単体テスト付き)
+│   │   ├── use-current-year.ts                           # 利用者のタイムゾーンの今年
+│   │   ├── launch-date-text.tsx                          # 業務日付のローンチ日の<time>(日をずらさない)
+│   │   ├── remaining-date-time.tsx                       # 先の日時の<time>と残りの相対表現(今年は年を省く)
+│   │   ├── kickoff-time.tsx                              # 「キックオフ: 」と日時(LaunchStatusTextと9.5のローンチ日の欄で共用)
 │   │   ├── product-form.tsx                              # 登録・編集の共通のフォーム
 │   │   ├── product-form-schema.ts                        # フォームのスキーマ(zodの値はutilities/validation/zod.ts、テストは*.unit.test.ts)
 │   │   ├── logo-field.tsx
@@ -2128,8 +2134,8 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 - ルート(`_authenticated`の下、未ログインはログインへ誘導して戻す、1.11): `/my/products`(`MyProductListPage`)、`/my/products/new`(`ProductForm`の登録)、`/my/products/$handle/edit`(`loader`で`myProduct`を読み、`null`は`notFound()`(7.4)、`MyProductRedirect`は`redirect({ to: '/my/products/$handle/edit', params, statusCode: 302 })`(7.5))。`head`は`buildSitePageHead`(`src/head/page-heads.ts`、「自分のプロダクト」「プロダクトを登録」「<名称>を編集」)。取得の設定と、生成物の型から画面の型への変換は`src/graphql/my-products.ts`(単体テスト付き)に置く。
 - `MyProductListPage`: `h1`「自分のプロダクト」と説明文、右上に「新しいプロダクトを登録」(主要ボタン、9.6)。`myProducts`を`infiniteQueryOptions`(キーに閲覧者のIDを入れる)で`first: 20`ずつ取得し、`loader`で`queryClient.infiniteQuery(...).catch(() => undefined)`を待ち、「さらに読み込む」で続きを後ろに加える(9.1、frontend/006の続けて読み込む一覧)。0件は`EmptyState`(「まだプロダクトはありません。」と、ローンチ日に予選マッチで1対1の対戦が始まり勝利するとディレクトリに掲載される旨と登録への導線、9.5)。初回ローディングはカードの形のスケルトン。最初の取得の失敗は一覧の位置の`PartialErrorState`(再試行・問い合わせ、文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`)、続きの取得の失敗は「さらに読み込む」の近くの`role="alert"`の文言で示し、読み込みの後のフォーカスの移動はfrontend/006に従う。各カードは`<article>`に見た目のクラスを付けて描く(frontend-libにカードの部品は無い)。停止中は上部に停止中の案内(問い合わせへの導線)を出し、登録と編集の導線を無効にする(9.7)。
 - `MyProductCard`: 左にロゴ(`MediaPicture`の`square` 64、プレースホルダーは名称の頭文字、3.8)、名称・ハンドル(`@`なし)・カテゴリのバッジ、非公開化中は「公開停止中」のバッジ。`LaunchStatusText`(直近のローンチ)と`LaunchPlanNotice`(次回の予約)を並べ、操作は「編集」と、非公開化中でなければ「詳細を見る」(`/p/<ハンドル>`、9.3)。カードの下に`MY_PRODUCT_SECTIONS`を`order`順に個別のエラー境界で描く(9.4)。PCは横並び、640px未満は縦に積む。
-- `LaunchStatusText`: `scheduled`・`paired`は「キックオフ予定」と`<time datetime>`の利用者のタイムゾーンの日時と相対表現(「あと2日」)、`in_progress`は「予選マッチ中」と「トップページで見る」、`finished`は「ディレクトリ掲載」または「予選敗北」とローンチ日、`canceled`は「取消」(9.2・9.8)。
-- `LaunchPlanNotice`: `new`は「このプロダクトは◯月◯日以降のローンチ日を選べます。」と「次回のローンチを予約」(編集画面へ)、`reschedule`は「ローンチ日は編集画面で変更できます。」、`blocked`は理由の文言と解除の日時(あれば)、`unknown`は「ローンチの状態を確認できませんでした。」。固定の期間は「マッチ直前・マッチ中のため、ローンチ日・カテゴリの変更と削除はできません。」(5.2・5.4・6.3)。
+- `LaunchStatusText`: `scheduled`・`paired`は「キックオフ予定」と`<time datetime>`の利用者のタイムゾーンの日時と相対表現(「あと2日」)、`in_progress`は「予選マッチ中」と「トップページで見る」、`finished`は「ディレクトリ掲載」または「予選敗北」とローンチ日、`canceled`は「取消」(9.2・9.8)。ローンチ日は業務日付のまま`<time datetime="YYYY-MM-DD">`で示し、利用者のタイムゾーンで日をずらさない。日付は今年(利用者のタイムゾーン)なら年を省く。
+- `LaunchPlanNotice`: `new`は「このプロダクトは◯月◯日以降のローンチ日を選べます。」と「次回のローンチを予約」(編集画面へ)、`reschedule`は「ローンチ日は編集画面で変更できます。」、`blocked`は理由の文言と、解除の日時があれば「解除: <日時>(あと3日)」、`unknown`は「ローンチの状態を確認できませんでした。」。固定の期間は「マッチ直前・マッチ中のため、ローンチ日・カテゴリの変更と削除はできません。」、固定の判定の失敗(`lockUnknown`)は`unknown`でなければ確認できなかった旨を加える(5.2・5.4・6.3)。`placement`(`list`・`edit`)が`edit`なら「次回のローンチを予約」を出さない(編集画面ではローンチ日の欄で予約する)。
 
 #### ProductForm・ProductFormSchema・LogoField・ScreenshotsField・ProductHandleField・CategorySelect・LaunchDateField・ProductEditPage・ProductDeleteDialog
 

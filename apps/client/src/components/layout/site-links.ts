@@ -38,6 +38,9 @@ export const LAUNCH_LABEL = 'ローンチする';
 
 export const NEW_PRODUCT_HREF = '/my/products/new';
 
+export const myProductEditHref = (productHandle: string): string =>
+  `/my/products/${productHandle}/edit`;
+
 export const PROFILE_LABEL = 'プロフィール';
 
 export const profileHref = (handle: string): string => `/@${handle}`;
