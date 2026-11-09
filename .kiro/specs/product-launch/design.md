@@ -391,7 +391,7 @@ docs/GUIDES/tech/
 - `apps/common-lib/admin/audit-actions/index.ts`・`index.unit.test.ts` — `PRODUCT_LAUNCH_AUDIT_ACTIONS`の連結と、種別の並びを完全一致で確かめる期待値。
 - 登録を完全一致で確かめる既存のテスト(本specの追記で期待値を更新する):
   - `apps/api/test/config/media-registrations.unit.test.ts`(`UPLOAD_PURPOSES`に`product-logo`・`product-screenshot`)
-  - `apps/client/src/components/profile/public-profile-section-order.unit.test.ts`(`PUBLIC_PROFILE_TABS`・`PUBLIC_PROFILE_BADGES`が空であること)
+  - `apps/client/src/components/profile/public-profile-sections.browser.test.ts`(`PUBLIC_PROFILE_TABS`・`PUBLIC_PROFILE_BADGES`の登録の中身)
   - `apps/event/src/composition/profile-module.worker.test.ts`・`payments-module.worker.test.ts`・`ultras-module.worker.test.ts`(ユーザーの`purge_due`の処理名の並びに`product-launch.product-erasure`)
 - `config/contract-copies.unit.test.ts` — `BOT_ACTION_COPIES`に`PRODUCT_BOT_ACTIONS`(apiの`modules/product/resolver-support.ts`とclientの`components/product/bot-actions.ts`)。ルートの`package.json`の`check:contract-copies`に`./config/launch-time-contract-copies.unit.test.ts`を加える(testing/001)。
 - `apps/frontend-lib/vitest.browser.config.ts`・`apps/client/vitest.browser.config.ts`・`apps/admin/vitest.browser.config.ts` — `optimizeDeps.include`に`react-day-picker`(frontend/005)。

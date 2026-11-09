@@ -1,5 +1,9 @@
 import type { Hono } from 'hono';
-import { ContainerModule } from 'inversify';
+import {
+  ContainerModule,
+  type ResolutionContext,
+  type ServiceIdentifier,
+} from 'inversify';
 
 import type { Database } from '../../db/client.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
@@ -84,6 +88,11 @@ import {
 import { PRODUCT_LIFECYCLE_SYNC_HANDLERS } from './product-lifecycle-sync-handlers.ts';
 import { PRODUCT_SAVE_HOOKS } from './product-save-hooks.ts';
 
+const resolverOf =
+  (context: ResolutionContext) =>
+  <T>(identifier: ServiceIdentifier<T>): T =>
+    context.get(identifier);
+
 // 表示用の照会とハンドルの対象(PRODUCT_PLATFORM_TYPES)・利用者の解決(PROFILE_PLATFORM_TYPES)・ログイン中の利用者(IDENTITY_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・時計とID生成とデータベース(PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)・監査ログの記録(ADMIN_PLATFORM_TYPES)は各機能の共通の束縛を使う
 export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'product',
@@ -91,23 +100,17 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<readonly RegisteredDecisionSource<RelaunchConditionSource>[]>(
       PRODUCT_TYPES.RelaunchConditionSources,
     ).toDynamicValue((context) =>
-      resolveDecisionSources(RELAUNCH_CONDITION_SOURCES, (identifier) =>
-        context.get(identifier),
-      ),
+      resolveDecisionSources(RELAUNCH_CONDITION_SOURCES, resolverOf(context)),
     );
     bind<readonly RegisteredDecisionSource<ProductLockSource>[]>(
       PRODUCT_TYPES.ProductLockSources,
     ).toDynamicValue((context) =>
-      resolveDecisionSources(PRODUCT_LOCK_SOURCES, (identifier) =>
-        context.get(identifier),
-      ),
+      resolveDecisionSources(PRODUCT_LOCK_SOURCES, resolverOf(context)),
     );
     bind<readonly RegisteredDecisionSource<LaunchSummarySource>[]>(
       PRODUCT_TYPES.LaunchSummarySources,
     ).toDynamicValue((context) =>
-      resolveDecisionSources(LAUNCH_SUMMARY_SOURCES, (identifier) =>
-        context.get(identifier),
-      ),
+      resolveDecisionSources(LAUNCH_SUMMARY_SOURCES, resolverOf(context)),
     );
     bind<ProductStateEvaluator>(PRODUCT_TYPES.ProductStateEvaluator).to(
       DefaultProductStateEvaluator,
@@ -115,9 +118,7 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     // 保存の登録口はD1ProductStoreだけが受け取り、ユースケースには渡さない
     bind<ProductSaveHooks>(PRODUCT_TYPES.ProductSaveHooks).toDynamicValue(
       (context) =>
-        createProductSaveHooks(PRODUCT_SAVE_HOOKS, (identifier) =>
-          context.get(identifier),
-        ),
+        createProductSaveHooks(PRODUCT_SAVE_HOOKS, resolverOf(context)),
     );
     bind<ProductStore>(PRODUCT_TYPES.ProductStore).to(D1ProductStore);
     bind<ProductRegistration>(PRODUCT_TYPES.ProductRegistration).to(
@@ -140,7 +141,7 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
           context.get<Database>(PLATFORM_TYPES.Database),
           context.get<IdGenerator>(PLATFORM_TYPES.IdGenerator),
           PRODUCT_LIFECYCLE_SYNC_HANDLERS,
-          (identifier) => context.get(identifier),
+          resolverOf(context),
         ),
       )
       .inSingletonScope();

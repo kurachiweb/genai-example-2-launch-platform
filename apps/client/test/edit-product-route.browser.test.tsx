@@ -18,6 +18,7 @@ import {
 import type { buildSitePageHead } from '../src/head/page-heads.ts';
 import { Route as EditProductRoute } from '../src/routes/_authenticated/my/products/$handle/edit.tsx';
 import {
+  CATEGORIES,
   callsOf,
   categorySelect,
   CONFLICT_MESSAGE,
@@ -40,6 +41,7 @@ import {
   renderEditProduct,
   respond,
   saveButton,
+  SCHEDULED_LAUNCH,
   statusSection,
   textbox,
   updateInputOf,
@@ -75,6 +77,8 @@ const LOADED_FIELDS = {
   logoFileId: '01JD0FILE0000000000000L0G0',
   screenshotFileIds: ['01JD0FILE00000000000000002'],
 } as const;
+
+const DAY_MS = 86_400_000;
 
 // 偽のsetTimeoutでTanStack Queryの結果の通知が止まらないよう、テストの後に既定の通知へ戻す
 const SYSTEM_NOTIFY_SCHEDULER = (callback: () => void): void => {
@@ -239,6 +243,63 @@ describe('プロダクトの編集画面の経路', () => {
     await expect.element(textbox('名称(必須)')).toBeDisabled();
     await expect.element(saveButton()).toBeDisabled();
     await expect.element(deleteButton()).toBeDisabled();
+  });
+
+  test('読み込みの失敗は、題名を残したまま再試行で読み込み直せる', async () => {
+    let categoriesFail = true;
+    respond({
+      categories: () =>
+        categoriesFail
+          ? failure({
+              code: 'internal_error',
+              message: 'サーバーでエラーが発生しました。',
+              status: 500,
+            })
+          : ok(CATEGORIES),
+    });
+    await renderEditProduct();
+
+    await expect.element(pageTitle()).toHaveTextContent('Pitch Notesを編集');
+    await expect.element(main().getByRole('alert')).toBeVisible();
+    categoriesFail = false;
+    await userEvent.click(main().getByRole('button', { name: '再試行' }));
+
+    await expect.element(textbox('名称(必須)')).toHaveValue('Pitch Notes');
+  });
+
+  test('ローンチが無く予約もできないプロダクトは、表示中に時刻の境界で取り直さない', async () => {
+    notifyManager.setScheduler(queueMicrotask);
+    respond({
+      myProduct: () =>
+        found(
+          productWith({
+            hidden: true,
+            latestLaunch: null,
+            plan: {
+              ...LOCKED_PLAN,
+              blocks: [
+                {
+                  code: 'product_hidden',
+                  message:
+                    '公開が停止されているため、次回のローンチを予約できません。',
+                  releaseAt: null,
+                },
+              ],
+              locked: false,
+              locks: [],
+            },
+          }),
+        ),
+    });
+    await renderEditProduct({
+      fakeTimers: ['Date', 'setTimeout', 'clearTimeout'],
+    });
+    await expect.element(textbox('名称(必須)')).toHaveValue('Pitch Notes');
+    const lookupsBefore = callsOf(ClientMyProductDocument).length;
+
+    await vi.advanceTimersByTimeAsync(DAY_MS);
+
+    expect(callsOf(ClientMyProductDocument)).toHaveLength(lookupsBefore);
   });
 });
 
@@ -483,6 +544,34 @@ describe('マッチ直前・マッチ中の固定の期間', () => {
     await userEvent.tab();
 
     await expect.element(deleteButton()).toBeDisabled();
+  });
+
+  test('ペアリング済みのローンチは、表示中にキックオフの0:00を越えると取り直す', async () => {
+    notifyManager.setScheduler(queueMicrotask);
+    const kickoffAt = new Date(SCHEDULED_LAUNCH.kickoffAt);
+    respond({
+      myProduct: () =>
+        found(
+          productWith({
+            latestLaunch: { ...SCHEDULED_LAUNCH, status: 'PAIRED' },
+            plan: LOCKED_PLAN,
+          }),
+        ),
+    });
+    await renderEditProduct({
+      now: new Date(kickoffAt.getTime() - 60_000),
+      fakeTimers: ['Date', 'setTimeout', 'clearTimeout'],
+    });
+    await expect.element(categorySelect()).toBeDisabled();
+    const lookupsBefore = callsOf(ClientMyProductDocument).length;
+
+    await vi.advanceTimersByTimeAsync(60_000 + BOUNDARY_REFRESH_DELAY_MS - 1);
+    expect(callsOf(ClientMyProductDocument)).toHaveLength(lookupsBefore);
+    await vi.advanceTimersByTimeAsync(1);
+
+    await expect
+      .poll(() => callsOf(ClientMyProductDocument).length)
+      .toBe(lookupsBefore + 1);
   });
 });
 

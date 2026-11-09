@@ -107,6 +107,16 @@ export const LOCKED_PLAN: MyProductPlan = {
   ultrasEntitled: false,
 };
 
+export const SCHEDULED_LAUNCH: NonNullable<MyProductFields['latestLaunch']> = {
+  id: '01JD0LAUNCH000000000000001',
+  number: 1,
+  launchDate: '2026-11-20',
+  kickoffAt: '2026-11-20T08:00:00.000Z',
+  status: 'SCHEDULED',
+  outcome: null,
+  summary: { label: 'キックオフ予定', inMatch: false },
+};
+
 export const PRODUCT: MyProductFields = {
   handle: 'pitch-notes',
   previousHandle: null,
@@ -128,15 +138,7 @@ export const PRODUCT: MyProductFields = {
   hidden: false,
   listed: false,
   version: 3,
-  latestLaunch: {
-    id: '01JD0LAUNCH000000000000001',
-    number: 1,
-    launchDate: '2026-11-20',
-    kickoffAt: '2026-11-20T08:00:00.000Z',
-    status: 'SCHEDULED',
-    outcome: null,
-    summary: { label: 'キックオフ予定', inMatch: false },
-  },
+  latestLaunch: SCHEDULED_LAUNCH,
   plan: RESCHEDULE_PLAN,
 };
 
@@ -158,6 +160,7 @@ export interface Responders {
   readonly myProduct?: (handle: string) => ClientMyProductQuery;
   readonly update?: () => Promise<unknown>;
   readonly remove?: () => Promise<unknown>;
+  readonly categories?: () => Promise<unknown>;
 }
 
 // テストのファイルがvi.mockで差し替えた実行の関数を、取得の応答を決めるために読む
@@ -170,13 +173,14 @@ export const respond = ({
   myProduct = () => found(PRODUCT),
   update = () => ok({ updateProduct: PRODUCT }),
   remove = () => ok({ deleteProduct: true }),
+  categories = () => ok(CATEGORIES),
 }: Responders = {}) => {
   executeGraphQL.mockImplementation((document: unknown, variables: unknown) => {
     if (document === ClientMyProductDocument) {
       return ok(myProduct((variables as { readonly handle: string }).handle));
     }
     if (document === ClientProductCategoriesDocument) {
-      return ok(CATEGORIES);
+      return categories();
     }
     if (document === ClientProductHandleAvailabilityDocument) {
       return ok({ productHandleAvailability: 'AVAILABLE' });
