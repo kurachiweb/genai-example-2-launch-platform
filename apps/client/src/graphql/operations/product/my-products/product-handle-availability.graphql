@@ -1,0 +1,6 @@
+query ClientProductHandleAvailability(
+  $handle: String!
+  $productHandle: String
+) {
+  productHandleAvailability(handle: $handle, productHandle: $productHandle)
+}

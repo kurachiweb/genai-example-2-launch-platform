@@ -47,6 +47,10 @@ const PROFILE_RESOLVER_SUPPORT =
   'apps/api/src/presentation/graphql/modules/profile/resolver-support.ts';
 const CLIENT_PROFILE_BOT_ACTIONS =
   'apps/client/src/components/profile/bot-actions.ts';
+const PRODUCT_RESOLVER_SUPPORT =
+  'apps/api/src/presentation/graphql/modules/product/resolver-support.ts';
+const CLIENT_PRODUCT_BOT_ACTIONS =
+  'apps/client/src/components/product/bot-actions.ts';
 const API_PROFILE_INPUT_MESSAGES =
   'apps/api/src/presentation/graphql/modules/profile/errors.ts';
 const API_PROFILE_ERRORS = 'apps/api/src/application/profile/profile-errors.ts';
@@ -615,6 +619,10 @@ const BOT_ACTION_COPIES: readonly BotActionCopy[] = [
   {
     api: { path: PROFILE_RESOLVER_SUPPORT, name: 'PROFILE_BOT_ACTIONS' },
     copy: { path: CLIENT_PROFILE_BOT_ACTIONS, name: 'PROFILE_BOT_ACTIONS' },
+  },
+  {
+    api: { path: PRODUCT_RESOLVER_SUPPORT, name: 'PRODUCT_BOT_ACTIONS' },
+    copy: { path: CLIENT_PRODUCT_BOT_ACTIONS, name: 'PRODUCT_BOT_ACTIONS' },
   },
 ];
 

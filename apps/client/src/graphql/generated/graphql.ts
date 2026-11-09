@@ -71,6 +71,27 @@ export type InquiryStatus =
   | 'REJECTED'
   | 'RESOLVED';
 
+/** ローンチ日を選べない理由 */
+export type LaunchDateUnavailableReason =
+  | 'OUT_OF_RANGE'
+  | 'PAIRING_DEADLINE'
+  | 'RELAUNCH_INTERVAL';
+
+/** 次回のローンチの計画。NEWは新しいローンチの予約、RESCHEDULEは予定のローンチの日の変更、BLOCKEDは予約できない、UNKNOWNは判定できない */
+export type LaunchPlanMode =
+  | 'BLOCKED'
+  | 'NEW'
+  | 'RESCHEDULE'
+  | 'UNKNOWN';
+
+/** ローンチの状態。照会の時点の時刻から導く */
+export type LaunchStatus =
+  | 'CANCELED'
+  | 'FINISHED'
+  | 'IN_PROGRESS'
+  | 'PAIRED'
+  | 'SCHEDULED';
+
 /** 法務文書の種類 */
 export type LegalDocumentKind =
   | 'LEGAL_NOTICE'
@@ -112,6 +133,28 @@ export type PaymentRecordStatus =
   | 'PENDING'
   | 'SUCCEEDED';
 
+export type ProductAwardKind =
+  | 'WEEK'
+  | 'YEAR';
+
+/** プロダクトの登録・編集で全件を送る項目 */
+export type ProductFieldsInput = {
+  categoryId: string | number;
+  /** マークダウンの説明文(1〜20,000文字) */
+  description: string;
+  handle: string;
+  /** 本人がアップロードしたロゴの画像 */
+  logoFileId: string | number;
+  /** 前後の空白を除いて1〜50文字 */
+  name: string;
+  /** 表示順。0〜20件で重複なし */
+  screenshotFileIds: Array<string | number>;
+  /** 前後の空白を除いて1〜100文字 */
+  tagline: string;
+  /** httpかhttpsの2,048文字以内の絶対URL */
+  websiteUrl: string;
+};
+
 /** 公開プロフィールの閲覧者と表示される利用者の関係 */
 export type ProfileViewerRelation =
   | 'FOLLOWING'
@@ -132,11 +175,21 @@ export type PurchaseKind =
   | 'WEEK_TOURNAMENT_ENTRY'
   | 'YEAR_TOURNAMENT_ENTRY';
 
+export type QualifierOutcome =
+  | 'LOST'
+  | 'WON';
+
 /** 重要な操作の本人確認 */
 export type ReAuthenticationInput = {
   currentPassword: string;
   /** 多要素認証が有効なときだけ必要 */
   secondFactor?: SecondFactorInput | null | undefined;
+};
+
+export type RegisterProductInput = {
+  fields: ProductFieldsInput;
+  /** 最初のローンチのローンチ日(YYYY-MM-DD) */
+  launchDate: string;
 };
 
 export type RegisterUserInput = {
@@ -194,6 +247,16 @@ export type UpdateMyProfileInput = {
   headline?: string | null | undefined;
   nickname: string;
   websites: Array<ProfileWebsiteInput>;
+};
+
+export type UpdateProductInput = {
+  /** 編集画面を開いたときの版 */
+  expectedVersion: number;
+  fields: ProductFieldsInput;
+  /** 予定のローンチの日の変更か次回のローンチの予約のローンチ日(YYYY-MM-DD)。nullはローンチを変えない */
+  launchDate?: string | null | undefined;
+  /** 編集画面を開いたときの現在のハンドル */
+  productHandle: string;
 };
 
 export type ClientCompleteSecondFactorLoginMutationVariables = Exact<{
@@ -426,6 +489,80 @@ export type ClientStartSmokeCheckoutMutationVariables = Exact<{ [key: string]: n
 
 export type ClientStartSmokeCheckoutMutation = { startSmokeCheckout: { purchaseId: string } };
 
+export type ClientLaunchHistoryQueryVariables = Exact<{
+  userHandle: string;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientLaunchHistoryQuery = { launchHistory: { viewerIsOwner: boolean, ownerSuspended: boolean, totalCount: number, nodes: Array<{ product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }, launches: Array<{ id: string, number: number, launchDate: string, kickoffAt: string, status: LaunchStatus, outcome: QualifierOutcome | null, summary: { label: string, inMatch: boolean } }>, awards: Array<{ kind: ProductAwardKind, count: number, labels: Array<string> }> }>, pageInfo: { endCursor: string | null, hasNextPage: boolean } } | null };
+
+export type ClientProfileAwardsQueryVariables = Exact<{
+  userHandle: string;
+}>;
+
+
+export type ClientProfileAwardsQuery = { profileAwards: Array<{ kind: ProductAwardKind, count: number, labels: Array<string> }> | null };
+
+export type ClientMyProductQueryVariables = Exact<{
+  handle: string;
+}>;
+
+
+export type ClientMyProductQuery = { myProduct:
+    | { __typename: 'MyProduct', handle: string, previousHandle: string | null, name: string, tagline: string, websiteUrl: string, description: string, logoFileId: string, hidden: boolean, listed: boolean, version: number, category: { id: string, name: string, handle: string, systemDefault: boolean }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, screenshots: Array<{ fileId: string, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }>, latestLaunch: { id: string, number: number, launchDate: string, kickoffAt: string, status: LaunchStatus, outcome: QualifierOutcome | null, summary: { label: string, inMatch: boolean } } | null, plan: { mode: LaunchPlanMode, currentLaunchDate: string | null, locked: boolean, lockUnknown: boolean, ultrasEntitled: boolean, window: { earliest: string, latest: string, relaunchIntervalDays: number | null, unavailable: Array<{ from: string, to: string, reason: LaunchDateUnavailableReason }> } | null, blocks: Array<{ code: string, message: string, releaseAt: string | null }>, locks: Array<{ code: string, message: string }> } }
+    | { __typename: 'MyProductRedirect', handle: string }
+   | null };
+
+export type ClientMyProductsQueryVariables = Exact<{
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientMyProductsQuery = { myProducts: { nodes: Array<{ handle: string, name: string, hidden: boolean, listed: boolean, category: { id: string, name: string, handle: string, systemDefault: boolean }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, latestLaunch: { id: string, number: number, launchDate: string, kickoffAt: string, status: LaunchStatus, outcome: QualifierOutcome | null, summary: { label: string, inMatch: boolean } } | null, plan: { mode: LaunchPlanMode, currentLaunchDate: string | null, locked: boolean, lockUnknown: boolean, ultrasEntitled: boolean, window: { earliest: string, latest: string, relaunchIntervalDays: number | null, unavailable: Array<{ from: string, to: string, reason: LaunchDateUnavailableReason }> } | null, blocks: Array<{ code: string, message: string, releaseAt: string | null }>, locks: Array<{ code: string, message: string }> } }>, pageInfo: { endCursor: string | null, hasNextPage: boolean } } };
+
+export type ClientNewProductLaunchWindowQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientNewProductLaunchWindowQuery = { newProductLaunchWindow: { earliest: string, latest: string, relaunchIntervalDays: number | null, unavailable: Array<{ from: string, to: string, reason: LaunchDateUnavailableReason }> } };
+
+export type ClientProductHandleAvailabilityQueryVariables = Exact<{
+  handle: string;
+  productHandle?: string | null | undefined;
+}>;
+
+
+export type ClientProductHandleAvailabilityQuery = { productHandleAvailability: HandleAvailability };
+
+export type ClientProductCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientProductCategoriesQuery = { productCategories: Array<{ id: string, name: string, handle: string, systemDefault: boolean }> };
+
+export type ClientDeleteProductMutationVariables = Exact<{
+  productHandle: string;
+  expectedVersion: number;
+}>;
+
+
+export type ClientDeleteProductMutation = { deleteProduct: boolean };
+
+export type ClientRegisterProductMutationVariables = Exact<{
+  input: RegisterProductInput;
+}>;
+
+
+export type ClientRegisterProductMutation = { registerProduct: { handle: string, previousHandle: string | null, name: string, tagline: string, websiteUrl: string, description: string, logoFileId: string, hidden: boolean, listed: boolean, version: number, category: { id: string, name: string, handle: string, systemDefault: boolean }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, screenshots: Array<{ fileId: string, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }>, latestLaunch: { id: string, number: number, launchDate: string, kickoffAt: string, status: LaunchStatus, outcome: QualifierOutcome | null, summary: { label: string, inMatch: boolean } } | null, plan: { mode: LaunchPlanMode, currentLaunchDate: string | null, locked: boolean, lockUnknown: boolean, ultrasEntitled: boolean, window: { earliest: string, latest: string, relaunchIntervalDays: number | null, unavailable: Array<{ from: string, to: string, reason: LaunchDateUnavailableReason }> } | null, blocks: Array<{ code: string, message: string, releaseAt: string | null }>, locks: Array<{ code: string, message: string }> } } };
+
+export type ClientUpdateProductMutationVariables = Exact<{
+  input: UpdateProductInput;
+}>;
+
+
+export type ClientUpdateProductMutation = { updateProduct: { handle: string, previousHandle: string | null, name: string, tagline: string, websiteUrl: string, description: string, logoFileId: string, hidden: boolean, listed: boolean, version: number, category: { id: string, name: string, handle: string, systemDefault: boolean }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, screenshots: Array<{ fileId: string, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }>, latestLaunch: { id: string, number: number, launchDate: string, kickoffAt: string, status: LaunchStatus, outcome: QualifierOutcome | null, summary: { label: string, inMatch: boolean } } | null, plan: { mode: LaunchPlanMode, currentLaunchDate: string | null, locked: boolean, lockUnknown: boolean, ultrasEntitled: boolean, window: { earliest: string, latest: string, relaunchIntervalDays: number | null, unavailable: Array<{ from: string, to: string, reason: LaunchDateUnavailableReason }> } | null, blocks: Array<{ code: string, message: string, releaseAt: string | null }>, locks: Array<{ code: string, message: string }> } } };
+
 export type ClientFollowUserMutationVariables = Exact<{
   handle: string;
 }>;
@@ -545,6 +682,16 @@ export const ClientConfirmCheckoutReturnDocument = {"__meta__":{"hash":"sha256:2
 export const ClientPaymentHistoryDocument = {"__meta__":{"hash":"sha256:723fccc8cbea4146117d0a1b8aee0a88b01acc1488cf7fb836a129079e19b1c5"}} as unknown as DocumentNode<ClientPaymentHistoryQuery, ClientPaymentHistoryQueryVariables>;
 export const ClientRecordCheckoutConsentDocument = {"__meta__":{"hash":"sha256:5beeb2e6d0d838279f1012328c32c5bae9446e4fb8d7c1370d5b895445c97e05"}} as unknown as DocumentNode<ClientRecordCheckoutConsentMutation, ClientRecordCheckoutConsentMutationVariables>;
 export const ClientStartSmokeCheckoutDocument = {"__meta__":{"hash":"sha256:453e7f92f82cd9485779ddbee4a1b98898e55fb933896727e1efcb3dcd8a2eaf"}} as unknown as DocumentNode<ClientStartSmokeCheckoutMutation, ClientStartSmokeCheckoutMutationVariables>;
+export const ClientLaunchHistoryDocument = {"__meta__":{"hash":"sha256:3c41a4fb429956d3b77f97dc3779b9c8064e44829735f02adccf4110c977e20d"}} as unknown as DocumentNode<ClientLaunchHistoryQuery, ClientLaunchHistoryQueryVariables>;
+export const ClientProfileAwardsDocument = {"__meta__":{"hash":"sha256:fe5c079d62a96633b98048585784714874f0f90cbfa859420a5e9ac8ea026aa7"}} as unknown as DocumentNode<ClientProfileAwardsQuery, ClientProfileAwardsQueryVariables>;
+export const ClientMyProductDocument = {"__meta__":{"hash":"sha256:ef1223fa92768f5ab0a7ba8471bdeb35675d3942b4029ef20a0c46137b93be40"}} as unknown as DocumentNode<ClientMyProductQuery, ClientMyProductQueryVariables>;
+export const ClientMyProductsDocument = {"__meta__":{"hash":"sha256:117ac9cfc9d4293834e3142440dd095bafa3697fff62739f33df5f675727458a"}} as unknown as DocumentNode<ClientMyProductsQuery, ClientMyProductsQueryVariables>;
+export const ClientNewProductLaunchWindowDocument = {"__meta__":{"hash":"sha256:4e7a1b66b66188c59951262f48a98b8a212c9b171f4e55202d34b69f29f086a6"}} as unknown as DocumentNode<ClientNewProductLaunchWindowQuery, ClientNewProductLaunchWindowQueryVariables>;
+export const ClientProductHandleAvailabilityDocument = {"__meta__":{"hash":"sha256:e99882e3550d5311a8d0f431df7edc63160cc5b6282c348db9b96c251eef0833"}} as unknown as DocumentNode<ClientProductHandleAvailabilityQuery, ClientProductHandleAvailabilityQueryVariables>;
+export const ClientProductCategoriesDocument = {"__meta__":{"hash":"sha256:293bea5c8a969e077edc0e230fbcdf0ddaeb330c756c4b0bc60c50ec56904a04"}} as unknown as DocumentNode<ClientProductCategoriesQuery, ClientProductCategoriesQueryVariables>;
+export const ClientDeleteProductDocument = {"__meta__":{"hash":"sha256:547ba5446e4ad75ec314ed44811a2bca8e44adab5d900f8539f9644ad9385f27"}} as unknown as DocumentNode<ClientDeleteProductMutation, ClientDeleteProductMutationVariables>;
+export const ClientRegisterProductDocument = {"__meta__":{"hash":"sha256:ad6f48a145c5fe7b19e3637e33a28e166b5d2237f45ec09ed69cd234ec5a8bff"}} as unknown as DocumentNode<ClientRegisterProductMutation, ClientRegisterProductMutationVariables>;
+export const ClientUpdateProductDocument = {"__meta__":{"hash":"sha256:e57428a1ab7e742fd6ec14129778e0fbe5ae2914d32c07c9ff083de23f6558d0"}} as unknown as DocumentNode<ClientUpdateProductMutation, ClientUpdateProductMutationVariables>;
 export const ClientFollowUserDocument = {"__meta__":{"hash":"sha256:61a8982e76108e2990bc30c68e7a92f50347977c1eb33942b96e1e3eed669c74"}} as unknown as DocumentNode<ClientFollowUserMutation, ClientFollowUserMutationVariables>;
 export const ClientHandleAvailabilityDocument = {"__meta__":{"hash":"sha256:02205eb34fb97582363b5f973f14b2d6ff8f33b9ba36ea3bdcf1bb4eeaa5d55a"}} as unknown as DocumentNode<ClientHandleAvailabilityQuery, ClientHandleAvailabilityQueryVariables>;
 export const ClientMyFollowersDocument = {"__meta__":{"hash":"sha256:154e09d711ae0f920e4c3e21a71eab5935c360df6016cb11f3ff8416cdeb5569"}} as unknown as DocumentNode<ClientMyFollowersQuery, ClientMyFollowersQueryVariables>;

@@ -305,8 +305,10 @@ apps/
 │   ├── composition/product-delete-notices.ts             # PRODUCT_DELETE_NOTICES(後続specが追記、初版は空)
 │   ├── graphql/my-products.ts                            # 自分のプロダクトの取得の設定・変換・無効化(単体テスト付き)
 │   ├── graphql/launch-history.ts                         # ローンチ履歴・受賞の取得の設定と変換(単体テスト付き)
+│   ├── graphql/product-launch.ts                         # 2つの取得の設定が共有するローンチ・受賞の変換(単体テスト付き)
 │   ├── components/product/                               # 1ファイル1コンポーネント(browser testを併置)
 │   │   ├── bot-actions.ts                                # PRODUCT_BOT_ACTIONSの写し(config/contract-copies.unit.test.tsで一致を確かめる)
+│   │   ├── product-section-order.ts                      # 区画と注意書きの登録の`order`順の並べ替え(単体テスト付き)
 │   │   ├── product-section-types.ts                      # MyProductSectionContext・各登録の型(テストなし)
 │   │   ├── my-product-list-page.tsx                      # 一覧の枠・状態表示・続き
 │   │   ├── my-product-card.tsx                           # 1件の項目と登録された区画
