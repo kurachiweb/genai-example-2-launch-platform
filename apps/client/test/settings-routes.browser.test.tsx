@@ -174,13 +174,14 @@ describe('設定ページの経路', () => {
       .toBeVisible();
   });
 
-  test.each(['/settings', '/settings/account'])(
+  test.each(['/settings', '/settings/account', '/settings/profile'])(
     '未ログインで%sを開くと、戻り先を付けてログイン画面へ移す',
     async (path) => {
       const router = await renderAt(path);
 
       await expect.element(pageTitle()).toHaveTextContent('ログイン');
       expect(router.state.location.search).toEqual({ redirect: path });
+      expect(executeGraphQL).not.toHaveBeenCalled();
     },
   );
 

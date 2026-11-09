@@ -175,15 +175,109 @@ describe('FollowButton', () => {
   });
 
   describe('メールアドレス未確認の利用者', () => {
-    test('ボタンを無効にし、理由をボタンの説明に結び付ける', async () => {
+    test('ボタンを`aria-disabled`にし、理由をボタンの説明に結び付け、押しても送らない', async () => {
       await renderButton({}, UNVERIFIED_VIEWER);
 
-      await expect.element(followButton()).toBeDisabled();
+      await expect
+        .element(followButton())
+        .toHaveAttribute('aria-disabled', 'true');
       await expect
         .element(followButton())
         .toHaveAccessibleDescription(EMAIL_UNVERIFIED_REASON);
+      await userEvent.tab();
+      expect(document.activeElement).toBe(followButton().element());
+      await userEvent.keyboard('{Enter}');
       await userEvent.click(followButton(), { force: true });
       expect(executeGraphQL).not.toHaveBeenCalled();
+    });
+
+    test('既にフォロー中なら「フォロー中」を押せる状態で示し、理由の説明は付けない', async () => {
+      await renderButton({ initialFollowing: true }, UNVERIFIED_VIEWER);
+
+      await expect
+        .element(followingButton())
+        .toHaveAttribute('aria-pressed', 'true');
+      await expect.element(followingButton()).toBeEnabled();
+      await expect
+        .element(followingButton())
+        .not.toHaveAccessibleDescription(EMAIL_UNVERIFIED_REASON);
+      await expect
+        .element(followingButton())
+        .not.toHaveAttribute('aria-disabled');
+    });
+
+    test('フォロー中のボタンで解除でき、解除した後は無効の「フォロー」と理由に戻る', async () => {
+      respondWithState(false, 4);
+      const onChange = vi.fn();
+      await renderButton(
+        { initialFollowing: true, onChange },
+        UNVERIFIED_VIEWER,
+      );
+      await passBotCheck();
+
+      await userEvent.click(followingButton());
+
+      await expect.element(page.getByText(UNFOLLOWED_MESSAGE)).toBeVisible();
+      await expect
+        .element(followButton())
+        .toHaveAttribute('aria-disabled', 'true');
+      await expect
+        .element(followButton())
+        .toHaveAccessibleDescription(EMAIL_UNVERIFIED_REASON);
+      expect(executeGraphQL).toHaveBeenCalledExactlyOnceWith(
+        ClientUnfollowUserDocument,
+        { handle: TARGET.handle },
+        { turnstileToken: 'turnstile-token-1' },
+      );
+      expect(onChange).toHaveBeenCalledExactlyOnceWith({
+        following: false,
+        followerCount: 4,
+      });
+    });
+
+    test('解除に成功した後も、同じボタンがフォーカスを保ち、押しても送らず、axeの違反が0件である', async () => {
+      respondWithState(false, 4);
+      await renderButton({ initialFollowing: true }, UNVERIFIED_VIEWER);
+      await passBotCheck();
+      const before = followingButton().element();
+      (before as HTMLElement).focus();
+
+      await userEvent.keyboard('{Enter}');
+
+      await expect.element(page.getByText(UNFOLLOWED_MESSAGE)).toBeVisible();
+      expect(followButton().element()).toBe(before);
+      expect(document.activeElement).toBe(before);
+      await userEvent.keyboard('{Enter}');
+      await userEvent.click(followButton(), { force: true });
+      expect(executeGraphQL).toHaveBeenCalledOnce();
+      await expect
+        .element(followButton())
+        .toHaveAccessibleDescription(EMAIL_UNVERIFIED_REASON);
+      expect(await runAxe(document.body)).toStrictEqual([]);
+    });
+
+    test('解除に失敗した時は「フォロー中」のまま押せる状態に戻る', async () => {
+      respondWithFailure(
+        'rate_limit_exceeded',
+        429,
+        '操作が集中しています。しばらく待ってから再度お試しください。',
+      );
+      await renderButton({ initialFollowing: true }, UNVERIFIED_VIEWER);
+      await passBotCheck();
+
+      await userEvent.click(followingButton());
+
+      await expect
+        .element(
+          page.getByText(
+            '操作が集中しています。しばらく待ってから再度お試しください。',
+          ),
+        )
+        .toBeVisible();
+      await expect
+        .element(followingButton())
+        .toHaveAttribute('aria-pressed', 'true');
+      await expect.element(followingButton()).toBeEnabled();
     });
 
     test('ポインターを重ねると、理由をツールチップで示す', async () => {
@@ -493,6 +587,7 @@ describe('FollowButton', () => {
     const STATES: readonly (readonly [string, ClientViewerQuery, boolean])[] = [
       ['未ログイン', GUEST_VIEWER_QUERY, false],
       ['未確認', UNVERIFIED_VIEWER, false],
+      ['未確認でフォロー中', UNVERIFIED_VIEWER, true],
       ['フォローしていない', VERIFIED_VIEWER, false],
       ['フォロー中', VERIFIED_VIEWER, true],
     ];

@@ -104,7 +104,7 @@ describe('ProfileActionsMenu', () => {
     await userEvent.keyboard('{Escape}');
 
     await expect.element(page.getByRole('menuitem')).not.toBeInTheDocument();
-    expect(document.activeElement).toBe(trigger().element());
+    await expect.poll(() => document.activeElement).toBe(trigger().element());
   });
 
   test.each(COLOR_SCHEMES)(

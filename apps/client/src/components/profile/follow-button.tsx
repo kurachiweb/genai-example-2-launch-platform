@@ -3,7 +3,6 @@ import { useViewer } from '../auth/use-viewer.ts';
 import type { FollowButtonSize, FollowState } from './follow-button-types.ts';
 import { FollowLoginButton } from './follow-login-button.tsx';
 import { FollowToggleButton } from './follow-toggle-button.tsx';
-import { FollowUnverifiedButton } from './follow-unverified-button.tsx';
 
 export interface FollowButtonProps {
   readonly target: { readonly handle: string };
@@ -30,15 +29,13 @@ export function FollowButton({
   if (isSameHandle(viewer.handle, target.handle)) {
     return null;
   }
-  if (!viewer.emailVerified) {
-    return <FollowUnverifiedButton size={size} className={className} />;
-  }
   return (
     <FollowToggleButton
       handle={target.handle}
       initialFollowing={initialFollowing}
       onChange={onChange}
       size={size}
+      canStartFollowing={viewer.emailVerified}
       className={className}
     />
   );

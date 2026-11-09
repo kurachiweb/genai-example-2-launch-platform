@@ -35,6 +35,15 @@ const RESERVED_HANDLE = 'admin';
 
 const REDIRECT_STATUS = 302;
 
+const NOT_FOUND_STATUS = 404;
+
+const MALFORMED_HANDLES = [
+  'bad.handle',
+  '-leading',
+  '_leading',
+  'a'.repeat(26),
+];
+
 const PLACEHOLDER_SELECTOR = '[data-slot="media-placeholder"]';
 
 const pathOf = (url: string, baseURL: string | undefined): string => {
@@ -155,6 +164,24 @@ test.describe('プロフィールの編集と公開', () => {
     await expect(
       form.getByText(PROFILE_FORM_MESSAGES.handleUnavailable),
     ).toBeVisible();
+  });
+
+  test('存在しないハンドルと形式違反のハンドルは、転送されずHTTPの状態404で返る', async ({
+    page,
+  }) => {
+    const unknown = await requestWithoutFollowing(page, createProfileHandle());
+    expect(unknown).toStrictEqual({
+      status: NOT_FOUND_STATUS,
+      location: undefined,
+    });
+
+    for (const handle of MALFORMED_HANDLES) {
+      const malformed = await requestWithoutFollowing(page, handle);
+      expect(malformed, handle).toStrictEqual({
+        status: NOT_FOUND_STATUS,
+        location: undefined,
+      });
+    }
   });
 
   test('別の利用者が最初の利用者の旧ハンドルを設定でき、その後は旧ハンドルのURLが転送されず設定した利用者の公開プロフィールを表示する', async ({

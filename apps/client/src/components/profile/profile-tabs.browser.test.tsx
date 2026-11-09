@@ -457,7 +457,7 @@ describe('ProfileTabs', () => {
       await expect
         .element(page.getByRole('status'))
         .toHaveTextContent('読み込み中');
-      expect(document.activeElement).not.toBe(document.body);
+      await expect.poll(() => document.activeElement).not.toBe(document.body);
 
       gate.resolve();
 
