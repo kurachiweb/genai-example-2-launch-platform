@@ -307,7 +307,7 @@
   - _Boundary: `docs/GUIDES/tech/backend/012-aggregate-lifecycle-events.md`・`backend/013-pluggable-decision-sources.md`・`frontend/012-business-date-calendar.md`・`backend/README.md`・`frontend/README.md`・`CLAUDE.md`_
   - _Requirements: 15.4_
 
-- [ ] 11.2 (P) 日次タイムライン・準拠方針・オンボーディングを更新する
+- [x] 11.2 (P) 日次タイムライン・準拠方針・オンボーディングを更新する
   - 日次タイムラインの4:21の表に`product-launch.purge-orchestrator`(1000)・`product-launch.lifecycle-redispatch`(1010)を、準拠方針の注5に論理削除したプロダクトのハンドルの扱いと、プロダクトの旧ハンドルは他のプロダクトが設定した時点で消えること(仮5)を、`docs/onboardings/project-values.md`に波及処理・処理・ジョブの名前と`order`・用途・bot対策の`action`・メッセージ種別と、backend/011の値の表へプロダクトのハンドル(上限50、予約語は`IMPERSONATION_RESERVED_HANDLES`)とカテゴリのハンドル(上限50、予約語なし)を加える
   - 完了状態: 文書が整形の検査を通り、2026-10-24に確定した決定(仮4・仮5など)に合っている
   - _Boundary: `docs/GUIDES/service/overview/007-daily-timeline.md`・`docs/GUIDES/service/legal/001-compliance-policy.md`・`docs/onboardings/project-values.md`_
@@ -377,4 +377,5 @@
 - 9.9: `ProfileAwardBadges`(`components/launch-history/profile-award-badges.tsx`)を`PUBLIC_PROFILE_BADGES`に登録した。suspenseを使わない`useQuery`で読み、空・null・失敗・読み込み中は何も描かない。上流の`profile-card.browser.test.tsx`の空の登録を前提とした2件を書き直した。受賞の供給元(トーナメントのspec)がまだ無いため、ローカルでは「出ない」側だけ確かめた
 - 10: 管理画面の区画は`apps/admin/src/components/product/product-category-section.tsx`(`CATEGORY_SECTIONS`の`order` 10)。APIの欄の詳細が`input.name`・`input.handle`のため、共通の`CategoryFormDialog`(サーバーの欄の接頭辞が無い)に合わせて区画の`toCategoryFormError`で経路を書き換える(共通部品に`serverFieldPrefix`を足すのは上流の判断、help-centerも要る見込み)。1.1で監査の操作種別を加えて以来失敗していたadminの`audit-logs-page.browser.test.tsx`の期待値を直した
 - 11.1: `backend/012`・`backend/013`・`frontend/012`を書き、CLAUDE.mdにbackend/012と、同じ書き方でbackend/013・frontend/012の参照も加えた。保存の処理の文の規約は、directory-discoveryの`markPending`(`INSERT … ON CONFLICT DO UPDATE`)に合わせ「集約のIDを条件にした更新か挿入」にした(tasks.mdの11.1の本文の「更新だけ」より緩い。design.mdとコードのコメントも直した)。送信の失敗の運用者への通知は送り直しのジョブの3回目以降の報告に任せる(backend/007の「ログと運用者への通知」より緩い、コードのとおり)。READMEの「範囲」の説明は変えていない
+- 11.2: project-values.mdに節「プロダクトとローンチ」を作り、11.2に回された事項を全て反映した(共通の値は既存の表へ)。準拠方針の「他の対象が同じ文字列を設定すると旧ハンドルを消す」を「他のプロダクト」に直した(FR-PRDCT-020・022、仮5)。注5のヘルプ記事の文の「他の対象」はhelp-centerの担当のため残した。backend/013にもproject-values.mdへの参照を加えた
 - 11.2への申し送り(`docs/onboardings/project-values.md`): 技術文書の新しいプレースホルダーの値(`<集約>`=プロダクト、`<集約の実行のメッセージ>`=`product.run-product-lifecycle`、`<物理削除を始めるまでの業務日数>`=13、`<所有者ごとに読む集約の件数>`=50、`<集約の物理削除を待つ上限>`=10分、`<判定の一括の上限>`=20、`<選べる日の締め切りの時刻>`=23:40、`<変更の固定の始まりの時刻>`=23:45、11.1)、画面の登録箇所`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`(9.1)、GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)
