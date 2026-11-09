@@ -13,6 +13,8 @@ const EXPECTED_NAMES = [
   'ProductRegistration',
   'ProductEditor',
   'ProductDescriptionEditor',
+  'MyProductsReader',
+  'ProductHandleAvailabilityChecker',
 ] as const;
 
 describe('PRODUCT_TYPES', () => {

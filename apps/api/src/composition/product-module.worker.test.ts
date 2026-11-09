@@ -55,6 +55,10 @@ import type {
 } from '../application/product/decision-sources.ts';
 import type { ProductStore } from '../application/product/ports.ts';
 import {
+  type MyProductsReader,
+  StoreMyProductsReader,
+} from '../application/product/my-products-reader.ts';
+import {
   type ProductDescriptionEditor,
   StoreProductDescriptionEditor,
 } from '../application/product/product-description-editor.ts';
@@ -62,6 +66,10 @@ import {
   type ProductEditor,
   StoreProductEditor,
 } from '../application/product/product-editor.ts';
+import {
+  type ProductHandleAvailabilityChecker,
+  StoreProductHandleAvailabilityChecker,
+} from '../application/product/product-handle-availability-checker.ts';
 import {
   type ProductRegistration,
   StoreProductRegistration,
@@ -145,7 +153,7 @@ beforeEach(async () => {
 });
 
 describe('APIサーバーのプロダクトのモジュールの束縛', () => {
-  test('処理単位のコンテナから、ストア・登録と編集と説明文の更新のユースケース・状態の判定をそれぞれの実装に解決する', () => {
+  test('処理単位のコンテナから、ストア・登録と編集と説明文の更新と自分のプロダクトの照会とハンドルの使用可否のユースケース・状態の判定をそれぞれの実装に解決する', () => {
     const container = createContainer();
 
     expect(
@@ -162,6 +170,14 @@ describe('APIサーバーのプロダクトのモジュールの束縛', () => {
         PRODUCT_TYPES.ProductDescriptionEditor,
       ),
     ).toBeInstanceOf(StoreProductDescriptionEditor);
+    expect(
+      container.get<MyProductsReader>(PRODUCT_TYPES.MyProductsReader),
+    ).toBeInstanceOf(StoreMyProductsReader);
+    expect(
+      container.get<ProductHandleAvailabilityChecker>(
+        PRODUCT_TYPES.ProductHandleAvailabilityChecker,
+      ),
+    ).toBeInstanceOf(StoreProductHandleAvailabilityChecker);
     expect(
       container.get<ProductStateEvaluator>(PRODUCT_TYPES.ProductStateEvaluator),
     ).toBeInstanceOf(DefaultProductStateEvaluator);
@@ -286,6 +302,73 @@ describe('プロダクトの登録(実物の束縛)', () => {
         }),
     ).rejects.toMatchObject({ code: 'invalid_upload' });
     expect(await db.select({ id: products.id }).from(products)).toEqual([]);
+  });
+});
+
+describe('自分のプロダクトの照会とハンドルの使用可否(実物の束縛)', () => {
+  test('登録したプロダクトを、一覧と1件の照会と所有者の状態で本人だけに返し、使用可否は編集中のプロダクトの現在のハンドルを使えるとする', async () => {
+    await insertUser(OWNER, { emailVerifiedAt: T0 });
+    await insertUser(2, { emailVerifiedAt: T0 });
+    await insertFile(LOGO_FILE, {
+      purpose: PRODUCT_LOGO_PURPOSE,
+      ownerId: userIdOf(OWNER),
+    });
+    const container = createRegistrationContainer();
+    const { earliest } = container
+      .get<MyProductsReader>(PRODUCT_TYPES.MyProductsReader)
+      .newProductWindow(ownerOf(OWNER), REGISTRATION_NOW);
+    const registered = await container
+      .get<ProductRegistration>(PRODUCT_TYPES.ProductRegistration)
+      .register(ownerOf(OWNER), {
+        name: 'ローンチ計測',
+        tagline: '公開の反応をまとめて見る',
+        categoryId: PRODUCT_CATEGORY_OTHER_ID,
+        handle: 'launch-meter',
+        websiteUrl: 'https://launch-meter.example/',
+        descriptionMarkdown: '# 概要',
+        logoFileId: fileIdOf(LOGO_FILE),
+        screenshotFileIds: [],
+        launchDate: earliest,
+      });
+    const reader = createRegistrationContainer().get<MyProductsReader>(
+      PRODUCT_TYPES.MyProductsReader,
+    );
+    const checker =
+      createRegistrationContainer().get<ProductHandleAvailabilityChecker>(
+        PRODUCT_TYPES.ProductHandleAvailabilityChecker,
+      );
+
+    const page = await reader.list(ownerOf(OWNER), {
+      first: 20,
+      after: undefined,
+    });
+
+    expect(page.nodes).toEqual([registered]);
+    expect(page.hasNextPage).toBe(false);
+    expect(
+      await reader.list(ownerOf(OWNER), {
+        first: 20,
+        after: page.endCursor ?? undefined,
+      }),
+    ).toEqual({ nodes: [], hasNextPage: false, endCursor: null });
+    expect(await reader.find(ownerOf(OWNER), 'launch-meter')).toEqual({
+      kind: 'product',
+      product: registered,
+    });
+    expect(await reader.find(ownerOf(2), 'launch-meter')).toEqual({
+      kind: 'not-found',
+    });
+    expect(await reader.ownerStatus(ownerOf(OWNER), 'launch-meter')).toEqual({
+      latestLaunch: registered.state.latestLaunch,
+      state: registered.state,
+    });
+    expect(await reader.ownerStatus(ownerOf(2), 'launch-meter')).toBeNull();
+    expect(
+      await checker.check(ownerOf(OWNER), 'Launch-Meter', 'launch-meter'),
+    ).toBe('available');
+    expect(await checker.check(ownerOf(2), 'Launch-Meter', undefined)).toBe(
+      'unavailable',
+    );
   });
 });
 

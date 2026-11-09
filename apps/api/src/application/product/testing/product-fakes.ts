@@ -1,4 +1,7 @@
-import { toHandleKey } from '../../../../common-lib/handles/handle-rules.ts';
+import {
+  isSameHandle,
+  toHandleKey,
+} from '../../../../common-lib/handles/handle-rules.ts';
 import type {
   CurrentUser,
   UserAccountView,
@@ -20,6 +23,7 @@ import type {
   ProductDescriptionUpdateInput,
   ProductDescriptionUpdateResult,
   ProductInsertInput,
+  ProductListPosition,
   ProductSaveInput,
   ProductSaveResult,
   ProductSnapshot,
@@ -97,12 +101,22 @@ export interface FakeProductStoreOptions {
   readonly forgetsInserted?: boolean;
   readonly saveResult?: ProductSaveResult;
   readonly descriptionResult?: ProductDescriptionUpdateResult;
+  // 論理削除したプロダクトとして、読み取りのメソッドから除く
+  readonly deletedProductIds?: readonly string[];
+}
+
+export interface FakeListRequest {
+  readonly ownerUserId: string;
+  readonly limit: number;
+  readonly before: ProductListPosition | undefined;
+  readonly now: Date;
 }
 
 export interface FakeProductStore extends ProductStore {
   readonly inserts: ProductInsertInput[];
   readonly saves: ProductSaveInput[];
   readonly descriptionUpdates: ProductDescriptionUpdateInput[];
+  readonly listRequests: FakeListRequest[];
   readonly occupiedChecks: {
     readonly handle: string;
     readonly exceptProductId: string | undefined;
@@ -150,6 +164,37 @@ const snapshotOfSave = (
   version: current.version + 1,
 });
 
+// 業務日付はYYYY-MM-DDの固定長のため、文字列の比較が日付の前後と一致する
+const latestLaunchDateOf = (snapshot: ProductSnapshot): string =>
+  snapshot.launches.reduce<string>(
+    (latest, { launchDate }) => (launchDate > latest ? launchDate : latest),
+    '',
+  );
+
+// ストアと同じく最新のローンチ日とIDの降順
+const newestFirst = (left: ProductSnapshot, right: ProductSnapshot): number => {
+  const leftDate = latestLaunchDateOf(left);
+  const rightDate = latestLaunchDateOf(right);
+  if (leftDate !== rightDate) {
+    return leftDate < rightDate ? 1 : -1;
+  }
+  return left.productId < right.productId ? 1 : -1;
+};
+
+const isAfterPosition = (
+  snapshot: ProductSnapshot,
+  before: ProductListPosition | undefined,
+): boolean => {
+  if (before === undefined) {
+    return true;
+  }
+  const date = latestLaunchDateOf(snapshot);
+  return (
+    date < before.latestLaunchDate ||
+    (date === before.latestLaunchDate && snapshot.productId < before.id)
+  );
+};
+
 // 使わないメソッドを呼んだら失敗させ、ユースケースが想定外のポートに触れたことを検出する
 function failUnused<T extends object>(
   implemented: Partial<T>,
@@ -175,6 +220,14 @@ export function createFakeProductStore(
   const categories = new Set(options.categoryIds ?? [CATEGORY_ID]);
   const occupied = new Set((options.occupiedHandles ?? []).map(toHandleKey));
   const snapshots = [...(options.snapshots ?? [])];
+  const deleted = new Set(options.deletedProductIds ?? []);
+  const readable = (ownerUserId: string): ProductSnapshot[] =>
+    snapshots.filter(
+      (snapshot) =>
+        snapshot.ownerUserId === ownerUserId &&
+        !deleted.has(snapshot.productId),
+    );
+  const listRequests: FakeListRequest[] = [];
   const inserts: ProductInsertInput[] = [];
   const saves: ProductSaveInput[] = [];
   const descriptionUpdates: ProductDescriptionUpdateInput[] = [];
@@ -183,6 +236,7 @@ export function createFakeProductStore(
     inserts,
     saves,
     descriptionUpdates,
+    listRequests,
     occupiedChecks,
     categoryExists(categoryId) {
       calls.push('store.categoryExists');
@@ -223,10 +277,26 @@ export function createFakeProductStore(
     findForOwner(ownerUserId, handle) {
       calls.push('store.findForOwner');
       return Promise.resolve(
-        snapshots.find(
-          (snapshot) =>
-            snapshot.ownerUserId === ownerUserId && snapshot.handle === handle,
-        ),
+        readable(ownerUserId).find((snapshot) => snapshot.handle === handle),
+      );
+    },
+    resolveOwnPreviousHandle(ownerUserId, handle) {
+      calls.push('store.resolveOwnPreviousHandle');
+      return Promise.resolve(
+        readable(ownerUserId).find(
+          ({ previousHandle }) =>
+            previousHandle !== null && isSameHandle(previousHandle, handle),
+        )?.handle,
+      );
+    },
+    listForOwner(input) {
+      calls.push('store.listForOwner');
+      listRequests.push(input);
+      return Promise.resolve(
+        readable(input.ownerUserId)
+          .filter((snapshot) => isAfterPosition(snapshot, input.before))
+          .toSorted(newestFirst)
+          .slice(0, input.limit),
       );
     },
   };

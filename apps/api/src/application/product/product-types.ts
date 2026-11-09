@@ -29,6 +29,12 @@ const ProductDescriptionEditor: unique symbol = Symbol.for(
   'product.ProductDescriptionEditor',
 );
 
+const MyProductsReader: unique symbol = Symbol.for('product.MyProductsReader');
+
+const ProductHandleAvailabilityChecker: unique symbol = Symbol.for(
+  'product.ProductHandleAvailabilityChecker',
+);
+
 export const PRODUCT_TYPES = Object.freeze({
   ProductStateEvaluator,
   RelaunchConditionSources,
@@ -39,4 +45,6 @@ export const PRODUCT_TYPES = Object.freeze({
   ProductRegistration,
   ProductEditor,
   ProductDescriptionEditor,
+  MyProductsReader,
+  ProductHandleAvailabilityChecker,
 });

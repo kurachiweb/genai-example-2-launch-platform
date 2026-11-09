@@ -10,6 +10,10 @@ import {
   type RelaunchConditionSource,
   resolveDecisionSources,
 } from '../application/product/decision-sources.ts';
+import {
+  type MyProductsReader,
+  StoreMyProductsReader,
+} from '../application/product/my-products-reader.ts';
 import type { ProductStore } from '../application/product/ports.ts';
 import {
   type ProductDescriptionEditor,
@@ -19,6 +23,10 @@ import {
   type ProductEditor,
   StoreProductEditor,
 } from '../application/product/product-editor.ts';
+import {
+  type ProductHandleAvailabilityChecker,
+  StoreProductHandleAvailabilityChecker,
+} from '../application/product/product-handle-availability-checker.ts';
 import {
   type ProductRegistration,
   StoreProductRegistration,
@@ -83,5 +91,11 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ProductDescriptionEditor>(PRODUCT_TYPES.ProductDescriptionEditor).to(
       StoreProductDescriptionEditor,
     );
+    bind<MyProductsReader>(PRODUCT_TYPES.MyProductsReader).to(
+      StoreMyProductsReader,
+    );
+    bind<ProductHandleAvailabilityChecker>(
+      PRODUCT_TYPES.ProductHandleAvailabilityChecker,
+    ).to(StoreProductHandleAvailabilityChecker);
   }),
 };
