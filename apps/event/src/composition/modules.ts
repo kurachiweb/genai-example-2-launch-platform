@@ -21,6 +21,7 @@ import {
   EVENT_PAYMENTS_MODULE,
   EVENT_PAYMENTS_PLATFORM_MODULE,
 } from './payments-module.ts';
+import { EVENT_PRODUCT_MODULE } from './product-module.ts';
 import { EVENT_PROFILE_MODULE } from './profile-module.ts';
 import {
   EVENT_SEARCH_MODULE,
@@ -52,4 +53,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_PAYMENTS_MODULE,
     EVENT_ULTRAS_PLATFORM_MODULE,
     EVENT_ULTRAS_MODULE,
+    EVENT_PRODUCT_MODULE,
   ]);

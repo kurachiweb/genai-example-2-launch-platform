@@ -204,7 +204,7 @@
   - _Requirements: 10.11_
 
 - [ ] 8. イベントサーバーのライフサイクル
-- [ ] 8.1 プロダクトライフサイクルの実行器と最後の物理削除を作る
+- [x] 8.1 プロダクトライフサイクルの実行器と最後の物理削除を作る
   - 先に、模擬のポートの単体テストで、イベントが無い・完了済みで`done`、同じプロダクトの古い`pending`で60秒の`defer`、未完了の処理だけを順に実行して完了を記録すること、`continue`で5秒の`defer`、`purge_due`で全処理の後に物理削除すること、例外をそのまま投げることを確かめる。ローカルD1のWorkers統合テストで、物理削除のストアの2つの操作(画像のIDの読み取り・最後の物理削除)を確かめ、物理削除がプロダクトとその子の行・イベントの記録を消し、identity-authの利用者の物理削除が外部キーで失敗しないことを確かめる
   - 非同期の処理の登録口(`createProductLifecycleRegistry`で検証、初版は空)と実行器をeventの束縛とメッセージの処理の登録箇所へ加える。実行器はapplication層に置き、記録は`core/product`の`ProductLifecycleStore`の型で受け取り、物理削除の一括の書き込みは物理削除のストアのD1の実装(infrastructure層)だけが行う。eventのapplication層の`ports.ts`に、8.3が使う送信のポート`ProductMessagePublisher`(apiと同じ形、`@inject(PLATFORM_TYPES.MessagePublisher)`で受け取る)も作る
   - 完了状態: 単体テスト・Workers統合テスト・3経路のDIの解決の検査が成功し、`product.run-product-lifecycle`を処理でき、eventのapplication層に`**/lib/workers/**`の読み込みが無い
@@ -363,4 +363,5 @@
 - 7.2: ミューテーションは`modules/product/product-mutation-resolvers.ts`。順は呼び出し元→入力の検証→利用者の状態(登録`requireVerifiedUser`、編集・削除`requireWritableUser`)→bot判定→ユースケース。詳細の欄は`input.fields.<名前>`と`input.launchDate`(`launch_date_unavailable`だけ`input`の直下)。未確認かつ停止中は上流の`AccountGuard`が`account_unavailable`を先に返す。`PRODUCT_BOT_ACTIONS`は`resolver-support.ts`で、9.1の写しを作ったら`project-values.md`の「bot判定のaction」の行に画面の写しの場所を加える。テストの補助に`failProductDecisionSources()`
 - 7.3: `launchHistory`(client・ログイン不要)と`productCategories`(client・admin)、`adminProductCategories`(viewer)と作成・更新・削除(moderator、理由は任意の引数で500文字、監査ログの`reason`の列)。`productCategoryLoader`は`modules/product/product-views.ts`(directory-discoveryも使う)。ローンチ履歴の項目の受賞のラベルは週・年だけで、公開プロフィールの受賞(`profileAwards`)だけ名称を前に付ける(003の行の範囲も明記した)。テストの補助に設定可能な`LaunchSummarySource`
 - 7.4: `profileAwards(userHandle)`はハンドルの形式の違反を`validation_error`(欄`userHandle`)で拒否し、`launchHistory`は同じ違反をnullにする(どちらも設計どおり、design.mdの表の記述を明確にした)。テストの補助は`apps/api/test/support/product-graphql-documents.ts`(操作の文書と応答の型)と`product-graphql-operations.ts`に分割した
+- 8.1: eventのモジュールは`createEventProductModule({ asyncHandlers })`(`EVENT_PRODUCT_MODULE`、`MODULES`の末尾)。識別子`EVENT_PRODUCT_TYPES`は接頭辞`product.event.`。非同期の処理の登録口は`apps/event/src/composition/product-lifecycle-async-handlers.ts`の`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`で、8.2・8.3は処理を`createEventProductModule`で束縛して1行登録する。`purge_due`は全処理の後に物理削除し、物理削除がイベントの行を消すため完了を記録しない(ユーザーライフサイクルの実行器との違い、11.1の`backend/012`に書く)。物理削除のストア`EVENT_PRODUCT_TYPES.ProductPurgeStore`の`imageFileIds`は論理削除・非公開化中も返す。eventの`ProductMessagePublisher`は`application/product/ports.ts`で`@inject(PLATFORM_TYPES.MessagePublisher)`。ログのカテゴリ`['event', 'product', 'lifecycle']`(11.2で`project-values.md`へ、メッセージ種別の行と登録口も)
 - 11.2への申し送り(`docs/onboardings/project-values.md`): GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

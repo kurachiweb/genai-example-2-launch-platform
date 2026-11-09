@@ -14,8 +14,10 @@ import {
   RECHECK_DISPOSABLE_EMAIL_MESSAGE,
   RUN_USER_LIFECYCLE_MESSAGE,
 } from '../../lib/core/messaging/contracts/identity.ts';
+import { RUN_PRODUCT_LIFECYCLE_MESSAGE } from '../../lib/core/messaging/contracts/product.ts';
 import type { MessageHandlerRegistration } from '../../lib/core/messaging/message-contract.ts';
 import { PAYMENTS_REFUND_MESSAGE } from '../../lib/core/payments/refund-message.ts';
+import { PRODUCT_LIFECYCLE_RETRY_POLICY } from '../../lib/core/product/product-lifecycle.ts';
 import { SEARCH_TYPES } from '../../lib/core/search/identifiers.ts';
 import {
   ULTRAS_ACTIVATION_RETRY_POLICY,
@@ -28,6 +30,7 @@ import { MODERATION_RETRY_POLICY } from '../application/media/moderate-image-han
 import { PURGE_IMAGE_CACHE_RETRY_POLICY } from '../application/media/purge-image-cache-handler.ts';
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
 import { REFUND_PAYMENT_RETRY_POLICY } from '../application/payments/refund-payment-handler.ts';
+import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 
 export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
@@ -74,5 +77,10 @@ export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
       contract: ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE,
       handler: EVENT_ULTRAS_TYPES.RunActivationHandlersHandler,
       retry: ULTRAS_ACTIVATION_RETRY_POLICY,
+    },
+    {
+      contract: RUN_PRODUCT_LIFECYCLE_MESSAGE,
+      handler: EVENT_PRODUCT_TYPES.ProductLifecycleRunner,
+      retry: PRODUCT_LIFECYCLE_RETRY_POLICY,
     },
   ]);
