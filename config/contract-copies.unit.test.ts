@@ -51,6 +51,10 @@ const PRODUCT_RESOLVER_SUPPORT =
   'apps/api/src/presentation/graphql/modules/product/resolver-support.ts';
 const CLIENT_PRODUCT_BOT_ACTIONS =
   'apps/client/src/components/product/bot-actions.ts';
+const BACKEND_BUSINESS_TIME = 'apps/backend-lib/core/time/business-time.ts';
+const BACKEND_LAUNCH_STATUS = 'apps/backend-lib/core/product/launch-status.ts';
+const CLIENT_PRODUCT_BUSINESS_TIME =
+  'apps/client/src/components/product/business-time.ts';
 const API_PROFILE_INPUT_MESSAGES =
   'apps/api/src/presentation/graphql/modules/profile/errors.ts';
 const API_PROFILE_ERRORS = 'apps/api/src/application/profile/profile-errors.ts';
@@ -202,6 +206,13 @@ const extractValue = (
   }
   if (ts.isNumericLiteral(expression)) {
     return Number(expression.getText().replaceAll('_', ''));
+  }
+  if (
+    ts.isPrefixUnaryExpression(expression) &&
+    expression.operator === ts.SyntaxKind.MinusToken &&
+    ts.isNumericLiteral(expression.operand)
+  ) {
+    return -Number(expression.operand.getText().replaceAll('_', ''));
   }
   if (ts.isRegularExpressionLiteral(expression)) {
     return regExpOf(expression);
@@ -637,6 +648,20 @@ describe('bot判定の操作名の写し(components/*/bot-actions.ts)', () => {
 
     expect(Object.keys(apiActions)).not.toBeEmpty();
     expect(readStringRecord(copy.path, copy.name)).toEqual(apiActions);
+  });
+});
+
+describe('業務時刻の写し(components/product/business-time.ts)', () => {
+  test('業務時刻のUTCとの差がbackend-libのBUSINESS_UTC_OFFSET_MINUTESと一致する', () => {
+    expect(
+      readNumber(CLIENT_PRODUCT_BUSINESS_TIME, 'BUSINESS_UTC_OFFSET_MINUTES'),
+    ).toBe(readNumber(BACKEND_BUSINESS_TIME, 'BUSINESS_UTC_OFFSET_MINUTES'));
+  });
+
+  test('選べる日の締め切りがbackend-libのLAUNCH_SELECTION_CUTOFFと一致する', () => {
+    expect(
+      readValue(CLIENT_PRODUCT_BUSINESS_TIME, 'LAUNCH_SELECTION_CUTOFF'),
+    ).toEqual(readValue(BACKEND_LAUNCH_STATUS, 'LAUNCH_SELECTION_CUTOFF'));
   });
 });
 

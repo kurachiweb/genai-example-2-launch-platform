@@ -47,3 +47,5 @@ export const screenshotRemoveLabelOf = (position: number): string =>
 
 export const screenshotTotalsOf = (count: number, totalBytes: number): string =>
   `${String(count)}/${String(PRODUCT_SCREENSHOTS_MAX)}枚・${formatFileSize(totalBytes)}/${formatFileSize(PRODUCT_SCREENSHOTS_TOTAL_MAX_BYTES)}`;
+
+export const LAUNCH_DATE_FIELD_LABEL = 'ローンチ日(必須)';

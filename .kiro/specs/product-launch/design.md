@@ -335,6 +335,9 @@ apps/
 │   │   ├── product-handle-field.tsx
 │   │   ├── category-select.tsx
 │   │   ├── launch-date-field.tsx                         # カレンダー・選べない理由・キックオフの表示
+│   │   ├── launch-date-field-values.ts                   # 計画からカレンダーを描くかの判定(`showsLaunchDateCalendar`)
+│   │   ├── launch-date-calendar.ts                       # カレンダーの日と業務日付の写し・選べない日の理由(単体テスト付き)
+│   │   ├── business-time.ts                              # 業務時刻のUTCとの差と選択の締め切りの写し(`config/contract-copies.unit.test.ts`で照合)
 │   │   ├── product-edit-page.tsx                         # 編集画面の枠(状態・フォーム・削除)
 │   │   └── product-delete-dialog.tsx                     # 確認と登録された注意書き
 │   ├── components/launch-history/

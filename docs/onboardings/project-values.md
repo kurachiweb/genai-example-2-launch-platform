@@ -654,6 +654,7 @@ Infisicalの機械の主体とOIDCの縛りは次のとおりである。audienc
 - 業務時刻は、夏時間の無いUTC-08:00である。`apps/backend-lib/core/time/business-time.ts`の`BUSINESS_UTC_OFFSET_MINUTES`(`-480`)が定める。
 - 業務日付の境界(業務時刻の0:00)は、UTCの8:00である。
 - 例えば、業務時刻の4:21はUTCの12:21(cron式`21 12 * * *`)、業務時刻の23:45はUTCの翌日の7:45(cron式`45 7 * * *`)になる。
+- 利用者側の画面(`apps/client`)はbackend-libを読み込めないため、ローンチ日の欄のキックオフの日時と選べる日の締め切り(23:40)の取り直しに使う`BUSINESS_UTC_OFFSET_MINUTES`と`LAUNCH_SELECTION_CUTOFF`(`apps/backend-lib/core/product/launch-status.ts`)を`apps/client/src/components/product/business-time.ts`に写している。一致は`config/contract-copies.unit.test.ts`が確かめる。
 
 ## 定期実行と非同期メッセージ
 

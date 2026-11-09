@@ -25,3 +25,15 @@ export const EARLIEST_LAUNCH_DATE_NOTICE = Object.freeze({
   before: 'このプロダクトは',
   after: '以降のローンチ日を選べます。',
 });
+
+// ローンチ日のカレンダーの選べない日の理由。状態の表示のため句点を付けず、ツールチップと読み上げ用の文言に同じ文言を使う
+export const UNAVAILABLE_LAUNCH_DATE_REASONS = Object.freeze({
+  pairing_deadline: 'ペアリングの締め切りを過ぎています',
+  relaunch_interval: '敗北後の間隔のため選べません',
+  out_of_range: '選べる期間の外です',
+} as const);
+
+export const ULTRAS_RELAUNCH_PROMOTION =
+  'Ultrasなら敗北後2日で再ローンチできます。';
+
+export const PRICING_LINK_LABEL = '料金を見る';

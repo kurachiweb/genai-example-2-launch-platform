@@ -21,6 +21,8 @@ export const DIRECTORY_HREF = '/p';
 
 export const CONTACT_HREF = '/contact';
 
+export const PRICING_HREF = '/pricing';
+
 export const TERMS_HREF = LEGAL_DOCUMENT_PATHS.terms;
 
 export const PRIVACY_HREF = LEGAL_DOCUMENT_PATHS.privacy;
@@ -86,6 +88,6 @@ export const FOOTER_LEGAL_DOCUMENT_LINKS: readonly LegalDocumentSiteLink[] =
   );
 
 export const FOOTER_POLICY_LINKS: readonly SiteLink[] = Object.freeze([
-  { href: '/pricing', label: '料金' },
+  { href: PRICING_HREF, label: '料金' },
   { href: CONTACT_HREF, label: 'お問い合わせ' },
 ]);
