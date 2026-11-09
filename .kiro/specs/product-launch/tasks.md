@@ -217,7 +217,7 @@
   - 完了状態: 単体テスト・Workers統合テスト・登録の検証が成功する
   - _Requirements: 8.4, 12.8, 13.5_
 
-- [ ] 8.3 ユーザーの物理削除の波及処理を作る
+- [x] 8.3 ユーザーの物理削除の波及処理を作る
   - 先に、模擬のポートの単体テストで、利用者のプロダクトが無ければ完了、あれば`purge_due`の無いものに作って送り続きを返すこと、作成から10分を過ぎて行が残れば例外を投げることを確かめる(送信は偽の`ProductMessagePublisher`で受ける)。ローカルD1のWorkers統合テストで、2つのプロダクトを持つ退会者の`purge_due`で2つのプロダクトの`purge_due`が作られ、実行器の処理の後に呼び直すと完了になることを確かめる
   - `product-launch.product-erasure`(`purge_due`、`order` 1000)をeventの束縛とidentity-authの非同期の波及処理の登録箇所へ同時に加える(8.2の後に行い、eventの束縛の変更が並行しないようにする)
   - ユーザーの`purge_due`の処理名の並びを完全一致で確かめる既存のテスト(`apps/event/src/composition/profile-module.worker.test.ts`・`payments-module.worker.test.ts`・`ultras-module.worker.test.ts`)の期待値に`product-launch.product-erasure`を加える
@@ -365,4 +365,5 @@
 - 7.4: `profileAwards(userHandle)`はハンドルの形式の違反を`validation_error`(欄`userHandle`)で拒否し、`launchHistory`は同じ違反をnullにする(どちらも設計どおり、design.mdの表の記述を明確にした)。テストの補助は`apps/api/test/support/product-graphql-documents.ts`(操作の文書と応答の型)と`product-graphql-operations.ts`に分割した
 - 8.1: eventのモジュールは`createEventProductModule({ asyncHandlers })`(`EVENT_PRODUCT_MODULE`、`MODULES`の末尾)。識別子`EVENT_PRODUCT_TYPES`は接頭辞`product.event.`。非同期の処理の登録口は`apps/event/src/composition/product-lifecycle-async-handlers.ts`の`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`で、8.2・8.3は処理を`createEventProductModule`で束縛して1行登録する。`purge_due`は全処理の後に物理削除し、物理削除がイベントの行を消すため完了を記録しない(ユーザーライフサイクルの実行器との違い、11.1の`backend/012`に書く)。物理削除のストア`EVENT_PRODUCT_TYPES.ProductPurgeStore`の`imageFileIds`は論理削除・非公開化中も返す。eventの`ProductMessagePublisher`は`application/product/ports.ts`で`@inject(PLATFORM_TYPES.MessagePublisher)`。ログのカテゴリ`['event', 'product', 'lifecycle']`(11.2で`project-values.md`へ、メッセージ種別の行と登録口も)
 - 8.2: `product-launch.image-quarantine`(`hidden`・`unhidden`、1000)と`product-launch.image-erasure`(`purge_due`、1000)をeventに束縛し登録した。ログは8.1のカテゴリ。統合テストは`apps/event/src/composition/product-image-handlers.worker.test.ts`。開発者への報告事項: 非公開化中も編集でき(仮7)、その間に追加・差し替えたロゴ・スクリーンショットには`product_hidden`が付かず、画像配信のドメインから配信され得る(FR-ADMUG-047に厳密には合わない。公開の画面からは到達できずURLは推測できない)。直す場所はapiの保存の経路で、保存と復元の競合を含めた設計の判断が要る
+- 8.3: `product-launch.product-erasure`はプロダクトを50件ずつ読み、未作成のものに`purge_due`を作って送り`continue`、全件の作成日時のうち最も新しいものから10分以上で行が残れば例外。送信の失敗は`error`のログで続け、4:21の送り直しに任せる。登録は`USER_LIFECYCLE_ASYNC_HANDLERS`の`user-profile-social.owned-file-erasure`の後(project-values.mdも更新済み)
 - 11.2への申し送り(`docs/onboardings/project-values.md`): GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

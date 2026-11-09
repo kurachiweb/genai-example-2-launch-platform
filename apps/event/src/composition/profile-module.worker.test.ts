@@ -245,7 +245,7 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
     ]);
   });
 
-  test('登録の検証を通り、ultras-subscriptionの後・アカウント機能の波及処理の前に並ぶ', () => {
+  test('登録の検証を通り、ultras-subscriptionの後・product-launchの波及処理の前に並ぶ', () => {
     const registry = createAsyncLifecycleRegistry(
       USER_LIFECYCLE_ASYNC_HANDLERS,
     );
@@ -258,6 +258,7 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
       'ultras-subscription.subscription-erasure',
       PROFILE_ERASURE_NAME,
       OWNED_FILE_ERASURE_NAME,
+      'product-launch.product-erasure',
     ]);
     expect(
       registry.handlersFor('suspended').map(({ name }) => name),

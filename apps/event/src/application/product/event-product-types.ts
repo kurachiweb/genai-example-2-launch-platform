@@ -11,10 +11,14 @@ const ProductImageQuarantineHandler: unique symbol = Symbol.for(
 const ProductImageErasureHandler: unique symbol = Symbol.for(
   'product.event.ProductImageErasureHandler',
 );
+const UserProductErasureHandler: unique symbol = Symbol.for(
+  'product.event.UserProductErasureHandler',
+);
 
 export const EVENT_PRODUCT_TYPES = Object.freeze({
   ProductPurgeStore,
   ProductLifecycleRunner,
   ProductImageQuarantineHandler,
   ProductImageErasureHandler,
+  UserProductErasureHandler,
 });

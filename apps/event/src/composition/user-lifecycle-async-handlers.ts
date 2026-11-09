@@ -2,6 +2,7 @@ import type { UserLifecycleAsyncRegistration } from '../../lib/core/identity/use
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
 import { EVENT_INQUIRY_TYPES } from '../application/inquiry/event-inquiry-types.ts';
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
+import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 
@@ -56,6 +57,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['suspended', 'unsuspended'],
       order: 600,
       handler: EVENT_PROFILE_TYPES.OwnedImageQuarantineHandler,
+    },
+    {
+      name: 'product-launch.product-erasure',
+      events: ['purge_due'],
+      order: 1000,
+      handler: EVENT_PRODUCT_TYPES.UserProductErasureHandler,
     },
     {
       name: 'identity-auth.email-suppression-cleanup',

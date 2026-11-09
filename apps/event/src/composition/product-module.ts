@@ -3,6 +3,7 @@ import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
+import type { UserLifecycleAsyncHandler } from '../../lib/core/identity/user-lifecycle.ts';
 import type { RunProductLifecycleBody } from '../../lib/core/messaging/contracts/product.ts';
 import type { MessageHandler } from '../../lib/core/messaging/message-contract.ts';
 import { PRODUCT_PLATFORM_TYPES } from '../../lib/core/product/identifiers.ts';
@@ -19,6 +20,7 @@ import type { ProductPurgeStore } from '../application/product/ports.ts';
 import { ProductImageErasureHandler } from '../application/product/product-image-erasure-handler.ts';
 import { ProductImageQuarantineHandler } from '../application/product/product-image-quarantine-handler.ts';
 import { ProductLifecycleRunner } from '../application/product/product-lifecycle-runner.ts';
+import { UserProductErasureHandler } from '../application/product/user-product-erasure-handler.ts';
 import { D1ProductPurgeStore } from '../infrastructure/product/d1-product-purge-store.ts';
 import type { EventEnv } from './env-schema.ts';
 import { PRODUCT_LIFECYCLE_ASYNC_HANDLERS } from './product-lifecycle-async-handlers.ts';
@@ -29,7 +31,7 @@ export interface EventProductModuleOptions {
   readonly asyncHandlers: readonly ProductLifecycleAsyncRegistration[];
 }
 
-// 共通の束縛(PRODUCT_PLATFORM_MODULE・EVENT_MEDIA_PLATFORM_MODULE)が登録されている前提で、プロダクトライフサイクルの実行器・物理削除のストア・画像の隔離と削除の処理を束縛する
+// 共通の束縛(PRODUCT_PLATFORM_MODULE・EVENT_MEDIA_PLATFORM_MODULE)が登録されている前提で、プロダクトライフサイクルの実行器・物理削除のストア・画像の隔離と削除の処理と、利用者の物理削除の波及処理を束縛する
 export function createEventProductModule(
   options: EventProductModuleOptions,
 ): EventAppModule {
@@ -47,6 +49,9 @@ export function createEventProductModule(
       bind<ProductLifecycleAsyncHandler>(
         EVENT_PRODUCT_TYPES.ProductImageErasureHandler,
       ).to(ProductImageErasureHandler);
+      bind<UserLifecycleAsyncHandler>(
+        EVENT_PRODUCT_TYPES.UserProductErasureHandler,
+      ).to(UserProductErasureHandler);
       bind<MessageHandler<RunProductLifecycleBody>>(
         EVENT_PRODUCT_TYPES.ProductLifecycleRunner,
       ).toDynamicValue(

@@ -304,6 +304,7 @@ describe('メッセージの処理と波及処理の登録', () => {
       'ultras-subscription.subscription-erasure',
       'user-profile-social.profile-erasure',
       'user-profile-social.owned-file-erasure',
+      'product-launch.product-erasure',
     ]);
     expect(namesFor('withdrawn')).toStrictEqual([
       'payments.open-checkout-expiry',
