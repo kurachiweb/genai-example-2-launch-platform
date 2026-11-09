@@ -1474,6 +1474,8 @@ export type Query = {
   productHandleAvailability: HandleAvailability;
   /** 現在のハンドルで本人のプロダクトだけ。それ以外はnull */
   productOwnerStatus?: Maybe<ProductOwnerStatus>;
+  /** 公開プロフィールの受賞バッジ。launchHistoryと同じ対象のプロダクトの受賞を、Yearを先頭に種類ごとにまとめて返す。ラベルの先頭に受賞したプロダクトの名称を付ける。利用者を表示できなければnull */
+  profileAwards?: Maybe<Array<ProductAward>>;
   /** 見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す */
   publicProfile?: Maybe<PublicProfileResult>;
   /** APIサーバーの時刻とデータベースへの到達可否 */
@@ -1592,6 +1594,11 @@ export type QueryProductHandleAvailabilityArgs = {
 
 export type QueryProductOwnerStatusArgs = {
   productHandle: Scalars['String']['input'];
+};
+
+
+export type QueryProfileAwardsArgs = {
+  userHandle: Scalars['String']['input'];
 };
 
 
@@ -2783,6 +2790,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   productCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
   productHandleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryProductHandleAvailabilityArgs, 'handle'>>;
   productOwnerStatus?: Resolver<Maybe<ResolversTypes['ProductOwnerStatus']>, ParentType, ContextType, RequireFields<QueryProductOwnerStatusArgs, 'productHandle'>>;
+  profileAwards?: Resolver<Maybe<Array<ResolversTypes['ProductAward']>>, ParentType, ContextType, RequireFields<QueryProfileAwardsArgs, 'userHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   ultrasOffer?: Resolver<ResolversTypes['UltrasOffer'], ParentType, ContextType>;

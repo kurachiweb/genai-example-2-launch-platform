@@ -7,11 +7,14 @@ import {
 import { AUDIT_REASON_TOO_LONG_MESSAGE } from '../inquiry/errors.ts';
 import { INPUT_MESSAGES as PROFILE_INPUT_MESSAGES } from '../profile/errors.ts';
 
-// 入力の検証の失敗(validation_error)の欄ごとの文言。名称・タグライン・ハンドルの文言は共用部品の入力規則が持ち、ユースケースが投げるエラーの文言はapplication層のproduct-errors.tsにある
+// 入力の検証の失敗(validation_error)の欄ごとの文言。名称・タグライン・プロダクトのハンドルの文言は共用部品の入力規則が、利用者のハンドルの文言はプロフィールのモジュールが持ち、ユースケースが投げるエラーの文言はapplication層のproduct-errors.tsにある
 export const INPUT_MESSAGES = Object.freeze({
   websiteUrlRequired: PROFILE_INPUT_MESSAGES.websiteUrlRequired,
   websiteUrlTooLong: PROFILE_INPUT_MESSAGES.websiteUrlTooLong,
   websiteUrlFormat: PROFILE_INPUT_MESSAGES.websiteUrlFormat,
+  userHandleRequired: PROFILE_INPUT_MESSAGES.handleRequired,
+  userHandleTooLong: PROFILE_INPUT_MESSAGES.handleTooLong,
+  userHandleFormat: PROFILE_INPUT_MESSAGES.handleFormat,
   categoryInvalid: PRODUCT_ERRORS.category_not_found.message,
   imageInvalid: PRODUCT_ERRORS.invalid_upload.message,
   screenshotsTooMany: PRODUCT_ERRORS.screenshot_limit_exceeded.message,

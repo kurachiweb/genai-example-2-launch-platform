@@ -282,6 +282,8 @@ export const PRODUCT_TYPE_DEFS = /* GraphQL */ `
       first: Int!
       after: String
     ): LaunchHistoryConnection
+    "公開プロフィールの受賞バッジ。launchHistoryと同じ対象のプロダクトの受賞を、Yearを先頭に種類ごとにまとめて返す。ラベルの先頭に受賞したプロダクトの名称を付ける。利用者を表示できなければnull"
+    profileAwards(userHandle: String!): [ProductAward!]
     "管理者向けのプロダクトカテゴリの一覧。productCategoriesと同じ順"
     adminProductCategories: [ProductCategory!]!
   }

@@ -3,8 +3,8 @@ import { PRODUCT_TYPES } from '../../../../application/product/product-types.ts'
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
-import { LAUNCH_HISTORY_ARGS } from './inputs.ts';
-import { toLaunchHistoryConnection } from './mappers.ts';
+import { LAUNCH_HISTORY_ARGS, PROFILE_AWARDS_ARGS } from './inputs.ts';
+import { toLaunchHistoryConnection, toProductAward } from './mappers.ts';
 import { clientOnly } from './resolver-support.ts';
 
 const readerOf = (context: GraphQLContext): LaunchHistoryReader =>
@@ -23,6 +23,17 @@ export const launchHistoryResolvers = {
             after,
           });
           return page === null ? null : toLaunchHistoryConnection(page);
+        },
+      ),
+    ),
+    profileAwards: clientOnly(
+      withValidatedArgs(
+        PROFILE_AWARDS_ARGS,
+        async (_parent: unknown, { userHandle }, context) => {
+          const groups = await readerOf(context).awards(context.session, {
+            userHandle,
+          });
+          return groups === null ? null : groups.map(toProductAward);
         },
       ),
     ),

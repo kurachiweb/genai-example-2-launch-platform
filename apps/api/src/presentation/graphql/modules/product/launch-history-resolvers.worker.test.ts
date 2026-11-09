@@ -23,6 +23,7 @@ import {
   codesOf,
   detailsOf,
   fetchLaunchHistory,
+  fetchProfileAwards,
   insertOwnedProduct,
   installProductGraphQLTest,
   issueProductUserSession,
@@ -365,5 +366,122 @@ describe('launchHistory: ページと引数', () => {
     expect(detailsOf(response)).toEqual([
       expect.objectContaining({ field: 'after' }),
     ]);
+  });
+});
+
+describe('profileAwards', () => {
+  const AWARD_ANSWER = {
+    launches: [],
+    awards: [
+      { productId: productIdOf(1), kind: 'week', label: '2026年 第45週' },
+      { productId: productIdOf(2), kind: 'week', label: '2026年 第47週' },
+      { productId: productIdOf(1), kind: 'year', label: '2026年' },
+      { productId: productIdOf(3), kind: 'year', label: '2025年' },
+    ],
+  } as const;
+
+  test('他人とログインしていない閲覧者には、掲載済みのプロダクトの受賞を名称付きのラベルでYearを先頭に種類ごとにまとめて返す', async () => {
+    await insertOwnerProducts();
+    answerLaunchSummaries(AWARD_ANSWER);
+    const token = await issueProductUserSession(VIEWER);
+
+    const signedIn = await fetchProfileAwards(OWNER_HANDLE, {
+      sessionToken: token,
+    });
+    const anonymous = await fetchProfileAwards(OWNER_HANDLE);
+
+    const expected = [
+      { kind: 'YEAR', count: 1, labels: ['プロダクト1 2026年'] },
+      { kind: 'WEEK', count: 1, labels: ['プロダクト1 2026年 第45週'] },
+    ];
+    expect(signedIn.errors).toBeUndefined();
+    expect(signedIn.data?.profileAwards).toEqual(expected);
+    expect(anonymous.errors).toBeUndefined();
+    expect(anonymous.data?.profileAwards).toEqual(expected);
+  });
+
+  test('本人には非公開化中を除く未掲載を含む自分のプロダクトの受賞をまとめて返す', async () => {
+    await insertOwnerProducts();
+    answerLaunchSummaries(AWARD_ANSWER);
+    const token = await issueProductUserSession(OWNER);
+
+    const response = await fetchProfileAwards(OWNER_HANDLE, {
+      sessionToken: token,
+    });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data?.profileAwards).toEqual([
+      { kind: 'YEAR', count: 1, labels: ['プロダクト1 2026年'] },
+      {
+        kind: 'WEEK',
+        count: 2,
+        labels: ['プロダクト1 2026年 第45週', 'プロダクト2 2026年 第47週'],
+      },
+    ]);
+  });
+
+  test('受賞が無いときと供給元が失敗したときは空の配列を返す', async () => {
+    await insertOwnerProducts();
+
+    const empty = await fetchProfileAwards(OWNER_HANDLE);
+    answerLaunchSummaries(new Error('要約の供給元に接続できません'));
+    const failed = await fetchProfileAwards(OWNER_HANDLE);
+
+    expect(empty.errors).toBeUndefined();
+    expect(empty.data?.profileAwards).toEqual([]);
+    expect(failed.errors).toBeUndefined();
+    expect(failed.data?.profileAwards).toEqual([]);
+  });
+
+  test('停止中の利用者は本人にだけ返し、他人と存在しない利用者にはnullを返す', async () => {
+    await insertOwnerProducts();
+    answerLaunchSummaries(AWARD_ANSWER);
+    const ownerToken = await issueProductUserSession(OWNER);
+    const viewerToken = await issueProductUserSession(VIEWER);
+    await suspendProductUser(OWNER);
+
+    const owner = await fetchProfileAwards(OWNER_HANDLE, {
+      sessionToken: ownerToken,
+    });
+    const other = await fetchProfileAwards(OWNER_HANDLE, {
+      sessionToken: viewerToken,
+    });
+    const missing = await fetchProfileAwards('nobody');
+
+    expect(owner.errors).toBeUndefined();
+    expect(owner.data?.profileAwards).toHaveLength(2);
+    expect(other.errors).toBeUndefined();
+    expect(other.data?.profileAwards).toBeNull();
+    expect(missing.errors).toBeUndefined();
+    expect(missing.data?.profileAwards).toBeNull();
+  });
+
+  test.each([
+    ['空', '', 'ハンドルを入力してください。'],
+    ['26文字', 'a'.repeat(26), 'ハンドルは25文字以内で入力してください。'],
+    [
+      '使えない文字を含む',
+      'not a handle',
+      'ハンドルは英数字で始め、英数字・ハイフン・アンダースコアのみで入力してください。',
+    ],
+  ])(
+    '%sのハンドルをvalidation_errorで拒否する',
+    async (_label, userHandle, message) => {
+      const response = await fetchProfileAwards(userHandle);
+
+      expect(codesOf(response)).toEqual(['validation_error']);
+      expect(detailsOf(response)).toEqual([
+        expect.objectContaining({ field: 'userHandle', message }),
+      ]);
+    },
+  );
+
+  test('利用者側でない呼び出し元をforbiddenで拒否する', async () => {
+    const response = await fetchProfileAwards(OWNER_HANDLE, {
+      caller: 'admin',
+    });
+
+    expect(codesOf(response)).toEqual(['forbidden']);
+    expect(response.data?.profileAwards).toBeNull();
   });
 });

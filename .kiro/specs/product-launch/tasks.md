@@ -195,7 +195,7 @@
   - 完了状態: Workers統合テストとスキーマの検査が成功する
   - _Requirements: 10.2, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.9_
 
-- [ ] 7.4 公開プロフィールの受賞の照会を加える(仮14)
+- [x] 7.4 公開プロフィールの受賞の照会を加える(仮14)
   - 先に、Workers統合テストで、`profileAwards`がテスト用に登録した受賞の供給元の結果を種類ごとにまとめて返すこと(他人と本人で対象が異なること)、表示できない利用者と停止中で本人でない場合にnull、ハンドルの形式の違反で`validation_error`、`client`以外の呼び出し元の拒否を確かめる
   - ローンチ履歴のリゾルバのファイルに`profileAwards`を加え、既存の`ProductAward`の型で返す。スキーマファイルとリゾルバの型を生成し直す
   - 完了状態: Workers統合テストとスキーマの検査が成功する
@@ -362,4 +362,5 @@
 - 7.1: スキーマモジュールは`apps/api/src/presentation/graphql/modules/product/`。ページの引数は`inputs.ts`の`productPageArgsOf(maxPageSize)`(7.3は`LAUNCH_HISTORY_PAGE_MAX`で使う)。`clientOnly`・`adminOnly`は`resolver-support.ts`(`adminOnly`は7.3で初めて使う)。`errors.ts`は`callerForbiddenError`だけで、7.2が入力の文言と`INPUT_ARGUMENT`を加える。SDLは7.1の照会に要る型だけで、ミューテーションと入力の型は7.2・7.3が加える。所有者向けの`latestLaunch.summary`は`fallbackLaunchSummary`で供給元を呼ばない(`toProductLaunch(launch, summary?)`で7.3が供給元の要約を渡せる)。`kickoffAt`はmapperで計算し、`MyProduct.category`は`MyProductView.category`から読む(design.mdの`ProductViews`の`productCategoryLoader`とは相違)。7.3は`productCategoryLoader`を`product-views.ts`に作り`LaunchHistoryProduct.category`に使う(directory-discoveryも読む)。directory-discoveryの`OwnerCard`の見出しは`productOwnerStatus`の要約が予選の結果からの要約になるため、トーナメントの状態は`LaunchHighlightsReader`から作る必要がある(directory-discoveryへの申し送り)。テストの補助`apps/api/test/support/product-graphql-operations.ts`は`Clock`を設定可能な時計に束縛し直す
 - 7.2: ミューテーションは`modules/product/product-mutation-resolvers.ts`。順は呼び出し元→入力の検証→利用者の状態(登録`requireVerifiedUser`、編集・削除`requireWritableUser`)→bot判定→ユースケース。詳細の欄は`input.fields.<名前>`と`input.launchDate`(`launch_date_unavailable`だけ`input`の直下)。未確認かつ停止中は上流の`AccountGuard`が`account_unavailable`を先に返す。`PRODUCT_BOT_ACTIONS`は`resolver-support.ts`で、9.1の写しを作ったら`project-values.md`の「bot判定のaction」の行に画面の写しの場所を加える。テストの補助に`failProductDecisionSources()`
 - 7.3: `launchHistory`(client・ログイン不要)と`productCategories`(client・admin)、`adminProductCategories`(viewer)と作成・更新・削除(moderator、理由は任意の引数で500文字、監査ログの`reason`の列)。`productCategoryLoader`は`modules/product/product-views.ts`(directory-discoveryも使う)。ローンチ履歴の項目の受賞のラベルは週・年だけで、公開プロフィールの受賞(`profileAwards`)だけ名称を前に付ける(003の行の範囲も明記した)。テストの補助に設定可能な`LaunchSummarySource`
+- 7.4: `profileAwards(userHandle)`はハンドルの形式の違反を`validation_error`(欄`userHandle`)で拒否し、`launchHistory`は同じ違反をnullにする(どちらも設計どおり、design.mdの表の記述を明確にした)。テストの補助は`apps/api/test/support/product-graphql-documents.ts`(操作の文書と応答の型)と`product-graphql-operations.ts`に分割した
 - 11.2への申し送り(`docs/onboardings/project-values.md`): GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

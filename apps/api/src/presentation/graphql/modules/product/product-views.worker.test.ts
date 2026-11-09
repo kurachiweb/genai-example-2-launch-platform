@@ -25,10 +25,10 @@ import {
   installProductGraphQLTest,
   issueProductUserSession,
   kickoffOf,
-  type MyProductFields,
   PRODUCT_TEST_NOW,
   setProductTestNow,
 } from '../../../../../test/support/product-graphql-operations.ts';
+import type { MyProductFields } from '../../../../../test/support/product-graphql-documents.ts';
 import { computeLaunchDateWindow } from '../../../../domain/product/launch-date-rules.ts';
 
 const ALICE = 1;

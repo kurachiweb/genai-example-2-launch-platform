@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 import { checkAuditReason } from '../../../../../common-lib/admin/admin-input-rules.ts';
-import { checkHandleFormat } from '../../../../../common-lib/handles/handle-rules.ts';
+import {
+  checkHandleFormat,
+  type HandleFormatCheck,
+} from '../../../../../common-lib/handles/handle-rules.ts';
 import {
   checkProductName,
   checkTagline,
@@ -12,6 +15,7 @@ import {
   PRODUCT_SCREENSHOTS_MAX,
   PRODUCT_TAGLINE_MESSAGES,
 } from '../../../../../common-lib/product/product-input-rules.ts';
+import { USER_HANDLE_RULE } from '../../../../../common-lib/profile/profile-input-rules.ts';
 import { trimWhiteSpace } from '../../../../../common-lib/text/white-space.ts';
 import {
   checkExternalUrl,
@@ -52,6 +56,20 @@ export const MY_PRODUCTS_ARGS = productPageArgsOf(PRODUCT_STATE_BATCH_MAX);
 export const LAUNCH_HISTORY_ARGS = productPageArgsOf(
   LAUNCH_HISTORY_PAGE_MAX,
 ).extend({ userHandle: z.string() });
+
+const USER_HANDLE_MESSAGES = Object.freeze({
+  ok: undefined,
+  empty: INPUT_MESSAGES.userHandleRequired,
+  'too-long': INPUT_MESSAGES.userHandleTooLong,
+  'invalid-characters': INPUT_MESSAGES.userHandleFormat,
+} satisfies Record<HandleFormatCheck, string | undefined>);
+
+// 受賞の区画は表示できるプロフィールのハンドルでだけ呼ばれるため、形式の違反は画面の誤りとして拒否する。表示できない利用者はユースケースがnullにする
+export const PROFILE_AWARDS_ARGS = z.object({
+  userHandle: inputRuleOf(
+    (value) => USER_HANDLE_MESSAGES[checkHandleFormat(value, USER_HANDLE_RULE)],
+  ),
+});
 
 const handleTooLongMessage = PRODUCT_HANDLE_MESSAGES['too-long'];
 
