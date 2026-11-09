@@ -316,6 +316,7 @@ apps/
 │   │   ├── my-product-card-skeletons.tsx                 # 初回ローディングのカードの形のスケルトン
 │   │   ├── my-product-section-slots.tsx                  # 登録された区画を個別のエラー境界で描く(一覧と9.7の編集画面で共用)
 │   │   ├── my-product-messages.ts                        # 自分のプロダクトのページの文言(テストなし)
+│   │   ├── my-products-suspended-notice.tsx              # 停止中の利用者の案内と問い合わせへの導線(一覧と登録画面で共用)
 │   │   ├── use-boundary-refresh.ts                       # 表示中の業務時刻の境界のタイマーによる取り直し(9.5・9.7も使う)
 │   │   ├── launch-status-text.tsx                        # ローンチの状態の文言とキックオフの日時
 │   │   ├── launch-plan-notice.tsx                        # 次回の予約・固定・非公開化の案内
@@ -325,9 +326,15 @@ apps/
 │   │   ├── launch-date-text.tsx                          # 業務日付のローンチ日の<time>(日をずらさない)
 │   │   ├── remaining-date-time.tsx                       # 先の日時の<time>と残りの相対表現(今年は年を省く)
 │   │   ├── kickoff-time.tsx                              # 「キックオフ: 」と日時(LaunchStatusTextと9.5のローンチ日の欄で共用)
-│   │   ├── product-form.tsx                              # 登録・編集の共通のフォーム
-│   │   ├── product-form-schema.ts                        # フォームのスキーマ(zodの値はutilities/validation/zod.ts、テストは*.unit.test.ts)
-│   │   ├── product-form-messages.ts                      # フォームの欄の文言(テストなし)
+│   │   ├── product-form.tsx                              # 登録・編集の共通のフォーム(スキーマ・既定値・送信の処理を受け取る)
+│   │   ├── product-form-schema.ts                        # フォームのスキーマ(登録・編集のローンチ日あり・なし、zodの値はutilities/validation/zod.ts、テストは*.unit.test.ts)
+│   │   ├── product-form-values.ts                        # 登録の空の既定値・編集の既定値・編集の送る値(productHandle・expectedVersion・読み込んだカテゴリ・launchDate: null)(単体テスト付き)
+│   │   ├── product-form-messages.ts                      # フォームの欄の文言と登録のトーストの文(単体テスト付き。APIサーバーの文言の写しはconfig/contract-copies.unit.test.tsで照合)
+│   │   ├── product-description-field.tsx                 # 説明文のマークダウンの入力欄
+│   │   ├── product-registration-page.tsx                 # 登録画面の枠(題名・未確認と停止中の案内・取得の失敗の再試行)
+│   │   ├── product-registration-content.tsx              # 選べる日とカテゴリを読んで登録のフォームを描く
+│   │   ├── product-email-verification-notice.tsx         # メールアドレスの確認が必要な旨と確認メールの再送(上流のauth/use-resend-verification.tsを使う)
+│   │   ├── use-product-registration.ts                   # 登録の送信・選べる日の取り直し・トースト・一覧への移動
 │   │   ├── product-basic-field-values.ts                 # 基本の欄の部品が読み書きするフォームの値の経路とスクリーンショットの項目の型
 │   │   ├── product-basic-fields-testing.tsx              # 基本の欄の部品のブラウザテストのフォーム
 │   │   ├── logo-field.tsx

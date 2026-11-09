@@ -60,6 +60,11 @@ const API_PROFILE_INPUT_MESSAGES =
 const API_PROFILE_ERRORS = 'apps/api/src/application/profile/profile-errors.ts';
 const CLIENT_PROFILE_FORM_MESSAGES =
   'apps/client/src/components/profile/profile-form-messages.ts';
+const API_PRODUCT_INPUT_MESSAGES =
+  'apps/api/src/presentation/graphql/modules/product/errors.ts';
+const API_PRODUCT_ERRORS = 'apps/api/src/application/product/product-errors.ts';
+const CLIENT_PRODUCT_FORM_MESSAGES =
+  'apps/client/src/components/product/product-form-messages.ts';
 
 type ExtractedValue =
   | string
@@ -665,12 +670,11 @@ describe('業務時刻の写し(components/product/business-time.ts)', () => {
   });
 });
 
-const PROFILE_MESSAGES_INPUT_VARIABLE =
-  'CONTRACT_COPIES_PROFILE_MESSAGES_INPUT';
+const FORM_MESSAGES_INPUT_VARIABLE = 'CONTRACT_COPIES_FORM_MESSAGES_INPUT';
 
 // 文言は上限の定数から組み立てるため、ソースの構文解析ではなく子プロセスのbunで評価した値を比べる。ルートの型検査の対象に入らない文字列にしている
-const PROFILE_MESSAGES_SCRIPT = `
-const { modules } = JSON.parse(process.env.${PROFILE_MESSAGES_INPUT_VARIABLE});
+const FORM_MESSAGES_SCRIPT = `
+const { modules, names } = JSON.parse(process.env.${FORM_MESSAGES_INPUT_VARIABLE});
 const [input, errors, form] = await Promise.all([
   import(modules.input),
   import(modules.errors),
@@ -678,46 +682,73 @@ const [input, errors, form] = await Promise.all([
 ]);
 console.log(JSON.stringify({
   inputMessages: input.INPUT_MESSAGES,
-  handleUnavailable: errors.PROFILE_ERRORS.handle_unavailable.message,
-  formMessages: form.PROFILE_FORM_MESSAGES,
+  handleUnavailable: errors[names.errors].handle_unavailable.message,
+  formMessages: form[names.form],
 }));
 `;
 
-interface ProfileMessagesComparison {
+interface FormMessagesSources {
+  readonly label: string;
+  readonly input: string;
+  readonly errors: { readonly path: string; readonly name: string };
+  readonly form: DeclarationRef;
+}
+
+interface FormMessagesComparison {
   readonly inputMessages: Readonly<Record<string, string | undefined>>;
   readonly handleUnavailable: string;
   readonly formMessages: Readonly<Record<string, string | undefined>>;
 }
 
-const runProfileMessagesComparison = (): ProfileMessagesComparison => {
+const runFormMessagesComparison = ({
+  label,
+  input,
+  errors,
+  form,
+}: FormMessagesSources): FormMessagesComparison => {
   const result = Bun.spawnSync(
-    [process.execPath, '--eval', PROFILE_MESSAGES_SCRIPT],
+    [process.execPath, '--eval', FORM_MESSAGES_SCRIPT],
     {
       cwd: REPO_ROOT,
       env: {
         ...process.env,
-        [PROFILE_MESSAGES_INPUT_VARIABLE]: JSON.stringify({
+        [FORM_MESSAGES_INPUT_VARIABLE]: JSON.stringify({
           modules: {
-            input: join(REPO_ROOT, API_PROFILE_INPUT_MESSAGES),
-            errors: join(REPO_ROOT, API_PROFILE_ERRORS),
-            form: join(REPO_ROOT, CLIENT_PROFILE_FORM_MESSAGES),
+            input: join(REPO_ROOT, input),
+            errors: join(REPO_ROOT, errors.path),
+            form: join(REPO_ROOT, form.path),
           },
+          names: { errors: errors.name, form: form.name },
         }),
       },
     },
   );
   if (result.exitCode !== 0) {
     throw new Error(
-      `プロフィールの文言の比較が終了コード${String(result.exitCode)}で失敗しました: ${result.stderr.toString()}`,
+      `${label}の文言の比較が終了コード${String(result.exitCode)}で失敗しました: ${result.stderr.toString()}`,
     );
   }
-  return JSON.parse(result.stdout.toString()) as ProfileMessagesComparison;
+  return JSON.parse(result.stdout.toString()) as FormMessagesComparison;
+};
+
+const PROFILE_MESSAGES_SOURCES: FormMessagesSources = {
+  label: 'プロフィール',
+  input: API_PROFILE_INPUT_MESSAGES,
+  errors: { path: API_PROFILE_ERRORS, name: 'PROFILE_ERRORS' },
+  form: { path: CLIENT_PROFILE_FORM_MESSAGES, name: 'PROFILE_FORM_MESSAGES' },
+};
+
+const PRODUCT_MESSAGES_SOURCES: FormMessagesSources = {
+  label: 'プロダクト',
+  input: API_PRODUCT_INPUT_MESSAGES,
+  errors: { path: API_PRODUCT_ERRORS, name: 'PRODUCT_ERRORS' },
+  form: { path: CLIENT_PRODUCT_FORM_MESSAGES, name: 'PRODUCT_FORM_MESSAGES' },
 };
 
 describe('プロフィールの入力の違反の文言の写し(components/profile/profile-form-messages.ts)', () => {
   test('画面のPROFILE_FORM_MESSAGESがAPIサーバーのINPUT_MESSAGESとPROFILE_ERRORSの使用中の文言と項目ごとに一致する', () => {
     const { inputMessages, handleUnavailable, formMessages } =
-      runProfileMessagesComparison();
+      runFormMessagesComparison(PROFILE_MESSAGES_SOURCES);
     const { handleUnavailable: formHandleUnavailable, ...formInputMessages } =
       formMessages;
 
@@ -731,8 +762,49 @@ describe('プロフィールの入力の違反の文言の写し(components/prof
   });
 
   test('APIサーバーが画面で扱う違反の文言は、画面が全て持つ', () => {
-    const { inputMessages, formMessages } = runProfileMessagesComparison();
+    const { inputMessages, formMessages } = runFormMessagesComparison(
+      PROFILE_MESSAGES_SOURCES,
+    );
     const screenless = new Set(['avatarInvalid']);
+
+    const missing = Object.keys(inputMessages).filter(
+      (key) => !screenless.has(key) && !(key in formMessages),
+    );
+
+    expect(missing).toEqual([]);
+  });
+});
+
+describe('プロダクトの入力の違反の文言の写し(components/product/product-form-messages.ts)', () => {
+  test('画面のPRODUCT_FORM_MESSAGESがAPIサーバーのINPUT_MESSAGESとPRODUCT_ERRORSの使用中の文言と項目ごとに一致する', () => {
+    const { inputMessages, handleUnavailable, formMessages } =
+      runFormMessagesComparison(PRODUCT_MESSAGES_SOURCES);
+    const { handleUnavailable: formHandleUnavailable, ...formInputMessages } =
+      formMessages;
+
+    expect(Object.keys(formInputMessages)).not.toBeEmpty();
+    expect(formInputMessages).toEqual(
+      Object.fromEntries(
+        Object.keys(formInputMessages).map((key) => [key, inputMessages[key]]),
+      ),
+    );
+    expect(formHandleUnavailable).toBe(handleUnavailable);
+  });
+
+  test('APIサーバーが登録・編集のフォームで扱う違反の文言は、画面が全て持つ', () => {
+    const { inputMessages, formMessages } = runFormMessagesComparison(
+      PRODUCT_MESSAGES_SOURCES,
+    );
+    // 利用者のハンドル・管理画面のカテゴリ・監査の理由と、画面の操作では起きずサーバーの詳細の文言をそのまま示す違反
+    const screenless = new Set([
+      'userHandleRequired',
+      'userHandleTooLong',
+      'userHandleFormat',
+      'categoryInvalid',
+      'imageInvalid',
+      'categoryNotFound',
+      'reasonTooLong',
+    ]);
 
     const missing = Object.keys(inputMessages).filter(
       (key) => !screenless.has(key) && !(key in formMessages),

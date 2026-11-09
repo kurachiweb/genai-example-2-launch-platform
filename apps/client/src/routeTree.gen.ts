@@ -40,6 +40,7 @@ import { Route as LegalRevisionsVersionNumberRouteImport } from './routes/legal/
 import { Route as PrivacyRevisionsVersionNumberRouteImport } from './routes/privacy/revisions/$versionNumber'
 import { Route as TermsRevisionsVersionNumberRouteImport } from './routes/terms/revisions/$versionNumber'
 import { Route as AuthenticatedMyProductsIndexRouteImport } from './routes/_authenticated/my/products/index'
+import { Route as AuthenticatedMyProductsNewRouteImport } from './routes/_authenticated/my/products/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -212,6 +213,12 @@ const AuthenticatedMyProductsIndexRoute =
     path: '/my/products/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMyProductsNewRoute =
+  AuthenticatedMyProductsNewRouteImport.update({
+    id: '/my/products/new',
+    path: '/my/products/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByFullPath {
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
+  '/my/products/new': typeof AuthenticatedMyProductsNewRoute
   '/my/products/': typeof AuthenticatedMyProductsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -274,6 +282,7 @@ export interface FileRoutesByTo {
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
+  '/my/products/new': typeof AuthenticatedMyProductsNewRoute
   '/my/products': typeof AuthenticatedMyProductsIndexRoute
 }
 export interface FileRoutesById {
@@ -308,6 +317,7 @@ export interface FileRoutesById {
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
+  '/_authenticated/my/products/new': typeof AuthenticatedMyProductsNewRoute
   '/_authenticated/my/products/': typeof AuthenticatedMyProductsIndexRoute
 }
 export interface FileRouteTypes {
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/terms/revisions/$versionNumber'
     | '/settings/'
     | '/auth/password-reset/'
+    | '/my/products/new'
     | '/my/products/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/terms/revisions/$versionNumber'
     | '/settings'
     | '/auth/password-reset'
+    | '/my/products/new'
     | '/my/products'
   id:
     | '__root__'
@@ -406,6 +418,7 @@ export interface FileRouteTypes {
     | '/terms/revisions/$versionNumber'
     | '/_authenticated/settings/'
     | '/auth/password-reset/'
+    | '/_authenticated/my/products/new'
     | '/_authenticated/my/products/'
   fileRoutesById: FileRoutesById
 }
@@ -650,6 +663,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMyProductsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/my/products/new': {
+      id: '/_authenticated/my/products/new'
+      path: '/my/products/new'
+      fullPath: '/my/products/new'
+      preLoaderRoute: typeof AuthenticatedMyProductsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -684,6 +704,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCheckoutPurchaseIdRoute: typeof AuthenticatedCheckoutPurchaseIdRoute
   AuthenticatedCheckoutReturnRoute: typeof AuthenticatedCheckoutReturnRoute
   AuthenticatedInquiriesInquiryIdRoute: typeof AuthenticatedInquiriesInquiryIdRoute
+  AuthenticatedMyProductsNewRoute: typeof AuthenticatedMyProductsNewRoute
   AuthenticatedMyProductsIndexRoute: typeof AuthenticatedMyProductsIndexRoute
 }
 
@@ -692,6 +713,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCheckoutPurchaseIdRoute: AuthenticatedCheckoutPurchaseIdRoute,
   AuthenticatedCheckoutReturnRoute: AuthenticatedCheckoutReturnRoute,
   AuthenticatedInquiriesInquiryIdRoute: AuthenticatedInquiriesInquiryIdRoute,
+  AuthenticatedMyProductsNewRoute: AuthenticatedMyProductsNewRoute,
   AuthenticatedMyProductsIndexRoute: AuthenticatedMyProductsIndexRoute,
 }
 

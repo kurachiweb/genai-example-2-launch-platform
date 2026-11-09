@@ -355,6 +355,24 @@ export async function loadMyProducts({
     .catch(() => undefined);
 }
 
+// 登録画面の選べる日とカテゴリを同時に読む。選べる日は締め切りで変わるため取得し直し、失敗はページの位置で再試行できるよう例外にせずキャッシュに残す
+export async function loadProductRegistration({
+  context,
+}: {
+  readonly context: {
+    readonly queryClient: QueryClient;
+    readonly viewer: ClientViewer;
+  };
+}): Promise<void> {
+  const { queryClient, viewer } = context;
+  await Promise.all([
+    queryClient
+      .query({ ...newProductLaunchWindowQueryOptions(viewer.id), staleTime: 0 })
+      .catch(() => undefined),
+    queryClient.query(productCategoriesQueryOptions()).catch(() => undefined),
+  ]);
+}
+
 // プロダクトの保存・削除と業務時刻の境界は、自分のプロダクトの一覧・編集・選べる日に加え、公開プロフィールのローンチ履歴と受賞にも表れるため、それらの取得もまとめて無効にする。表示していない取得は古いものとだけされ、次に表示した時に取得し直される
 export async function invalidateMyProductQueries(
   queryClient: QueryClient,

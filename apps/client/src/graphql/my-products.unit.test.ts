@@ -29,6 +29,7 @@ import {
   fetchProductHandleAvailability,
   invalidateMyProductQueries,
   loadMyProducts,
+  loadProductRegistration,
   MY_PRODUCTS_PAGE_SIZE,
   myProductQueryOptions,
   myProductsQueryOptions,
@@ -528,7 +529,7 @@ describe('invalidateMyProductQueries', () => {
 
 const runThroughApi = async (
   run: (queryClient: QueryClient) => Promise<unknown>,
-  respond: () => Promise<Response>,
+  respond: (request: Request) => Promise<Response>,
 ) => {
   const api = recordingApi(respond);
   const queryClient = new QueryClient();
@@ -611,6 +612,66 @@ describe('loadMyProducts', () => {
     expect(result).toBe('loaded');
     expect(
       queryClient.getQueryState(myProductsQueryOptions(VIEWER.id).queryKey)
+        ?.status,
+    ).toBe('error');
+  });
+});
+
+describe('loadProductRegistration', () => {
+  test('選べる日とカテゴリを同時に読み、キャッシュに残す', async () => {
+    const { result, sent } = await runThroughApi(
+      async (client) => {
+        await loadProductRegistration({
+          context: { queryClient: client, viewer: VIEWER },
+        });
+        return [
+          client.getQueryData(
+            newProductLaunchWindowQueryOptions(VIEWER.id).queryKey,
+          ),
+          client.getQueryData(productCategoriesQueryOptions().queryKey),
+        ];
+      },
+      async (request) => {
+        const { documentId } = (await request.clone().json()) as {
+          readonly documentId: string;
+        };
+        return graphqlResponse({
+          data:
+            documentId === documentIdOf(ClientProductCategoriesDocument)
+              ? { productCategories: [CATEGORY] }
+              : { newProductLaunchWindow: WINDOW },
+        });
+      },
+    );
+
+    expect(result).toStrictEqual([
+      { newProductLaunchWindow: WINDOW },
+      { productCategories: [CATEGORY] },
+    ]);
+    expect(
+      (sent as readonly { readonly documentId: string }[])
+        .map(({ documentId }) => documentId)
+        .toSorted(),
+    ).toStrictEqual(
+      [
+        documentIdOf(ClientNewProductLaunchWindowDocument),
+        documentIdOf(ClientProductCategoriesDocument),
+      ].toSorted(),
+    );
+  });
+
+  test('取得に失敗しても、ページの位置で再試行できるよう例外にせず失敗をキャッシュに残す', async () => {
+    const { result, queryClient } = await runThroughApi(
+      (client) =>
+        loadProductRegistration({
+          context: { queryClient: client, viewer: VIEWER },
+        }).then(() => 'loaded'),
+      () => Promise.resolve(new Response('', { status: 503 })),
+    );
+
+    expect(result).toBe('loaded');
+    expect(
+      queryClient.getQueryState(productCategoriesQueryOptions().queryKey)
         ?.status,
     ).toBe('error');
   });
