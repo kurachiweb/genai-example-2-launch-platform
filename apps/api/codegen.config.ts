@@ -36,6 +36,9 @@ const config: CodegenConfig = {
           PublicProfileRedirect:
             '../modules/profile/mappers.ts#PublicProfileRedirectModel',
           MyProfile: '../modules/profile/mappers.ts#MyProfileModel',
+          MyProduct: '../modules/product/mappers.ts#MyProductModel',
+          ProductScreenshot:
+            '../modules/product/mappers.ts#ProductScreenshotModel',
         },
       },
     },

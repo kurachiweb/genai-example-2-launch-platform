@@ -480,6 +480,56 @@ enum InquiryStatus {
   RESOLVED
 }
 
+"""選べない日の範囲(両端を含む業務日付)"""
+type LaunchDateRange {
+  from: String!
+  reason: LaunchDateUnavailableReason!
+  to: String!
+}
+
+"""ローンチ日を選べない理由"""
+enum LaunchDateUnavailableReason {
+  OUT_OF_RANGE
+  PAIRING_DEADLINE
+  RELAUNCH_INTERVAL
+}
+
+"""選べるローンチ日。earliestからlatestまでのうちunavailableの範囲を除く日を選べる"""
+type LaunchDateWindow {
+  earliest: String!
+  latest: String!
+
+  """敗北後の間隔で最も早い日が後ろへずれるときの間隔の日数。それ以外はnull"""
+  relaunchIntervalDays: Int
+  unavailable: [LaunchDateRange!]!
+}
+
+"""
+次回のローンチの計画。NEWは新しいローンチの予約、RESCHEDULEは予定のローンチの日の変更、BLOCKEDは予約できない、UNKNOWNは判定できない
+"""
+enum LaunchPlanMode {
+  BLOCKED
+  NEW
+  RESCHEDULE
+  UNKNOWN
+}
+
+"""ローンチの状態。照会の時点の時刻から導く"""
+enum LaunchStatus {
+  CANCELED
+  FINISHED
+  IN_PROGRESS
+  PAIRED
+  SCHEDULED
+}
+
+"""ローンチの要約の表示"""
+type LaunchSummary {
+  """トップページで予選マッチを見られる"""
+  inMatch: Boolean!
+  label: String!
+}
+
 """利用者側に公開する法務文書"""
 type LegalDocument {
   kind: LegalDocumentKind!
@@ -809,6 +859,53 @@ type Mutation {
   withdraw(input: ReAuthenticationInput!): Boolean!
 }
 
+"""自分のプロダクトの編集用の情報"""
+type MyProduct {
+  category: ProductCategory!
+
+  """マークダウンの説明文"""
+  description: String!
+  handle: String!
+
+  """非公開化中"""
+  hidden: Boolean!
+
+  """取消を除く直近のローンチ"""
+  latestLaunch: ProductLaunch
+
+  """掲載済み(可視かつ予選で勝利したローンチがある)"""
+  listed: Boolean!
+
+  """画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる"""
+  logo: MediaImage
+  logoFileId: ID!
+  name: String!
+  plan: ProductLaunchPlan!
+
+  """保持中の旧ハンドル。無ければnull"""
+  previousHandle: String
+
+  """表示順"""
+  screenshots: [ProductScreenshot!]!
+  tagline: String!
+
+  """編集の競合の検出に使う版"""
+  version: Int!
+  websiteUrl: String!
+}
+
+type MyProductConnection {
+  nodes: [MyProduct!]!
+  pageInfo: PageInfo!
+}
+
+"""自分のプロダクトの旧ハンドルでの照会。handleは転送先の現在のハンドル"""
+type MyProductRedirect {
+  handle: String!
+}
+
+union MyProductResult = MyProduct | MyProductRedirect
+
 type MyProfile {
   avatar: MediaImage
   bio: String
@@ -872,6 +969,69 @@ enum PaymentRecordStatus {
   SUCCEEDED
 }
 
+type ProductCategory {
+  handle: String!
+  id: ID!
+  name: String!
+
+  """標準カテゴリ「その他」なら真。変更・削除できない"""
+  systemDefault: Boolean!
+}
+
+type ProductLaunch {
+  id: ID!
+  kickoffAt: DateTime!
+
+  """業務日付(YYYY-MM-DD)"""
+  launchDate: String!
+
+  """取消を除いて古い順に1から数える。取消は0"""
+  number: Int!
+  outcome: QualifierOutcome
+  status: LaunchStatus!
+  summary: LaunchSummary!
+}
+
+type ProductLaunchPlan {
+  """BLOCKEDのときの理由"""
+  blocks: [RelaunchBlockView!]!
+
+  """RESCHEDULEのときの予定のローンチ日"""
+  currentLaunchDate: String
+
+  """固定の判定ができない。ローンチ日・カテゴリの変更と削除を受け付けない"""
+  lockUnknown: Boolean!
+  locked: Boolean!
+  locks: [ProductLockView!]!
+  mode: LaunchPlanMode!
+
+  """敗北後の間隔をUltrasの加入で短くしている"""
+  ultrasEntitled: Boolean!
+
+  """NEW・RESCHEDULEのときの選べる日"""
+  window: LaunchDateWindow
+}
+
+"""ローンチ日・カテゴリの変更と削除の固定の理由"""
+type ProductLockView {
+  code: String!
+  message: String!
+}
+
+"""プロダクト詳細ページの投稿者本人向けの操作の状態"""
+type ProductOwnerStatus {
+  """取消を除く直近のローンチ"""
+  latestLaunch: ProductLaunch
+  plan: ProductLaunchPlan!
+}
+
+type ProductScreenshot {
+  fileId: ID!
+
+  """画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる"""
+  image: MediaImage
+}
+
 """公開プロフィールの閲覧者と表示される利用者の関係"""
 enum ProfileViewerRelation {
   FOLLOWING
@@ -931,6 +1091,11 @@ enum PurchaseKind {
   ULTRAS
   WEEK_TOURNAMENT_ENTRY
   YEAR_TOURNAMENT_ENTRY
+}
+
+enum QualifierOutcome {
+  LOST
+  WON
 }
 
 type Query {
@@ -994,14 +1159,31 @@ type Query {
   """自分のログインの問い合わせの一覧(20件ずつ、送信日時の新しい順)。停止中の利用者も読める"""
   myInquiries(after: String): MemberInquiryPage!
 
+  """他人・論理削除済み・不在はnull(404)。自分のプロダクトの旧ハンドルは転送先を返す"""
+  myProduct(handle: String!): MyProductResult
+
+  """ログイン中の利用者(停止中を含む)の論理削除していないプロダクトを最新のローンチ日の新しい順に返す。firstは1〜20"""
+  myProducts(after: String, first: Int!): MyProductConnection!
+
   """ログイン中の利用者(停止中を含む)のプロフィール編集用の情報"""
   myProfile: MyProfile!
 
   """ログイン中の端末の一覧"""
   mySessions: [UserSessionSummary!]!
 
+  """登録画面で選べるローンチ日"""
+  newProductLaunchWindow: LaunchDateWindow!
+
   """ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順)"""
   paymentHistory(after: String, first: Int): PaymentRecordConnection!
+
+  """
+  プロダクトのハンドルの使用可否。productHandleは編集中のプロダクトの現在のハンドルで、その現在と保持中の旧ハンドルは使えるものとして扱う
+  """
+  productHandleAvailability(handle: String!, productHandle: String): HandleAvailability!
+
+  """現在のハンドルで本人のプロダクトだけ。それ以外はnull"""
+  productOwnerStatus(productHandle: String!): ProductOwnerStatus
 
   """見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す"""
   publicProfile(handle: String!): PublicProfileResult
@@ -1041,6 +1223,15 @@ input RegisterUserInput {
   email: String!
   nickname: String!
   password: String!
+}
+
+"""次回の予約ができない理由"""
+type RelaunchBlockView {
+  code: String!
+  message: String!
+
+  """解除の日時。分からなければnull"""
+  releaseAt: DateTime
 }
 
 input RequestEmailChangeInput {

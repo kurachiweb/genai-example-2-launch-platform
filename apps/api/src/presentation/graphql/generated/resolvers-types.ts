@@ -4,6 +4,7 @@ import type { AdminViewerSource, AdminAccountSource } from '../modules/admin/res
 import type { InquiryMessageModel, InquiryReplyAuthorModel, InquiryComposerModel, MemberInquiryModel, MemberInquirySummaryModel, AdminInquirySummaryModel, AdminInquiryMemberModel, AdminInquiryModel } from '../modules/inquiry/mappers.ts';
 import type { UserSummarySource } from '../modules/profile/user-summary.ts';
 import type { PublicProfileModel, PublicProfileRedirectModel, MyProfileModel } from '../modules/profile/mappers.ts';
+import type { MyProductModel, ProductScreenshotModel } from '../modules/product/mappers.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -486,6 +487,53 @@ export type InquiryStatus =
   | 'OPEN'
   | 'REJECTED'
   | 'RESOLVED';
+
+/** 選べない日の範囲(両端を含む業務日付) */
+export type LaunchDateRange = {
+  __typename?: 'LaunchDateRange';
+  from: Scalars['String']['output'];
+  reason: LaunchDateUnavailableReason;
+  to: Scalars['String']['output'];
+};
+
+/** ローンチ日を選べない理由 */
+export type LaunchDateUnavailableReason =
+  | 'OUT_OF_RANGE'
+  | 'PAIRING_DEADLINE'
+  | 'RELAUNCH_INTERVAL';
+
+/** 選べるローンチ日。earliestからlatestまでのうちunavailableの範囲を除く日を選べる */
+export type LaunchDateWindow = {
+  __typename?: 'LaunchDateWindow';
+  earliest: Scalars['String']['output'];
+  latest: Scalars['String']['output'];
+  /** 敗北後の間隔で最も早い日が後ろへずれるときの間隔の日数。それ以外はnull */
+  relaunchIntervalDays?: Maybe<Scalars['Int']['output']>;
+  unavailable: Array<LaunchDateRange>;
+};
+
+/** 次回のローンチの計画。NEWは新しいローンチの予約、RESCHEDULEは予定のローンチの日の変更、BLOCKEDは予約できない、UNKNOWNは判定できない */
+export type LaunchPlanMode =
+  | 'BLOCKED'
+  | 'NEW'
+  | 'RESCHEDULE'
+  | 'UNKNOWN';
+
+/** ローンチの状態。照会の時点の時刻から導く */
+export type LaunchStatus =
+  | 'CANCELED'
+  | 'FINISHED'
+  | 'IN_PROGRESS'
+  | 'PAIRED'
+  | 'SCHEDULED';
+
+/** ローンチの要約の表示 */
+export type LaunchSummary = {
+  __typename?: 'LaunchSummary';
+  /** トップページで予選マッチを見られる */
+  inMatch: Scalars['Boolean']['output'];
+  label: Scalars['String']['output'];
+};
 
 /** 利用者側に公開する法務文書 */
 export type LegalDocument = {
@@ -1013,6 +1061,48 @@ export type MutationWithdrawArgs = {
   input: ReAuthenticationInput;
 };
 
+/** 自分のプロダクトの編集用の情報 */
+export type MyProduct = {
+  __typename?: 'MyProduct';
+  category: ProductCategory;
+  /** マークダウンの説明文 */
+  description: Scalars['String']['output'];
+  handle: Scalars['String']['output'];
+  /** 非公開化中 */
+  hidden: Scalars['Boolean']['output'];
+  /** 取消を除く直近のローンチ */
+  latestLaunch?: Maybe<ProductLaunch>;
+  /** 掲載済み(可視かつ予選で勝利したローンチがある) */
+  listed: Scalars['Boolean']['output'];
+  /** 画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
+  logo?: Maybe<MediaImage>;
+  logoFileId: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  plan: ProductLaunchPlan;
+  /** 保持中の旧ハンドル。無ければnull */
+  previousHandle?: Maybe<Scalars['String']['output']>;
+  /** 表示順 */
+  screenshots: Array<ProductScreenshot>;
+  tagline: Scalars['String']['output'];
+  /** 編集の競合の検出に使う版 */
+  version: Scalars['Int']['output'];
+  websiteUrl: Scalars['String']['output'];
+};
+
+export type MyProductConnection = {
+  __typename?: 'MyProductConnection';
+  nodes: Array<MyProduct>;
+  pageInfo: PageInfo;
+};
+
+/** 自分のプロダクトの旧ハンドルでの照会。handleは転送先の現在のハンドル */
+export type MyProductRedirect = {
+  __typename?: 'MyProductRedirect';
+  handle: Scalars['String']['output'];
+};
+
+export type MyProductResult = MyProduct | MyProductRedirect;
+
 export type MyProfile = {
   __typename?: 'MyProfile';
   avatar?: Maybe<MediaImage>;
@@ -1077,6 +1167,67 @@ export type PaymentRecordStatus =
   | 'PENDING'
   | 'SUCCEEDED';
 
+export type ProductCategory = {
+  __typename?: 'ProductCategory';
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  /** 標準カテゴリ「その他」なら真。変更・削除できない */
+  systemDefault: Scalars['Boolean']['output'];
+};
+
+export type ProductLaunch = {
+  __typename?: 'ProductLaunch';
+  id: Scalars['ID']['output'];
+  kickoffAt: Scalars['DateTime']['output'];
+  /** 業務日付(YYYY-MM-DD) */
+  launchDate: Scalars['String']['output'];
+  /** 取消を除いて古い順に1から数える。取消は0 */
+  number: Scalars['Int']['output'];
+  outcome?: Maybe<QualifierOutcome>;
+  status: LaunchStatus;
+  summary: LaunchSummary;
+};
+
+export type ProductLaunchPlan = {
+  __typename?: 'ProductLaunchPlan';
+  /** BLOCKEDのときの理由 */
+  blocks: Array<RelaunchBlockView>;
+  /** RESCHEDULEのときの予定のローンチ日 */
+  currentLaunchDate?: Maybe<Scalars['String']['output']>;
+  /** 固定の判定ができない。ローンチ日・カテゴリの変更と削除を受け付けない */
+  lockUnknown: Scalars['Boolean']['output'];
+  locked: Scalars['Boolean']['output'];
+  locks: Array<ProductLockView>;
+  mode: LaunchPlanMode;
+  /** 敗北後の間隔をUltrasの加入で短くしている */
+  ultrasEntitled: Scalars['Boolean']['output'];
+  /** NEW・RESCHEDULEのときの選べる日 */
+  window?: Maybe<LaunchDateWindow>;
+};
+
+/** ローンチ日・カテゴリの変更と削除の固定の理由 */
+export type ProductLockView = {
+  __typename?: 'ProductLockView';
+  code: Scalars['String']['output'];
+  message: Scalars['String']['output'];
+};
+
+/** プロダクト詳細ページの投稿者本人向けの操作の状態 */
+export type ProductOwnerStatus = {
+  __typename?: 'ProductOwnerStatus';
+  /** 取消を除く直近のローンチ */
+  latestLaunch?: Maybe<ProductLaunch>;
+  plan: ProductLaunchPlan;
+};
+
+export type ProductScreenshot = {
+  __typename?: 'ProductScreenshot';
+  fileId: Scalars['ID']['output'];
+  /** 画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
+  image?: Maybe<MediaImage>;
+};
+
 /** 公開プロフィールの閲覧者と表示される利用者の関係 */
 export type ProfileViewerRelation =
   | 'FOLLOWING'
@@ -1136,6 +1287,10 @@ export type PurchaseKind =
   | 'WEEK_TOURNAMENT_ENTRY'
   | 'YEAR_TOURNAMENT_ENTRY';
 
+export type QualifierOutcome =
+  | 'LOST'
+  | 'WON';
+
 export type Query = {
   __typename?: 'Query';
   /** 招待中を含む全管理者を登録の新しい順に返す */
@@ -1178,12 +1333,22 @@ export type Query = {
   myFollowing: FollowEntryConnection;
   /** 自分のログインの問い合わせの一覧(20件ずつ、送信日時の新しい順)。停止中の利用者も読める */
   myInquiries: MemberInquiryPage;
+  /** 他人・論理削除済み・不在はnull(404)。自分のプロダクトの旧ハンドルは転送先を返す */
+  myProduct?: Maybe<MyProductResult>;
+  /** ログイン中の利用者(停止中を含む)の論理削除していないプロダクトを最新のローンチ日の新しい順に返す。firstは1〜20 */
+  myProducts: MyProductConnection;
   /** ログイン中の利用者(停止中を含む)のプロフィール編集用の情報 */
   myProfile: MyProfile;
   /** ログイン中の端末の一覧 */
   mySessions: Array<UserSessionSummary>;
+  /** 登録画面で選べるローンチ日 */
+  newProductLaunchWindow: LaunchDateWindow;
   /** ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順) */
   paymentHistory: PaymentRecordConnection;
+  /** プロダクトのハンドルの使用可否。productHandleは編集中のプロダクトの現在のハンドルで、その現在と保持中の旧ハンドルは使えるものとして扱う */
+  productHandleAvailability: HandleAvailability;
+  /** 現在のハンドルで本人のプロダクトだけ。それ以外はnull */
+  productOwnerStatus?: Maybe<ProductOwnerStatus>;
   /** 見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す */
   publicProfile?: Maybe<PublicProfileResult>;
   /** APIサーバーの時刻とデータベースへの到達可否 */
@@ -1270,9 +1435,31 @@ export type QueryMyInquiriesArgs = {
 };
 
 
+export type QueryMyProductArgs = {
+  handle: Scalars['String']['input'];
+};
+
+
+export type QueryMyProductsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first: Scalars['Int']['input'];
+};
+
+
 export type QueryPaymentHistoryArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryProductHandleAvailabilityArgs = {
+  handle: Scalars['String']['input'];
+  productHandle?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryProductOwnerStatusArgs = {
+  productHandle: Scalars['String']['input'];
 };
 
 
@@ -1299,6 +1486,15 @@ export type RegisterUserInput = {
   email: Scalars['String']['input'];
   nickname: Scalars['String']['input'];
   password: Scalars['String']['input'];
+};
+
+/** 次回の予約ができない理由 */
+export type RelaunchBlockView = {
+  __typename?: 'RelaunchBlockView';
+  code: Scalars['String']['output'];
+  message: Scalars['String']['output'];
+  /** 解除の日時。分からなければnull */
+  releaseAt?: Maybe<Scalars['DateTime']['output']>;
 };
 
 export type RequestEmailChangeInput = {
@@ -1555,6 +1751,10 @@ export type ResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | ( Omit<LoginSucceeded, 'viewer'> & { viewer: _RefType['Viewer'] } )
     | ( SecondFactorRequired )
   ;
+  MyProductResult:
+    | ( MyProductModel )
+    | ( MyProductRedirect )
+  ;
   PublicProfileResult:
     | ( PublicProfileModel )
     | ( PublicProfileRedirectModel )
@@ -1619,6 +1819,12 @@ export type ResolversTypes = {
   InquirySender: InquirySender;
   InquiryStatus: InquiryStatus;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  LaunchDateRange: ResolverTypeWrapper<LaunchDateRange>;
+  LaunchDateUnavailableReason: LaunchDateUnavailableReason;
+  LaunchDateWindow: ResolverTypeWrapper<LaunchDateWindow>;
+  LaunchPlanMode: LaunchPlanMode;
+  LaunchStatus: LaunchStatus;
+  LaunchSummary: ResolverTypeWrapper<LaunchSummary>;
   LegalDocument: ResolverTypeWrapper<LegalDocument>;
   LegalDocumentEditor: ResolverTypeWrapper<LegalDocumentEditor>;
   LegalDocumentKind: LegalDocumentKind;
@@ -1636,6 +1842,10 @@ export type ResolversTypes = {
   MemberInquirySummary: ResolverTypeWrapper<MemberInquirySummaryModel>;
   Money: ResolverTypeWrapper<Money>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
+  MyProduct: ResolverTypeWrapper<MyProductModel>;
+  MyProductConnection: ResolverTypeWrapper<Omit<MyProductConnection, 'nodes'> & { nodes: Array<ResolversTypes['MyProduct']> }>;
+  MyProductRedirect: ResolverTypeWrapper<MyProductRedirect>;
+  MyProductResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['MyProductResult']>;
   MyProfile: ResolverTypeWrapper<MyProfileModel>;
   OffsetPageInfo: ResolverTypeWrapper<OffsetPageInfo>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
@@ -1643,6 +1853,12 @@ export type ResolversTypes = {
   PaymentRecordConnection: ResolverTypeWrapper<PaymentRecordConnection>;
   PaymentRecordKind: PaymentRecordKind;
   PaymentRecordStatus: PaymentRecordStatus;
+  ProductCategory: ResolverTypeWrapper<ProductCategory>;
+  ProductLaunch: ResolverTypeWrapper<ProductLaunch>;
+  ProductLaunchPlan: ResolverTypeWrapper<ProductLaunchPlan>;
+  ProductLockView: ResolverTypeWrapper<ProductLockView>;
+  ProductOwnerStatus: ResolverTypeWrapper<ProductOwnerStatus>;
+  ProductScreenshot: ResolverTypeWrapper<ProductScreenshotModel>;
   ProfileViewerRelation: ProfileViewerRelation;
   ProfileWebsite: ResolverTypeWrapper<ProfileWebsite>;
   ProfileWebsiteInput: ProfileWebsiteInput;
@@ -1651,10 +1867,12 @@ export type ResolversTypes = {
   PublicProfileResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['PublicProfileResult']>;
   PublishLegalDocumentInput: PublishLegalDocumentInput;
   PurchaseKind: PurchaseKind;
+  QualifierOutcome: QualifierOutcome;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: ResolverTypeWrapper<RecoveryCodeSet>;
   RegisterUserInput: RegisterUserInput;
+  RelaunchBlockView: ResolverTypeWrapper<RelaunchBlockView>;
   RequestEmailChangeInput: RequestEmailChangeInput;
   RequestPasswordChangeInput: RequestPasswordChangeInput;
   ResendVerificationResult: ResendVerificationResult;
@@ -1726,6 +1944,9 @@ export type ResolversParentTypes = {
   InquiryReplyAuthor: InquiryReplyAuthorModel;
   InquiryReplyResult: Omit<InquiryReplyResult, 'message'> & { message: ResolversParentTypes['InquiryMessage'] };
   Int: Scalars['Int']['output'];
+  LaunchDateRange: LaunchDateRange;
+  LaunchDateWindow: LaunchDateWindow;
+  LaunchSummary: LaunchSummary;
   LegalDocument: LegalDocument;
   LegalDocumentEditor: LegalDocumentEditor;
   LegalDocumentVersion: LegalDocumentVersion;
@@ -1741,11 +1962,21 @@ export type ResolversParentTypes = {
   MemberInquirySummary: MemberInquirySummaryModel;
   Money: Money;
   Mutation: Record<PropertyKey, never>;
+  MyProduct: MyProductModel;
+  MyProductConnection: Omit<MyProductConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['MyProduct']> };
+  MyProductRedirect: MyProductRedirect;
+  MyProductResult: ResolversUnionTypes<ResolversParentTypes>['MyProductResult'];
   MyProfile: MyProfileModel;
   OffsetPageInfo: OffsetPageInfo;
   PageInfo: PageInfo;
   PaymentRecord: PaymentRecord;
   PaymentRecordConnection: PaymentRecordConnection;
+  ProductCategory: ProductCategory;
+  ProductLaunch: ProductLaunch;
+  ProductLaunchPlan: ProductLaunchPlan;
+  ProductLockView: ProductLockView;
+  ProductOwnerStatus: ProductOwnerStatus;
+  ProductScreenshot: ProductScreenshotModel;
   ProfileWebsite: ProfileWebsite;
   ProfileWebsiteInput: ProfileWebsiteInput;
   PublicProfile: PublicProfileModel;
@@ -1756,6 +1987,7 @@ export type ResolversParentTypes = {
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: RecoveryCodeSet;
   RegisterUserInput: RegisterUserInput;
+  RelaunchBlockView: RelaunchBlockView;
   RequestEmailChangeInput: RequestEmailChangeInput;
   RequestPasswordChangeInput: RequestPasswordChangeInput;
   ResetPasswordInput: ResetPasswordInput;
@@ -2019,6 +2251,24 @@ export type InquiryReplyResultResolvers<ContextType = GraphQLContext, ParentType
   notificationQueued?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
+export type LaunchDateRangeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchDateRange'] = ResolversParentTypes['LaunchDateRange']> = {
+  from?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['LaunchDateUnavailableReason'], ParentType, ContextType>;
+  to?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type LaunchDateWindowResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchDateWindow'] = ResolversParentTypes['LaunchDateWindow']> = {
+  earliest?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  latest?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  relaunchIntervalDays?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  unavailable?: Resolver<Array<ResolversTypes['LaunchDateRange']>, ParentType, ContextType>;
+};
+
+export type LaunchSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchSummary'] = ResolversParentTypes['LaunchSummary']> = {
+  inMatch?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  label?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type LegalDocumentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LegalDocument'] = ResolversParentTypes['LegalDocument']> = {
   kind?: Resolver<ResolversTypes['LegalDocumentKind'], ParentType, ContextType>;
   latest?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType>;
@@ -2158,6 +2408,39 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
 };
 
+export type MyProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MyProduct'] = ResolversParentTypes['MyProduct']> = {
+  category?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType>;
+  description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  hidden?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  latestLaunch?: Resolver<Maybe<ResolversTypes['ProductLaunch']>, ParentType, ContextType>;
+  listed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  logoFileId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  plan?: Resolver<ResolversTypes['ProductLaunchPlan'], ParentType, ContextType>;
+  previousHandle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  screenshots?: Resolver<Array<ResolversTypes['ProductScreenshot']>, ParentType, ContextType>;
+  tagline?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  websiteUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type MyProductConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MyProductConnection'] = ResolversParentTypes['MyProductConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['MyProduct']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type MyProductRedirectResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MyProductRedirect'] = ResolversParentTypes['MyProductRedirect']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type MyProductResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MyProductResult'] = ResolversParentTypes['MyProductResult']> = {
+  __resolveType: TypeResolveFn<'MyProduct' | 'MyProductRedirect', ParentType, ContextType>;
+};
+
 export type MyProfileResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MyProfile'] = ResolversParentTypes['MyProfile']> = {
   avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
   bio?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -2194,6 +2477,49 @@ export type PaymentRecordResolvers<ContextType = GraphQLContext, ParentType exte
 export type PaymentRecordConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['PaymentRecordConnection'] = ResolversParentTypes['PaymentRecordConnection']> = {
   nodes?: Resolver<Array<ResolversTypes['PaymentRecord']>, ParentType, ContextType>;
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type ProductCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductCategory'] = ResolversParentTypes['ProductCategory']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  systemDefault?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type ProductLaunchResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductLaunch'] = ResolversParentTypes['ProductLaunch']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kickoffAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  launchDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  outcome?: Resolver<Maybe<ResolversTypes['QualifierOutcome']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['LaunchStatus'], ParentType, ContextType>;
+  summary?: Resolver<ResolversTypes['LaunchSummary'], ParentType, ContextType>;
+};
+
+export type ProductLaunchPlanResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductLaunchPlan'] = ResolversParentTypes['ProductLaunchPlan']> = {
+  blocks?: Resolver<Array<ResolversTypes['RelaunchBlockView']>, ParentType, ContextType>;
+  currentLaunchDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  lockUnknown?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  locked?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  locks?: Resolver<Array<ResolversTypes['ProductLockView']>, ParentType, ContextType>;
+  mode?: Resolver<ResolversTypes['LaunchPlanMode'], ParentType, ContextType>;
+  ultrasEntitled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  window?: Resolver<Maybe<ResolversTypes['LaunchDateWindow']>, ParentType, ContextType>;
+};
+
+export type ProductLockViewResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductLockView'] = ResolversParentTypes['ProductLockView']> = {
+  code?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type ProductOwnerStatusResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductOwnerStatus'] = ResolversParentTypes['ProductOwnerStatus']> = {
+  latestLaunch?: Resolver<Maybe<ResolversTypes['ProductLaunch']>, ParentType, ContextType>;
+  plan?: Resolver<ResolversTypes['ProductLaunchPlan'], ParentType, ContextType>;
+};
+
+export type ProductScreenshotResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductScreenshot'] = ResolversParentTypes['ProductScreenshot']> = {
+  fileId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  image?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
 };
 
 export type ProfileWebsiteResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProfileWebsite'] = ResolversParentTypes['ProfileWebsite']> = {
@@ -2245,9 +2571,14 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   myFollowers?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowersArgs, 'first'>>;
   myFollowing?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowingArgs, 'first'>>;
   myInquiries?: Resolver<ResolversTypes['MemberInquiryPage'], ParentType, ContextType, Partial<QueryMyInquiriesArgs>>;
+  myProduct?: Resolver<Maybe<ResolversTypes['MyProductResult']>, ParentType, ContextType, RequireFields<QueryMyProductArgs, 'handle'>>;
+  myProducts?: Resolver<ResolversTypes['MyProductConnection'], ParentType, ContextType, RequireFields<QueryMyProductsArgs, 'first'>>;
   myProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
+  newProductLaunchWindow?: Resolver<ResolversTypes['LaunchDateWindow'], ParentType, ContextType>;
   paymentHistory?: Resolver<ResolversTypes['PaymentRecordConnection'], ParentType, ContextType, Partial<QueryPaymentHistoryArgs>>;
+  productHandleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryProductHandleAvailabilityArgs, 'handle'>>;
+  productOwnerStatus?: Resolver<Maybe<ResolversTypes['ProductOwnerStatus']>, ParentType, ContextType, RequireFields<QueryProductOwnerStatusArgs, 'productHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   ultrasOffer?: Resolver<ResolversTypes['UltrasOffer'], ParentType, ContextType>;
@@ -2258,6 +2589,12 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
 
 export type RecoveryCodeSetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['RecoveryCodeSet'] = ResolversParentTypes['RecoveryCodeSet']> = {
   codes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type RelaunchBlockViewResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['RelaunchBlockView'] = ResolversParentTypes['RelaunchBlockView']> = {
+  code?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  releaseAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
 };
 
 export type SecondFactorRequiredResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SecondFactorRequired'] = ResolversParentTypes['SecondFactorRequired']> = {
@@ -2370,6 +2707,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   InquiryMessage?: InquiryMessageResolvers<ContextType>;
   InquiryReplyAuthor?: InquiryReplyAuthorResolvers<ContextType>;
   InquiryReplyResult?: InquiryReplyResultResolvers<ContextType>;
+  LaunchDateRange?: LaunchDateRangeResolvers<ContextType>;
+  LaunchDateWindow?: LaunchDateWindowResolvers<ContextType>;
+  LaunchSummary?: LaunchSummaryResolvers<ContextType>;
   LegalDocument?: LegalDocumentResolvers<ContextType>;
   LegalDocumentEditor?: LegalDocumentEditorResolvers<ContextType>;
   LegalDocumentVersion?: LegalDocumentVersionResolvers<ContextType>;
@@ -2383,17 +2723,28 @@ export type Resolvers<ContextType = GraphQLContext> = {
   MemberInquirySummary?: MemberInquirySummaryResolvers<ContextType>;
   Money?: MoneyResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
+  MyProduct?: MyProductResolvers<ContextType>;
+  MyProductConnection?: MyProductConnectionResolvers<ContextType>;
+  MyProductRedirect?: MyProductRedirectResolvers<ContextType>;
+  MyProductResult?: MyProductResultResolvers<ContextType>;
   MyProfile?: MyProfileResolvers<ContextType>;
   OffsetPageInfo?: OffsetPageInfoResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;
   PaymentRecord?: PaymentRecordResolvers<ContextType>;
   PaymentRecordConnection?: PaymentRecordConnectionResolvers<ContextType>;
+  ProductCategory?: ProductCategoryResolvers<ContextType>;
+  ProductLaunch?: ProductLaunchResolvers<ContextType>;
+  ProductLaunchPlan?: ProductLaunchPlanResolvers<ContextType>;
+  ProductLockView?: ProductLockViewResolvers<ContextType>;
+  ProductOwnerStatus?: ProductOwnerStatusResolvers<ContextType>;
+  ProductScreenshot?: ProductScreenshotResolvers<ContextType>;
   ProfileWebsite?: ProfileWebsiteResolvers<ContextType>;
   PublicProfile?: PublicProfileResolvers<ContextType>;
   PublicProfileRedirect?: PublicProfileRedirectResolvers<ContextType>;
   PublicProfileResult?: PublicProfileResultResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   RecoveryCodeSet?: RecoveryCodeSetResolvers<ContextType>;
+  RelaunchBlockView?: RelaunchBlockViewResolvers<ContextType>;
   SecondFactorRequired?: SecondFactorRequiredResolvers<ContextType>;
   SystemStatus?: SystemStatusResolvers<ContextType>;
   TotpSetup?: TotpSetupResolvers<ContextType>;
