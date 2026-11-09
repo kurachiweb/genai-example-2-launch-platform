@@ -6,11 +6,14 @@ import {
   fromBusinessDateTime,
   parseBusinessDate,
 } from '../../../lib/core/time/business-time.ts';
+import { LAUNCH_PLAN_MESSAGES } from '../../domain/product/launch-plan.ts';
 import { IDENTITY_ERRORS } from '../identity/identity-errors.ts';
 import {
   launchDateUnavailableError,
   PRODUCT_ERRORS,
+  productDescriptionRejectedError,
   productError,
+  relaunchBlockedError,
 } from './product-errors.ts';
 
 const HANDLE_TAKEN_MESSAGE =
@@ -211,5 +214,80 @@ describe('launchDateUnavailableError', () => {
     expect(error.message).toBe(
       'ローンチ日は2027年1月2日〜2027年3月31日の間で選んでください。',
     );
+  });
+});
+
+describe('relaunchBlockedError', () => {
+  test.each([
+    [
+      'launch_scheduled',
+      'このプロダクトはローンチ予定があるため再ローンチできません。',
+    ],
+    [
+      'qualifier_in_progress',
+      'このプロダクトは予選マッチに参加中のため再ローンチできません。',
+    ],
+  ] as const)(
+    '本specの禁止の理由%sは、理由の文言のrelaunch_blocked(409)にする',
+    (code, message) => {
+      const error = relaunchBlockedError({
+        code,
+        message: LAUNCH_PLAN_MESSAGES[code],
+        releaseAt: null,
+      });
+
+      expect(error.code).toBe('relaunch_blocked');
+      expect(error.kind).toBe('conflict');
+      expect(STATUS_BY_KIND[error.kind]).toBe(409);
+      expect(error.message).toBe(message);
+      expect(error.details).toBeUndefined();
+    },
+  );
+
+  test('供給元の禁止の理由は、供給元の文言のrelaunch_blockedにする', () => {
+    const message =
+      'このプロダクトはWeekトーナメント参加中のため再ローンチできません。';
+
+    const error = relaunchBlockedError({
+      code: 'week_tournament',
+      message,
+      releaseAt: new Date('2026-11-20T15:00:00.000Z'),
+    });
+
+    expect(error.code).toBe('relaunch_blocked');
+    expect(error.kind).toBe('conflict');
+    expect(error.message).toBe(message);
+  });
+
+  test('非公開化中の禁止は、予約の文言のproduct_hidden(409)にする', () => {
+    const error = relaunchBlockedError({
+      code: 'product_hidden',
+      message: LAUNCH_PLAN_MESSAGES.product_hidden,
+      releaseAt: null,
+    });
+
+    expect(error.code).toBe('product_hidden');
+    expect(error.kind).toBe('conflict');
+    expect(error.message).toBe(
+      'このプロダクトは公開が停止されているため、ローンチを予約できません。',
+    );
+  });
+});
+
+describe('productDescriptionRejectedError', () => {
+  test('説明文の欄の詳細を持つvalidation_error(400)にする', () => {
+    const error = productDescriptionRejectedError('説明文を入力してください。');
+
+    expect(error.code).toBe('validation_error');
+    expect(error.kind).toBe('bad_request');
+    expect(STATUS_BY_KIND[error.kind]).toBe(400);
+    expect(error.message).toBe('入力内容を確認してください。');
+    expect(error.details).toEqual([
+      {
+        field: 'descriptionMarkdown',
+        code: 'custom',
+        message: '説明文を入力してください。',
+      },
+    ]);
   });
 });

@@ -17,7 +17,11 @@ import {
 } from '../../../../lib/core/time/business-time.ts';
 import type { Clock } from '../../../../lib/core/time/clock.ts';
 import type {
+  ProductDescriptionUpdateInput,
+  ProductDescriptionUpdateResult,
   ProductInsertInput,
+  ProductSaveInput,
+  ProductSaveResult,
   ProductSnapshot,
   ProductStore,
 } from '../ports.ts';
@@ -91,10 +95,18 @@ export interface FakeProductStoreOptions {
   readonly snapshots?: readonly ProductSnapshot[];
   // 保存の直後に退会などで読めなくなった場合を再現する
   readonly forgetsInserted?: boolean;
+  readonly saveResult?: ProductSaveResult;
+  readonly descriptionResult?: ProductDescriptionUpdateResult;
 }
 
 export interface FakeProductStore extends ProductStore {
   readonly inserts: ProductInsertInput[];
+  readonly saves: ProductSaveInput[];
+  readonly descriptionUpdates: ProductDescriptionUpdateInput[];
+  readonly occupiedChecks: {
+    readonly handle: string;
+    readonly exceptProductId: string | undefined;
+  }[];
 }
 
 const snapshotOfInsert = (input: ProductInsertInput): ProductSnapshot => ({
@@ -124,6 +136,20 @@ const snapshotOfInsert = (input: ProductInsertInput): ProductSnapshot => ({
   ],
 });
 
+const snapshotOfSave = (
+  current: ProductSnapshot,
+  input: ProductSaveInput,
+): ProductSnapshot => ({
+  ...current,
+  ...input.fields,
+  previousHandle:
+    input.plan.handle.kind === 'changed'
+      ? input.plan.handle.previous
+      : current.previousHandle,
+  category: { ...CATEGORY, id: input.fields.categoryId },
+  version: current.version + 1,
+});
+
 // 使わないメソッドを呼んだら失敗させ、ユースケースが想定外のポートに触れたことを検出する
 function failUnused<T extends object>(
   implemented: Partial<T>,
@@ -150,15 +176,40 @@ export function createFakeProductStore(
   const occupied = new Set((options.occupiedHandles ?? []).map(toHandleKey));
   const snapshots = [...(options.snapshots ?? [])];
   const inserts: ProductInsertInput[] = [];
+  const saves: ProductSaveInput[] = [];
+  const descriptionUpdates: ProductDescriptionUpdateInput[] = [];
+  const occupiedChecks: FakeProductStore['occupiedChecks'] = [];
   const implemented: Partial<FakeProductStore> = {
     inserts,
+    saves,
+    descriptionUpdates,
+    occupiedChecks,
     categoryExists(categoryId) {
       calls.push('store.categoryExists');
       return Promise.resolve(categories.has(categoryId));
     },
-    isHandleOccupied(handle) {
+    isHandleOccupied(handle, exceptProductId) {
       calls.push('store.isHandleOccupied');
+      occupiedChecks.push({ handle, exceptProductId });
       return Promise.resolve(occupied.has(toHandleKey(handle)));
+    },
+    save(input) {
+      calls.push('store.save');
+      saves.push(input);
+      const result = options.saveResult ?? 'saved';
+      const index = snapshots.findIndex(
+        ({ productId }) => productId === input.productId,
+      );
+      const current = snapshots[index];
+      if (result === 'saved' && current !== undefined) {
+        snapshots[index] = snapshotOfSave(current, input);
+      }
+      return Promise.resolve(result);
+    },
+    updateDescription(input) {
+      calls.push('store.updateDescription');
+      descriptionUpdates.push(input);
+      return Promise.resolve(options.descriptionResult ?? 'saved');
     },
     insert(input) {
       calls.push('store.insert');
@@ -212,12 +263,16 @@ export interface FakeProductMediaOptions {
   // 用途ごとの紐付けの結果。無ければ成功
   readonly claimResults?: Readonly<Record<string, ClaimResult>>;
   readonly files?: readonly MediaFileView[];
+  readonly eraseNowError?: Error;
+  readonly markDeletedError?: Error;
 }
 
 export interface FakeProductMedia {
   readonly media: MediaFiles;
   readonly claims: ClaimRequest[];
   readonly lookups: (readonly string[])[];
+  readonly erased: (readonly string[])[];
+  readonly markedDeleted: (readonly string[])[];
 }
 
 export function createFakeProductMedia(
@@ -226,6 +281,8 @@ export function createFakeProductMedia(
 ): FakeProductMedia {
   const claims: ClaimRequest[] = [];
   const lookups: (readonly string[])[] = [];
+  const erased: (readonly string[])[] = [];
+  const markedDeleted: (readonly string[])[] = [];
   const files = new Map((options.files ?? []).map((file) => [file.id, file]));
   const media = failUnused<MediaFiles>(
     {
@@ -248,10 +305,26 @@ export function createFakeProductMedia(
           ),
         );
       },
+      eraseNow(fileIds) {
+        calls.push('media.eraseNow');
+        erased.push(fileIds);
+        if (options.eraseNowError !== undefined) {
+          return Promise.reject(options.eraseNowError);
+        }
+        return Promise.resolve({ erased: fileIds.length });
+      },
+      markDeleted(fileIds) {
+        calls.push('media.markDeleted');
+        markedDeleted.push(fileIds);
+        if (options.markDeletedError !== undefined) {
+          return Promise.reject(options.markDeletedError);
+        }
+        return Promise.resolve();
+      },
     },
     'media',
   );
-  return { media, claims, lookups };
+  return { media, claims, lookups, erased, markedDeleted };
 }
 
 export const stateOf = (productId: string): ProductState => ({
@@ -272,7 +345,11 @@ export interface FakeStateEvaluator {
   }[];
 }
 
-export function createFakeStateEvaluator(calls: string[]): FakeStateEvaluator {
+// stateForで、プロダクトごとの判定の結果を差し替える
+export function createFakeStateEvaluator(
+  calls: string[],
+  stateFor: (productId: string) => ProductState = stateOf,
+): FakeStateEvaluator {
   const requests: FakeStateEvaluator['requests'] = [];
   return {
     requests,
@@ -284,7 +361,7 @@ export function createFakeStateEvaluator(calls: string[]): FakeStateEvaluator {
           new Map(
             input.products.map(({ productId }) => [
               productId,
-              stateOf(productId),
+              stateFor(productId),
             ]),
           ),
         );

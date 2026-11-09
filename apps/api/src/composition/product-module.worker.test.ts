@@ -55,6 +55,14 @@ import type {
 } from '../application/product/decision-sources.ts';
 import type { ProductStore } from '../application/product/ports.ts';
 import {
+  type ProductDescriptionEditor,
+  StoreProductDescriptionEditor,
+} from '../application/product/product-description-editor.ts';
+import {
+  type ProductEditor,
+  StoreProductEditor,
+} from '../application/product/product-editor.ts';
+import {
   type ProductRegistration,
   StoreProductRegistration,
 } from '../application/product/product-registration.ts';
@@ -137,7 +145,7 @@ beforeEach(async () => {
 });
 
 describe('APIサーバーのプロダクトのモジュールの束縛', () => {
-  test('処理単位のコンテナから、ストア・登録のユースケース・状態の判定をそれぞれの実装に解決する', () => {
+  test('処理単位のコンテナから、ストア・登録と編集と説明文の更新のユースケース・状態の判定をそれぞれの実装に解決する', () => {
     const container = createContainer();
 
     expect(
@@ -146,6 +154,14 @@ describe('APIサーバーのプロダクトのモジュールの束縛', () => {
     expect(
       container.get<ProductRegistration>(PRODUCT_TYPES.ProductRegistration),
     ).toBeInstanceOf(StoreProductRegistration);
+    expect(
+      container.get<ProductEditor>(PRODUCT_TYPES.ProductEditor),
+    ).toBeInstanceOf(StoreProductEditor);
+    expect(
+      container.get<ProductDescriptionEditor>(
+        PRODUCT_TYPES.ProductDescriptionEditor,
+      ),
+    ).toBeInstanceOf(StoreProductDescriptionEditor);
     expect(
       container.get<ProductStateEvaluator>(PRODUCT_TYPES.ProductStateEvaluator),
     ).toBeInstanceOf(DefaultProductStateEvaluator);

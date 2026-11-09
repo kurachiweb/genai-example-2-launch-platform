@@ -5,12 +5,19 @@ import {
 import { countGraphemes } from '../text/graphemes.ts';
 import { hasForbiddenCharacters } from '../text/text-safety.ts';
 import { trimWhiteSpace } from '../text/white-space.ts';
+import type { MarkdownTextRule } from '../validation/markdown-text-schema.ts';
 
 export const PRODUCT_NAME_MAX_GRAPHEMES = 50;
 
 export const PRODUCT_TAGLINE_MAX_GRAPHEMES = 100;
 
 export const PRODUCT_DESCRIPTION_MAX_GRAPHEMES = 20_000;
+
+export const PRODUCT_DESCRIPTION_RULE: MarkdownTextRule = Object.freeze({
+  label: '説明文',
+  maxGraphemes: PRODUCT_DESCRIPTION_MAX_GRAPHEMES,
+  required: true,
+});
 
 export const PRODUCT_HANDLE_RULE: HandleRule = Object.freeze({
   maxLength: 50,

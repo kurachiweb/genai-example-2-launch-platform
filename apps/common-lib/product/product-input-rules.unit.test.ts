@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { markdownTextSchema } from '../validation/markdown-text-schema.ts';
 import {
   checkHandleFormat,
   IMPERSONATION_RESERVED_HANDLES,
@@ -12,6 +13,7 @@ import {
   LAUNCH_DATE_HORIZON_DAYS,
   PRODUCT_CATEGORY_HANDLE_RULE,
   PRODUCT_DESCRIPTION_MAX_GRAPHEMES,
+  PRODUCT_DESCRIPTION_RULE,
   PRODUCT_HANDLE_RULE,
   PRODUCT_LOGO_MAX_BYTES,
   PRODUCT_LOGO_PURPOSE,
@@ -296,5 +298,29 @@ describe('checkScreenshotTotals', () => {
     expect(
       checkScreenshotTotals(Array.from({ length: 21 }, () => MEBIBYTE)),
     ).toBe('too-many');
+  });
+});
+
+describe('PRODUCT_DESCRIPTION_RULE', () => {
+  test('説明文は必須で20,000文字までのマークダウンとして、文言規則の文言で拒否する', () => {
+    const schema = markdownTextSchema(PRODUCT_DESCRIPTION_RULE);
+
+    expect(PRODUCT_DESCRIPTION_RULE).toEqual({
+      label: '説明文',
+      maxGraphemes: PRODUCT_DESCRIPTION_MAX_GRAPHEMES,
+      required: true,
+    });
+    expect(Object.isFrozen(PRODUCT_DESCRIPTION_RULE)).toBe(true);
+    expect(schema.safeParse('# 概要').success).toBe(true);
+    expect(schema.safeParse('あ'.repeat(20_000)).success).toBe(true);
+    expect(schema.safeParse(' \n').error?.issues[0]?.message).toBe(
+      '説明文を入力してください。',
+    );
+    expect(
+      schema.safeParse('あ'.repeat(20_001)).error?.issues[0]?.message,
+    ).toBe('説明文は20,000文字以内で入力してください。');
+    expect(schema.safeParse('概要\u0000').error?.issues[0]?.message).toBe(
+      '説明文に使用できない文字が含まれています。',
+    );
   });
 });

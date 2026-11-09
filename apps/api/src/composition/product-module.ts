@@ -12,6 +12,14 @@ import {
 } from '../application/product/decision-sources.ts';
 import type { ProductStore } from '../application/product/ports.ts';
 import {
+  type ProductDescriptionEditor,
+  StoreProductDescriptionEditor,
+} from '../application/product/product-description-editor.ts';
+import {
+  type ProductEditor,
+  StoreProductEditor,
+} from '../application/product/product-editor.ts';
+import {
   type ProductRegistration,
   StoreProductRegistration,
 } from '../application/product/product-registration.ts';
@@ -70,6 +78,10 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ProductStore>(PRODUCT_TYPES.ProductStore).to(D1ProductStore);
     bind<ProductRegistration>(PRODUCT_TYPES.ProductRegistration).to(
       StoreProductRegistration,
+    );
+    bind<ProductEditor>(PRODUCT_TYPES.ProductEditor).to(StoreProductEditor);
+    bind<ProductDescriptionEditor>(PRODUCT_TYPES.ProductDescriptionEditor).to(
+      StoreProductDescriptionEditor,
     );
   }),
 };

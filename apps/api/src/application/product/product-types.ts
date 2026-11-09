@@ -23,6 +23,12 @@ const ProductRegistration: unique symbol = Symbol.for(
   'product.ProductRegistration',
 );
 
+const ProductEditor: unique symbol = Symbol.for('product.ProductEditor');
+
+const ProductDescriptionEditor: unique symbol = Symbol.for(
+  'product.ProductDescriptionEditor',
+);
+
 export const PRODUCT_TYPES = Object.freeze({
   ProductStateEvaluator,
   RelaunchConditionSources,
@@ -31,4 +37,6 @@ export const PRODUCT_TYPES = Object.freeze({
   ProductSaveHooks,
   ProductStore,
   ProductRegistration,
+  ProductEditor,
+  ProductDescriptionEditor,
 });

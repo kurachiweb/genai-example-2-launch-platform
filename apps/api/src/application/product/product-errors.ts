@@ -8,6 +8,7 @@ import {
   toBusinessDateTime,
 } from '../../../lib/core/time/business-time.ts';
 import type { LaunchDateUnavailableReason } from '../../domain/product/launch-date-rules.ts';
+import type { PlanBlock } from '../../domain/product/launch-plan.ts';
 import { IDENTITY_ERRORS } from '../identity/identity-errors.ts';
 
 interface ProductErrorDefinition {
@@ -131,3 +132,23 @@ export const launchDateUnavailableError = (
     details: [{ field: LAUNCH_DATE_FIELD, code: rejection.reason, message }],
   });
 };
+
+// 非公開化中の予約の拒否はproduct_hiddenで返し、説明文の更新の拒否と同じコードで予約の文言を使う
+export const relaunchBlockedError = (block: PlanBlock): AppError =>
+  new AppError({
+    kind: 'conflict',
+    code:
+      block.code === 'product_hidden' ? 'product_hidden' : 'relaunch_blocked',
+    message: block.message,
+  });
+
+const VALIDATION_ERROR_MESSAGE = '入力内容を確認してください。';
+
+// GraphQLの引数の検証(withValidatedArgs)と同じ形の詳細にする
+export const productDescriptionRejectedError = (message: string): AppError =>
+  new AppError({
+    kind: 'bad_request',
+    code: 'validation_error',
+    message: VALIDATION_ERROR_MESSAGE,
+    details: [{ field: 'descriptionMarkdown', code: 'custom', message }],
+  });
