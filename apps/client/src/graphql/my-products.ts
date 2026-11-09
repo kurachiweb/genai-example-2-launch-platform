@@ -4,6 +4,7 @@ import {
   type QueryClient,
   queryOptions,
 } from '@tanstack/react-query';
+import { notFound, redirect } from '@tanstack/react-router';
 
 import { executeGraphQL } from '../../lib/start/graphql/execute-graphql.ts';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
@@ -113,6 +114,7 @@ export interface MyProductEditView extends MyProductCardView {
   readonly screenshots: readonly {
     readonly fileId: string;
     readonly image: MediaImageView | null;
+    readonly byteSize: number;
   }[];
   // 保存と削除で送る、読み込んだ時点の版
   readonly version: number;
@@ -288,9 +290,10 @@ export const toMyProductEditView = (
   websiteUrl: fields.websiteUrl,
   description: fields.description,
   logoFileId: fields.logoFileId,
-  screenshots: fields.screenshots.map(({ fileId, image }) => ({
+  screenshots: fields.screenshots.map(({ fileId, image, byteSize }) => ({
     fileId,
     image,
+    byteSize,
   })),
   version: fields.version,
 });
@@ -373,9 +376,10 @@ export async function loadProductRegistration({
   ]);
 }
 
-// プロダクトの保存・削除と業務時刻の境界は、自分のプロダクトの一覧・編集・選べる日に加え、公開プロフィールのローンチ履歴と受賞にも表れるため、それらの取得もまとめて無効にする。表示していない取得は古いものとだけされ、次に表示した時に取得し直される
+// プロダクトの保存・削除と業務時刻の境界は、自分のプロダクトの一覧・編集・選べる日に加え、公開プロフィールのローンチ履歴と受賞にも表れるため、それらの取得もまとめて無効にする。表示していない取得は古いものとだけされ、次に表示した時に取得し直される。削除の後に移る前など、表示中の取得を取り直すと移る前の画面が消えた対象を描き直す時は、refetchActiveを偽にして表示中の取得も古いものとだけする
 export async function invalidateMyProductQueries(
   queryClient: QueryClient,
+  { refetchActive = true }: { readonly refetchActive?: boolean } = {},
 ): Promise<void> {
   await Promise.all(
     [
@@ -385,7 +389,43 @@ export async function invalidateMyProductQueries(
       documentIdOf(ClientLaunchHistoryDocument),
       documentIdOf(ClientProfileAwardsDocument),
     ].map((documentId) =>
-      queryClient.invalidateQueries({ queryKey: [documentId] }),
+      queryClient.invalidateQueries({
+        queryKey: [documentId],
+        refetchType: refetchActive ? 'active' : 'none',
+      }),
     ),
   );
+}
+
+// 編集画面の題名にプロダクトの名称を使うため、プロダクトの取得の失敗はエラーの画面にする。ローンチの状態と固定は時刻で変わるため、キャッシュに値があっても取得し直す。カテゴリの失敗はページの位置で再試行できるよう例外にせずキャッシュに残す
+export async function loadMyProductEdit({
+  context,
+  params,
+}: {
+  readonly context: {
+    readonly queryClient: QueryClient;
+    readonly viewer: ClientViewer;
+  };
+  readonly params: { readonly handle: string };
+}): Promise<{ readonly name: string }> {
+  const { queryClient, viewer } = context;
+  const [data] = await Promise.all([
+    queryClient.query({
+      ...myProductQueryOptions(viewer.id, params.handle),
+      staleTime: 0,
+    }),
+    queryClient.query(productCategoriesQueryOptions()).catch(() => undefined),
+  ]);
+  const lookup = toMyProductLookup(data);
+  if (lookup.kind === 'not-found') {
+    throw notFound();
+  }
+  if (lookup.kind === 'redirect') {
+    throw redirect({
+      to: '/my/products/$handle/edit',
+      params: { handle: lookup.handle },
+      statusCode: 302,
+    });
+  }
+  return { name: lookup.product.name };
 }

@@ -193,6 +193,22 @@ describe('LaunchPlanNotice', () => {
     expect(reserveLink().query()).toBeNull();
   });
 
+  test('編集画面では、予定のローンチ日の変更の案内を出さず、固定の期間は固定の理由だけを示す', async () => {
+    await renderNotice(
+      planOf({
+        ...RESCHEDULE_PLAN,
+        locked: true,
+        locks: [{ code: 'qualifier_match', message: LOCK_MESSAGE }],
+      }),
+      { placement: 'edit' },
+    );
+
+    await expect.element(page.getByText(LOCK_MESSAGE)).toBeVisible();
+    expect(
+      page.getByText('ローンチ日は編集画面で変更できます。').query(),
+    ).toBeNull();
+  });
+
   test('予約できないなら理由の文言をすべて示し、解除の日時があれば利用者のタイムゾーンのtime要素で相対表現とともに示す', async () => {
     await renderNotice(BLOCKED_PLAN);
 

@@ -1342,6 +1342,8 @@ export type ProductOwnerStatus = {
 
 export type ProductScreenshot = {
   __typename?: 'ProductScreenshot';
+  /** 画像のバイト数。編集画面で保存済みの合計を数えるのに使う。画像の記録が無ければ0 */
+  byteSize: Scalars['Int']['output'];
   fileId: Scalars['ID']['output'];
   /** 画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
   image?: Maybe<MediaImage>;
@@ -2726,6 +2728,7 @@ export type ProductOwnerStatusResolvers<ContextType = GraphQLContext, ParentType
 };
 
 export type ProductScreenshotResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductScreenshot'] = ResolversParentTypes['ProductScreenshot']> = {
+  byteSize?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   fileId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   image?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
 };

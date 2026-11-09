@@ -64,6 +64,7 @@ export interface MyProductFields {
   readonly screenshots: readonly {
     readonly fileId: string;
     readonly image: MediaImageFields | null;
+    readonly byteSize: number;
   }[];
   readonly hidden: boolean;
   readonly listed: boolean;
@@ -192,6 +193,7 @@ const MY_PRODUCT_FIELDS = /* GraphQL */ `
       id
       objectKey
     }
+    byteSize
   }
   hidden
   listed

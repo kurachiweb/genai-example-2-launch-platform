@@ -23,8 +23,8 @@ const PRODUCT: MyProductEditView = {
   logoFileId: '01JD0FILE00000000000000001',
   logo: null,
   screenshots: [
-    { fileId: '01JD0FILE00000000000000002', image: null },
-    { fileId: '01JD0FILE00000000000000003', image: null },
+    { fileId: '01JD0FILE00000000000000002', image: null, byteSize: 1024 },
+    { fileId: '01JD0FILE00000000000000003', image: null, byteSize: 2048 },
   ],
   hidden: false,
   listed: false,

@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { type InfiniteData, QueryClient } from '@tanstack/react-query';
+import {
+  type InfiniteData,
+  QueryClient,
+  QueryObserver,
+} from '@tanstack/react-query';
+import { isNotFound, isRedirect } from '@tanstack/react-router';
 
 import {
   graphqlResponse,
@@ -28,6 +33,7 @@ import {
 import {
   fetchProductHandleAvailability,
   invalidateMyProductQueries,
+  loadMyProductEdit,
   loadMyProducts,
   loadProductRegistration,
   MY_PRODUCTS_PAGE_SIZE,
@@ -173,8 +179,9 @@ const FIELDS: MyProductFields = {
     {
       fileId: '01JD0FILE00000000000000002',
       image: { ...LOGO, id: '01JD0FILE00000000000000002' },
+      byteSize: 2_097_152,
     },
-    { fileId: '01JD0FILE00000000000000003', image: null },
+    { fileId: '01JD0FILE00000000000000003', image: null, byteSize: 0 },
   ],
   version: 4,
 };
@@ -348,7 +355,7 @@ describe('myProductQueryOptions・toMyProductLookup', () => {
     );
   });
 
-  test('自分のプロダクトは編集の値にし、スクリーンショットの順と画像の無い枠を残す', () => {
+  test('自分のプロダクトは編集の値にし、スクリーンショットの順と画像の無い枠とバイト数を残す', () => {
     const data: ClientMyProductQuery = {
       myProduct: { __typename: 'MyProduct', ...FIELDS },
     };
@@ -368,8 +375,9 @@ describe('myProductQueryOptions・toMyProductLookup', () => {
         {
           fileId: '01JD0FILE00000000000000002',
           image: { ...LOGO, id: '01JD0FILE00000000000000002' },
+          byteSize: 2_097_152,
         },
-        { fileId: '01JD0FILE00000000000000003', image: null },
+        { fileId: '01JD0FILE00000000000000003', image: null, byteSize: 0 },
       ],
       version: 4,
       latestLaunch: { status: 'scheduled' },
@@ -670,6 +678,134 @@ describe('loadProductRegistration', () => {
     );
 
     expect(result).toBe('loaded');
+    expect(
+      queryClient.getQueryState(productCategoriesQueryOptions().queryKey)
+        ?.status,
+    ).toBe('error');
+  });
+});
+
+describe('invalidateMyProductQueries(取り直さない指定)', () => {
+  test('表示中の取得も取り直さずに古いものとだけし、次に読む時に取得し直させる', async () => {
+    const queryClient = new QueryClient();
+    const key = myProductQueryOptions(VIEWER.id, 'pitch-deck').queryKey;
+    queryClient.setQueryData(key, { myProduct: null });
+    const observer = new QueryObserver(queryClient, {
+      queryKey: key,
+      queryFn: () => Promise.reject(new Error('取り直してはいけません')),
+      staleTime: Infinity,
+    });
+    const unsubscribe = observer.subscribe(() => undefined);
+
+    await invalidateMyProductQueries(queryClient, { refetchActive: false });
+
+    expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(key)?.fetchStatus).toBe('idle');
+    unsubscribe();
+  });
+});
+
+describe('loadMyProductEdit', () => {
+  const myProductData = (myProduct: ClientMyProductQuery['myProduct']) =>
+    graphqlResponse({ data: { myProduct } });
+
+  const respondByDocument =
+    (myProduct: () => Promise<Response>) => async (request: Request) => {
+      const { documentId } = (await request.clone().json()) as {
+        readonly documentId: string;
+      };
+      return documentId === documentIdOf(ClientProductCategoriesDocument)
+        ? graphqlResponse({ data: { productCategories: [CATEGORY] } })
+        : myProduct();
+    };
+
+  const load = (client: QueryClient, handle = 'pitch-deck') =>
+    loadMyProductEdit({
+      context: { queryClient: client, viewer: VIEWER },
+      params: { handle },
+    });
+
+  test('自分のプロダクトとカテゴリを同時に読み、名称を返してキャッシュに残す', async () => {
+    const { result, sent, queryClient } = await runThroughApi(
+      (client) => load(client),
+      respondByDocument(() =>
+        Promise.resolve(myProductData({ __typename: 'MyProduct', ...FIELDS })),
+      ),
+    );
+
+    expect(result).toStrictEqual({ name: FIELDS.name });
+    expect(sent).toHaveLength(2);
+    expect(
+      queryClient.getQueryData(
+        myProductQueryOptions(VIEWER.id, 'pitch-deck').queryKey,
+      ),
+    ).toStrictEqual({ myProduct: { __typename: 'MyProduct', ...FIELDS } });
+    expect(
+      queryClient.getQueryData(productCategoriesQueryOptions().queryKey),
+    ).toStrictEqual({ productCategories: [CATEGORY] });
+  });
+
+  test('キャッシュに値があっても、ローンチの状態と固定が変わり得るため取得し直す', async () => {
+    const { sent } = await runThroughApi(
+      async (client) => {
+        client.setQueryData(
+          myProductQueryOptions(VIEWER.id, 'pitch-deck').queryKey,
+          { myProduct: { __typename: 'MyProduct', ...FIELDS } },
+        );
+        return load(client);
+      },
+      respondByDocument(() =>
+        Promise.resolve(myProductData({ __typename: 'MyProduct', ...FIELDS })),
+      ),
+    );
+
+    expect(
+      (sent as readonly { readonly documentId: string }[]).filter(
+        ({ documentId }) =>
+          documentId === documentIdOf(ClientMyProductDocument),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('他人・論理削除済み・不在のプロダクトは404にする', async () => {
+    const { result } = await runThroughApi(
+      (client) => load(client).catch((thrown: unknown) => thrown),
+      respondByDocument(() => Promise.resolve(myProductData(null))),
+    );
+
+    expect(isNotFound(result)).toBe(true);
+  });
+
+  test('旧ハンドルは現在のハンドルの編集画面へ302で移す', async () => {
+    const { result } = await runThroughApi(
+      (client) =>
+        load(client, 'pitch-deck-old').catch((thrown: unknown) => thrown),
+      respondByDocument(() =>
+        Promise.resolve(
+          myProductData({
+            __typename: 'MyProductRedirect',
+            handle: 'pitch-deck',
+          }),
+        ),
+      ),
+    );
+
+    expect(isRedirect(result)).toBe(true);
+    const { options } = result as { readonly options: Record<string, unknown> };
+    expect(options).toMatchObject({
+      to: '/my/products/$handle/edit',
+      params: { handle: 'pitch-deck' },
+      statusCode: 302,
+    });
+  });
+
+  test('プロダクトの取得の失敗は、題名を作れずページを表示できないためそのまま投げ、カテゴリの失敗はキャッシュに残す', async () => {
+    const { result, queryClient } = await runThroughApi(
+      (client) => load(client).catch((thrown: unknown) => thrown),
+      () => Promise.resolve(new Response('', { status: 503 })),
+    );
+
+    expect(result).toBeInstanceOf(GraphQLClientError);
     expect(
       queryClient.getQueryState(productCategoriesQueryOptions().queryKey)
         ?.status,

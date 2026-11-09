@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   businessDateOf,
   kickoffAtOf,
+  pairingAtOf,
   selectionCutoffsFrom,
 } from './business-time.ts';
 
@@ -35,5 +36,15 @@ describe('selectionCutoffsFrom', () => {
       '2026-12-01T07:40:00.000Z',
       '2026-12-02T07:40:00.000Z',
     ]);
+  });
+});
+
+describe('pairingAtOf', () => {
+  test('ローンチ日の前日の業務時刻の23:45をISO 8601の日時にする', () => {
+    expect(pairingAtOf('2026-11-20')).toBe('2026-11-20T07:45:00.000Z');
+  });
+
+  test('月の初日のローンチ日は前の月の末日の23:45にする', () => {
+    expect(pairingAtOf('2026-12-01')).toBe('2026-12-01T07:45:00.000Z');
   });
 });

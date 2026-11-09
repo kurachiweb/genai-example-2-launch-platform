@@ -29,6 +29,7 @@ mutation ClientRegisterProduct($input: RegisterProductInput!) {
         width
         height
       }
+      byteSize
     }
     hidden
     listed

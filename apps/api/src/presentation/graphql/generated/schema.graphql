@@ -1125,6 +1125,8 @@ type ProductOwnerStatus {
 }
 
 type ProductScreenshot {
+  """画像のバイト数。編集画面で保存済みの合計を数えるのに使う。画像の記録が無ければ0"""
+  byteSize: Int!
   fileId: ID!
 
   """画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる"""

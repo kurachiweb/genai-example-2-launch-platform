@@ -70,7 +70,8 @@ function PlanNotice(props: LaunchPlanNoticeProps) {
     case 'new':
       return <NewLaunchNotice {...props} />;
     case 'reschedule':
-      return <p>{RESCHEDULE_NOTICE}</p>;
+      // 編集画面ではローンチ日の欄で変更し、固定の期間は変更できないため、編集画面で変更できる旨は一覧でだけ示す
+      return props.placement === 'list' ? <p>{RESCHEDULE_NOTICE}</p> : null;
     case 'blocked':
       return <BlockedNotice blocks={props.plan.blocks} />;
     case 'unknown':

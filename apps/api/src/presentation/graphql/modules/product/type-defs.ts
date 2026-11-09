@@ -105,6 +105,8 @@ export const PRODUCT_TYPE_DEFS = /* GraphQL */ `
     fileId: ID!
     "画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる"
     image: MediaImage
+    "画像のバイト数。編集画面で保存済みの合計を数えるのに使う。画像の記録が無ければ0"
+    byteSize: Int!
   }
 
   "自分のプロダクトの編集用の情報"

@@ -41,6 +41,7 @@ import { Route as PrivacyRevisionsVersionNumberRouteImport } from './routes/priv
 import { Route as TermsRevisionsVersionNumberRouteImport } from './routes/terms/revisions/$versionNumber'
 import { Route as AuthenticatedMyProductsIndexRouteImport } from './routes/_authenticated/my/products/index'
 import { Route as AuthenticatedMyProductsNewRouteImport } from './routes/_authenticated/my/products/new'
+import { Route as AuthenticatedMyProductsHandleEditRouteImport } from './routes/_authenticated/my/products/$handle/edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -219,6 +220,12 @@ const AuthenticatedMyProductsNewRoute =
     path: '/my/products/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMyProductsHandleEditRoute =
+  AuthenticatedMyProductsHandleEditRouteImport.update({
+    id: '/my/products/$handle/edit',
+    path: '/my/products/$handle/edit',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -252,6 +259,7 @@ export interface FileRoutesByFullPath {
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/my/products/new': typeof AuthenticatedMyProductsNewRoute
   '/my/products/': typeof AuthenticatedMyProductsIndexRoute
+  '/my/products/$handle/edit': typeof AuthenticatedMyProductsHandleEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -284,6 +292,7 @@ export interface FileRoutesByTo {
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
   '/my/products/new': typeof AuthenticatedMyProductsNewRoute
   '/my/products': typeof AuthenticatedMyProductsIndexRoute
+  '/my/products/$handle/edit': typeof AuthenticatedMyProductsHandleEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -319,6 +328,7 @@ export interface FileRoutesById {
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/_authenticated/my/products/new': typeof AuthenticatedMyProductsNewRoute
   '/_authenticated/my/products/': typeof AuthenticatedMyProductsIndexRoute
+  '/_authenticated/my/products/$handle/edit': typeof AuthenticatedMyProductsHandleEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -354,6 +364,7 @@ export interface FileRouteTypes {
     | '/auth/password-reset/'
     | '/my/products/new'
     | '/my/products/'
+    | '/my/products/$handle/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -386,6 +397,7 @@ export interface FileRouteTypes {
     | '/auth/password-reset'
     | '/my/products/new'
     | '/my/products'
+    | '/my/products/$handle/edit'
   id:
     | '__root__'
     | '/'
@@ -420,6 +432,7 @@ export interface FileRouteTypes {
     | '/auth/password-reset/'
     | '/_authenticated/my/products/new'
     | '/_authenticated/my/products/'
+    | '/_authenticated/my/products/$handle/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -670,6 +683,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMyProductsNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/my/products/$handle/edit': {
+      id: '/_authenticated/my/products/$handle/edit'
+      path: '/my/products/$handle/edit'
+      fullPath: '/my/products/$handle/edit'
+      preLoaderRoute: typeof AuthenticatedMyProductsHandleEditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -706,6 +726,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInquiriesInquiryIdRoute: typeof AuthenticatedInquiriesInquiryIdRoute
   AuthenticatedMyProductsNewRoute: typeof AuthenticatedMyProductsNewRoute
   AuthenticatedMyProductsIndexRoute: typeof AuthenticatedMyProductsIndexRoute
+  AuthenticatedMyProductsHandleEditRoute: typeof AuthenticatedMyProductsHandleEditRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -715,6 +736,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInquiriesInquiryIdRoute: AuthenticatedInquiriesInquiryIdRoute,
   AuthenticatedMyProductsNewRoute: AuthenticatedMyProductsNewRoute,
   AuthenticatedMyProductsIndexRoute: AuthenticatedMyProductsIndexRoute,
+  AuthenticatedMyProductsHandleEditRoute:
+    AuthenticatedMyProductsHandleEditRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

@@ -52,6 +52,12 @@ export const productViewResolvers = {
   ProductScreenshot: {
     image: (screenshot, _args, context) =>
       productImageOf(screenshot.fileId, context),
+    byteSize: async (screenshot, _args, context) => {
+      const file = await context.loaders
+        .get(mediaFileLoader)
+        .load(screenshot.fileId);
+      return file?.byteSize ?? 0;
+    },
   },
   LaunchHistoryProduct: {
     category: (product, _args, context) =>

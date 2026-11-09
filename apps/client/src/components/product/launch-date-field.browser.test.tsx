@@ -619,7 +619,7 @@ describe('計画ごとの表示', () => {
         locked: true,
         locks: [{ code: 'qualifier_match', message: LOCK_MESSAGE }],
       }),
-      messages: ['ローンチ日は編集画面で変更できます。', LOCK_MESSAGE],
+      messages: [LOCK_MESSAGE],
     },
     {
       name: '固定を判定できない',
@@ -640,6 +640,9 @@ describe('計画ごとの表示', () => {
       expect(page.getByRole('group').query()).toBeNull();
       expect(
         page.getByRole('link', { name: '次回のローンチを予約' }).query(),
+      ).toBeNull();
+      expect(
+        page.getByText('ローンチ日は編集画面で変更できます。').query(),
       ).toBeNull();
     },
   );

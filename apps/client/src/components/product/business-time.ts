@@ -1,7 +1,9 @@
-// 業務時刻の時差と選べる日の締め切りは、apps/backend-libのcore/time/business-time.tsのBUSINESS_UTC_OFFSET_MINUTESとcore/product/launch-status.tsのLAUNCH_SELECTION_CUTOFFの写しで、一致はルートのconfig/contract-copies.unit.test.tsが確かめる
+// 業務時刻の時差と選べる日の締め切りは、apps/backend-libのcore/time/business-time.tsのBUSINESS_UTC_OFFSET_MINUTESとcore/product/launch-status.tsのLAUNCH_SELECTION_CUTOFFの写しで、一致はルートのconfig/contract-copies.unit.test.tsが確かめる。マッチ直前の固定の始まりは同じlaunch-status.tsのPAIRING_TIMEの写しで、一致はconfig/launch-time-contract-copies.unit.test.tsが確かめる
 export const BUSINESS_UTC_OFFSET_MINUTES = -480;
 
 export const LAUNCH_SELECTION_CUTOFF = Object.freeze({ hour: 23, minute: 40 });
+
+export const PAIRING_TIME = Object.freeze({ hour: 23, minute: 45 });
 
 interface BusinessTimeOfDay {
   readonly hour: number;
@@ -45,3 +47,10 @@ export const selectionCutoffsFrom = (
     new Date(cutoff.getTime() + MILLISECONDS_PER_DAY).toISOString(),
   ];
 };
+
+// ローンチ日の前日の業務時刻の23:45から、ペアリングとマッチの間のローンチ日・カテゴリの変更と削除の固定が始まる
+export const pairingAtOf = (launchDate: string): string =>
+  new Date(
+    businessDateTimeOf(launchDate, PAIRING_TIME).getTime() -
+      MILLISECONDS_PER_DAY,
+  ).toISOString();

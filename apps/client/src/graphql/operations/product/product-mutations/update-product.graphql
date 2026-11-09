@@ -29,6 +29,7 @@ mutation ClientUpdateProduct($input: UpdateProductInput!) {
         width
         height
       }
+      byteSize
     }
     hidden
     listed

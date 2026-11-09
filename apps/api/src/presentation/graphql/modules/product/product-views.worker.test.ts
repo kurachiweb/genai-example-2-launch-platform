@@ -236,7 +236,7 @@ describe('ローンチの状態と計画', () => {
 });
 
 describe('画像の項目', () => {
-  test('配信できる画像はオブジェクトキーを返し、隔離中の画像はオブジェクトキーを空にし、記録の無い画像はnullにする', async () => {
+  test('配信できる画像はオブジェクトキーを返し、隔離中の画像はオブジェクトキーを空にし、記録の無い画像はnullにし、スクリーンショットのバイト数は記録の値で記録が無ければ0にする', async () => {
     const token = await insertAlice();
     await insertFile(1, {
       purpose: PRODUCT_LOGO_PURPOSE,
@@ -245,7 +245,7 @@ describe('画像の項目', () => {
       moderationStatus: 'flagged',
     });
     await insertReason(1, 'auto');
-    await insertFile(2, { ownerId: userIdOf(ALICE) });
+    await insertFile(2, { ownerId: userIdOf(ALICE), byteSize: 2048 });
     await insertFile(3, {
       ownerId: userIdOf(ALICE),
       location: 'quarantine',
@@ -270,9 +270,14 @@ describe('画像の項目', () => {
       {
         fileId: fileIdOf(2),
         image: { id: fileIdOf(2), objectKey: objectKeyOf(2) },
+        byteSize: 2048,
       },
-      { fileId: fileIdOf(3), image: { id: fileIdOf(3), objectKey: null } },
-      { fileId: fileIdOf(9), image: null },
+      {
+        fileId: fileIdOf(3),
+        image: { id: fileIdOf(3), objectKey: null },
+        byteSize: 1024,
+      },
+      { fileId: fileIdOf(9), image: null, byteSize: 0 },
     ]);
   });
 });

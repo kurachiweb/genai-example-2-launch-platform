@@ -11,7 +11,11 @@ import { FormMessage } from '../../../lib/components/form/form-message.tsx';
 import { SubmitButton } from '../../../lib/components/form/submit-button.tsx';
 import { useAppForm } from '../../../lib/components/form/use-app-form.ts';
 import { Input } from '../../../lib/components/ui/input/input.tsx';
-import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
+import { Button } from '../../../lib/components/ui/button/button.tsx';
+import {
+  errorMessageOf,
+  GraphQLClientError,
+} from '../../../lib/utilities/graphql/graphql-result.ts';
 import type { z } from '../../../lib/utilities/validation/zod.ts';
 import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import type { ProductCategoryView } from '../../graphql/my-products.ts';
@@ -24,6 +28,7 @@ import {
 import { LogoField, type LogoFieldCurrent } from './logo-field.tsx';
 import type { ProductScreenshotEntry } from './product-basic-field-values.ts';
 import { ProductDescriptionField } from './product-description-field.tsx';
+import { RELOAD_LATEST_LABEL } from './product-edit-messages.ts';
 import {
   BASIC_SECTION_HEADING,
   DESCRIPTION_SECTION_HEADING,
@@ -72,6 +77,46 @@ export interface ProductFormProps<TOutput> {
     values: TOutput,
     turnstile: TurnstileTokenController,
   ) => Promise<void>;
+  // 渡すと、保存が版の競合で拒否された時に、最新の内容を読み込む操作を失敗の文言の下に示す。読み込んだ後は呼び出し側が最新の内容でフォームを作り直す
+  readonly onReloadLatest?: () => Promise<void>;
+}
+
+const PRODUCT_UPDATE_CONFLICT_CODE = 'product_update_conflict';
+
+interface SubmitFailure {
+  readonly message: string;
+  readonly reloadable: boolean;
+}
+
+interface ReloadLatestButtonProps {
+  readonly onReload: () => Promise<void>;
+  readonly onFailure: (error: unknown) => void;
+}
+
+// 読み込みの間は押した位置を失わないよう、無効にせずaria-disabledにして重ねた押下を無視する
+function ReloadLatestButton({ onReload, onFailure }: ReloadLatestButtonProps) {
+  const [pending, setPending] = useState(false);
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      className="self-start"
+      aria-disabled={pending ? true : undefined}
+      aria-busy={pending ? true : undefined}
+      onClick={() => {
+        if (pending) {
+          return;
+        }
+        setPending(true);
+        onReload().catch((error: unknown) => {
+          setPending(false);
+          onFailure(error);
+        });
+      }}
+    >
+      {RELOAD_LATEST_LABEL}
+    </Button>
+  );
 }
 
 interface FormSectionProps {
@@ -114,13 +159,20 @@ export function ProductForm<TOutput>({
   disabled,
   labelledBy,
   onSave,
+  onReloadLatest,
 }: ProductFormProps<TOutput>) {
   const [initialValues] = useState(defaultValues);
   const form = useAppForm<ProductFormInput, TOutput>(schema, {
     defaultValues: initialValues,
   });
   const turnstile = useTurnstileToken();
-  const [submitError, setSubmitError] = useState<string>();
+  const [submitError, setSubmitError] = useState<SubmitFailure>();
+  const failWith = (error: unknown, reloadable: boolean): void => {
+    setSubmitError({
+      message: errorMessageOf(error, CLIENT_PROFILE.contactAvailable),
+      reloadable,
+    });
+  };
 
   return (
     <AppForm
@@ -132,7 +184,11 @@ export function ProductForm<TOutput>({
         await onSave(values, turnstile);
       }}
       onSubmitError={(error) => {
-        setSubmitError(errorMessageOf(error, CLIENT_PROFILE.contactAvailable));
+        failWith(
+          error,
+          error instanceof GraphQLClientError &&
+            error.code === PRODUCT_UPDATE_CONFLICT_CODE,
+        );
       }}
       className="flex flex-col gap-10"
     >
@@ -204,8 +260,16 @@ export function ProductForm<TOutput>({
       />
       <div className="flex flex-col gap-3">
         {submitError === undefined ? null : (
-          <FormMessage role="alert">{submitError}</FormMessage>
+          <FormMessage role="alert">{submitError.message}</FormMessage>
         )}
+        {submitError?.reloadable === true && onReloadLatest !== undefined ? (
+          <ReloadLatestButton
+            onReload={onReloadLatest}
+            onFailure={(error) => {
+              failWith(error, true);
+            }}
+          />
+        ) : null}
         <SubmitButton className="self-start" size="lg" disabled={disabled}>
           <SubmitLabel kind={launchDate.kind} />
         </SubmitButton>
