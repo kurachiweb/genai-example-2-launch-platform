@@ -238,6 +238,12 @@ describe('検索対象のある日次の再抽出', () => {
         }),
         expect.objectContaining({ name: 'email-delivery.cleanup' }),
         expect.objectContaining({
+          name: 'product-launch.purge-orchestrator',
+        }),
+        expect.objectContaining({
+          name: 'product-launch.lifecycle-redispatch',
+        }),
+        expect.objectContaining({
           name: REEXTRACTION_JOB_NAME,
           result: 'succeeded',
         }),

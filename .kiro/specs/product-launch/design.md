@@ -253,7 +253,10 @@ apps/
 │   │   ├── launch-history-reader.ts
 │   │   ├── product-category-service.ts
 │   │   ├── product-visibility-control.ts                 # 非公開化・復元の操作口(ugc-moderationが呼ぶ)
-│   │   └── product-maintenance-jobs.ts                   # purge-orchestrator・lifecycle-redispatch
+│   │   └── jobs/                                         # payments・ultrasと同じ、各ジョブが`*_JOB_DEFINITION`を持つ
+│   │       ├── product-job-support.ts                    # 送信の失敗の集約と要約のログ
+│   │       ├── product-purge-orchestrator-job.ts         # purge-orchestrator
+│   │       └── product-lifecycle-redispatch-job.ts       # lifecycle-redispatch
 │   ├── infrastructure/product/                           # Workers統合テスト
 │   │   ├── d1-product-store.ts                           # 読み取り・登録・保存の一括の書き込み(保存の登録口の文と確定の後の処理を呼ぶ)
 │   │   ├── product-save-hooks.ts                         # ProductSaveHook・ProductSaveHookRegistration・ProductSaveHooks・createProductSaveHooks(仮11)
@@ -1556,12 +1559,16 @@ export interface ProductMessagePublisher {
   ): Promise<string>;
 }
 // application/product/ports.ts
-// application層はSentryの送信部品を読み込めないため、期限超過の報告をこの形で受け取る(identity-authのAuthIncidentReporterと同じ)
+// application層はSentryの送信部品を読み込めないため、期限超過と送り直しの続くイベントの報告をこの形で受け取る(identity-authのAuthIncidentReporterと同じ)
+export type ProductIncident =
+  | { readonly kind: 'product-purge-overdue'; readonly count: number }
+  | {
+      readonly kind: 'product-lifecycle-events-redispatched';
+      readonly count: number;
+      readonly stuckEventIds: readonly string[];
+    };
 export interface ProductIncidentReporter {
-  report(incident: {
-    readonly kind: 'product-purge-overdue';
-    readonly count: number;
-  }): void;
+  report(incident: ProductIncident): void;
 }
 ```
 
@@ -1569,10 +1576,10 @@ export interface ProductIncidentReporter {
 - `ProductMessagePublisher`は識別子を持たず、使う側(`ProductDeletion`・`ProductVisibilityControl`・`ProductMaintenanceJobs`)が`@inject(PLATFORM_TYPES.MessagePublisher)`で受け取る(media-pipelineの`MediaJobMessagePublisher`・identity-authの`IdentityMessagePublisher`と同じ)。本節の「送信」は`ProductMessagePublisher.publish(RUN_PRODUCT_LIFECYCLE_MESSAGE, { eventId })`を指す。ジョブの記録の読み書きは`core/product`の`ProductLifecycleStore`の型で`PRODUCT_PLATFORM_TYPES.ProductLifecycleStore`から受け取る。application層の各ファイルは`**/lib/workers/**`を読み込まない。
 - 呼び出し元(ugc-moderation)が管理者の権限・理由・監査ログ・通知を持つ。本操作口は呼び出し元の主体を判定しない(identity-authの`UserSuspension`と同じ形)。`hide`は`ProductLifecycleCommitter.commit({ type: 'hidden' })`(未開始のローンチの取消を含む、12.7)→送信。`unhide`は`unhidden`で、取消を戻さない(12.9)。既に同じ状態なら`unchanged`でイベントを作らない(12.6)。ugc-moderationは、必要なら自分の同期の処理を`PRODUCT_LIFECYCLE_SYNC_HANDLERS`に登録して、理由の記録を同じ一括の書き込みに含められる。
 
-| ジョブの名前                          | 時刻 | `order` | 処理                                                                                                                                                                                                                        |
-| ------------------------------------- | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `product-launch.purge-orchestrator`   | 4:21 | 1000    | (1)`listPurgeCandidates(業務日付(実行日 − 12日)の0:00, 200)`→`createPurgeDueEvents`→送信(8.4)。(2)`countOverduePurges(実行時刻 − 14日)`が0件でなければ`ProductIncidentReporter`で`product-purge-overdue`をSentryへ報告(8.6) |
-| `product-launch.lifecycle-redispatch` | 4:21 | 1010    | 最後の送信から1時間以上`pending`のイベントを100件まで送り直し、`markRedispatched`(12.5)                                                                                                                                     |
+| ジョブの名前                          | 時刻 | `order` | 処理                                                                                                                                                                                                                                                |
+| ------------------------------------- | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product-launch.purge-orchestrator`   | 4:21 | 1000    | (1)`listPurgeCandidates(業務日付(実行日 − 12日)の0:00, 200)`→`createPurgeDueEvents`→送信(8.4)。(2)`countOverduePurges(実行時刻 − 14日)`が0件でなければ`ProductIncidentReporter`で`product-purge-overdue`をSentryへ報告(8.6)                         |
+| `product-launch.lifecycle-redispatch` | 4:21 | 1010    | 最後の送信から1時間以上`pending`のイベントを100件まで送り直し、`markRedispatched`。送り直しが3回目以降のイベントを含めば`product-lifecycle-events-redispatched`(送り直した件数と3回目以降のイベントのID)を報告(12.5、identity-authの送り直しと同じ) |
 
 - Trigger: apiのCron Triggers(`21 12 * * *`、上流で追加済み)。`order`は帯の1000番台(13.5)。ジョブの名前と順序は日次タイムラインの4:21の表に載せる。どちらも2回実行しても結果が変わらない。
 - 送り直しの時刻: identity-authの送り直しは、4:21のメールの後始末と重ならないよう16:21へ移されている。本specの送り直しはメールの送信や抑止の記録に関わらないため、4:21・1010のままとする。
@@ -2249,7 +2256,7 @@ erDiagram
 ### Monitoring
 
 - `getAppLogger(['api'|'event', 'application', 'product'])`で、プロダクトID・ローンチID・イベントID・結果の種類・件数だけを記録する(14.8)。説明文・外部WebサイトURL・入力されたハンドル・名称は記録しない。
-- Sentry: `product-purge-overdue`(4:21)、非同期の処理の再試行の上限(デッドレター)。`AppError`は送らない。
+- Sentry: `product-purge-overdue`・`product-lifecycle-events-redispatched`(4:21)、非同期の処理の再試行の上限(デッドレター)。`AppError`は送らない。
 
 ## Testing Strategy
 

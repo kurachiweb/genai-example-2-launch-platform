@@ -20,6 +20,9 @@ const EXPECTED_NAMES = [
   'ProductVisibilityControl',
   'ProductWithdrawalSyncHandler',
   'LaunchCancellationSyncHandler',
+  'ProductIncidentReporter',
+  'ProductPurgeOrchestratorJob',
+  'ProductLifecycleRedispatchJob',
 ] as const;
 
 describe('PRODUCT_TYPES', () => {

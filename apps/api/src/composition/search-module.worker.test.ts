@@ -51,6 +51,10 @@ const MEDIA_JOB_NAMES = [
   'media-pipeline.moderation-requeue',
   'media-pipeline.location-reconciliation',
 ];
+const PRODUCT_JOB_NAMES = [
+  'product-launch.purge-orchestrator',
+  'product-launch.lifecycle-redispatch',
+];
 const REEXTRACTION_CATEGORY = 'api.search.reextraction';
 
 function createContainer() {
@@ -144,6 +148,7 @@ describe('APIサーバーの検索のモジュール', () => {
       ...PROFILE_JOB_NAMES,
       ...MEDIA_JOB_NAMES,
       'email-delivery.cleanup',
+      ...PRODUCT_JOB_NAMES,
       REEXTRACTION_JOB_NAME,
     ]);
   });
@@ -208,6 +213,8 @@ describe('定期実行からの日次の再抽出', () => {
           name: 'media-pipeline.location-reconciliation',
         }),
         expect.objectContaining({ name: 'email-delivery.cleanup' }),
+        expect.objectContaining({ name: PRODUCT_JOB_NAMES[0] }),
+        expect.objectContaining({ name: PRODUCT_JOB_NAMES[1] }),
         expect.objectContaining({
           name: REEXTRACTION_JOB_NAME,
           result: 'succeeded',

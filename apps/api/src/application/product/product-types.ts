@@ -53,6 +53,18 @@ const LaunchCancellationSyncHandler: unique symbol = Symbol.for(
   'product.LaunchCancellationSyncHandler',
 );
 
+const ProductIncidentReporter: unique symbol = Symbol.for(
+  'product.ProductIncidentReporter',
+);
+
+const ProductPurgeOrchestratorJob: unique symbol = Symbol.for(
+  'product.ProductPurgeOrchestratorJob',
+);
+
+const ProductLifecycleRedispatchJob: unique symbol = Symbol.for(
+  'product.ProductLifecycleRedispatchJob',
+);
+
 export const PRODUCT_TYPES = Object.freeze({
   ProductStateEvaluator,
   RelaunchConditionSources,
@@ -70,4 +82,7 @@ export const PRODUCT_TYPES = Object.freeze({
   ProductVisibilityControl,
   ProductWithdrawalSyncHandler,
   LaunchCancellationSyncHandler,
+  ProductIncidentReporter,
+  ProductPurgeOrchestratorJob,
+  ProductLifecycleRedispatchJob,
 });

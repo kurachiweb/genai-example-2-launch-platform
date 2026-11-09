@@ -9,6 +9,8 @@ import { MEDIA_JOB_TYPES } from '../application/media/media-daily-jobs.ts';
 import { CHECKOUT_RECONCILIATION_JOB_DEFINITION } from '../application/payments/jobs/checkout-reconciliation-job.ts';
 import { PAYMENT_HISTORY_RETENTION_JOB_DEFINITION } from '../application/payments/jobs/payment-history-retention-job.ts';
 import { PENDING_CHECKOUT_SWEEP_JOB_DEFINITION } from '../application/payments/jobs/pending-checkout-sweep-job.ts';
+import { PRODUCT_LIFECYCLE_REDISPATCH_JOB_DEFINITION } from '../application/product/jobs/product-lifecycle-redispatch-job.ts';
+import { PRODUCT_PURGE_ORCHESTRATOR_JOB_DEFINITION } from '../application/product/jobs/product-purge-orchestrator-job.ts';
 import { ORPHANED_FILE_SWEEP_JOB_DEFINITION } from '../application/profile/jobs/orphaned-file-sweep-job.ts';
 import { PENDING_DISPATCH_SWEEP_JOB_DEFINITION } from '../application/ultras/jobs/pending-dispatch-sweep-job.ts';
 
@@ -72,6 +74,8 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     order: 900,
     handler: API_EMAIL_TYPES.EmailCleanupJob,
   },
+  PRODUCT_PURGE_ORCHESTRATOR_JOB_DEFINITION,
+  PRODUCT_LIFECYCLE_REDISPATCH_JOB_DEFINITION,
   {
     name: 'content-processing.keyword-reextraction',
     at: { hour: 4, minute: 21 },

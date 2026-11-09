@@ -5,6 +5,7 @@ import type { Database } from '../../db/client.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../lib/core/ids/id-generator.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
   type LaunchSummarySource,
@@ -18,6 +19,7 @@ import {
   StoreMyProductsReader,
 } from '../application/product/my-products-reader.ts';
 import type {
+  ProductIncidentReporter,
   ProductLifecycleCommitter,
   ProductStore,
 } from '../application/product/ports.ts';
@@ -45,6 +47,8 @@ import {
   DefaultProductStateEvaluator,
   type ProductStateEvaluator,
 } from '../application/product/product-state-evaluator.ts';
+import { ProductLifecycleRedispatchJob } from '../application/product/jobs/product-lifecycle-redispatch-job.ts';
+import { ProductPurgeOrchestratorJob } from '../application/product/jobs/product-purge-orchestrator-job.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
 import {
   type ProductVisibilityControl,
@@ -59,6 +63,7 @@ import {
   type ProductSaveHooks,
 } from '../infrastructure/product/product-save-hooks.ts';
 import { ProductWithdrawalSyncHandler } from '../infrastructure/product/product-withdrawal-sync-handler.ts';
+import { SentryProductIncidentReporter } from '../infrastructure/product/sentry-product-incident-reporter.ts';
 import {
   LAUNCH_SUMMARY_SOURCES,
   PRODUCT_LOCK_SOURCES,
@@ -139,5 +144,14 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<UserLifecycleSyncHandler>(
       PRODUCT_TYPES.LaunchCancellationSyncHandler,
     ).to(LaunchCancellationSyncHandler);
+    bind<ProductIncidentReporter>(PRODUCT_TYPES.ProductIncidentReporter).to(
+      SentryProductIncidentReporter,
+    );
+    bind<ScheduledJobHandler>(PRODUCT_TYPES.ProductPurgeOrchestratorJob).to(
+      ProductPurgeOrchestratorJob,
+    );
+    bind<ScheduledJobHandler>(PRODUCT_TYPES.ProductLifecycleRedispatchJob).to(
+      ProductLifecycleRedispatchJob,
+    );
   }),
 };

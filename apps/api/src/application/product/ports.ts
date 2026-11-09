@@ -165,3 +165,17 @@ export interface ProductMessagePublisher {
     body: TBody,
   ): Promise<string>;
 }
+
+export type ProductIncident =
+  | { readonly kind: 'product-purge-overdue'; readonly count: number }
+  | {
+      readonly kind: 'product-lifecycle-events-redispatched';
+      readonly count: number;
+      readonly stuckEventIds: readonly string[];
+    };
+
+// application層はSentryの送信部品を読み込めないため、運用者が検知すべき出来事をこの形で受け取る
+export interface ProductIncidentReporter {
+  // 運用者が検知できるようログとエラートラッキングへ送る。個人情報を含めない
+  report(incident: ProductIncident): void;
+}

@@ -21,6 +21,7 @@ import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
 import type { CurrentUser } from '../../lib/core/identity/account-guard.ts';
 import { MEDIA_TYPES } from '../../lib/core/media/identifiers.ts';
 import type { UploadPurposeRegistry } from '../../lib/core/media/upload-purpose.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import {
   fromBusinessDateTime,
   parseBusinessDate,
@@ -55,7 +56,10 @@ import type {
   RegisteredDecisionSource,
   RelaunchConditionSource,
 } from '../application/product/decision-sources.ts';
+import { ProductLifecycleRedispatchJob } from '../application/product/jobs/product-lifecycle-redispatch-job.ts';
+import { ProductPurgeOrchestratorJob } from '../application/product/jobs/product-purge-orchestrator-job.ts';
 import type {
+  ProductIncidentReporter,
   ProductLifecycleCommitter,
   ProductStore,
 } from '../application/product/ports.ts';
@@ -95,6 +99,7 @@ import {
 import { computeLaunchDateWindow } from '../domain/product/launch-date-rules.ts';
 import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
 import type { ProductSaveHooks } from '../infrastructure/product/product-save-hooks.ts';
+import { SentryProductIncidentReporter } from '../infrastructure/product/sentry-product-incident-reporter.ts';
 import { GATEWAY_HEADERS } from '../presentation/gateway/gateway-headers.ts';
 import { MODULES } from './modules.ts';
 
@@ -251,6 +256,26 @@ describe('APIサーバーのプロダクトのモジュールの束縛', () => {
         PRODUCT_TYPES.ProductVisibilityControl,
       ),
     ).toBeInstanceOf(StoreProductVisibilityControl);
+  });
+
+  test('4:21の2つのジョブと期限超過の報告を、定期実行の起動ごとのコンテナでそれぞれの実装に解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<ProductIncidentReporter>(
+        PRODUCT_TYPES.ProductIncidentReporter,
+      ),
+    ).toBeInstanceOf(SentryProductIncidentReporter);
+    expect(
+      container.get<ScheduledJobHandler>(
+        PRODUCT_TYPES.ProductPurgeOrchestratorJob,
+      ),
+    ).toBeInstanceOf(ProductPurgeOrchestratorJob);
+    expect(
+      container.get<ScheduledJobHandler>(
+        PRODUCT_TYPES.ProductLifecycleRedispatchJob,
+      ),
+    ).toBeInstanceOf(ProductLifecycleRedispatchJob);
   });
 
   test('非公開化・復元の操作口は、実物の確定と送信の部品で非公開化を確定し、同じ状態ならunchangedを返す', async () => {
