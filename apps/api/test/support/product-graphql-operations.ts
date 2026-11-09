@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { ContainerModule } from 'inversify';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
+import type { AdminRole } from '../../common-lib/admin/admin-roles.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
 import {
@@ -29,6 +30,7 @@ import {
   userIdOf,
 } from '../../lib/workers/product/testing/product-fixtures.ts';
 import type {
+  LaunchSummarySource,
   ProductLockSource,
   RegisteredDecisionSource,
   RelaunchConditionSource,
@@ -37,9 +39,15 @@ import { PRODUCT_TYPES } from '../../src/application/product/product-types.ts';
 import { IDENTITY_TYPES } from '../../src/application/identity/identity-types.ts';
 import type { SessionIssuer } from '../../src/application/identity/session-issuer.ts';
 import { MODULES } from '../../src/composition/modules.ts';
+import {
+  adminIdOf,
+  clearAdminTables,
+  insertAdmin,
+} from '../../src/infrastructure/admin/testing/admin-store-fixtures.ts';
 import { mediaSchemaModule } from '../../src/presentation/graphql/modules/media/index.ts';
 import { productSchemaModule } from '../../src/presentation/graphql/modules/product/index.ts';
 import { profileSchemaModule } from '../../src/presentation/graphql/modules/profile/index.ts';
+import { issueAdminSession } from './admin-graphql-harness.ts';
 import {
   createGraphQLGateway,
   type GatewayApp,
@@ -144,6 +152,37 @@ export interface ProductOwnerStatusFields {
 }
 
 export type HandleAvailabilityValue = 'AVAILABLE' | 'UNAVAILABLE' | 'INVALID';
+
+export interface ProductAwardFields {
+  readonly kind: 'WEEK' | 'YEAR';
+  readonly count: number;
+  readonly labels: readonly string[];
+}
+
+export interface LaunchHistoryItemFields {
+  readonly product: {
+    readonly handle: string;
+    readonly name: string;
+    readonly tagline: string;
+    readonly category: ProductCategoryFields;
+    readonly websiteUrl: string;
+    readonly logo: MediaImageFields | null;
+    readonly listed: boolean;
+  };
+  readonly launches: readonly ProductLaunchFields[];
+  readonly awards: readonly ProductAwardFields[];
+}
+
+export interface LaunchHistoryConnectionFields {
+  readonly viewerIsOwner: boolean;
+  readonly ownerSuspended: boolean;
+  readonly totalCount: number;
+  readonly nodes: readonly LaunchHistoryItemFields[];
+  readonly pageInfo: {
+    readonly hasNextPage: boolean;
+    readonly endCursor: string | null;
+  };
+}
 
 const LAUNCH_FIELDS = /* GraphQL */ `
   id
@@ -312,6 +351,100 @@ export const DELETE_PRODUCT = /* GraphQL */ `
   }
 `;
 
+const CATEGORY_FIELDS = /* GraphQL */ `
+  id
+  name
+  handle
+  systemDefault
+`;
+
+export const LAUNCH_HISTORY = /* GraphQL */ `
+  query ClientLaunchHistory(
+    $userHandle: String!
+    $first: Int!
+    $after: String
+  ) {
+    launchHistory(userHandle: $userHandle, first: $first, after: $after) {
+      viewerIsOwner
+      ownerSuspended
+      totalCount
+      nodes {
+        product {
+          handle
+          name
+          tagline
+          category {
+            ${CATEGORY_FIELDS}
+          }
+          websiteUrl
+          logo {
+            id
+            objectKey
+          }
+          listed
+        }
+        launches {
+          ${LAUNCH_FIELDS}
+        }
+        awards {
+          kind
+          count
+          labels
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
+export const PRODUCT_CATEGORIES = /* GraphQL */ `
+  query ProductCategories {
+    productCategories {
+      ${CATEGORY_FIELDS}
+    }
+  }
+`;
+
+export const ADMIN_PRODUCT_CATEGORIES = /* GraphQL */ `
+  query AdminProductCategories {
+    adminProductCategories {
+      ${CATEGORY_FIELDS}
+    }
+  }
+`;
+
+export const CREATE_PRODUCT_CATEGORY = /* GraphQL */ `
+  mutation AdminCreateProductCategory(
+    $input: ProductCategoryInput!
+    $reason: String
+  ) {
+    createProductCategory(input: $input, reason: $reason) {
+      ${CATEGORY_FIELDS}
+    }
+  }
+`;
+
+export const UPDATE_PRODUCT_CATEGORY = /* GraphQL */ `
+  mutation AdminUpdateProductCategory(
+    $id: ID!
+    $input: ProductCategoryInput!
+    $reason: String
+  ) {
+    updateProductCategory(id: $id, input: $input, reason: $reason) {
+      ${CATEGORY_FIELDS}
+    }
+  }
+`;
+
+export const DELETE_PRODUCT_CATEGORY = /* GraphQL */ `
+  mutation AdminDeleteProductCategory($id: ID!, $reason: String) {
+    deleteProductCategory(id: $id, reason: $reason)
+  }
+`;
+
 // 選べる日とローンチの状態が実行の時刻で変わらないよう、時計を業務時刻の2026-11-10 12:00に固定する
 export const PRODUCT_TEST_NOW = fromBusinessDateTime(
   parseBusinessDate('2026-11-10'),
@@ -370,6 +503,45 @@ const decisionSourcesModule: AppModule<GatewayApp> = {
   }),
 };
 
+type LaunchSummaryAnswer = Awaited<
+  ReturnType<LaunchSummarySource['summarize']>
+>;
+
+const EMPTY_SUMMARY_ANSWER: LaunchSummaryAnswer = Object.freeze({
+  launches: [],
+  awards: [],
+});
+
+let summaryAnswer: LaunchSummaryAnswer | Error = EMPTY_SUMMARY_ANSWER;
+
+// 結果の要約と受賞の供給元を1つ登録し、この関数を呼んだテストの間だけ指定した答えを返させる。Errorを渡すと例外を投げる
+export function answerLaunchSummaries(
+  answer: LaunchSummaryAnswer | Error,
+): void {
+  summaryAnswer = answer;
+}
+
+const testSummarySource: LaunchSummarySource = {
+  summarize: async () => {
+    await Promise.resolve();
+    if (summaryAnswer instanceof Error) {
+      throw summaryAnswer;
+    }
+    return summaryAnswer;
+  },
+};
+
+const summarySourcesModule: AppModule<GatewayApp> = {
+  name: 'product-graphql-test-summary-sources',
+  bindings: new ContainerModule(({ rebind }) => {
+    rebind<readonly RegisteredDecisionSource<LaunchSummarySource>[]>(
+      PRODUCT_TYPES.LaunchSummarySources,
+    ).toConstantValue([
+      { name: 'product-test.summary', source: testSummarySource },
+    ]);
+  }),
+};
+
 const productGateway = createGraphQLGateway({
   documents: [
     MY_PRODUCTS,
@@ -380,9 +552,15 @@ const productGateway = createGraphQLGateway({
     REGISTER_PRODUCT,
     UPDATE_PRODUCT,
     DELETE_PRODUCT,
+    LAUNCH_HISTORY,
+    PRODUCT_CATEGORIES,
+    ADMIN_PRODUCT_CATEGORIES,
+    CREATE_PRODUCT_CATEGORY,
+    UPDATE_PRODUCT_CATEGORY,
+    DELETE_PRODUCT_CATEGORY,
   ],
   schemaModules: [mediaSchemaModule, profileSchemaModule, productSchemaModule],
-  overrides: [fixedClockModule, decisionSourcesModule],
+  overrides: [fixedClockModule, decisionSourcesModule, summarySourcesModule],
 });
 
 export interface ProductTestContext {
@@ -400,6 +578,7 @@ export function installProductGraphQLTest(): ProductTestContext {
   beforeEach(async () => {
     currentNow = PRODUCT_TEST_NOW;
     decisionSourcesFailing = false;
+    summaryAnswer = EMPTY_SUMMARY_ANSWER;
     await clearMediaTables();
     await clearProductTables();
     logs.splice(0);
@@ -615,4 +794,116 @@ export async function readProductRow(index: number) {
 
 export async function countProducts(): Promise<number> {
   return (await db.select({ id: products.id }).from(products)).length;
+}
+
+export function fetchLaunchHistory(
+  variables: {
+    readonly userHandle: string;
+    readonly first: number;
+    readonly after?: string | null;
+  },
+  options?: GatewayCallOptions,
+) {
+  return productGateway.call<{
+    launchHistory: LaunchHistoryConnectionFields | null;
+  }>(LAUNCH_HISTORY, variables, options);
+}
+
+export const PRODUCT_ADMINS = Object.freeze({
+  superAdmin: 21,
+  moderator: 22,
+  viewer: 23,
+});
+
+const ROLES_OF_PRODUCT_ADMINS: readonly (readonly [number, AdminRole])[] = [
+  [PRODUCT_ADMINS.superAdmin, 'super_admin'],
+  [PRODUCT_ADMINS.moderator, 'moderator'],
+  [PRODUCT_ADMINS.viewer, 'viewer'],
+];
+
+const adminSessionTokens = new Map<number, string>();
+
+export function productAdminIdOf(adminIndex: number): string {
+  return adminIdOf(adminIndex);
+}
+
+// 管理者側の呼び出し元から、指定した管理者のセッションで要求する
+export function asProductAdmin(adminIndex: number): GatewayCallOptions {
+  const sessionToken = adminSessionTokens.get(adminIndex);
+  if (sessionToken === undefined) {
+    throw new Error(`管理者${String(adminIndex)}のセッションがありません`);
+  }
+  return { caller: 'admin', sessionToken };
+}
+
+// プロダクトのテストの用意に加え、管理者と監査ログのテーブルを空にし、3つのロールの管理者とそのセッションを固定の時刻で用意する
+export function installProductAdminGraphQLTest(): ProductTestContext {
+  const context = installProductGraphQLTest();
+
+  beforeEach(async () => {
+    await clearAdminTables();
+    adminSessionTokens.clear();
+    for (const [index, role] of ROLES_OF_PRODUCT_ADMINS) {
+      await insertAdmin(index, { role, nickname: `運営${String(index)}` });
+      adminSessionTokens.set(
+        index,
+        (await issueAdminSession(adminIdOf(index), { now: currentNow })).token,
+      );
+    }
+  });
+
+  return context;
+}
+
+export function fetchProductCategories(options?: GatewayCallOptions) {
+  return productGateway.call<{
+    productCategories: ProductCategoryFields[] | null;
+  }>(PRODUCT_CATEGORIES, {}, options);
+}
+
+export function fetchAdminProductCategories(options: GatewayCallOptions) {
+  return productGateway.call<{
+    adminProductCategories: ProductCategoryFields[] | null;
+  }>(ADMIN_PRODUCT_CATEGORIES, {}, options);
+}
+
+export interface ProductCategoryInputVariables {
+  readonly name: string;
+  readonly handle: string;
+}
+
+export function createProductCategory(
+  variables: {
+    readonly input: ProductCategoryInputVariables;
+    readonly reason?: string | null;
+  },
+  options: GatewayCallOptions,
+) {
+  return productGateway.call<{
+    createProductCategory: ProductCategoryFields | null;
+  }>(CREATE_PRODUCT_CATEGORY, { ...variables }, options);
+}
+
+export function updateProductCategory(
+  variables: {
+    readonly id: string;
+    readonly input: ProductCategoryInputVariables;
+    readonly reason?: string | null;
+  },
+  options: GatewayCallOptions,
+) {
+  return productGateway.call<{
+    updateProductCategory: ProductCategoryFields | null;
+  }>(UPDATE_PRODUCT_CATEGORY, { ...variables }, options);
+}
+
+export function deleteProductCategory(
+  variables: { readonly id: string; readonly reason?: string | null },
+  options: GatewayCallOptions,
+) {
+  return productGateway.call<{ deleteProductCategory: boolean | null }>(
+    DELETE_PRODUCT_CATEGORY,
+    { ...variables },
+    options,
+  );
 }

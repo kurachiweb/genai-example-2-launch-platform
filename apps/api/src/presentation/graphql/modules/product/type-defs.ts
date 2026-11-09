@@ -153,6 +153,57 @@ export const PRODUCT_TYPE_DEFS = /* GraphQL */ `
     plan: ProductLaunchPlan!
   }
 
+  enum ProductAwardKind {
+    WEEK
+    YEAR
+  }
+
+  "賞の種類ごとの受賞"
+  type ProductAward {
+    kind: ProductAwardKind!
+    count: Int!
+    "受賞の週・年。公開プロフィールの受賞(profileAwards)では先頭に受賞したプロダクトの名称を付ける"
+    labels: [String!]!
+  }
+
+  "ローンチ履歴のプロダクト"
+  type LaunchHistoryProduct {
+    handle: String!
+    name: String!
+    tagline: String!
+    category: ProductCategory!
+    websiteUrl: String!
+    "画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる"
+    logo: MediaImage
+    "掲載済み(可視かつ予選で勝利したローンチがある)"
+    listed: Boolean!
+  }
+
+  type LaunchHistoryItem {
+    product: LaunchHistoryProduct!
+    "取消を除く、新しい順"
+    launches: [ProductLaunch!]!
+    "Yearを先頭"
+    awards: [ProductAward!]!
+  }
+
+  type LaunchHistoryConnection {
+    viewerIsOwner: Boolean!
+    "閲覧者が停止中の本人"
+    ownerSuspended: Boolean!
+    totalCount: Int!
+    nodes: [LaunchHistoryItem!]!
+    pageInfo: PageInfo!
+  }
+
+  "プロダクトカテゴリの追加・変更の項目"
+  input ProductCategoryInput {
+    "前後の空白を除いて1〜30文字"
+    name: String!
+    "プロダクトのハンドルと同じ形式で50文字以内"
+    handle: String!
+  }
+
   "プロダクトの登録・編集で全件を送る項目"
   input ProductFieldsInput {
     "前後の空白を除いて1〜50文字"
@@ -194,6 +245,19 @@ export const PRODUCT_TYPE_DEFS = /* GraphQL */ `
     updateProduct(input: UpdateProductInput!): MyProduct!
     "停止していない利用者が自分のプロダクトを論理削除する。bot判定の操作名はproduct_delete"
     deleteProduct(productHandle: String!, expectedVersion: Int!): Boolean!
+    "モデレーター以上の管理者がプロダクトカテゴリを追加する"
+    createProductCategory(
+      input: ProductCategoryInput!
+      reason: String
+    ): ProductCategory!
+    "モデレーター以上の管理者がプロダクトカテゴリの名前とハンドルを変更する。標準カテゴリは変更できない"
+    updateProductCategory(
+      id: ID!
+      input: ProductCategoryInput!
+      reason: String
+    ): ProductCategory!
+    "モデレーター以上の管理者がプロダクトの紐付かないプロダクトカテゴリを削除する。標準カテゴリは削除できない"
+    deleteProductCategory(id: ID!, reason: String): Boolean!
   }
 
   type Query {
@@ -210,5 +274,15 @@ export const PRODUCT_TYPE_DEFS = /* GraphQL */ `
     ): HandleAvailability!
     "現在のハンドルで本人のプロダクトだけ。それ以外はnull"
     productOwnerStatus(productHandle: String!): ProductOwnerStatus
+    "プロダクトカテゴリを追加の順で、標準カテゴリを末尾に置いて返す"
+    productCategories: [ProductCategory!]!
+    "公開プロフィールのローンチ履歴。他人には掲載済みの、本人には論理削除していない自分のプロダクトを、いずれも非公開化中を除いて最新のローンチ日の新しい順に返す。利用者を表示できなければnull。firstは1〜20"
+    launchHistory(
+      userHandle: String!
+      first: Int!
+      after: String
+    ): LaunchHistoryConnection
+    "管理者向けのプロダクトカテゴリの一覧。productCategoriesと同じ順"
+    adminProductCategories: [ProductCategory!]!
   }
 `;

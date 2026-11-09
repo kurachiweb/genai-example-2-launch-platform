@@ -39,6 +39,8 @@ const config: CodegenConfig = {
           MyProduct: '../modules/product/mappers.ts#MyProductModel',
           ProductScreenshot:
             '../modules/product/mappers.ts#ProductScreenshotModel',
+          LaunchHistoryProduct:
+            '../modules/product/mappers.ts#LaunchHistoryProductModel',
         },
       },
     },

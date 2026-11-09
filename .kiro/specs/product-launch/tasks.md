@@ -189,7 +189,7 @@
   - _Depends: 4.3, 5.2_
   - _Requirements: 1.2, 1.3, 1.6, 1.7, 1.8, 4.7, 5.2, 5.8, 6.1, 7.3, 8.1_
 
-- [ ] 7.3 ローンチ履歴とカテゴリの操作を加える
+- [x] 7.3 ローンチ履歴とカテゴリの操作を加える
   - 先に、Workers統合テストで、`launchHistory`の他人・本人・停止中の本人とnull・件数・カーソル、`productCategories`の並び、管理者のカテゴリの4操作の権限(閲覧のみの拒否・モデレーター以上の許可)と拒否のコード、`admin`以外の呼び出し元の拒否、`launchHistory`の`first`が21で`validation_error`になることを確かめる
   - 管理者の操作は`adminOnly(withValidatedArgs(...))`で包み、内側で`requireAdmin(context, 'moderator')`(照会は`'viewer'`)を呼ぶ(security/007)。`launchHistory`の引数は7.1と同じ形で`first`を1〜20にする
   - 完了状態: Workers統合テストとスキーマの検査が成功する
@@ -361,4 +361,5 @@
 - 6.3: `awards(session, { userHandle })`は対象のプロダクトを90件ずつ(`LAUNCH_HISTORY_AWARDS_PAGE_SIZE`)全ページ読み、ラベルは`'<名称> <受賞のラベル>'`(半角空白)、対象のページ外のプロダクトの受賞は除く。7.4の`profileAwards`はこの戻り値(`AwardGroup[] | null`)をそのまま使う
 - 7.1: スキーマモジュールは`apps/api/src/presentation/graphql/modules/product/`。ページの引数は`inputs.ts`の`productPageArgsOf(maxPageSize)`(7.3は`LAUNCH_HISTORY_PAGE_MAX`で使う)。`clientOnly`・`adminOnly`は`resolver-support.ts`(`adminOnly`は7.3で初めて使う)。`errors.ts`は`callerForbiddenError`だけで、7.2が入力の文言と`INPUT_ARGUMENT`を加える。SDLは7.1の照会に要る型だけで、ミューテーションと入力の型は7.2・7.3が加える。所有者向けの`latestLaunch.summary`は`fallbackLaunchSummary`で供給元を呼ばない(`toProductLaunch(launch, summary?)`で7.3が供給元の要約を渡せる)。`kickoffAt`はmapperで計算し、`MyProduct.category`は`MyProductView.category`から読む(design.mdの`ProductViews`の`productCategoryLoader`とは相違)。7.3は`productCategoryLoader`を`product-views.ts`に作り`LaunchHistoryProduct.category`に使う(directory-discoveryも読む)。directory-discoveryの`OwnerCard`の見出しは`productOwnerStatus`の要約が予選の結果からの要約になるため、トーナメントの状態は`LaunchHighlightsReader`から作る必要がある(directory-discoveryへの申し送り)。テストの補助`apps/api/test/support/product-graphql-operations.ts`は`Clock`を設定可能な時計に束縛し直す
 - 7.2: ミューテーションは`modules/product/product-mutation-resolvers.ts`。順は呼び出し元→入力の検証→利用者の状態(登録`requireVerifiedUser`、編集・削除`requireWritableUser`)→bot判定→ユースケース。詳細の欄は`input.fields.<名前>`と`input.launchDate`(`launch_date_unavailable`だけ`input`の直下)。未確認かつ停止中は上流の`AccountGuard`が`account_unavailable`を先に返す。`PRODUCT_BOT_ACTIONS`は`resolver-support.ts`で、9.1の写しを作ったら`project-values.md`の「bot判定のaction」の行に画面の写しの場所を加える。テストの補助に`failProductDecisionSources()`
+- 7.3: `launchHistory`(client・ログイン不要)と`productCategories`(client・admin)、`adminProductCategories`(viewer)と作成・更新・削除(moderator、理由は任意の引数で500文字、監査ログの`reason`の列)。`productCategoryLoader`は`modules/product/product-views.ts`(directory-discoveryも使う)。ローンチ履歴の項目の受賞のラベルは週・年だけで、公開プロフィールの受賞(`profileAwards`)だけ名称を前に付ける(003の行の範囲も明記した)。テストの補助に設定可能な`LaunchSummarySource`
 - 11.2への申し送り(`docs/onboardings/project-values.md`): GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

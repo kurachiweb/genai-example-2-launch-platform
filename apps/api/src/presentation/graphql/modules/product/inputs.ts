@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { checkAuditReason } from '../../../../../common-lib/admin/admin-input-rules.ts';
 import { checkHandleFormat } from '../../../../../common-lib/handles/handle-rules.ts';
 import {
   checkProductName,
@@ -19,6 +20,7 @@ import {
 import { markdownTextSchema } from '../../../../../common-lib/validation/markdown-text-schema.ts';
 import { invalidCursorError } from '../../../../../lib/core/errors/invalid-cursor.ts';
 import { parseBusinessDate } from '../../../../../lib/core/time/business-time.ts';
+import { LAUNCH_HISTORY_PAGE_MAX } from '../../../../application/product/launch-history-reader.ts';
 import type { ProductFieldsInput } from '../../../../application/product/ports.ts';
 import { PRODUCT_STATE_BATCH_MAX } from '../../../../application/product/product-state-evaluator.ts';
 import { inputRuleOf } from '../../auth-inputs.ts';
@@ -45,6 +47,11 @@ export function productPageArgsOf(maxPageSize: number) {
 }
 
 export const MY_PRODUCTS_ARGS = productPageArgsOf(PRODUCT_STATE_BATCH_MAX);
+
+// 利用者のハンドルの形式の違反は表示できない利用者としてユースケースがnullにする
+export const LAUNCH_HISTORY_ARGS = productPageArgsOf(
+  LAUNCH_HISTORY_PAGE_MAX,
+).extend({ userHandle: z.string() });
 
 const handleTooLongMessage = PRODUCT_HANDLE_MESSAGES['too-long'];
 
@@ -153,4 +160,36 @@ export const UPDATE_PRODUCT_ARGS = z.object({
     fields: PRODUCT_FIELDS,
     launchDate: launchDate.nullish().transform((value) => value ?? null),
   }),
+});
+
+const reason = inputRuleOf((value) =>
+  checkAuditReason(value) === undefined
+    ? undefined
+    : INPUT_MESSAGES.reasonTooLong,
+)
+  .nullish()
+  .transform((value) => value ?? undefined);
+
+const categoryId = idOf(INPUT_MESSAGES.categoryNotFound);
+
+// カテゴリ名とハンドルの規則と名前の前後の空白の除去は、重複の判定と同じ値で行うためユースケースが行う
+const PRODUCT_CATEGORY_INPUT = z.object({
+  name: z.string(),
+  handle: z.string(),
+});
+
+export const CREATE_PRODUCT_CATEGORY_ARGS = z.object({
+  input: PRODUCT_CATEGORY_INPUT,
+  reason,
+});
+
+export const UPDATE_PRODUCT_CATEGORY_ARGS = z.object({
+  id: categoryId,
+  input: PRODUCT_CATEGORY_INPUT,
+  reason,
+});
+
+export const DELETE_PRODUCT_CATEGORY_ARGS = z.object({
+  id: categoryId,
+  reason,
 });

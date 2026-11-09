@@ -4,6 +4,8 @@ import type {
 } from '../../../../../lib/core/product/launch-status.ts';
 import { kickoffAt } from '../../../../../lib/core/product/launch-status.ts';
 import {
+  type AwardGroup,
+  type AwardKind,
   fallbackLaunchSummary,
   type LaunchSummaryView,
 } from '../../../../../lib/core/product/launch-summary.ts';
@@ -11,6 +13,10 @@ import type {
   LaunchRecord,
   ProductCategoryRecord,
 } from '../../../../../lib/core/product/ports.ts';
+import type {
+  LaunchHistoryItemView,
+  LaunchHistoryPage,
+} from '../../../../application/product/launch-history-reader.ts';
 import type { MyProductOwnerStatus } from '../../../../application/product/my-products-reader.ts';
 import type { MyProductView } from '../../../../application/product/ports.ts';
 import type { ProductHandleAvailability } from '../../../../application/product/product-handle-availability-checker.ts';
@@ -238,4 +244,79 @@ export const toProductOwnerStatus = (
   latestLaunch:
     status.latestLaunch === null ? null : toProductLaunch(status.latestLaunch),
   plan: toProductLaunchPlan(status.state),
+});
+
+export type ProductAwardKindValue = 'WEEK' | 'YEAR';
+
+export interface ProductAwardModel {
+  readonly kind: ProductAwardKindValue;
+  readonly count: number;
+  readonly labels: string[];
+}
+
+// カテゴリとロゴは項目のリゾルバが一括読み込みで引くため、IDだけを持つ
+export interface LaunchHistoryProductModel {
+  readonly handle: string;
+  readonly name: string;
+  readonly tagline: string;
+  readonly categoryId: string;
+  readonly websiteUrl: string;
+  readonly logoFileId: string;
+  readonly listed: boolean;
+}
+
+export interface LaunchHistoryItemModel {
+  readonly product: LaunchHistoryProductModel;
+  readonly launches: ProductLaunchModel[];
+  readonly awards: ProductAwardModel[];
+}
+
+export interface LaunchHistoryConnectionModel {
+  readonly viewerIsOwner: boolean;
+  readonly ownerSuspended: boolean;
+  readonly totalCount: number;
+  readonly nodes: LaunchHistoryItemModel[];
+  readonly pageInfo: {
+    readonly hasNextPage: boolean;
+    readonly endCursor: string | null;
+  };
+}
+
+const AWARD_KIND_VALUES = Object.freeze({
+  week: 'WEEK',
+  year: 'YEAR',
+} as const satisfies Record<AwardKind, ProductAwardKindValue>);
+
+export const toProductAward = (group: AwardGroup): ProductAwardModel => ({
+  kind: AWARD_KIND_VALUES[group.kind],
+  count: group.count,
+  labels: [...group.labels],
+});
+
+const toLaunchHistoryItem = (
+  item: LaunchHistoryItemView,
+): LaunchHistoryItemModel => ({
+  product: {
+    handle: item.product.handle,
+    name: item.product.name,
+    tagline: item.product.tagline,
+    categoryId: item.product.category.id,
+    websiteUrl: item.product.websiteUrl,
+    logoFileId: item.product.logoFileId,
+    listed: item.product.listed,
+  },
+  launches: item.launches.map((launch) =>
+    toProductLaunch(launch, launch.summary),
+  ),
+  awards: item.awards.map(toProductAward),
+});
+
+export const toLaunchHistoryConnection = (
+  page: LaunchHistoryPage,
+): LaunchHistoryConnectionModel => ({
+  viewerIsOwner: page.viewerIsOwner,
+  ownerSuspended: page.ownerSuspended,
+  totalCount: page.totalCount,
+  nodes: page.nodes.map(toLaunchHistoryItem),
+  pageInfo: { hasNextPage: page.hasNextPage, endCursor: page.endCursor },
 });

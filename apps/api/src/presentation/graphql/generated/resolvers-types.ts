@@ -4,7 +4,7 @@ import type { AdminViewerSource, AdminAccountSource } from '../modules/admin/res
 import type { InquiryMessageModel, InquiryReplyAuthorModel, InquiryComposerModel, MemberInquiryModel, MemberInquirySummaryModel, AdminInquirySummaryModel, AdminInquiryMemberModel, AdminInquiryModel } from '../modules/inquiry/mappers.ts';
 import type { UserSummarySource } from '../modules/profile/user-summary.ts';
 import type { PublicProfileModel, PublicProfileRedirectModel, MyProfileModel } from '../modules/profile/mappers.ts';
-import type { MyProductModel, ProductScreenshotModel } from '../modules/product/mappers.ts';
+import type { MyProductModel, ProductScreenshotModel, LaunchHistoryProductModel } from '../modules/product/mappers.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -512,6 +512,39 @@ export type LaunchDateWindow = {
   unavailable: Array<LaunchDateRange>;
 };
 
+export type LaunchHistoryConnection = {
+  __typename?: 'LaunchHistoryConnection';
+  nodes: Array<LaunchHistoryItem>;
+  /** 閲覧者が停止中の本人 */
+  ownerSuspended: Scalars['Boolean']['output'];
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+  viewerIsOwner: Scalars['Boolean']['output'];
+};
+
+export type LaunchHistoryItem = {
+  __typename?: 'LaunchHistoryItem';
+  /** Yearを先頭 */
+  awards: Array<ProductAward>;
+  /** 取消を除く、新しい順 */
+  launches: Array<ProductLaunch>;
+  product: LaunchHistoryProduct;
+};
+
+/** ローンチ履歴のプロダクト */
+export type LaunchHistoryProduct = {
+  __typename?: 'LaunchHistoryProduct';
+  category: ProductCategory;
+  handle: Scalars['String']['output'];
+  /** 掲載済み(可視かつ予選で勝利したローンチがある) */
+  listed: Scalars['Boolean']['output'];
+  /** 画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
+  logo?: Maybe<MediaImage>;
+  name: Scalars['String']['output'];
+  tagline: Scalars['String']['output'];
+  websiteUrl: Scalars['String']['output'];
+};
+
 /** 次回のローンチの計画。NEWは新しいローンチの予約、RESCHEDULEは予定のローンチの日の変更、BLOCKEDは予約できない、UNKNOWNは判定できない */
 export type LaunchPlanMode =
   | 'BLOCKED'
@@ -698,6 +731,8 @@ export type Mutation = {
   confirmPasswordChange: ConfirmationResult;
   /** カテゴリの追加。モデレーター以上 */
   createInquiryCategory: InquiryCategory;
+  /** モデレーター以上の管理者がプロダクトカテゴリを追加する */
+  createProductCategory: ProductCategory;
   /** Customer Portalのセッションの作成。加入したことがある本人のStripe Customerにセッションを作り、移動先のURLを返す。戻り先はプラン管理画面 */
   createUltrasPortalSession: UltrasPortalSession;
   /** 管理者の削除 */
@@ -706,6 +741,8 @@ export type Mutation = {
   deleteInquiryCategory: Scalars['Boolean']['output'];
   /** 停止していない利用者が自分のプロダクトを論理削除する。bot判定の操作名はproduct_delete */
   deleteProduct: Scalars['Boolean']['output'];
+  /** モデレーター以上の管理者がプロダクトの紐付かないプロダクトカテゴリを削除する。標準カテゴリは削除できない */
+  deleteProductCategory: Scalars['Boolean']['output'];
   /** 多要素認証の無効化 */
   disableTotp: Scalars['Boolean']['output'];
   /** 下書きの破棄。最上位管理者 */
@@ -784,6 +821,8 @@ export type Mutation = {
   updateMyProfile: MyProfile;
   /** 停止していない利用者が自分のプロダクトを保存する。bot判定の操作名はproduct_save */
   updateProduct: MyProduct;
+  /** モデレーター以上の管理者がプロダクトカテゴリの名前とハンドルを変更する。標準カテゴリは変更できない */
+  updateProductCategory: ProductCategory;
   /** 機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者 */
   updateUltrasPromotionSetting: UltrasPromotionSetting;
   /** メールアドレスの確認の確定 */
@@ -867,6 +906,12 @@ export type MutationCreateInquiryCategoryArgs = {
 };
 
 
+export type MutationCreateProductCategoryArgs = {
+  input: ProductCategoryInput;
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDeleteAdminArgs = {
   id: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
@@ -882,6 +927,12 @@ export type MutationDeleteInquiryCategoryArgs = {
 export type MutationDeleteProductArgs = {
   expectedVersion: Scalars['Int']['input'];
   productHandle: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteProductCategoryArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1069,6 +1120,13 @@ export type MutationUpdateProductArgs = {
 };
 
 
+export type MutationUpdateProductCategoryArgs = {
+  id: Scalars['ID']['input'];
+  input: ProductCategoryInput;
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationUpdateUltrasPromotionSettingArgs = {
   input: UpdateUltrasPromotionSettingInput;
 };
@@ -1189,6 +1247,19 @@ export type PaymentRecordStatus =
   | 'PENDING'
   | 'SUCCEEDED';
 
+/** 賞の種類ごとの受賞 */
+export type ProductAward = {
+  __typename?: 'ProductAward';
+  count: Scalars['Int']['output'];
+  kind: ProductAwardKind;
+  /** 受賞の週・年。公開プロフィールの受賞(profileAwards)では先頭に受賞したプロダクトの名称を付ける */
+  labels: Array<Scalars['String']['output']>;
+};
+
+export type ProductAwardKind =
+  | 'WEEK'
+  | 'YEAR';
+
 export type ProductCategory = {
   __typename?: 'ProductCategory';
   handle: Scalars['String']['output'];
@@ -1196,6 +1267,14 @@ export type ProductCategory = {
   name: Scalars['String']['output'];
   /** 標準カテゴリ「その他」なら真。変更・削除できない */
   systemDefault: Scalars['Boolean']['output'];
+};
+
+/** プロダクトカテゴリの追加・変更の項目 */
+export type ProductCategoryInput = {
+  /** プロダクトのハンドルと同じ形式で50文字以内 */
+  handle: Scalars['String']['input'];
+  /** 前後の空白を除いて1〜30文字 */
+  name: Scalars['String']['input'];
 };
 
 /** プロダクトの登録・編集で全件を送る項目 */
@@ -1347,6 +1426,8 @@ export type Query = {
   adminLegalDocumentVersion?: Maybe<AdminLegalDocumentVersion>;
   /** 管理画面の法務文書の一覧。閲覧のみ以上の管理者 */
   adminLegalDocuments: Array<AdminLegalDocumentSummary>;
+  /** 管理者向けのプロダクトカテゴリの一覧。productCategoriesと同じ順 */
+  adminProductCategories: Array<ProductCategory>;
   /** 退会済みを除く「未対応」のログインと未ログインの問い合わせの合計件数。閲覧のみ以上 */
   adminUnhandledInquiryCount: Scalars['Int']['output'];
   /** ログイン中の管理者。未ログイン・無効なセッションではnull */
@@ -1361,6 +1442,8 @@ export type Query = {
   inquiryCategories: Array<InquiryCategory>;
   /** 問い合わせフォームに表示する送信者。停止していないログイン中の利用者だけ値を返す */
   inquiryComposer?: Maybe<InquiryComposer>;
+  /** 公開プロフィールのローンチ履歴。他人には掲載済みの、本人には論理削除していない自分のプロダクトを、いずれも非公開化中を除いて最新のローンチ日の新しい順に返す。利用者を表示できなければnull。firstは1〜20 */
+  launchHistory?: Maybe<LaunchHistoryConnection>;
   /** 法務文書の最新版と改訂履歴 */
   legalDocument: LegalDocument;
   /** 法務文書の指定した版。存在しない版はnull */
@@ -1385,6 +1468,8 @@ export type Query = {
   newProductLaunchWindow: LaunchDateWindow;
   /** ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順) */
   paymentHistory: PaymentRecordConnection;
+  /** プロダクトカテゴリを追加の順で、標準カテゴリを末尾に置いて返す */
+  productCategories: Array<ProductCategory>;
   /** プロダクトのハンドルの使用可否。productHandleは編集中のプロダクトの現在のハンドルで、その現在と保持中の旧ハンドルは使えるものとして扱う */
   productHandleAvailability: HandleAvailability;
   /** 現在のハンドルで本人のプロダクトだけ。それ以外はnull */
@@ -1439,6 +1524,13 @@ export type QueryCheckoutArgs = {
 
 export type QueryHandleAvailabilityArgs = {
   handle: Scalars['String']['input'];
+};
+
+
+export type QueryLaunchHistoryArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first: Scalars['Int']['input'];
+  userHandle: Scalars['String']['input'];
 };
 
 
@@ -1878,6 +1970,9 @@ export type ResolversTypes = {
   LaunchDateRange: ResolverTypeWrapper<LaunchDateRange>;
   LaunchDateUnavailableReason: LaunchDateUnavailableReason;
   LaunchDateWindow: ResolverTypeWrapper<LaunchDateWindow>;
+  LaunchHistoryConnection: ResolverTypeWrapper<Omit<LaunchHistoryConnection, 'nodes'> & { nodes: Array<ResolversTypes['LaunchHistoryItem']> }>;
+  LaunchHistoryItem: ResolverTypeWrapper<Omit<LaunchHistoryItem, 'product'> & { product: ResolversTypes['LaunchHistoryProduct'] }>;
+  LaunchHistoryProduct: ResolverTypeWrapper<LaunchHistoryProductModel>;
   LaunchPlanMode: LaunchPlanMode;
   LaunchStatus: LaunchStatus;
   LaunchSummary: ResolverTypeWrapper<LaunchSummary>;
@@ -1909,7 +2004,10 @@ export type ResolversTypes = {
   PaymentRecordConnection: ResolverTypeWrapper<PaymentRecordConnection>;
   PaymentRecordKind: PaymentRecordKind;
   PaymentRecordStatus: PaymentRecordStatus;
+  ProductAward: ResolverTypeWrapper<ProductAward>;
+  ProductAwardKind: ProductAwardKind;
   ProductCategory: ResolverTypeWrapper<ProductCategory>;
+  ProductCategoryInput: ProductCategoryInput;
   ProductFieldsInput: ProductFieldsInput;
   ProductLaunch: ResolverTypeWrapper<ProductLaunch>;
   ProductLaunchPlan: ResolverTypeWrapper<ProductLaunchPlan>;
@@ -2005,6 +2103,9 @@ export type ResolversParentTypes = {
   Int: Scalars['Int']['output'];
   LaunchDateRange: LaunchDateRange;
   LaunchDateWindow: LaunchDateWindow;
+  LaunchHistoryConnection: Omit<LaunchHistoryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['LaunchHistoryItem']> };
+  LaunchHistoryItem: Omit<LaunchHistoryItem, 'product'> & { product: ResolversParentTypes['LaunchHistoryProduct'] };
+  LaunchHistoryProduct: LaunchHistoryProductModel;
   LaunchSummary: LaunchSummary;
   LegalDocument: LegalDocument;
   LegalDocumentEditor: LegalDocumentEditor;
@@ -2030,7 +2131,9 @@ export type ResolversParentTypes = {
   PageInfo: PageInfo;
   PaymentRecord: PaymentRecord;
   PaymentRecordConnection: PaymentRecordConnection;
+  ProductAward: ProductAward;
   ProductCategory: ProductCategory;
+  ProductCategoryInput: ProductCategoryInput;
   ProductFieldsInput: ProductFieldsInput;
   ProductLaunch: ProductLaunch;
   ProductLaunchPlan: ProductLaunchPlan;
@@ -2326,6 +2429,30 @@ export type LaunchDateWindowResolvers<ContextType = GraphQLContext, ParentType e
   unavailable?: Resolver<Array<ResolversTypes['LaunchDateRange']>, ParentType, ContextType>;
 };
 
+export type LaunchHistoryConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchHistoryConnection'] = ResolversParentTypes['LaunchHistoryConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['LaunchHistoryItem']>, ParentType, ContextType>;
+  ownerSuspended?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+  totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  viewerIsOwner?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type LaunchHistoryItemResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchHistoryItem'] = ResolversParentTypes['LaunchHistoryItem']> = {
+  awards?: Resolver<Array<ResolversTypes['ProductAward']>, ParentType, ContextType>;
+  launches?: Resolver<Array<ResolversTypes['ProductLaunch']>, ParentType, ContextType>;
+  product?: Resolver<ResolversTypes['LaunchHistoryProduct'], ParentType, ContextType>;
+};
+
+export type LaunchHistoryProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchHistoryProduct'] = ResolversParentTypes['LaunchHistoryProduct']> = {
+  category?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  listed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tagline?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  websiteUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type LaunchSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchSummary'] = ResolversParentTypes['LaunchSummary']> = {
   inMatch?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   label?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -2425,10 +2552,12 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   confirmEmailChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmEmailChangeArgs, 'token'>>;
   confirmPasswordChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmPasswordChangeArgs, 'token'>>;
   createInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationCreateInquiryCategoryArgs, 'name'>>;
+  createProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationCreateProductCategoryArgs, 'input'>>;
   createUltrasPortalSession?: Resolver<ResolversTypes['UltrasPortalSession'], ParentType, ContextType>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
   deleteInquiryCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteInquiryCategoryArgs, 'id'>>;
   deleteProduct?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductArgs, 'expectedVersion' | 'productHandle'>>;
+  deleteProductCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductCategoryArgs, 'id'>>;
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
   discardLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationDiscardLegalDocumentDraftArgs, 'input'>>;
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
@@ -2468,6 +2597,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
   updateMyProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType, RequireFields<MutationUpdateMyProfileArgs, 'input'>>;
   updateProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationUpdateProductArgs, 'input'>>;
+  updateProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationUpdateProductCategoryArgs, 'id' | 'input'>>;
   updateUltrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType, RequireFields<MutationUpdateUltrasPromotionSettingArgs, 'input'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
@@ -2542,6 +2672,12 @@ export type PaymentRecordResolvers<ContextType = GraphQLContext, ParentType exte
 export type PaymentRecordConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['PaymentRecordConnection'] = ResolversParentTypes['PaymentRecordConnection']> = {
   nodes?: Resolver<Array<ResolversTypes['PaymentRecord']>, ParentType, ContextType>;
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type ProductAwardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductAward'] = ResolversParentTypes['ProductAward']> = {
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['ProductAwardKind'], ParentType, ContextType>;
+  labels?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type ProductCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductCategory'] = ResolversParentTypes['ProductCategory']> = {
@@ -2623,6 +2759,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<QueryAdminLegalDocumentArgs, 'kind'>>;
   adminLegalDocumentVersion?: Resolver<Maybe<ResolversTypes['AdminLegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryAdminLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   adminLegalDocuments?: Resolver<Array<ResolversTypes['AdminLegalDocumentSummary']>, ParentType, ContextType>;
+  adminProductCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
   adminUnhandledInquiryCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
@@ -2630,6 +2767,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   handleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryHandleAvailabilityArgs, 'handle'>>;
   inquiryCategories?: Resolver<Array<ResolversTypes['InquiryCategory']>, ParentType, ContextType>;
   inquiryComposer?: Resolver<Maybe<ResolversTypes['InquiryComposer']>, ParentType, ContextType>;
+  launchHistory?: Resolver<Maybe<ResolversTypes['LaunchHistoryConnection']>, ParentType, ContextType, RequireFields<QueryLaunchHistoryArgs, 'first' | 'userHandle'>>;
   legalDocument?: Resolver<ResolversTypes['LegalDocument'], ParentType, ContextType, RequireFields<QueryLegalDocumentArgs, 'kind'>>;
   legalDocumentVersion?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   memberInquiry?: Resolver<Maybe<ResolversTypes['MemberInquiry']>, ParentType, ContextType, RequireFields<QueryMemberInquiryArgs, 'id'>>;
@@ -2642,6 +2780,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
   newProductLaunchWindow?: Resolver<ResolversTypes['LaunchDateWindow'], ParentType, ContextType>;
   paymentHistory?: Resolver<ResolversTypes['PaymentRecordConnection'], ParentType, ContextType, Partial<QueryPaymentHistoryArgs>>;
+  productCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
   productHandleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryProductHandleAvailabilityArgs, 'handle'>>;
   productOwnerStatus?: Resolver<Maybe<ResolversTypes['ProductOwnerStatus']>, ParentType, ContextType, RequireFields<QueryProductOwnerStatusArgs, 'productHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
@@ -2774,6 +2913,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   InquiryReplyResult?: InquiryReplyResultResolvers<ContextType>;
   LaunchDateRange?: LaunchDateRangeResolvers<ContextType>;
   LaunchDateWindow?: LaunchDateWindowResolvers<ContextType>;
+  LaunchHistoryConnection?: LaunchHistoryConnectionResolvers<ContextType>;
+  LaunchHistoryItem?: LaunchHistoryItemResolvers<ContextType>;
+  LaunchHistoryProduct?: LaunchHistoryProductResolvers<ContextType>;
   LaunchSummary?: LaunchSummaryResolvers<ContextType>;
   LegalDocument?: LegalDocumentResolvers<ContextType>;
   LegalDocumentEditor?: LegalDocumentEditorResolvers<ContextType>;
@@ -2797,6 +2939,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   PageInfo?: PageInfoResolvers<ContextType>;
   PaymentRecord?: PaymentRecordResolvers<ContextType>;
   PaymentRecordConnection?: PaymentRecordConnectionResolvers<ContextType>;
+  ProductAward?: ProductAwardResolvers<ContextType>;
   ProductCategory?: ProductCategoryResolvers<ContextType>;
   ProductLaunch?: ProductLaunchResolvers<ContextType>;
   ProductLaunchPlan?: ProductLaunchPlanResolvers<ContextType>;
