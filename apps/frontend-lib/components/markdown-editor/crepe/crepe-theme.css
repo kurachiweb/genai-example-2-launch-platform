@@ -187,10 +187,13 @@
   margin-block: 0;
 }
 
-/* 仮想カーソルの部品が編集領域の先頭に高さの無い要素を置くため、その次の要素も先頭として扱う */
+/* 仮想カーソルの部品が編集領域の先頭に高さの無い要素を置くため、その次の要素も先頭として扱う。部品は選択が変わる度にProseMirrorが付けたクラスを自身のクラスで置き換えるため、どちらのクラスでも一致させる */
 .milkdown
   .ProseMirror
-  > :is(:first-child, .ProseMirror-widget:first-child + *) {
+  > :is(
+    :first-child,
+    :is(.ProseMirror-widget, .prosemirror-virtual-cursor):first-child + *
+  ) {
   margin-top: 0;
 }
 
@@ -237,7 +240,10 @@
 /* 表示は表を横スクロールの枠で包み、表の余白が枠の外の余白と重ならずに足されるため、編集領域では足した値を余白にし、先頭と末尾では表の余白だけを残す */
 .milkdown
   .ProseMirror
-  > table:is(:first-child, .ProseMirror-widget:first-child + *) {
+  > table:is(
+    :first-child,
+    :is(.ProseMirror-widget, .prosemirror-virtual-cursor):first-child + *
+  ) {
   margin-top: 2em;
 }
 

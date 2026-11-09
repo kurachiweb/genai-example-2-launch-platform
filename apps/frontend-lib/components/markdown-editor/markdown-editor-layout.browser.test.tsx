@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
 import type { MarkdownRenderOptions } from '../../../common-lib/markdown/markdown-options.ts';
@@ -158,6 +158,41 @@ const editorHeight = (container: Element): number =>
     .querySelector('[data-slot="markdown-editor"]')
     ?.getBoundingClientRect().height ?? Number.NaN;
 
+// 仮想カーソルは選択が変わる度に部品のクラスを書き換えるため、書き換えた後の配置を測る
+const VIRTUAL_CURSOR_SELECTOR = '.prosemirror-virtual-cursor';
+
+// 先頭の表に残す余白(表の文字の大きさに対する倍率)
+const LEADING_TABLE_MARGIN_EM = 2;
+
+const firstBlockOf = (editable: Element): Element | undefined =>
+  [...editable.children].find(
+    (child) => getComputedStyle(child).position !== 'absolute',
+  );
+
+interface LeadingOffset {
+  readonly actual: number;
+  readonly expected: number;
+}
+
+// 編集領域の直下で浮かせて置く部品を除いた最初の要素について、編集領域の上端からの位置と、先頭の要素として置かれるべき位置を返す
+const leadingOffsetOf = (editable: Element): LeadingOffset => {
+  const first = firstBlockOf(editable);
+  if (first === undefined) {
+    return { actual: Number.NaN, expected: 0 };
+  }
+  const leadingMargin =
+    first.tagName === 'TABLE'
+      ? LEADING_TABLE_MARGIN_EM *
+        Number.parseFloat(getComputedStyle(first).fontSize)
+      : 0;
+  return {
+    actual:
+      first.getBoundingClientRect().top - editable.getBoundingClientRect().top,
+    expected:
+      Number.parseFloat(getComputedStyle(editable).paddingTop) + leadingMargin,
+  };
+};
+
 describe('MarkdownEditor', () => {
   describe('読み込みの前後の大きさ', () => {
     test.each(LAYOUT_CASES)(
@@ -186,6 +221,26 @@ describe('MarkdownEditor', () => {
           `読み込みの前${String(before)}px・後${String(after)}px`,
         ).toBeLessThanOrEqual(MAX_HEIGHT_DIFFERENCE_PX);
         expect(await runAxe(container)).toStrictEqual([]);
+      },
+    );
+  });
+
+  describe('フォーカスした後の位置', () => {
+    test.each(LAYOUT_CASES)(
+      '値が%sのとき、編集領域にフォーカスしてカーソルを表示しても先頭の要素が先頭の位置から下がらない',
+      async (_label, value) => {
+        await render(<SizedEditor value={value} />);
+        const textbox = page.getByRole('textbox', { name: LABEL });
+        await expect.element(textbox).toBeInTheDocument();
+        const editable = textbox.element();
+
+        await userEvent.click(textbox);
+
+        await expect
+          .poll(() => editable.querySelector(VIRTUAL_CURSOR_SELECTOR))
+          .not.toBeNull();
+        const { actual, expected } = leadingOffsetOf(editable);
+        expect(actual).toBeCloseTo(expected, 1);
       },
     );
   });
