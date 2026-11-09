@@ -26,6 +26,10 @@ const PLACEHOLDER_TEST_STRIPE_PUBLISHABLE_KEY = `pk_test_${'0'.repeat(32)}`;
 
 const PLACEHOLDER_LIVE_STRIPE_PUBLISHABLE_KEY = `pk_live_${'0'.repeat(32)}`;
 
+// dev用のsandboxの公開キー。公開キーなのでリポジトリに置き、ローカルの設定と一致することを確かめる
+const LOCAL_STRIPE_PUBLISHABLE_KEY =
+  'pk_test_51UOHzqKXCISXXudNX8UpBAkp1XmfEcVCyVPPdevbTwOXxmUXJRNmVMxV5g8zcWHzJfCYeqb47zzMLi446kABE39700y7SxUFn5';
+
 const RATE_LIMITED_APPS = ['client', 'admin', 'api', 'event'] as const;
 
 const effectiveConfigSchema = z.object({
@@ -110,7 +114,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       IMAGES_ORIGIN: 'http://localhost:48043',
       CLIENT_SITE_ORIGIN: 'http://localhost:48044',
       WEB_ANALYTICS_TOKEN: '',
-      STRIPE_PUBLISHABLE_KEY: PLACEHOLDER_TEST_STRIPE_PUBLISHABLE_KEY,
+      STRIPE_PUBLISHABLE_KEY: LOCAL_STRIPE_PUBLISHABLE_KEY,
     },
     validatedWebAnalyticsToken: undefined,
     requiredSecrets: ['HASH_PEPPER'],
