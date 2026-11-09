@@ -15,9 +15,12 @@ const LaunchSummarySources: unique symbol = Symbol.for(
   'product.LaunchSummarySources',
 );
 
+const ProductSaveHooks: unique symbol = Symbol.for('product.ProductSaveHooks');
+
 export const PRODUCT_TYPES = Object.freeze({
   ProductStateEvaluator,
   RelaunchConditionSources,
   ProductLockSources,
   LaunchSummarySources,
+  ProductSaveHooks,
 });

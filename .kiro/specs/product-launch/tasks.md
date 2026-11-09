@@ -88,7 +88,7 @@
   - _Depends: 3.1_
   - _Requirements: 4.6, 5.3, 5.4, 5.5, 5.6, 6.2, 6.5_
 
-- [ ] 3.3 プロダクトの保存の登録口を作る
+- [x] 3.3 プロダクトの保存の登録口を作る
   - 先に、偽の処理を使うWorkers統合テストで、登録の名前の形式違反と重複の例外、同時の文が登録の順に連結されること、確定の後の処理が登録の順に呼ばれ、1つの例外が警告のログ(処理の名前とプロダクトのIDだけ)を残して次の処理へ進み呼び出し元へ例外を返さないこと、同時の文を返す処理の例外がそのまま呼び出し元へ伝わることを確かめる
   - 処理の契約(文と接続を扱うためinfrastructure層に置き、application層は読み込まない。`ProductLifecycleSyncHandler`と同じ配置)と登録の型、登録の一覧から処理を組み立てる部品、登録口(初版は空)を作り、組み立てた部品の識別子を3.2のDIの識別子の一覧へ加える(束縛は4.2のモジュールが行い、使うのは4.1のD1の実装だけ)
   - 完了状態: Workers統合テストが成功し、後続specが登録口に1行足すだけで保存に処理を加えられる
@@ -347,3 +347,5 @@
 - 2.6: `D1AdminProductDirectory`の不正なカーソルは`invalidCursorError()`(`invalid_cursor`、backend/004と`D1AdminUserDirectory`の前例。design.mdも直した)、`limit`の範囲外(1〜50)は`validation_error`。返す状態は`deriveLaunchStatus`から導出し、絞り込みは同じ境界のSQLの条件。カーソルとLIKEのエスケープは`D1AdminUserDirectory`と同じ形を写した。ugc-moderationのGraphQLのエラーコードの一覧に共通の`invalid_cursor`が無い(既に`AdminUserDirectory`から受け取り得る。ugc-moderationへの申し送り)
 - 3.1: 規則は`apps/api/src/domain/product/`の`launch-date-rules.ts`(`addBusinessDays`・`computeLaunchDateWindow`・`checkLaunchDate`)・`launch-plan.ts`(`decideLaunchPlan`・`decideLocks`・`LAUNCH_PLAN_MESSAGES`)・`product-edit-plan.ts`(`planProductEdit`)。計画の基準は`LaunchBasis`(`{ launchDate, outcome }`、design.mdも直した)。`relaunchIntervalDays`は間隔が最も早い日を実際に後ろへずらすときだけ非null(Ultrasの導線の条件)。`decideLocks`は供給元の失敗で`unknown: true`(本specの固定は残す)で、呼び出し側は`locked || unknown`で拒否する。過去・今日の日は`pairing_deadline`。計画が`blocked`・`unknown`のときクライアントは`launchDate: null`を送る(現在の日を送ると`launch-not-allowed`)
 - 3.2: DIの識別子`PRODUCT_TYPES`(`apps/api/src/application/product/product-types.ts`、記号の接頭辞は`PRODUCT_PLATFORM_TYPES`と同じ`product.`なので名前を衝突させない)。評価器は解決済みの供給元の一覧を`PRODUCT_TYPES.RelaunchConditionSources`・`ProductLockSources`で受け取るため、4.2はこの2つと`LaunchSummarySources`を`toDynamicValue((ctx) => resolveDecisionSources(<登録口>, (id) => ctx.get(id)))`で、`ProductStateEvaluator`も束縛する。共通部品`callDecisionSources`(成功分と`failed`を返す)は6.2も使う。評価は20件まで(`PRODUCT_STATE_BATCH_MAX`)。`ProductState.latestLaunch`は取消を除いた直近のローンチ(要件の用語、002のカードの表も直した)で、自分のプロダクトのカードには`canceled`が渡らない(9.2の`LaunchStatusText`の`canceled`はローンチ履歴などの共通の値として残す)。ログのカテゴリ`['api', 'application', 'product']`を11.2で`project-values.md`に加える
+- 3.3: 保存の登録口は`createProductSaveHooks(PRODUCT_SAVE_HOOKS, resolve)`(呼び名「プロダクトの保存の処理」、組み立て時に処理を解決)。4.2は`PRODUCT_TYPES.ProductSaveHooks`を`toDynamicValue((ctx) => createProductSaveHooks(PRODUCT_SAVE_HOOKS, (id) => ctx.get(id)))`で束縛する。文の収集は並行(登録順を保つ)、確定の後の処理は順に呼び、失敗は警告のログ(`hookName`・`productId`だけ、カテゴリ`['api', 'infrastructure', 'product']`)を残して続ける
+- 11.2への申し送り(`docs/onboardings/project-values.md`): ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

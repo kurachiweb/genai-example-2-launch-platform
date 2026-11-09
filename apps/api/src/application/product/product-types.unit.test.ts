@@ -8,6 +8,7 @@ const EXPECTED_NAMES = [
   'RelaunchConditionSources',
   'ProductLockSources',
   'LaunchSummarySources',
+  'ProductSaveHooks',
 ] as const;
 
 describe('PRODUCT_TYPES', () => {
