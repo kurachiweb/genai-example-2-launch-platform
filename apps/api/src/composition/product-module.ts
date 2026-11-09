@@ -15,10 +15,15 @@ import {
   resolveDecisionSources,
 } from '../application/product/decision-sources.ts';
 import {
+  type LaunchHistoryReader,
+  StoreLaunchHistoryReader,
+} from '../application/product/launch-history-reader.ts';
+import {
   type MyProductsReader,
   StoreMyProductsReader,
 } from '../application/product/my-products-reader.ts';
 import type {
+  LaunchHistoryStore,
   ProductCategoryStore,
   ProductIncidentReporter,
   ProductLifecycleCommitter,
@@ -60,6 +65,7 @@ import {
   StoreProductVisibilityControl,
 } from '../application/product/product-visibility-control.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
+import { D1LaunchHistoryStore } from '../infrastructure/product/d1-launch-history-store.ts';
 import { D1ProductCategoryStore } from '../infrastructure/product/d1-product-category-store.ts';
 import { createD1ProductLifecycleCommitter } from '../infrastructure/product/d1-product-lifecycle-committer.ts';
 import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
@@ -78,7 +84,7 @@ import {
 import { PRODUCT_LIFECYCLE_SYNC_HANDLERS } from './product-lifecycle-sync-handlers.ts';
 import { PRODUCT_SAVE_HOOKS } from './product-save-hooks.ts';
 
-// 表示用の照会とハンドルの対象(PRODUCT_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・時計とID生成とデータベース(PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)・監査ログの記録(ADMIN_PLATFORM_TYPES)は各機能の共通の束縛を使う
+// 表示用の照会とハンドルの対象(PRODUCT_PLATFORM_TYPES)・利用者の解決(PROFILE_PLATFORM_TYPES)・ログイン中の利用者(IDENTITY_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・時計とID生成とデータベース(PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)・監査ログの記録(ADMIN_PLATFORM_TYPES)は各機能の共通の束縛を使う
 export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'product',
   bindings: new ContainerModule(({ bind }) => {
@@ -164,6 +170,12 @@ export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<ProductCategoryService>(PRODUCT_TYPES.ProductCategoryService).to(
       StoreProductCategoryService,
+    );
+    bind<LaunchHistoryStore>(PRODUCT_TYPES.LaunchHistoryStore).to(
+      D1LaunchHistoryStore,
+    );
+    bind<LaunchHistoryReader>(PRODUCT_TYPES.LaunchHistoryReader).to(
+      StoreLaunchHistoryReader,
     );
   }),
 };

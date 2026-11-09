@@ -227,6 +227,7 @@ apps/
 │   └── workers/product/                                  # ハンドルの対象とD1の実装と束縛(Workers統合テスト、各ファイルに同名の*.worker.test.ts)
 │       ├── product-handle-namespaces.ts                  # PRODUCT_HANDLE_NAMESPACE・PRODUCT_CATEGORY_HANDLE_NAMESPACE(infrastructure層だけが読み込む)
 │       ├── d1-product-directory.ts                       # ProductDirectoryのD1実装
+│       ├── product-summary-columns.ts                    # プロダクトの要約の列と変換(D1ProductDirectory・D1LaunchHistoryStoreが共有。両者のテストで検査)
 │       ├── d1-product-category-directory.ts              # ProductCategoryDirectoryのD1実装
 │       ├── d1-launch-schedule.ts                         # ScheduledLaunchDirectory・LaunchOutcomeRecorderのD1実装
 │       ├── d1-product-export.ts                          # ProductExport・LaunchExportのD1実装
@@ -1499,7 +1500,7 @@ export interface LaunchHistoryReader {
 
 - 一覧のカーソルは`encodeCursor({ d: <latest_launch_date>, id: <プロダクトのID> })`で、21件を読み先頭20件と続きの有無を返す。各ページの状態は`ProductStateEvaluator.evaluate`を1回(20件まとめて)呼ぶ(9.2)。
 - `check`: 形式違反→`invalid`、編集中の自分のプロダクトの現在・旧ハンドルと`isSameHandle`→`available`、予約語・使用中(他のプロダクトの現在のハンドル)→`unavailable`、他のプロダクトの旧ハンドルは`available`(2.6・2.11)。
-- `LaunchHistoryReader.list`: (1)`UserProfileDirectory.resolveHandle(userHandle)`。`none`、または停止中で閲覧者が本人でなければ`null`。(2)本人なら論理削除していない非公開化でないプロダクト、他人なら`visibleProducts() AND wonLaunchExists()`のプロダクトを対象にする(10.2)。(3)`totalCount`と1ページ。(4)ローンチを一括で読み、取消を除く(第◯回の番号は取消を除いて数える)。(5)`LAUNCH_SUMMARY_SOURCES`を`order`順に呼び、`rank`の大きい要約を採る。供給の無いローンチと供給元の失敗(`warn`のログ)では`fallbackLaunchSummary`で予選の結果から要約を作る(10.6・14.11)。受賞は`groupAwards`で種類ごとに数とラベルにまとめる。
+- `LaunchHistoryReader.list`: (1)`UserProfileDirectory.resolveHandle(userHandle)`(閲覧者は`AccountGuard.currentUser`)。ハンドルの形式違反・`none`、または停止中で閲覧者が本人でなければ`null`。旧ハンドル(`previous`)はその利用者として扱う。カーソルは`MyProductsReader`と同じ`my-products-cursor.ts`を使う。(2)本人なら論理削除していない非公開化でないプロダクト、他人なら`visibleProducts() AND wonLaunchExists()`のプロダクトを対象にする(10.2)。(3)`totalCount`と1ページ。(4)ローンチを一括で読み、取消を除く(第◯回の番号は取消を除いて数える)。(5)`LAUNCH_SUMMARY_SOURCES`を`order`順に呼び、`rank`の大きい要約を採る。供給の無いローンチと供給元の失敗(`warn`のログ)では`fallbackLaunchSummary`で予選の結果から要約を作る(10.6・14.11)。受賞は`groupAwards`で種類ごとに数とラベルにまとめる。
 - `LaunchHistoryReader.awards`(仮14、10.11): (1)(2)は`list`と同じ(表示できない利用者は`null`、対象はローンチ履歴と同じプロダクト)。(3)対象のプロダクトを`LaunchHistoryStore.list`で90件ずつ最後まで読む。(4)各ページのローンチを`list`と同じ方法で一括で読み、取消を除いて`LAUNCH_SUMMARY_SOURCES`を`order`順に呼び、`awards`だけを使う。(5)各受賞の`label`の前にプロダクトの名称を付けた`'<名称> <label>'`をラベルにし、全ページの受賞をまとめて`groupAwards`に渡す(Yearが先頭、ラベルは受け取った順)。供給元の失敗はその供給元の受賞を除き、`warn`のログ(供給元の名前だけ)を残す。予選の結果からは受賞を導けないため縮退の値は無い。受賞が無ければ空の配列を返す。
 - 依存: `UserProfileDirectory`の型と`PROFILE_PLATFORM_TYPES`は`core/profile`から読み込み、`**/lib/workers/**`を読み込まない。
 
@@ -1660,6 +1661,9 @@ export interface ProductStore {
     readonly now: Date;
   }): Promise<'saved' | 'not-found' | 'account-unavailable' | 'hidden'>; // 書き込みの時点で非公開化中なら'hidden'(仮12)
 } // insert・save・updateDescriptionは、'saved'の確定の後に保存の登録口の確定の後の処理まで済ませて返す(D1の実装、14.9)
+export interface LaunchHistoryProductRecord extends ProductSummaryRecord {
+  readonly latestLaunchDate: BusinessDate; // 一覧の並びの位置(カーソル)に使う
+}
 export interface LaunchHistoryStore {
   count(input: {
     readonly userId: string;
@@ -1672,7 +1676,7 @@ export interface LaunchHistoryStore {
     readonly before:
       | { readonly latestLaunchDate: BusinessDate; readonly id: string }
       | undefined;
-  }): Promise<readonly ProductSummaryRecord[]>;
+  }): Promise<readonly LaunchHistoryProductRecord[]>;
 }
 export interface ProductCategoryStore {
   list(): Promise<readonly ProductCategoryRecord[]>;
@@ -1709,7 +1713,7 @@ export interface ProductCategoryStore {
 - `save`: System Flows「次回の予約と保存」の並び。`version`を1増やす。ローンチの挿入・日付の変更があれば、最後の文で`UPDATE products SET latest_launch_date = (SELECT MAX(launch_date) FROM product_launches WHERE product_id = ?) WHERE id = ?`とし、取消を含む全ローンチの最新の日にする(取消のローンチが新しい予約より後の日のこともあるため)。
 - `insert`・`save`・`updateDescription`は、`ProductSaveHooks.statementsFor({ productId, at: now }, db)`の文を一括の書き込みの末尾に加える(14.9、仮11)。条件の`CASE`式で取り消されれば、登録された処理の文も一緒に取り消される。一括の書き込みが確定して結果が`saved`のときだけ、同じメソッドの中で`ProductSaveHooks.runAfterCommit({ productId })`を呼ぶ(例外は`runAfterCommit`が`warn`のログにして続けるため、保存の結果を変えない)。`ProductSaveHooks`は`PRODUCT_TYPES.ProductSaveHooks`で受け取り、ユースケースには渡さない。
 - `updateDescription`の一括の書き込み: (1)`products`の更新(`description_markdown`・`version + 1`・`updated_at`)。`user_id`を`CASE WHEN notDeleted AND ownerWritable AND notHidden THEN user_id ELSE NULL END`にし、満たさなければ全体を取り消す(仮12)。(2)保存の登録口の文。取り消しは読み直しで、優先の順に、論理削除済み・不在を`not-found`、投稿者が書き込めない状態(呼び出し元の`requireWritableUser`の後の同時の停止・退会)を`account-unavailable`(`save`の分類と同じ)、`hidden_at`があれば`hidden`に分ける。事前の判定(public-apiの`MyProductsReader.find`の`hidden`)と書き込みの間に非公開化されても、説明文は書き込まれない(7.9)。
-- `D1LaunchHistoryStore`: `products`と`users`を結合し、`public`は`visibleProducts() AND wonLaunchExists()`、`owner`は`products.deleted_at IS NULL AND products.hidden_at IS NULL`。並びは`(latest_launch_date DESC, id DESC)`で、索引`(user_id, latest_launch_date, id)`を使う。
+- `D1LaunchHistoryStore`: `products`と`users`を結合し、`public`は`visibleProducts() AND wonLaunchExists()`、`owner`は`products.deleted_at IS NULL AND products.hidden_at IS NULL`。並びは`(latest_launch_date DESC, id DESC)`で、索引`(user_id, latest_launch_date, id)`を使う。`owner`は投稿者の状態を条件にしない(停止中の本人に返すため)。要約の列は`ProductDirectory`と同じ`workers/product/product-summary-columns.ts`の`productSummaryColumns()`・`toProductSummaryRecord`を使い、カーソルのために`latest_launch_date`を加えて返す。
 - `D1ProductCategoryStore`: 一意索引の違反を列で`name-taken`・`handle-taken`に変換する。監査ログは`buildAuditLogStatements`で同じ一括の書き込みの先頭に含め、更新・削除の条件は監査ログの`condition`に渡す(ProductCategoryService)。旧ハンドルのテーブルを持たず、ハンドルの変更は現在の列の更新だけである(11.11)。書き込みの入力は`ProductCategoryWriteInput`、結果の型は`ProductCategoryInsertResult`・`ProductCategoryUpdateResult`・`ProductCategoryDeleteResult`(`application/product/ports.ts`)。
 
 #### ProductSaveHooks

@@ -1,13 +1,4 @@
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  inArray,
-  isNotNull,
-  sql,
-  type SQL,
-} from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, type SQL } from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
 
 import type { Database } from '../../../db/client.ts';
@@ -17,10 +8,7 @@ import { productCategories } from '../../../db/schema/product/product-categories
 import { productLaunches } from '../../../db/schema/product/product-launches.ts';
 import { productScreenshots } from '../../../db/schema/product/product-screenshots.ts';
 import { products } from '../../../db/schema/product/products.ts';
-import {
-  visibleProducts,
-  wonLaunchExists,
-} from '../../../db/schema/product/visibility.ts';
+import { visibleProducts } from '../../../db/schema/product/visibility.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
 import { deriveLaunchStatus } from '../../core/product/launch-status.ts';
 import type {
@@ -34,6 +22,10 @@ import type {
 import { parseBusinessDate } from '../../core/time/business-time.ts';
 import { resolveHandle } from '../handles/handle-queries.ts';
 import { PRODUCT_HANDLE_NAMESPACE } from './product-handle-namespaces.ts';
+import {
+  productSummaryColumns,
+  toProductSummaryRecord,
+} from './product-summary-columns.ts';
 
 // D1のバインド変数の上限(100)から、IDの一覧以外に使う変数の分を残す
 const IDS_PER_STATEMENT = 90;
@@ -60,10 +52,6 @@ function scopeCondition(scope: ProductLookupScope): SQL {
     case 'not-deleted':
       return notDeleted(products.deletedAt);
   }
-}
-
-function isTrue(value: unknown): boolean {
-  return Number(value) === 1;
 }
 
 // 行はローンチ日の新しい順に並んでいるため、古い順に取消以外を数えて番号を振り、元の順で返す
@@ -105,27 +93,7 @@ export class D1ProductDirectory implements ProductDirectory {
     const pages = await Promise.all(
       chunk([...new Set(productIds)], IDS_PER_STATEMENT).map((page) =>
         this.db
-          .select({
-            productId: products.id,
-            ownerUserId: products.userId,
-            handle: products.handle,
-            name: products.name,
-            tagline: products.tagline,
-            categoryId: productCategories.id,
-            categoryName: productCategories.name,
-            categoryHandle: productCategories.handle,
-            websiteUrl: products.websiteUrl,
-            logoFileId: products.logoFileId,
-            hidden: sql<boolean>`${isNotNull(products.hiddenAt)}`.mapWith(
-              isTrue,
-            ),
-            visible: sql<boolean>`${visibleProducts()}`.mapWith(isTrue),
-            listed:
-              sql<boolean>`(${visibleProducts()} and ${wonLaunchExists()})`.mapWith(
-                isTrue,
-              ),
-            createdAt: products.createdAt,
-          })
+          .select(productSummaryColumns())
           .from(products)
           .innerJoin(users, eq(users.id, products.userId))
           .innerJoin(
@@ -136,27 +104,7 @@ export class D1ProductDirectory implements ProductDirectory {
       ),
     );
     return new Map(
-      pages.flat().map((row) => [
-        row.productId,
-        {
-          productId: row.productId,
-          ownerUserId: row.ownerUserId,
-          handle: row.handle,
-          name: row.name,
-          tagline: row.tagline,
-          category: {
-            id: row.categoryId,
-            name: row.categoryName,
-            handle: row.categoryHandle,
-          },
-          websiteUrl: row.websiteUrl,
-          logoFileId: row.logoFileId,
-          hidden: row.hidden,
-          visible: row.visible,
-          listed: row.listed,
-          createdAt: row.createdAt,
-        },
-      ]),
+      pages.flat().map((row) => [row.productId, toProductSummaryRecord(row)]),
     );
   }
 

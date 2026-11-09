@@ -25,6 +25,8 @@ const EXPECTED_NAMES = [
   'ProductLifecycleRedispatchJob',
   'ProductCategoryStore',
   'ProductCategoryService',
+  'LaunchHistoryStore',
+  'LaunchHistoryReader',
 ] as const;
 
 describe('PRODUCT_TYPES', () => {

@@ -3,6 +3,7 @@ import type { MessageContract } from '../../../lib/core/messaging/message-contra
 import type {
   LaunchRecord,
   ProductCategoryRecord,
+  ProductSummaryRecord,
 } from '../../../lib/core/product/ports.ts';
 import type {
   ProductLifecycleEvent,
@@ -133,6 +134,28 @@ export interface ProductStore {
   updateDescription(
     input: ProductDescriptionUpdateInput,
   ): Promise<ProductDescriptionUpdateResult>;
+}
+
+// owner: 論理削除と非公開化を除く本人のプロダクト(未掲載・停止中の投稿者を含む) / public: 掲載済みのプロダクト
+export type LaunchHistoryScope = 'owner' | 'public';
+
+export interface LaunchHistoryProductRecord extends ProductSummaryRecord {
+  // 取消を含む全ローンチの最新の日で、一覧の並びの位置に使う
+  readonly latestLaunchDate: BusinessDate;
+}
+
+export interface LaunchHistoryStore {
+  count(input: {
+    readonly userId: string;
+    readonly scope: LaunchHistoryScope;
+  }): Promise<number>;
+  // 最新のローンチ日とIDの降順に位置より後からlimit件まで返す
+  list(input: {
+    readonly userId: string;
+    readonly scope: LaunchHistoryScope;
+    readonly limit: number;
+    readonly before: ProductListPosition | undefined;
+  }): Promise<readonly LaunchHistoryProductRecord[]>;
 }
 
 export interface ProductCategoryWriteInput {

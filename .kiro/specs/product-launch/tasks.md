@@ -159,7 +159,7 @@
   - 完了状態: Workers統合テスト・単体テスト・DIの解決の検査が成功する
   - _Requirements: 11.2, 11.3, 11.4, 11.5, 11.6, 11.8, 11.9, 11.11_
 
-- [ ] 6.2 ローンチ履歴のストアとユースケースを作る
+- [x] 6.2 ローンチ履歴のストアとユースケースを作る
   - 先に、Workers統合テストで、他人には掲載済みのプロダクトだけ、本人には論理削除と非公開化を除く自分のプロダクト(未掲載を含む)を、最新のローンチ日の新しい順に20件ずつ返し件数が正しいことを確かめる。模擬のポートの単体テストで、表示できない利用者と停止中で本人でない場合のnull、停止中の本人の印、取消のローンチを除き番号を振ること、テスト用の供給元の要約の採用(大きい順位)と受賞の種類ごとのまとめ(Yearが先頭)、供給元の例外と供給の無いローンチでの予選の結果からの要約(キックオフ予定・予選マッチ中・ディレクトリ掲載・予選敗北)を確かめる
   - 要約と受賞のまとめは2.1の共有の規則を使う。利用者の解決は`core/profile`の`UserProfileDirectory`の型と`PROFILE_PLATFORM_TYPES`で受け取る。ストアとユースケースの識別子と束縛をapiのプロダクトのモジュールへ加える
   - 完了状態: Workers統合テスト・単体テスト・DIの解決の検査が成功する
@@ -357,4 +357,5 @@
 - 5.3: 退会(`product-launch.withdrawal`)はプロダクトと旧ハンドルの集合の論理削除の2文(上流の`previousHandleSoftDelete`は1プロダクト単位のため使わない)で、プロダクトのライフサイクルイベントは作らずローンチの行も変えない。停止(`product-launch.launch-cancellation`)は5.1の非公開化と同じ規則(停止の業務日付より後の未確定のローンチ)を取消にし、停止解除には登録しない。登録は`USER_LIFECYCLE_SYNC_HANDLERS`の末尾(project-values.mdも更新済み)
 - 5.4: ジョブは`application/product/jobs/`(payments・ultrasと同じく各ジョブが`*_JOB_DEFINITION`を持ち`scheduled-jobs.ts`が読む。design.mdのファイル構成も直した)。要件12.5のため、identity-authの前例(`STUCK_REDISPATCH_ORDINAL = 3`)に倣い、3回目以降の送り直しを`product-lifecycle-events-redispatched`として`ProductIncidentReporter`でSentryへ報告する(design.mdの型・ジョブの表・Monitoringも更新)。ジョブ内の送信の失敗はerrorのログを残して続け、最後に`ProductDailyJobError`を投げる。物理削除の境界は`fromBusinessDateTime(addBusinessDays(date, -12), 0:00)`、期限超過は予定時刻−14日。上流のsearchのWorkers統合テストが4:21のジョブ名を完全一致で並べるため2つ加えた。12.3の運用の報告への計測値(`product-module.scheduled.worker.test.ts`、ローカルD1とminiflareのQueueで4:21の実際のscheduledを実行、203件と103件): purge-orchestrator 30ms、lifecycle-redispatch 10〜14ms、4:21全体(18ジョブ)87〜93ms(予算300,000ms)。本番の送信を1件20〜50msと仮定すると300件で6〜15秒。期限超過の判定(1000)が同じ4:21の送り直し(1010)より先に走るため、D-13の0:00〜4:21に削除したプロダクトの初回の送信が失敗すると、送り直しの前に期限超過の報告が出ることがある(送信の失敗も既にSentryへ出るため見逃しは無い)
 - 6.1: カテゴリの更新・削除の取り消しは監査ログの`condition`で行う(backend/008、問い合わせカテゴリの前例。design.mdも直した)。不在は`productCategoryNotFoundError()`(`not_found`「カテゴリが見つかりません。」、003に行を追加)。名前・ハンドルの重複は`name`・`handle`の欄の詳細付きで、7.3は`withInputPath`で`input.name`・`input.handle`へ写す。ハンドルの形式の文言`PRODUCT_HANDLE_MESSAGES`・`PRODUCT_CATEGORY_HANDLE_MESSAGES`をcommon-libに加えた(7.x・9.4・10で使う)。初期データの入れ直しはフィクスチャの`restoreProductCategorySeed`
+- 6.2: `StoreLaunchHistoryReader.list`(`application/product/launch-history-reader.ts`)と`D1LaunchHistoryStore`。ストアの`list`は`LaunchHistoryProductRecord`(要約に`latestLaunchDate`を加えたもの、カーソル用)を返し、ユースケースの`product`は要約の型。カーソルは`my-products-cursor.ts`を共有、1ページの上限は`LAUNCH_HISTORY_PAGE_MAX = 20`(7.3の`first`の検証に使う)。旧ハンドルはその利用者として扱い、形式違反はnull。要約の列は`workers/product/product-summary-columns.ts`へ切り出し`D1ProductDirectory`と共有。6.3は対象の判定と供給元の呼び出し(`#summarize`)を共通化して`awards`を加える
 - 11.2への申し送り(`docs/onboardings/project-values.md`): ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

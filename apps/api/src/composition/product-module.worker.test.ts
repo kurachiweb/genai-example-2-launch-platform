@@ -27,6 +27,7 @@ import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
 import type { CurrentUser } from '../../lib/core/identity/account-guard.ts';
 import { MEDIA_TYPES } from '../../lib/core/media/identifiers.ts';
 import type { UploadPurposeRegistry } from '../../lib/core/media/upload-purpose.ts';
+import type { SessionView } from '../../lib/core/session/session-view.ts';
 import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import {
   fromBusinessDateTime,
@@ -47,6 +48,7 @@ import {
 import {
   clearProductTables,
   db,
+  insertLaunch,
   insertProduct,
   insertUser,
   productIdOf,
@@ -65,6 +67,7 @@ import type {
 import { ProductLifecycleRedispatchJob } from '../application/product/jobs/product-lifecycle-redispatch-job.ts';
 import { ProductPurgeOrchestratorJob } from '../application/product/jobs/product-purge-orchestrator-job.ts';
 import type {
+  LaunchHistoryStore,
   ProductCategoryStore,
   ProductIncidentReporter,
   ProductLifecycleCommitter,
@@ -74,6 +77,10 @@ import {
   type ProductCategoryService,
   StoreProductCategoryService,
 } from '../application/product/product-category-service.ts';
+import {
+  type LaunchHistoryReader,
+  StoreLaunchHistoryReader,
+} from '../application/product/launch-history-reader.ts';
 import {
   type MyProductsReader,
   StoreMyProductsReader,
@@ -114,6 +121,7 @@ import {
   readAuditLogSummaries,
   readAuditLogTargetIds,
 } from '../infrastructure/admin/testing/admin-store-fixtures.ts';
+import { D1LaunchHistoryStore } from '../infrastructure/product/d1-launch-history-store.ts';
 import { D1ProductCategoryStore } from '../infrastructure/product/d1-product-category-store.ts';
 import { D1ProductStore } from '../infrastructure/product/d1-product-store.ts';
 import type { ProductSaveHooks } from '../infrastructure/product/product-save-hooks.ts';
@@ -656,5 +664,96 @@ describe('プロダクトカテゴリのマスタ(実物の束縛)', () => {
       created.id,
       created.id,
     ]);
+  });
+});
+
+describe('ローンチ履歴(実物の束縛)', () => {
+  const sessionOf = (userIndex: number | undefined): SessionView => ({
+    principal: () =>
+      Promise.resolve(
+        userIndex === undefined
+          ? { kind: 'anonymous' }
+          : {
+              kind: 'authenticated',
+              subjectKind: 'user',
+              subjectId: userIdOf(userIndex),
+              sessionId: '01JC0SESSION000000000000001',
+            },
+      ),
+  });
+
+  test('ストアとユースケースを処理単位のコンテナからそれぞれの実装に解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<LaunchHistoryStore>(PRODUCT_TYPES.LaunchHistoryStore),
+    ).toBeInstanceOf(D1LaunchHistoryStore);
+    expect(
+      container.get<LaunchHistoryReader>(PRODUCT_TYPES.LaunchHistoryReader),
+    ).toBeInstanceOf(StoreLaunchHistoryReader);
+  });
+
+  test('他人には掲載済みのプロダクトだけを、本人には未掲載を含めて、予選の結果からの要約付きで返す', async () => {
+    await insertUser(OWNER, { emailVerifiedAt: T0 });
+    await insertUser(2, { emailVerifiedAt: T0 });
+    await insertProduct(1, OWNER, { latestLaunchDate: '2026-11-01' });
+    await insertProduct(2, OWNER, { latestLaunchDate: '2026-11-20' });
+    await insertLaunch(1, 1, {
+      launchDate: '2026-11-01',
+      outcome: 'won',
+      decidedAt: T0,
+    });
+    await insertLaunch(2, 2, { launchDate: '2026-11-20' });
+    const reader = createRegistrationContainer().get<LaunchHistoryReader>(
+      PRODUCT_TYPES.LaunchHistoryReader,
+    );
+    const input = { userHandle: 'user1', first: 20, after: undefined };
+
+    const guest = await reader.list(sessionOf(undefined), input);
+    const other = await reader.list(sessionOf(2), input);
+    const owner = await reader.list(sessionOf(OWNER), input);
+
+    expect(guest).toEqual(other);
+    expect(guest).toMatchObject({
+      viewerIsOwner: false,
+      ownerSuspended: false,
+      totalCount: 1,
+      hasNextPage: false,
+      nodes: [
+        {
+          product: { productId: productIdOf(1), listed: true },
+          launches: [
+            {
+              number: 1,
+              status: 'finished',
+              summary: { label: 'ディレクトリ掲載', inMatch: false },
+            },
+          ],
+          awards: [],
+        },
+      ],
+    });
+    expect(owner).toMatchObject({
+      viewerIsOwner: true,
+      totalCount: 2,
+      nodes: [
+        {
+          product: { productId: productIdOf(2), listed: false },
+          launches: [
+            {
+              status: 'scheduled',
+              summary: { label: 'キックオフ予定', inMatch: false },
+            },
+          ],
+        },
+        { product: { productId: productIdOf(1) } },
+      ],
+    });
+    expect(
+      await reader.list(sessionOf(undefined), {
+        ...input,
+        userHandle: 'nobody',
+      }),
+    ).toBeNull();
   });
 });

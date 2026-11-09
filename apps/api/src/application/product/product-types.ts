@@ -73,6 +73,14 @@ const ProductCategoryService: unique symbol = Symbol.for(
   'product.ProductCategoryService',
 );
 
+const LaunchHistoryStore: unique symbol = Symbol.for(
+  'product.LaunchHistoryStore',
+);
+
+const LaunchHistoryReader: unique symbol = Symbol.for(
+  'product.LaunchHistoryReader',
+);
+
 export const PRODUCT_TYPES = Object.freeze({
   ProductStateEvaluator,
   RelaunchConditionSources,
@@ -95,4 +103,6 @@ export const PRODUCT_TYPES = Object.freeze({
   ProductLifecycleRedispatchJob,
   ProductCategoryStore,
   ProductCategoryService,
+  LaunchHistoryStore,
+  LaunchHistoryReader,
 });
