@@ -1,6 +1,7 @@
 import { LaunchHistoryCount } from '../components/launch-history/launch-history-count.tsx';
 import { LAUNCH_HISTORY_TAB_LABEL } from '../components/launch-history/launch-history-messages.ts';
 import { LaunchHistoryPanel } from '../components/launch-history/launch-history-panel.tsx';
+import { ProfileAwardBadges } from '../components/launch-history/profile-award-badges.tsx';
 import type {
   PublicProfileBadgeSection,
   PublicProfileMenuItem,
@@ -20,7 +21,13 @@ export const PUBLIC_PROFILE_TABS: readonly PublicProfileTab[] = Object.freeze([
 
 // 公開プロフィールのフォロワー数の下に並べる受賞バッジの区画の登録箇所。各specが自分の区画を追記する
 export const PUBLIC_PROFILE_BADGES: readonly PublicProfileBadgeSection[] =
-  Object.freeze([]);
+  Object.freeze([
+    {
+      id: 'product-launch.award-badges',
+      order: 10,
+      Section: ProfileAwardBadges,
+    },
+  ]);
 
 // 公開プロフィールのフォローボタンの横の「…」メニューの項目の登録箇所。各specが自分の項目を追記する
 export const PUBLIC_PROFILE_MENU_ITEMS: readonly PublicProfileMenuItem[] =

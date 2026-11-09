@@ -7,6 +7,7 @@ import {
 } from '../../composition/public-profile-sections.ts';
 import { LaunchHistoryCount } from '../launch-history/launch-history-count.tsx';
 import { LaunchHistoryPanel } from '../launch-history/launch-history-panel.tsx';
+import { ProfileAwardBadges } from '../launch-history/profile-award-badges.tsx';
 import {
   orderPublicProfileSections,
   profileTabQueryValue,
@@ -82,7 +83,7 @@ describe('タブのクエリの値の解決', () => {
 });
 
 describe('登録箇所', () => {
-  test('タブにはproduct-launchのローンチ履歴を登録し、受賞バッジと「…」メニューの項目の登録箇所は空である', () => {
+  test('タブにはproduct-launchのローンチ履歴を、受賞バッジにはproduct-launchの受賞バッジを登録し、「…」メニューの項目の登録箇所は空である', () => {
     expect(PUBLIC_PROFILE_TABS).toStrictEqual([
       {
         id: 'launches',
@@ -92,7 +93,13 @@ describe('登録箇所', () => {
         Panel: LaunchHistoryPanel,
       },
     ]);
-    expect(PUBLIC_PROFILE_BADGES).toStrictEqual([]);
+    expect(PUBLIC_PROFILE_BADGES).toStrictEqual([
+      {
+        id: 'product-launch.award-badges',
+        order: 10,
+        Section: ProfileAwardBadges,
+      },
+    ]);
     expect(PUBLIC_PROFILE_MENU_ITEMS).toStrictEqual([]);
   });
 

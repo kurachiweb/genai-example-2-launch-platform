@@ -133,7 +133,6 @@ describe('ProfileCard', () => {
       ['自己紹介', 'profile-bio', { bio: null }],
       ['自己紹介(空白だけ)', 'profile-bio', { bio: ' \n ' }],
       ['外部Webサイト', 'profile-websites', { websites: [] }],
-      ['受賞バッジ', 'profile-badges', {}],
     ])('未入力の%sは区画ごと描かない', async (_name, slot, overrides) => {
       await renderCard(publicProfileOf(overrides));
 
@@ -586,9 +585,9 @@ describe('ProfileCard', () => {
     });
   });
 
-  describe('既定の登録箇所', () => {
-    test('何も登録されていなければ、受賞バッジの区画も「…」ボタンも出さない', async () => {
-      await renderCard(publicProfileOf());
+  describe('登録箇所の既定', () => {
+    test('受賞バッジの区画と「…」メニューの項目が登録されていなければ、受賞バッジの枠も「…」ボタンも出さない', async () => {
+      await renderCard(publicProfileOf(), { badges: [] });
 
       await expect
         .element(page.getByRole('button', { name: 'フォロー' }))
@@ -597,6 +596,27 @@ describe('ProfileCard', () => {
       await expect
         .element(page.getByRole('button', { name: 'その他の操作' }))
         .not.toBeInTheDocument();
+    });
+
+    test('登録された受賞バッジの区画が何も描かない間は、受賞バッジの枠を見せない', async () => {
+      executeGraphQL.mockResolvedValue({
+        ok: true,
+        data: { profileAwards: [] },
+      });
+
+      await renderCard(publicProfileOf());
+
+      await expect
+        .element(page.getByRole('button', { name: 'フォロー' }))
+        .toBeVisible();
+      await vi.waitFor(() => {
+        expect(executeGraphQL).toHaveBeenCalled();
+      });
+      const slot = documentElement('[data-slot="profile-badges"]');
+      expect(slot?.childElementCount).toBe(0);
+      expect(slot === null ? null : getComputedStyle(slot).display).toBe(
+        'none',
+      );
     });
   });
 
