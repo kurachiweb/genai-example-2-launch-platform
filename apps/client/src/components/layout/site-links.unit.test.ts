@@ -1,10 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 
-import { profileHref, userMenuLabel } from './site-links.ts';
+import { productDetailHref, profileHref, userMenuLabel } from './site-links.ts';
 
 describe('profileHref', () => {
   test('ハンドルの前に@を付けたプロフィールのパスにする', () => {
     expect(profileHref('pitch_maker')).toBe('/@pitch_maker');
+  });
+});
+
+describe('productDetailHref', () => {
+  test('ディレクトリのパスの下にプロダクトのハンドルを置いたプロダクト詳細のパスにする', () => {
+    expect(productDetailHref('pitch-notes')).toBe('/p/pitch-notes');
   });
 });
 

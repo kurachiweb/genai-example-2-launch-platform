@@ -239,7 +239,7 @@
   - 完了状態: ブラウザテストが成功し、一覧と編集画面とローンチ日の欄から読み込める
   - _Requirements: 5.2, 5.4, 9.8_
 
-- [ ] 9.3 自分のプロダクトの一覧の画面を作る
+- [x] 9.3 自分のプロダクトの一覧の画面を作る
   - 先に、ブラウザテスト(axeの違反0件)で、項目のロゴ(プレースホルダーを含む)・名称・ハンドル・カテゴリ・公開停止中のバッジ・状態と案内・編集と詳細の導線(非公開化中は詳細を出さない)、テスト用の登録で区画が`order`順に出て1つの失敗が他を止めないこと、「さらに読み込む」、0件・初回ローディング、最初の取得の失敗が一覧の位置の`PartialErrorState`になり続きの取得の失敗が「さらに読み込む」の近くの`role="alert"`になること(frontend/006)、表示中に0:00を越えるとカードの状態がマッチ中に変わること(偽の時計)、停止中の案内と導線の無効を確かめる
   - `/my/products`を`_authenticated`の下に作り、`loader`で`queryClient.infiniteQuery(...).catch(() => undefined)`を待ち、`head`は`buildSitePageHead`で作る。カードは`<article>`に見た目のクラスを付けて描く(frontend-libにカードの部品は無い)。表示中の境界の取り直しは設計の「表示中の境界の取り直し」に従う
   - 完了状態: ブラウザテストが成功し、ローカルでユーザーメニューの「自身のプロダクト」から開ける
@@ -368,4 +368,5 @@
 - 8.3: `product-launch.product-erasure`はプロダクトを50件ずつ読み、未作成のものに`purge_due`を作って送り`continue`、全件の作成日時のうち最も新しいものから10分以上で行が残れば例外。送信の失敗は`error`のログで続け、4:21の送り直しに任せる。登録は`USER_LIFECYCLE_ASYNC_HANDLERS`の`user-profile-social.owned-file-erasure`の後(project-values.mdも更新済み)
 - 9.1: clientの操作は10個(`productOwnerStatus`はdirectory-discoveryが作る)。取得の設定と変換は`src/graphql/my-products.ts`・`launch-history.ts`、共有の変換は`src/graphql/product-launch.ts`(列挙を小文字の値へ)、区画の並べ替えは`components/product/product-section-order.ts`の`orderProductSections`(design.mdのファイル構成も直した)。キーは自分のプロダクト系が閲覧者のID、ローンチ履歴・受賞が閲覧者のIDか`guest`。無効化は`invalidateMyProductQueries`(カテゴリは無効にしない)。編集画面の`loader`は`toMyProductLookup`(`found`・`redirect`・`not-found`)の結果から9.7が`notFound()`と302を投げる。ハンドルの使用可否は`fetchProductHandleAvailability`(キャッシュなし)。adminの許可リストは10で再生成する。軽微な残り: `product-section-types.ts`の`order`のコメントに具体の値が無い、`GUEST_SCOPE`が`public-profile.ts`と重複
 - 9.2: `LaunchStatusText`・`LaunchPlanNotice`(`placement`が`list`・`edit`、`edit`では「次回のローンチを予約」を出さない)と、9.5も使う日時の部品`KickoffTime`・`RemainingDateTime`・`LaunchDateText`(業務日付は`<time dateTime="YYYY-MM-DD">`で文字列から整形しずれない)。「今年」は閲覧者のタイムゾーンの年(`useCurrentYear`)。編集画面への導線は`site-links.ts`の`myProductEditHref`(9.3も使う)。時刻の表記は共通の書式の2桁(`00:00`、003も直した)。禁止の解除の日時は「解除: <日時>(あと<n>日)」(003に追加)。`formatLaunchDate`はapiの`product-errors.ts`と同じ規則の二重実装(common-libへの集約は今後の課題)
+- 9.3: 表示中の境界の取り直しは共通のフック`components/product/use-boundary-refresh.ts`の`useBoundaryRefresh`(境界の1秒後に取り直す、9.5・9.7も使う)。一覧はキックオフ(0:00)だけで取り直し、23:40・23:45は取り直さない(カードの固定の案内が最大15分遅れ得る)。停止中の利用者は`LaunchPlanNotice`の`editable`で予約の導線を隠し、無効の導線は`disabled`。区画は`MyProductSectionSlots`(9.7も使う)。`site-links.ts`に`productDetailHref`(`/p/<ハンドル>`はdirectory-discoveryの担当で未作成のため今は404)。「さらに読み込む」の後のフォーカスは`components/profile/use-follow-list-focus.ts`を使う
 - 11.2への申し送り(`docs/onboardings/project-values.md`): 画面の登録箇所`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`(9.1)、GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

@@ -41,6 +41,9 @@ export const NEW_PRODUCT_HREF = '/my/products/new';
 export const myProductEditHref = (productHandle: string): string =>
   `/my/products/${productHandle}/edit`;
 
+export const productDetailHref = (productHandle: string): string =>
+  `${DIRECTORY_HREF}/${productHandle}`;
+
 export const PROFILE_LABEL = 'プロフィール';
 
 export const profileHref = (handle: string): string => `/@${handle}`;

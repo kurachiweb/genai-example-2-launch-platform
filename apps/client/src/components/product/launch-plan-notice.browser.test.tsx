@@ -92,9 +92,11 @@ async function renderNotice(
   plan: LaunchPlanView,
   {
     placement = 'list',
+    editable,
     display = TOKYO_JA,
   }: {
     readonly placement?: 'list' | 'edit';
+    readonly editable?: boolean;
     readonly display?: DisplayPreferences;
   } = {},
 ) {
@@ -109,6 +111,7 @@ async function renderNotice(
         plan={plan}
         productHandle="pitch-notes"
         placement={placement}
+        {...(editable === undefined ? {} : { editable })}
       />
     </DisplayPreferencesProvider>,
   );
@@ -165,6 +168,15 @@ describe('LaunchPlanNotice', () => {
 
   test('編集画面ではローンチ日の欄で予約するため「次回のローンチを予約」を出さない', async () => {
     await renderNotice(planOf({}), { placement: 'edit' });
+
+    await expect
+      .element(page.getByText(/以降のローンチ日を選べます。$/u))
+      .toBeVisible();
+    expect(reserveLink().query()).toBeNull();
+  });
+
+  test('変更できない利用者には、一覧でも「次回のローンチを予約」を出さず、選べる最も早い日だけを示す', async () => {
+    await renderNotice(planOf({}), { editable: false });
 
     await expect
       .element(page.getByText(/以降のローンチ日を選べます。$/u))

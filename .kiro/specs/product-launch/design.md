@@ -310,8 +310,13 @@ apps/
 │   │   ├── bot-actions.ts                                # PRODUCT_BOT_ACTIONSの写し(config/contract-copies.unit.test.tsで一致を確かめる)
 │   │   ├── product-section-order.ts                      # 区画と注意書きの登録の`order`順の並べ替え(単体テスト付き)
 │   │   ├── product-section-types.ts                      # MyProductSectionContext・各登録の型(テストなし)
-│   │   ├── my-product-list-page.tsx                      # 一覧の枠・状態表示・続き
-│   │   ├── my-product-card.tsx                           # 1件の項目と登録された区画
+│   │   ├── my-product-list-page.tsx                      # 一覧のページの見出し・登録の導線・停止中の案内
+│   │   ├── my-product-list.tsx                           # 一覧・状態表示・続き・キックオフの取り直し
+│   │   ├── my-product-card.tsx                           # 1件の項目(ロゴ・名称・状態・案内・操作)
+│   │   ├── my-product-card-skeletons.tsx                 # 初回ローディングのカードの形のスケルトン
+│   │   ├── my-product-section-slots.tsx                  # 登録された区画を個別のエラー境界で描く(一覧と9.7の編集画面で共用)
+│   │   ├── my-product-messages.ts                        # 自分のプロダクトのページの文言(テストなし)
+│   │   ├── use-boundary-refresh.ts                       # 表示中の業務時刻の境界のタイマーによる取り直し(9.5・9.7も使う)
 │   │   ├── launch-status-text.tsx                        # ローンチの状態の文言とキックオフの日時
 │   │   ├── launch-plan-notice.tsx                        # 次回の予約・固定・非公開化の案内
 │   │   ├── launch-messages.ts                            # ローンチの状態と予約の案内の文言(テストなし)
@@ -2135,7 +2140,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 - `MyProductListPage`: `h1`「自分のプロダクト」と説明文、右上に「新しいプロダクトを登録」(主要ボタン、9.6)。`myProducts`を`infiniteQueryOptions`(キーに閲覧者のIDを入れる)で`first: 20`ずつ取得し、`loader`で`queryClient.infiniteQuery(...).catch(() => undefined)`を待ち、「さらに読み込む」で続きを後ろに加える(9.1、frontend/006の続けて読み込む一覧)。0件は`EmptyState`(「まだプロダクトはありません。」と、ローンチ日に予選マッチで1対1の対戦が始まり勝利するとディレクトリに掲載される旨と登録への導線、9.5)。初回ローディングはカードの形のスケルトン。最初の取得の失敗は一覧の位置の`PartialErrorState`(再試行・問い合わせ、文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`)、続きの取得の失敗は「さらに読み込む」の近くの`role="alert"`の文言で示し、読み込みの後のフォーカスの移動はfrontend/006に従う。各カードは`<article>`に見た目のクラスを付けて描く(frontend-libにカードの部品は無い)。停止中は上部に停止中の案内(問い合わせへの導線)を出し、登録と編集の導線を無効にする(9.7)。
 - `MyProductCard`: 左にロゴ(`MediaPicture`の`square` 64、プレースホルダーは名称の頭文字、3.8)、名称・ハンドル(`@`なし)・カテゴリのバッジ、非公開化中は「公開停止中」のバッジ。`LaunchStatusText`(直近のローンチ)と`LaunchPlanNotice`(次回の予約)を並べ、操作は「編集」と、非公開化中でなければ「詳細を見る」(`/p/<ハンドル>`、9.3)。カードの下に`MY_PRODUCT_SECTIONS`を`order`順に個別のエラー境界で描く(9.4)。PCは横並び、640px未満は縦に積む。
 - `LaunchStatusText`: `scheduled`・`paired`は「キックオフ予定」と`<time datetime>`の利用者のタイムゾーンの日時と相対表現(「あと2日」)、`in_progress`は「予選マッチ中」と「トップページで見る」、`finished`は「ディレクトリ掲載」または「予選敗北」とローンチ日、`canceled`は「取消」(9.2・9.8)。ローンチ日は業務日付のまま`<time datetime="YYYY-MM-DD">`で示し、利用者のタイムゾーンで日をずらさない。日付は今年(利用者のタイムゾーン)なら年を省く。
-- `LaunchPlanNotice`: `new`は「このプロダクトは◯月◯日以降のローンチ日を選べます。」と「次回のローンチを予約」(編集画面へ)、`reschedule`は「ローンチ日は編集画面で変更できます。」、`blocked`は理由の文言と、解除の日時があれば「解除: <日時>(あと3日)」、`unknown`は「ローンチの状態を確認できませんでした。」。固定の期間は「マッチ直前・マッチ中のため、ローンチ日・カテゴリの変更と削除はできません。」、固定の判定の失敗(`lockUnknown`)は`unknown`でなければ確認できなかった旨を加える(5.2・5.4・6.3)。`placement`(`list`・`edit`)が`edit`なら「次回のローンチを予約」を出さない(編集画面ではローンチ日の欄で予約する)。
+- `LaunchPlanNotice`: `new`は「このプロダクトは◯月◯日以降のローンチ日を選べます。」と「次回のローンチを予約」(編集画面へ)、`reschedule`は「ローンチ日は編集画面で変更できます。」、`blocked`は理由の文言と、解除の日時があれば「解除: <日時>(あと3日)」、`unknown`は「ローンチの状態を確認できませんでした。」。固定の期間は「マッチ直前・マッチ中のため、ローンチ日・カテゴリの変更と削除はできません。」、固定の判定の失敗(`lockUnknown`)は`unknown`でなければ確認できなかった旨を加える(5.2・5.4・6.3)。`placement`(`list`・`edit`)が`edit`なら「次回のローンチを予約」を出さない(編集画面ではローンチ日の欄で予約する)。`editable`(既定は真)が偽なら一覧でも出さない(停止中の利用者、9.7)。
 
 #### ProductForm・ProductFormSchema・LogoField・ScreenshotsField・ProductHandleField・CategorySelect・LaunchDateField・ProductEditPage・ProductDeleteDialog
 
@@ -2145,10 +2150,10 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 - `ProductHandleField`: `/p/`の接頭辞付きの入力欄。フォーカスアウトで形式→`productHandleAvailability`(編集中は`productHandle`を渡す)、`UNAVAILABLE`で「このハンドルは既に使われています。別の文字列を入力してください。」(2.6)。保持中の旧ハンドルがあれば「以前のハンドル◯◯は、次にハンドルを変更するか他のプロダクトが同じハンドルを設定するまで、新しいURLへ転送されます。」(2.10)。
 - `CategorySelect`: `productCategories`の順(追加の順・「その他」が末尾)のセレクト(欄の名前は`fields.categoryId`)。固定の期間は`FormField`の`disabled`で無効にし(入力要素の`disabled`の属性だけでは無効にしない)、理由を`aria-describedby`で示す(6.3)。無効の間の値は`onSubmit`へ渡す値から外れ、`ProductForm`の`onSubmit`が読み込んだカテゴリを足す。
 - `LaunchDateField`: 登録は`newProductLaunchWindow`、編集は`plan.window`を描く。`Calendar`に、`earliest`〜`latest`の外と`unavailable`の範囲を`aria-disabled`の日として渡し(選べないがフォーカスでき、ツールチップと`aria-label`で「ペアリングの締め切りを過ぎています」「敗北後の間隔のため選べません」「選べる期間の外です」を示す)、選択でキックオフの日時(利用者のタイムゾーン、`<time datetime>`)と相対表現を表示する(4.8・4.9)。敗北後の間隔が効いていてUltrasの特典を受けていなければ、`UltrasPromotionGate`の中に「Ultrasなら敗北後2日で再ローンチできます。」と料金ページへのリンクを置く(4.10)。編集では計画が`reschedule`なら現在の日を選択済みで変更でき、`new`なら「次回のローンチを予約」(選ばなければ予約しない)、`blocked`・`unknown`・固定ならカレンダーを出さず`LaunchPlanNotice`を出し、ローンチ日を含まないスキーマのフォームにする(`onSubmit`が`launchDate: null`を足す、5.1〜5.4・6.3)。ローンチ日(業務日付の文字列)は`DateTime`の表示部品へ渡さず(利用者のタイムゾーンで日がずれる)、frontend/012で定める業務日付の整形で表示する。境界の時刻の取り直しは下の「表示中の境界の取り直し」に従う。
-- 表示中の境界の取り直し: 表示中の画面が業務時刻の境界を越えたら、その時刻にタイマーで該当する取得を`invalidateQueries`で無効にして取り直す。frontend/010の定期の取り直し(`refetchInterval`)は自動更新の切り替えを要するため使わない。境界は次の3つ。
+- 表示中の境界の取り直し: 表示中の画面が業務時刻の境界を越えたら、その時刻にタイマーで該当する取得を`invalidateQueries`で無効にして取り直す。frontend/010の定期の取り直し(`refetchInterval`)は自動更新の切り替えを要するため使わない。タイマーは`components/product/use-boundary-refresh.ts`の`useBoundaryRefresh(境界の日時の並び, 取り直し)`で掛け、閲覧者とサーバーの時計のずれのため境界の1秒後(`BOUNDARY_REFRESH_DELAY_MS`)に取り直す。境界は次の3つ。
   - 23:40: 選べる日(`newProductLaunchWindow`・`plan.window`)。
   - 23:45: 編集画面の固定(カテゴリと削除の無効化)と`LaunchPlanNotice`。
-  - 0:00: `LaunchStatusText`の`in_progress`への切り替え(一覧と編集画面)。
+  - 0:00: `LaunchStatusText`の`in_progress`への切り替え(一覧と編集画面)。一覧は予定・ペアリング済みの直近のローンチの`kickoffAt`を境界にする。
 
   取り直しで無効になる削除のボタンは、フォーカスのある間は`aria-disabled`にし、フォーカスが離れてから`disabled`にする(frontend/010・004)。保存が`product_update_conflict`・`launch_date_unavailable`で失敗したら、`myProduct`と選べる日の取得を無効にし、最新を示してから選び直させる(frontend/010)。
 

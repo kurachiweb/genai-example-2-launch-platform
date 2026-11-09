@@ -18,12 +18,15 @@ export interface LaunchPlanNoticeProps {
   readonly productHandle: string;
   // 編集画面ではローンチ日の欄で予約するため、編集画面への導線を出さない
   readonly placement: MyProductSectionContext['placement'];
+  // 停止中の利用者は予約を含めて変更できないため、一覧でも編集画面への導線を出さない。既定は真
+  readonly editable?: boolean;
 }
 
 function NewLaunchNotice({
   plan,
   productHandle,
   placement,
+  editable = true,
 }: LaunchPlanNoticeProps) {
   return (
     <>
@@ -34,7 +37,7 @@ function NewLaunchNotice({
           {EARLIEST_LAUNCH_DATE_NOTICE.after}
         </p>
       )}
-      {placement === 'list' && (
+      {placement === 'list' && editable && (
         <p>
           <PathLink
             href={myProductEditHref(productHandle)}

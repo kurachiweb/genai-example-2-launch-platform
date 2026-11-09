@@ -39,6 +39,7 @@ import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/pass
 import { Route as LegalRevisionsVersionNumberRouteImport } from './routes/legal/revisions/$versionNumber'
 import { Route as PrivacyRevisionsVersionNumberRouteImport } from './routes/privacy/revisions/$versionNumber'
 import { Route as TermsRevisionsVersionNumberRouteImport } from './routes/terms/revisions/$versionNumber'
+import { Route as AuthenticatedMyProductsIndexRouteImport } from './routes/_authenticated/my/products/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -205,6 +206,12 @@ const TermsRevisionsVersionNumberRoute =
     path: '/terms/revisions/$versionNumber',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedMyProductsIndexRoute =
+  AuthenticatedMyProductsIndexRouteImport.update({
+    id: '/my/products/',
+    path: '/my/products/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -236,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
+  '/my/products/': typeof AuthenticatedMyProductsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -266,6 +274,7 @@ export interface FileRoutesByTo {
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
+  '/my/products': typeof AuthenticatedMyProductsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -299,6 +308,7 @@ export interface FileRoutesById {
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
+  '/_authenticated/my/products/': typeof AuthenticatedMyProductsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -332,6 +342,7 @@ export interface FileRouteTypes {
     | '/terms/revisions/$versionNumber'
     | '/settings/'
     | '/auth/password-reset/'
+    | '/my/products/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -362,6 +373,7 @@ export interface FileRouteTypes {
     | '/terms/revisions/$versionNumber'
     | '/settings'
     | '/auth/password-reset'
+    | '/my/products'
   id:
     | '__root__'
     | '/'
@@ -394,6 +406,7 @@ export interface FileRouteTypes {
     | '/terms/revisions/$versionNumber'
     | '/_authenticated/settings/'
     | '/auth/password-reset/'
+    | '/_authenticated/my/products/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -630,6 +643,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRevisionsVersionNumberRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/my/products/': {
+      id: '/_authenticated/my/products/'
+      path: '/my/products'
+      fullPath: '/my/products/'
+      preLoaderRoute: typeof AuthenticatedMyProductsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -664,6 +684,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCheckoutPurchaseIdRoute: typeof AuthenticatedCheckoutPurchaseIdRoute
   AuthenticatedCheckoutReturnRoute: typeof AuthenticatedCheckoutReturnRoute
   AuthenticatedInquiriesInquiryIdRoute: typeof AuthenticatedInquiriesInquiryIdRoute
+  AuthenticatedMyProductsIndexRoute: typeof AuthenticatedMyProductsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -671,6 +692,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCheckoutPurchaseIdRoute: AuthenticatedCheckoutPurchaseIdRoute,
   AuthenticatedCheckoutReturnRoute: AuthenticatedCheckoutReturnRoute,
   AuthenticatedInquiriesInquiryIdRoute: AuthenticatedInquiriesInquiryIdRoute,
+  AuthenticatedMyProductsIndexRoute: AuthenticatedMyProductsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
