@@ -320,7 +320,7 @@
   - _Depends: 9.7, 9.8_
   - _Requirements: 15.3_
 
-- [ ] 12.2 E2Eテストで管理画面のカテゴリの流れを確かめる
+- [x] 12.2 E2Eテストで管理画面のカテゴリの流れを確かめる
   - `e2e/admin/product-categories.e2e.test.ts`: admin-foundationの`e2e/support/admin-bootstrap.ts`で管理者としてログインし、カテゴリの追加→名前とハンドルの変更→「その他」の削除の拒否→利用者側でそのカテゴリのプロダクトを登録した後の削除の拒否を確かめる
   - 完了状態: ローカルでE2Eテストが成功する
   - _Depends: 9.6, 10_
@@ -379,4 +379,5 @@
 - 11.1: `backend/012`・`backend/013`・`frontend/012`を書き、CLAUDE.mdにbackend/012と、同じ書き方でbackend/013・frontend/012の参照も加えた。保存の処理の文の規約は、directory-discoveryの`markPending`(`INSERT … ON CONFLICT DO UPDATE`)に合わせ「集約のIDを条件にした更新か挿入」にした(tasks.mdの11.1の本文の「更新だけ」より緩い。design.mdとコードのコメントも直した)。送信の失敗の運用者への通知は送り直しのジョブの3回目以降の報告に任せる(backend/007の「ログと運用者への通知」より緩い、コードのとおり)。READMEの「範囲」の説明は変えていない
 - 11.2: project-values.mdに節「プロダクトとローンチ」を作り、11.2に回された事項を全て反映した(共通の値は既存の表へ)。準拠方針の「他の対象が同じ文字列を設定すると旧ハンドルを消す」を「他のプロダクト」に直した(FR-PRDCT-020・022、仮5)。注5のヘルプ記事の文の「他の対象」はhelp-centerの担当のため残した。backend/013にもproject-values.mdへの参照を加えた
 - 12.1: `e2e/client/product.e2e.test.ts`と`product-steps.ts`。ローンチ日は業務日付の+3日で登録・+5日へ変更(実行時刻に依存しない)。画像のアップロードとマークダウンのリンクの入力を`e2e/support/image-upload.ts`・`e2e/client/markdown-steps.ts`へ共通化した(profile・adminのmy-accountも使う)。9.7が`check:contract-copies`に2つ目のファイルを加えた際に古いままだった`scripts/tooling/run-all.unit.test.ts`の期待値を直した。軽微な残り: `requestWithoutFollowing`・`pathOf`が`profile.e2e.test.ts`の補助と重複、編集画面のタグラインとカテゴリの読み込みは未確認
+- 12.2: `e2e/admin/product-categories.e2e.test.ts`。カテゴリの区画の共通の手順を`e2e/admin/category-steps.ts`へ移した(inquiry-categoriesも使う)。`e2e/client/product-steps.ts`の`ProductInput`に`categoryName`(既定は「その他」)。紐付くプロダクトのあるカテゴリは削除できないため、実行ごとにローカルにテストのカテゴリとプロダクトが残る(docs/onboardings/README.mdに記載)。adminのE2Eは`infisical run`の下で実行する。clientのbot判定の待ちが1回だけ時間切れになった(不安定の恐れ)
 - 11.2への申し送り(`docs/onboardings/project-values.md`): 技術文書の新しいプレースホルダーの値(`<集約>`=プロダクト、`<集約の実行のメッセージ>`=`product.run-product-lifecycle`、`<物理削除を始めるまでの業務日数>`=13、`<所有者ごとに読む集約の件数>`=50、`<集約の物理削除を待つ上限>`=10分、`<判定の一括の上限>`=20、`<選べる日の締め切りの時刻>`=23:40、`<変更の固定の始まりの時刻>`=23:45、11.1)、画面の登録箇所`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`(9.1)、GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

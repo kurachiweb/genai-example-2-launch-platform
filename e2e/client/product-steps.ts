@@ -82,6 +82,7 @@ export interface ProductInput {
   readonly websiteUrl: string;
   readonly descriptionText: string;
   readonly descriptionLink: MarkdownLink;
+  readonly categoryName: string;
 }
 
 // 前の実行のデータと衝突せず、予約語にも当たらないよう、乱数から作る
@@ -101,6 +102,7 @@ export function createProductInput(): ProductInput {
       text: `E2Eの説明文のリンク${suffix}`,
       url: `https://docs-${suffix}.example/guide`,
     },
+    categoryName: PRODUCT_CATEGORY_OTHER_NAME,
   };
 }
 
@@ -177,13 +179,15 @@ export async function openProductEditor(
   return form;
 }
 
-async function chooseCategory(page: Page, form: Locator): Promise<void> {
+async function chooseCategory(
+  page: Page,
+  form: Locator,
+  categoryName: string,
+): Promise<void> {
   await form
     .getByRole('combobox', { name: CATEGORY_FIELD_LABEL, exact: true })
     .click();
-  await page
-    .getByRole('option', { name: PRODUCT_CATEGORY_OTHER_NAME, exact: true })
-    .click();
+  await page.getByRole('option', { name: categoryName, exact: true }).click();
 }
 
 // 選べる日のカレンダーは選んだ日か最も早い選べる日の月から描くため、選ぶ日の月まで次の月へ進める
@@ -233,7 +237,7 @@ export async function fillProduct(
   );
   await field(form, NAME_FIELD_LABEL).fill(input.name);
   await field(form, TAGLINE_FIELD_LABEL).fill(input.tagline);
-  await chooseCategory(page, form);
+  await chooseCategory(page, form, input.categoryName);
   await fillProductHandle(form, input.handle);
   await fillMarkdownWithLink(
     page,
