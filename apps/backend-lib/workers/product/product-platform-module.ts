@@ -6,6 +6,7 @@ import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
 import type { IdGenerator } from '../../core/ids/id-generator.ts';
 import { PRODUCT_PLATFORM_TYPES } from '../../core/product/identifiers.ts';
 import type {
+  AdminProductDirectory,
   LaunchExport,
   LaunchOutcomeRecorder,
   ProductCategoryDirectory,
@@ -14,6 +15,7 @@ import type {
   ProductLifecycleStore,
   ScheduledLaunchDirectory,
 } from '../../core/product/ports.ts';
+import { D1AdminProductDirectory } from './d1-admin-product-directory.ts';
 import {
   D1LaunchOutcomeRecorder,
   D1ScheduledLaunchDirectory,
@@ -56,6 +58,9 @@ export const PRODUCT_PLATFORM_MODULE: Omit<AppModule, 'routes'> = {
           context.get<IdGenerator>(PLATFORM_TYPES.IdGenerator),
         ),
       )
+      .inSingletonScope();
+    bind<AdminProductDirectory>(PRODUCT_PLATFORM_TYPES.AdminProductDirectory)
+      .to(D1AdminProductDirectory)
       .inSingletonScope();
   }),
 };

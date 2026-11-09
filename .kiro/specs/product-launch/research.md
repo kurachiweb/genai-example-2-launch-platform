@@ -306,7 +306,7 @@
 cross-spec reviewの指摘による、承認の後の改訂である。仮13・仮14は2026-10-24に開発者が推奨どおりに確定した(仮13は本specが所有して実装する案)。
 
 - **仮13(管理画面のプロダクトの検索の照会)**
-  - 決定: ugc-moderationが本specの`workers/product`へ加えるとしていた`AdminProductDirectory`(`search`・`countRegisteredAt`)と`D1AdminProductDirectory`を、本specが所有して実装する。置き場所は`apps/backend-lib/workers/product/admin-product-directory.ts`、識別子は`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`、束縛は`PRODUCT_PLATFORM_MODULE`(api・event)。契約の形はugc-moderationの設計の`AdminProductDirectory`をそのまま写し、コンストラクタ`D1AdminProductDirectory(db: Database)`を加えた。名称・ハンドルの部分一致と最新のローンチの状態・公開の状態による絞り込みは、後続specに許す結合の範囲(仮11)を超えるため、本specのディレクトリの中だけの明示の例外として記録した(design.mdのAllowed Dependenciesの末尾とAdminProductDirectory)。
+  - 決定: ugc-moderationが本specの`workers/product`へ加えるとしていた`AdminProductDirectory`(`search`・`countRegisteredAt`)と`D1AdminProductDirectory`を、本specが所有して実装する。置き場所は`apps/backend-lib/workers/product/d1-admin-product-directory.ts`、識別子は`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`、束縛は`PRODUCT_PLATFORM_MODULE`(api・event)。契約の形はugc-moderationの設計の`AdminProductDirectory`をそのまま写し、コンストラクタ`D1AdminProductDirectory(db: Database)`を加えた。名称・ハンドルの部分一致と最新のローンチの状態・公開の状態による絞り込みは、後続specに許す結合の範囲(仮11)を超えるため、本specのディレクトリの中だけの明示の例外として記録した(design.mdのAllowed Dependenciesの末尾とAdminProductDirectory)。
   - 理由: 本specの`products`・`product_launches`の読み取りを本spec以外が実装すると、列や状態(`deriveLaunchStatus`の境界・非公開化)を変えたときに本specの中で照会とテストを直せない。所有者が照会も持てば、Revalidation Triggersで利用者(ugc-moderation)へ伝えられる。
   - 反映: requirements.mdの14.12と前書き、design.mdのThis Spec Owns・Allowed Dependencies・Revalidation Triggers・Directory Structure・追跡表・コンポーネントの表・ProductPlatformModule・AdminProductDirectory・Testing Strategy、tasks.mdの2.6・12.3。
 - **仮14(公開プロフィールの受賞バッジの区画)**

@@ -9,6 +9,7 @@ import type { AppModule } from '../../core/di/app-module.ts';
 import type { InvocationScopeInfo } from '../../core/di/identifiers.ts';
 import { PRODUCT_PLATFORM_TYPES } from '../../core/product/identifiers.ts';
 import type {
+  AdminProductDirectory,
   LaunchExport,
   LaunchOutcomeRecorder,
   ProductCategoryDirectory,
@@ -19,6 +20,7 @@ import type {
 } from '../../core/product/ports.ts';
 import { createInvocationContainer } from '../di/invocation-container.ts';
 import type { PlatformHonoEnv } from '../http/hono-env.ts';
+import { D1AdminProductDirectory } from './d1-admin-product-directory.ts';
 import {
   D1LaunchOutcomeRecorder,
   D1ScheduledLaunchDirectory,
@@ -37,10 +39,7 @@ import {
   seedProductPlatformSample,
 } from './testing/product-platform-fixtures.ts';
 
-// 管理画面のプロダクトの検索の照会はこのモジュールにまだ束縛しない
-const BOUND_IDENTIFIERS = Object.values(PRODUCT_PLATFORM_TYPES).filter(
-  (identifier) => identifier !== PRODUCT_PLATFORM_TYPES.AdminProductDirectory,
-);
+const BOUND_IDENTIFIERS = Object.values(PRODUCT_PLATFORM_TYPES);
 
 function createContainer(
   kind: InvocationScopeInfo['kind'] = 'fetch',
@@ -180,12 +179,32 @@ describe('PRODUCT_PLATFORM_MODULE', () => {
     ).resolves.toMatchObject({ id: SAMPLE_EVENT_ID });
   });
 
+  test('管理画面のプロダクトの検索の照会をD1の実装に解決し、プロダクトの検索と登録数の数え上げができる', async () => {
+    const directory = createContainer().get<AdminProductDirectory>(
+      PRODUCT_PLATFORM_TYPES.AdminProductDirectory,
+    );
+
+    expect(directory).toBeInstanceOf(D1AdminProductDirectory);
+    await expect(
+      directory.search({ handle: 'alp' }, { limit: 10 }, T0),
+    ).resolves.toMatchObject({
+      products: [
+        {
+          productId: SAMPLE_PRODUCT_ID,
+          latestLaunch: { launchId: SAMPLE_LAUNCH_ID, state: 'scheduled' },
+        },
+      ],
+      nextCursor: null,
+    });
+    await expect(directory.countRegisteredAt(after(1))).resolves.toBe(1);
+  });
+
   test.each(['fetch', 'queue', 'scheduled'] as const)(
-    '%sの処理単位でも束縛した7つの識別子をすべて解決する',
+    '%sの処理単位でも束縛した8つの識別子をすべて解決する',
     (kind) => {
       const container = createContainer(kind);
 
-      expect(BOUND_IDENTIFIERS).toHaveLength(7);
+      expect(BOUND_IDENTIFIERS).toHaveLength(8);
       for (const identifier of BOUND_IDENTIFIERS) {
         expect(container.get(identifier)).toBeDefined();
       }
@@ -200,11 +219,5 @@ describe('PRODUCT_PLATFORM_MODULE', () => {
       expect(first.get(identifier)).toBe(first.get(identifier));
       expect(second.get(identifier)).not.toBe(first.get(identifier));
     }
-  });
-
-  test('管理画面のプロダクトの検索の照会は束縛しない', () => {
-    expect(
-      createContainer().isBound(PRODUCT_PLATFORM_TYPES.AdminProductDirectory),
-    ).toBe(false);
   });
 });

@@ -10,6 +10,7 @@ import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { PRODUCT_CATEGORY_OTHER_ID } from '../../common-lib/product/product-category-constants.ts';
 import { PRODUCT_PLATFORM_TYPES } from '../../lib/core/product/identifiers.ts';
 import type {
+  AdminProductDirectory,
   LaunchExport,
   LaunchOutcomeRecorder,
   ProductCategoryDirectory,
@@ -19,6 +20,7 @@ import type {
   ScheduledLaunchDirectory,
 } from '../../lib/core/product/ports.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { D1AdminProductDirectory } from '../../lib/workers/product/d1-admin-product-directory.ts';
 import {
   D1LaunchOutcomeRecorder,
   D1ScheduledLaunchDirectory,
@@ -153,6 +155,21 @@ describe.each(INVOCATION_KINDS)(
         id: SAMPLE_EVENT_ID,
         productId: SAMPLE_PRODUCT_ID,
       });
+    });
+
+    test('処理単位のコンテナから管理画面のプロダクトの検索の照会をD1の実装に解決し、プロダクトの検索と登録数の数え上げができる', async () => {
+      const directory = createContainer(kind).get<AdminProductDirectory>(
+        PRODUCT_PLATFORM_TYPES.AdminProductDirectory,
+      );
+
+      expect(directory).toBeInstanceOf(D1AdminProductDirectory);
+      await expect(
+        directory.search({ handle: 'alp' }, { limit: 10 }, T0),
+      ).resolves.toMatchObject({
+        products: [{ productId: SAMPLE_PRODUCT_ID }],
+        nextCursor: null,
+      });
+      await expect(directory.countRegisteredAt(after(1))).resolves.toBe(1);
     });
   },
 );

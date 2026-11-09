@@ -1066,7 +1066,7 @@ export declare class D1AdminProductDirectory implements AdminProductDirectory {
 }
 ```
 
-- `search`: `products`・`product_categories`・`users`(投稿者の`status`だけ)と、最新のローンチ(`products.latest_launch_date`と同じ日のローンチのうちIDの降順の先頭)を結合し、`products.deleted_at IS NULL`の行を条件の`AND`で絞り、`(created_at, id)`の降順に`limit + 1`件読む。`limit`はidentity-authの`AdminUserDirectory`と同じ1〜50で、外なら`AppError(bad_request, validation_error)`。部分一致は`LIKE ? ESCAPE '\'`で入力の`%`・`_`・`\`を逃がす。カーソルは`base64url('<ミリ秒>:<ID>')`で、形式が違えば`AppError(bad_request, validation_error)`。
+- `search`: `products`・`product_categories`・`users`(投稿者の`status`だけ)と、最新のローンチ(`products.latest_launch_date`と同じ日のローンチのうちIDの降順の先頭)を結合し、`products.deleted_at IS NULL`の行を条件の`AND`で絞り、`(created_at, id)`の降順に`limit + 1`件読む。`limit`はidentity-authの`AdminUserDirectory`と同じ1〜50で、外なら`AppError(bad_request, validation_error)`。部分一致は`LIKE ? ESCAPE '\'`で入力の`%`・`_`・`\`を逃がす。カーソルは`base64url('<ミリ秒>:<ID>')`で、形式が違えば共通の`invalidCursorError()`による`AppError(bad_request, invalid_cursor)`。
 - 最新のローンチの状態(ugc-moderationの仮6): `cancelled_at`があれば`canceled`、`outcome`が`won`・`lost`ならその値、未確定でローンチ日が`now`の業務日付より後なら`scheduled`(`deriveLaunchStatus`の`scheduled`・`paired`)、それ以外の未確定は`in_progress`(結果の記録待ちを含む)。`launchState`の絞り込みは同じ条件のSQLの式で行い、結果の値と食い違わないことをテストで確かめる。ローンチが1つも無い行は`latestLaunch: null`で、`launchState`の絞り込みでは一致しない。
 - 公開の状態: `hidden_at`があれば`hidden`、無く投稿者の`users.status = 'suspended'`なら`owner_suspended`、それ以外は`visible`。`visibility`の絞り込みも同じ式で行う。退会済みの投稿者のプロダクトは退会の同期の波及処理で論理削除済みのため含まれない。
 - `countRegisteredAt`: `created_at < ? AND (deleted_at IS NULL OR deleted_at >= ?)`の件数(物理削除済みは数えない)。

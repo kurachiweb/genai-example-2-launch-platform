@@ -65,7 +65,7 @@
   - 完了状態: 3経路(api・eventの`fetch`・eventの`queue`)のDIの解決の検査が成功し、両アプリで照会を解決できる
   - _Requirements: 14.7_
 
-- [ ] 2.6 管理画面のプロダクトの検索の照会を作り、共有の束縛に加える(仮13)
+- [x] 2.6 管理画面のプロダクトの検索の照会を作り、共有の束縛に加える(仮13)
   - 先に、ローカルD1のWorkers統合テストで、論理削除済みを除いて作成日時とIDの降順に並ぶこと、名称・ハンドルの部分一致と`%`・`_`・`\`が文字として照合されること、投稿者・カテゴリの絞り込み、最新のローンチの状態の5値(取消・勝利・敗北・明日以降の未確定・今日と過去の未確定)と状態による絞り込みが同じ結果になること、同じ日の複数のローンチでIDの降順の先頭を採ること、ローンチの無いプロダクトで最新のローンチが空になること、公開の状態の3値(非公開化を投稿者の停止より優先)とその絞り込み、件数の上限の境界とカーソルによる続き・不正なカーソルの拒否、時点の登録数が時点以後の登録を数えず時点以後の論理削除を数えること、apiとeventのコンテナから`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`を解決できることを確かめる
   - 2.1で`apps/backend-lib/core/product/ports.ts`に作った設計の契約(`AdminProductLaunchState`・`AdminProductVisibility`・`AdminProductRecord`・`AdminProductSearchFilter`・`AdminProductDirectory`)と識別子`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`に対し、D1の実装`D1AdminProductDirectory`を`apps/backend-lib/workers/product/d1-admin-product-directory.ts`に作り、2.5の共有の束縛に実装を加える。後続specに許す結合の範囲の外の読み取りは、この照会の中だけに置く
   - 契約の形はugc-moderationが前提にするため、変える必要が出たら実装を止めて開発者へ報告する
@@ -344,3 +344,4 @@
 - 2.3: 結果の記録は1〜200件で、空・201件以上・同じ`launchId`の重複は`RangeError`。変更0件の項目は読み直し、不在・取消・論理削除を`not-recordable`として先に返し、残りは同じ結果なら`already-recorded`・違えば`conflict`。非公開化中・停止中の投稿者のローンチにも記録できる(マッチの即時の終了のため)。`db.batch()`で同じ名前の列を読むと値がずれるため別名を付ける(db/002に追記済み)
 - 2.4: ストアは関数`createProductLifecycleStore(db, ids)`(2.2・2.3のD1の実装はクラス)。2.5の束縛は`toDynamicValue`で包む。`createPurgeDueEvents`は読んでから挿入するため、その間に物理削除されると外部キーの違反で一括全体が取り消されて例外になる(呼び出し側の再試行で回復する)。物理削除の境界は呼び出し側が業務日付の0:00を計算して渡し、`deleted_at < 境界`で比べる。フィクスチャにイベントの補助(`insertProductEvent(s)`・`readProductEvent`・`readProductHandlerRuns`など)を追加
 - 2.5: `PRODUCT_PLATFORM_MODULE`(名前`product-platform`)を両アプリの`MODULES`の`PROFILE_PLATFORM_MODULE`の直後に置いた。2.6は`product-platform-module.worker.test.ts`の`AdminProductDirectory`が未束縛であることの検査と除外(と40行目付近のコメント)を外し、束縛の数を7から8にし、apiとeventの`product-platform.worker.test.ts`にも加える。種データの補助は`testing/product-platform-fixtures.ts`。11.2で`project-values.md`の「両アプリ共通の束縛」に`PRODUCT_PLATFORM_MODULE`の行を加える
+- 2.6: `D1AdminProductDirectory`の不正なカーソルは`invalidCursorError()`(`invalid_cursor`、backend/004と`D1AdminUserDirectory`の前例。design.mdも直した)、`limit`の範囲外(1〜50)は`validation_error`。返す状態は`deriveLaunchStatus`から導出し、絞り込みは同じ境界のSQLの条件。カーソルとLIKEのエスケープは`D1AdminUserDirectory`と同じ形を写した。ugc-moderationのGraphQLのエラーコードの一覧に共通の`invalid_cursor`が無い(既に`AdminUserDirectory`から受け取り得る。ugc-moderationへの申し送り)
