@@ -1128,13 +1128,17 @@ export interface PlanLock {
   readonly code: string; // 'qualifier_match'・供給元の値
   readonly message: string;
 }
+export interface LaunchBasis {
+  readonly launchDate: BusinessDate;
+  readonly outcome: QualifierOutcome; // 終了したローンチだけが基準になる
+}
 export type LaunchPlan =
-  | { readonly mode: 'new'; readonly basis: LaunchFacts | null } // 次回の予約ができる
+  | { readonly mode: 'new'; readonly basis: LaunchBasis | null } // 次回の予約ができる
   | {
       readonly mode: 'reschedule';
       readonly launchId: string;
       readonly current: BusinessDate;
-      readonly basis: LaunchFacts | null;
+      readonly basis: LaunchBasis | null;
     }
   | { readonly mode: 'blocked'; readonly blocks: readonly PlanBlock[] }
   | { readonly mode: 'unknown' }; // 供給元の失敗

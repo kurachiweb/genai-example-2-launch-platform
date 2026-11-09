@@ -75,7 +75,7 @@
   - _Requirements: 14.12_
 
 - [ ] 3. APIサーバーの規則と判定
-- [ ] 3.1 選べる日・予約の計画・変更の決定の規則を作る
+- [x] 3.1 選べる日・予約の計画・変更の決定の規則を作る
   - 先に、単体テストで、23:39で翌日・23:40で翌々日、今日から90日後と91日後、敗北(2026-09-07)で未加入は09-14・Ultrasは09-09、勝利と基準なしで間隔を掛けないこと(仮1)、日付の検査の理由と最も早い日、直近のローンチの状態ごとの計画(変更・予約の禁止の2つの文言・非公開化・供給元の失敗と該当)、取消の除外、変更の基準が前の終了したローンチであること、固定の判定(予選・供給元・失敗)、ハンドルの変更の種類・ロゴの差し替え・スクリーンショットの追加と削除と順序・同じ日付の変更なし・計画と合わない日付の拒否を確かめる
   - 業務日付の日の足し引きは、上流の`BusinessTime`が公開していないため(形を変えない)、選べる日の規則のファイルに`addBusinessDays`を置き(`fromBusinessDateTime`に日数分のミリ秒を足して`toBusinessDateTime`で戻す)、月末・年末・うるう日をまたぐ値を単体テストで確かめる
   - 完了状態: 単体テストが成功し、規則がデータベースと実時間に依存しない
@@ -345,3 +345,4 @@
 - 2.4: ストアは関数`createProductLifecycleStore(db, ids)`(2.2・2.3のD1の実装はクラス)。2.5の束縛は`toDynamicValue`で包む。`createPurgeDueEvents`は読んでから挿入するため、その間に物理削除されると外部キーの違反で一括全体が取り消されて例外になる(呼び出し側の再試行で回復する)。物理削除の境界は呼び出し側が業務日付の0:00を計算して渡し、`deleted_at < 境界`で比べる。フィクスチャにイベントの補助(`insertProductEvent(s)`・`readProductEvent`・`readProductHandlerRuns`など)を追加
 - 2.5: `PRODUCT_PLATFORM_MODULE`(名前`product-platform`)を両アプリの`MODULES`の`PROFILE_PLATFORM_MODULE`の直後に置いた。2.6は`product-platform-module.worker.test.ts`の`AdminProductDirectory`が未束縛であることの検査と除外(と40行目付近のコメント)を外し、束縛の数を7から8にし、apiとeventの`product-platform.worker.test.ts`にも加える。種データの補助は`testing/product-platform-fixtures.ts`。11.2で`project-values.md`の「両アプリ共通の束縛」に`PRODUCT_PLATFORM_MODULE`の行を加える
 - 2.6: `D1AdminProductDirectory`の不正なカーソルは`invalidCursorError()`(`invalid_cursor`、backend/004と`D1AdminUserDirectory`の前例。design.mdも直した)、`limit`の範囲外(1〜50)は`validation_error`。返す状態は`deriveLaunchStatus`から導出し、絞り込みは同じ境界のSQLの条件。カーソルとLIKEのエスケープは`D1AdminUserDirectory`と同じ形を写した。ugc-moderationのGraphQLのエラーコードの一覧に共通の`invalid_cursor`が無い(既に`AdminUserDirectory`から受け取り得る。ugc-moderationへの申し送り)
+- 3.1: 規則は`apps/api/src/domain/product/`の`launch-date-rules.ts`(`addBusinessDays`・`computeLaunchDateWindow`・`checkLaunchDate`)・`launch-plan.ts`(`decideLaunchPlan`・`decideLocks`・`LAUNCH_PLAN_MESSAGES`)・`product-edit-plan.ts`(`planProductEdit`)。計画の基準は`LaunchBasis`(`{ launchDate, outcome }`、design.mdも直した)。`relaunchIntervalDays`は間隔が最も早い日を実際に後ろへずらすときだけ非null(Ultrasの導線の条件)。`decideLocks`は供給元の失敗で`unknown: true`(本specの固定は残す)で、呼び出し側は`locked || unknown`で拒否する。過去・今日の日は`pairing_deadline`。計画が`blocked`・`unknown`のときクライアントは`launchDate: null`を送る(現在の日を送ると`launch-not-allowed`)
