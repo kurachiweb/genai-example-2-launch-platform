@@ -40,7 +40,7 @@
   - 完了状態: 単体テストとメッセージ種別の重複の検査が成功し、`core/product`がD1・`apps/db`・`workers`を読み込まない
   - _Requirements: 5.2, 6.1, 12.1, 12.4, 12.10, 14.11_
 
-- [ ] 2.2 ハンドルの対象と、プロダクト・カテゴリの照会を作る
+- [x] 2.2 ハンドルの対象と、プロダクト・カテゴリの照会を作る
   - 先に、ローカルD1のWorkers統合テストで、プロダクトのハンドルの大文字小文字を区別しない解決(現在・旧)、論理削除したプロダクトが解決されず現在のハンドルは使用中に数えられること、他のプロダクトの旧ハンドル(論理削除したプロダクトのものを含む)は使用中に数えられないこと(仮5)、表示用の照会の可視・掲載済み・非公開化・停止中の投稿者の範囲と論理削除済みの除外、90件を超えるIDの一括の照会、説明文とスクリーンショットの順、ローンチの一覧の状態と番号(取消を除いて数える)、カテゴリの並び(追加の順・「その他」を末尾)とハンドルからの大文字小文字を区別しない解決を確かめる
   - プロダクトとカテゴリのハンドルの対象の記述(`workers/product/product-handle-namespaces.ts`)と、2.1の`core/product`の契約に対する表示用・カテゴリの照会のD1の実装(`d1-product-directory.ts`・`d1-product-category-directory.ts`)を作る(識別子は2.1で作成済み、束縛は2.5が行う)
   - 完了状態: Workers統合テストが成功し、後続specがプロダクトのテーブルを読まずに表示用の情報とハンドルの解決を得られる
@@ -340,3 +340,4 @@
 - 1.3: 画面の文言は`docs/GUIDES/service/design/003-text-and-copy-rules.md`を正とする(9〜11の実装はここから一字一句写す)。設計が決めていなかった文言(登録のトーストの1文「プロダクトを登録しました。キックオフは…です。」、キックオフの表示「キックオフ: 9月15日(火) 0:00(あと2日)」(上流の`formatRemaining`)、「ローンチ日を選んでください。」、Ultrasの導線「料金を見る」、見出し「ローンチの状態」「危険な操作」、取り除くボタン「スクリーンショット<n>を取り除く」、今年の日付は年を省く、カレンダーの理由は句点なし)は003で決めた。カテゴリの名前の重複は「このカテゴリ名は既に使われています。」。要件定義書の番号は改訂後(仮4はFR-PRDCT-003、仮7はFR-PRDCT-025・026、仮1はFR-RELCH-005)
 - 1.4: `react-day-picker`は9.14.0(9系の最新の安定版)。`Calendar`は選べない日をDayPickerの`disabled`ではなく独自の`unavailableReasonOf?: (date: Date) => string | undefined`で受け取る(`disabled`はフォーカスできず矢印キーで飛ばされるため)。理由のある日は`aria-disabled="true"`・`aria-label`の末尾に「、<理由>」・理由の`Tooltip`。9.5は`earliest`〜`latest`の外と`unavailable`の範囲をこの関数で渡し、受け取る`Date`は利用者のローカルの0時なので業務日付へ写してから比べる。選択中かつ選べない日の配色はコントラストが不足し得るため、9.5でその状態が起こるならブラウザテストで確かめる。ブラウザテストで`aria-disabled`の日を押すときは`click({ force: true })`
 - 2.1: 登録の検証は上流の`core/identity/user-lifecycle.ts`から切り出した汎用の`createLifecycleRegistry(registrations, { handlerLabel })`を使い、プロダクトは`PRODUCT_LIFECYCLE_HANDLER_LABEL`(「プロダクトライフサイクルの処理」)を渡す(ユーザーは「波及処理」のまま)。11.1の`backend/012`でこの汎用の登録口と呼び名の渡し方を扱う。DBの`type`・`status`・`outcome`とcoreの一覧の一致は`workers/product/product-lifecycle-columns.unit.test.ts`が確かめる。追加した値: `PRODUCT_LIFECYCLE_EVENT_STATUSES`・`QUALIFIER_OUTCOMES`、型`ProductLifecycleEventStatus`・`AwardKind`・`AwardEntry`・`AwardGroup`。`fallbackLaunchSummary`は`finished`で結果がnullなら`RangeError`
+- 2.2: 照会の`not-deleted`は`products.deleted_at`だけで絞り、退会済み・停止中の投稿者のプロダクトは`visible: false`で返す。`listLaunches`はローンチの無いプロダクト・論理削除済み・不在のIDをMapに含めず(呼び出し側は`get(id) ?? []`)、非公開化中のプロダクトのローンチは返す。番号は取消を除き(ローンチ日, ID)の昇順に1から、取消は0、返す並びは(ローンチ日, ID)の降順。後続のWorkers統合テストは共通のフィクスチャ`apps/backend-lib/workers/product/testing/product-fixtures.ts`を使う(初期データの「その他」は消さない)
