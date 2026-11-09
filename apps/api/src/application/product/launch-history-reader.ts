@@ -37,10 +37,14 @@ import type {
   LaunchHistoryProductRecord,
   LaunchHistoryScope,
   LaunchHistoryStore,
+  ProductListPosition,
 } from './ports.ts';
 import { PRODUCT_TYPES } from './product-types.ts';
 
 export const LAUNCH_HISTORY_PAGE_MAX = 20;
+
+// ローンチの一括の読み取りが1つの文で扱うIDの数(D1のバインドの上限による90件)に合わせる
+export const LAUNCH_HISTORY_AWARDS_PAGE_SIZE = 90;
 
 export interface LaunchHistoryLaunchView extends LaunchRecord {
   readonly summary: LaunchSummaryView;
@@ -71,23 +75,38 @@ export interface LaunchHistoryInput {
   readonly after: string | undefined;
 }
 
+export interface LaunchHistoryAwardsInput {
+  readonly userHandle: string;
+}
+
 export interface LaunchHistoryReader {
   // 他人には掲載済みの、本人には論理削除と非公開化を除く自分のプロダクトを最新のローンチ日の新しい順に返す。利用者を表示できなければnull。カーソルの誤りはinvalid_cursor
   list(
     session: SessionView,
     input: LaunchHistoryInput,
   ): Promise<LaunchHistoryPage | null>;
+  // 公開プロフィールの受賞バッジ。listと同じ範囲の全てのプロダクトの受賞を、Yearを先頭に'<名称> <受賞のラベル>'のラベルでまとめる。利用者を表示できなければnull
+  awards(
+    session: SessionView,
+    input: LaunchHistoryAwardsInput,
+  ): Promise<readonly AwardGroup[] | null>;
 }
+
+interface LaunchHistoryTarget {
+  readonly userId: string;
+  readonly viewerIsOwner: boolean;
+  readonly suspended: boolean;
+  readonly scope: LaunchHistoryScope;
+}
+
+type SummaryResult = Awaited<ReturnType<LaunchSummarySource['summarize']>>;
+
+type LaunchesOf = (productId: string) => readonly LaunchRecord[];
 
 interface PageSummaries {
   readonly launches: ReadonlyMap<string, LaunchSummaryView>;
   readonly awards: ReadonlyMap<string, readonly AwardEntry[]>;
 }
-
-const NO_SUMMARIES: PageSummaries = Object.freeze({
-  launches: new Map(),
-  awards: new Map(),
-});
 
 // 供給元は登録の順に並んでいるため、同じ順位なら先の供給元の要約が残る
 function pickSummaries(
@@ -103,12 +122,7 @@ function pickSummaries(
   return picked;
 }
 
-function toPageSummaries(
-  results: readonly {
-    readonly launches: readonly LaunchSummaryContribution[];
-    readonly awards: readonly ProductAwardContribution[];
-  }[],
-): PageSummaries {
+function toPageSummaries(results: readonly SummaryResult[]): PageSummaries {
   const picked = pickSummaries(results.flatMap(({ launches }) => launches));
   return {
     launches: new Map(
@@ -122,6 +136,20 @@ function toPageSummaries(
       ({ productId }) => productId,
     ),
   };
+}
+
+// 対象のページに無いプロダクトの受賞は名称が分からないため除く
+function toNamedAwards(
+  products: readonly LaunchHistoryProductRecord[],
+  awards: readonly ProductAwardContribution[],
+): readonly AwardEntry[] {
+  const names = new Map(
+    products.map(({ productId, name }) => [productId, name]),
+  );
+  return awards.flatMap(({ productId, kind, label }) => {
+    const name = names.get(productId);
+    return name === undefined ? [] : [{ kind, label: `${name} ${label}` }];
+  });
 }
 
 function toProductSummary(
@@ -142,6 +170,13 @@ function toProductSummary(
     createdAt: record.createdAt,
   };
 }
+
+const positionOf = (
+  record: LaunchHistoryProductRecord,
+): ProductListPosition => ({
+  latestLaunchDate: record.latestLaunchDate,
+  id: record.productId,
+});
 
 const isHandleFormat = (handle: string): boolean =>
   checkHandleFormat(handle, USER_HANDLE_RULE) === 'ok';
@@ -180,48 +215,102 @@ export class StoreLaunchHistoryReader implements LaunchHistoryReader {
       input.after === undefined
         ? undefined
         : decodeMyProductsCursor(input.after);
-    if (!isHandleFormat(input.userHandle)) {
+    const target = await this.#resolveTarget(session, input.userHandle);
+    if (target === null) {
       return null;
     }
-    const [viewer, resolution] = await Promise.all([
-      this.guard.currentUser(session),
-      this.users.resolveHandle(input.userHandle),
-    ]);
-    if (resolution.kind === 'none') {
-      return null;
-    }
-    const target = resolution.user;
-    const viewerIsOwner = viewer?.user.id === target.userId;
-    if (target.suspended && !viewerIsOwner) {
-      return null;
-    }
-    const scope: LaunchHistoryScope = viewerIsOwner ? 'owner' : 'public';
+    const { userId, scope } = target;
     const [totalCount, rows] = await Promise.all([
-      this.store.count({ userId: target.userId, scope }),
+      this.store.count({ userId, scope }),
       // 続きの有無を知るため1件多く読む
-      this.store.list({
-        userId: target.userId,
-        scope,
-        limit: first + 1,
-        before,
-      }),
+      this.store.list({ userId, scope, limit: first + 1, before }),
     ]);
     const products = rows.slice(0, first);
     const last = products.at(-1);
     return {
-      viewerIsOwner,
+      viewerIsOwner: target.viewerIsOwner,
       ownerSuspended: target.suspended,
       totalCount,
       nodes: await this.#toItems(products),
       hasNextPage: rows.length > first,
       endCursor:
-        last === undefined
-          ? null
-          : encodeMyProductsCursor({
-              latestLaunchDate: last.latestLaunchDate,
-              id: last.productId,
-            }),
+        last === undefined ? null : encodeMyProductsCursor(positionOf(last)),
     };
+  }
+
+  async awards(
+    session: SessionView,
+    input: LaunchHistoryAwardsInput,
+  ): Promise<readonly AwardGroup[] | null> {
+    const target = await this.#resolveTarget(session, input.userHandle);
+    if (target === null) {
+      return null;
+    }
+    return groupAwards(
+      await this.#collectAwards(target, this.clock.now(), undefined),
+    );
+  }
+
+  // 形式違反・不在の利用者と、本人以外から見た停止中の利用者はnull。旧ハンドルはその利用者として扱う
+  async #resolveTarget(
+    session: SessionView,
+    userHandle: string,
+  ): Promise<LaunchHistoryTarget | null> {
+    if (!isHandleFormat(userHandle)) {
+      return null;
+    }
+    const [viewer, resolution] = await Promise.all([
+      this.guard.currentUser(session),
+      this.users.resolveHandle(userHandle),
+    ]);
+    if (resolution.kind === 'none') {
+      return null;
+    }
+    const { userId, suspended } = resolution.user;
+    const viewerIsOwner = viewer?.user.id === userId;
+    if (suspended && !viewerIsOwner) {
+      return null;
+    }
+    return {
+      userId,
+      viewerIsOwner,
+      suspended,
+      scope: viewerIsOwner ? 'owner' : 'public',
+    };
+  }
+
+  // 対象のプロダクトを最後のページまで順に読み、ページごとにローンチの読み取りと供給元の呼び出しを1回ずつ行う
+  async #collectAwards(
+    target: LaunchHistoryTarget,
+    now: Date,
+    before: ProductListPosition | undefined,
+  ): Promise<readonly AwardEntry[]> {
+    const products = await this.store.list({
+      userId: target.userId,
+      scope: target.scope,
+      limit: LAUNCH_HISTORY_AWARDS_PAGE_SIZE,
+      before,
+    });
+    const last = products.at(-1);
+    if (last === undefined) {
+      return [];
+    }
+    const launchesOf = await this.#readLaunches(products, now);
+    const results = await this.#summarize(
+      products.flatMap(({ productId }) => launchesOf(productId)),
+      now,
+    );
+    const awards = toNamedAwards(
+      products,
+      results.flatMap((result) => result.awards),
+    );
+    if (products.length < LAUNCH_HISTORY_AWARDS_PAGE_SIZE) {
+      return awards;
+    }
+    return [
+      ...awards,
+      ...(await this.#collectAwards(target, now, positionOf(last))),
+    ];
   }
 
   async #toItems(
@@ -231,17 +320,12 @@ export class StoreLaunchHistoryReader implements LaunchHistoryReader {
       return [];
     }
     const now = this.clock.now();
-    const launchesByProduct = await this.directory.listLaunches(
-      products.map(({ productId }) => productId),
-      now,
-    );
-    const launchesOf = (productId: string): readonly LaunchRecord[] =>
-      (launchesByProduct.get(productId) ?? []).filter(
-        ({ status }) => status !== 'canceled',
-      );
-    const summaries = await this.#summarize(
-      products.flatMap(({ productId }) => launchesOf(productId)),
-      now,
+    const launchesOf = await this.#readLaunches(products, now);
+    const summaries = toPageSummaries(
+      await this.#summarize(
+        products.flatMap(({ productId }) => launchesOf(productId)),
+        now,
+      ),
     );
     return products.map((product) => ({
       product: toProductSummary(product),
@@ -255,13 +339,28 @@ export class StoreLaunchHistoryReader implements LaunchHistoryReader {
     }));
   }
 
+  // 取消のローンチは履歴にも供給元にも渡さない
+  async #readLaunches(
+    products: readonly LaunchHistoryProductRecord[],
+    now: Date,
+  ): Promise<LaunchesOf> {
+    const launchesByProduct = await this.directory.listLaunches(
+      products.map(({ productId }) => productId),
+      now,
+    );
+    return (productId) =>
+      (launchesByProduct.get(productId) ?? []).filter(
+        ({ status }) => status !== 'canceled',
+      );
+  }
+
   // 供給元の失敗は警告のログを残してその供給元を除き、要約の無いローンチは呼び出し側で予選の結果から作る
   async #summarize(
     launches: readonly LaunchRecord[],
     at: Date,
-  ): Promise<PageSummaries> {
+  ): Promise<readonly SummaryResult[]> {
     if (launches.length === 0 || this.summarySources.length === 0) {
-      return NO_SUMMARIES;
+      return [];
     }
     const { results } = await callDecisionSources(
       this.summarySources,
@@ -275,6 +374,6 @@ export class StoreLaunchHistoryReader implements LaunchHistoryReader {
           at,
         }),
     );
-    return toPageSummaries(results);
+    return results;
   }
 }

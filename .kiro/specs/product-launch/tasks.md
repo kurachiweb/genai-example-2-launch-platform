@@ -165,7 +165,7 @@
   - 完了状態: Workers統合テスト・単体テスト・DIの解決の検査が成功する
   - _Requirements: 10.2, 10.3, 10.6, 14.11_
 
-- [ ] 6.3 公開プロフィールの受賞の集計をローンチ履歴のユースケースに加える(仮14)
+- [x] 6.3 公開プロフィールの受賞の集計をローンチ履歴のユースケースに加える(仮14)
   - 先に、模擬のポートの単体テストで、表示できない利用者と停止中で本人でない場合のnull、他人には掲載済みのプロダクトだけ・本人には未掲載を含む自分のプロダクトの受賞を集めること、91件以上の対象のプロダクトを全ページ読んで集計すること、ラベルがプロダクトの名称と受賞のラベルをつないだ値になること、Yearが先頭で種類ごとの回数とラベルの順、取消のローンチを供給元へ渡さないこと、1つの供給元の例外でその供給元の受賞だけを除き警告のログを残すこと、受賞が無いときの空の配列を確かめる
   - 6.2のローンチ履歴のユースケースに受賞の集計の操作を加え、対象の判定と供給元の呼び出しは一覧と同じ部品を使う。受賞のまとめは2.1の共有の規則を使う
   - 完了状態: 単体テストが成功し、6.2のテストが変わらず成功する
@@ -358,4 +358,5 @@
 - 5.4: ジョブは`application/product/jobs/`(payments・ultrasと同じく各ジョブが`*_JOB_DEFINITION`を持ち`scheduled-jobs.ts`が読む。design.mdのファイル構成も直した)。要件12.5のため、identity-authの前例(`STUCK_REDISPATCH_ORDINAL = 3`)に倣い、3回目以降の送り直しを`product-lifecycle-events-redispatched`として`ProductIncidentReporter`でSentryへ報告する(design.mdの型・ジョブの表・Monitoringも更新)。ジョブ内の送信の失敗はerrorのログを残して続け、最後に`ProductDailyJobError`を投げる。物理削除の境界は`fromBusinessDateTime(addBusinessDays(date, -12), 0:00)`、期限超過は予定時刻−14日。上流のsearchのWorkers統合テストが4:21のジョブ名を完全一致で並べるため2つ加えた。12.3の運用の報告への計測値(`product-module.scheduled.worker.test.ts`、ローカルD1とminiflareのQueueで4:21の実際のscheduledを実行、203件と103件): purge-orchestrator 30ms、lifecycle-redispatch 10〜14ms、4:21全体(18ジョブ)87〜93ms(予算300,000ms)。本番の送信を1件20〜50msと仮定すると300件で6〜15秒。期限超過の判定(1000)が同じ4:21の送り直し(1010)より先に走るため、D-13の0:00〜4:21に削除したプロダクトの初回の送信が失敗すると、送り直しの前に期限超過の報告が出ることがある(送信の失敗も既にSentryへ出るため見逃しは無い)
 - 6.1: カテゴリの更新・削除の取り消しは監査ログの`condition`で行う(backend/008、問い合わせカテゴリの前例。design.mdも直した)。不在は`productCategoryNotFoundError()`(`not_found`「カテゴリが見つかりません。」、003に行を追加)。名前・ハンドルの重複は`name`・`handle`の欄の詳細付きで、7.3は`withInputPath`で`input.name`・`input.handle`へ写す。ハンドルの形式の文言`PRODUCT_HANDLE_MESSAGES`・`PRODUCT_CATEGORY_HANDLE_MESSAGES`をcommon-libに加えた(7.x・9.4・10で使う)。初期データの入れ直しはフィクスチャの`restoreProductCategorySeed`
 - 6.2: `StoreLaunchHistoryReader.list`(`application/product/launch-history-reader.ts`)と`D1LaunchHistoryStore`。ストアの`list`は`LaunchHistoryProductRecord`(要約に`latestLaunchDate`を加えたもの、カーソル用)を返し、ユースケースの`product`は要約の型。カーソルは`my-products-cursor.ts`を共有、1ページの上限は`LAUNCH_HISTORY_PAGE_MAX = 20`(7.3の`first`の検証に使う)。旧ハンドルはその利用者として扱い、形式違反はnull。要約の列は`workers/product/product-summary-columns.ts`へ切り出し`D1ProductDirectory`と共有。6.3は対象の判定と供給元の呼び出し(`#summarize`)を共通化して`awards`を加える
+- 6.3: `awards(session, { userHandle })`は対象のプロダクトを90件ずつ(`LAUNCH_HISTORY_AWARDS_PAGE_SIZE`)全ページ読み、ラベルは`'<名称> <受賞のラベル>'`(半角空白)、対象のページ外のプロダクトの受賞は除く。7.4の`profileAwards`はこの戻り値(`AwardGroup[] | null`)をそのまま使う
 - 11.2への申し送り(`docs/onboardings/project-values.md`): ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)
