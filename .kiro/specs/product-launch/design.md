@@ -1797,7 +1797,7 @@ export declare const PRODUCT_SAVE_HOOKS: readonly ProductSaveHookRegistration[];
 - 後続specの処理(`ProductSaveHook`の実装)も文と接続を扱うため、apiの`infrastructure/<ドメイン>`に置く(directory-discoveryは`infrastructure/directory/`)。
 - 呼ぶ保存: 登録(`registerProduct`)・編集(`updateProduct`、次回の予約とローンチ日の変更を含む)・公開APIの説明文の更新(`ProductDescriptionEditor`)。復元・停止の解除・削除・非公開化はライフサイクルの登録口で伝わるため、ここでは呼ばない。
 - 用途の例: directory-discoveryの`directory-discovery.product-index-refresh`(掲載中なら索引を更新待ちにして確定の後に更新を要求する、directory-discoveryの仮4)。engagement・sponsorship・ugc-moderationも、保存と同時に確定したい文や確定の後の通知に使える。
-- 規約(文はプロダクトIDを条件にした更新だけ、確定の後の処理は冪等にする)は`backend/013`に記載する。
+- 規約(文はプロダクトIDを条件にした更新か挿入だけ、確定の後の処理は冪等にする)は`backend/013`に記載する。
 
 #### ProductLifecycleSyncHandlerContract・D1ProductLifecycleCommitter
 

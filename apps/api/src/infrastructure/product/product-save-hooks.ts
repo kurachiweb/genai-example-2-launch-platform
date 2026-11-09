@@ -17,7 +17,7 @@ export interface ProductSaveAfterCommitInput {
   readonly productId: string;
 }
 
-// 保存と同じ一括の書き込みに入る文を返す。読み取りはしてよいが、書き込みは返す文だけで行い、プロダクトIDを条件にした更新にする
+// 保存と同じ一括の書き込みに入る文を返す。読み取りはしてよいが、書き込みは返す文だけで行い、プロダクトIDを条件にした更新か挿入にする
 export interface ProductSaveHook {
   statementsFor(
     input: ProductSaveStatementsInput,
