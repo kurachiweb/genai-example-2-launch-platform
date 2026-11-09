@@ -314,7 +314,7 @@
   - _Requirements: 15.5_
 
 - [ ] 12. 検証
-- [ ] 12.1 E2Eテストで利用者側のプロダクトの流れを確かめる
+- [x] 12.1 E2Eテストで利用者側のプロダクトの流れを確かめる
   - `e2e/client/product.e2e.test.ts`: identity-authの`e2e/support/mailpit.ts`で確認済みの利用者(メールアドレスのドメインは`.example`)を登録し、ロゴ・スクリーンショット・リンクを含む説明文・カテゴリ・ハンドル・ローンチ日を入力して登録→`/my/products`に「キックオフ予定」で出る→編集でハンドルを変え、旧ハンドルの編集画面のURLが新しいURLへ移る(転送を追わない要求で302と`Location`)→ローンチ日の変更→`/@<ハンドル>`のローンチ履歴に本人だけ未掲載のバッジ付きで出る→削除の確認で一覧から消える。Turnstileはローカルの常に成功するキーを使う。Ultrasの機能フラグで結果が変わる表示は確かめない
   - 完了状態: ローカルでE2Eテストが成功する
   - _Depends: 9.7, 9.8_
@@ -378,4 +378,5 @@
 - 10: 管理画面の区画は`apps/admin/src/components/product/product-category-section.tsx`(`CATEGORY_SECTIONS`の`order` 10)。APIの欄の詳細が`input.name`・`input.handle`のため、共通の`CategoryFormDialog`(サーバーの欄の接頭辞が無い)に合わせて区画の`toCategoryFormError`で経路を書き換える(共通部品に`serverFieldPrefix`を足すのは上流の判断、help-centerも要る見込み)。1.1で監査の操作種別を加えて以来失敗していたadminの`audit-logs-page.browser.test.tsx`の期待値を直した
 - 11.1: `backend/012`・`backend/013`・`frontend/012`を書き、CLAUDE.mdにbackend/012と、同じ書き方でbackend/013・frontend/012の参照も加えた。保存の処理の文の規約は、directory-discoveryの`markPending`(`INSERT … ON CONFLICT DO UPDATE`)に合わせ「集約のIDを条件にした更新か挿入」にした(tasks.mdの11.1の本文の「更新だけ」より緩い。design.mdとコードのコメントも直した)。送信の失敗の運用者への通知は送り直しのジョブの3回目以降の報告に任せる(backend/007の「ログと運用者への通知」より緩い、コードのとおり)。READMEの「範囲」の説明は変えていない
 - 11.2: project-values.mdに節「プロダクトとローンチ」を作り、11.2に回された事項を全て反映した(共通の値は既存の表へ)。準拠方針の「他の対象が同じ文字列を設定すると旧ハンドルを消す」を「他のプロダクト」に直した(FR-PRDCT-020・022、仮5)。注5のヘルプ記事の文の「他の対象」はhelp-centerの担当のため残した。backend/013にもproject-values.mdへの参照を加えた
+- 12.1: `e2e/client/product.e2e.test.ts`と`product-steps.ts`。ローンチ日は業務日付の+3日で登録・+5日へ変更(実行時刻に依存しない)。画像のアップロードとマークダウンのリンクの入力を`e2e/support/image-upload.ts`・`e2e/client/markdown-steps.ts`へ共通化した(profile・adminのmy-accountも使う)。9.7が`check:contract-copies`に2つ目のファイルを加えた際に古いままだった`scripts/tooling/run-all.unit.test.ts`の期待値を直した。軽微な残り: `requestWithoutFollowing`・`pathOf`が`profile.e2e.test.ts`の補助と重複、編集画面のタグラインとカテゴリの読み込みは未確認
 - 11.2への申し送り(`docs/onboardings/project-values.md`): 技術文書の新しいプレースホルダーの値(`<集約>`=プロダクト、`<集約の実行のメッセージ>`=`product.run-product-lifecycle`、`<物理削除を始めるまでの業務日数>`=13、`<所有者ごとに読む集約の件数>`=50、`<集約の物理削除を待つ上限>`=10分、`<判定の一括の上限>`=20、`<選べる日の締め切りの時刻>`=23:40、`<変更の固定の始まりの時刻>`=23:45、11.1)、画面の登録箇所`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`(9.1)、GraphQLのスキーマモジュール`product`の行(呼び出し元の制限・`first` 1〜20)、ログのカテゴリ`['api', 'application', 'product']`(3.2)・`['api', 'infrastructure', 'product']`(3.3)と各警告、「両アプリ共通の束縛」の`PRODUCT_PLATFORM_MODULE`(2.5)、メッセージ種別`product.run-product-lifecycle`(2.1)、テーブルとスクリーンショットの位置のCHECKと`PRODUCT_SCREENSHOTS_MAX`の同期(1.2)

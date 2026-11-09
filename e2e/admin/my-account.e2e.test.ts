@@ -40,11 +40,6 @@ import {
   TOTP_CODE_LABEL,
 } from '../../apps/admin/src/components/auth/admin-auth-messages.ts';
 import {
-  IMAGE_CROP_CONFIRM_LABEL,
-  IMAGE_CROP_DIALOG_TITLE,
-} from '../../apps/frontend-lib/utilities/messages/media-crop-messages.ts';
-import { UPLOAD_STATUS_UPLOADED } from '../../apps/frontend-lib/utilities/messages/media-upload-messages.ts';
-import {
   accountMenuButton,
   ADMIN_FLOW_TIMEOUT_MS,
   type BootstrappedAdmin,
@@ -62,6 +57,7 @@ import {
 } from '../support/admin-bootstrap.ts';
 import { waitForBotToken } from '../support/bot-verification.ts';
 import { assumeDistinctClientIp } from '../support/client-ip.ts';
+import { uploadCroppedImage } from '../support/image-upload.ts';
 import { waitForEmailLink } from '../support/mailpit.ts';
 import { expect, test } from './admin-test.ts';
 
@@ -78,8 +74,6 @@ const PASSWORD_RESET_CONFIRM_PATH = '/auth/password-reset/confirm';
 const EMAIL_CHANGE_CONFIRM_PATH = '/auth/email-change/confirm';
 
 const AVATAR_FILE_NAME = 'e2e-avatar.png';
-
-const AVATAR_SIZE_PX = 64;
 
 const DEFAULT_ICON_SELECTOR = '[data-slot="media-placeholder"]';
 
@@ -106,25 +100,6 @@ async function fillReauthentication(
   await requiredField(form, TOTP_CODE_LABEL).fill(await nextTotpCode(admin));
 }
 
-// 画像の内容は問わないため、ブラウザの描画で単色のPNGを作り、テストのファイルをリポジトリに置かない
-async function createAvatarPng(page: Page): Promise<Buffer> {
-  const dataUrl = await page.evaluate((size) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const context = canvas.getContext('2d');
-    if (context !== null) {
-      context.fillStyle = '#2f6fdb';
-      context.fillRect(0, 0, size, size);
-    }
-    return canvas.toDataURL('image/png');
-  }, AVATAR_SIZE_PX);
-  return Buffer.from(
-    dataUrl.replace(/^data:image\/png;base64,/u, ''),
-    'base64',
-  );
-}
-
 test.describe('自分のアカウント', () => {
   test('プロフィールのニックネーム・肩書き・画像を保存でき、画像を取り除くと既定のアイコンになる', async ({
     page,
@@ -137,19 +112,7 @@ test.describe('自分のアカウント', () => {
     const form = sectionForm(page, PROFILE_SECTION_TITLE);
     await form.getByLabel(NICKNAME_LABEL, { exact: true }).fill(nickname);
     await form.getByLabel(ADMIN_TITLE_LABEL, { exact: true }).fill(title);
-    await form.locator('input[type="file"]').setInputFiles({
-      name: AVATAR_FILE_NAME,
-      mimeType: 'image/png',
-      buffer: await createAvatarPng(page),
-    });
-    const cropDialog = page.getByRole('dialog', {
-      name: IMAGE_CROP_DIALOG_TITLE,
-    });
-    await cropDialog
-      .getByRole('button', { name: IMAGE_CROP_CONFIRM_LABEL, exact: true })
-      .click();
-    await expect(cropDialog).toHaveCount(0);
-    await expect(form.getByText(UPLOAD_STATUS_UPLOADED)).toBeVisible();
+    await uploadCroppedImage(page, form, { fileName: AVATAR_FILE_NAME });
     await form.getByRole('button', { name: PROFILE_SUBMIT_LABEL }).click();
     await expect(page.getByText(PROFILE_SAVED_MESSAGE)).toBeVisible();
     const renamed = { ...admin, nickname };

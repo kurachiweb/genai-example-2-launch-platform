@@ -636,7 +636,8 @@ describe('ルートのpackage.json', () => {
   test('一括検査・命名検査・写しの照合・テスト種別ごとの一括実行・共有ディレクトリの確認とコピー配置のスクリプトが、それぞれの入口を呼び出す', () => {
     expect(readPackageScripts(REPO_ROOT)).toMatchObject({
       check: 'bun ./scripts/tooling/run-all.ts check',
-      'check:contract-copies': 'bun test ./config/contract-copies.unit.test.ts',
+      'check:contract-copies':
+        'bun test ./config/contract-copies.unit.test.ts ./config/launch-time-contract-copies.unit.test.ts',
       'check:test-names': 'bun ./scripts/tooling/check-test-names.ts',
       'test:all:unit': 'bun ./scripts/tooling/run-all.ts test:unit',
       'test:all:browser': 'bun ./scripts/tooling/run-all.ts test:browser',
