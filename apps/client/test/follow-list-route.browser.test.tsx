@@ -8,6 +8,7 @@ import { applyColorScheme, COLOR_SCHEMES } from '../lib/test/computed-style.ts';
 import { emulateBrowserDisplay } from '../lib/test/display-emulation.ts';
 import type { DisplayPreferences } from '../lib/utilities/datetime/display-preferences.ts';
 import { GraphQLClientError } from '../lib/utilities/graphql/graphql-result.ts';
+import { UNEXPECTED_ERROR_MESSAGE } from '../lib/utilities/messages/state-messages.ts';
 import {
   ClientMyFollowersDocument,
   type ClientMyFollowersQuery,
@@ -490,7 +491,7 @@ describe('フォロー一覧の経路', () => {
       .toBeVisible();
   });
 
-  test('最初の読み込みの失敗は題名とタブを残したまま示し、再試行で題名へフォーカスを移して取得し直す', async () => {
+  test('最初の読み込みの失敗は題名とタブを残したまま一覧の位置に示し、再試行で題名へフォーカスを移して取得し直す', async () => {
     let failing = true;
     respond(() =>
       Promise.resolve(
@@ -502,20 +503,31 @@ describe('フォロー一覧の経路', () => {
 
     await expect
       .element(panel().getByRole('alert'))
-      .toHaveTextContent(
-        'フォロー一覧を読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。',
-      );
+      .toHaveTextContent(LOAD_FAILURE.message);
+    expect(
+      panel().getByRole('link', { name: 'お問い合わせ' }).elements(),
+    ).toHaveLength(0);
     await expect.element(pageTitle()).toHaveTextContent(/^フォロー$/);
     await expect.element(tabList()).toBeVisible();
-    await expect
-      .element(panel().getByRole('link', { name: 'お問い合わせ' }))
-      .toBeVisible();
 
     failing = false;
     await userEvent.click(panel().getByRole('button', { name: '再試行' }));
 
     await expect.element(entries().first()).toHaveTextContent('メーカーAI');
     await expect.element(pageTitle()).toHaveFocus();
+  });
+
+  test('GraphQLClientErrorでない例外は、例外の文言を出さず問い合わせを案内する文言で示す', async () => {
+    respond(() => Promise.reject(new Error('内部の詳細な失敗の理由')));
+
+    await renderFollows();
+
+    await expect
+      .element(panel().getByRole('alert'))
+      .toHaveTextContent(UNEXPECTED_ERROR_MESSAGE);
+    expect(panel().element().textContent).not.toContain(
+      '内部の詳細な失敗の理由',
+    );
   });
 
   test('フォロー中の取得の失敗の後も、フォロワーのタブを取得して示せる', async () => {
@@ -532,7 +544,7 @@ describe('フォロー一覧の経路', () => {
     expect(panel().getByRole('alert').elements()).toHaveLength(0);
   });
 
-  test('続きの読み込みの失敗は読み込んだ項目を残したまま「続きを読み込めませんでした。」と示し、再試行で読み込み直せる', async () => {
+  test('続きの読み込みの失敗は読み込んだ項目と「さらに読み込む」を残したまま近くに示し、フォーカスを動かさず、同じボタンで読み込み直せる', async () => {
     let failing = true;
     respond((variables) =>
       Promise.resolve(
@@ -549,12 +561,16 @@ describe('フォロー一覧の経路', () => {
 
     await expect
       .element(panel().getByRole('alert'))
-      .toHaveTextContent('続きを読み込めませんでした。');
+      .toHaveTextContent(LOAD_FAILURE.message);
     expect(entries().elements()).toHaveLength(1);
+    expect(
+      panel().getByRole('button', { name: '再試行' }).elements(),
+    ).toHaveLength(0);
+    await expect.element(loadMoreButton()).toBeVisible();
     await expect.element(loadMoreButton()).toHaveFocus();
 
     failing = false;
-    await userEvent.click(panel().getByRole('button', { name: '再試行' }));
+    await userEvent.click(loadMoreButton());
 
     await expect.poll(() => entries().elements()).toHaveLength(2);
     expect(panel().getByRole('alert').elements()).toHaveLength(0);
