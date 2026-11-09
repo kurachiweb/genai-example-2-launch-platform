@@ -52,7 +52,7 @@
   - 完了状態: Workers統合テストが成功し、データエクスポートの文書の`products.json`・`launches.json`のローンチの項目に対応する
   - _Requirements: 8.7, 14.2, 14.3, 14.6_
 
-- [ ] 2.4 (P) ライフサイクルの記録のストアを作る
+- [x] 2.4 (P) ライフサイクルの記録のストアを作る
   - 先に、Workers統合テストで、イベントの読み取り・同じプロダクトの最も古い`pending`・完了した処理の記録(重複の無視)・イベントの完了、滞ったイベントの一覧と送り直しの回数、`purge_due`の作成を2回行っても1件であること、物理削除の候補(業務日付の境界)と期限超過の件数、利用者のプロダクトのIDの一覧と`purge_due`の作成の日時を確かめる
   - 2.1の`core/product`の`ProductLifecycleStore`の契約に対するD1の実装`createProductLifecycleStore`を`workers/product/d1-product-lifecycle-store.ts`に作る
   - 完了状態: Workers統合テストが成功する
@@ -342,3 +342,4 @@
 - 2.1: 登録の検証は上流の`core/identity/user-lifecycle.ts`から切り出した汎用の`createLifecycleRegistry(registrations, { handlerLabel })`を使い、プロダクトは`PRODUCT_LIFECYCLE_HANDLER_LABEL`(「プロダクトライフサイクルの処理」)を渡す(ユーザーは「波及処理」のまま)。11.1の`backend/012`でこの汎用の登録口と呼び名の渡し方を扱う。DBの`type`・`status`・`outcome`とcoreの一覧の一致は`workers/product/product-lifecycle-columns.unit.test.ts`が確かめる。追加した値: `PRODUCT_LIFECYCLE_EVENT_STATUSES`・`QUALIFIER_OUTCOMES`、型`ProductLifecycleEventStatus`・`AwardKind`・`AwardEntry`・`AwardGroup`。`fallbackLaunchSummary`は`finished`で結果がnullなら`RangeError`
 - 2.2: 照会の`not-deleted`は`products.deleted_at`だけで絞り、退会済み・停止中の投稿者のプロダクトは`visible: false`で返す。`listLaunches`はローンチの無いプロダクト・論理削除済み・不在のIDをMapに含めず(呼び出し側は`get(id) ?? []`)、非公開化中のプロダクトのローンチは返す。番号は取消を除き(ローンチ日, ID)の昇順に1から、取消は0、返す並びは(ローンチ日, ID)の降順。後続のWorkers統合テストは共通のフィクスチャ`apps/backend-lib/workers/product/testing/product-fixtures.ts`を使う(初期データの「その他」は消さない)
 - 2.3: 結果の記録は1〜200件で、空・201件以上・同じ`launchId`の重複は`RangeError`。変更0件の項目は読み直し、不在・取消・論理削除を`not-recordable`として先に返し、残りは同じ結果なら`already-recorded`・違えば`conflict`。非公開化中・停止中の投稿者のローンチにも記録できる(マッチの即時の終了のため)。`db.batch()`で同じ名前の列を読むと値がずれるため別名を付ける(db/002に追記済み)
+- 2.4: ストアは関数`createProductLifecycleStore(db, ids)`(2.2・2.3のD1の実装はクラス)。2.5の束縛は`toDynamicValue`で包む。`createPurgeDueEvents`は読んでから挿入するため、その間に物理削除されると外部キーの違反で一括全体が取り消されて例外になる(呼び出し側の再試行で回復する)。物理削除の境界は呼び出し側が業務日付の0:00を計算して渡し、`deleted_at < 境界`で比べる。フィクスチャにイベントの補助(`insertProductEvent(s)`・`readProductEvent`・`readProductHandlerRuns`など)を追加

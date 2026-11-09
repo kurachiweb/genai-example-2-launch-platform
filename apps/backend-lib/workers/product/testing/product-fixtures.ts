@@ -1,4 +1,4 @@
-import { ne } from 'drizzle-orm';
+import { asc, eq, ne } from 'drizzle-orm';
 
 import { productCategories } from '../../../../db/schema/product/product-categories.ts';
 import { productLaunches } from '../../../../db/schema/product/product-launches.ts';
@@ -8,6 +8,7 @@ import { productPreviousHandles } from '../../../../db/schema/product/product-pr
 import { productScreenshots } from '../../../../db/schema/product/product-screenshots.ts';
 import { products } from '../../../../db/schema/product/products.ts';
 import { PRODUCT_CATEGORY_OTHER_ID } from '../../../../common-lib/product/product-category-constants.ts';
+import type { IdGenerator } from '../../../core/ids/id-generator.ts';
 import {
   after,
   clearIdentityTables,
@@ -26,6 +27,23 @@ const ROWS_PER_INSERT = 5;
 type ProductRow = typeof products.$inferInsert;
 type CategoryRow = typeof productCategories.$inferInsert;
 type LaunchRow = typeof productLaunches.$inferInsert;
+type LifecycleEventRow = typeof productLifecycleEvents.$inferInsert;
+
+export function productEventIdOf(index: number): string {
+  return `01JD0PEVT${String(index).padStart(17, '0')}`;
+}
+
+// 検証で作った行の識別子を予測できるよう、指定した番号から順に識別子を作る
+export function createSequentialProductEventIds(start = 1000): IdGenerator {
+  let next = start;
+  return {
+    generate: () => {
+      const id = productEventIdOf(next);
+      next += 1;
+      return id;
+    },
+  };
+}
 
 export function productIdOf(index: number): string {
   return `01JD0PROD${String(index).padStart(17, '0')}`;
@@ -180,6 +198,80 @@ export async function insertProductPreviousHandle(
     updatedAt: T0,
     deletedAt: columns.deletedAt ?? null,
   });
+}
+
+function lifecycleEventRowOf(
+  index: number,
+  productIndex: number,
+  columns: Partial<LifecycleEventRow>,
+): LifecycleEventRow {
+  return {
+    id: productEventIdOf(index),
+    productId: productIdOf(productIndex),
+    ownerUserId: userIdOf(1),
+    type: 'deleted',
+    occurredAt: T0,
+    lastDispatchedAt: T0,
+    createdAt: T0,
+    updatedAt: T0,
+    ...columns,
+  };
+}
+
+export async function insertProductEvent(
+  index: number,
+  productIndex: number,
+  columns: Partial<LifecycleEventRow> = {},
+): Promise<void> {
+  await db
+    .insert(productLifecycleEvents)
+    .values(lifecycleEventRowOf(index, productIndex, columns));
+}
+
+export async function insertProductEvents(
+  indexes: readonly number[],
+  productIndex: number,
+  columns: Partial<LifecycleEventRow> = {},
+): Promise<void> {
+  const rows = indexes.map((index) =>
+    lifecycleEventRowOf(index, productIndex, columns),
+  );
+  for (let start = 0; start < rows.length; start += ROWS_PER_INSERT) {
+    await db
+      .insert(productLifecycleEvents)
+      .values(rows.slice(start, start + ROWS_PER_INSERT));
+  }
+}
+
+export async function readProductEvent(index: number) {
+  const [row] = await db
+    .select()
+    .from(productLifecycleEvents)
+    .where(eq(productLifecycleEvents.id, productEventIdOf(index)));
+  return row;
+}
+
+export async function readProductEventsOf(productIndex: number) {
+  return db
+    .select()
+    .from(productLifecycleEvents)
+    .where(eq(productLifecycleEvents.productId, productIdOf(productIndex)))
+    .orderBy(asc(productLifecycleEvents.id));
+}
+
+export async function readProductHandlerRuns() {
+  return db
+    .select({
+      id: productLifecycleHandlerRuns.id,
+      eventId: productLifecycleHandlerRuns.eventId,
+      handlerName: productLifecycleHandlerRuns.handlerName,
+      completedAt: productLifecycleHandlerRuns.completedAt,
+    })
+    .from(productLifecycleHandlerRuns)
+    .orderBy(
+      asc(productLifecycleHandlerRuns.eventId),
+      asc(productLifecycleHandlerRuns.handlerName),
+    );
 }
 
 // 初期データの標準カテゴリは残し、外部キーの参照元から先に消す
