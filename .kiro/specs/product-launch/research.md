@@ -201,7 +201,7 @@
 - 後続specのプロダクトの`purge_due`の処理が失敗し続けると、プロダクトとユーザーの物理削除が14日を過ぎる — 4:21の`product-launch.purge-orchestrator`が期限超過を数えてSentryへ通知する。identity-authの`purge-overdue`でもユーザーの側で検知される。
 - 供給元(トーナメント)の照会が遅いと、自分のプロダクトの画面と編集の保存が遅れる — 供給元は一覧単位で1回だけ呼び、プロダクトのIDの一覧は20件以内にする。
 - 23:40・23:45の境界で画面の表示とサーバーの判定がずれる — サーバーが保存の時点で判定し直し、`launch_date_unavailable`で選べる最も早い日を返す。画面は表示中に境界を越えたら取り直す。
-- カレンダーの部品の版の更新で表示や操作が変わる — `react-day-picker`(仮10、2026-10-24に確定)は完全固定し、部品は`frontend-lib/components/ui/calendar.tsx`の1ファイルに閉じ、`LaunchDateField`はその形だけに依存する。
+- カレンダーの部品の版の更新で表示や操作が変わる — `react-day-picker`(仮10、2026-10-24に確定)は完全固定し、部品は`frontend-lib/components/ui/calendar/calendar.tsx`の1ファイルに閉じ、`LaunchDateField`はその形だけに依存する。
 - 技術ドキュメントの番号の重なり — roadmapの順で前のhelp-centerが`frontend/011-table-of-contents.md`を使うため、本specは`frontend/012`・`backend/012`・`backend/013`にした(help-centerの設計で確かめた)。`backend/011-handle-namespaces.md`は本specでは変更しない。
 
 ## References
@@ -260,7 +260,7 @@
 - media-pipeline(上流): `UPLOAD_PURPOSES`に`product-logo`・`product-screenshot`を足す(契約どおり)。
 - admin-foundation(上流): `audit-actions/product-launch.ts`を足して`AUDIT_ACTIONS`へ連結する(契約どおり)。
 - inquiry-chat(上流): `CATEGORY_SECTIONS`に`product-launch.product-categories`(10)を足す(契約どおり)。
-- frontend-platform(上流): `apps/frontend-lib/components/ui/calendar.tsx`(shadcn/uiのカレンダー)と`react-day-picker`を足す(仮10、2026-10-24に確定)。frontend-libの規約(1ファイル1コンポーネント・stories・`runAxe`)に従う。tech-stack.mdの行はコントローラーが追加済み。版は`apps/frontend-lib/package.json`・`apps/client/package.json`・`apps/admin/package.json`へ同じ版を完全固定で宣言し、依存パッケージの版管理の文書の主要パッケージの一覧の対象(版が食い違うと基底設定・プリセットが動かない、または組み合わせられる版の範囲が狭いもの)ではないため一覧には載せず、同文書の「一覧に無いパッケージでも、共有ディレクトリのコードが実行時に使うものは、利用側アプリが共有ディレクトリ側と同じ版で宣言する」と共有ディレクトリの文書の規則に従う。
+- frontend-platform(上流): `apps/frontend-lib/components/ui/calendar/calendar.tsx`(shadcn/uiのカレンダー)と`react-day-picker`を足す(仮10、2026-10-24に確定)。frontend-libの規約(1ファイル1コンポーネント・stories・`runAxe`)に従う。tech-stack.mdの行はコントローラーが追加済み。版は`apps/frontend-lib/package.json`・`apps/client/package.json`・`apps/admin/package.json`へ同じ版を完全固定で宣言し、依存パッケージの版管理の文書の主要パッケージの一覧の対象(版が食い違うと基底設定・プリセットが動かない、または組み合わせられる版の範囲が狭いもの)ではないため一覧には載せず、同文書の「一覧に無いパッケージでも、共有ディレクトリのコードが実行時に使うものは、利用側アプリが共有ディレクトリ側と同じ版で宣言する」と共有ディレクトリの文書の規則に従う。
 - backend-platform(上流): `SCHEDULED_JOBS`に4:21の2つのジョブ、`MESSAGE_CONTRACTS`・`MESSAGE_HANDLERS`に`product.run-product-lifecycle`を足す(契約どおり)。
 - roadmap: 帯の割り当ての表の本specの「使用中の値」は「4:21は1000・1010、波及処理は1000」になる。プロダクトライフサイクルの処理の`order`も同じ帯を使う(本specは1000)。Requirement Ambiguitiesの行の解決の列は「product-launch 仮1(Week優勝作はYear確定まで次回予約を禁止し、トーナメントの結果確定後は敗退でも敗北後の禁止期間を掛けない、2026-10-24に開発者が確定)」。本specはroadmapを編集しないため、コントローラーへ報告する。
 - match-engine(後続): `ScheduledLaunchDirectory.listForDate`で翌日の予定のローンチを読み、`LaunchOutcomeRecorder.record`で予選の結果(勝利・敗北、不戦勝と相手の退会等による勝利は勝利)を記録する。マッチ記録はローンチ(またはプロダクト)のIDを持ち、プロダクトの`purge_due`の処理(1100番台)で紐付けを解除する。プロダクトの`hidden`の同期・非同期の処理でマッチの終了を行う。退会・停止によるマッチの終了はユーザーライフサイクルに登録する。結果を記録しないとローンチがマッチ中のまま固定される。

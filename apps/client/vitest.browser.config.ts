@@ -32,6 +32,8 @@ const PREBUNDLED_DEPENDENCIES = [
   'jotai/vanilla',
   '@marsidev/react-turnstile',
   'react-easy-crop',
+  'react-day-picker',
+  'react-day-picker/locale/ja',
   'uqr',
   'unified',
   'remark-parse',
