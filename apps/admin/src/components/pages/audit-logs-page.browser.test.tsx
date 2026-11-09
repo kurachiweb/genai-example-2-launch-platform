@@ -262,6 +262,9 @@ describe('絞り込み', () => {
       '問い合わせカテゴリの名前の変更',
       '問い合わせカテゴリの削除',
       'Ultras導線の機能フラグの変更',
+      'プロダクトカテゴリの追加',
+      'プロダクトカテゴリの変更',
+      'プロダクトカテゴリの削除',
     ]);
     await expect
       .poll(async () => runAxe(page.getByRole('listbox').element()))

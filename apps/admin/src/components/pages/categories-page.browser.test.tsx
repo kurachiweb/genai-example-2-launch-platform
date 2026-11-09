@@ -26,12 +26,14 @@ import {
   AdminDeleteInquiryCategoryDocument,
   AdminInquiryCategoriesDocument,
   type AdminInquiryCategoriesQuery,
+  AdminProductCategoriesDocument,
   AdminRenameInquiryCategoryDocument,
   type AdminRole,
 } from '../../graphql/generated/graphql.ts';
 import { Route as AuthenticatedRoute } from '../../routes/_authenticated/route.tsx';
 import { Route as CategoriesRoute } from '../../routes/_authenticated/categories/index.tsx';
 import { InquiryCategorySection } from '../inquiry/inquiry-category-section.tsx';
+import { ProductCategorySection } from '../product/product-category-section.tsx';
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 
@@ -74,6 +76,13 @@ const CATEGORIES: AdminInquiryCategoriesQuery = {
   ],
 };
 
+const PRODUCT_OTHER_CATEGORY = Object.freeze({
+  id: '01JD0000000000000000000000',
+  name: 'その他',
+  handle: 'other',
+  systemDefault: true,
+});
+
 const INTERNAL_ERROR = Object.freeze({
   code: 'internal_error',
   message: 'サーバーで問題が発生しました。時間をおいて再度お試しください。',
@@ -106,6 +115,11 @@ const respondCategories = (
       [AdminCreateInquiryCategoryDocument, create],
       [AdminRenameInquiryCategoryDocument, rename],
       [AdminDeleteInquiryCategoryDocument, remove],
+      [
+        AdminProductCategoriesDocument,
+        () =>
+          success({ adminProductCategories: [{ ...PRODUCT_OTHER_CATEGORY }] }),
+      ],
     ]),
   });
 };
@@ -142,11 +156,15 @@ const renderCategoriesPage = async (
 };
 
 const main = () => page.getByRole('main');
-const table = () => main().getByRole('table', { name: SECTION_TITLE });
+const section = () => main().getByRole('region', { name: SECTION_TITLE });
+const table = () => section().getByRole('table', { name: SECTION_TITLE });
 const addButton = () =>
-  main().getByRole('button', { name: 'カテゴリを追加', exact: true });
+  section().getByRole('button', { name: 'カテゴリを追加', exact: true });
 const rowButton = (name: string, action: '編集' | '削除') =>
-  main().getByRole('button', { name: `「${name}」を${action}`, exact: true });
+  section().getByRole('button', {
+    name: `「${name}」を${action}`,
+    exact: true,
+  });
 const dialogOf = (name: string) => page.getByRole('dialog', { name });
 const nameBox = (dialogName: string) =>
   dialogOf(dialogName).getByRole('textbox', {
@@ -175,8 +193,14 @@ afterEach(() => {
 });
 
 describe('カテゴリの区画の登録口', () => {
-  test('問い合わせカテゴリの区画をorder 30で登録し、凍結されている', () => {
+  test('プロダクトカテゴリの区画をorder 10、問い合わせカテゴリの区画をorder 30で登録し、凍結されている', () => {
     expect(CATEGORY_SECTIONS).toStrictEqual([
+      {
+        id: 'product-launch.product-categories',
+        order: 10,
+        title: 'プロダクトカテゴリ',
+        component: ProductCategorySection,
+      },
       {
         id: 'inquiry-chat.inquiry-categories',
         order: 30,
@@ -336,7 +360,7 @@ describe('カテゴリのページ', () => {
 
     expect(rowButton('その他', '削除').query()).toBeNull();
     await expect
-      .element(main().getByText('システム標準のカテゴリは削除できません。'))
+      .element(section().getByText('システム標準のカテゴリは削除できません。'))
       .toBeVisible();
 
     await userEvent.click(rowButton('その他', '編集'));
@@ -363,7 +387,7 @@ describe('カテゴリのページ', () => {
     await expect.element(rowButton('料金', '削除')).toBeDisabled();
     await expect
       .element(
-        main().getByText('カテゴリを追加・編集・削除する権限がありません。'),
+        section().getByText('カテゴリを追加・編集・削除する権限がありません。'),
       )
       .toBeVisible();
   });
@@ -375,15 +399,14 @@ describe('カテゴリのページ', () => {
         failing ? failure(INTERNAL_ERROR) : success(CATEGORIES),
     });
 
-    const section = main().getByRole('region', { name: SECTION_TITLE });
     await expect
-      .element(section.getByRole('alert'))
+      .element(section().getByRole('alert'))
       .toHaveTextContent(INTERNAL_ERROR.message);
     expect(main().getByRole('link').elements()).toHaveLength(0);
     expect(document.body.textContent).not.toContain('お問い合わせ');
 
     failing = false;
-    await userEvent.click(section.getByRole('button', { name: '再試行' }));
+    await userEvent.click(section().getByRole('button', { name: '再試行' }));
 
     await expect
       .element(table().getByText('料金', { exact: true }))

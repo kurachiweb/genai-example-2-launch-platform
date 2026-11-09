@@ -86,6 +86,14 @@ export type MediaImageFallbackFormat =
   | 'PNG'
   | 'SVG';
 
+/** プロダクトカテゴリの追加・変更の項目 */
+export type ProductCategoryInput = {
+  /** プロダクトのハンドルと同じ形式で50文字以内 */
+  handle: string;
+  /** 前後の空白を除いて1〜30文字 */
+  name: string;
+};
+
 /** 下書きの公開 */
 export type PublishLegalDocumentInput = {
   changeSummary: string;
@@ -378,6 +386,33 @@ export type AdminSaveLegalDocumentDraftMutationVariables = Exact<{
 
 export type AdminSaveLegalDocumentDraftMutation = { saveLegalDocumentDraft: { kind: LegalDocumentKind, stateVersion: number, latestBody: string | null, draft: { body: string, savedAt: string, savedBy: { id: string, nickname: string | null } } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string, publishedBy: { id: string, nickname: string | null } }> } };
 
+export type AdminProductCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminProductCategoriesQuery = { adminProductCategories: Array<{ id: string, name: string, handle: string, systemDefault: boolean }> };
+
+export type AdminCreateProductCategoryMutationVariables = Exact<{
+  input: ProductCategoryInput;
+}>;
+
+
+export type AdminCreateProductCategoryMutation = { createProductCategory: { id: string } };
+
+export type AdminDeleteProductCategoryMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type AdminDeleteProductCategoryMutation = { deleteProductCategory: boolean };
+
+export type AdminUpdateProductCategoryMutationVariables = Exact<{
+  id: string | number;
+  input: ProductCategoryInput;
+}>;
+
+
+export type AdminUpdateProductCategoryMutation = { updateProductCategory: { id: string } };
+
 export type AdminSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -433,6 +468,10 @@ export const AdminLegalDocumentDocument = {"__meta__":{"hash":"sha256:42121f09a2
 export const AdminLegalDocumentsDocument = {"__meta__":{"hash":"sha256:2f5f703c05e4c378679abd43badd1cc30062941d402fc1ca4045ed4646c4b5c2"}} as unknown as DocumentNode<AdminLegalDocumentsQuery, AdminLegalDocumentsQueryVariables>;
 export const AdminPublishLegalDocumentDocument = {"__meta__":{"hash":"sha256:81c947606fe5b15c429d4107739c5f6696c874eebb73d163bce9f866986aa11c"}} as unknown as DocumentNode<AdminPublishLegalDocumentMutation, AdminPublishLegalDocumentMutationVariables>;
 export const AdminSaveLegalDocumentDraftDocument = {"__meta__":{"hash":"sha256:e0ae6b1245545720ebf463ace8663aaaf6b251a968c90992e6b0d4b0ff0b2085"}} as unknown as DocumentNode<AdminSaveLegalDocumentDraftMutation, AdminSaveLegalDocumentDraftMutationVariables>;
+export const AdminProductCategoriesDocument = {"__meta__":{"hash":"sha256:da18b6862587d95df8093c5e6b74398899fa4d1420e5011466ca671aed9a19a5"}} as unknown as DocumentNode<AdminProductCategoriesQuery, AdminProductCategoriesQueryVariables>;
+export const AdminCreateProductCategoryDocument = {"__meta__":{"hash":"sha256:e0f1015c3d9281d12b8a93a04fd52222e396bcb9b5c7304e18297297605f5238"}} as unknown as DocumentNode<AdminCreateProductCategoryMutation, AdminCreateProductCategoryMutationVariables>;
+export const AdminDeleteProductCategoryDocument = {"__meta__":{"hash":"sha256:416fe8b1adab0808e5e87e5ef61f4de669a7058f9d0823a52190bfc290dc9904"}} as unknown as DocumentNode<AdminDeleteProductCategoryMutation, AdminDeleteProductCategoryMutationVariables>;
+export const AdminUpdateProductCategoryDocument = {"__meta__":{"hash":"sha256:be16568665cb19771f99ba5a2a07896166f243af3357d62ce762b520c267ca51"}} as unknown as DocumentNode<AdminUpdateProductCategoryMutation, AdminUpdateProductCategoryMutationVariables>;
 export const AdminSystemStatusDocument = {"__meta__":{"hash":"sha256:cfd1cd38df39a20ba4d85b44cdc75b45715595ad92ef45f03d4bc5fd3146590c"}} as unknown as DocumentNode<AdminSystemStatusQuery, AdminSystemStatusQueryVariables>;
 export const AdminUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:2edd177a6140620bf171c97fd69c0c289130634ffcd31adf626abf21935f6c24"}} as unknown as DocumentNode<AdminUltrasPromotionSettingQuery, AdminUltrasPromotionSettingQueryVariables>;
 export const AdminUpdateUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:0414939a189f0129ea30b0206151b9cc04ec191ecc0c8cafd7ec3e0ee57b270f"}} as unknown as DocumentNode<AdminUpdateUltrasPromotionSettingMutation, AdminUpdateUltrasPromotionSettingMutationVariables>;

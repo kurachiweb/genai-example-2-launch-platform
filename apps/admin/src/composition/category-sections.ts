@@ -2,6 +2,8 @@ import type { ComponentType } from 'react';
 
 import { InquiryCategorySection } from '../components/inquiry/inquiry-category-section.tsx';
 import { INQUIRY_CATEGORIES_TITLE } from '../components/inquiry/inquiry-category-messages.ts';
+import { PRODUCT_CATEGORIES_TITLE } from '../components/product/product-category-messages.ts';
+import { ProductCategorySection } from '../components/product/product-category-section.tsx';
 
 export interface CategorySection {
   // '<spec名>.<名詞句>'
@@ -16,6 +18,12 @@ export interface CategorySection {
 
 // カテゴリのページに並べる区画の登録箇所。各specが自分のカテゴリマスタの区画を追記する
 export const CATEGORY_SECTIONS: readonly CategorySection[] = Object.freeze([
+  {
+    id: 'product-launch.product-categories',
+    order: 10,
+    title: PRODUCT_CATEGORIES_TITLE,
+    component: ProductCategorySection,
+  },
   {
     id: 'inquiry-chat.inquiry-categories',
     order: 30,

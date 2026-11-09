@@ -51,6 +51,10 @@ type Documents = {
     "query AdminLegalDocuments {\n  adminLegalDocuments {\n    kind\n    latestVersionNumber\n    latestPublishedAt\n    hasDraft\n  }\n}": typeof types.AdminLegalDocumentsDocument,
     "mutation AdminPublishLegalDocument($input: PublishLegalDocumentInput!) {\n  publishLegalDocument(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminPublishLegalDocumentDocument,
     "mutation AdminSaveLegalDocumentDraft($input: SaveLegalDocumentDraftInput!) {\n  saveLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminSaveLegalDocumentDraftDocument,
+    "query AdminProductCategories {\n  adminProductCategories {\n    id\n    name\n    handle\n    systemDefault\n  }\n}": typeof types.AdminProductCategoriesDocument,
+    "mutation AdminCreateProductCategory($input: ProductCategoryInput!) {\n  createProductCategory(input: $input) {\n    id\n  }\n}": typeof types.AdminCreateProductCategoryDocument,
+    "mutation AdminDeleteProductCategory($id: ID!) {\n  deleteProductCategory(id: $id)\n}": typeof types.AdminDeleteProductCategoryDocument,
+    "mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}": typeof types.AdminUpdateProductCategoryDocument,
     "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": typeof types.AdminSystemStatusDocument,
     "query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": typeof types.AdminUltrasPromotionSettingDocument,
     "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": typeof types.AdminUpdateUltrasPromotionSettingDocument,
@@ -93,6 +97,10 @@ const documents: Documents = {
     "query AdminLegalDocuments {\n  adminLegalDocuments {\n    kind\n    latestVersionNumber\n    latestPublishedAt\n    hasDraft\n  }\n}": types.AdminLegalDocumentsDocument,
     "mutation AdminPublishLegalDocument($input: PublishLegalDocumentInput!) {\n  publishLegalDocument(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": types.AdminPublishLegalDocumentDocument,
     "mutation AdminSaveLegalDocumentDraft($input: SaveLegalDocumentDraftInput!) {\n  saveLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": types.AdminSaveLegalDocumentDraftDocument,
+    "query AdminProductCategories {\n  adminProductCategories {\n    id\n    name\n    handle\n    systemDefault\n  }\n}": types.AdminProductCategoriesDocument,
+    "mutation AdminCreateProductCategory($input: ProductCategoryInput!) {\n  createProductCategory(input: $input) {\n    id\n  }\n}": types.AdminCreateProductCategoryDocument,
+    "mutation AdminDeleteProductCategory($id: ID!) {\n  deleteProductCategory(id: $id)\n}": types.AdminDeleteProductCategoryDocument,
+    "mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}": types.AdminUpdateProductCategoryDocument,
     "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": types.AdminSystemStatusDocument,
     "query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": types.AdminUltrasPromotionSettingDocument,
     "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": types.AdminUpdateUltrasPromotionSettingDocument,
@@ -260,6 +268,22 @@ export function graphql(source: "mutation AdminPublishLegalDocument($input: Publ
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation AdminSaveLegalDocumentDraft($input: SaveLegalDocumentDraftInput!) {\n  saveLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}"): (typeof documents)["mutation AdminSaveLegalDocumentDraft($input: SaveLegalDocumentDraftInput!) {\n  saveLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminProductCategories {\n  adminProductCategories {\n    id\n    name\n    handle\n    systemDefault\n  }\n}"): (typeof documents)["query AdminProductCategories {\n  adminProductCategories {\n    id\n    name\n    handle\n    systemDefault\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminCreateProductCategory($input: ProductCategoryInput!) {\n  createProductCategory(input: $input) {\n    id\n  }\n}"): (typeof documents)["mutation AdminCreateProductCategory($input: ProductCategoryInput!) {\n  createProductCategory(input: $input) {\n    id\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminDeleteProductCategory($id: ID!) {\n  deleteProductCategory(id: $id)\n}"): (typeof documents)["mutation AdminDeleteProductCategory($id: ID!) {\n  deleteProductCategory(id: $id)\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}"): (typeof documents)["mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
