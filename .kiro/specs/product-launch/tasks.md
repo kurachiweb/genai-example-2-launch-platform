@@ -46,7 +46,7 @@
   - 完了状態: Workers統合テストが成功し、後続specがプロダクトのテーブルを読まずに表示用の情報とハンドルの解決を得られる
   - _Requirements: 2.3, 2.8, 2.9, 8.7, 11.9, 11.12, 14.4_
 
-- [ ] 2.3 予定のローンチ・予選の結果の記録・エクスポートの照会を作る
+- [x] 2.3 予定のローンチ・予選の結果の記録・エクスポートの照会を作る
   - 先に、Workers統合テストで、指定した日の予定のローンチが取消・結果の確定・非公開化・論理削除・停止中の投稿者を除いてIDの順に上限件数ずつ返り続きを示すこと、結果の記録が`recorded`・`already-recorded`・`conflict`・`not-recordable`(取消・論理削除・不在)を返し確定した結果を書き換えないこと、プロダクトの出力が論理削除済み・非公開化を含めて項目(カテゴリ名・画像のID・削除の日時・非公開化)を返すこと、ローンチの出力の状態を確かめる
   - 2.1の`core/product`の契約に対するD1の実装を`workers/product/d1-launch-schedule.ts`・`d1-product-export.ts`に作る
   - 完了状態: Workers統合テストが成功し、データエクスポートの文書の`products.json`・`launches.json`のローンチの項目に対応する
@@ -341,3 +341,4 @@
 - 1.4: `react-day-picker`は9.14.0(9系の最新の安定版)。`Calendar`は選べない日をDayPickerの`disabled`ではなく独自の`unavailableReasonOf?: (date: Date) => string | undefined`で受け取る(`disabled`はフォーカスできず矢印キーで飛ばされるため)。理由のある日は`aria-disabled="true"`・`aria-label`の末尾に「、<理由>」・理由の`Tooltip`。9.5は`earliest`〜`latest`の外と`unavailable`の範囲をこの関数で渡し、受け取る`Date`は利用者のローカルの0時なので業務日付へ写してから比べる。選択中かつ選べない日の配色はコントラストが不足し得るため、9.5でその状態が起こるならブラウザテストで確かめる。ブラウザテストで`aria-disabled`の日を押すときは`click({ force: true })`
 - 2.1: 登録の検証は上流の`core/identity/user-lifecycle.ts`から切り出した汎用の`createLifecycleRegistry(registrations, { handlerLabel })`を使い、プロダクトは`PRODUCT_LIFECYCLE_HANDLER_LABEL`(「プロダクトライフサイクルの処理」)を渡す(ユーザーは「波及処理」のまま)。11.1の`backend/012`でこの汎用の登録口と呼び名の渡し方を扱う。DBの`type`・`status`・`outcome`とcoreの一覧の一致は`workers/product/product-lifecycle-columns.unit.test.ts`が確かめる。追加した値: `PRODUCT_LIFECYCLE_EVENT_STATUSES`・`QUALIFIER_OUTCOMES`、型`ProductLifecycleEventStatus`・`AwardKind`・`AwardEntry`・`AwardGroup`。`fallbackLaunchSummary`は`finished`で結果がnullなら`RangeError`
 - 2.2: 照会の`not-deleted`は`products.deleted_at`だけで絞り、退会済み・停止中の投稿者のプロダクトは`visible: false`で返す。`listLaunches`はローンチの無いプロダクト・論理削除済み・不在のIDをMapに含めず(呼び出し側は`get(id) ?? []`)、非公開化中のプロダクトのローンチは返す。番号は取消を除き(ローンチ日, ID)の昇順に1から、取消は0、返す並びは(ローンチ日, ID)の降順。後続のWorkers統合テストは共通のフィクスチャ`apps/backend-lib/workers/product/testing/product-fixtures.ts`を使う(初期データの「その他」は消さない)
+- 2.3: 結果の記録は1〜200件で、空・201件以上・同じ`launchId`の重複は`RangeError`。変更0件の項目は読み直し、不在・取消・論理削除を`not-recordable`として先に返し、残りは同じ結果なら`already-recorded`・違えば`conflict`。非公開化中・停止中の投稿者のローンチにも記録できる(マッチの即時の終了のため)。`db.batch()`で同じ名前の列を読むと値がずれるため別名を付ける(db/002に追記済み)
