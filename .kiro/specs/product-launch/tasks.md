@@ -8,7 +8,7 @@
   - 完了状態: 単体テストが成功し、client・admin・api・eventの型検査で配置先から読み込め、監査の操作種別の一覧の重複の検査と`audit-actions/index.unit.test.ts`が成功する
   - _Requirements: 1.1, 1.2, 2.1, 3.1, 3.2, 4.3, 11.1, 11.8_
 
-- [ ] 1.2 7テーブルと可視性の条件を定義し、マイグレーションを作る
+- [x] 1.2 7テーブルと可視性の条件を定義し、マイグレーションを作る
   - 先に、テーブルの定義の単体テストで、ハンドル・カテゴリの名前とハンドル・旧ハンドルの列が大文字小文字を区別しない照合規則で定義されていること、部分一意索引・CHECK・外部キー(`ON DELETE`の指定なし、画像のIDに外部キーが無いこと)の定義を確かめる。ローカルD1のWorkers統合テストで、大文字小文字だけが違うハンドル・カテゴリ名を作れないこと、未確定かつ取消でないローンチを同じプロダクトに2つ作れないこと、`purge_due`を同じプロダクトに2つ作れないこと、スクリーンショットの位置20を拒否すること、可視の条件・勝利のローンチの条件・カテゴリの条件の結果(カテゴリの条件と可視・勝利の条件を組み合わせた絞り込みとカテゴリごとの件数)を確かめる
   - 可視のプロダクトの条件(論理削除・非公開化・投稿者の退会と停止を除く)と勝利のローンチがある条件と、カテゴリの条件(仮11、directory-discoveryの依頼)を、他specが問い合わせに組み込める部品として作る。スキーマの集約点へ加え、mainの最新を取り込んでからマイグレーションを生成する。旧ハンドルのテーブルは`previousHandleColumns({ ownerColumnName: 'product_id', references: () => products.id })`で定義する(`deleted_at`は部品が含む)
   - 標準カテゴリ「その他」の初期データは、作成のマイグレーションに書き足さず、続けて`drizzle-kit generate --custom --name=product_launch_seed`で作る別のカスタムマイグレーションに書く(db/003の「初期データ」)。全列を明示し、`id`は`01JD0000000000000000000000`、`created_at`・`updated_at`はその時刻部の`1731945562112`、`ON CONFLICT (name) DO NOTHING`とする(`20261105014904_inquiry_chat_seed`と同じ形)。Workers統合テストは初期データの行がある前提で書き、同じ名前・ハンドルの行を追加しない
@@ -336,3 +336,4 @@
 ## Implementation Notes
 
 - 1.1: 名称・タグラインの文言の主語は「名称」「タグライン」(「名称を入力してください。」「名称は50文字以内で入力してください。」「名称に使用できない文字が含まれています。」、タグラインは100文字)。1.3で文言規則003へこの6文言をそのまま加える。`checkScreenshotTotals`は枚数を先に判定し(両方の超過は`too-many`)、1枚の5MBの上限は用途の`maxBytes`に任せる。入力規則は`apps/common-lib/product/product-input-rules.ts`、標準カテゴリは`product-category-constants.ts`、監査の操作種別は`admin/audit-actions/product-launch.ts`
+- 1.2: テーブルは`apps/db/schema/product/`、条件の部品は`visibility.ts`の`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`。マイグレーションは`20261109042627_product_launch`・`20261109042637_product_launch_seed`。`apps/db`は`common-lib`を読めないため、標準カテゴリの値とスクリーンショットの位置のCHECK(0〜19)を直書きし、`PRODUCT_SCREENSHOTS_MAX`と手で同期する。`outcome`・`type`の値の一覧はdb内だけの定数のため、2.1で作るbackend-libのイベントの種類と手で一致させる。`products.version`の既定値は0、ライフサイクルイベントは`status`の既定値`pending`・`dispatch_count`の既定値1(`user_lifecycle_events`と同じ)。部分一意索引は`product_launches_product_id_open_unique`・`product_lifecycle_events_product_id_purge_due_unique`

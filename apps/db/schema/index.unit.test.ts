@@ -53,6 +53,13 @@ describe('スキーマの集約点', () => {
     'user_profile_websites',
     'user_previous_handles',
     'user_follows',
+    'product_categories',
+    'products',
+    'product_screenshots',
+    'product_previous_handles',
+    'product_launches',
+    'product_lifecycle_events',
+    'product_lifecycle_handler_runs',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
