@@ -147,7 +147,7 @@ bind<readonly RegisteredDecisionSource<ScheduleConditionSource>[]>(
 );
 ```
 
-- 登録口の検証(`assertDecisionSourceRegistrations`)を`composition`の単体テストで全ての登録口に掛け、登録の誤りをデプロイの前に検出する。
+- 登録口の検証(`assertDecisionSourceRegistrations`)を`composition`の単体テストで全ての判定・表示の供給元の登録口に掛け、登録の誤りをデプロイの前に検出する。
 
 ## 保存の処理
 
@@ -218,7 +218,7 @@ bind<ArticleSaveHooks>(ARTICLE_TYPES.ArticleSaveHooks).toDynamicValue(
 
 ## テスト
 
-- 登録口の検証は、`composition`の単体テストで全ての登録口に掛ける。初版の空の登録口も検証を通ることを確かめる。
+- 登録口の検証は全ての登録口に掛け、初版の空の登録口も検証を通ることを確かめる。判定・表示の供給元の登録口は、`assertDecisionSourceRegistrations`を`composition`の単体テストで掛ける。保存の処理の登録口と、集約のライフサイクルの同期の処理の登録口([集約のライフサイクルイベント](012-aggregate-lifecycle-events.md))は、組み立ての関数(`create<集約>SaveHooks`など)が接続と文を扱うinfrastructure層にあるため、`composition`のWorkers統合テストで登録を組み立ての関数に通して確かめる。
 - 所有する機能の判定の単体テストは、偽の供給元で、判定の供給元の例外で「確認できない」になり操作を拒否すること、表示の供給元の例外で所有する機能の値に縮退すること、該当しない対象が条件に当たらないこと、上限を超える対象の拒否を確かめる。
 - 保存の処理は、Workers統合テストで、文が保存と同じ一括の書き込みで確定すること、条件で取り消された保存では文も取り消され確定の後の処理を呼ばないこと、確定の後の処理の例外で保存が成功のまま残り次の処理が呼ばれることを確かめる。
 - 加える機能の供給元は、該当する対象と該当しない対象を混ぜた一覧で、該当するものだけを返すことと、対象の数を増やしても問い合わせの回数が変わらないことを確かめる。

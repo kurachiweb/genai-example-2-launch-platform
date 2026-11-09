@@ -27,7 +27,7 @@ export const productScreenshots = snakeCase.table(
       table.productId,
       table.position,
     ),
-    // 上限の枚数はcommon-libのPRODUCT_SCREENSHOTS_MAXと一致させる(apps/dbはcommon-libを読み込まない)
+    // 位置の上限はcommon-libのproduct/product-input-rules.tsのPRODUCT_SCREENSHOTS_MAXの1つ前の写しで(apps/dbはcommon-libを読み込まない)、一致はルートのconfig/product-contract-copies.unit.test.tsが確かめる
     check(
       'product_screenshots_position_check',
       sql`${table.position} between 0 and 19`,

@@ -33,6 +33,7 @@ export const UNAVAILABLE_LAUNCH_DATE_REASONS = Object.freeze({
   out_of_range: '選べる期間の外です',
 } as const);
 
+// 敗北後の日数はapps/apiのsrc/domain/product/launch-date-rules.tsのENTITLED_RELAUNCH_INTERVAL_DAYSの写しで、一致はルートのconfig/product-contract-copies.unit.test.tsが確かめる
 export const ULTRAS_RELAUNCH_PROMOTION =
   'Ultrasなら敗北後2日で再ローンチできます。';
 
