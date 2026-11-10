@@ -6,7 +6,7 @@
 
 **Users**: 閲覧者はトップページで当日の予選のマッチを見て、ログインしていればその場でUpvote・付け替え・取り消しを行う。投稿者は自分のマッチの進行と結果を見る。閲覧者は公開プロフィールでUpvote履歴を見る。後続spec(tournament-week・tournament-year・notifications・directory-discovery・sponsorship・ugc-moderation・data-export・public-api)の開発者は、マッチの予定の作成・照会口・マッチイベントの登録口・トップページの区画の登録口・対戦カードの部品を使う。
 
-**Impact**: D1に6テーブル(マッチ・側・Upvote・マッチイベント・処理の完了の記録・予選のペアリングの記録)と、予選の勝利の側を組み込む部品を足す。`apps/backend-lib`にマッチの規則と照会・予定の作成・イベントの記録と送信・エクスポートの契約と識別子(`core/match`)と、その実装と束縛(`workers/match`、apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`match`・Upvote・トップページとUpvote履歴の照会・3つの日次のジョブと4:21の2つのジョブ・2つの同期の処理を、eventにマッチイベントの実行器と5つの非同期の処理を、clientにトップページ・対戦カードの部品群・Upvote履歴のタブを足す。上流のファイルは、契約で定められた登録箇所への追記と仮のトップページの置き換えだけを変える。新しいシークレット・パッケージは無い。
+**Impact**: D1に6テーブル(マッチ・側・Upvote・マッチイベント・処理の完了の記録・予選のペアリングの記録)と、予選の勝利の側を組み込む部品を足す。`apps/backend-lib`にマッチの規則と照会・予定の作成・イベントの記録と送信・エクスポートの契約と識別子(`core/match`)と、その実装と束縛(`workers/match`、apiとeventの両方に束縛)を新設する。apiにスキーマモジュール`match`・Upvote・トップページとUpvote履歴の照会・3つの日次のジョブと4:21の2つのジョブ・2つの同期の処理を、eventにマッチイベントの実行器と5つの非同期の処理を、clientにトップページ・対戦カードの部品群・Upvote履歴のタブを足す。上流のファイルは、契約で定められた登録箇所への追記と仮のトップページの置き換えに加え、表示中の境界の取り直しの部品のclient内の中立の場所への移設・bot判定の操作名の写しの照合への1行の追記・定期実行の時間の予算の追記・自動更新の停止手段の技術ドキュメントの規則の追記だけを変える(「上流への影響」)。新しいシークレット・パッケージは無い。
 
 ### Goals
 
@@ -30,7 +30,7 @@
 - 照会・予定の作成・イベントの記録と送信・エクスポートの共有部品: 契約(`MatchDirectory`・`SupporterDirectory`・`MatchScheduler`・`MatchEventStore`・`MatchEventDispatcher`・`MatchExport`・`UpvoteExport`とその入出力の型)は`apps/backend-lib/core/match/ports.ts`、DIの識別子`MATCH_PLATFORM_TYPES`は`core/match/identifiers.ts`に置く。D1の実装・Queueへの送信の実装`QueueMatchEventDispatcher`と両アプリ共通の束縛`MATCH_PLATFORM_MODULE`は`apps/backend-lib/workers/match/`に置く。api・eventと後続specのapplication層が契約と識別子を読み込むため、`workers`に置かない。
 - apiのUpvote・トップページとUpvote履歴の照会・マッチの表示の組み立て(`MatchViewReader`)・確定・ペアリング・開始・マッチイベントの保守、スキーマモジュール`match`、ユーザーライフサイクルの同期の処理`match-engine.account-match-closure`、プロダクトライフサイクルの同期の処理`match-engine.product-match-closure`、日次のジョブ5つ。
 - eventのマッチイベントの実行器`MatchEventRunner`と登録口`MATCH_EVENT_HANDLERS`、本specの処理`match-engine.qualifier-outcome`、非同期の処理`match-engine.account-decision-follow-up`・`match-engine.upvote-erasure`・`match-engine.product-decision-follow-up`・`match-engine.entry-unlink`。
-- clientのトップページ(`/`、仮のトップページを置き換える)、区画の登録口`TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`(本spec以外の登録は初版で空)、対戦カード・不戦勝の一覧・Upvoteの操作・ピッチの部品群(`components/match/`)、公開プロフィールのタブ`upvotes`(20)。
+- clientのトップページ(`/`、仮のトップページを置き換える)、ページ全体で1つの「自動更新」の切り替え(`AutoRefreshSwitch`、仮8)、区画の登録口`TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`(本spec以外の登録は初版で空)、対戦カード・不戦勝の一覧・Upvoteの操作・ピッチの部品群(`components/match/`)、公開プロフィールのタブ`upvotes`(20)。
 - 技術ドキュメント`backend/014-time-boxed-voting.md`・`frontend/013-live-scoreboard.md`の新規作成と、サービス仕様(予選ルール・ページ配置・文言規則・日次タイムライン)とオンボーディングの追記。
 
 ### Out of Boundary
@@ -50,7 +50,9 @@
 - product-launch: `PRODUCT_PLATFORM_TYPES`の`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductDirectory`(`findSummaries`・`listLaunches`。契約と識別子は`core/product`)、`visibleProducts()`、`products`・`product_launches`への外部キー、`ProductLifecycleEvent`・`ProductLifecycleSyncHandler`・`ProductLifecycleSyncRegistration`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`ProductLifecycleAsyncHandler`・`ProductLifecycleAsyncRegistration`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、GraphQLの`ProductCategory`・`productCategoryLoader`。
 - user-profile-social: `UserProfileDirectory`(`resolveHandle`・`findSummaries`)・`PROFILE_PLATFORM_TYPES`(契約と識別子は`core/profile`)・GraphQLの`UserSummary`・`userSummaryLoader`・`PUBLIC_PROFILE_TABS`・`PublicProfileTab`・`PublicProfileSectionContext`・`UserAvatar`・`checkHandleFormat`・`USER_HANDLE_RULE`・`checkExternalUrl`。
 - media-pipeline: `mediaFileLoader`・`toMediaImage`・GraphQLの`MediaImage`・`MediaPicture`。
-- frontend-platform・inquiry-chat: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`useTurnstileToken`・`TurnstileWidget`(非表示)・`notify`・`buildPageHead`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・日時の表示部品・shadcn/uiの部品(ボタン・バッジ・ツールチップ・カード)・`LIVE_REFRESH_QUERY_OPTIONS`・`runAxe`・デザイントークン(`tokens.css`)。
+- product-launch(client・E2E): `useBoundaryRefresh`・`BOUNDARY_REFRESH_DELAY_MS`(clientの`components/product/use-boundary-refresh.ts`。本specが`components/time/`へ移し、productの読み込みを直す)、E2Eの`e2e/client/product-steps.ts`(プロダクトの登録の手順)。
+- backend-platform(E2E): `e2e/support/scheduled-trigger.ts`の`triggerScheduled`・`businessDateOf`・`addBusinessDays`、`core/scheduling/run-budget.ts`の`ScheduledRunBudget`・`SCHEDULED_RUN_BUDGETS`(apiの定期実行の登録箇所)。
+- frontend-platform・inquiry-chat: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`Switch`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`useTurnstileToken`・`TurnstileWidget`(非表示)・`notify`・`buildPageHead`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・日時の表示部品・shadcn/uiの部品(ボタン・バッジ・ツールチップ・カード)・`LIVE_REFRESH_QUERY_OPTIONS`・`runAxe`・デザイントークン(`tokens.css`)。
 - admin-foundation: E2Eの`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - npmパッケージ: 新規なし。
 - 後続specは、`core/match`の公開の契約と識別子、`qualifierWins()`、apiの`MatchViewReader`・`matchViewLoader`・GraphQLの`Match`などの型、eventの`MATCH_EVENT_HANDLERS`、clientの`TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`・`MatchCard`・`ByeList`・`useUpvote`だけに依存し、本specのテーブルへ書き込まない。読み取りの問い合わせで本specのテーブルを結合してよいのは`qualifierWins()`を使う並べ替えと絞り込みだけとする。
@@ -63,21 +65,24 @@
 - `MatchDirectory`・`SupporterDirectory`・`MatchExport`・`UpvoteExport`・`qualifierWins()`の形(directory-discovery・notifications・ugc-moderation・data-export・public-api)。データエクスポートの文書の`matches[]`・`upvotes.json`の項目が変わったら確かめ直す。
 - GraphQLの`Match`・`MatchEntry`・`MatchProduct`・`MatchBye`の形と`MatchViewReader`(トーナメント・プロダクト詳細の開催中のマッチ)。
 - `TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`の形と置き場所、`MatchCard`・`ByeList`・`useUpvote`の引数(トーナメント・sponsorship・directory-discovery)。
-- 仮1〜仮7(2026-10-24に開発者が確定)の決定を変える場合は、該当する規則(`pairQualifiers`・`decideAtFullTime`・`decideAtKickoff`・部分一意索引・bot対策・不戦勝の一覧の説明文)を確かめ直す。
+- 仮1〜仮7(2026-10-24に開発者が確定)と仮8(2026-11-10に開発者が確定)の決定を変える場合は、該当する規則(`pairQualifiers`・`decideAtFullTime`・`decideAtKickoff`・部分一意索引・bot対策・不戦勝の一覧の説明文・自動更新の切り替えと`TopPageSectionContext.autoRefresh`)を確かめ直す。
+- 日次のジョブの所要時間(ディスパッチャの要約のログの`durationMs`)がstaging・prodで30秒を超えた、または23:40・23:45・0:00の起動の時間の予算を超えた警告が出た場合は、対象を列挙してメッセージを送るジョブと1件ずつ処理するメッセージ処理への分割を検討する。paymentsの23:40の突合の打ち切りの時間(マッチの確定に残す1分)が変わったら、確定の打ち切りの時刻を確かめ直す。
 - `core/match`の契約(`MatchDirectory`・`SupporterDirectory`・`MatchScheduler`・`MatchEventStore`・`MatchEventDispatcher`・`MatchExport`・`UpvoteExport`)と`MATCH_PLATFORM_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(後続specのapplication層が読み込むため)。
 - 上流の`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductDirectory`・`visibleProducts`、ライフサイクルの登録口、`AccountGuard`・`verifiedUsers`、`PUBLIC_PROFILE_TABS`、`useTurnstileToken`、paymentsの23:40の`order`を変えたら、本specを確かめ直す。
 
 ### 上流への影響
 
-| 上流spec            | 変更                                                                                                                                                                                                                                                      | 影響と再検証                                                                      |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| identity-auth       | `apps/api/src/composition/user-lifecycle-sync-handlers.ts`に`match-engine.account-match-closure`、`apps/event/src/composition/user-lifecycle-async-handlers.ts`に`match-engine.account-decision-follow-up`(1100)・`match-engine.upvote-erasure`(1100)     | 契約どおり。`createAsyncLifecycleRegistry`の検証(同じ種類での`order`の重複)を通る |
-| product-launch      | `apps/api/src/composition/product-lifecycle-sync-handlers.ts`に`match-engine.product-match-closure`、`apps/event/src/composition/product-lifecycle-async-handlers.ts`に`match-engine.product-decision-follow-up`(1100)・`match-engine.entry-unlink`(1100) | 契約どおり。`createProductLifecycleRegistry`の検証を通る                          |
-| user-profile-social | `apps/client/src/composition/public-profile-sections.ts`の`PUBLIC_PROFILE_TABS`に`upvotes`(20)                                                                                                                                                            | 予約どおり                                                                        |
-| frontend-platform   | `apps/client/src/routes/index.tsx`(仮のトップページ)を本specのトップページに置き換える                                                                                                                                                                    | 契約どおり。ルートの経路は変わらない                                              |
-| backend-platform    | apiの`scheduled-jobs.ts`に5つのジョブ、`wrangler.jsonc`の`triggers.crons`(3環境)に0:00・23:45、`core/messaging/contracts/index.ts`に`match.run-match-event`、eventの`message-handlers.ts`に実行器                                                         | 契約どおり。apiのCronの式の一致の検査を通る                                       |
+| 上流spec            | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                  | 影響と再検証                                                                      |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| identity-auth       | `apps/api/src/composition/user-lifecycle-sync-handlers.ts`に`match-engine.account-match-closure`、`apps/event/src/composition/user-lifecycle-async-handlers.ts`に`match-engine.account-decision-follow-up`(1100)・`match-engine.upvote-erasure`(1100)                                                                                                                                                                                                 | 契約どおり。`createAsyncLifecycleRegistry`の検証(同じ種類での`order`の重複)を通る |
+| product-launch      | `apps/api/src/composition/product-lifecycle-sync-handlers.ts`に`match-engine.product-match-closure`、`apps/event/src/composition/product-lifecycle-async-handlers.ts`に`match-engine.product-decision-follow-up`(1100)・`match-engine.entry-unlink`(1100)                                                                                                                                                                                             | 契約どおり。`createProductLifecycleRegistry`の検証を通る                          |
+| user-profile-social | `apps/client/src/composition/public-profile-sections.ts`の`PUBLIC_PROFILE_TABS`に`upvotes`(20)                                                                                                                                                                                                                                                                                                                                                        | 予約どおり                                                                        |
+| product-launch      | clientの`components/product/use-boundary-refresh.ts`(と隣の`use-boundary-refresh.browser.test.tsx`)を`components/time/`へ移し、読み込む6ファイル(`components/product/`の`my-product-list.tsx`・`launch-date-field.tsx`・`product-edit-content.tsx`・`launch-date-field.browser.test.tsx`と、`apps/client/test/`の`my-products-route.browser.test.tsx`・`edit-product-route.browser.test.tsx`)を直す。`frontend/012`の部品の表の置き場所の行を直す(G2) | 振る舞いは変えない。productのブラウザテストがそのまま通る                         |
+| frontend-platform   | `apps/client/src/routes/index.tsx`(仮のトップページ)を本specのトップページに置き換え、`components/pages/placeholder-home.tsx`と隣のテストを消す。`frontend/004`の「演出の停止手段の義務」と`frontend/010`の「止める手段」に、ページ全体で1つの切り替えを置く場合の規則を加える(G1、仮8)                                                                                                                                                               | 契約どおり。ルートの経路は変わらない。既存の区画の`Switch`の規則は変えない        |
+| backend-platform    | apiの`scheduled-jobs.ts`に5つのジョブと`SCHEDULED_RUN_BUDGETS`の23:40・23:45・0:00の予算、`wrangler.jsonc`の`triggers.crons`(3環境)に0:00・23:45、`core/messaging/contracts/index.ts`に`match.run-match-event`、eventの`message-handlers.ts`に実行器(G8)                                                                                                                                                                                              | 契約どおり。apiのCronの式の一致の検査と`createRunBudgetTable`の検査を通る         |
+| (ルート)            | `config/contract-copies.unit.test.ts`の`BOT_ACTION_COPIES`に、apiの`MATCH_BOT_ACTIONS`とclientの写しの1行を加える(G3)                                                                                                                                                                                                                                                                                                                                 | 既存の照合と同じ形                                                                |
 
-- 上流specの文書の変更は無い。roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は1100・1110、波及処理は1100」になる(本specはroadmapを編集しないため、コントローラーへ報告する)。
+- 上流specの`design.md`・`tasks.md`の変更は無い(上の技術ドキュメントの規則の追記と部品の移設は、本specのタスクが行う)。roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は1100・1110、波及処理は1100」になる(本specはroadmapを編集しないため、コントローラーへ報告する)。
 
 ## Architecture
 
@@ -154,11 +159,11 @@ graph TB
 
 - Selected pattern: クリーンアーキテクチャ。マッチの状態・決着・ペアリングは`core/match`の純粋な関数、ユースケースはポート越しにD1・product-launch・identity-authを使う。Upvoteと即時の終了は、条件を`CASE`式と集合の更新に埋め込んだ1つの一括の書き込みで確定する。マッチイベントはproduct-launchのプロダクトライフサイクルと同じ形(イベントの記録・非同期の実行器・日次の送り直し)にする。
 - Domain/feature boundaries: マッチ・Upvote・ペアリング・マッチイベント・トップページは本spec、ローンチとプロダクトはproduct-launch、ブラケットはトーナメントのspec、通知はnotifications、利用者の表示はuser-profile-social。
-- Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`の実装と共有の束縛、`<spec名>.<名詞句>`の処理とジョブの名前、`<ドメイン>.<動詞句>`のメッセージ種別、帯の`order`、登録箇所への追記による拡張(`CATEGORY_SECTIONS`・`PUBLIC_PROFILE_TABS`と同じ形)、`CASE`式による取り消し、`encodeCursor`のカーソル、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得。
+- Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`の実装と共有の束縛、`<spec名>.<名詞句>`の処理とジョブの名前、`<ドメイン>.<動詞句>`のメッセージ種別、帯の`order`、登録箇所への追記による拡張(`CATEGORY_SECTIONS`・`PUBLIC_PROFILE_TABS`と同じ形)、`CASE`式による取り消し、`encodeCursor`のカーソル、`LIVE_REFRESH_QUERY_OPTIONS`の定期再取得、`useBoundaryRefresh`による境界の取り直し、bot判定の操作名(apiの`resolver-support.ts`を正とし、clientの`bot-actions.ts`の写しを`config/contract-copies.unit.test.ts`で照合する)、ジョブの打ち切り(起動の予定時刻からの時間の上限、paymentsの突合と同じ形)、E2Eの`triggerScheduled`による定期実行の起動。
 - New components rationale: 側の集計値はトップページの読み取りをマッチの数に比例させるため(research.mdの比較)。同期の処理は退会・停止・非公開化と同時に受け付けを止めるため。マッチイベントは通知・トーナメント・ディレクトリが本specのデータを見張らずに知るため。区画の登録口は型の拡張を禁じるapi-gatewayの規約とトップページの所有の規則のもとで後続specが区画を加えるため。
 - Steering compliance: Inversifyの`@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・部分一意索引)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、新しいパッケージなし。
 
-**Dependency direction**: `apps/common-lib/match` → `apps/db/schema/match` → `backend-lib/core/match` → `backend-lib/workers/match` → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib`は他の層を読み込まない。`core/match`はD1と`workers`を読み込まない(`BusinessTime`と型だけ)。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが使う照会・予定の作成・イベントの記録と送信・エクスポートの契約と識別子`MATCH_PLATFORM_TYPES`は`core/match`に置き、`workers/match`にはD1・Queueの実装と束縛だけを置く(identity-authの`core/identity`と同じ配置)。application層は`core/match`だけを読み込む。clientは`common-lib`とGraphQLの操作だけを読み込む。違反はレビューで誤りとして扱う。
+**Dependency direction**: `apps/db/schema/match` → `backend-lib/core/match` → `backend-lib/workers/match` → 各アプリの`src`(`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`core/match`はD1と`workers`を読み込まない(`BusinessTime`と型だけ)。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが使う照会・予定の作成・イベントの記録と送信・エクスポートの契約と識別子`MATCH_PLATFORM_TYPES`は`core/match`に置き、`workers/match`にはD1・Queueの実装と束縛だけを置く(identity-authの`core/identity`と同じ配置)。application層は`core/match`だけを読み込む。clientは`common-lib`・GraphQLの操作と、apiの値の写し(`components/match/bot-actions.ts`、照合はルートの`config/contract-copies.unit.test.ts`)だけを読み込む。違反はレビューで誤りとして扱う。
 
 ### Technology Stack
 
@@ -176,7 +181,6 @@ graph TB
 
 ```
 apps/
-├── common-lib/match/match-actions.ts                         # UPVOTE_BOT_ACTION('match_upvote')(*.unit.test.ts)
 ├── db/schema/match/                                          # テーブル定義(各ファイルに同名の*.unit.test.ts)
 │   ├── matches.ts                                            # 種別・実施日・ラウンド・段階・開始と終了・開始の記録・確定・決着
 │   ├── match-entries.ts                                      # 側・ローンチ・プロダクト・投稿者・集計値・該当・結果
@@ -235,6 +239,7 @@ apps/
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts
 │   │   ├── errors.ts
+│   │   ├── resolver-support.ts                               # MATCH_BOT_ACTIONS(正)・assertHuman
 │   │   ├── match-views.ts                                    # Match・MatchEntry・MatchProductのリゾルバとmatchViewLoader
 │   │   ├── board-resolvers.ts                                # qualifierBoard
 │   │   ├── upvote-resolvers.ts                               # upvote・cancelUpvote
@@ -259,7 +264,8 @@ apps/
 │   ├── composition/top-page-sections.ts                      # TOP_PAGE_SECTIONS(初版は本specの2件)・QUALIFIER_LIST_INSERTS(初版は空)
 │   ├── components/top/                                       # 1ファイル1コンポーネント(browser testを併置)
 │   │   ├── top-page-section-types.ts                         # 登録の型(テストなし)
-│   │   ├── top-page.tsx                                      # 置き場所ごとの区画の描画
+│   │   ├── top-page.tsx                                      # 置き場所ごとの区画の描画・自動更新の状態・境界の取り直し
+│   │   ├── auto-refresh-switch.tsx                           # ページ全体で1つの「自動更新」の切り替え(仮8)
 │   │   ├── full-time-countdown.tsx
 │   │   ├── guest-hero.tsx
 │   │   ├── qualifier-section.tsx                             # 予選の一覧・差し込み・不戦勝・空の状態
@@ -280,8 +286,10 @@ apps/
 │   │   ├── team-colors.ts                                    # 配色の一覧(*.unit.test.ts)
 │   │   ├── match-labels.ts                                   # 種別・段階・結果の文言(*.unit.test.ts)
 │   │   ├── use-upvote.ts                                     # Upvote・付け替え・取り消しのフック
-│   │   ├── use-server-countdown.ts                           # サーバーの時刻に合わせた残り時間
-│   │   └── stadium.css                                       # 演出のkeyframesと視差効果の軽減
+│   │   ├── use-server-countdown.ts                           # サーバーの時刻に合わせた残り時間(取り直しは持たない)
+│   │   ├── bot-actions.ts                                    # MATCH_BOT_ACTIONSの写し(照合はconfig/contract-copies.unit.test.ts)
+│   │   └── stadium.css                                       # 演出のkeyframes。祖先のdata-auto-refresh="on"の下で、視差効果を減らす設定でないときだけ動く
+│   ├── components/time/use-boundary-refresh.ts               # (移設)product-launchの部品をproductとmatchが使う中立の場所へ移す(隣のテストも移す)
 │   ├── components/upvote-history/
 │   │   ├── upvote-history-count.tsx
 │   │   ├── upvote-history-panel.tsx
@@ -293,8 +301,8 @@ apps/
 │       ├── cancel-upvote.graphql                             # mutation ClientCancelUpvote(cancelUpvote)
 │       └── upvote-history.graphql                            # query ClientUpvoteHistory(upvoteHistory)
 e2e/
-├── client/match.e2e.test.ts                                  # Upvote・付け替え・取り消し・自分のマッチ・Upvote履歴
-└── support/match-fixtures.ts                                 # ローカルD1にマッチ中のマッチを作る補助
+├── admin/match-upvotes.e2e.test.ts                           # 管理画面の対象のテスト(専用のカテゴリを作る管理者の用意を、最上位管理者が1人の状態を前提にする管理画面のテストと並行させないため)。利用者側はclient-page-test.tsのclientPageと同じ作り方の文脈で操作する
+└── client/match-steps.ts                                     # 当日のローンチへの書き換え・定期実行の起動・トップページとUpvote履歴の操作の手順
 docs/GUIDES/tech/
 ├── backend/014-time-boxed-voting.md
 └── frontend/013-live-scoreboard.md
@@ -306,10 +314,13 @@ docs/GUIDES/tech/
 
 - `apps/db/schema/index.ts`・`apps/db/migrations/<日時>_match_engine/migration.sql` — 6テーブルの再エクスポートと、生成したマイグレーション(CHECK・部分一意索引)。mainの最新を取り込んでから生成する。
 - `apps/backend-lib/core/messaging/contracts/index.ts` — `RUN_MATCH_EVENT_MESSAGE`。
-- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`user-lifecycle-sync-handlers.ts`・`product-lifecycle-sync-handlers.ts` — `MATCH_PLATFORM_MODULE`・`MATCH_MODULE`・`matchSchemaModule`・5つのジョブ・2つの同期の処理。
+- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`user-lifecycle-sync-handlers.ts`・`product-lifecycle-sync-handlers.ts` — `MATCH_PLATFORM_MODULE`・`MATCH_MODULE`・`matchSchemaModule`・5つのジョブと`SCHEDULED_RUN_BUDGETS`の23:40・23:45・0:00の予算(各300,000ms)・2つの同期の処理。
+- `config/contract-copies.unit.test.ts` — `BOT_ACTION_COPIES`に`MATCH_BOT_ACTIONS`(apiの`modules/match/resolver-support.ts`とclientの`components/match/bot-actions.ts`)。
 - `apps/api/wrangler.jsonc` — `triggers.crons`(local・staging・prod)に`0 8 * * *`(0:00)・`45 7 * * *`(23:45)。`40 7 * * *`(23:40)・`21 12 * * *`(4:21)は上流で追加済み。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`user-lifecycle-async-handlers.ts`・`product-lifecycle-async-handlers.ts` — `MATCH_PLATFORM_MODULE`・eventの束縛・実行器・4つの非同期の処理。
-- `apps/client/src/routes/index.tsx` — 仮のトップページを本specのトップページに置き換える。
+- `apps/client/src/routes/index.tsx` — 仮のトップページを本specのトップページに置き換える。`components/pages/placeholder-home.tsx`と`placeholder-home.browser.test.tsx`を消す。
+- `apps/client/src/components/product/use-boundary-refresh.ts`(と隣の`use-boundary-refresh.browser.test.tsx`)→`components/time/` — 移設し、読み込む6ファイル(`components/product/`の`my-product-list.tsx`・`launch-date-field.tsx`・`product-edit-content.tsx`・`launch-date-field.browser.test.tsx`、`apps/client/test/`の`my-products-route.browser.test.tsx`・`edit-product-route.browser.test.tsx`)を直す。振る舞いは変えない。
+- `docs/GUIDES/tech/frontend/004-accessibility-rules.md`・`010-live-refresh-queries.md` — 「演出の停止手段の義務」「止める手段」に、定期的に取り直す区画が複数あるページではページの上部に1つの切り替えを置き、状態を各区画へ渡して各区画の見出しの近くには置かないことを許す規則と、切り替えが止める範囲(定期の取り直し・数値の毎秒の更新・演出)を加える。`012-business-date-calendar.md` — 部品の表の`useBoundaryRefresh`の置き場所を、複数のドメインが使う場合の画面のアプリの中立の場所に直す。
 - `apps/client/src/composition/public-profile-sections.ts` — `{ id: 'upvotes', label: 'Upvote履歴', order: 20, Count: UpvoteHistoryCount, Panel: UpvoteHistoryPanel }`。
 - `docs/GUIDES/tech/backend/README.md`・`frontend/README.md` — 文書一覧の行。
 - `docs/onboardings/project-values.md` — 波及処理・処理・ジョブの名前と`order`、bot対策の`action`、メッセージ種別。
@@ -386,14 +397,17 @@ sequenceDiagram
     K->>Q: started または decided のイベントを送信
 ```
 
-- `match-engine.match-settlement`(23:40、1100): 種別によらず`started_at IS NOT NULL AND decided_at IS NULL AND ends_at <= 実行時刻`のマッチを100件ずつ読み、`decideAtFullTime`で決め、1マッチにつき側の結果の更新(`decided_at IS NULL`の条件付き)・マッチの確定(`decided_at`・`decision`)・`decided`のイベントの挿入(`onConflictDoNothing()`)を50マッチずつの一括の書き込みにする。確定した後にイベントを送る(4.1〜4.5・4.8)。
-- `match-engine.qualifier-pairing`(23:45、1100): 先に確定を同じ処理で行い、行ったマッチがあれば`match-settlement-late`を報告する(4.9)。続いて翌日のペアリング(System Flows「ペアリング」)を行う(2.1〜2.7)。
-- `match-engine.match-kickoff`(0:00、1100): 当日の`qualifier_pairings`が完了していなければ先にペアリングし`qualifier-pairing-late`を報告する(2.8)。続いて`started_at IS NULL AND decided_at IS NULL AND starts_at <= 実行時刻`のマッチを100件ずつ読み、`EntryEligibilityChecker`で側の該当を判定し、`decideAtKickoff`の結果で開始(`started_at`と`started`のイベント)または決着(`started_at`・`decided_at`・`decision`・側の結果と`decided`のイベント)を書き込む(3.1〜3.7)。
+- 時刻の扱い(3つのジョブ共通): 対象の業務日付(ペアリングの「翌日」・開始の回復の「当日」)は起動の予定時刻(`ScheduledJobContext.business.date`、`scheduledTime`の業務日付)から求め、起動が遅れて日付をまたいでも変わらない。開始・終了の日時と比べる「実行時刻」は`Clock.now()`で、予定時刻より前に起こしても開始の日時の前のマッチを開始しない(3.1)。打ち切りの時刻は予定時刻から求める(paymentsの突合と同じ形)。
+- `match-engine.match-settlement`(23:40、1100): 種別によらず`started_at IS NOT NULL AND decided_at IS NULL AND ends_at <= 実行時刻`のマッチを100件ずつ読み、`decideAtFullTime`で決め、1マッチにつき側の結果の更新(`decided_at IS NULL`の条件付き)・マッチの確定(`decided_at`・`decision`)・`decided`のイベントの挿入(`onConflictDoNothing()`)を50マッチずつの一括の書き込みにする。確定した後にイベントを送る(4.1〜4.5・4.8)。paymentsの突合が予定時刻から4分で打ち切って残す1分に収めるため、100件の読み取りの前ごとに打ち切りの時刻(予定時刻から4分50秒、`MATCH_SETTLEMENT_TIME_LIMIT_MS`)を確かめ、過ぎていれば残りを23:45のジョブの先頭の確定に任せて終える(打ち切ったことと件数をwarnのログに出す。報告は23:45の`match-settlement-late`が行う、4.9)。
+- `match-engine.qualifier-pairing`(23:45、1100): 先に確定を同じ処理で行い、行ったマッチがあれば`match-settlement-late`を報告する(4.9)。この確定は打ち切らない。続いて予定時刻の業務日付の翌日のペアリング(System Flows「ペアリング」)を行う(2.1〜2.7)。
+- `match-engine.match-kickoff`(0:00、1100): 予定時刻の業務日付(当日)の`qualifier_pairings`が完了していなければ先にペアリングし`qualifier-pairing-late`を報告する(2.8)。続いて`started_at IS NULL AND decided_at IS NULL AND starts_at <= 実行時刻`のマッチを100件ずつ読み、`EntryEligibilityChecker`で側の該当を判定し、`decideAtKickoff`の結果で開始(`started_at`と`started`のイベント)または決着(`started_at`・`decided_at`・`decision`・側の結果と`decided`のイベント)を書き込む(3.1〜3.7)。
 - 3つのジョブは処理の先頭で、確定済みで`decided`のイベントが無いマッチ(直近2日)のイベントを作って送る(`MatchEventStore.createMissingDecidedEvents`、5.5)。2回実行しても結果が変わらない。
+- イベントの送信は書き込みの50マッチごとに`MatchEventDispatcher.publish`へ渡し、送信は6件までを並行して行う(1件ずつの送信を直列にすると、1日のマッチ数で1つのジョブの目安の30秒を超え得るため。6件はWorkersの1回の起動で同時に開ける接続の上限で、Queuesへの送信もこれに数えられる)。送れなかったイベントは`pending`のまま残り、次のジョブの先頭の掃き出しと4:21の送り直しが拾う。
+- 時間の予算: apiの`SCHEDULED_RUN_BUDGETS`に23:40・23:45・0:00の起動(各300,000ms)を加え、超えたらディスパッチャの警告を受ける(`infra/003`の「同じ時刻のジョブ群の時間の予算」)。想定の規模は1日のローンチ数千件(マッチ数千数百件)までで、読み取り100件・書き込み50マッチの単位で1つのジョブを30秒の目安に収める。超えた場合はRevalidation Triggersに従い分割を検討する。
 
 ### ペアリング
 
-- `QualifierPairingService.pair(date)`: (1)`qualifier_pairings`の行を`onConflictDoNothing()`で作り、完了済みなら終える。(2)`ScheduledLaunchDirectory.listForDate`を500件ずつ全件読む。(3)`PairingStore.pairedLaunchIds(date)`で既にその日の予選に組まれたローンチを除く(2.7)。(4)`pairQualifiers(launches, random)`。(5)`MatchScheduler.schedule`で50マッチずつ書き込み、送る。(6)行を完了にする。
+- `QualifierPairingService.pair(date)`: (1)`qualifier_pairings`の行を`onConflictDoNothing()`で作る。完了済みでも(2)〜(5)を行い、組まれていないローンチだけを組む(2.7。23:40の締め切りの後にその日のローンチは増えないため、本番の再実行では組む対象が無く何も書かない。ローカルのE2Eは同じ日に繰り返しても新しいローンチを組める)。(2)`ScheduledLaunchDirectory.listForDate`を500件ずつ全件読む。(3)`PairingStore.pairedLaunchIds(date)`で既にその日の予選に組まれたローンチを除く(2.7)。(4)`pairQualifiers(launches, random)`。(5)`MatchScheduler.schedule`で50マッチずつ書き込み、送る。(6)行を完了にする(既に完了なら最初の完了の日時を保ち、件数だけを足す)。0:00の回復の判定(2.8)は完了の有無だけを見る。
 - `pairQualifiers`: カテゴリのIDごとに分け、各カテゴリをFisher–Yatesで並べ替えて先頭から2つずつ組み、奇数なら末尾の1つ(並べ替えの結果で無作為に決まる)を余りにする。余りを集めて並べ替え、2つずつ組み、最後に残った1つを不戦勝(側が1つのマッチ)にする(2.2〜2.4、仮1・仮5)。カテゴリの処理の順はIDの昇順(並べ替えの結果に影響しない)。
 - `RandomSource.nextInt(n)`は`crypto.getRandomValues`の32ビット値を棄却法で偏りなく0〜n−1にする(2.5)。
 
@@ -452,7 +466,8 @@ sequenceDiagram
 | 8.1, 8.2, 8.11, 8.12, 8.13, 8.15               | 予選の一覧と結果               | QualifierBoardReader、BoardOrder、QualifierSection、ByeList、EmptyLineup                           | `qualifierBoard`                                                                                           | —                          |
 | 8.3, 8.4, 8.5, 8.6, 8.18, 8.19                 | 対戦カード                     | MatchCard、MatchStage、ProductPanel、UpvoteButton、VoteBar、StadiumPitch、MatchViews               | `Match`・`MatchProduct`                                                                                    | —                          |
 | 8.7, 8.8, 8.9                                  | 操作と通知                     | UseUpvote、UpvoteButton                                                                            | `LoginRequiredDialog`・`notify`                                                                            | Upvote・付け替え・取り消し |
-| 8.10, 8.14                                     | 取り直しと時刻                 | TopPage、UseServerCountdown、FullTimeCountdown                                                     | `LIVE_REFRESH_QUERY_OPTIONS`・`serverTime`                                                                 | —                          |
+| 8.10, 8.14                                     | 取り直しと時刻                 | TopPage、QualifierBoardReader、UseServerCountdown、FullTimeCountdown、UseBoundaryRefresh           | `LIVE_REFRESH_QUERY_OPTIONS`・`serverTime`・`useBoundaryRefresh`・`awaitingKickoff`                        | —                          |
+| 8.20                                           | 自動更新と演出の停止(仮8)      | AutoRefreshSwitch、TopPage、FullTimeCountdown、MatchStage、TopPageSections                         | `TopPageSectionContext.autoRefresh`・`data-auto-refresh`                                                   | —                          |
 | 8.16, 8.17                                     | 描画とエラー・未ログインの案内 | TopPageRoute、GuestHero                                                                            | `ensureQueryData`                                                                                          | —                          |
 | 9.1, 9.2, 9.3, 9.4, 9.6                        | 構成と区画の登録口             | TopPage、TopPageSections、QualifierSection                                                         | `TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`                                                              | —                          |
 | 9.7                                            | 不戦勝の説明文の切り替え       | ByeList、ByeCard                                                                                   | `MatchBye.match.kind`・`MatchBye.reason`                                                                   | —                          |
@@ -475,7 +490,7 @@ sequenceDiagram
 
 | Component                                                                                                                                                    | Domain/Layer                                        | Intent                                               | Req Coverage                                             | Key Dependencies                                   | Contracts      |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------- | -------------- |
-| MatchActions                                                                                                                                                 | common-lib                                          | bot対策の`action`                                    | 6.1, 6.4                                                 | —                                                  | Service        |
+| MatchBotActions                                                                                                                                              | api/presentation・client(写し)                      | bot対策の`action`                                    | 6.1, 6.4                                                 | —                                                  | Service        |
 | MatchSchema・MatchQueries                                                                                                                                    | db                                                  | 6テーブルと予選の勝利の部品                          | 1.1, 1.2, 1.6, 6.2, 7.4, 12.7                            | identity-auth (P0)、product-launch (P0)            | State          |
 | MatchModel・MatchDecision・QualifierPairing                                                                                                                  | backend-lib/core                                    | 状態・決着・ペアリングの純粋な規則                   | 1.3, 1.5, 2.2〜2.6, 3.2〜3.4, 4.2〜4.5                   | BusinessTime (P0)                                  | Service        |
 | MatchEventContract・MatchMessage                                                                                                                             | backend-lib/core                                    | イベントの型と登録の検証                             | 11.1, 11.2, 11.6                                         | identity-auth (P1)                                 | Event          |
@@ -488,20 +503,29 @@ sequenceDiagram
 | MatchClosureStatements・AccountMatchClosureSyncHandler・ProductMatchClosureSyncHandler                                                                       | api/infrastructure                                  | 即時の終了と該当の記録                               | 5.1〜5.4, 5.6, 7.1〜7.3                                  | identity-auth (P0)、product-launch (P0)            | Event          |
 | MatchSchemaModule(MatchErrors・MatchViews・BoardResolvers・UpvoteResolvers・UpvoteHistoryResolvers)                                                          | api/presentation                                    | GraphQLの型と操作                                    | 6.\*, 8.\*, 9.5, 10.\*                                   | api-gateway (P0)                                   | API            |
 | MatchEventRunner・QualifierOutcomeHandler・DecisionFollowUpHandlers・UpvoteErasureHandler・EntryUnlinkHandler・D1MatchPurgeStore・MatchEventHandlers         | event                                               | 実行器・結果の記録・後続・物理削除                   | 4.6, 4.7, 5.5, 7.5, 11.2〜11.4, 12.1, 12.9               | LaunchOutcomeRecorder (P0)                         | Event, Batch   |
-| TopPageRoute・TopPage・TopPageSections・FullTimeCountdown・GuestHero・QualifierSection・SectionHeading・EmptyLineup                                          | client                                              | トップページと区画の登録口                           | 8.1, 8.2, 8.10〜8.17, 9.1〜9.4, 9.6                      | QualifierBoard (P0)                                | State          |
-| MatchCard・MatchStage・ProductPanel・UpvoteButton・VoteBar・ByeList・ByeCard・StadiumPitch・TeamColors・MatchLabels・UseUpvote・UseServerCountdown           | client                                              | 対戦カードと操作の部品                               | 8.3〜8.9, 8.13, 8.14, 8.18, 8.19, 9.5, 9.7               | useTurnstileToken (P0)、LoginRequiredDialog (P0)   | State          |
+| TopPageRoute・TopPage・AutoRefreshSwitch・TopPageSections・FullTimeCountdown・GuestHero・QualifierSection・SectionHeading・EmptyLineup                       | client                                              | トップページと区画の登録口                           | 8.1, 8.2, 8.10〜8.17, 8.20, 9.1〜9.4, 9.6                | QualifierBoard (P0)                                | State          |
+| MatchCard・MatchStage・ProductPanel・UpvoteButton・VoteBar・ByeList・ByeCard・StadiumPitch・TeamColors・MatchLabels・UseUpvote・UseServerCountdown           | client                                              | 対戦カードと操作の部品                               | 8.3〜8.9, 8.13, 8.14, 8.18〜8.20, 9.5, 9.7               | useTurnstileToken (P0)、LoginRequiredDialog (P0)   | State          |
 | UpvoteHistoryCount・UpvoteHistoryPanel・UpvoteHistoryItem                                                                                                    | client                                              | 公開プロフィールのUpvote履歴                         | 10.\*                                                    | PUBLIC_PROFILE_TABS (P0)                           | State          |
 | MatchTechDocs・MatchServiceSpecs                                                                                                                             | docs                                                | 技術ドキュメントとサービス仕様                       | 13.4, 13.5                                               | —                                                  | —              |
 
-### common-lib・db
+### bot対策の操作名・db
 
-#### MatchActions・MatchSchema・MatchQueries
+#### MatchBotActions・MatchSchema・MatchQueries
 
 **Contracts**: Service [x] / State [x]
 
 ```typescript
-// common-lib/match/match-actions.ts
-export declare const UPVOTE_BOT_ACTION: 'match_upvote'; // Upvote・付け替え・取り消しで共通(仮6)
+// api/src/presentation/graphql/modules/match/resolver-support.ts(正)
+export declare const MATCH_BOT_ACTIONS: Readonly<{ upvote: 'match_upvote' }>; // Upvote・付け替え・取り消しで共通(仮6)
+export type MatchBotAction =
+  (typeof MATCH_BOT_ACTIONS)[keyof typeof MATCH_BOT_ACTIONS];
+export declare function assertHuman(
+  context: GraphQLContext,
+  action: MatchBotAction,
+): Promise<void>;
+
+// client/src/components/match/bot-actions.ts(写し。一致はルートのconfig/contract-copies.unit.test.tsのBOT_ACTION_COPIESが確かめる)
+export declare const MATCH_BOT_ACTIONS: Readonly<{ upvote: 'match_upvote' }>;
 
 // db/schema/match/match-queries.ts
 export declare function qualifierWins(): SQLSubquery<{
@@ -833,7 +857,7 @@ export interface MatchEventStore {
   deleteCompletedBefore(completedBefore: Date, limit: number): Promise<number>; // 処理の記録とイベント
 }
 export interface MatchEventDispatcher {
-  publish(eventIds: readonly string[]): Promise<void>; // 1件ずつ送り、失敗はwarnのログ(イベントのIDだけ)を残して続ける。pendingのまま残り4:21に送り直される
+  publish(eventIds: readonly string[]): Promise<void>; // 1件ずつのメッセージを6件まで並行して送り(MATCH_EVENT_PUBLISH_CONCURRENCY)、失敗はwarnのログ(イベントのIDだけ)を残して続ける。pendingのまま残り、次のジョブの掃き出しと4:21に送り直される
 }
 // core/match/identifiers.ts
 export declare const MATCH_PLATFORM_TYPES: {
@@ -1024,14 +1048,14 @@ export interface UpvoteService {
 
 - `upvote`の手順: (1)`findState`(無ければ`match_not_found`)。(2)側がマッチのものでなければ`validation_error`。(3)`phase`が`live`でなければ`upvote_not_accepting`、利用者がどちらかの側の投稿者なら`upvote_own_match`。(4)`decideUpvote`。`none`なら終える。(5)`apply`。`duplicate`は成功として扱う。`rejected`は`findState`で読み直して(3)の順に分類し、どれにも当たらなければ`account_unavailable`(6.5〜6.9)。
 - `cancel`: `nothing`なら読み直して`phase`が`live`でなければ`upvote_not_accepting`、それ以外は成功(有効なUpvoteが無い)。
-- リゾルバが`requireVerifiedUser`(未ログイン・停止中・未確認を拒否、6.7)と`assertHuman(UPVOTE_BOT_ACTION)`(6.1・6.4)を先に行い、成功後に`MatchViewReader`で更新後のマッチを返す。
+- リゾルバが`requireVerifiedUser`(未ログイン・停止中・未確認を拒否、6.7)と`assertHuman(context, MATCH_BOT_ACTIONS.upvote)`(6.1・6.4)を先に行い、成功後に`MatchViewReader`で更新後のマッチを返す。
 
 #### MatchViewReader・QualifierBoardReader・UpvoteHistoryReader
 
-| Field        | Detail                                                           |
-| ------------ | ---------------------------------------------------------------- |
-| Intent       | マッチの表示の組み立て・トップページの予選・Upvote履歴           |
-| Requirements | 6.10, 8.1, 8.2, 8.3, 8.4, 8.5, 8.11, 8.12, 8.13, 9.5, 10.2〜10.8 |
+| Field        | Detail                                                                 |
+| ------------ | ---------------------------------------------------------------------- |
+| Intent       | マッチの表示の組み立て・トップページの予選・Upvote履歴                 |
+| Requirements | 6.10, 8.1, 8.2, 8.3, 8.4, 8.5, 8.10, 8.11, 8.12, 8.13, 9.5, 10.2〜10.8 |
 
 **Contracts**: Service [x]
 
@@ -1107,6 +1131,7 @@ export interface QualifierBoard {
   readonly phase: 'live' | 'result'; // 23:40より前はlive
   readonly fullTimeAt: Date;
   readonly nextKickoffAt: Date;
+  readonly awaitingKickoff: boolean; // 当日のペアリングが未完了、または開始の日時を過ぎて未開始・未確定の当日の予選がある(0:00のジョブの完了を待つ間)
   readonly heldCount: number;
   readonly cards: readonly MatchView[];
   readonly byes: readonly {
@@ -1154,7 +1179,7 @@ export interface UpvoteHistoryReader {
 
 - 閲覧者の状態(停止中・メールアドレスの確認)は`CurrentUser.user`から読み、`viewerRestriction`に渡す。
 - `findViews`: `MatchDirectory.findMatches`→プロダクトのIDを集めて`ProductDirectory.findSummaries(ids, 'visible')`(90件ずつ1回)→閲覧者がいれば`MatchBoardStore.viewerUpvotes`でそのマッチの有効なUpvoteを1回で引く→`viewerRestriction`。表示できないプロダクトは`product: null`(8.19)。`isViewerOwn`は側の`ownerUserId`と閲覧者の一致(8.5)。トーナメント・プロダクト詳細もこれを使う(9.5)。
-- `QualifierBoardReader.read`: 今日の業務日付の予選を`MatchDirectory.listForDate`で読み、`started_at`のあるものだけを`orderBoard`で並べ、`findViews`で組み立てる(8.1・8.2・8.11〜8.13)。`phase`は業務時刻が23:40以降で`result`、`fullTimeAt`は今日の23:40、`nextKickoffAt`は明日の0:00(8.12)。
+- `QualifierBoardReader.read`: 今日の業務日付の予選を`MatchDirectory.listForDate`で読み、`started_at`のあるものだけを`orderBoard`で並べ、`findViews`で組み立てる(8.1・8.2・8.11〜8.13)。`phase`は業務時刻が23:40以降で`result`、`fullTimeAt`は今日の23:40、`nextKickoffAt`は明日の0:00(8.12)。`awaitingKickoff`は、`PairingStore.isDayCompleted(今日)`が偽、または同じ読み取りの中に`started_at`も`decided_at`も無く`starts_at`が現在以前の予選がある場合に真(境界の直後にジョブの完了を待って取り直すため、8.10)。
 - `UpvoteHistoryReader.read`: `UserProfileDirectory.resolveHandle`で利用者を引き、退会済み・不在、または停止中で閲覧者が本人でなければ`null`(10.8)。`UpvoteHistoryStore`で、有効なUpvoteを`match_entries`・`products`・`users`と結合し`visibleProducts()`で絞り(紐付けの解除済みは内部結合で除く、10.6)、`(match_date DESC, upvoted_at DESC, id DESC)`のカーソルで20件ずつ読む(10.2)。件数とページ内の日付ごとの件数も同じ条件で数える。
 - 各ユースケースは利用者をセッションではなく引数で受け取る。
 
@@ -1245,13 +1270,14 @@ export interface EntryEligibilityChecker {
 
 | ジョブの名前                     | 時刻  | `order` | 処理                                                                                                                                                                                       |
 | -------------------------------- | ----- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `match-engine.match-settlement`  | 23:40 | 1100    | 掃き出し→`MatchSettlement.settleDue(now)`(100件ずつ、無くなるまで)→送信(4.1〜4.5・4.8)                                                                                                     |
-| `match-engine.qualifier-pairing` | 23:45 | 1100    | 掃き出し→`settleDue`(確定したマッチがあれば`match-settlement-late`を報告、4.9)→`QualifierPairingService.pair(明日)`(2.1〜2.7)                                                              |
-| `match-engine.match-kickoff`     | 0:00  | 1100    | 掃き出し→今日のペアリングが未完了なら`pair(今日)`と`qualifier-pairing-late`の報告(2.8)→`MatchKickoff.kickoffDue(now)`(100件ずつ)→送信(3.1〜3.7)                                            |
+| `match-engine.match-settlement`  | 23:40 | 1100    | 掃き出し→`MatchSettlement.settleDue(now, deadline)`(100件ずつ、無くなるか予定時刻から4分50秒の打ち切りまで)→送信(4.1〜4.5・4.8)                                                            |
+| `match-engine.qualifier-pairing` | 23:45 | 1100    | 掃き出し→`settleDue`(確定したマッチがあれば`match-settlement-late`を報告、4.9)→`QualifierPairingService.pair(予定時刻の業務日付の翌日)`(2.1〜2.7)                                          |
+| `match-engine.match-kickoff`     | 0:00  | 1100    | 掃き出し→予定時刻の業務日付のペアリングが未完了なら`pair(その日)`と`qualifier-pairing-late`の報告(2.8)→`MatchKickoff.kickoffDue(now)`(100件ずつ)→送信(3.1〜3.7)                            |
 | `match-engine.event-redispatch`  | 4:21  | 1100    | 掃き出し(直近2日)→最後の送信から1時間以上`pending`のイベントを100件まで送り直し`markRedispatched`。終了の日時から1時間を過ぎて未確定のマッチがあれば`match-settlement-overdue`を報告(11.4) |
 | `match-engine.event-cleanup`     | 4:21  | 1110    | 完了から30日を過ぎたイベントと処理の記録を500件ずつ、最大10回削除(11.5)                                                                                                                    |
 
-- Trigger: apiのCron Triggers(0:00は`0 8 * * *`、23:40は`40 7 * * *`、23:45は`45 7 * * *`、4:21は`21 12 * * *`)。23:40はpaymentsの`payments.checkout-reconciliation`(10)の後に動く(4.8)。`order`は帯の1100番台(12.9)。ジョブの名前と順序は日次タイムラインに載せる。全てのジョブは2回実行しても結果が変わらない(3.7・4.9)。
+- Trigger: apiのCron Triggers(0:00は`0 8 * * *`、23:40は`40 7 * * *`、23:45は`45 7 * * *`、4:21は`21 12 * * *`)。23:40はpaymentsの`payments.checkout-reconciliation`(10)の後に動く(4.8)。`order`は帯の1100番台(12.9)。ジョブの名前と順序は日次タイムラインに載せる。全てのジョブは2回実行しても結果が変わらない(3.7・4.9)。表の`now`は`Clock.now()`、対象日は`ScheduledJobContext.business.date`、`deadline`は`scheduledTime`に`MATCH_SETTLEMENT_TIME_LIMIT_MS`を足した時刻(System Flows「日次の処理」の時刻の扱い)。
+- `MatchSettlement.settleDue(now, deadline?)`: 100件の読み取りの前ごとに`Clock.now()`が`deadline`以降なら残りを残して終え、`{ settled, truncated }`を返す。23:45のジョブの先頭の確定は`deadline`を渡さない。
 - `MatchKickoff.kickoffDue`: `listDue`→`EntryEligibilityChecker.forfeitedEntries`→各マッチの`decideAtKickoff`→`writeKickoffs`(`started_at IS NULL AND decided_at IS NULL`の条件付き)。開始の日時から10分を過ぎて開始したマッチがあれば`match-kickoff-late`を報告する(3.7)。
 - `EntryEligibility`(`entry-eligibility.ts`): System Flows「即時の終了と開始時点の決着」の判定を、`ProductDirectory.findSummaries`(`not-deleted`)と、予選の側だけ`listLaunches`で1回ずつ行う(3.6)。
 
@@ -1415,6 +1441,7 @@ type QualifierBoard {
   phase: QualifierBoardPhase!
   fullTimeAt: DateTime!
   nextKickoffAt: DateTime!
+  awaitingKickoff: Boolean!
   heldCount: Int!
   matches: [Match!]!
   byes: [MatchBye!]!
@@ -1466,7 +1493,7 @@ type Mutation {
 | `upvoteHistory`          | client     | 不要                  | なし              | `validation_error`(`first`は1〜20)・`invalid_cursor`                                                                                                                    |
 | `upvote`・`cancelUpvote` | client     | `requireVerifiedUser` | `match_upvote`    | `unauthenticated`・`email_not_verified`・`account_unavailable`・`bot_verification_*`・`validation_error`・`match_not_found`・`upvote_not_accepting`・`upvote_own_match` |
 
-- 呼び出し元が`client`でなければ`forbidden`。bot対策はログインと状態の確認の後に`context.assertHuman(UPVOTE_BOT_ACTION)`で行う(6.1・6.4)。
+- 呼び出し元が`client`でなければ`forbidden`。bot対策はログインと状態の確認の後に`resolver-support.ts`の`assertHuman(context, MATCH_BOT_ACTIONS.upvote)`で行う(6.1・6.4)。
 - `MatchViews`(`match-views.ts`): `Match`・`MatchEntry`・`MatchProduct`の項目のリゾルバ(`MatchProduct.logo`は`mediaFileLoader`→`toMediaImage`、`category`は`productCategoryLoader`、`UpvoteHistoryItem.owner`は`userSummaryLoader`)と、`matchViewLoader = defineLoader<string, MatchView | null>`(`MatchViewReader.findViews`、閲覧者は処理単位の`AccountGuard.currentUser`)。トーナメントのモジュールは自分の型の項目で`Match`を返し、値は`matchViewLoader`で引く(9.5)。
 - `MatchInputs`(`inputs.ts`、`withValidatedArgs`): IDはULIDの形式、`first`は1〜20、`userHandle`は`checkHandleFormat(USER_HANDLE_RULE)`の違反で`null`を返す(不在と同じ)。
 
@@ -1519,6 +1546,8 @@ export interface TopPageSectionContext {
     readonly serverTime: string;
   }; // 区画が自分の取得の基準に使う
   readonly viewer: { readonly signedIn: boolean };
+  readonly autoRefresh: boolean; // ページ全体の「自動更新」の状態(仮8)。偽の間、区画は定期の取り直し(refetchInterval)と自分の演出・毎秒の数値の更新を止める。境界の取り直しと操作の後の更新は止めない
+  readonly reportAutoUpdating: (active: boolean) => void; // 区画が定期の取り直し・毎秒の数値の更新・演出を持つ間はtrueを申告する(TopPageが区画ごとに束ねて切り替えの表示に使う)。該当しなくなればfalse。TopPageは、区画のエラー境界が例外を捕まえた時と区画がアンマウントされた時に、その区画の申告を消す
 }
 export interface TopPageSection {
   readonly id: string; // '<spec名>.<名詞句>'
@@ -1548,18 +1577,21 @@ export declare function useUpvote(options: UseUpvoteOptions): {
 };
 ```
 
-#### TopPageRoute・TopPage・TopPageSections・FullTimeCountdown・GuestHero・QualifierSection・SectionHeading・EmptyLineup
+#### TopPageRoute・TopPage・AutoRefreshSwitch・TopPageSections・FullTimeCountdown・GuestHero・QualifierSection・SectionHeading・EmptyLineup
 
 - `routes/index.tsx`: `loader`で`qualifierBoard`を`ensureQueryData`(サーバーで描画、8.16)、`head`は`buildPageHead({ title: 'Launch Stadium', description, canonicalUrl: clientSiteOrigin + '/' })`、`errorComponent`は`ErrorState`(「マッチを読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。」・再試行・問い合わせ)、`pendingComponent`は対戦カードの形のスケルトン。
-- `TopPage`: `TOP_PAGE_SECTIONS`を置き場所ごとに`order`順で、区画ごとのエラー境界で描く(9.1・9.2・9.4)。上部の行(`banner`、画面幅で1〜4列のグリッド)→未ログインなら`GuestHero`(8.17)→`showcase`(全幅)→本文(`main`の縦の列と`aside`の横の列、1024px未満は`aside`を本文の下)→`bottom`→フッター。`TurnstileWidget`(`action` `match_upvote`)を1つ置く。ウィジェットは非表示で描くため、判定の枠と場所を設けない。`qualifierBoard`は`LIVE_REFRESH_QUERY_OPTIONS`で30秒ごとに取り直し、カードの並びは最初の取得の順を保って値だけを差し替える(8.10)。
-- `FullTimeCountdown`(`banner` 10): `phase`が`live`のときだけ「フルタイムまであと」と時:分:秒、`(<時刻>終了)`の`<time datetime>`。`useServerCountdown(fullTimeAt, serverTime)`で取得時のサーバーとの時刻の差を補正し、1秒ごとに更新、0になったら`qualifierBoard`を取り直す。数字は`aria-hidden`、読み上げ用に分単位の文言を`aria-live="off"`で持つ(8.11・8.14)。
+- `TopPage`: `TOP_PAGE_SECTIONS`を置き場所ごとに`order`順で、区画ごとのエラー境界で描く(9.1・9.2・9.4)。上部の行(`banner`、画面幅で1〜4列のグリッド)→未ログインなら`GuestHero`(8.17)→`showcase`(全幅)→本文(`main`の縦の列と`aside`の横の列、1024px未満は`aside`を本文の下)→`bottom`→フッター。`TurnstileWidget`(`action`はclientの写しの`MATCH_BOT_ACTIONS.upvote`)を1つ置く。ウィジェットは非表示で描くため、判定の枠と場所を設けない。`qualifierBoard`は`LIVE_REFRESH_QUERY_OPTIONS`で30秒ごとに取り直し、カードの並びは最初の取得の順を保って値だけを差し替える(8.10)。`refetchInterval`は取得した値で判定する関数にする(`frontend/010`の「取得した値による判定」)。(1)自動更新がオンで、`live`の対戦カード・集計中のマッチ・`awaitingKickoff`のいずれかがあれば間隔を返す。(2)オフでも、集計中のマッチか`awaitingKickoff`がある間は、ページを表示した時点と最後の境界の取り直しのうち後の時点からの取得の更新の回数(`dataUpdateCount`と`errorUpdateCount`の和の差)が10回に達するまで間隔を返す(境界の時刻の直後はジョブが終わっておらず、境界の取り直しが変化の前の状態を返すため。`frontend/010`の「回数を限った一時的な再取得」と同じ形で、自動で更新され続ける情報ではない)。(3)それ以外は止める(結果がすべて確定した後・マッチの無い日)。(2)の上限に達しても集計中か`awaitingKickoff`のままなら、予選の区画の見出しの下の`role="status"`の文を「結果の反映に時間がかかっています。ページを再読み込みすると最新の状態を表示します。」に切り替える(`frontend/010`と同じ扱い。23:40の確定が打ち切られて23:45に引き継がれた場合など)。
+- 自動更新の状態(8.20、仮8): `TopPage`が`useState(true)`で持ち(ページを開くたびにオン)、`TopPageSectionContext.autoRefresh`として全ての区画へ渡す。ページの根の要素に`data-auto-refresh="on"`・`"off"`を付ける。`stadium.css`の演出(観客・旗・ボール・点滅・比率のバーの動き)は、祖先に`data-auto-refresh="on"`があり視差効果を減らす設定でないときだけ動く。トップページの区画(トーナメントを含む)は同じ属性で止まる。トップページの外(プロダクト詳細など)で`MatchCard`を使うページは属性を持たないため演出は既定で動かず、動かすならそのページが自分の停止手段を置いて属性を付ける(directory-discoveryへの連絡事項)。
+- `AutoRefreshSwitch`: `TopPage`が上部の行(`banner`)の先頭に、登録した区画とは別に置く(区画の失敗や`result`の時間帯でも消えない)。ページに自動で更新される・動く表示がある間だけ描く(8.20)。具体的には、`phase`が`live`(カウントダウンが毎秒動く)、当日の予選の対戦カードがある(定期の取り直しと演出)、または区画が`reportAutoUpdating(true)`を申告している、のいずれかの間で、結果が確定して定期の取り直しが止まった後も演出が残る間は描く(`frontend/010`の「定期の取り直しが無い表示には描かない」との関係は、タスク9.1で`010`に加える規則に書く)。shadcn/uiの`Switch`(`role="switch"`・`aria-checked`)で、名前は「自動更新」、`aria-describedby`の説明は`LIVE_REFRESH_INTERVAL_MS`から作った秒数で「オンの間は{秒}秒ごとにUpvote数を取り直し、残り時間と演出を動かします。」(秒数を文言に直接書かない)。`frontend/004`・`010`に加える「ページ全体で1つの切り替え」の規則に従い、各区画の見出しの近くには置かない。
+- 境界の取り直し(G2): `TopPage`が`useBoundaryRefresh([fullTimeAt, nextKickoffAt], refresh)`(`components/time/use-boundary-refresh.ts`)で、23:40(`live`→`result`)と翌日0:00(翌日の予選)の1秒後に`qualifierBoard`の取得を無効にして取り直す。自動更新のオン・オフによらず動く(`frontend/012`の「表示中の境界の取り直し」)。
+- `FullTimeCountdown`(`banner` 10): `phase`が`live`のときだけ「フルタイムまであと」と時:分:秒、`(<時刻>終了)`の`<time datetime>`。`useServerCountdown(fullTimeAt, serverTime)`で取得時のサーバーとの時刻の差を補正し、自動更新がオンの間だけ1秒ごとに更新する。オフの間は毎秒の数字を出さず、`(<時刻>終了)`の終了の時刻だけを残す(8.20)。0になった時の取り直しは持たず、`TopPage`の境界の取り直しに任せる。数字は`aria-hidden`、読み上げ用に分単位の文言を`aria-live="off"`で持つ(8.11・8.14)。
 - `QualifierSection`(`main` 30): 見出し「予選」と「本日の予選マッチ{heldCount}試合」、`live`は「フルタイム<時刻>」、`result`は「明日のキックオフ<時刻>」(8.11・8.12)。対戦カードを2列(1280px以上、先頭は全幅)で並べ、`QUALIFIER_LIST_INSERTS`を`every`件ごとに差し込む(9.3)。末尾に`ByeList`(8.13)。対戦カードも不戦勝も無ければ`EmptyLineup`(「本日のマッチはありません。ローンチを予約しましょう。」と「ローンチを予約🚀」(未ログインは「ログインしてローンチを予約🚀」))(8.15)。
 - `GuestHero`: モックアップの文言(「1対1のマッチでローンチ。必ず半分は勝者になる。」と説明)と「登録してローンチする」(`/auth/register`)・「ログイン」(`/auth/login?redirect=/`)。
 
 #### MatchCard・MatchStage・ProductPanel・UpvoteButton・VoteBar・ByeList・ByeCard・StadiumPitch・TeamColors・MatchLabels・UseUpvote・UseServerCountdown
 
 - `MatchCard`: `<article aria-label="<名称> vs <名称>">`、見出しの行に`live`は補足(呼び出し元が渡す)、`tallying`は「結果を集計しています」、`finished`は結果の文言(「フルタイム！12対9で<名称>の勝利」、`last_upvote`は「(最終Upvote時刻が早いため)」、`no_votes`は「フルタイム。0対0で両者敗北」)と、種別の印(予選は「予選」、トーナメントは呼び出し元が渡す段階の印)(8.12)。本体は`MatchStage`。トーナメント・プロダクト詳細も使う(9.5)。
-- `MatchStage`: 両側の`ProductPanel`・中央の「VS」・`VoteBar`・背景の`StadiumPitch`。画面幅640px未満では2つの側を縦に積みバーを間に置く(8.18)。それ以上の画面幅でも、カードの幅が768px未満なら縦に積む(モックアップのカードの幅による判定)。Upvoteの演出(観客の盛り上がり・ボール)は`prefers-reduced-motion: reduce`では動かさない(8.18)。
+- `MatchStage`: 両側の`ProductPanel`・中央の「VS」・`VoteBar`・背景の`StadiumPitch`。画面幅640px未満では2つの側を縦に積みバーを間に置く(8.18)。それ以上の画面幅でも、カードの幅が768px未満なら縦に積む(モックアップのカードの幅による判定)。Upvoteの演出(観客の盛り上がり・ボール)と常に動く演出(旗・ボールの回転・点滅)は、`prefers-reduced-motion: reduce`と、祖先に`data-auto-refresh="on"`が無いとき(自動更新がオフ、またはトップページの外、8.20)には動かさない(8.18)。OSの設定だけに頼らない(`frontend/004`の「演出の停止手段の義務」)。
 - `ProductPanel`: ロゴ(`MediaPicture`、無ければ名称の頭文字)・カテゴリのバッジ・名称(`listed`または`isViewerOwn`なら`/p/<ハンドル>`へのリンク、8.4)・タグライン(2行で省略)・「サイトを開く」(`target="_blank"`・予選は`rel="noopener ugc"`、トーナメントは`rel="noopener"`、8.3)。`isViewerOwn`はUpvote数だけ、それ以外は`UpvoteButton`(8.5)。`product`が`null`なら「非公開のプロダクト」と汎用のアイコンで、リンクとボタンを出さない(8.19)。
 - `UpvoteButton`: `aria-pressed`・「<名称>にUpvote」/「<名称>へのUpvoteを取り消す」・Upvote数。無効は`aria-disabled`とツールチップ・`aria-describedby`で`viewerRestriction`の理由(「自身のプロダクトとその対戦相手にはUpvoteできません。」「このマッチはUpvoteを受け付けていません。」「この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。」)を示す。未ログイン(`GUEST`)は有効のまま押下でログインへ誘導する(8.6・8.7)。
 - `VoteBar`: 両側のUpvote数の比率、0対0は空のバー、`role="img"`と「<名称>12票、<名称>9票」の代替テキスト(8.3)。
@@ -1585,7 +1617,7 @@ export declare function useUpvote(options: UseUpvoteOptions): {
 #### MatchTechDocs・MatchServiceSpecs
 
 - `backend/014-time-boxed-voting.md`(13.4): 期間を限った1人1票の投票の規約(受け付けの時刻の境界を記録の文の条件に入れる、付け替えと取り消しを1つの一括の書き込みにする、集計値を記録の変更と同じ一括の書き込みで求め直し確定の後は変えない、同時の要求と部分一意索引、記録の順による同時刻の決着、利用者の状態の変化による無効化を集合の更新で行う、日次の確定と開始の再実行と回復、無作為の組み合わせに予測できない乱数を使う)。本プロジェクト固有の値を含めない。
-- `frontend/013-live-scoreboard.md`(13.4): 残り時間と集計値を表示し続ける画面の規約(サーバーの時刻との差の補正、境界の時刻での取り直し、並び順を保った定期の取り直し、操作の結果をサーバーの値で反映し失敗で戻す、bot対策のトークンを操作ごとに取り直す、演出と視差効果の軽減、区画を置き場所と順で登録する画面の構成)。
+- `frontend/013-live-scoreboard.md`(13.4): 残り時間と集計値を表示し続ける画面の規約(サーバーの時刻との差の補正、境界の時刻での取り直し(`frontend/012`の`useBoundaryRefresh`を使う)、並び順を保った定期の取り直し、ページ全体で1つの自動更新の切り替えと区画への状態の受け渡し・演出の停止(`frontend/004`・`010`に加える規則を参照する)、操作の結果をサーバーの値で反映し失敗で戻す、bot対策のトークンを操作ごとに取り直す、演出と視差効果の軽減、区画を置き場所と順で登録する画面の構成)。
 - サービス仕様(13.5): 予選ルール(仮1・仮2・仮4・仮5の注記)、ページ配置(トップページの区画の構成と登録・予選の区画の空の状態・集計中の表示・自分のプロダクトの側はUpvote数だけ・Upvote履歴の日付の小見出しの件数)、文言規則(Error Handlingの文言と状態・トーストの文言)、日次タイムライン(23:40・23:45・0:00・4:21のジョブと`order`)、`docs/onboardings/project-values.md`(処理・ジョブの名前と`order`、bot対策の`action`、メッセージ種別)。
 
 ## Data Models
@@ -1651,12 +1683,12 @@ erDiagram
 | `validation_error`                                                                                                                                       | bad_request(400) | 入力                            | 既存の欄ごとの文言                                                 |
 | `unauthenticated`・`email_not_verified`・`account_unavailable`・`bot_verification_failed`・`bot_verification_unavailable`・`forbidden`・`invalid_cursor` | 既存             | 既存(6.7)                       | 既存の文言                                                         |
 
-- 状態・トーストの文言(文言規則に追加): 「Upvoteを取り消しました。」(既存の「Upvoteしました。」と対)、「結果を集計しています」、「本日の予選マッチ{n}試合」、「フルタイムまであと」、「明日のキックオフ」、「本日のマッチはありません。ローンチを予約しましょう。」、不戦勝の説明の4文(ByeCardの予選の2文とトーナメントの「対戦相手不在のため不戦勝。次のラウンドへ進みます。」・「対戦相手が不在になったためマッチ終了。{n}票のUpvoteで確定し、次のラウンドへ進みます。」、仮7)、「非公開のプロダクト」、トップページの取得エラー「マッチを読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。」、Upvote履歴の「マッチ中」「未掲載」「トップページで見る」。
+- 状態・トーストの文言(文言規則に追加): 「Upvoteを取り消しました。」(既存の「Upvoteしました。」と対)、「結果を集計しています」、「本日の予選マッチ{n}試合」、「フルタイムまであと」、「明日のキックオフ」、「本日のマッチはありません。ローンチを予約しましょう。」、不戦勝の説明の4文(ByeCardの予選の2文とトーナメントの「対戦相手不在のため不戦勝。次のラウンドへ進みます。」・「対戦相手が不在になったためマッチ終了。{n}票のUpvoteで確定し、次のラウンドへ進みます。」、仮7)、「非公開のプロダクト」、トップページの取得エラー「マッチを読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。」、回数を限った取り直しの上限の案内「結果の反映に時間がかかっています。ページを再読み込みすると最新の状態を表示します。」、Upvote履歴の「マッチ中」「未掲載」「トップページで見る」。
 
 ### Monitoring
 
 - `getAppLogger(['api'|'event', 'application', 'match'])`で、マッチ・側・イベント・Upvoteの識別・結果の種類・件数だけを記録する(12.10)。プロダクトの名称・利用者のハンドル・bot対策のトークンは記録しない。
-- Sentry: `match-settlement-late`・`qualifier-pairing-late`・`match-kickoff-late`・`match-settlement-overdue`、マッチイベントの処理の再試行の上限(デッドレター)。`AppError`は送らない。
+- Sentry: `match-settlement-late`・`qualifier-pairing-late`・`match-kickoff-late`・`match-settlement-overdue`、マッチイベントの処理の再試行の上限(デッドレター)、23:40・23:45・0:00の起動の時間の予算の超過(ディスパッチャの警告)。`AppError`は送らない。23:40の確定の打ち切りは件数だけをwarnのログに出し、報告は23:45の`match-settlement-late`に任せる。ローカルのE2Eが日中に0:00の開始を起こすと`match-kickoff-late`が記録されるが、ローカルはSentryへ送らない。
 
 ## Testing Strategy
 
@@ -1667,8 +1699,9 @@ erDiagram
   - `match-events`: 登録の名前の形式違反・重複・同じ種類での`order`の重複の例外、種別の絞り込み、再試行の方針の値(11.2)。
   - `identifiers`: `MATCH_PLATFORM_TYPES`の各値が`Symbol.for('match.<名前>')`で、オブジェクトが凍結されていること(12.8)。
   - `upvote-plan`・`board-order`: 追加・付け替え・変更なし、制限の判定の順、並び(合計最大が先頭・残りは少ない順・同数はID)、不戦勝の分類と実施数(6.2・6.3・8.2・8.11・8.13)。
-  - ユースケース(模擬のポート): `UpvoteService`の判定の順と分類、取り消しの`nothing`、`QualifierPairingService`の完了済みの省略と組み済みの除外(2.7)、`MatchKickoff`・`MatchSettlement`のチャンクと遅れの報告、各ジョブの回復の順(2.8・4.9)、`QualifierBoardReader`の`phase`の切り替え(23:39と23:40)、`UpvoteHistoryReader`のnullの条件、`MatchEventRunner`の`defer`・`continue`・例外、`QualifierOutcomeHandler`の`won`・`lost`の写像と結果の扱い(4.6・4.7・11.3・11.4)。
+  - ユースケース(模擬のポート): `UpvoteService`の判定の順と分類、取り消しの`nothing`、`QualifierPairingService`の完了済みの日でも組み済みを除いて残りだけを組み最初の完了の日時を保つこと(2.7)、`MatchKickoff`・`MatchSettlement`のチャンクと遅れの報告、`MatchSettlement`の打ち切り(予定時刻から4分50秒を過ぎた時計で残りを残して終えること)、対象日を予定時刻の業務日付から求めること(実時刻が翌日でも変わらない)、`QualifierPairingService`・`MatchKickoff`・`MatchSettlement`がイベントを50マッチごとに送ること、各ジョブの回復の順(2.8・4.9)、`QualifierBoardReader`の`phase`の切り替え(23:39と23:40)、`UpvoteHistoryReader`のnullの条件、`MatchEventRunner`の`defer`・`continue`・例外、`QualifierOutcomeHandler`の`won`・`lost`の写像と結果の扱い(4.6・4.7・11.3・11.4)。
   - client: `team-colors`・`match-labels`・`pitch-model`、`TOP_PAGE_SECTIONS`の`order`の並べ替え。
+  - 定期実行の登録: `SCHEDULED_RUN_BUDGETS`の23:40・23:45・0:00が`createRunBudgetTable`の検査を通ること。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts`、ローカルD1):
   - スキーマ: 有効なUpvoteをマッチと利用者で2つ作れず論理削除の後は作れる(仮3)、予選の同じローンチの2つの側を作れない、`(match_id, type)`の一意、CHECK(1.6・7.4)。
   - Upvote: 追加・付け替え・取り消しの後の集計値と最終Upvote時間、23:40をまたぐ要求の取り消し(時計を進める)、自分のマッチ・未確認・停止中の拒否、同時の2つの追加で1つ、取り消しの後の再Upvote、確定の後に変わらないこと(6.1〜6.9)。
@@ -1676,11 +1709,12 @@ erDiagram
   - 日次の処理: product-launchの予定のローンチからのペアリングと再実行、開始の不戦勝・該当・`listLaunches`の取消による決着、確定と`decided`のイベント、各ジョブの回復、`createMissingDecidedEvents`の重複なし(2.1〜2.8・3.1〜3.7・4.1〜4.9)。
   - イベント: 実行器の順序・完了の記録・同じマッチの古いイベントの待ち、`match-engine.qualifier-outcome`でproduct-launchのローンチに結果が記録されること、送り直し・30日の削除(4.6・11.3〜11.5)。
   - 物理削除: プロダクトの`purge_due`で側の紐付けが解除されproduct-launchの物理削除が外部キーで失敗しないこと、ユーザーの`purge_due`でUpvoteが消えidentity-authの物理削除が失敗しないこと(7.5・12.1)。
+  - イベントの送信: `QueueMatchEventDispatcher`が6件までを並行して送り、一部の送信の失敗で他を止めずに失敗したイベントを`pending`のまま残すこと。
   - 共有部品: `MatchDirectory`の各照会と`phase`、`SupporterDirectory`の順と停止中の除外、`qualifierWins()`、`MatchExport`・`UpvoteExport`の項目、`summarizeDaily`(12.2〜12.7)。
   - スキーマモジュール: 各操作の権限・bot対策の順の拒否とエラーコード、`client`以外の拒否、`qualifierBoard`の未ログイン・自分のマッチの`isViewerOwn`・`viewerRestriction`、`upvoteHistory`の除外(非公開化・停止中の投稿者・論理削除・紐付けの解除)と停止中の利用者のnull(6.\*・8.\*・10.6・10.8)。
 - E2E/UI Tests:
-  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `UpvoteButton`(状態・無効の理由・押下)、`ProductPanel`(自分の側はUpvote数だけ・リンクの有無・`rel`・非公開のプロダクト)、`VoteBar`(0対0と代替テキスト)、`MatchCard`(集計中・結果・接戦の注記)、`ByeList`、`FullTimeCountdown`(偽の時計とサーバーの時刻の差)、`QualifierSection`(差し込み・空の状態・`result`の見出し)、`TopPage`(置き場所と順・1つの区画の失敗が他を止めないこと・未ログインの案内)、`useUpvote`(未ログインのダイアログ・トークン・成功と失敗の通知・表示を戻すこと)、`UpvoteHistoryPanel`・`UpvoteHistoryItem`(日付の小見出し・未掲載・マッチ中・0件・エラー)(8.\*・9.\*・10.\*)。
-  - E2E(`e2e/client/match.e2e.test.ts`): identity-authの`e2e/support/mailpit.ts`で確認済みの利用者を3人登録し(メールアドレスのドメインは`.example`)、2人がproduct-launchの画面でプロダクトを登録し、`e2e/support/match-fixtures.ts`(admin-foundationの`executeLocalD1`)でその2つのローンチのマッチ中の予選をローカルD1に作る。3人目がトップページで一方にUpvote→反対側へ付け替え→取り消し、投稿者の1人は自分の側にボタンが無く相手の側が無効であること、`/@<3人目のハンドル>?tab=upvotes`に項目が出ることを確かめる(13.3)。Turnstileはローカルの常に成功するキーを使い、時刻に依存する境界はWorkers統合テストで確かめる。
+  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `UpvoteButton`(状態・無効の理由・押下)、`ProductPanel`(自分の側はUpvote数だけ・リンクの有無・`rel`・非公開のプロダクト)、`VoteBar`(0対0と代替テキスト)、`MatchCard`(集計中・結果・接戦の注記)、`ByeList`、`FullTimeCountdown`(偽の時計とサーバーの時刻の差・自動更新のオフで毎秒の更新を止め終了の時刻を残すこと)、`QualifierSection`(差し込み・空の状態・`result`の見出し)、`TopPage`(置き場所と順・1つの区画の失敗が他を止めないこと・未ログインの案内・`AutoRefreshSwitch`の名前と状態と説明・キーボードでの切り替え・オフで定期の取り直しが止まり区画の文脈が偽になり`data-auto-refresh`が付くこと・オフでも境界の時刻(偽の時計で23:40と翌日0:00)の1秒後に取り直すこと・予選の対戦カードが無いときに切り替えを描かないこと)、`MatchStage`(祖先が`data-auto-refresh="on"`の下でだけ演出が動き、`"off"`と属性の無い祖先の下では動かないこと)、`useUpvote`(未ログインのダイアログ・トークン・成功と失敗の通知・表示を戻すこと)、`UpvoteHistoryPanel`・`UpvoteHistoryItem`(日付の小見出し・未掲載・マッチ中・0件・エラー)(8.\*・9.\*・10.\*)。
+  - E2E(`e2e/admin/match-upvotes.e2e.test.ts`。管理画面の対象に置き、管理画面のテストと同じく1つずつ動かす。`signInAsNewAdmin`は一時的に有効な最上位管理者を作るため、利用者側の対象に置くと管理画面のテストの「最後の最上位管理者」の確認と並行して衝突する。利用者の3人の文脈は`e2e/admin/client-page-test.ts`の`clientPage`と同じ作り方で開く): identity-authの`e2e/support/mailpit.ts`で確認済みの利用者を3人登録し(メールアドレスのドメインは`.example`)、管理画面の手順(`signInAsNewAdmin`(ロール`moderator`)・`e2e/admin/category-steps.ts`の`createCategory`)でテスト専用のカテゴリを作り、2人がproduct-launchの画面(`e2e/client/product-steps.ts`)でそのカテゴリのプロダクトを登録する(他のテストの残りのローンチが日付の経過で当日になり「その他」で組まれ得るため、専用のカテゴリで2つを必ず互いに組ませる)。`e2e/client/match-steps.ts`の手順で、その2つのローンチのローンチ日だけをadmin-foundationの`executeLocalD1`(文字列は`sqlStringLiteral`)で当日に書き換え(画面では当日を選べないため)、`triggerScheduled`で前日の業務日付の23:45(`worker: 'api'`、当日のペアリング)と当日の0:00(開始)を起こす。マッチ中のマッチはペアリングと開始のジョブで作られ、E2Eは本specのテーブルへ書き込まない。2件のローンチ日は1つの文で書き換え、ペアリングの後に2つのプロダクトが同じ対戦カードにあることを確かめる。業務時刻の23:20〜24:00(23:40の締め切りと業務日付の境界の近く)では`test.skip`で理由を付けて飛ばす。3人目がトップページで一方にUpvote→反対側へ付け替え→取り消し、投稿者の1人は自分の側にボタンが無く相手の側が無効であること、`/@<3人目のハンドル>?tab=upvotes`に項目が出ることを確かめる(13.3)。Turnstileはローカルの常に成功するキーを使い、時刻に依存する境界はWorkers統合テストで確かめる。
 
 ## Security Considerations
 
@@ -1695,6 +1729,7 @@ erDiagram
 - トップページは1回の取得で、マッチと側の読み取り1回・プロダクトの照会1回(90件ずつ)・閲覧者のUpvote1回・画像とカテゴリのローダー1回ずつで、Upvoteの行を数えない(NFR-PERF-007・008)。30秒ごとの取り直しも同じ。
 - Upvoteは3〜4文の一括の書き込みで、集計値の求め直しは側の索引`(entry_id, deleted_at, upvoted_at, seq)`の範囲だけを読む。
 - 日次のジョブは100件の読み取り・50マッチの書き込みずつに分け、1文のバインド変数を100個以内にする。ペアリングの無作為の並べ替えは数千件でもCPU時間は数ミリ秒の規模である。
+- 日次のジョブの実時間: 23:40の確定は予定時刻から4分50秒で打ち切り(paymentsの突合が残す1分に収める)、23:40・23:45・0:00の起動に各5分の時間の予算を置く。イベントの送信は6件まで並行させ、1日のマッチ数(千数百件)の送信で1つのジョブの目安の30秒を超えないようにする(System Flows「日次の処理」)。
 - マッチイベントは1日にマッチ数×3件で、完了から30日で削除する。
 
 ## Migration Strategy
@@ -1717,5 +1752,7 @@ erDiagram
 | メッセージ種別         | `match.run-match-event`                                                                                                                                                                                                      |
 | bot対策の`action`      | `match_upvote`                                                                                                                                                                                                               |
 | 登録口と`order`        | 公開プロフィールのタブ`upvotes` 20、トップページの区画`match-engine.countdown`(banner 10)・`match-engine.qualifiers`(main 30)                                                                                                |
-| 上限                   | Upvote履歴20件、サポーター20件、ジョブの読み取り100件・書き込み50マッチ、送り直し100件、イベントの保持30日、`summarizeDaily`は366日まで                                                                                      |
+| 上限                   | Upvote履歴20件、サポーター20件、ジョブの読み取り100件・書き込み50マッチ、送り直し100件、イベントの保持30日、`summarizeDaily`は366日まで、イベントの送信の並行6件(`MATCH_EVENT_PUBLISH_CONCURRENCY`)                          |
+| 時間                   | 23:40の確定の打ち切り: 予定時刻から4分50秒(`MATCH_SETTLEMENT_TIME_LIMIT_MS`)。`SCHEDULED_RUN_BUDGETS`: 23:40・23:45・0:00の各300,000ms                                                                                       |
+| 画面                   | 自動更新の切り替えの名前「自動更新」、説明「オンの間は{秒}秒ごとにUpvote数を取り直し、残り時間と演出を動かします。」、ページの根の属性`data-auto-refresh="on"`・`"off"`(演出は`"on"`の下でだけ動く)                          |
 | 技術ドキュメントの番号 | `backend/014-time-boxed-voting.md`・`frontend/013-live-scoreboard.md`                                                                                                                                                        |
