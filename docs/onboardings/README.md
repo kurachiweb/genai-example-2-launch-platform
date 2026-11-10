@@ -740,7 +740,7 @@ bun run graphql:allowlist
 bun run graphql:check
 ```
 
-- フロントエンドの操作は、各アプリの`src/graphql/operations/`に`.graphql`ファイルで書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める(「[操作の置き場所と名前](../GUIDES/tech/coding/004-graphql-communication.md#操作の置き場所と名前)」)。画面は生成物の`graphql.ts`だけを読み込み、操作の本文を含む`gql.ts`・`index.ts`を読み込まない。
+- フロントエンドの操作は、各アプリの`src/graphql/operations/`に`.graphql`ファイルで書き(フラグメントは`src/graphql/fragments/`に置く)、操作名を利用者側は`Client`、管理者側は`Admin`で始める(「[操作の置き場所と名前](../GUIDES/tech/coding/004-graphql-communication.md#操作の置き場所と名前)」)。画面は生成物の`graphql.ts`だけを読み込み、操作の本文を含む`gql.ts`・`index.ts`を読み込まない。
 - `apps/client`・`apps/admin`の`bun run graphql:check`は、生成物が操作とスキーマファイルに食い違っていないかを確かめる。食い違うか操作がスキーマに合わなければ、再実行すべき`bun run graphql:generate`を表示して失敗する。一括検査`bun run check`も実行する。
 
 - 起動中のAPIサーバーは、許可リストをバンドルに含めて読み込む。`wrangler dev`は許可リストのファイルの変更を検知してバンドルし直すため、生成し直した許可リストは起動し直さずに反映される。反映されなければ、APIサーバーを起動し直す。
