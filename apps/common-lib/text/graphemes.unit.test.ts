@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { countGraphemes } from './graphemes.ts';
+import { countGraphemes, truncateGraphemes } from './graphemes.ts';
 
 describe('countGraphemes', () => {
   test('空文字列を0文字と数える', () => {
@@ -38,5 +38,19 @@ describe('countGraphemes', () => {
 
   test('並んだ国旗をそれぞれ1文字と数える', () => {
     expect(countGraphemes('🇯🇵🇺🇸🇫🇷')).toBe(3);
+  });
+});
+
+describe('truncateGraphemes', () => {
+  test('上限以内の文字列をそのまま返す', () => {
+    expect(truncateGraphemes('ローンチ', 4)).toBe('ローンチ');
+  });
+
+  test('上限を超える文字列を先頭から上限の文字数へ切り詰める', () => {
+    expect(truncateGraphemes('Launch準備OK', 6)).toBe('Launch');
+  });
+
+  test('結合した絵文字・国旗・結合文字を途中で分けずに切り詰める', () => {
+    expect(truncateGraphemes('👨‍👩‍👧‍👦🇯🇵\u304b\u3099e', 3)).toBe('👨‍👩‍👧‍👦🇯🇵\u304b\u3099');
   });
 });

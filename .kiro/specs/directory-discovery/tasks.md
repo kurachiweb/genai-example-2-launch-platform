@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共有の規則・テーブル・文言
-- [ ] 1.1 URLのクエリの規則と期間のプリセットを、4アプリが読み込める共有の定義として作る
+- [x] 1.1 URLのクエリの規則と期間のプリセットを、4アプリが読み込める共有の定義として作る
   - 前提: dev-tooling〜match-engineの18specの全タスクが完了していること(product-launchの`core/product`の契約と識別子(`ProductDirectory`・`ProductCategoryDirectory`・`PRODUCT_PLATFORM_TYPES`)・`visibleProducts()`・`wonLaunchExists()`・ライフサイクルの登録口・`LAUNCH_SUMMARY_SOURCES`・`productOwnerStatus`と、仮11の`productInCategory()`・`PRODUCT_SAVE_HOOKS`とinfrastructure層の`ProductSaveHook`の契約・`launch-summary.ts`の`fallbackLaunchSummary`・`groupAwards`、match-engineの`MatchDirectory`・`SupporterDirectory`・`qualifierWins()`・`MATCH_EVENT_HANDLERS`・`loadMatchView`・`MatchCard`・`useUpvote`・`UpvoteBotProtection`・`useServerCountdown`、content-processingの検索の基盤、identity-authとuser-profile-socialの部品、E2Eの`e2e/support/mailpit.ts`・`e2e/support/local-d1.ts`、backend-platformの改訂2の`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、不正なクエリの既定化(実在しない日付・開始日が終了日より後・検索語が無いときの関連度・既定と同じ並び順・`page`の0・1・小数・文字列)、50書記素への切り詰め(結合文字を含む絵文字)、並び順の値が4つで少ない順が無いこと、条件の変更で`page`が外れること、既定から変えている項目の数、基準時刻の今日からの各プリセットの範囲(月曜日・日曜日・月末・年末)、プリセットと一致しない範囲の判定、未来と逆順の検証、期間の表示の文言(今年は年を省く)を確かめる
   - 他の層を読み込まない(日付は`YYYY-MM-DD`の文字列で扱う)
@@ -323,3 +323,7 @@
   - stagingでデプロイの前に勝利したプロダクトが編集・復元・停止の解除まで検索にかからない旨、roadmapの帯の割り当ての表の本specの「使用中の値」(波及処理は1200)を作業の報告に記録する
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に運用の事項が載っている
   - _Requirements: 13.3, 14.1, 14.2_
+
+## Implementation Notes
+
+- 1.1: 規則は`apps/common-lib/directory/`(`directory-query-rules.ts`・`directory-period.ts`)、書記素の単位の切り詰め`truncateGraphemes`を`text/graphemes.ts`に加えた。`page`は数(URL)と10進の整数の形の文字列(GraphQLの`DirectoryInput.page: String`)の両方を受け、2以上の安全な整数だけを残す。`normalizeDirectoryQuery`は既定の項目も`undefined`で全6項目を返す。TanStack Routerの既定の解析で数になった`q`・`category`は文字列へ戻すが`1.50`→`1.5`のように形が変わり得るため、6.10で`parseSearch`の扱いを確かめる。`formatPeriodLabel`は同じ日なら1日だけ、両方無ければ「全期間」(設計に例が無く決めた)。「今年なら年を省く」書式はclientの`launch-date-format.ts`・apiの`product-errors.ts`と3箇所に重複(common-libからclientを読めないため)。`BusinessDateString`は`string`の別名で、型ガード`isBusinessDateString`と型`PeriodRange`・`CustomRangeErrors`を設計に加えて公開した
