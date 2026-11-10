@@ -5,6 +5,7 @@ import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import { CONTACT_HREF, SITE_NAME } from '../layout/site-links.ts';
 import { AutoRefreshSwitch } from './auto-refresh-switch.tsx';
 import { GuestHero } from './guest-hero.tsx';
+import { TOP_PAGE_HEADING_ID } from './top-page-heading-id.ts';
 import { groupTopPageSections } from './top-page-section-order.ts';
 import type {
   TopPageSection,
@@ -124,7 +125,9 @@ export function TopPage({
       data-auto-refresh={autoRefresh ? 'on' : 'off'}
       className="flex flex-col pb-10"
     >
-      <h1 className="sr-only">{SITE_NAME}</h1>
+      <h1 id={TOP_PAGE_HEADING_ID} tabIndex={-1} className="sr-only">
+        {SITE_NAME}
+      </h1>
       <div className="mx-auto w-full max-w-7xl px-4 pt-4">
         <div className="grid grid-cols-1 gap-3 xs:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
           {switchVisible && (

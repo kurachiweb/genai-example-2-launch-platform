@@ -4,6 +4,7 @@ import {
   QUALIFIER_LIST_INSERTS,
   TOP_PAGE_SECTIONS,
 } from '../../composition/top-page-sections.ts';
+import { FullTimeCountdownSection } from './full-time-countdown-section.tsx';
 import {
   groupTopPageSections,
   layoutQualifierList,
@@ -292,8 +293,18 @@ describe('予選の一覧の差し込みの回数', () => {
 });
 
 describe('登録箇所', () => {
-  test('初版の2つの登録箇所は空である', () => {
-    expect(TOP_PAGE_SECTIONS).toStrictEqual([]);
+  test('区画にはmatch-engineのカウントダウン(上部の行の10)と予選(本文の30)を登録し、差し込みの登録箇所は空である', () => {
+    expect(
+      TOP_PAGE_SECTIONS.map(({ id, placement, order }) => ({
+        id,
+        placement,
+        order,
+      })),
+    ).toStrictEqual([
+      { id: 'match-engine.countdown', placement: 'banner', order: 10 },
+      { id: 'match-engine.qualifiers', placement: 'main', order: 30 },
+    ]);
+    expect(TOP_PAGE_SECTIONS[0]?.component).toBe(FullTimeCountdownSection);
     expect(QUALIFIER_LIST_INSERTS).toStrictEqual([]);
   });
 
