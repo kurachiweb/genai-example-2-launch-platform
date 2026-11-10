@@ -12,6 +12,7 @@ import { EVENT_EMAIL_MODULE } from './email-module.ts';
 import type { EventEnv } from './env-schema.ts';
 import { EVENT_IDENTITY_MODULE } from './identity-module.ts';
 import { EVENT_INQUIRY_MODULE } from './inquiry-module.ts';
+import { EVENT_MATCH_PLATFORM_MODULE } from './match-module.ts';
 import { MEDIA_SMOKE_MODULE } from './media-smoke-module.ts';
 import {
   EVENT_MEDIA_MODULE,
@@ -45,6 +46,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     ADMIN_PLATFORM_MODULE,
     PROFILE_PLATFORM_MODULE,
     PRODUCT_PLATFORM_MODULE,
+    EVENT_MATCH_PLATFORM_MODULE,
     EVENT_PROFILE_MODULE,
     EVENT_SEARCH_PLATFORM_MODULE,
     EVENT_SEARCH_MODULE,
