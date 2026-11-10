@@ -28,7 +28,7 @@
   - _Boundary: clientの`components/top/`・`components/match/`、`docs/GUIDES/tech/frontend/013-live-scoreboard.md`_
   - _Requirements: 9.6, 9.9_
 
-- [ ] 1.5 (P) frontend-libにカードの部品を作る
+- [x] 1.5 (P) frontend-libにカードの部品を作る
   - shadcn/uiの`Card`を、frontend/005の「1ファイル1コンポーネントとshadcn/uiの分割」に従って`components/ui/card/`の部分ごとのファイル(`card.tsx`・`card-header.tsx`・`card-title.tsx`・`card-description.tsx`・`card-action.tsx`・`card-content.tsx`・`card-footer.tsx`)で作る。モックアップに無い部品のため、shadcn/uiの既定の`Card`を基にデザイントークン(`bg-card`・`text-card-foreground`・`border-border`)で書く
   - 先に、ブラウザテスト(`runAxe`の違反0件、ライト・ダーク)で、各部分の要素・`data-slot`・`className`の合成と属性の受け渡しを確かめる。カタログ(`card.stories.tsx`)を添え、frontend/005の部品の一覧に`Card`の部分を加える
   - 完了状態: ブラウザテストとカタログのビルドが成功し、frontend-libと画面を持つアプリの型検査が成功する
@@ -330,3 +330,4 @@
 - 1.2: テーブルは`apps/db/schema/directory/`(`product_search_documents`・`directory_entries`)、索引の定義`PRODUCT_SEARCH_INDEX`は`schema/directory/product-search-index.ts`で`schema/index.ts`から再エクスポートせず`search/search-indexes.ts`が直接読む(2.1の検索対象も直接読む)。マイグレーションは`20261110153547_directory_discovery`(生成)と`20261110153549_directory_discovery_fts`(`apps/db`の`bun run --silent db:search-index-sql product_search_documents`の出力)。`directory_entries`は追加と削除だけだが設計と既存の先例(`match_events`など)に合わせて`timestamps()`を持ち、db/003の「共通カラムを持たないテーブル(`created_at`だけ)」と食い違う。`product_id`の一意は列の`.unique()`(自動の一意索引)
 - 1.3: 6・7の画面の文言は`docs/GUIDES/service/design/003-text-and-copy-rules.md`、区画の置き場所・順は`002-page-layouts.md`を正とし、一字一句写す。設計・モックアップと違えて決めたもの: ページ送りの名前は「プロダクト一覧のページ送り」(設計は`aria-label="ページ"`、既存の文言規則の「一覧ごとに名前を決める」に従う)、日付は全て曜日なしの「9月15日」(今年でなければ年。モックアップは曜日付き、既存の`formatLaunchDate`に従う)、開催中のマッチの見出しは「Week 準決勝を戦っています」(match-engineの種別の印に合わせる)、スクリーンショットの代替テキストは「<名称>のスクリーンショット1枚目」、「受賞3回」はリンクにしない、`matchSupporters`のIDの形式違反は「マッチが見つからない」・`first`の範囲外はフォロー一覧の文言を流用、並び順だけ変えた0件は「条件なし」の0件の表示。置き場所の位置: ディレクトリはbanner=見出しの上・aside=一覧の横(1024px未満は下)・bottom=導線の下、詳細ページはbanner(全幅)→自動更新の切り替え→パンくずの順、投稿者本人向けの操作の登録口は進行状況の下・「編集」「再ローンチを予約」の上。ヘッダーの「ローンチ」の回数(キックオフ済みで取り消されていない)とマッチ履歴の件数のローンチの数(キックオフ前を含む取り消されていない全て)は数える対象が違う
 - 1.4: 移した先は`apps/client/src/components/match/`(`auto-refresh-switch.tsx`・`auto-refresh-messages.ts`・`full-time-countdown.tsx`・`full-time-countdown-text.ts`・`follow-up-refetch.ts`)。7.7・7.8はここから読む。範囲外だが移動に伴い`e2e/client/match-steps.ts`の`AUTO_REFRESH_LABEL`の読み込みと`docs/onboardings/project-values.md`の取り直しの上限のパスを直した。match-engineのImplementation Notes(8.7・8.9・8.10)の旧パスは履歴として残した。`components/ultras/portal-return-rules.ts`に`QueryUpdateCounts`・`updateCountOf`と同じ定義の重複が以前からある(範囲外のため残した)
+- 1.5: `Card`は`apps/frontend-lib/components/ui/card/`の7ファイル(shadcn/ui new-york v4の既定に`border-border`を加えた)。`CardTitle`は`<div>`で見出しの意味を持たないため、7.6の`OwnerCard`は中に見出しの要素を置き、区画にするときは`Card`に`role="region"`・`aria-labelledby`を渡す(005の使い方の表に記載)
