@@ -9,6 +9,10 @@ import type {
 
 const MESSAGES: Readonly<Record<MatchIncident['kind'], string>> = {
   'match-kickoff-late': '開始の日時から10分を過ぎて開始したマッチがあります',
+  'match-settlement-late':
+    '終了の時刻のジョブで確定できなかったマッチを、ペアリングの前に確定しました',
+  'qualifier-pairing-late':
+    '前日に完了していなかった予選のペアリングを、開始の前に行いました',
 };
 
 const CONTEXT_NAME = 'match_incident';

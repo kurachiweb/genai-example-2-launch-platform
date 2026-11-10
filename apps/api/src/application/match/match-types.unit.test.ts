@@ -17,6 +17,9 @@ const EXPECTED_NAMES = [
   'EntryEligibilityChecker',
   'MatchIncidentReporter',
   'MatchKickoff',
+  'MatchSettlementJob',
+  'QualifierPairingJob',
+  'MatchKickoffJob',
 ] as const;
 
 describe('MATCH_TYPES', () => {

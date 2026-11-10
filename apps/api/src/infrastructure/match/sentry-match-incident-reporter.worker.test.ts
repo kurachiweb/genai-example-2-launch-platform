@@ -64,6 +64,31 @@ describe('SentryMatchIncidentReporter(エラートラッキング)', () => {
     });
   });
 
+  test.each([
+    [
+      'match-settlement-late',
+      '終了の時刻のジョブで確定できなかったマッチを、ペアリングの前に確定しました',
+    ],
+    [
+      'qualifier-pairing-late',
+      '前日に完了していなかった予選のペアリングを、開始の前に行いました',
+    ],
+  ] as const)(
+    '日次の処理の遅れ(%s)を、errorで種類ごとの文言・指紋と件数を添えて送る',
+    async (kind, message) => {
+      const events = await reportWithSentry([{ kind, count: 6 }]);
+
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({
+        level: 'error',
+        logentry: { message },
+        fingerprint: ['match', kind],
+        tags: { match_incident: kind },
+        contexts: { match_incident: { count: 6 } },
+      });
+    },
+  );
+
   test('同じ報告が続けて起きても、重複の除外で捨てずに毎回送る', async () => {
     const incident: MatchIncident = { kind: 'match-kickoff-late', count: 1 };
 

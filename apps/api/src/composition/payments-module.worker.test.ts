@@ -164,12 +164,16 @@ describe('APIサーバーのモジュールの一覧への決済の登録', () =
 });
 
 describe('決済のジョブの定期実行', () => {
-  test('23:40の起動(40 7 * * *)で、突合のジョブだけが束縛から解決されて成功する', async () => {
+  test('23:40の起動(40 7 * * *)で、突合のジョブがマッチの確定より先に束縛から解決されて成功する', async () => {
     const jobs = await runScheduled('40 7 * * *', RECONCILIATION_TIME);
 
     expect(jobs).toEqual([
       expect.objectContaining({
         name: 'payments.checkout-reconciliation',
+        result: 'succeeded',
+      }),
+      expect.objectContaining({
+        name: 'match-engine.match-settlement',
         result: 'succeeded',
       }),
     ]);

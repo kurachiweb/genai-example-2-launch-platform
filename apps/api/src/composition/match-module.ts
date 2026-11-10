@@ -3,9 +3,15 @@ import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { RandomSource } from '../../lib/core/match/qualifier-pairing.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { createMatchPlatformModule } from '../../lib/workers/match/match-platform-module.ts';
 import { DirectoryEntryEligibilityChecker } from '../application/match/entry-eligibility.ts';
+import {
+  MatchKickoffJob,
+  MatchSettlementJob,
+  QualifierPairingJob,
+} from '../application/match/match-jobs.ts';
 import {
   type MatchKickoff,
   StoreMatchKickoff,
@@ -72,5 +78,12 @@ export const API_MATCH_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
       SentryMatchIncidentReporter,
     );
     bind<MatchKickoff>(MATCH_TYPES.MatchKickoff).to(StoreMatchKickoff);
+    bind<ScheduledJobHandler>(MATCH_TYPES.MatchSettlementJob).to(
+      MatchSettlementJob,
+    );
+    bind<ScheduledJobHandler>(MATCH_TYPES.QualifierPairingJob).to(
+      QualifierPairingJob,
+    );
+    bind<ScheduledJobHandler>(MATCH_TYPES.MatchKickoffJob).to(MatchKickoffJob);
   }),
 };

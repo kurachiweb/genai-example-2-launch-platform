@@ -146,11 +146,13 @@ export interface EntryEligibilityChecker {
   ): Promise<ReadonlySet<string>>;
 }
 
-export interface MatchIncident {
-  readonly kind: 'match-kickoff-late';
+export type MatchIncident =
   // 開始の日時から遅れて開始・決着したマッチの数
-  readonly count: number;
-}
+  | { readonly kind: 'match-kickoff-late'; readonly count: number }
+  // 終了の時刻のジョブで確定できず、ペアリングの前に確定したマッチの数
+  | { readonly kind: 'match-settlement-late'; readonly count: number }
+  // 前日に完了していなかったペアリングを開始の前に行い、予定したマッチの数
+  | { readonly kind: 'qualifier-pairing-late'; readonly count: number };
 
 export interface MatchIncidentReporter {
   // 運用者が検知できるようログとエラートラッキングへ送る。個人情報を含めない

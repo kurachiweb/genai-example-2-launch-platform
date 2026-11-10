@@ -34,6 +34,16 @@ const MatchIncidentReporter: unique symbol = Symbol.for(
 
 const MatchKickoff: unique symbol = Symbol.for('match.MatchKickoff');
 
+const MatchSettlementJob: unique symbol = Symbol.for(
+  'match.MatchSettlementJob',
+);
+
+const QualifierPairingJob: unique symbol = Symbol.for(
+  'match.QualifierPairingJob',
+);
+
+const MatchKickoffJob: unique symbol = Symbol.for('match.MatchKickoffJob');
+
 export const MATCH_TYPES = Object.freeze({
   UpvoteStore,
   UpvoteService,
@@ -48,4 +58,7 @@ export const MATCH_TYPES = Object.freeze({
   EntryEligibilityChecker,
   MatchIncidentReporter,
   MatchKickoff,
+  MatchSettlementJob,
+  QualifierPairingJob,
+  MatchKickoffJob,
 });

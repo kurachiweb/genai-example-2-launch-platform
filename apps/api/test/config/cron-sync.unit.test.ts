@@ -37,6 +37,9 @@ const DAILY_RUN_AT = { hour: 4, minute: 21 } as const;
 const DAILY_RUN_BUDGET_MS = 300_000;
 const REDISPATCH_RUN_AT = { hour: 16, minute: 21 } as const;
 const RECONCILIATION_RUN_AT = { hour: 23, minute: 40 } as const;
+const PAIRING_RUN_AT = { hour: 23, minute: 45 } as const;
+const KICKOFF_RUN_AT = { hour: 0, minute: 0 } as const;
+const MATCH_RUN_BUDGET_MS = 300_000;
 
 const IDENTITY_DAILY_JOBS = [
   {
@@ -142,6 +145,18 @@ describe('決済の突合の起動時刻の登録', () => {
   );
 });
 
+describe('マッチの日次の処理の起動時刻の登録', () => {
+  test.each(WRANGLER_ENVIRONMENTS)(
+    '定期実行の定義($label)に、23:45の式45 7 * * *と0:00の式0 8 * * *がある',
+    ({ wranglerEnv }) => {
+      const crons = readTriggerCrons(wranglerEnv);
+
+      expect(crons).toContain(toUtcCronExpression(PAIRING_RUN_AT));
+      expect(crons).toContain(toUtcCronExpression(KICKOFF_RUN_AT));
+    },
+  );
+});
+
 describe('起動時刻ごとの時間の予算の登録', () => {
   test('4:21の1回の起動の予算が、式21 12 * * *で300,000msとして引ける', () => {
     const cron = toUtcCronExpression(DAILY_RUN_AT);
@@ -171,17 +186,29 @@ describe('起動時刻ごとの時間の予算の登録', () => {
     ).toBeUndefined();
   });
 
-  test('23:40の起動には予算を置かない', () => {
-    expect(
-      createRunBudgetTable(SCHEDULED_RUN_BUDGETS).budgetFor(
-        toUtcCronExpression(RECONCILIATION_RUN_AT),
-      ),
-    ).toBeUndefined();
-  });
+  test.each([
+    ['23:40', RECONCILIATION_RUN_AT, '40 7 * * *'],
+    ['23:45', PAIRING_RUN_AT, '45 7 * * *'],
+    ['0:00', KICKOFF_RUN_AT, '0 8 * * *'],
+  ])(
+    'マッチの日次の処理の%sの1回の起動の予算が、業務時刻から導いた式で300,000msとして引ける',
+    (_label, at, expectedCron) => {
+      const cron = toUtcCronExpression(at);
 
-  test('予算は4:21の1件だけを登録する', () => {
+      expect(cron).toBe(expectedCron);
+      expect(
+        createRunBudgetTable(SCHEDULED_RUN_BUDGETS).budgetFor(cron)
+          ?.maxTotalDurationMs,
+      ).toBe(MATCH_RUN_BUDGET_MS);
+    },
+  );
+
+  test('予算は4:21とマッチの日次の処理の23:40・23:45・0:00の4件だけを登録する', () => {
     expect(SCHEDULED_RUN_BUDGETS).toEqual([
       { at: DAILY_RUN_AT, maxTotalDurationMs: DAILY_RUN_BUDGET_MS },
+      { at: RECONCILIATION_RUN_AT, maxTotalDurationMs: MATCH_RUN_BUDGET_MS },
+      { at: PAIRING_RUN_AT, maxTotalDurationMs: MATCH_RUN_BUDGET_MS },
+      { at: KICKOFF_RUN_AT, maxTotalDurationMs: MATCH_RUN_BUDGET_MS },
     ]);
   });
 });
