@@ -2,7 +2,7 @@
 
 - [ ] 1. 基盤: 共有の規則・テーブル・文言
 - [ ] 1.1 URLのクエリの規則と期間のプリセットを、4アプリが読み込める共有の定義として作る
-  - 前提: dev-tooling〜match-engineの18specの全タスクが完了していること(product-launchの`core/product`の契約と識別子(`ProductDirectory`・`ProductCategoryDirectory`・`PRODUCT_PLATFORM_TYPES`)・`visibleProducts()`・`wonLaunchExists()`・ライフサイクルの登録口・`LAUNCH_SUMMARY_SOURCES`・`productOwnerStatus`と、仮11の`productInCategory()`・`PRODUCT_SAVE_HOOKS`とinfrastructure層の`ProductSaveHook`の契約・`launch-summary.ts`の`fallbackLaunchSummary`・`groupAwards`、match-engineの`MatchDirectory`・`SupporterDirectory`・`qualifierWins()`・`MATCH_EVENT_HANDLERS`・`matchViewLoader`・`MatchCard`・`useUpvote`、content-processingの検索の基盤、identity-authとuser-profile-socialの部品、E2Eの`e2e/support/mailpit.ts`・`e2e/support/local-d1.ts`、backend-platformの改訂2の`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)。無ければ該当するタスクを保留して開発者へ報告する
+  - 前提: dev-tooling〜match-engineの18specの全タスクが完了していること(product-launchの`core/product`の契約と識別子(`ProductDirectory`・`ProductCategoryDirectory`・`PRODUCT_PLATFORM_TYPES`)・`visibleProducts()`・`wonLaunchExists()`・ライフサイクルの登録口・`LAUNCH_SUMMARY_SOURCES`・`productOwnerStatus`と、仮11の`productInCategory()`・`PRODUCT_SAVE_HOOKS`とinfrastructure層の`ProductSaveHook`の契約・`launch-summary.ts`の`fallbackLaunchSummary`・`groupAwards`、match-engineの`MatchDirectory`・`SupporterDirectory`・`qualifierWins()`・`MATCH_EVENT_HANDLERS`・`loadMatchView`・`MatchCard`・`useUpvote`・`UpvoteBotProtection`・`useServerCountdown`、content-processingの検索の基盤、identity-authとuser-profile-socialの部品、E2Eの`e2e/support/mailpit.ts`・`e2e/support/local-d1.ts`、backend-platformの改訂2の`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、不正なクエリの既定化(実在しない日付・開始日が終了日より後・検索語が無いときの関連度・既定と同じ並び順・`page`の0・1・小数・文字列)、50書記素への切り詰め(結合文字を含む絵文字)、並び順の値が4つで少ない順が無いこと、条件の変更で`page`が外れること、既定から変えている項目の数、基準時刻の今日からの各プリセットの範囲(月曜日・日曜日・月末・年末)、プリセットと一致しない範囲の判定、未来と逆順の検証、期間の表示の文言(今年は年を省く)を確かめる
   - 他の層を読み込まない(日付は`YYYY-MM-DD`の文字列で扱う)
   - 完了状態: 単体テストが成功し、apiとclientの型検査で規則を読み込める
@@ -21,9 +21,24 @@
   - _Boundary: `docs/GUIDES/service/design/002-page-layouts.md`・`003-text-and-copy-rules.md`_
   - _Requirements: 14.5_
 
+- [ ] 1.4 (P) トップページの汎用の部品を、詳細ページと共有する置き場所へ移す
+  - clientの`components/top/`の`auto-refresh-switch.tsx`・`full-time-countdown.tsx`・`full-time-countdown-text.ts`と、`top-page-messages.ts`の`AUTO_REFRESH_LABEL`・`AUTO_REFRESH_DESCRIPTION`(`auto-refresh-messages.ts`へ)、`qualifier-refresh.ts`の`FOLLOW_UP_REFETCH_LIMIT`・`QueryUpdateCounts`・`updateCountOf`(`follow-up-refetch.ts`へ)を`components/match/`へ移し、既存のテストも移す。予選の一覧だけの判定と`FullTimeCountdownSection`は`components/top/`に残す。中身と振る舞いは変えず、コメントの「トップページの」をページ全体の切り替えの説明に改める
+  - トップページの読み込みを書き換え、frontend/013の部品の表の「自動更新の切り替え」の置き場所に、複数のページが使う場合は`components/<ドメイン>/`に置く旨を加える(技術ドキュメントのため本プロジェクト名を書かない)
+  - 完了状態: 移したテストとトップページの既存の単体テスト・ブラウザテストが成功し、clientの型検査・静的解析が成功し、`components/top/`に移した部品の読み込みが残っていない
+  - _Boundary: clientの`components/top/`・`components/match/`、`docs/GUIDES/tech/frontend/013-live-scoreboard.md`_
+  - _Requirements: 9.6, 9.9_
+
+- [ ] 1.5 (P) frontend-libにカードの部品を作る
+  - shadcn/uiの`Card`を、frontend/005の「1ファイル1コンポーネントとshadcn/uiの分割」に従って`components/ui/card/`の部分ごとのファイル(`card.tsx`・`card-header.tsx`・`card-title.tsx`・`card-description.tsx`・`card-action.tsx`・`card-content.tsx`・`card-footer.tsx`)で作る。モックアップに無い部品のため、shadcn/uiの既定の`Card`を基にデザイントークン(`bg-card`・`text-card-foreground`・`border-border`)で書く
+  - 先に、ブラウザテスト(`runAxe`の違反0件、ライト・ダーク)で、各部分の要素・`data-slot`・`className`の合成と属性の受け渡しを確かめる。カタログ(`card.stories.tsx`)を添え、frontend/005の部品の一覧に`Card`の部分を加える
+  - 完了状態: ブラウザテストとカタログのビルドが成功し、frontend-libと画面を持つアプリの型検査が成功する
+  - _Boundary: `apps/frontend-lib/components/ui/card/`、`docs/GUIDES/tech/frontend/005-shared-components.md`_
+  - _Requirements: 11.1_
+
 - [ ] 2. 共有部品
 - [ ] 2.1 プロダクトの検索対象を作り、検索対象の集約点に加える
   - 先に、ローカルD1のWorkers統合テストで、掲載中のプロダクトだけを読み(名称・タグライン・説明文、版は読み取りの時刻)、未掲載・非公開化・投稿者の停止・論理削除で読み取りが空になり索引の対象の条件が偽になること、content-processingの索引の更新の処理(キーワードの抽出は固定の結果の偽物)で索引文書が作られ、名称の前方一致と説明文のキーワードで検索できること、索引に名称・タグライン・キーワード以外を含めないことを確かめる
+  - 索引の対象の条件(`isIndexable`)は`EXISTS`の中身(`SELECT 1 …`)だけを返す(包むのはcontent-processingの書き込みの側)。help-centerが未実装のため、検索対象と索引の定義の集約点への最初の登録になる。登録の形はテスト用の検索対象`workers/search/testing/fixture-search-target.ts`を先例にする
   - 完了状態: Workers統合テストと、検索対象の集約点の全定義の検証の単体テストが成功する
   - _Requirements: 4.1, 12.1, 12.9, 12.10_
 
@@ -31,6 +46,7 @@
   - 先に、ローカルD1のWorkers統合テストで、掲載の条件(退会・停止・非公開化・論理削除・敗北と両者敗北だけ・トーナメントの勝利だけのプロダクトが出ないこと、停止の解除と復元で戻ること)、2回勝利したプロダクトが1項目で直近の勝利が基準勝利になること、期間の開始日・終了日と同じ日の勝利が含まれ期間外の勝利だけのプロダクトが除かれ期間内の古い勝利が基準勝利になること、基準時刻の0時の前後に実施した勝利の実施日と期間の判定、ローンチ日とUpvote数の3つの並び順と同順位の決まった順、20件目と21件目のページの境界と総件数を確かめる
   - 同じく先に、識別子`DIRECTORY_PLATFORM_TYPES`が`Symbol.for('directory.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
   - application層は`**/lib/workers/**`を型も含めて読み込めないため、一覧の照会と記録のストアの契約と入出力の型は`apps/backend-lib/core/directory/ports.ts`、識別子は`core/directory/identifiers.ts`に置き、D1の実装だけを`workers/directory/d1-directory-listing.ts`に置く。`core/directory`は`workers`と`apps/db`を読み込まない
+  - match-engineの`qualifierWins()`は別名付きの副問い合わせのため、`const wins = qualifierWins()`と受けて`wins.productId`などで結合する(`lastUpvotedAt`・`decidedAt`はエポックミリ秒の数値、`matchDate`は文字列)
   - 一覧と件数は1回の一括の読み取りにする。照会と記録の全部品の契約とDIの識別子をここで一括で作る(2.3〜2.5は識別子を作らない)
   - 完了状態: Workers統合テストと識別子の単体テストが成功し、`core/directory`の`DIRECTORY_PLATFORM_TYPES`の識別子で一覧の照会を取得する型検査が通る
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.6, 1.7, 1.8, 3.6, 5.4, 5.5, 6.1, 13.5, 14.2_
@@ -82,8 +98,10 @@
   - _Depends: 2.2, 2.4, 3.1, 3.3_
   - _Requirements: 1.3, 2.1, 2.5, 3.1, 3.2, 4.7, 4.8, 6.1, 6.6, 13.4_
 
-- [ ] 3.5 プロダクト詳細ページとサポーターの一覧のユースケースを作る
-  - 先に、単体テスト(模擬のポート)で、ハンドルの形式の違反の404、公開範囲の判定の結果ごとの返り値、詳細・ローンチ・マッチ・対戦相手の照会を各1回で行うこと、取消のローンチの除外、キックオフ済みと最も新しいキックオフ済みのローンチの印、開催中(マッチ中・集計中)の最も新しいマッチ、サポーターの一覧の表示できないプロダクト・他のプロダクトの側・確定前のマッチでの`null`とカーソルを確かめる
+- [ ] 3.5 プロダクト詳細ページ・開催中のマッチ・サポーターの一覧のユースケースを作る
+  - 先に、単体テスト(模擬のポート)で、ハンドルの形式の違反の404、公開範囲の判定の結果ごとの返り値、詳細・ローンチ・マッチ・対戦相手の照会を各1回で行うこと、取消のローンチの除外、相手の側も返るマッチから自分の側を選ぶこと、キックオフ済みと最も新しいキックオフ済みのローンチの印、サポーターの一覧の表示できないプロダクト・他のプロダクトの側・確定前のマッチでの`null`とカーソル(Upvoteの日時はエポックミリ秒)を確かめる
+  - 同じく先に、開催中のマッチのユースケース(`LiveMatchReader`)で、開催中(マッチ中・集計中)の最も新しいマッチ、変化を待つ状態(集計中のマッチがある・キックオフ済みのローンチの予選マッチが未作成・開始の時刻を過ぎて未開始)、照会の時点の時刻、表示できないプロダクトと旧ハンドルの`null`を確かめる
+  - `listLaunches(productIds, now)`・`listByLaunches(launchIds, now)`・`findMatches(matchIds, now)`に処理の時刻を渡し、ローンチの無いプロダクトは`get(id) ?? []`で受ける
   - 完了状態: 単体テストが成功し、APIサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 3.1, 3.2, 3.3_
   - _Requirements: 8.2, 8.3, 8.5, 8.6, 8.7, 9.4, 9.5, 9.6, 10.1, 10.8, 10.9, 10.10, 13.4_
@@ -96,17 +114,18 @@
   - _Depends: 2.3, 3.4_
   - _Requirements: 2.1, 2.6, 3.1, 3.2, 3.7, 4.1, 4.2, 5.1, 6.1, 6.2_
 
-- [ ] 4.2 プロダクト詳細ページとサポーターの一覧の操作を作る
-  - 先に、Workers統合テストで、`productPage`の不在・未掲載の他者での`null`、本人の未掲載の表示、旧ハンドルの`ProductPageRedirect`、開催中のマッチをmatch-engineの`Match`で返すこと、マッチ履歴の項目、`matchSupporters`が退会・停止を除きUpvoteの日時の順に20件ずつ返し21件目でカーソルが続くこと、`first`の範囲とIDの形式の`validation_error`・不正なカーソルを確かめる
-  - 完了状態: Workers統合テストが成功し、2つの操作をclientの呼び出し元で実行できる
+- [ ] 4.2 プロダクト詳細ページ・開催中のマッチ・サポーターの一覧の操作を作る
+  - 先に、Workers統合テストで、`productPage`の不在・未掲載の他者での`null`、本人の未掲載の表示、旧ハンドルの`ProductPageRedirect`、マッチ履歴の項目、`productLiveMatch`が開催中のマッチをmatch-engineの`loadMatchView`で`Match`として返し(閲覧者のUpvoteを含む)、`serverTime`と変化を待つ状態を返し、表示できないプロダクトで`null`を返すこと、`matchSupporters`が退会・停止を除きUpvoteの日時の順に20件ずつ返し21件目でカーソルが続くこと、`first`の範囲とIDの形式の`validation_error`・不正なカーソルを確かめる
+  - 完了状態: Workers統合テストが成功し、3つの操作をclientの呼び出し元で実行できる
   - _Depends: 3.5, 4.1_
   - _Requirements: 8.1, 8.2, 8.3, 8.5, 8.6, 9.6, 10.2, 10.9, 10.10_
 
 - [ ] 5. 索引の更新の処理
 - [ ] 5.1 退会・停止と論理削除・非公開化の確定と同じ書き込みで索引を消す同期の処理を作り、登録する
   - 先に、Workers統合テストで、product-launchの非公開化・削除の確定で索引文書が同じ一括の書き込みで消え、確定が失敗すれば削除も取り消されること、identity-authの退会・停止の確定で投稿者の全ての索引文書が消えることを確かめる
-  - ユーザーとプロダクトの同期の処理の登録箇所へ追記する(読み取りをせず、集合の削除の文だけを返す)
-  - 完了状態: Workers統合テストが成功し、登録の検証を通る
+  - ユーザーとプロダクトの同期の処理の登録箇所へ追記する(読み取りをせず、集合の削除の文だけを返す。削除の文はbackend/007・012の「集合に対する更新・挿入・削除」の規約に従う)。利用者の削除の文は`event.userId`で作り、契約の戻り値に合わせて配列で返す
+  - 登録口の中身を完全一致で比べる既存のテスト`apps/api/src/composition/product-lifecycle-sync-handlers.worker.test.ts`の期待値に本specの登録を加える
+  - 完了状態: Workers統合テストと既存の登録口のテストが成功し、登録の検証を通る
   - _Depends: 2.5, 4.1_
   - _Requirements: 12.4, 12.5, 13.1_
 
@@ -130,7 +149,7 @@
   - _Requirements: 12.6, 12.7, 12.8, 13.1_
 
 - [ ] 5.4 編集の確定と同じ書き込みで索引を更新待ちにする保存の登録を作る(仮4)
-  - product-launchの仮11の`ProductSaveHook`(契約はapiの`infrastructure/product/product-save-hooks.ts`)を、apiの`infrastructure/directory/product-index-refresh-save-hook.ts`に実装する。`statementsFor({ productId, at }, db)`は勝利したプロダクトの記録があるときだけ`markPending('product', productId, at)`の文を返し、`afterCommit({ productId })`は同じ条件で更新を要求する。product-launchの`D1ProductStore`が文を一括の書き込みに加え、確定の後に`afterCommit`を呼ぶ。`PRODUCT_SAVE_HOOKS`(`apps/api/src/composition/product-save-hooks.ts`)へ`{ name: 'directory-discovery.product-index-refresh', hook }`を追記する
+  - product-launchの仮11の`ProductSaveHook`(契約はapiの`infrastructure/product/product-save-hooks.ts`)を、apiの`infrastructure/directory/product-index-refresh-save-hook.ts`に実装する。`statementsFor({ productId, at }, db)`は勝利したプロダクトの記録があるときだけ`markPending('product', productId, at)`の文を返し、`afterCommit({ productId })`は同じ条件で更新を要求する。product-launchの`D1ProductStore`が文を一括の書き込みに加え、確定の後に`afterCommit`を呼ぶ。`PRODUCT_SAVE_HOOKS`(`apps/api/src/composition/product-save-hooks.ts`)へ`{ name: 'directory-discovery.product-index-refresh', hook }`を追記し、登録口の中身を完全一致で比べる既存のテスト`product-save-hooks.worker.test.ts`の期待値に加える
   - 先に、Workers統合テストで、掲載中のプロダクトの編集(次回の予約とローンチ日の変更を含む)と公開APIの説明文の更新で同じ書き込みに更新待ちが入り確定の後に更新の要求が送られること、新しい登録と未掲載のプロダクトでは文を返さず要求も送らないこと、保存の条件で取り消されると更新待ちも書かれないこと、要求の送信の失敗で保存が成功のまま索引文書が更新待ちに残ることを確かめる(復元と停止の解除は5.3の処理が扱う)
   - 完了状態: Workers統合テストが成功し、編集した名称で検索にかかる
   - _Depends: 2.5, 4.1_
@@ -194,7 +213,7 @@
   - _Requirements: 6.4_
 
 - [ ] 6.9 ディレクトリの画面の枠と、条件の変更・ページの移動のフックを作る
-  - 画面の枠に見出し・6.5〜6.8の部品・区画の登録口(置き場所ごと・一覧の差し込み)を置き、条件の変更・ページの移動・フォーカスの移動のフックを作る
+  - 画面の枠に見出し・6.5〜6.8の部品・区画の登録口(置き場所ごと・一覧の差し込み)を置き、条件の変更・ページの移動・フォーカスの移動のフックを作る。区画と差し込みは`RecoverableSlot`で包み、何も描かない区画の枠と間隔を残さず(frontend/013の目印と`display: contents`)、差し込みは`every`件ごと(割り切れるときは最後の項目の後にも)に何番目かの位置を渡す
   - 先に、ブラウザテストで、条件の変更で1ページ目に戻ること、ページの移動で一覧の先頭へスクロールし見出しへフォーカスが移ること(視差効果を減らす設定ではスクロールの演出なし)、再読み込み中に直前の一覧が操作を止めて残り進捗のバーが出ること、取得エラーで検索欄と絞り込み欄が残り再試行と問い合わせへの導線が出ること、演出が無いこと、区画の1つの失敗が一覧を止めないことを確かめる
   - 完了状態: ブラウザテストが成功する
   - _Depends: 6.5, 6.6, 6.7, 6.8_
@@ -208,9 +227,10 @@
 
 - [ ] 7. 利用者側の画面: プロダクト詳細ページ
 - [ ] 7.1 詳細ページの操作の定義と区画の登録口を作り、許可リストを再生成する
-  - GraphQLの操作(詳細ページ・サポーターの一覧・フォロー中の照会・予約の可否の照会)の定義と型の生成、区画・ローンチの区画・投稿者本人向けの操作の登録の型と文脈、登録の一覧(本specの4件は7.8で加え、ローンチの区画と投稿者本人向けの操作は空)を作る
-  - 操作はclientの`src/graphql/operations/directory/`に1ファイル1操作の`.graphql`(操作名は`ClientProductPage`・`ClientMatchSupporters`・`ClientOwnerFollowStatus`・`ClientProductOwnerStatus`)で書き、6.1と同じ手順で生成物と許可リストを更新する
-  - 完了状態: 型の生成と許可リストの再生成が成功し、`graphql:check`とclientの`codegen.unit.test.ts`(操作名の接頭辞)が成功し、clientの型検査で操作と登録口を読み込める
+  - GraphQLの操作(詳細ページ・開催中のマッチ・サポーターの一覧・フォロー中の照会・予約の可否の照会)の定義と型の生成、区画・ローンチの区画・投稿者本人向けの操作の登録の型と文脈(詳細ページの区画の文脈に自動更新の切り替えの状態`autoRefresh`と申告`reportAutoUpdating`を含む)、置き場所ごとの並べ替え、登録の一覧(本specの4件は7.8で加え、ローンチの区画と投稿者本人向けの操作は空)を作る
+  - 操作はclientの`src/graphql/operations/directory/`に1ファイル1操作の`.graphql`(操作名は`ClientProductPage`・`ClientProductLiveMatch`・`ClientMatchSupporters`・`ClientOwnerFollowStatus`・`ClientProductOwnerStatus`)で書き、6.1と同じ手順で生成物と許可リストを更新する。`ClientProductLiveMatch`はmatch-engineのフラグメント`Match`を使い、`ClientOwnerFollowStatus`は`publicProfile`のunionを`... on PublicProfile { viewerRelation }`で読む
+  - 取得の設定・loaderの補助・開催中のマッチの差し替えを`src/graphql/product-page.ts`に作り、単体テストで確かめる
+  - 完了状態: 型の生成と許可リストの再生成が成功し、`graphql:check`とclientの`codegen.unit.test.ts`(操作名の接頭辞)と`product-page.ts`・並べ替えの単体テストが成功し、clientの型検査で操作と登録口を読み込める
   - _Depends: 4.2, 6.1_
   - _Requirements: 9.10, 10.14, 11.5_
 
@@ -244,22 +264,26 @@
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.12, 10.13, 10.14_
 
 - [ ] 7.6 (P) 投稿者本人向けの操作を作る
+  - 枠は1.5のfrontend-libの`Card`で描き、枠線を`className`で破線にする
   - 先に、ブラウザテストで、本人だけに破線の枠で描くこと、進行状況の見出し・「編集」・「再ローンチを予約」、予約の禁止の理由と解除の日付、間隔の制限中の併記、固定の注記、照会の失敗の無効と文言、登録された操作の描画を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Boundary: OwnerCard_
-  - _Depends: 7.1_
+  - _Depends: 1.5, 7.1_
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7_
 
-- [ ] 7.7 (P) 開催中のマッチの区画を作る
-  - 先に、ブラウザテストで、開催中のマッチがあるときだけ見出しとmatch-engineの対戦カードを描くこと、Upvoteの操作の結果で詳細ページの取得の結果の開催中のマッチが差し替わること、演出が視差効果を減らす設定で動かないことを確かめる
-  - 完了状態: ブラウザテストが成功する
-  - _Boundary: LiveMatchSection_
-  - _Depends: 7.1_
+- [ ] 7.7 (P) 開催中のマッチの区画と取り直しの判定を作る
+  - frontend/013・010の規則に従う。区画は`ClientProductLiveMatch`を購読し、マッチがあるとき見出し・1.4で移した`FullTimeCountdown`・match-engineの対戦カード・`useUpvote`を描く。`refetchInterval`と`refetchOnWindowFocus`は`live-match-refresh.ts`の判定(オンでマッチ中か変化を待つ状態なら定期再取得の間隔、オフでは変化を待つ状態の間だけ`FOLLOW_UP_REFETCH_LIMIT`回まで)の関数にし、回数は`updateCountOf`と基準の差で数える。Upvoteの結果は開催中のマッチの取得の`match`だけを差し替え、マッチの確定(またはマッチが無くなったこと)で詳細ページの取得を無効にする。定期の取り直し・残り時間・演出を持つ間は文脈の`reportAutoUpdating`で申告する
+  - 先に、取り直しの判定の単体テスト(オン・オフ、マッチ中・集計中・開始待ち、上限の回数、案内への切り替え)と、ブラウザテスト(013の「テスト」に従い`Date`・`setTimeout`・`clearTimeout`・`setInterval`・`clearInterval`を偽にし、`notifyManager.setScheduler(queueMicrotask)`で通知する)で、開催中のマッチがあるときだけ見出しと対戦カードと残り時間を描くこと、オフの後に間隔の数倍進めても定期の取得が無いこと、結果を待つ取り直しが上限まで続きオフの時だけ`role="status"`の文が案内に替わること、確定で詳細ページの取得が無効になること、Upvoteの結果の差し替え、申告の切り替えを確かめる
+  - 完了状態: 単体テストとブラウザテストが成功する
+  - _Boundary: LiveMatchSection、LiveMatchRefresh_
+  - _Depends: 1.4, 7.1_
   - _Requirements: 9.6, 9.9_
 
 - [ ] 7.8 詳細ページの枠とルートを組み立て、本specの区画を登録する
-  - `/p/$handle`のルートで、ハンドルの形式の違反と`null`の404(トップページとディレクトリへの導線)、旧ハンドルの302(クエリを保つ)、タイトルと説明と正規のURL、未掲載の本人の表示での検索エンジンの登録の拒否、取得エラーの表示、スケルトンを作る。ページの枠に7.2〜7.7の部品と区画の登録口を置き、開催中のマッチがあるときだけbot対策のウィジェット(`match_upvote`、`TurnstileWidget`は非表示で描くため判定の枠と場所を設けない)を1つ置き、本specの4つの区画を登録する
-  - 先に、ブラウザテストで、2カラムと1カラムの配置とサイドバーの位置、開催中のマッチの有無によるbot対策のウィジェットの有無、区画の順と1つの区画の失敗の閉じ込め、演出が開催中のマッチに限られることを確かめる
+  - `/p/$handle`のルートで、ハンドルの形式の違反と`null`の404(トップページとディレクトリへの導線)、旧ハンドルの302(クエリを保つ)、タイトルと説明と正規のURL、未掲載の本人の表示での検索エンジンの登録の拒否、取得エラーの表示、スケルトンを作る。loaderは詳細ページの取得を待ち、開催中のマッチの取得は`prefetchQuery`で読んでその失敗でページを失敗にしない。ページの枠に7.2〜7.7の部品と区画の登録口を置き、区画と開催中のマッチの区画を`RecoverableSlot`で包み、何も描かない区画の枠と間隔を残さない(frontend/013の目印と`display: contents`)。本specの4つの区画を登録する
+  - 自動更新(frontend/013の「自動更新の切り替え」): ページが切り替えの状態を`useState(true)`で持って区画の文脈へ渡し、根の要素に`data-auto-refresh`を付け、1.4で移した`AutoRefreshSwitch`を区画のエラーの境界の外に置く。描く条件はページ自身の値(開催中のマッチ・変化を待つ状態)か区画の申告で、区画が失敗・外れた時はその申告を消す。境界の取り直しはページが`useBoundaryRefresh`で、開催中のマッチの終了の時刻と予約済みのローンチの最も近いキックオフの時刻の直後に、開催中のマッチと詳細ページの取得を無効にする
+  - bot判定: 開催中のマッチがあるときだけ開催中のマッチの区画をmatch-engineの`UpvoteBotProtection`で包む(内側に`match_upvote`の非表示のウィジェットが1つ描かれ、判定の失敗では文言を描く)
+  - 先に、ブラウザテストで、2カラムと1カラムの配置とサイドバーの位置、開催中のマッチの有無による`UpvoteBotProtection`の有無、区画の順と1つの区画の失敗の閉じ込め、自動更新の切り替えの描く条件(ページ自身の値・区画の申告だけ・申告した区画の失敗・どれも無い)、境界の時刻の1秒後の取り直し、演出が開催中のマッチに限られ切り替えのオフと視差効果を減らす設定で止まることを確かめる
   - 完了状態: ブラウザテストが成功し、ローカルの`/p/<ハンドル>`がサーバーで描画される
   - _Depends: 7.2, 7.3, 7.5, 7.6, 7.7_
   - _Requirements: 8.1, 8.4, 8.7, 8.8, 8.9, 8.10, 9.1, 9.2, 9.9, 9.10, 9.11_
@@ -281,7 +305,7 @@
 
 - [ ] 9. 検証
 - [ ] 9.1 E2Eテストの補助を作る
-  - `e2e/support/directory-fixtures.ts`: admin-foundationの`executeLocalD1`(文字列は`sqlStringLiteral`)で、指定した2つのローンチのマッチ中の予選(開始を記録済み、終了の日時を過去、一方の側にサポーターのUpvote)をローカルD1に作る補助を作る。確定のジョブは、backend-platformの改訂2の共有の補助`e2e/support/scheduled-trigger.ts`の`triggerScheduled({ worker: 'api', businessDate: <当日の業務日付>, businessTime: '23:40' })`で動かし、独自の定期実行の起動の補助を作らない。これにより確定のイベント・予選の結果の記録・本specの掲載と索引の処理が実際の経路で動く
+  - `e2e/support/directory-fixtures.ts`: admin-foundationの`executeLocalD1`(文字列は`sqlStringLiteral`)と、足りる部分はmatch-engineの`e2e/client/match-steps.ts`の手順(`moveLaunchesToDate`・`startQualifiers`など。`e2e/support/match-fixtures.ts`は無い)で、指定した2つのローンチのマッチ中の予選(開始を記録済み、終了の日時を過去、一方の側にサポーターのUpvote)をローカルD1に作る補助を作る。確定のジョブは、backend-platformの改訂2の共有の補助`e2e/support/scheduled-trigger.ts`の`triggerScheduled({ worker: 'api', businessDate: <当日の業務日付>, businessTime: '23:40' })`で動かし、独自の定期実行の起動の補助を作らない。これにより確定のイベント・予選の結果の記録・本specの掲載と索引の処理が実際の経路で動く
   - 一覧とページの移動のための掲載中のプロダクト21件は、可視の投稿者の利用者の行・プロダクト・確定したマッチとローンチの結果を直接作る補助で作る(索引は持たず、検索の確認には使わない)
   - 索引の作成はローカルのeventのQueueの受け手(content-processingの更新の処理、キーワードの抽出はローカルの設定で無効)が行う。待ち条件は、ディレクトリの検索の結果に勝ったプロダクトが現れることとし、一定の間隔で再読み込みして上限の時間で失敗にする補助を作る
   - 完了状態: 補助を実行すると、勝ったプロダクトがローカルのディレクトリの一覧と検索に現れ、21件の掲載中のプロダクトで2ページ目ができる

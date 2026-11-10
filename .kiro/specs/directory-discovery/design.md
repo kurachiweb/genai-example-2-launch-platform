@@ -6,7 +6,7 @@
 
 **Users**: 閲覧者はディレクトリで検索・絞り込み・並べ替え・ページの移動を行い、詳細ページでプロダクトの説明とマッチの実績とサポーターを見て、開催中のマッチにUpvoteする。投稿者は自分のプロダクトの詳細ページで進行状況を確かめ、編集と次回の予約へ進む。後続spec(engagement・tournament-week・tournament-year・sponsorship・content-reporting・public-api・ugc-moderation)の開発者は、区画と項目の値の登録口・一覧の照会の部品を使う。
 
-**Impact**: D1に2テーブル(検索索引の文書・勝利したプロダクトの記録)と全文検索の索引を足す。`apps/common-lib/directory`にURLのクエリの規則、`apps/backend-lib/core/directory`に一覧の照会と記録の契約とDIの識別子、`apps/backend-lib/workers/directory`にそのD1の実装と束縛、`apps/backend-lib/workers/search/targets/product.ts`に検索対象を新設する。apiにスキーマモジュール`directory`・読み取りのユースケース・2つの同期の処理・保存の登録(仮4)を、eventに4つの非同期の処理と索引の更新待ちの書き込みの実装を、clientにディレクトリ・プロダクト詳細ページと区画の登録口を足す。上流のファイルは、契約で定められた登録箇所への追記(product-launchが仮11として提供する保存の登録口`PRODUCT_SAVE_HOOKS`への1行を含む)だけを変える。新しいシークレット・パッケージは無い。
+**Impact**: D1に2テーブル(検索索引の文書・勝利したプロダクトの記録)と全文検索の索引を足す。`apps/common-lib/directory`にURLのクエリの規則、`apps/backend-lib/core/directory`に一覧の照会と記録の契約とDIの識別子、`apps/backend-lib/workers/directory`にそのD1の実装と束縛、`apps/backend-lib/workers/search/targets/product.ts`に検索対象を新設する。apiにスキーマモジュール`directory`・読み取りのユースケース・2つの同期の処理・保存の登録(仮4)を、eventに4つの非同期の処理と索引の更新待ちの書き込みの実装を、clientにディレクトリ・プロダクト詳細ページと区画の登録口を足す。上流のファイルは、契約で定められた登録箇所への追記(product-launchが仮11として提供する保存の登録口`PRODUCT_SAVE_HOOKS`への1行を含む)と、次の2つ(2026-11-10に開発者が決定)だけを変える。(1)詳細ページの開催中のマッチをトップページと同じ動きにするため、match-engineのトップページ専用の置き場所にある汎用の部品(自動更新の切り替え・フルタイムまでの残り時間・結果を待つ取り直しの上限と回数の数え方)を、clientの`components/top/`から`components/match/`へ移す。(2)投稿者本人向けの操作などの枠に使うshadcn/uiのカード(`Card`)を、frontend-libの`components/ui/card/`に作る。新しいシークレット・パッケージは無い。
 
 ### Goals
 
@@ -35,7 +35,7 @@
 ### Out of Boundary
 
 - `products`・`product_launches`・`product_categories`などプロダクトのデータ、ハンドルの規則、保存と予約の判定(product-launch・user-profile-social)。本specは照会口・`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`(product-launchの仮11)と、それらで絞った`products.id`・`products.category_id`だけを使い、プロダクトのテーブルへ書き込まない。
-- マッチ・側・Upvoteのデータと規則(match-engine)。本specは`MatchDirectory`・`SupporterDirectory`・`qualifierWins()`・`matchViewLoader`・対戦カードの部品だけを使い、マッチのテーブルへ書き込まない。
+- マッチ・側・Upvoteのデータと規則(match-engine)。本specは`MatchDirectory`・`SupporterDirectory`・`qualifierWins()`・`loadMatchView`・対戦カードの部品だけを使い、マッチのテーブルへ書き込まない。clientの汎用の部品の移動(Overview)は置き場所と読み込みの変更だけで、振る舞いを変えない。
 - 索引の文書の書き込み・キーワードの抽出・日次の再抽出(content-processing)。本specは検索対象の定義と、更新待ちの印・削除の文・更新の要求を使う。
 - 区画と項目の値の中身(engagement・tournament-week・tournament-year・sponsorship・content-reporting)、公開APIの経路(public-api)、非公開化・停止の操作(ugc-moderation)。
 
@@ -45,11 +45,11 @@
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`caller`・`session`・`loaders`)・`withValidatedArgs`・`encodeCursor`・`decodeCursor`・`defineLoader`・`DateTime`・`PageInfo`。
 - identity-auth: `AccountGuard.currentUser`(識別子は`IDENTITY_PLATFORM_TYPES.AccountGuard`)・`CurrentUser`・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`LIFECYCLE_CONTINUE_DELAY_SECONDS`・`viewerQueryOptions`・`users`(`visibleProducts()`の結合だけ)・E2Eの`e2e/support/mailpit.ts`。
 - product-launch: `PRODUCT_PLATFORM_TYPES`の`ProductDirectory`(`findSummaries`・`resolveHandle`・`findDetail`・`listLaunches`)・`ProductCategoryDirectory`(`list`・`findByHandle`)と`ProductSummaryRecord`・`ProductDetailRecord`・`LaunchRecord`・`ProductHandleResolution`・`ProductCategoryRecord`(契約は`core/product/ports.ts`、識別子は`core/product/identifiers.ts`)、`D1ProductDirectory`(`workers/product`。検索対象の`read`での直接の生成)、`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`(product-launchの仮11。これらで絞った`products.id`・`products.category_id`を並べ替えと集計に使う)、`products`への外部キー、`ProductLifecycleEvent`・`ProductLifecycleSyncHandler`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`ProductLifecycleAsyncHandler`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、`ProductSaveHook`・`ProductSaveHookRegistration`・`PRODUCT_SAVE_HOOKS`(product-launchの仮11。契約はapiの`infrastructure/product/product-save-hooks.ts`にあり、本specのinfrastructure層の実装だけが使う)、`LaunchSummarySource`・`LAUNCH_SUMMARY_SOURCES`・`DecisionSourceRegistration`、`fallbackLaunchSummary`・`groupAwards`(`backend-lib/core/product/launch-summary.ts`)、`PRODUCT_HANDLE_RULE`、GraphQLの`ProductCategory`・`productCategoryLoader`・`LaunchSummary`・`LaunchStatus`・`ProductAward`・`productOwnerStatus`、E2Eの製品登録の画面。
-- match-engine: `MATCH_PLATFORM_TYPES`の`MatchDirectory`(`listByLaunches`・`findMatches`)・`SupporterDirectory`(契約と識別子は`core/match`)、`MatchRecord`・`EntryResult`・`MatchDecision`・`isWinningResult`、`qualifierWins()`、`MatchEvent`・`MatchEventHandler`・`MATCH_EVENT_HANDLERS`、GraphQLの`Match`・`MatchKind`・`MatchStage`・`MatchEntryResult`・`MatchDecision`・`matchViewLoader`、clientの`MatchCard`・`useUpvote`・`match-labels.ts`・`stadium.css`、`TurnstileWidget`の`match_upvote`、E2Eの`e2e/support/match-fixtures.ts`。
+- match-engine: `MATCH_PLATFORM_TYPES`の`MatchDirectory`(`listByLaunches(launchIds, now)`・`findMatches(matchIds, now)`)・`SupporterDirectory`(契約と識別子は`core/match`)、`MatchRecord`・`EntryResult`・`MatchDecision`・`isWinningResult`、`qualifierWins()`(別名付きの副問い合わせ。`const wins = qualifierWins()`で受けて`wins.productId`などで結合する。`lastUpvotedAt`・`decidedAt`はエポックミリ秒の数値、`matchDate`は文字列)、`MatchEvent`・`MatchEventHandler`・`MATCH_EVENT_HANDLERS`、GraphQLの`Match`・`MatchKind`・`MatchStage`・`MatchPhase`・`MatchEntryResult`・`MatchDecision`・`loadMatchView(context, matchId)`(`match-views.ts`。後続specは`matchViewLoader`を直接`load`しない)、clientの`MatchCard`・`useUpvote`・`UpvoteBotProtection`(内側に`match_upvote`の`TurnstileWidget`を1つ描き、`useUpvote`はその内側でだけ呼べる)・`useServerCountdown`・`match-labels.ts`・`stadium.css`・`MatchFragment`、本specが`components/top/`から`components/match/`へ移す`AutoRefreshSwitch`・`FullTimeCountdown`・`full-time-countdown-text.ts`・`FOLLOW_UP_REFETCH_LIMIT`・`updateCountOf`、E2Eの`e2e/client/match-steps.ts`(`moveLaunchesToDate`・`startQualifiers`など)。
 - content-processing: `searchDocumentColumns`・`searchTextColumn`・`searchDocumentStatusIndex`・`defineSearchIndex`・`SEARCH_INDEXES`・`ftsRankedSources`・`bm25Rank`・`print-search-index-sql.ts`、`defineSearchTarget`・`SEARCH_TARGETS`・`SearchIndexStatements`(`workers/search`。infrastructure層だけが使う)・`SEARCH_TYPES`・`SearchIndexRefreshRequester`(`core/search`。application層も使う)、`normalizeSearchTerms`・`buildFtsMatchExpression`・`countGraphemes`、`HighlightedText`・`CollapsibleMarkdownContent`・`useMarkdownOptions`。
 - user-profile-social: `checkHandleFormat`・`checkExternalUrl`・GraphQLの`UserSummary`・`userSummaryLoader`・`publicProfile`(`viewerRelation`)・`FollowButton`・`UserAvatar`。
 - media-pipeline: `mediaFileLoader`・`toMediaImage`・GraphQLの`MediaImage`・`MediaPicture`。
-- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`TurnstileWidget`(非表示)・`buildPageHead`・`NotFoundView`・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・日時の表示部品・shadcn/uiの部品(ボタン・バッジ・ツールチップ・カード・シート・ポップオーバー・セレクト・入力欄)・`runAxe`・デザイントークン。identity-authの`LoginRequiredDialog`。
+- frontend-platform: `executeGraphQL`・`graphqlQueryOptions`・`graphqlQueryKey`・`GraphQLClientError`・GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)・`buildPageHead`(clientの`buildSitePageHead`)・`NotFoundView`(clientの`components/pages/not-found-page.tsx`)・`ErrorState`・`PartialErrorState`・`EmptyState`・`LoadingSkeleton`・`RecoverableSlot`・`notify`・日時の表示部品・`LIVE_REFRESH_QUERY_OPTIONS`・`LIVE_REFRESH_INTERVAL_MS`(`utilities/query/live-refresh.ts`)・clientの`useBoundaryRefresh`(`components/time/use-boundary-refresh.ts`)・shadcn/uiの部品(ボタン・バッジ・ツールチップ・シート・ポップオーバー・セレクト・入力欄・スイッチ・ラベル)と本specが作るカード(`Card`)・`runAxe`・デザイントークン。identity-authの`LoginRequiredDialog`。
 - admin-foundation: E2Eの`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - npmパッケージ: 新規なし。
 - 後続specは、`common-lib/directory`・`core/directory`の公開の契約と識別子`DIRECTORY_PLATFORM_TYPES`、apiの`DIRECTORY_ITEM_METRIC_SOURCES`と`DirectoryItemMetricSource`、clientの6つの登録口と区画の文脈の型だけに依存し、本specのテーブルへ書き込まない。
@@ -57,21 +57,26 @@
 ### Revalidation Triggers
 
 - `DirectoryListingQuery`の入力と返す列、基準勝利と並べ替えの規則(public-api、仮1・仮2の決定)。
-- `DIRECTORY_PAGE_SECTIONS`・`DIRECTORY_LIST_INSERTS`・`DIRECTORY_ITEM_METRICS`・`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`PRODUCT_OWNER_ACTIONS`の置き場所・文脈の型・本specの`order`(engagement・tournament-week・tournament-year・sponsorship・content-reporting)。
+- `DIRECTORY_PAGE_SECTIONS`・`DIRECTORY_LIST_INSERTS`・`DIRECTORY_ITEM_METRICS`・`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`PRODUCT_OWNER_ACTIONS`の置き場所・文脈の型(詳細ページの区画の文脈の自動更新の切り替えの状態`autoRefresh`と申告`reportAutoUpdating`を含む)・本specの`order`(engagement・tournament-week・tournament-year・sponsorship・content-reporting)。
+- frontend-libの`Card`の部分の構成(engagementの評価・sponsorshipの広告など、後続specの枠)。`components/match/`へ移した`AutoRefreshSwitch`・`FullTimeCountdown`・`FOLLOW_UP_REFETCH_LIMIT`・`updateCountOf`の形(match-engineのトップページ、tournament-week・tournament-yearの対戦の画面)。
 - `DirectoryItemMetricSource`の形(engagement)。
 - 索引の対象の条件(掲載中)と、処理の名前・`order`(1200)(ugc-moderation・運用)。
-- 上流の`qualifierWins()`・`MatchDirectory`・`SupporterDirectory`・`MATCH_EVENT_HANDLERS`の`order`の規則、`ProductDirectory`・`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`・`PRODUCT_SAVE_HOOKS`の`ProductSaveHook`・`fallbackLaunchSummary`・`groupAwards`・`LAUNCH_SUMMARY_SOURCES`・`productOwnerStatus`(product-launchの仮11を含む)、`SearchTargetDefinition`・`ftsRankedSources`・`buildFtsMatchExpression`、`FollowButton`・`publicProfile`、`MatchCard`・`useUpvote`の形を変えたら、本specを確かめ直す。
+- 上流の`qualifierWins()`・`MatchDirectory`・`SupporterDirectory`・`MATCH_EVENT_HANDLERS`の`order`の規則、`ProductDirectory`・`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`・`PRODUCT_SAVE_HOOKS`の`ProductSaveHook`・`fallbackLaunchSummary`・`groupAwards`・`LAUNCH_SUMMARY_SOURCES`・`productOwnerStatus`(product-launchの仮11を含む)、`SearchTargetDefinition`・`ftsRankedSources`・`buildFtsMatchExpression`、`FollowButton`・`publicProfile`、`MatchCard`・`useUpvote`・`UpvoteBotProtection`・`loadMatchView`・`useBoundaryRefresh`の形、[集計値と残り時間を表示し続ける画面](../../../docs/GUIDES/tech/frontend/013-live-scoreboard.md)・[表示中の画面の定期再取得](../../../docs/GUIDES/tech/frontend/010-live-refresh-queries.md)の規則を変えたら、本specを確かめ直す。
+- 同期の処理の文の規約(backend/007・012の「集合に対する更新・挿入・削除」、2026-11-10に開発者が削除を加えると決定)。削除を許さない形に戻すなら、`directory-discovery.account-index-removal`・`directory-discovery.product-index-removal`と要件12.4・12.5を見直す。
 - `core/directory`の契約(`DirectoryListingQuery`・`DirectoryEntryStore`)と`DIRECTORY_PLATFORM_TYPES`の置き場所。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(本specとpublic-apiのapplication層が読み込むため)。
 - backend-platformの改訂2の`triggerScheduled`の引数(`worker`・`businessDate`・`businessTime`)を変えたら、E2Eの23:40の確定の起動(9.1・9.2)を確かめ直す。
 
 ### 上流への影響
 
-| 上流spec           | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                   | 影響と再検証                                                                             |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| product-launch     | 登録箇所への追記: `composition/product-save-hooks.ts`に`directory-discovery.product-index-refresh`、`product-lifecycle-sync-handlers.ts`に`directory-discovery.product-index-removal`、`product-lifecycle-async-handlers.ts`に`directory-discovery.product-index-restore`・`directory-discovery.entry-erasure`(1200)。保存の登録口・`productInCategory()`・`launch-summary.ts`はproduct-launchが仮11として提供する(本specの依頼による) | 契約どおり。`createProductSaveHooks`の名前の検証と、各ライフサイクルの登録口の検証を通る |
-| match-engine       | `apps/event/src/composition/match-event-handlers.ts`に`directory-discovery.qualifier-listing`(1200)                                                                                                                                                                                                                                                                                                                                    | 契約どおり。`createMatchEventRegistry`の検証を通る                                       |
-| identity-auth      | `apps/api/src/composition/user-lifecycle-sync-handlers.ts`に`directory-discovery.account-index-removal`、`apps/event/src/composition/user-lifecycle-async-handlers.ts`に`directory-discovery.account-index-restore`(1200)                                                                                                                                                                                                              | 契約どおり                                                                               |
-| content-processing | `apps/db/search/search-indexes.ts`の`SEARCH_INDEXES`に`PRODUCT_SEARCH_INDEX`、`apps/backend-lib/workers/search/targets/index.ts`の`SEARCH_TARGETS`に`PRODUCT_SEARCH_TARGET`                                                                                                                                                                                                                                                            | 契約どおり。`targets/index.unit.test.ts`・`search-index-migrations.unit.test.ts`を通る   |
+| 上流spec                      | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | 影響と再検証                                                                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| product-launch                | 登録箇所への追記: `composition/product-save-hooks.ts`に`directory-discovery.product-index-refresh`、`product-lifecycle-sync-handlers.ts`に`directory-discovery.product-index-removal`、`product-lifecycle-async-handlers.ts`に`directory-discovery.product-index-restore`・`directory-discovery.entry-erasure`(1200)。保存の登録口・`productInCategory()`・`launch-summary.ts`はproduct-launchが仮11として提供する(本specの依頼による)                                                                                    | 契約どおり。`createProductSaveHooks`の名前の検証と、各ライフサイクルの登録口の検証を通る                                                                                                               |
+| match-engine                  | `apps/event/src/composition/match-event-handlers.ts`に`directory-discovery.qualifier-listing`(1200)                                                                                                                                                                                                                                                                                                                                                                                                                       | 契約どおり。`createMatchEventRegistry`の検証を通る                                                                                                                                                     |
+| identity-auth                 | `apps/api/src/composition/user-lifecycle-sync-handlers.ts`に`directory-discovery.account-index-removal`、`apps/event/src/composition/user-lifecycle-async-handlers.ts`に`directory-discovery.account-index-restore`(1200)                                                                                                                                                                                                                                                                                                 | 契約どおり                                                                                                                                                                                             |
+| content-processing            | `apps/db/search/search-indexes.ts`の`SEARCH_INDEXES`に`PRODUCT_SEARCH_INDEX`、`apps/backend-lib/workers/search/targets/index.ts`の`SEARCH_TARGETS`に`PRODUCT_SEARCH_TARGET`                                                                                                                                                                                                                                                                                                                                               | 契約どおり。`targets/index.unit.test.ts`・`search-index-migrations.unit.test.ts`を通る。help-centerが未実装のため、2つの集約点への最初の登録になる                                                     |
+| match-engine(画面)            | clientの`components/top/auto-refresh-switch.tsx`・`full-time-countdown.tsx`・`full-time-countdown-text.ts`と、`top-page-messages.ts`の`AUTO_REFRESH_LABEL`・`AUTO_REFRESH_DESCRIPTION`、`qualifier-refresh.ts`の`FOLLOW_UP_REFETCH_LIMIT`・`QueryUpdateCounts`・`updateCountOf`を`components/match/`へ移し、トップページの読み込みを書き換える(2026-11-10に開発者が決定)。予選の一覧だけの判定(`canQualifierBoardChange`・`qualifierRefetchIntervalOf`・`isFollowUpExhausted`・`orderMatchesBy`)は`components/top/`に残す | 振る舞いは変えない。トップページの既存のブラウザテスト・単体テストを移した先の読み込みで通す。frontend/013の部品の表の自動更新の切り替えの置き場所を、複数のページが使う場合の置き場所を含む形に改める |
+| frontend-platform             | frontend-libの`components/ui/card/`にshadcn/uiの`Card`を部分ごとのファイル(`card.tsx`・`card-header.tsx`・`card-title.tsx`・`card-description.tsx`・`card-action.tsx`・`card-content.tsx`・`card-footer.tsx`)で作り、カタログとブラウザテストを添える(2026-11-10に開発者が決定)                                                                                                                                                                                                                                           | 既存の部品は変えない。frontend/005の部品の一覧に`Card`を加える                                                                                                                                         |
+| identity-auth・product-launch | 同期の処理の契約のコメント(`UserLifecycleSyncHandler`・`ProductLifecycleSyncHandler`)とbackend/007・012の文の規約を「集合に対する更新・挿入・削除」に改める(2026-11-10に開発者が決定、反映済み)                                                                                                                                                                                                                                                                                                                           | 既存の同期の処理の振る舞いは変えない                                                                                                                                                                   |
 
 - roadmapの帯の割り当ての表の本specの「使用中の値」は「波及処理は1200」になる(本specはroadmapを編集しないため、コントローラーへ報告する)。
 
@@ -79,7 +84,7 @@
 
 ### Existing Architecture Analysis
 
-- 上流の18specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする。実装済みはdev-toolingだけである。
+- 本specが依存する上流のspecは実装済みである(2026-11-10の照合は[research.md](research.md)の「上流の実装の完了後のギャップ分析」)。roadmapで本specより前のhelp-centerは未実装で、全文検索の集約点(`SEARCH_INDEXES`・`SEARCH_TARGETS`)は空のため、本specの`product`が実際の検索対象の最初の登録になる。登録の形の先例は`workers/search/testing/fixture-search-target.ts`である。
 - apiはクリーンアーキテクチャ(`domain`→`application`→`infrastructure`・`presentation`→`composition`)、処理単位のDIコンテナ、D1の`db.batch()`を使う。ライフサイクルの同期の処理は確定と同じ一括の書き込みに入る集合の更新の文、非同期の処理とマッチイベントの処理はeventの実行器で`order`の昇順に少なくとも1回動く。
 - 索引の文書はcontent-processingの`search-index.refresh`の処理が、検索対象の`read`で元データを読み直して条件付きで書く。ドメインは更新待ちの印・削除の文を自分の書き込みに入れ、確定の後に更新を要求する。
 
@@ -198,6 +203,7 @@ apps/
 │   │   ├── directory-reader.ts                                # 一覧の1ページの組み立て
 │   │   ├── directory-category-reader.ts                       # カテゴリの選択肢の並び
 │   │   ├── product-page-reader.ts                             # 詳細ページの組み立て
+│   │   ├── live-match-reader.ts                               # 開催中のマッチ・変化を待つ状態・サーバーの時刻(定期の取り直しの対象)
 │   │   ├── supporter-list-reader.ts                           # サポーターの一覧
 │   │   ├── launch-highlights-reader.ts                        # LAUNCH_SUMMARY_SOURCESの呼び出しと縮退
 │   │   └── item-metrics-reader.ts                             # DIRECTORY_ITEM_METRIC_SOURCESの呼び出しと縮退
@@ -208,9 +214,10 @@ apps/
 │   ├── presentation/graphql/modules/directory/                # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts
-│   │   ├── directory-views.ts                                 # 項目のリゾルバ(logo・category・owner・liveMatch)
+│   │   ├── directory-views.ts                                 # 項目のリゾルバ(logo・category・owner・ProductLiveMatch.match)
 │   │   ├── directory-resolvers.ts                             # directory・directoryCategories
 │   │   ├── product-page-resolvers.ts                          # productPage
+│   │   ├── live-match-resolvers.ts                            # productLiveMatch
 │   │   ├── supporter-resolvers.ts                             # matchSupporters
 │   │   └── index.ts                                           # directorySchemaModule
 │   └── composition/
@@ -251,9 +258,17 @@ apps/
 │   │   ├── directory-list-skeleton.tsx
 │   │   ├── launch-cta.tsx
 │   │   └── use-directory-navigation.ts                        # 条件の変更・ページの移動・フォーカス
+│   ├── components/match/                                      # (移動)match-engineのcomponents/top/から移す汎用の部品(振る舞いは変えない。テストも移す)
+│   │   ├── auto-refresh-switch.tsx                            # AutoRefreshSwitch(ページ全体の自動更新の切り替え)
+│   │   ├── auto-refresh-messages.ts                           # AUTO_REFRESH_LABEL・AUTO_REFRESH_DESCRIPTION(top-page-messages.tsから移す)
+│   │   ├── full-time-countdown.tsx                            # FullTimeCountdown(終了までの残り時間)
+│   │   ├── full-time-countdown-text.ts                        # 残り時間の数字と読み上げの文言
+│   │   └── follow-up-refetch.ts                               # FOLLOW_UP_REFETCH_LIMIT・QueryUpdateCounts・updateCountOf(qualifier-refresh.tsから移す)
 │   ├── components/product-page/
 │   │   ├── product-page-section-types.ts                      # 登録の型と文脈(テストなし)
-│   │   ├── product-page.tsx                                   # 2カラムの枠と区画の描画
+│   │   ├── product-page-section-order.ts                      # 置き場所ごとの並べ替え(*.unit.test.ts)
+│   │   ├── product-page.tsx                                   # 2カラムの枠と区画の描画・自動更新の切り替えの状態とdata-auto-refresh・境界の取り直し
+│   │   ├── live-match-refresh.ts                              # 開催中のマッチの定期の取り直しと結果を待つ取り直しの判定(*.unit.test.ts)
 │   │   ├── product-breadcrumbs.tsx
 │   │   ├── unlisted-banner.tsx
 │   │   ├── product-header.tsx
@@ -268,15 +283,21 @@ apps/
 │   │   ├── match-history-row.tsx
 │   │   ├── supporters-panel.tsx
 │   │   ├── empty-matches.tsx
-│   │   ├── owner-card.tsx
+│   │   ├── owner-card.tsx                                     # frontend-libのCardで描く
 │   │   └── product-page-skeleton.tsx
+│   ├── graphql/product-page.ts                                # productPage・productLiveMatchの取得の設定・loaderの補助・開催中のマッチの差し替え(*.unit.test.ts)
 │   └── graphql/operations/directory/                          # 1ファイル1操作(操作名はClientで始める。生成物はsrc/graphql/generated/)
 │       ├── directory.graphql                                  # query ClientDirectory(directory)
 │       ├── directory-categories.graphql                       # query ClientDirectoryCategories(directoryCategories)
 │       ├── product-page.graphql                               # query ClientProductPage(productPage)
+│       ├── product-live-match.graphql                         # query ClientProductLiveMatch(productLiveMatch、定期の取り直しの対象)
 │       ├── match-supporters.graphql                           # query ClientMatchSupporters(matchSupporters)
 │       ├── owner-follow-status.graphql                        # query ClientOwnerFollowStatus(publicProfileのviewerRelation)
 │       └── product-owner-status.graphql                       # query ClientProductOwnerStatus(productOwnerStatus、投稿者本人向けの操作)
+├── frontend-lib/components/ui/card/                           # shadcn/uiのCard(1ファイル1コンポーネント、005の分割の規則)
+│   ├── card.tsx・card-header.tsx・card-title.tsx・card-description.tsx・card-action.tsx・card-content.tsx・card-footer.tsx
+│   ├── card.stories.tsx                                       # カタログ(部分の組み合わせ・ライト・ダーク)
+│   └── card.browser.test.tsx                                  # 要素と属性の受け渡し・runAxe
 e2e/
 ├── client/directory.e2e.test.ts                               # 一覧・検索・絞り込み・並べ替え・ページ・詳細・302
 └── support/directory-fixtures.ts                              # ローカルD1に確定した予選と掲載中のプロダクトを作る補助
@@ -291,7 +312,10 @@ docs/GUIDES/tech/
 
 - `apps/db/schema/index.ts`・`apps/db/migrations/<日時>_directory_discovery/migration.sql`・`apps/db/migrations/<日時>_directory_discovery_fts/migration.sql` — 2テーブルの再エクスポート、生成したマイグレーション、`print-search-index-sql.ts product_search_documents`の出力を貼ったカスタムマイグレーション。mainの最新を取り込んでから生成する。
 - `apps/db/search/search-indexes.ts`・`apps/backend-lib/workers/search/targets/index.ts` — 索引の定義と検索対象。
-- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`user-lifecycle-sync-handlers.ts`・`product-lifecycle-sync-handlers.ts`・`product-save-hooks.ts` — `DIRECTORY_PLATFORM_MODULE`・`DIRECTORY_MODULE`・`directorySchemaModule`・2つの同期の処理・保存の登録。
+- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`user-lifecycle-sync-handlers.ts`・`product-lifecycle-sync-handlers.ts`・`product-save-hooks.ts` — `DIRECTORY_PLATFORM_MODULE`・`DIRECTORY_MODULE`・`directorySchemaModule`・2つの同期の処理・保存の登録。登録口の中身を完全一致で比べる既存のテスト`product-lifecycle-sync-handlers.worker.test.ts`・`product-save-hooks.worker.test.ts`の期待値に本specの登録を加える。
+- `apps/client/src/components/top/top-page.tsx`・`top-page-messages.ts`・`full-time-countdown-section.tsx`・`qualifier-refresh.ts`・`qualifier-board-section.tsx`と各テスト — `components/match/`へ移した部品の読み込みの書き換え(振る舞いは変えない)。
+- `docs/GUIDES/tech/frontend/013-live-scoreboard.md` — 部品の表の「自動更新の切り替え」の置き場所に、複数のページが使う場合は`components/<ドメイン>/`に置く旨を加える。
+- `docs/GUIDES/tech/frontend/005-shared-components.md` — 部品の一覧の`components/ui/`に`Card`(`CardHeader`・`CardTitle`・`CardDescription`・`CardAction`・`CardContent`・`CardFooter`)を加える。
 - `apps/event/src/composition/modules.ts`・`match-event-handlers.ts`・`product-lifecycle-async-handlers.ts`・`user-lifecycle-async-handlers.ts` — `DIRECTORY_PLATFORM_MODULE`・eventの束縛・4つの処理。
 - `docs/GUIDES/tech/db/README.md`・`frontend/README.md` — 文書一覧の行。
 - `docs/onboardings/project-values.md` — 処理の名前と`order`、検索対象の名前と重み、区画の登録口の`order`。
@@ -340,6 +364,7 @@ WHERE <visibleProducts()> AND <wonLaunchExists()> [AND <productInCategory(?)>]
 ORDER BY <並び順> LIMIT 20 OFFSET ?
 ```
 
+- `<qualifierWins()>`は別名付きの副問い合わせで、`const wins = qualifierWins()`と受けて`wins.productId`・`wins.launchId`・`wins.matchDate`・`wins.upvoteCount`で参照する(`qualifierWins.productId`のような書き方は動かない)。
 - 件数は同じ`WITH`と条件の`COUNT(*)`の文で、ページの文と1つの`db.batch()`で読む(6.1)。並び順は`newest`が`match_date DESC, products.id DESC`、`oldest`が`match_date ASC, products.id ASC`、`upvotes`が`upvote_count DESC, match_date DESC, products.id DESC`、`relevance`が`rank ASC, match_date DESC, products.id DESC`(5.2・5.4・5.5)。
 - 期間の条件を窓関数の前に掛けるため、期間内に勝利の無いプロダクトは`rn = 1`の行を持たず除かれ、期間内の最新が基準勝利になる(3.6、仮2)。
 - 基準勝利の種類は`MatchDirectory.listByLaunches`の予選のマッチの側の`result`と`endedEarly`から`classifyBaseWin`で決める(2.7〜2.9)。
@@ -362,6 +387,31 @@ flowchart TB
 ```
 
 - `decideProductPageAccess({ resolution, viewerUserId })`が`render`(`ownerView`・`unlisted`)・`redirect`(現在のハンドル)・`not-found`を返す(8.2〜8.7)。`visible`はproduct-launchの`visibleProducts()`(非公開化・論理削除・投稿者の退会や停止を除く)と同じ判定である。
+
+### 開催中のマッチの取り直し
+
+詳細ページの開催中のマッチは、トップページと同じ対戦カード・演出・残り時間を、[集計値と残り時間を表示し続ける画面](../../../docs/GUIDES/tech/frontend/013-live-scoreboard.md)と[表示中の画面の定期再取得](../../../docs/GUIDES/tech/frontend/010-live-refresh-queries.md)の規則で表示し続ける(9.6・9.9、2026-11-10に開発者が決定)。定期の取り直しは詳細ページの取得(`productPage`)へ広げず、開催中のマッチだけを返す小さな取得(`productLiveMatch`)に重ねる(010の「使う場面」)。
+
+```mermaid
+sequenceDiagram
+    participant R as product page route
+    participant P as ProductPage
+    participant L as LiveMatchSection
+    participant A as api productLiveMatch
+    R->>A: productPage and productLiveMatch in parallel
+    P->>P: autoRefresh state and data-auto-refresh
+    P->>P: useBoundaryRefresh at endsAt and next kickoff
+    L->>A: refetchInterval while live or awaiting
+    A-->>L: serverTime match awaitingChange
+    L->>L: useUpvote then setQueryData of match
+    L->>P: invalidate productPage when match becomes finished
+```
+
+- 定期の取り直し: 自動更新の切り替えがオンで、マッチが`LIVE`か変化を待つ状態(`awaitingChange`)の間は`LIVE_REFRESH_QUERY_OPTIONS.refetchInterval`ごと。オフの間は、変化を待つ状態のときだけ`FOLLOW_UP_REFETCH_LIMIT`回まで(013の「結果を待つ取り直し」)。上限に達してもオフで変化を待つ状態なら、区画の見出しの下の`role="status"`の文をページを開き直す案内に切り替える。
+- 境界の取り直し: ページ(区画のエラーの境界の外)が`useBoundaryRefresh`で、開催中のマッチの`endsAt`と、予約済みのローンチの最も近い`kickoffAt`の直後に、`productLiveMatch`と`productPage`の取得を無効にする。境界の取り直しは自動更新の切り替えで止めない。
+- 変化を待つ状態(`awaitingChange`、サーバーが判定): 集計中(`TALLYING`)のマッチがある、またはキックオフの時刻を過ぎたローンチの予選マッチがまだ作られていない・開始の時刻を過ぎて開始していない。
+- 確定の反映: `productLiveMatch`の結果でマッチが`FINISHED`になった、または開催中のマッチが無くなったら、`productPage`の取得を無効にしてマッチ履歴を取り直す。
+- Upvoteの結果は`useUpvote`の`onUpdated`で`productLiveMatch`の取得の`match`だけを`setQueryData`で差し替える(013の「操作の結果の反映」)。
 
 ### 索引の更新
 
@@ -390,15 +440,15 @@ sequenceDiagram
     H-->>E: removal statements in the same batch
 ```
 
-| 契機                           | 処理                                        | 種類                                   | 内容                                                                                                                                                     |
-| ------------------------------ | ------------------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 予選の勝利の確定               | `directory-discovery.qualifier-listing`     | マッチイベント`decided`・予選、1200    | `findMatches`で勝った側(`isWinningResult`、紐付けあり)の`directory_entries`を作り(`onConflictDoNothing`)、`markPending`の後に`requestRefresh`(1.5・12.2) |
-| 編集(登録・編集・説明文の更新) | `directory-discovery.product-index-refresh` | `PRODUCT_SAVE_HOOKS`(仮4)              | `directory_entries`があれば`markPending`を保存の一括の書き込みに入れ、確定の後に`requestRefresh`(12.3)                                                   |
-| 論理削除・非公開化             | `directory-discovery.product-index-removal` | プロダクトの同期`deleted`・`hidden`    | `deleteSources('product', [productId])`(12.4・12.5)                                                                                                      |
-| 退会・停止                     | `directory-discovery.account-index-removal` | ユーザーの同期`withdrawn`・`suspended` | `DELETE FROM product_search_documents WHERE source_id IN (SELECT product_id FROM directory_entries WHERE owner_user_id = ?)`(12.4・12.5)                 |
-| 復元                           | `directory-discovery.product-index-restore` | プロダクトの非同期`unhidden`、1200     | `directory_entries`があれば`markPending`と`requestRefresh`。`done`(12.6)                                                                                 |
-| 停止の解除                     | `directory-discovery.account-index-restore` | ユーザーの非同期`unsuspended`、1200    | 投稿者の`directory_entries`を1回の実行で全件、100件ずつ`markPending`と`requestRefresh`。`done`(12.6)                                                     |
-| 物理削除                       | `directory-discovery.entry-erasure`         | プロダクトの非同期`purge_due`、1200    | 索引文書と`directory_entries`の行を1つの一括の書き込みで削除。`done`(12.7)                                                                               |
+| 契機                           | 処理                                        | 種類                                   | 内容                                                                                                                                                                     |
+| ------------------------------ | ------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 予選の勝利の確定               | `directory-discovery.qualifier-listing`     | マッチイベント`decided`・予選、1200    | `findMatches([matchId], now)`で勝った側(`isWinningResult`、紐付けあり)の`directory_entries`を作り(`onConflictDoNothing`)、`markPending`の後に`requestRefresh`(1.5・12.2) |
+| 編集(登録・編集・説明文の更新) | `directory-discovery.product-index-refresh` | `PRODUCT_SAVE_HOOKS`(仮4)              | `directory_entries`があれば`markPending`を保存の一括の書き込みに入れ、確定の後に`requestRefresh`(12.3)                                                                   |
+| 論理削除・非公開化             | `directory-discovery.product-index-removal` | プロダクトの同期`deleted`・`hidden`    | `deleteSources('product', [productId])`(12.4・12.5)                                                                                                                      |
+| 退会・停止                     | `directory-discovery.account-index-removal` | ユーザーの同期`withdrawn`・`suspended` | `DELETE FROM product_search_documents WHERE source_id IN (SELECT product_id FROM directory_entries WHERE owner_user_id = ?)`(12.4・12.5)                                 |
+| 復元                           | `directory-discovery.product-index-restore` | プロダクトの非同期`unhidden`、1200     | `directory_entries`があれば`markPending`と`requestRefresh`。`done`(12.6)                                                                                                 |
+| 停止の解除                     | `directory-discovery.account-index-restore` | ユーザーの非同期`unsuspended`、1200    | 投稿者の`directory_entries`を1回の実行で全件、100件ずつ`markPending`と`requestRefresh`。`done`(12.6)                                                                     |
+| 物理削除                       | `directory-discovery.entry-erasure`         | プロダクトの非同期`purge_due`、1200    | 索引文書と`directory_entries`の行を1つの一括の書き込みで削除。`done`(12.7)                                                                                               |
 
 - 索引の作成と更新は常にcontent-processingの処理が、`PRODUCT_SEARCH_TARGET.read`で処理の時点のプロダクトを読み、掲載中でなければ索引を消す(12.1・12.9)。削除は確定と同じ一括の書き込みで行う(12.4・12.5)。`requestRefresh`の送信の失敗は例外にならず、`pending`の索引文書は1時間後以降の日次の再抽出が再処理する(12.8)。
 - 更新待ちの印の書き込みは、eventの処理(application層)では`ProductIndexPendingMarker.mark`(実装`D1ProductIndexPendingMarker`がinfrastructure層で`SearchIndexStatements.markPending`の文を組み立てて1回の`db.batch()`で実行する)を通し、保存の登録(api、infrastructure層)ではproduct-launchの`D1ProductStore`の一括の書き込みに文を加える。application層は文と一括の書き込みを扱わない(backend-platformの層の規則)。
@@ -406,72 +456,75 @@ sequenceDiagram
 
 ## Requirements Traceability
 
-| Requirement                                 | Summary                    | Components                                                                                           | Interfaces                                                        | Flows                      |
-| ------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | -------------------------- |
-| 1.1, 1.2, 1.3, 1.4, 1.6, 1.7, 1.8           | 掲載の条件                 | DirectoryListingQuery、ProductPageAccess                                                             | `qualifierWins()`・`visibleProducts()`・`wonLaunchExists()`       | 一覧の問い合わせ           |
-| 1.5                                         | 確定から数分以内の掲載     | DirectoryListingQuery、QualifierListingHandler                                                       | `MATCH_EVENT_HANDLERS`                                            | 索引の更新                 |
-| 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.13          | 項目の表示と操作           | DirectoryItem、DirectoryViews、DirectoryReader                                                       | `DirectoryItem`                                                   | —                          |
-| 2.7, 2.8, 2.9, 2.10                         | 勝利した予選マッチ         | BaseWin、WinSummary、DirectoryReader                                                                 | `classifyBaseWin`                                                 | 一覧の問い合わせ           |
-| 2.11                                        | 受賞バッジ                 | LaunchHighlightsReader、AwardBadges                                                                  | `LAUNCH_SUMMARY_SOURCES`                                          | —                          |
-| 2.12                                        | 項目の値の登録口           | ItemMetricSources、ItemMetricsReader、DirectorySections                                              | `DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS`         | —                          |
-| 3.1, 3.2                                    | カテゴリ                   | CategoryPicker、DirectoryCategoryReader、DirectoryListingQuery                                       | `directoryCategories`・`productInCategory()`                      | —                          |
-| 3.3, 3.4, 3.5                               | 期間                       | DirectoryPeriod、PeriodFilter、PeriodRangeForm                                                       | `presetRange`・`periodKeyOf`                                      | —                          |
-| 3.6                                         | 期間の基準                 | DirectoryListingQuery                                                                                | 窓関数                                                            | 一覧の問い合わせ           |
-| 3.7, 3.8                                    | 正規化と1ページ目          | DirectoryQueryRules、UseDirectoryNavigation                                                          | `normalizeDirectoryQuery`・`withConditions`                       | —                          |
-| 3.9, 3.10                                   | 横並びとシート             | FilterToolbar、FilterSheet                                                                           | —                                                                 | —                          |
-| 4.1, 4.2, 4.7, 4.8                          | 検索の対象と照合           | DirectoryReader、DirectoryListingQuery、ProductSearchSchema、ProductSearchTarget                     | `buildFtsMatchExpression`・`ftsRankedSources`                     | 一覧の問い合わせ           |
-| 4.3, 4.4, 4.5                               | 検索欄                     | SearchForm                                                                                           | `countGraphemes`                                                  | —                          |
-| 4.6                                         | 強調表示                   | DirectoryItem                                                                                        | `HighlightedText`                                                 | —                          |
-| 5.1, 5.2, 5.3, 5.4, 5.5, 5.6                | 並べ替え                   | SortSelect、DirectoryQueryRules、DirectoryListingQuery                                               | `DIRECTORY_SORTS`                                                 | 一覧の問い合わせ           |
-| 6.1, 6.2, 6.3, 6.4, 6.5, 6.6                | ページ分け                 | DirectoryListingQuery、ResultCount、DirectoryPagination、UseDirectoryNavigation、DirectoryEmptyState | `DIRECTORY_PAGE_SIZE`                                             | —                          |
-| 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9 | 画面の構成と状態           | DirectoryRoute、DirectoryPage、DirectoryListSkeleton、DirectoryEmptyState、LaunchCta                 | `queryClient.query`・`keepPreviousData`                           | —                          |
-| 7.10                                        | ディレクトリの区画         | DirectorySections、DirectoryPage                                                                     | `DIRECTORY_PAGE_SECTIONS`・`DIRECTORY_LIST_INSERTS`               | —                          |
-| 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7           | 公開範囲・302・404         | ProductPageAccess、ProductPageReader、ProductPageRoute                                               | `productPage`・`ProductPageRedirect`                              | プロダクト詳細ページの解決 |
-| 8.8, 8.9, 8.10                              | 描画とエラーと検索エンジン | ProductPageRoute                                                                                     | `buildSitePageHead`                                               | —                          |
-| 9.1, 9.2, 9.3, 9.9, 9.10, 9.11              | 構成と区画                 | ProductPage、ProductPageSections、UnlistedBanner、ProductBreadcrumbs                                 | `PRODUCT_PAGE_SECTIONS`                                           | —                          |
-| 9.4, 9.5, 9.12                              | ヘッダーと成績             | ProductHeader、OwnerFollow、CopyLinkButton、MatchHistory                                             | `ProductPageRecord`                                               | —                          |
-| 9.6                                         | 開催中のマッチ             | LiveMatchSection、DirectoryViews                                                                     | `matchViewLoader`・`MatchCard`・`useUpvote`                       | —                          |
-| 9.7                                         | スクリーンショット         | ScreenshotGallery、ScreenshotLightbox                                                                | —                                                                 | —                          |
-| 9.8                                         | 説明文                     | ProductDescription                                                                                   | `CollapsibleMarkdownContent`                                      | —                          |
-| 10.1                                        | ローンチのブロックと要約   | LaunchBlock、LaunchHighlightsReader                                                                  | `LAUNCH_SUMMARY_SOURCES`                                          | —                          |
-| 10.2, 10.3, 10.4, 10.5, 10.6, 10.7          | マッチ履歴                 | MatchHistory、MatchHistoryRow、ProductPageReader                                                     | `toHistoryRows`                                                   | —                          |
-| 10.8, 10.9, 10.10, 10.11                    | サポーター                 | MatchHistoryRow、SupportersPanel、SupporterListReader                                                | `matchSupporters`・`SupporterDirectory`                           | —                          |
-| 10.12, 10.13                                | マッチが無いブロック       | EmptyMatches                                                                                         | —                                                                 | —                          |
-| 10.14                                       | ローンチの区画             | LaunchBlock、ProductPageSections                                                                     | `PRODUCT_LAUNCH_SECTIONS`                                         | —                          |
-| 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7    | 投稿者本人向けの操作       | OwnerCard、ProductPageSections                                                                       | `productOwnerStatus`・`PRODUCT_OWNER_ACTIONS`                     | —                          |
-| 12.1, 12.9                                  | 索引の対象と冪等           | ProductSearchTarget、ProductSearchSchema                                                             | `PRODUCT_SEARCH_TARGET`                                           | 索引の更新                 |
-| 12.2                                        | 勝利で索引                 | QualifierListingHandler、DirectoryEntryStore、ProductIndexPendingMarker                              | `MATCH_EVENT_HANDLERS`                                            | 索引の更新                 |
-| 12.3                                        | 編集で索引                 | ProductIndexRefreshSaveHook                                                                          | `PRODUCT_SAVE_HOOKS`                                              | 索引の更新                 |
-| 12.4, 12.5                                  | 削除・非公開化・退会・停止 | ProductIndexRemovalSyncHandler、AccountIndexRemovalSyncHandler、ProductIndexRemovalStatements        | `PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`USER_LIFECYCLE_SYNC_HANDLERS` | 索引の更新                 |
-| 12.6                                        | 復元・停止の解除           | ProductIndexRestoreHandler、AccountIndexRestoreHandler、ProductIndexPendingMarker                    | 非同期の登録口                                                    | 索引の更新                 |
-| 12.7                                        | 物理削除                   | EntryErasureHandler                                                                                  | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS`                                | 索引の更新                 |
-| 12.8, 12.10                                 | 非同期・回復・個人情報     | 各処理、ProductSearchTarget                                                                          | `requestRefresh`                                                  | 索引の更新                 |
-| 13.1, 13.2                                  | 帯の値と順                 | QualifierListingHandler、各処理                                                                      | `order` 1200                                                      | 索引の更新                 |
-| 13.3                                        | ログ                       | 全コンポーネント                                                                                     | `getAppLogger`                                                    | —                          |
-| 13.4                                        | まとめた照会               | DirectoryReader、ProductPageReader                                                                   | `findSummaries`・`listByLaunches`・`userSummaryLoader`            | 一覧の問い合わせ           |
-| 13.5                                        | 公開APIの部品              | DirectoryListingQuery、DirectoryPlatformModule                                                       | `DirectoryListingQuery.page`                                      | —                          |
-| 14.1, 14.2, 14.3                            | テスト                     | Testing Strategy                                                                                     | —                                                                 | —                          |
-| 14.4                                        | 技術ドキュメント           | DirectoryTechDocs                                                                                    | —                                                                 | —                          |
-| 14.5                                        | サービス仕様               | DirectoryServiceSpecs                                                                                | —                                                                 | —                          |
+| Requirement                                 | Summary                    | Components                                                                                                                 | Interfaces                                                                                                 | Flows                      |
+| ------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------- |
+| 1.1, 1.2, 1.3, 1.4, 1.6, 1.7, 1.8           | 掲載の条件                 | DirectoryListingQuery、ProductPageAccess                                                                                   | `qualifierWins()`・`visibleProducts()`・`wonLaunchExists()`                                                | 一覧の問い合わせ           |
+| 1.5                                         | 確定から数分以内の掲載     | DirectoryListingQuery、QualifierListingHandler                                                                             | `MATCH_EVENT_HANDLERS`                                                                                     | 索引の更新                 |
+| 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.13          | 項目の表示と操作           | DirectoryItem、DirectoryViews、DirectoryReader                                                                             | `DirectoryItem`                                                                                            | —                          |
+| 2.7, 2.8, 2.9, 2.10                         | 勝利した予選マッチ         | BaseWin、WinSummary、DirectoryReader                                                                                       | `classifyBaseWin`                                                                                          | 一覧の問い合わせ           |
+| 2.11                                        | 受賞バッジ                 | LaunchHighlightsReader、AwardBadges                                                                                        | `LAUNCH_SUMMARY_SOURCES`                                                                                   | —                          |
+| 2.12                                        | 項目の値の登録口           | ItemMetricSources、ItemMetricsReader、DirectorySections                                                                    | `DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS`                                                  | —                          |
+| 3.1, 3.2                                    | カテゴリ                   | CategoryPicker、DirectoryCategoryReader、DirectoryListingQuery                                                             | `directoryCategories`・`productInCategory()`                                                               | —                          |
+| 3.3, 3.4, 3.5                               | 期間                       | DirectoryPeriod、PeriodFilter、PeriodRangeForm                                                                             | `presetRange`・`periodKeyOf`                                                                               | —                          |
+| 3.6                                         | 期間の基準                 | DirectoryListingQuery                                                                                                      | 窓関数                                                                                                     | 一覧の問い合わせ           |
+| 3.7, 3.8                                    | 正規化と1ページ目          | DirectoryQueryRules、UseDirectoryNavigation                                                                                | `normalizeDirectoryQuery`・`withConditions`                                                                | —                          |
+| 3.9, 3.10                                   | 横並びとシート             | FilterToolbar、FilterSheet                                                                                                 | —                                                                                                          | —                          |
+| 4.1, 4.2, 4.7, 4.8                          | 検索の対象と照合           | DirectoryReader、DirectoryListingQuery、ProductSearchSchema、ProductSearchTarget                                           | `buildFtsMatchExpression`・`ftsRankedSources`                                                              | 一覧の問い合わせ           |
+| 4.3, 4.4, 4.5                               | 検索欄                     | SearchForm                                                                                                                 | `countGraphemes`                                                                                           | —                          |
+| 4.6                                         | 強調表示                   | DirectoryItem                                                                                                              | `HighlightedText`                                                                                          | —                          |
+| 5.1, 5.2, 5.3, 5.4, 5.5, 5.6                | 並べ替え                   | SortSelect、DirectoryQueryRules、DirectoryListingQuery                                                                     | `DIRECTORY_SORTS`                                                                                          | 一覧の問い合わせ           |
+| 6.1, 6.2, 6.3, 6.4, 6.5, 6.6                | ページ分け                 | DirectoryListingQuery、ResultCount、DirectoryPagination、UseDirectoryNavigation、DirectoryEmptyState                       | `DIRECTORY_PAGE_SIZE`                                                                                      | —                          |
+| 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9 | 画面の構成と状態           | DirectoryRoute、DirectoryPage、DirectoryListSkeleton、DirectoryEmptyState、LaunchCta                                       | `queryClient.query`・`keepPreviousData`                                                                    | —                          |
+| 7.10                                        | ディレクトリの区画         | DirectorySections、DirectoryPage                                                                                           | `DIRECTORY_PAGE_SECTIONS`・`DIRECTORY_LIST_INSERTS`                                                        | —                          |
+| 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7           | 公開範囲・302・404         | ProductPageAccess、ProductPageReader、ProductPageRoute                                                                     | `productPage`・`ProductPageRedirect`                                                                       | プロダクト詳細ページの解決 |
+| 8.8, 8.9, 8.10                              | 描画とエラーと検索エンジン | ProductPageRoute                                                                                                           | `buildSitePageHead`                                                                                        | —                          |
+| 9.1, 9.2, 9.3, 9.10, 9.11                   | 構成と区画                 | ProductPage、ProductPageSections、UnlistedBanner、ProductBreadcrumbs                                                       | `PRODUCT_PAGE_SECTIONS`・`RecoverableSlot`                                                                 | —                          |
+| 9.9                                         | 演出を開催中に限る         | ProductPage、LiveMatchSection、AutoRefreshSwitch                                                                           | `data-auto-refresh`・`stadium.css`                                                                         | 開催中のマッチの取り直し   |
+| 9.4, 9.5, 9.12                              | ヘッダーと成績             | ProductHeader、OwnerFollow、CopyLinkButton、MatchHistory                                                                   | `ProductPageRecord`                                                                                        | —                          |
+| 9.6                                         | 開催中のマッチ             | LiveMatchSection、LiveMatchReader、LiveMatchResolvers、ProductPage、LiveMatchRefresh、AutoRefreshSwitch、FullTimeCountdown | `productLiveMatch`・`loadMatchView`・`MatchCard`・`useUpvote`・`UpvoteBotProtection`・`useBoundaryRefresh` | 開催中のマッチの取り直し   |
+| 9.7                                         | スクリーンショット         | ScreenshotGallery、ScreenshotLightbox                                                                                      | —                                                                                                          | —                          |
+| 9.8                                         | 説明文                     | ProductDescription                                                                                                         | `CollapsibleMarkdownContent`                                                                               | —                          |
+| 10.1                                        | ローンチのブロックと要約   | LaunchBlock、LaunchHighlightsReader                                                                                        | `LAUNCH_SUMMARY_SOURCES`                                                                                   | —                          |
+| 10.2, 10.3, 10.4, 10.5, 10.6, 10.7          | マッチ履歴                 | MatchHistory、MatchHistoryRow、ProductPageReader                                                                           | `toHistoryRows`                                                                                            | —                          |
+| 10.8, 10.9, 10.10, 10.11                    | サポーター                 | MatchHistoryRow、SupportersPanel、SupporterListReader                                                                      | `matchSupporters`・`SupporterDirectory`                                                                    | —                          |
+| 10.12, 10.13                                | マッチが無いブロック       | EmptyMatches                                                                                                               | —                                                                                                          | —                          |
+| 10.14                                       | ローンチの区画             | LaunchBlock、ProductPageSections                                                                                           | `PRODUCT_LAUNCH_SECTIONS`                                                                                  | —                          |
+| 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7    | 投稿者本人向けの操作       | OwnerCard、ProductPageSections、Card                                                                                       | `productOwnerStatus`・`PRODUCT_OWNER_ACTIONS`                                                              | —                          |
+| 12.1, 12.9                                  | 索引の対象と冪等           | ProductSearchTarget、ProductSearchSchema                                                                                   | `PRODUCT_SEARCH_TARGET`                                                                                    | 索引の更新                 |
+| 12.2                                        | 勝利で索引                 | QualifierListingHandler、DirectoryEntryStore、ProductIndexPendingMarker                                                    | `MATCH_EVENT_HANDLERS`                                                                                     | 索引の更新                 |
+| 12.3                                        | 編集で索引                 | ProductIndexRefreshSaveHook                                                                                                | `PRODUCT_SAVE_HOOKS`                                                                                       | 索引の更新                 |
+| 12.4, 12.5                                  | 削除・非公開化・退会・停止 | ProductIndexRemovalSyncHandler、AccountIndexRemovalSyncHandler、ProductIndexRemovalStatements                              | `PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`USER_LIFECYCLE_SYNC_HANDLERS`                                          | 索引の更新                 |
+| 12.6                                        | 復元・停止の解除           | ProductIndexRestoreHandler、AccountIndexRestoreHandler、ProductIndexPendingMarker                                          | 非同期の登録口                                                                                             | 索引の更新                 |
+| 12.7                                        | 物理削除                   | EntryErasureHandler                                                                                                        | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS`                                                                         | 索引の更新                 |
+| 12.8, 12.10                                 | 非同期・回復・個人情報     | 各処理、ProductSearchTarget                                                                                                | `requestRefresh`                                                                                           | 索引の更新                 |
+| 13.1, 13.2                                  | 帯の値と順                 | QualifierListingHandler、各処理                                                                                            | `order` 1200                                                                                               | 索引の更新                 |
+| 13.3                                        | ログ                       | 全コンポーネント                                                                                                           | `getAppLogger`                                                                                             | —                          |
+| 13.4                                        | まとめた照会               | DirectoryReader、ProductPageReader                                                                                         | `findSummaries`・`listByLaunches`・`userSummaryLoader`                                                     | 一覧の問い合わせ           |
+| 13.5                                        | 公開APIの部品              | DirectoryListingQuery、DirectoryPlatformModule                                                                             | `DirectoryListingQuery.page`                                                                               | —                          |
+| 14.1, 14.2, 14.3                            | テスト                     | Testing Strategy                                                                                                           | —                                                                                                          | —                          |
+| 14.4                                        | 技術ドキュメント           | DirectoryTechDocs                                                                                                          | —                                                                                                          | —                          |
+| 14.5                                        | サービス仕様               | DirectoryServiceSpecs                                                                                                      | —                                                                                                          | —                          |
 
 ## Components and Interfaces
 
-| Component                                                                                                                                                                                                                                                                                                                         | Domain/Layer                  | Intent                                   | Req Coverage                                           | Key Dependencies                                                                           | Contracts |
-| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------ | --------- |
-| DirectoryQueryRules・DirectoryPeriod                                                                                                                                                                                                                                                                                              | common-lib                    | クエリの規則と期間                       | 3.3〜3.5, 3.7, 3.8, 4.3, 5.1, 5.3, 6.2                 | —                                                                                          | Service   |
-| ProductSearchSchema(ProductSearchDocuments・ProductSearchIndex)・DirectoryEntriesSchema                                                                                                                                                                                                                                           | db                            | 索引文書・索引・勝利したプロダクト       | 4.1, 12.1, 12.7                                        | content-processing (P0)、product-launch (P0)                                               | State     |
-| ProductSearchTarget                                                                                                                                                                                                                                                                                                               | backend-lib/search            | 検索対象                                 | 4.1, 12.1, 12.9, 12.10                                 | ProductDirectory (P0)                                                                      | Service   |
-| DirectoryListingQuery・DirectoryEntryStore(契約)・DirectoryPlatformTypes                                                                                                                                                                                                                                                          | backend-lib/core/directory    | 一覧の照会・記録の契約と識別子           | 1.1〜1.4, 1.6〜1.8, 3.6, 5.2〜5.5, 6.1, 13.5           | —                                                                                          | Service   |
-| D1DirectoryListingQuery・D1DirectoryEntryStore・ProductIndexRemovalStatements・DirectoryPlatformModule                                                                                                                                                                                                                            | backend-lib/workers/directory | 一覧の照会・記録のD1の実装・削除の文     | 1.1〜1.4, 1.6〜1.8, 3.6, 4.1, 4.2, 5.2〜5.5, 6.1, 13.5 | match-engine (P0)、product-launch (P0)、D1 (P0)                                            | Service   |
-| ProductPageAccess・BaseWin・MatchHistory                                                                                                                                                                                                                                                                                          | api/domain                    | 公開範囲・基準勝利・マッチ履歴           | 2.7〜2.10, 8.2〜8.7, 9.5, 10.2〜10.7                   | —                                                                                          | Service   |
-| DirectoryReader・DirectoryCategoryReader・ProductPageReader・SupporterListReader・LaunchHighlightsReader・ItemMetricsReader・ItemMetricSources                                                                                                                                                                                    | api/application               | 読み取りのユースケースと供給元の呼び出し | 2.\*, 3.1, 3.2, 4.7, 8.\*, 9.4〜9.6, 10.\*, 13.4       | ProductDirectory (P0)、MatchDirectory (P0)                                                 | Service   |
-| AccountIndexRemovalSyncHandler・ProductIndexRemovalSyncHandler・ProductIndexRefreshSaveHook                                                                                                                                                                                                                                       | api/infrastructure            | 同期の削除と編集の更新待ち               | 12.3, 12.4, 12.5                                       | identity-auth (P0)、product-launch (P0)                                                    | Event     |
-| DirectorySchemaModule(DirectoryViews・DirectoryResolvers・ProductPageResolvers・SupporterResolvers)                                                                                                                                                                                                                               | api/presentation              | GraphQLの型と操作                        | 2.\*, 3.\*, 4.\*, 5.\*, 6.\*, 8.\*, 9.6, 10.\*         | api-gateway (P0)                                                                           | API       |
-| QualifierListingHandler・ProductIndexRestoreHandler・EntryErasureHandler・AccountIndexRestoreHandler                                                                                                                                                                                                                              | event/application             | 掲載・作り直し・物理削除                 | 1.5, 12.2, 12.6, 12.7, 13.1, 13.2                      | DirectoryEntryStore (P0)、ProductIndexPendingMarker (P0)、SearchIndexRefreshRequester (P0) | Event     |
-| D1ProductIndexPendingMarker                                                                                                                                                                                                                                                                                                       | event/infrastructure          | 更新待ちの印の一括の書き込み             | 12.2, 12.6                                             | SearchIndexStatements (P0)、D1 (P0)                                                        | Service   |
-| DirectoryRoute・DirectoryPage・SearchForm・FilterToolbar・FilterSheet・CategoryPicker・PeriodFilter・PeriodRangeForm・SortSelect・ResultCount・DirectoryItem・WinSummary・AwardBadges・DirectoryPagination・DirectoryEmptyState・DirectoryListSkeleton・LaunchCta・UseDirectoryNavigation・DirectorySections                      | client                        | ディレクトリの画面と区画                 | 2.\*, 3.\*, 4.3〜4.6, 5.1, 5.3, 6.3〜6.6, 7.\*         | directory (P0)                                                                             | State     |
-| ProductPageRoute・ProductPage・ProductBreadcrumbs・UnlistedBanner・ProductHeader・OwnerFollow・CopyLinkButton・LiveMatchSection・ScreenshotGallery・ScreenshotLightbox・ProductDescription・MatchHistorySection・LaunchBlock・MatchHistoryRow・SupportersPanel・EmptyMatches・OwnerCard・ProductPageSkeleton・ProductPageSections | client                        | 詳細ページと区画                         | 8.\*, 9.\*, 10.\*, 11.\*                               | productPage (P0)、MatchCard (P0)、FollowButton (P1)                                        | State     |
-| DirectoryTechDocs・DirectoryServiceSpecs                                                                                                                                                                                                                                                                                          | docs                          | 技術ドキュメントとサービス仕様           | 14.4, 14.5                                             | —                                                                                          | —         |
+| Component                                                                                                                                                                                                                                                                                                                                           | Domain/Layer                  | Intent                                         | Req Coverage                                           | Key Dependencies                                                                                     | Contracts |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- | --------- |
+| DirectoryQueryRules・DirectoryPeriod                                                                                                                                                                                                                                                                                                                | common-lib                    | クエリの規則と期間                             | 3.3〜3.5, 3.7, 3.8, 4.3, 5.1, 5.3, 6.2                 | —                                                                                                    | Service   |
+| ProductSearchSchema(ProductSearchDocuments・ProductSearchIndex)・DirectoryEntriesSchema                                                                                                                                                                                                                                                             | db                            | 索引文書・索引・勝利したプロダクト             | 4.1, 12.1, 12.7                                        | content-processing (P0)、product-launch (P0)                                                         | State     |
+| ProductSearchTarget                                                                                                                                                                                                                                                                                                                                 | backend-lib/search            | 検索対象                                       | 4.1, 12.1, 12.9, 12.10                                 | ProductDirectory (P0)                                                                                | Service   |
+| DirectoryListingQuery・DirectoryEntryStore(契約)・DirectoryPlatformTypes                                                                                                                                                                                                                                                                            | backend-lib/core/directory    | 一覧の照会・記録の契約と識別子                 | 1.1〜1.4, 1.6〜1.8, 3.6, 5.2〜5.5, 6.1, 13.5           | —                                                                                                    | Service   |
+| D1DirectoryListingQuery・D1DirectoryEntryStore・ProductIndexRemovalStatements・DirectoryPlatformModule                                                                                                                                                                                                                                              | backend-lib/workers/directory | 一覧の照会・記録のD1の実装・削除の文           | 1.1〜1.4, 1.6〜1.8, 3.6, 4.1, 4.2, 5.2〜5.5, 6.1, 13.5 | match-engine (P0)、product-launch (P0)、D1 (P0)                                                      | Service   |
+| ProductPageAccess・BaseWin・MatchHistory                                                                                                                                                                                                                                                                                                            | api/domain                    | 公開範囲・基準勝利・マッチ履歴                 | 2.7〜2.10, 8.2〜8.7, 9.5, 10.2〜10.7                   | —                                                                                                    | Service   |
+| DirectoryReader・DirectoryCategoryReader・ProductPageReader・LiveMatchReader・SupporterListReader・LaunchHighlightsReader・ItemMetricsReader・ItemMetricSources                                                                                                                                                                                     | api/application               | 読み取りのユースケースと供給元の呼び出し       | 2.\*, 3.1, 3.2, 4.7, 8.\*, 9.4〜9.6, 10.\*, 13.4       | ProductDirectory (P0)、MatchDirectory (P0)                                                           | Service   |
+| AccountIndexRemovalSyncHandler・ProductIndexRemovalSyncHandler・ProductIndexRefreshSaveHook                                                                                                                                                                                                                                                         | api/infrastructure            | 同期の削除と編集の更新待ち                     | 12.3, 12.4, 12.5                                       | identity-auth (P0)、product-launch (P0)                                                              | Event     |
+| DirectorySchemaModule(DirectoryViews・DirectoryResolvers・ProductPageResolvers・LiveMatchResolvers・SupporterResolvers)                                                                                                                                                                                                                             | api/presentation              | GraphQLの型と操作                              | 2.\*, 3.\*, 4.\*, 5.\*, 6.\*, 8.\*, 9.6, 10.\*         | api-gateway (P0)                                                                                     | API       |
+| QualifierListingHandler・ProductIndexRestoreHandler・EntryErasureHandler・AccountIndexRestoreHandler                                                                                                                                                                                                                                                | event/application             | 掲載・作り直し・物理削除                       | 1.5, 12.2, 12.6, 12.7, 13.1, 13.2                      | DirectoryEntryStore (P0)、ProductIndexPendingMarker (P0)、SearchIndexRefreshRequester (P0)           | Event     |
+| D1ProductIndexPendingMarker                                                                                                                                                                                                                                                                                                                         | event/infrastructure          | 更新待ちの印の一括の書き込み                   | 12.2, 12.6                                             | SearchIndexStatements (P0)、D1 (P0)                                                                  | Service   |
+| DirectoryRoute・DirectoryPage・SearchForm・FilterToolbar・FilterSheet・CategoryPicker・PeriodFilter・PeriodRangeForm・SortSelect・ResultCount・DirectoryItem・WinSummary・AwardBadges・DirectoryPagination・DirectoryEmptyState・DirectoryListSkeleton・LaunchCta・UseDirectoryNavigation・DirectorySections                                        | client                        | ディレクトリの画面と区画                       | 2.\*, 3.\*, 4.3〜4.6, 5.1, 5.3, 6.3〜6.6, 7.\*         | directory (P0)                                                                                       | State     |
+| ProductPageRoute・ProductPage・ProductBreadcrumbs・UnlistedBanner・ProductHeader・OwnerFollow・CopyLinkButton・LiveMatchSection・LiveMatchRefresh・ScreenshotGallery・ScreenshotLightbox・ProductDescription・MatchHistorySection・LaunchBlock・MatchHistoryRow・SupportersPanel・EmptyMatches・OwnerCard・ProductPageSkeleton・ProductPageSections | client                        | 詳細ページと区画                               | 8.\*, 9.\*, 10.\*, 11.\*                               | productPage (P0)、productLiveMatch (P0)、MatchCard (P0)、UpvoteBotProtection (P0)、FollowButton (P1) | State     |
+| AutoRefreshSwitch・FullTimeCountdown・FollowUpRefetch(移動)                                                                                                                                                                                                                                                                                         | client/components/match       | ページ全体の自動更新・残り時間・取り直しの上限 | 9.6, 9.9                                               | match-engineのトップページ (P0)                                                                      | State     |
+| Card(CardHeader・CardTitle・CardDescription・CardAction・CardContent・CardFooter)                                                                                                                                                                                                                                                                   | frontend-lib/components/ui    | 枠の基本部品                                   | 11.1                                                   | デザイントークン (P0)                                                                                | State     |
+| DirectoryTechDocs・DirectoryServiceSpecs                                                                                                                                                                                                                                                                                                            | docs                          | 技術ドキュメントとサービス仕様                 | 14.4, 14.5                                             | —                                                                                                    | —         |
 
 ### common-lib
 
@@ -578,8 +631,10 @@ export declare const PRODUCT_SEARCH_TARGET: SearchTargetDefinition<
 // name 'product'
 // fields: name・tagline { format: 'plain', textColumn: true, extract: false }、description { format: 'markdown', textColumn: false, extract: true }
 // read(db, id): new D1ProductDirectory(db)のfindSummaries([id], 'visible')がlistedのときだけ、findDetailの説明文と合わせて返す。versionは読み取りの時刻(ミリ秒)
-// isIndexable(id): EXISTS(SELECT 1 FROM products JOIN users ON users.id = products.user_id WHERE products.id = ? AND visibleProducts() AND wonLaunchExists())
+// isIndexable(id): SELECT 1 FROM products JOIN users ON users.id = products.user_id WHERE products.id = ? AND visibleProducts() AND wonLaunchExists()
 ```
+
+- `isIndexable`は`EXISTS`の中身(`SELECT 1 …`)だけを返す。`EXISTS(…)`で包むのはcontent-processingの`search-index-repository.ts`で、自分で包むと`EXISTS(EXISTS …)`になる。形の先例は`workers/search/testing/fixture-search-target.ts`である。
 
 - 版を読み取りの時刻にするのは、`ProductDirectory`の記録に更新日時が無く、`read`が常に処理の時点の値を返すためである。古い読み取りの書き込みは新しい読み取りの版に負けて捨てられる(content-processingの条件付きの書き込み、12.9)。
 - 索引には名称・タグライン・説明文から抽出したキーワードだけを入れる(12.10)。
@@ -794,7 +849,7 @@ export interface ItemMetricsReader {
 }
 ```
 
-- `DirectoryReader.read`の手順: (1)`normalizeDirectoryQuery`。(2)カテゴリのハンドルを`ProductCategoryDirectory.findByHandle`で解決し、無ければ外す(3.2)。(3)`normalizeSearchTerms`→`buildFtsMatchExpression`。語が無ければ検索なし(4.7)。(4)`DirectoryListingQuery.page`。`page`が総ページ数を超えれば空の`items`と総件数を返す(6.6)。(5)ページのIDで`ProductDirectory.findSummaries(ids, 'visible')`・`MatchDirectory.listByLaunches(基準勝利のローンチ)`・`ProductDirectory.listLaunches(ids)`を並行に1回ずつ呼び(13.4)、`LaunchHighlightsReader`(受賞)・`ItemMetricsReader`を呼ぶ。(6)問い合わせとの間に可視でなくなった行は除く(件数は問い合わせの値のまま)。
+- `DirectoryReader.read`の手順: (1)`normalizeDirectoryQuery`。(2)カテゴリのハンドルを`ProductCategoryDirectory.findByHandle`で解決し、無ければ外す(3.2)。(3)`normalizeSearchTerms`→`buildFtsMatchExpression`。語が無ければ検索なし(4.7)。(4)`DirectoryListingQuery.page`。`page`が総ページ数を超えれば空の`items`と総件数を返す(6.6)。(5)ページのIDで`ProductDirectory.findSummaries(ids, 'visible')`・`MatchDirectory.listByLaunches(基準勝利のローンチ)`・`ProductDirectory.listLaunches(ids, now)`(ローンチの無いプロダクトはMapに入らないため`get(id) ?? []`で受ける)を並行に1回ずつ呼び(13.4)、`LaunchHighlightsReader`(受賞)・`ItemMetricsReader`を呼ぶ。(6)問い合わせとの間に可視でなくなった行は除く(件数は問い合わせの値のまま)。
 - `LaunchHighlightsReader`は`LAUNCH_SUMMARY_SOURCES`を`order`順に1回ずつ呼び、`rank`の大きい要約を採り、供給の無いローンチと供給元の失敗(`warn`のログ)は`fallbackLaunchSummary`で縮退する(product-launchの`backend/013`の表示の縮退、10.1・2.11)。`ItemMetricsReader`も同じく供給元の失敗をその値だけの欠落にする(2.12)。
 
 #### ProductPageReader・SupporterListReader
@@ -815,7 +870,6 @@ export interface ProductPageView {
   readonly unlisted: boolean;
   readonly record: ReturnType<typeof summarizeRecord>;
   readonly awards: ReturnType<typeof groupAwards>;
-  readonly liveMatchId: string | null; // live・tallyingの最も新しいマッチ
   readonly launches: readonly ProductPageLaunchView[]; // 取消を除く新しい順
   readonly opponents: ReadonlyMap<string, ProductSummaryRecord>;
 }
@@ -829,6 +883,18 @@ export interface ProductPageReader {
     readonly viewer: CurrentUser | undefined;
     readonly now: Date;
   }): Promise<ProductPageResult>;
+}
+export interface LiveMatchView {
+  readonly serverTime: Date; // 照会の時点の時刻(残り時間の補正に使う)
+  readonly matchId: string | null; // 開催中(LIVE・TALLYING)の最も新しいマッチ
+  readonly awaitingChange: boolean; // 集計中のマッチがある、またはキックオフ済みのローンチの予選マッチが未作成・開始の時刻を過ぎて未開始
+}
+export interface LiveMatchReader {
+  read(input: {
+    readonly productHandle: string;
+    readonly viewer: CurrentUser | undefined;
+    readonly now: Date;
+  }): Promise<LiveMatchView | null>; // 表示できない・旧ハンドルはnull
 }
 export interface SupporterListReader {
   list(input: {
@@ -846,8 +912,9 @@ export interface SupporterListReader {
 }
 ```
 
-- `ProductPageReader.read`の手順: (1)`checkHandleFormat(handle, PRODUCT_HANDLE_RULE)`の結果が`ok`でなければ`not-found`(8.7)。(2)`ProductDirectory.resolveHandle`→`decideProductPageAccess`(8.2〜8.6)。(3)`findDetail`・`listLaunches`を並行に読み、取消を除いたローンチのIDで`MatchDirectory.listByLaunches`を1回読む。(4)対戦相手のプロダクトのIDで`findSummaries(ids, 'not-deleted')`を1回読む。(5)`toHistoryRows`・`summarizeRecord`・`LaunchHighlightsReader`(要約と受賞)。(6)`liveMatchId`は`phase`が`live`・`tallying`のマッチ。
-- `SupporterListReader.list`: (1)プロダクトを`ProductPageReader`と同じ判定で解決し、表示できなければ`null`。(2)`MatchDirectory.findMatches([matchId])`で、側がそのプロダクトのもので、マッチが`finished`であることを確かめ、違えば`null`(10.10)。(3)`SupporterDirectory.listSupporters({ entryId, after, limit: first })`(退会・停止を除く、10.9・10.10)。カーソルは`encodeCursor({ upvotedAt, upvoteId })`。
+- `ProductPageReader.read`の手順: (1)`checkHandleFormat(handle, PRODUCT_HANDLE_RULE)`の結果が`ok`でなければ`not-found`(8.7)。(2)`ProductDirectory.resolveHandle`→`decideProductPageAccess`(8.2〜8.6)。(3)`findDetail`・`listLaunches([productId], now)`を並行に読み(ローンチが無ければ`get(id) ?? []`)、取消を除いたローンチのIDで`MatchDirectory.listByLaunches(launchIds, now)`を1回読む。相手の側も返るため、側は自分のプロダクトの`entryId`で選ぶ。(4)対戦相手のプロダクトのIDで`findSummaries(ids, 'not-deleted')`を1回読む。(5)`toHistoryRows`・`summarizeRecord`・`LaunchHighlightsReader`(要約と受賞)。開催中のマッチは返さない(`LiveMatchReader`)。
+- `LiveMatchReader.read`: (1)`ProductPageReader`と同じ判定でプロダクトを解決し、`render`でなければ`null`(旧ハンドルの転送は詳細ページの取得が行う)。(2)`listLaunches([productId], now)`と、取消を除いたローンチの`listByLaunches(launchIds, now)`を読む。(3)`phase`が`live`・`tallying`の最も新しいマッチを`matchId`に、`awaitingChange`を上の条件で決め、`serverTime`に`now`を返す。ページの取得と別の操作にするのは、定期の取り直しを開催中のマッチだけに重ねるため(010の「使う場面」)。
+- `SupporterListReader.list`: (1)プロダクトを`ProductPageReader`と同じ判定で解決し、表示できなければ`null`。(2)`MatchDirectory.findMatches([matchId], now)`で、側がそのプロダクトのもので、マッチが`finished`であることを確かめ、違えば`null`(10.10)。(3)`SupporterDirectory.listSupporters({ entryId, after, limit: first })`(退会・停止を除く、10.9・10.10。`limit`が1〜20の整数でなければ`RangeError`のため、検証済みの`first`だけを渡す)。カーソルは`encodeCursor({ upvotedAt: <エポックミリ秒>, upvoteId })`(`encodeCursor`は文字列と数値の値だけを受け取る)。
 - 利用者はセッションではなく引数で受け取る。閲覧者は`AccountGuard.currentUser`をリゾルバが渡す。
 
 ### api/infrastructure
@@ -856,7 +923,7 @@ export interface SupporterListReader {
 
 **Contracts**: Event [x]
 
-- 登録: `USER_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'directory-discovery.account-index-removal', events: ['withdrawn', 'suspended'], handler: DIRECTORY_TYPES.AccountIndexRemovalSyncHandler }`(`accountIndexRemovalStatement`)。`PRODUCT_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'directory-discovery.product-index-removal', events: ['deleted', 'hidden'], handler: DIRECTORY_TYPES.ProductIndexRemovalSyncHandler }`(`SearchIndexStatements.deleteSources('product', [productId])`)。いずれも読み取りをせず、集合の削除の文だけを返す(12.4・12.5)。
+- 登録: `USER_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'directory-discovery.account-index-removal', events: ['withdrawn', 'suspended'], handler: DIRECTORY_TYPES.AccountIndexRemovalSyncHandler }`(`accountIndexRemovalStatement`)。`PRODUCT_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'directory-discovery.product-index-removal', events: ['deleted', 'hidden'], handler: DIRECTORY_TYPES.ProductIndexRemovalSyncHandler }`(`SearchIndexStatements.deleteSources('product', [productId])`)。いずれも読み取りをせず、集合の削除の文だけを返す(12.4・12.5)。同期の処理が削除の文を返すことは、backend/007の「[文の規約](../../../docs/GUIDES/tech/backend/007-user-lifecycle-events.md#文の規約)」とbackend/012の「集合に対する更新・挿入・削除」に従う(2026-11-10に開発者が削除を規約に加えると決定)。`accountIndexRemovalStatement(db, event.userId)`の文は契約の戻り値に合わせて`[stmt]`の配列で返す。
 - 仮4: product-launchが仮11として提供する`PRODUCT_SAVE_HOOKS`(`apps/api/src/composition/product-save-hooks.ts`)に`{ name: 'directory-discovery.product-index-refresh', hook: DIRECTORY_TYPES.ProductIndexRefreshSaveHook }`を追記する。契約は`apps/api/src/infrastructure/product/product-save-hooks.ts`の`ProductSaveHook`(`statementsFor({ productId, at }, db)`・`afterCommit({ productId })`)と`ProductSaveHookRegistration`(`name`・`hook`)。接続を引数に取り文を返す契約のためinfrastructure層に置かれ、application層からは見えない。product-launchの`D1ProductStore`(infrastructure層)は登録(`registerProduct`)・編集(`updateProduct`、次回の予約とローンチ日の変更を含む)・公開APIの説明文の更新(`ProductDescriptionEditor`)の一括の書き込みの末尾に`statementsFor`の文を加え、確定の後に`ProductSaveHooks.runAfterCommit`で`afterCommit`を呼ぶ。`statementsFor`の文の失敗は保存ごと取り消され、`afterCommit`の例外は`warn`のログで保存を失敗させない。復元・停止の解除では呼ばれない(本specはライフサイクルの登録口で扱う)。
 
 - 本specの実装: `statementsFor`は`DirectoryEntryStore.exists`が真なら`SearchIndexStatements.markPending('product', productId, at)`(`workers/search`)を返す。`afterCommit`は同じ条件で`SearchIndexRefreshRequester.requestRefresh('product', productId)`(12.3)。
@@ -991,8 +1058,15 @@ type ProductPage {
   listed: Boolean!
   awards: [ProductAward!]!
   record: ProductPageRecord!
-  liveMatch: Match
   launches: [ProductPageLaunch!]!
+}
+type ProductLiveMatch {
+  "照会の時点のサーバーの時刻。残り時間を合わせるのに使う"
+  serverTime: DateTime!
+  "マッチ中・集計中の最も新しいマッチ。無ければnull"
+  match: Match
+  "集計中のマッチがある、またはキックオフ済みのローンチの予選マッチが未作成・開始の時刻を過ぎて未開始"
+  awaitingChange: Boolean!
 }
 type ProductPageRedirect {
   handle: String!
@@ -1007,6 +1081,8 @@ type Query {
   directoryCategories: [ProductCategory!]!
   "表示できなければnull(404)"
   productPage(handle: String!): ProductPageResult
+  "詳細ページの開催中のマッチ(定期の取り直しの対象)。表示できない・旧ハンドルはnull"
+  productLiveMatch(productHandle: String!): ProductLiveMatch
   "表示できないプロダクト・確定していないマッチはnull"
   matchSupporters(
     productHandle: String!
@@ -1022,10 +1098,11 @@ type Query {
 | ---------------------------------- | ---------- | -------------- | ------- | -------------------------------------------------------------- |
 | `directory`・`directoryCategories` | client     | 不要           | なし    | —(不正な入力は正規化して返す、3.7)                             |
 | `productPage`                      | client     | 不要           | なし    | —(null・リダイレクトで表す)                                    |
+| `productLiveMatch`                 | client     | 不要           | なし    | —(nullで表す)                                                  |
 | `matchSupporters`                  | client     | 不要           | なし    | `validation_error`(`first`は1〜20、IDはULID)・`invalid_cursor` |
 
 - 呼び出し元が`client`でなければ`forbidden`。`DirectoryInput`は全ての項目を文字列で受け、検証の違反をエラーにせず`normalizeDirectoryQuery`へ渡す(3.7)。
-- `DirectoryViews`(`directory-views.ts`): `logo`・`ProductPageScreenshot.image`・`ProductPageOpponent.logo`は`mediaFileLoader`→`toMediaImage`、`category`は`productCategoryLoader`、`owner`・`SupporterConnection.nodes`は`userSummaryLoader`(`nodes`は`[UserSummary!]!`のため、`null`になった利用者(退会・停止の競合)は一覧から除く。`UserSummary.avatar`は上流の`UserSummary`のリゾルバが解決するため、本specは画像を読まない)、`liveMatch`は`matchViewLoader`(閲覧者は処理単位の`AccountGuard.currentUser`、9.6)、`websiteUrl`は`checkExternalUrl`が`ok`でなければ空文字(2.6)。`ProductAward`・`LaunchSummary`はproduct-launchの型を、値の形(`kind`・`count`・`labels`、`label`・`inMatch`)をそろえて返す。
+- `DirectoryViews`(`directory-views.ts`): `logo`・`ProductPageScreenshot.image`・`ProductPageOpponent.logo`は`mediaFileLoader`→`toMediaImage`、`category`は`productCategoryLoader`、`owner`・`SupporterConnection.nodes`は`userSummaryLoader`(`nodes`は`[UserSummary!]!`のため、`null`になった利用者(退会・停止の競合)は一覧から除く。`UserSummary.avatar`は上流の`UserSummary`のリゾルバが解決するため、本specは画像を読まない)、`ProductLiveMatch.match`はmatch-engineの`loadMatchView(context, matchId)`(`matchViewLoader`を直接`load`しない。閲覧者の`viewerUpvotedEntryId`・`viewerRestriction`はmatch-engineが処理単位のセッションで解決する、9.6)、`websiteUrl`は`checkExternalUrl`が`ok`でなければ空文字(2.6)。`ProductAward`・`LaunchSummary`はproduct-launchの型を、値の形(`kind`・`count`・`labels`、`label`・`inMatch`)をそろえて返す。
 
 ### event
 
@@ -1033,12 +1110,12 @@ type Query {
 
 **Contracts**: Event [x] / Batch [x]
 
-| 名前                                        | 登録口                                   | 種類          | `order` | 処理                                                                                                                                                                               |
-| ------------------------------------------- | ---------------------------------------- | ------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `directory-discovery.qualifier-listing`     | `MATCH_EVENT_HANDLERS`(kinds: qualifier) | `decided`     | 1200    | `findMatches`→勝った側(`isWinningResult`・`productId`と`ownerUserId`あり)を`record`→`ProductIndexPendingMarker.mark`(更新待ちの一括の書き込み)→`requestRefresh`。`done`(1.5・12.2) |
-| `directory-discovery.product-index-restore` | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS`       | `unhidden`    | 1200    | `exists`なら`ProductIndexPendingMarker.mark`と`requestRefresh`。`done`(12.6)                                                                                                       |
-| `directory-discovery.entry-erasure`         | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS`       | `purge_due`   | 1200    | `erase(productId)`。`done`(12.7)                                                                                                                                                   |
-| `directory-discovery.account-index-restore` | `USER_LIFECYCLE_ASYNC_HANDLERS`          | `unsuspended` | 1200    | `listProductIdsByOwner(userId, after, 100)`を最後まで読み、100件ずつ`ProductIndexPendingMarker.mark`と`requestRefresh`を行う。`done`(12.6)                                         |
+| 名前                                        | 登録口                                   | 種類          | `order` | 処理                                                                                                                                                                                               |
+| ------------------------------------------- | ---------------------------------------- | ------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `directory-discovery.qualifier-listing`     | `MATCH_EVENT_HANDLERS`(kinds: qualifier) | `decided`     | 1200    | `findMatches([matchId], now)`→勝った側(`isWinningResult`・`productId`と`ownerUserId`あり)を`record`→`ProductIndexPendingMarker.mark`(更新待ちの一括の書き込み)→`requestRefresh`。`done`(1.5・12.2) |
+| `directory-discovery.product-index-restore` | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS`       | `unhidden`    | 1200    | `exists`なら`ProductIndexPendingMarker.mark`と`requestRefresh`。`done`(12.6)                                                                                                                       |
+| `directory-discovery.entry-erasure`         | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS`       | `purge_due`   | 1200    | `erase(productId)`。`done`(12.7)                                                                                                                                                                   |
+| `directory-discovery.account-index-restore` | `USER_LIFECYCLE_ASYNC_HANDLERS`          | `unsuspended` | 1200    | `listProductIdsByOwner(userId, after, 100)`を最後まで読み、100件ずつ`ProductIndexPendingMarker.mark`と`requestRefresh`を行う。`done`(12.6)                                                         |
 
 ```typescript
 // event/src/application/directory/ports.ts
@@ -1104,6 +1181,10 @@ export interface ProductPageContext {
   };
   readonly viewer: { readonly signedIn: boolean; readonly isOwner: boolean };
   readonly page: ProductPageFragment; // 本specの区画が使う取得の結果
+  // ページ全体の自動更新の切り替えの状態(013の「自動更新の切り替え」)
+  readonly autoRefresh: boolean;
+  // 定期の取り直し・毎秒の数値の更新・演出を持つ間はtrueを申告し、無くなればfalseにする
+  readonly reportAutoUpdating: (active: boolean) => void;
 }
 export interface ProductPageSection {
   readonly id: string;
@@ -1113,7 +1194,7 @@ export interface ProductPageSection {
 }
 export interface ProductLaunchSectionContext extends Omit<
   ProductPageContext,
-  'page'
+  'page' | 'autoRefresh' | 'reportAutoUpdating'
 > {
   readonly launch: {
     readonly id: string;
@@ -1130,7 +1211,9 @@ export interface ProductLaunchSection {
 export interface ProductOwnerAction {
   readonly id: string;
   readonly order: number;
-  readonly component: ComponentType<Omit<ProductPageContext, 'page'>>;
+  readonly component: ComponentType<
+    Omit<ProductPageContext, 'page' | 'autoRefresh' | 'reportAutoUpdating'>
+  >;
 }
 // composition/product-page-sections.ts
 export declare const PRODUCT_PAGE_SECTIONS: readonly ProductPageSection[];
@@ -1147,10 +1230,19 @@ export declare const PRODUCT_OWNER_ACTIONS: readonly ProductOwnerAction[]; // �
 - `FollowButton`はキャッシュを更新しない。呼び出し側は`onChange`で、自分の画面の取得を`setQueryData`で合わせる。`FollowToggleButton`は`initialFollowing`が変わると以前の操作の結果を捨てて新しい初期値に従うため、取得し直した値をそのまま渡せばよい。
 - 公開プロフィールのキャッシュは、`apps/client/src/graphql/public-profile.ts`の`PUBLIC_PROFILE_QUERY_PREFIX`で`queryClient.removeQueries`する。公開プロフィールのloaderは`staleTime: 'static'`のため、`invalidateQueries`では取り直されない。表示中の取得を`removeQueries`すると`initialFollowing`の元が消えるため、表示中の取得は`setQueryData`で更新する。
 
+#### 移す部品とカード(2026-11-10に開発者が決定)
+
+- match-engineのトップページ専用の置き場所にある汎用の部品を、トップページと詳細ページの両方が使うため、clientの`components/top/`から`components/match/`へ移す。中身と振る舞いは変えず、既存のテストも移し、トップページの読み込みを書き換える。
+  - `AutoRefreshSwitch`(`auto-refresh-switch.tsx`)と、その文言`AUTO_REFRESH_LABEL`・`AUTO_REFRESH_DESCRIPTION`(`top-page-messages.ts`から`auto-refresh-messages.ts`へ)。説明の文言は`LIVE_REFRESH_INTERVAL_MS`から作る秒数とUpvote数・残り時間・演出の対象で、詳細ページでもそのまま当てはまる。コメントの「トップページの」を、ページ全体の切り替えの説明に改める。
+  - `FullTimeCountdown`(`full-time-countdown.tsx`)と`full-time-countdown-text.ts`。トップページの`FullTimeCountdownSection`(取得を読む区画)は`components/top/`に残す。
+  - `FOLLOW_UP_REFETCH_LIMIT`・`QueryUpdateCounts`・`updateCountOf`(`qualifier-refresh.ts`から`follow-up-refetch.ts`へ)。予選の一覧だけの判定は`components/top/`に残す。
+  - frontend/013の部品の表は自動更新の切り替えを`components/<ページ>/`に置くとしているため、複数のページが使う場合は`components/<ドメイン>/`に置く旨を加える。
+- frontend-libの`components/ui/card/`に、shadcn/uiの`Card`を005の「1ファイル1コンポーネントとshadcn/uiの分割」に従って部分ごとのファイルで作る。モックアップ(`mockups/src/components/ui`)には無い部品のため、shadcn/uiの既定の`Card`を基に、デザイントークン(`bg-card`・`text-card-foreground`・`border-border`)で書く。カタログ(`card.stories.tsx`、ライト・ダーク)とブラウザテスト(`runAxe`)を添え、005の部品の一覧に加える。本specは`OwnerCard`で使い、後続specの評価・広告などの枠でも使える。
+
 #### DirectoryRoute・DirectoryPageと部品
 
 - `routes/p/index.tsx`: `validateSearch`は`normalizeDirectoryQuery`(3.7)、`loaderDeps`は正規化した条件、`loader`で`directory`と`directoryCategories`を`queryClient.query({ ...graphqlQueryOptions(...), staleTime: 'static' })`で待つ(サーバーで描画、7.2。`ensureQueryData`は非推奨のため使わない、006の「取得の補助とloader」)。`head`は`buildSitePageHead({ title: 'ディレクトリ', description, canonicalUrl: '/p' })`(オリジンの無いパス、8.8)。サーバーが返した`applied`が正規化の結果と違えば(存在しないカテゴリなど)、`navigate({ replace: true })`でURLを合わせる。
-- `DirectoryPage`: 見出し・`SearchForm`・`FilterToolbar`(768px以上)または「絞り込み・並び順」と`FilterSheet`(768px未満、3.9・3.10)・`ResultCount`・一覧と`DirectoryPagination`・`LaunchCta`(7.1・7.8)。`DIRECTORY_PAGE_SECTIONS`を置き場所ごとに区画のエラー境界で描き(7.10)、`DIRECTORY_LIST_INSERTS`を`every`件ごとに差し込む。`useQuery`の`placeholderData: keepPreviousData`で、条件の変更の読み込み中は直前の一覧を`aria-busy`と薄い表示で残し、上端に進捗のバーを出し、件数欄を「読み込み中…」にする(7.4)。初回はスケルトン(7.3)、失敗は`ErrorState`(7.5)、0件は`DirectoryEmptyState`(7.6・7.7)、範囲外は「このページにはプロダクトがありません。」と全ページ数と「1ページ目へ」(6.6)。演出は使わない(7.9)。
+- `DirectoryPage`: 見出し・`SearchForm`・`FilterToolbar`(768px以上)または「絞り込み・並び順」と`FilterSheet`(768px未満、3.9・3.10)・`ResultCount`・一覧と`DirectoryPagination`・`LaunchCta`(7.1・7.8)。`DIRECTORY_PAGE_SECTIONS`を置き場所ごとに`RecoverableSlot`で包んで描き(7.10)、何も描かない区画の枠と間隔を残さない(013の「区画の登録とページの構成」の目印と`display: contents`)。`DIRECTORY_LIST_INSERTS`を`every`件ごとに(割り切れるときは最後の項目の後にも)`RecoverableSlot`で包んで差し込み、部品へ何番目かの位置(1から)を渡す。`useQuery`の`placeholderData: keepPreviousData`で、条件の変更の読み込み中は直前の一覧を`aria-busy`と薄い表示で残し、上端に進捗のバーを出し、件数欄を「読み込み中…」にする(7.4)。初回はスケルトン(7.3)、失敗は`ErrorState`(7.5)、0件は`DirectoryEmptyState`(7.6・7.7)、範囲外は「このページにはプロダクトがありません。」と全ページ数と「1ページ目へ」(6.6)。演出は使わない(7.9)。
 - `SearchForm`: `role="search"`、ラベル付きの入力欄、消去のボタン、40書記素を超えたら`aria-live="polite"`の「45/50」、50を超えたらフォーカスアウトと送信でエラー(`aria-invalid`・`aria-describedby`)にして送らない。Enterと検索のボタンでだけ`withConditions`で遷移する(4.3〜4.5)。
 - `CategoryPicker`: ポップオーバーの中の入力欄で絞り込むリストボックス(`role="combobox"`・`aria-activedescendant`、上下キーとEnter)。選択肢は`directoryCategories`の順に「全て」を先頭に足す(3.1)。読み込み中は無効(7.3)。
 - `PeriodFilter`・`PeriodRangeForm`: プリセットの選択と「期間を指定…」のポップオーバー(768px未満はシート内)の2つの日付入力(`type="date"`、`max`は`businessToday`)。`validateCustomRange`の結果で文言と適用のボタンの無効化(3.3〜3.5)。プリセットの範囲は`presetRange(preset, businessToday)`、表示は`periodKeyOf`と`formatPeriodLabel`(3.4)。
@@ -1163,19 +1255,25 @@ export declare const PRODUCT_OWNER_ACTIONS: readonly ProductOwnerAction[]; // �
 
 #### ProductPageRoute・ProductPageと部品
 
-- `routes/p/$handle.tsx`: `loader`は`checkHandleFormat(handle, PRODUCT_HANDLE_RULE)`の結果が`ok`でなければ`notFound()`、`productPage`を`queryClient.query({ ...graphqlQueryOptions(...), staleTime: 'static' })`で待ち、`null`なら`notFound()`、`ProductPageRedirect`なら`redirect({ to: '/p/$handle', params: { handle }, search: 現在の検索パラメーター, statusCode: 302 })`(8.3〜8.7)。`head`は`buildSitePageHead({ title: <名称>, description: <タグライン>, canonicalUrl: '/p/' + <現在のハンドル>, noIndex: !listed })`(オリジンの無いパスで渡す。`buildPageHead`は絶対URLをcanonicalにしない)(8.1・8.8・8.10)。404はfrontend-platformの`NotFoundView`(トップページとディレクトリへの導線、8.4)、`errorComponent`は`ErrorState`(8.9)、`pendingComponent`は`ProductPageSkeleton`。
-- `ProductPage`: 1024px以上は本文とサイドバー(幅320〜352px、`sticky`)の2カラム、それ未満は1カラムでサイドバーをヘッダーの直後に置く(9.1)。`banner`の区画→`ProductBreadcrumbs`→`UnlistedBanner`(本人の未掲載、9.3)→`ProductHeader`→`LiveMatchSection`→`main`の区画(`order`順)→`bottom`の区画、サイドバーに`aside`の区画(9.2)。区画ごとのエラー境界(9.11)。`TurnstileWidget`(`match_upvote`)を開催中のマッチがあるときだけ1つ置く。ウィジェットは非表示で描くため、判定の枠と場所を設けない。
+- `routes/p/$handle.tsx`: `loader`は`checkHandleFormat(handle, PRODUCT_HANDLE_RULE)`の結果が`ok`でなければ`notFound()`、`productPage`を`queryClient.query({ ...graphqlQueryOptions(...), staleTime: 'static' })`で待ち、同時に`productLiveMatch`を`prefetchQuery`で読む(開催中のマッチの取得の失敗でページを失敗にしない。区画が`RecoverableSlot`の中で取り直す)。`productPage`が`null`なら`notFound()`、`ProductPageRedirect`なら`redirect({ to: '/p/$handle', params: { handle }, search: 現在の検索パラメーター, statusCode: 302 })`(8.3〜8.7)。`head`は`buildSitePageHead({ title: <名称>, description: <タグライン>, canonicalUrl: '/p/' + <現在のハンドル>, noIndex: !listed })`(オリジンの無いパスで渡す。`buildPageHead`は絶対URLをcanonicalにしない)(8.1・8.8・8.10)。404はfrontend-platformの`NotFoundView`(トップページとディレクトリへの導線、8.4)、`errorComponent`は`ErrorState`(8.9)、`pendingComponent`は`ProductPageSkeleton`。
+- `ProductPage`: 1024px以上は本文とサイドバー(幅320〜352px、`sticky`)の2カラム、それ未満は1カラムでサイドバーをヘッダーの直後に置く(9.1)。`banner`の区画→`ProductBreadcrumbs`→`UnlistedBanner`(本人の未掲載、9.3)→`ProductHeader`→`LiveMatchSection`→`main`の区画(`order`順)→`bottom`の区画、サイドバーに`aside`の区画(9.2)。区画と`LiveMatchSection`をそれぞれ`RecoverableSlot`で包み(9.11)、何も描かない区画の枠と間隔を残さない(013の目印と`display: contents`、目印は`data-product-page-section-rendered`)。並べ替えは`product-page-section-order.ts`。
+  - 自動更新(013の「自動更新の切り替え」、9.6・9.9): ページが`useState(true)`で切り替えの状態を持ち、ページの根の要素に`data-auto-refresh="on"`・`"off"`を付ける(`stadium.css`の演出は属性が`on`の子孫にだけ掛かり、開催中のマッチ以外は静止する)。`components/match/`へ移した`AutoRefreshSwitch`を、区画のエラーの境界の外の、本文の先頭(パンくずリストの前)に置く。描く条件は、ページ自身の値(開催中のマッチがある・変化を待つ状態)か区画の申告(`reportAutoUpdating`)のいずれかがあること。区画が失敗した時と外れた時はその区画の申告を消す。
+  - 境界の取り直し: ページが`useBoundaryRefresh`で、`productLiveMatch`の`match.endsAt`と、予約済みのローンチの最も近い`kickoffAt`の直後に、`ClientProductLiveMatch`と`ClientProductPage`の取得を無効にする(「開催中のマッチの取り直し」)。
+  - bot判定: 開催中のマッチがあるときだけ、`LiveMatchSection`をmatch-engineの`UpvoteBotProtection`で包む(内側に`match_upvote`の`TurnstileWidget`が1つ描かれ、`useUpvote`はその内側でだけ呼べる)。ウィジェットは非表示だが、判定の失敗では`role="alert"`の文言を描くため、区画の末尾(対戦カードの下)に置かれる形のままにする。
 - `ProductHeader`: ロゴ(`square-md`)・カテゴリのリンク(`/p?category=<ハンドル>`)・受賞回数(受賞の合計、1以上)・`h1`の名称・タグライン・投稿者(`UserAvatar`・ニックネーム・`@ハンドル`、`/@<ハンドル>`)・`OwnerFollow`(本人以外)・`CopyLinkButton`・「サイトを開く」(`rel="noopener"`)・初ローンチ日(`<time datetime>`)・ローンチ回数・「◯勝◯敗」(9.4・9.5)。
 - `OwnerFollow`: ログイン中で本人でない閲覧者のとき、`ClientOwnerFollowStatus`(`publicProfile(handle)`の`viewerRelation`)をクライアントで読み、`viewerRelation`が`FOLLOWING`のときだけ`FollowButton`の`initialFollowing`に`true`を渡す(未ログイン・本人の閲覧では読まず、`false`を渡す)。キーは`graphqlQueryKey`に閲覧者のIDを加える(公開プロフィールと同じく、ログイン・ログアウトの後に前の閲覧者の関係を使わないため)。`onChange`では、そのキーを`setQueryData`で`viewerRelation`を`FOLLOWING`か`NOT_FOLLOWING`に合わせ、`PUBLIC_PROFILE_QUERY_PREFIX`を`removeQueries`して相手の公開プロフィールを次に開くとき取り直させる。未ログインは`FollowButton`の未ログインの表示をそのまま使う。照会の失敗はボタンを描かない(縮退)。
 - `CopyLinkButton`: 正規のURLを`navigator.clipboard.writeText`で写し、成功と失敗を`notify`で知らせる(9.12)。
-- `LiveMatchSection`: `liveMatch`があるとき見出し(`id="live-match-heading"`)と`MatchCard`・`useUpvote`(`onUpdated`で`productPage`のキャッシュの`liveMatch`を差し替える)。残り時間と演出はトップページと同じ(9.6)。
+- `LiveMatchSection`: `ClientProductLiveMatch`(`productLiveMatch(productHandle)`)を購読し、`match`があるとき見出し(`id="live-match-heading"`)・`FullTimeCountdown`(`phase`は`match.phase`が`LIVE`なら`LIVE`、`fullTimeAt`は`match.endsAt`、`serverTime`は取得の値、`autoRefresh`は文脈の値)・`MatchCard`・`useUpvote`(`onUpdated`で`ClientProductLiveMatch`のキャッシュの`match`だけを`setQueryData`で差し替える)を描く(9.6)。
+  - `refetchInterval`と`refetchOnWindowFocus`は`live-match-refresh.ts`の判定(`liveMatchRefetchIntervalOf`: オンで`LIVE`か`awaitingChange`なら`LIVE_REFRESH_QUERY_OPTIONS.refetchInterval`、オフでは`awaitingChange`の間だけ`FOLLOW_UP_REFETCH_LIMIT`回まで)の関数にする。回数は`updateCountOf`と基準の差で数え、取得に`notifyOnChangeProps: ['data', 'dataUpdatedAt', 'errorUpdateCount']`を渡す。上限に達してもオフで変化を待つ状態なら、見出しの下に常に置いた`role="status"`の文をページを開き直す案内に切り替える。
+  - マッチが`FINISHED`になった、または`match`が無くなったら`ClientProductPage`の取得を無効にする。定期の取り直し・残り時間・演出を持つ間は`reportAutoUpdating(true)`を申告する。
+  - ページの区画として描かれる部品は、ページの`UpvoteBotProtection`をそのまま使う(013の「bot判定のトークンの共有」)。
 - `ScreenshotGallery`・`ScreenshotLightbox`(`main` 20): `screenshot-thumb`を高さをそろえて横スクロール、押すとダイアログで`screenshot-full`、前後のボタン・左右キー・スワイプ(ポインターの移動量)、「3 / 10」、0枚は描かない(9.7)。
 - `ProductDescription`(`main` 30): `CollapsibleMarkdownContent`(480px)と`useMarkdownOptions({ externalLinkRel: ['noopener'], idScope: 'product' })`(9.8)。
-- `MatchHistorySection`(`main` 40)・`LaunchBlock`: 見出し「マッチ履歴とコメント」(`id="launches-heading"`)、ローンチごとに「第◯回ローンチ」・`<time datetime>`の日付・要約のチップ(10.1)、行の一覧または`EmptyMatches`(10.12・10.13)、`PRODUCT_LAUNCH_SECTIONS`を区画のエラー境界で`order`順に描く(10.14)。
+- `MatchHistorySection`(`main` 40)・`LaunchBlock`: 見出し「マッチ履歴とコメント」(`id="launches-heading"`)、ローンチごとに「第◯回ローンチ」・`<time datetime>`の日付・要約のチップ(10.1)、行の一覧または`EmptyMatches`(10.12・10.13)、`PRODUCT_LAUNCH_SECTIONS`を`RecoverableSlot`で包んで`order`順に描く(10.14)。
 - `MatchHistoryRow`: 種別とラウンドの印(match-engineの`match-labels.ts`)・日付・対戦相手(`kind`ごと、10.3)・比率のバー(`role="img"`と「Upvote数の比率: 12対9」、相手の数があるときだけ)・スコア「12対9」・勝敗のチップ(勝利・不戦勝・敗北・両者敗北、10.2・10.5〜10.7)。`decision`が`LAST_UPVOTE`なら枠を強調し「接戦」と注記(10.4)。`ownUpvoteCount`が1以上なら「サポーター{n}人」の`aria-expanded`のボタン(10.8、仮5)。
 - `SupportersPanel`: `useInfiniteQuery`で`matchSupporters`を`first: 20`、`max-h-72`の枠の中の末尾の番兵を`IntersectionObserver`で見て続きを読む(10.9)。注記(10.10)、各行は`UserAvatar`(32)・ニックネーム・`/@<ハンドル>`、失敗は取得済みを保って「サポーター一覧を読み込めませんでした。」と再試行(10.11)。
 - `EmptyMatches`: `kickedOff`で開催中なら「予選マッチが行われています。勝敗はフルタイム後にここへ表示されます。」と`#live-match-heading`への「マッチを見る」(10.12)。キックオフ前は日付と文言、本人は「リンクをコピーして応援を呼びかける」、他者は「トップページで本日のマッチを見る」(10.13)。
-- `OwnerCard`(`aside` 10、本人だけ描く): 破線の枠の「あなたのプロダクト」、直近のローンチの`summary`の見出し、「編集」(`/my/products/<ハンドル>/edit`)、「再ローンチを予約」(同じ編集の画面)。`ClientProductOwnerStatus`(`productOwnerStatus(productHandle)`)をクライアントで読み、`plan.mode`が`BLOCKED`なら無効と`blocks`の`message`・`releaseAt`(11.2)、`window.relaunchIntervalDays`があれば「このプロダクトは◯日以降のローンチ日を選べます。」(11.3)、`locked`なら固定の注記(11.4)、照会の失敗は無効と「再ローンチの予約の状態を確かめられませんでした。時間をおいて再度お試しください。」(11.6)。`PRODUCT_OWNER_ACTIONS`を描く(11.5)。予約と保存の可否はproduct-launchの保存が判定する(11.7)。
+- `OwnerCard`(`aside` 10、本人だけ描く): frontend-libの`Card`(`CardHeader`・`CardTitle`・`CardContent`・`CardFooter`、枠線を`className`で破線にする)で描く「あなたのプロダクト」、直近のローンチの`summary`の見出し、「編集」(`/my/products/<ハンドル>/edit`)、「再ローンチを予約」(同じ編集の画面)。`ClientProductOwnerStatus`(`productOwnerStatus(productHandle)`)をクライアントで読み、`plan.mode`が`BLOCKED`なら無効と`blocks`の`message`・`releaseAt`(11.2)、`window.relaunchIntervalDays`があれば「このプロダクトは◯日以降のローンチ日を選べます。」(11.3)、`locked`なら固定の注記(11.4)、照会の失敗は無効と「再ローンチの予約の状態を確かめられませんでした。時間をおいて再度お試しください。」(11.6)。`PRODUCT_OWNER_ACTIONS`を描く(11.5)。予約と保存の可否はproduct-launchの保存が判定する(11.7)。
 
 ### docs
 
@@ -1217,7 +1315,7 @@ erDiagram
 
 ### Data Contracts & Integration
 
-- GraphQL: 「DirectorySchemaModule」のSDLが契約。利用者側の許可リストに本specの操作と、`publicProfile`の`viewerRelation`・`productOwnerStatus`を読む操作が載る。
+- GraphQL: 「DirectorySchemaModule」のSDLが契約。利用者側の許可リストに本specの操作(`ClientProductLiveMatch`を含む)と、`publicProfile`の`viewerRelation`・`productOwnerStatus`を読む操作が載る。
 - 検索対象`product`: 本文に名称・タグライン・説明文の抽出のキーワードだけを含む。`search-index.refresh`の本文はIDだけ(content-processing)。
 
 ## Error Handling
@@ -1226,7 +1324,7 @@ erDiagram
 
 - ディレクトリの入力の誤りはエラーにせず正規化する(3.7)。詳細ページの不在・閲覧不可はnull(404)、旧ハンドルはリダイレクトの型で返す。
 - 供給元(要約・受賞・項目の値)の失敗は、その値だけを欠いて縮退する(2.12・10.1)。プロダクト・マッチの照会の失敗はページの取得エラーにする(部分的な一覧や履歴を出さない、7.5・8.9)。
-- 詳細ページの区画・ディレクトリの区画の失敗は区画のエラー境界に閉じ込める(7.10・9.11)。投稿者本人向けの操作の照会とフォロー中の照会の失敗はその部品だけを縮退させる(11.6)。
+- 詳細ページの区画・ディレクトリの区画・開催中のマッチの区画の失敗は`RecoverableSlot`に閉じ込める(7.10・9.11)。開催中のマッチの取得の失敗はページを失敗にせず、区画の中で再試行させる。自動更新の切り替えは区画の失敗で消えない。投稿者本人向けの操作の照会とフォロー中の照会の失敗はその部品だけを縮退させる(11.6)。
 - 索引の処理の失敗は、イベントの実行器の再試行と、content-processingの日次の再抽出で回復する(12.8)。
 
 ### Error Categories and Responses
@@ -1250,21 +1348,22 @@ erDiagram
   - `directory-period`: 基準時刻の今日からの各プリセット(月曜日・日曜日・月末・年末)、`periodKeyOf`の一致と`custom`、`validateCustomRange`の未来と逆順、期間の表示の文言(3.3〜3.5)。
   - `product-page-access`: `none`・可視でない(非公開・停止・退会)・未掲載の他者と本人・`previous`の転送・`current`(8.2〜8.6)。
   - `base-win`・`match-history`: 勝利・不戦勝・開始時点の`walkover`・早期の`walkover`の分類、対戦相手の4つの見え方(紐付けの解除を含む)、接戦、両者敗北、確定前のマッチの除外、通算成績と初ローンチ日(2.7〜2.10・9.5・10.2〜10.7)。
-  - ユースケース(模擬のポート): product-launchの`fallbackLaunchSummary`への縮退と`rank`の選択、受賞のまとめ(Year先頭)、`DirectoryReader`の手順(存在しないカテゴリ・空白だけの検索語・範囲外のページ・問い合わせ後に可視でなくなった行)、`ProductPageReader`の`liveMatchId`と取消の除外、`SupporterListReader`の他のプロダクトの側・確定前のnull、供給元の失敗の縮退(2.11・2.12・4.7・6.6・10.1・10.10)。
+  - ユースケース(模擬のポート): product-launchの`fallbackLaunchSummary`への縮退と`rank`の選択、受賞のまとめ(Year先頭)、`DirectoryReader`の手順(存在しないカテゴリ・空白だけの検索語・範囲外のページ・問い合わせ後に可視でなくなった行)、`ProductPageReader`の取消の除外と自分の側の選択、`LiveMatchReader`の開催中(マッチ中・集計中)の最も新しいマッチ・`awaitingChange`(集計中・キックオフ後の未作成と未開始)・表示できないプロダクトと旧ハンドルのnull、`SupporterListReader`の他のプロダクトの側・確定前のnull、供給元の失敗の縮退(2.11・2.12・4.7・6.6・10.1・10.10)。
   - event(偽の`ProductIndexPendingMarker`・`DirectoryEntryStore`・`SearchIndexRefreshRequester`): `QualifierListingHandler`の勝った側だけ・紐付けの無い側の除外、`ProductIndexRestoreHandler`の記録のあるプロダクトだけの更新待ち、`AccountIndexRestoreHandler`の100件ずつ(12.2・12.6)。
+  - client(`live-match-refresh.ts`・`product-page-section-order.ts`・`graphql/product-page.ts`): オン・オフと`LIVE`・`awaitingChange`・上限の回数ごとの取り直しの間隔と案内への切り替え、置き場所ごとの並べ替え、開催中のマッチの差し替え。
   - 識別子(`core/directory/identifiers.unit.test.ts`): `DIRECTORY_PLATFORM_TYPES`が`Symbol.for('directory.<名前>')`の値を持ち凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形)。
   - 層の規則: api・eventの静的解析で、application層に`**/lib/workers/**`の読み込みが無いこと(型だけの読み込みを含む)。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts`、ローカルD1):
   - `DirectoryListingQuery`: 掲載の条件(退会・停止・非公開化・論理削除・敗北と両者敗北だけ・トーナメントの勝利だけ)、2回勝利したプロダクトが1項目で直近が基準勝利、期間の開始日・終了日と同じ日の勝利・期間外の勝利だけのプロダクトの除外、期間内の古い勝利が基準勝利になること、4つの並び順と同順位、20件目と21件目のページの境界と件数、カテゴリの絞り込み、検索の前方一致・大文字小文字・全角半角・発音区別符号・構文の文字列化・関連度の順、`countByCategory`(1.1〜1.4・1.6〜1.8・3.6・4.1・4.2・5.2〜5.5・6.1・14.2)。
   - 検索対象: 掲載中だけを`read`し、未掲載・非公開・停止で`undefined`と`isIndexable`が偽、content-processingの処理で索引が作られ名称の前方一致で検索でき、説明文のキーワードでも一致すること(抽出は固定の結果の偽物)(4.1・12.1)。
-  - 同期の処理: product-launchの非公開化・削除の確定で索引文書が同じ書き込みで消え、確定の失敗で文も取り消されること、identity-authの退会・停止の確定で投稿者の全ての索引文書が消えること(12.4・12.5)。
+  - 同期の処理(既存の登録口のテスト`product-lifecycle-sync-handlers.worker.test.ts`・`product-save-hooks.worker.test.ts`の期待値に本specの登録を加える): product-launchの非公開化・削除の確定で索引文書が同じ書き込みで消え、確定の失敗で文も取り消されること、identity-authの退会・停止の確定で投稿者の全ての索引文書が消えること(12.4・12.5)。
   - 更新待ちの書き込み: `D1ProductIndexPendingMarker`が索引文書の無いプロダクトに空の更新待ちの行を作り、既存の行を更新待ちにし、100件を1回の一括の書き込みで書き、空の配列では書き込まないこと(12.2・12.6)。
   - 非同期の処理とマッチイベント: match-engineの`decided`の処理の後に`directory_entries`ができ索引が作られること、復元・停止の解除で作り直されること、プロダクトの`purge_due`で記録と索引文書が消えproduct-launchの物理削除が外部キーで失敗しないこと(1.5・12.2・12.6・12.7・13.2)。
   - 保存の登録(仮4、apiの`infrastructure/directory/product-index-refresh-save-hook.ts`): product-launchの`D1ProductStore`を通した掲載中のプロダクトの編集で同じ書き込みに更新待ちが入り、確定の後に要求が送られ、未掲載のプロダクトでは入らないこと(12.3)。
-  - スキーマモジュール: `directory`の正規化と`applied`、`productPage`の404・302・本人の未掲載・`liveMatch`、`matchSupporters`の退会・停止の除外とUpvoteの日時の順と21件目のカーソル、`client`以外の拒否(6.\*・8.\*・10.9・10.10)。
+  - スキーマモジュール: `directory`の正規化と`applied`、`productPage`の404・302・本人の未掲載、`productLiveMatch`の開催中のマッチをmatch-engineの`Match`で返すこと(閲覧者のUpvote)・`serverTime`・`awaitingChange`・表示できないプロダクトのnull、`matchSupporters`の退会・停止の除外とUpvoteの日時の順と21件目のカーソル、`client`以外の拒否(6.\*・8.\*・10.9・10.10)。
 - E2E/UI Tests:
-  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `SearchForm`(カウンター・50超の拒否・Enter)、`CategoryPicker`(キーボード・絞り込み)、`PeriodRangeForm`(未来・逆順・片方だけ)、`SortSelect`(関連度の無効と併記)、`DirectoryItem`・`WinSummary`(本人・強調・3種の勝利・項目の値の登録)、`DirectoryPagination`(省略の規則・768px未満)、`DirectoryPage`(初回・再読み込み・エラー・0件2種・範囲外・区画の失敗の閉じ込め)、`ProductPage`(区画の順と失敗の閉じ込め・1カラム)、`ProductHeader`(成績・本人にフォローなし)、`ScreenshotLightbox`(左右キー・位置表示)、`MatchHistoryRow`(接戦・不戦勝・早期・非公開のプロダクト)、`SupportersPanel`(続きの読み込み・失敗)、`EmptyMatches`、`OwnerCard`(禁止・間隔・固定・照会の失敗)。
-  - E2E(`e2e/client/directory.e2e.test.ts`): identity-authの`e2e/support/mailpit.ts`で確認済みの利用者を3人登録し(メールアドレスのドメインは`.example`)、2人がproduct-launchの画面でプロダクトを登録する。`e2e/support/directory-fixtures.ts`(admin-foundationの`executeLocalD1`)で2つのローンチのマッチ中の予選(終了の日時を過去)を作り、backend-platformの改訂2の`triggerScheduled({ worker: 'api', businessDate: <当日の業務日付>, businessTime: '23:40' })`で23:40の確定のジョブを動かして(独自の定期実行の起動の補助は作らない)、確定のイベント・予選の結果の記録・本specの掲載と索引の処理を実際の経路で動かす。一覧のページのために、可視の投稿者・プロダクト・確定したマッチとローンチの結果を直接作る補助で21件の掲載中のプロダクトを追加する。ディレクトリで勝ったプロダクトが表示されること、名称の検索(索引の作成を待つ)・カテゴリの絞り込み・「Upvote数が多い順」・2ページ目への移動と`page`のクエリ、詳細ページのマッチ履歴とサポーター(3人目のUpvote)、敗けたプロダクトが他者には404で投稿者本人には未掲載の案内付きで見えること、プロダクトのハンドルを変えた後に旧ハンドルのURLが現在のURLへ転送されることを確かめる(14.3)。
+  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `SearchForm`(カウンター・50超の拒否・Enter)、`CategoryPicker`(キーボード・絞り込み)、`PeriodRangeForm`(未来・逆順・片方だけ)、`SortSelect`(関連度の無効と併記)、`DirectoryItem`・`WinSummary`(本人・強調・3種の勝利・項目の値の登録)、`DirectoryPagination`(省略の規則・768px未満)、`DirectoryPage`(初回・再読み込み・エラー・0件2種・範囲外・区画の失敗の閉じ込め)、`ProductPage`(区画の順と失敗の閉じ込め・1カラム・自動更新の切り替えの描く条件(ページ自身の値・区画の申告・申告した区画の失敗)・`data-auto-refresh`)、`LiveMatchSection`と`ProductPage`の取り直し(013の「テスト」に従い`Date`・`setTimeout`・`clearTimeout`・`setInterval`・`clearInterval`を偽にし、`notifyManager.setScheduler(queueMicrotask)`で、オフの後に定期の取得が無いこと、`endsAt`の1秒後の取り直し、結果を待つ取り直しが上限まで続き、オフの時だけ`role="status"`が案内に替わること、確定で詳細ページの取得が無効になること、Upvoteの結果の差し替え)、演出(`emulateReducedMotion`・オフ・開催中のマッチが無い時に目印の要素にアニメーションが掛からない)、`Card`(frontend-lib、部分の要素と属性・ライト・ダーク)、移した`AutoRefreshSwitch`・`FullTimeCountdown`(既存のテストを移して成功)、`ProductHeader`(成績・本人にフォローなし)、`ScreenshotLightbox`(左右キー・位置表示)、`MatchHistoryRow`(接戦・不戦勝・早期・非公開のプロダクト)、`SupportersPanel`(続きの読み込み・失敗)、`EmptyMatches`、`OwnerCard`(禁止・間隔・固定・照会の失敗)。
+  - E2E(`e2e/client/directory.e2e.test.ts`): identity-authの`e2e/support/mailpit.ts`で確認済みの利用者を3人登録し(メールアドレスのドメインは`.example`)、2人がproduct-launchの画面でプロダクトを登録する。`e2e/support/directory-fixtures.ts`(admin-foundationの`executeLocalD1`。match-engineの`e2e/client/match-steps.ts`の手順(`moveLaunchesToDate`・`startQualifiers`など)で足りる部分はそれを使う)で2つのローンチのマッチ中の予選(終了の日時を過去)を作り、backend-platformの改訂2の`triggerScheduled({ worker: 'api', businessDate: <当日の業務日付>, businessTime: '23:40' })`で23:40の確定のジョブを動かして(独自の定期実行の起動の補助は作らない)、確定のイベント・予選の結果の記録・本specの掲載と索引の処理を実際の経路で動かす。一覧のページのために、可視の投稿者・プロダクト・確定したマッチとローンチの結果を直接作る補助で21件の掲載中のプロダクトを追加する。ディレクトリで勝ったプロダクトが表示されること、名称の検索(索引の作成を待つ)・カテゴリの絞り込み・「Upvote数が多い順」・2ページ目への移動と`page`のクエリ、詳細ページのマッチ履歴とサポーター(3人目のUpvote)、敗けたプロダクトが他者には404で投稿者本人には未掲載の案内付きで見えること、プロダクトのハンドルを変えた後に旧ハンドルのURLが現在のURLへ転送されることを確かめる(14.3)。
 
 ## Security Considerations
 
@@ -1278,7 +1377,7 @@ erDiagram
 
 - ディレクトリの1回の取得は、一覧と件数の一括の読み取り1回・カテゴリの解決1回・プロダクトの照会1回・マッチの照会1回・ローンチの照会1回・供給元の呼び出し・利用者と画像とカテゴリのローダー1回ずつで、項目の数に比例した問い合わせをしない(13.4)。
 - 一覧の問い合わせは予選の勝利の数に比例して読み取りが増える。期間の条件を窓関数の前に掛け、launch-readinessの性能の検証で10万件の勝利の合成データでNFR-PERF-007(95パーセンタイル300ms)を確かめる(research.mdのRisks)。
-- 詳細ページは、プロダクト・詳細・ローンチ・マッチ・対戦相手の照会を各1回で読む。サポーターの一覧は20件ずつで、側の索引の範囲だけを読む(match-engine)。
+- 詳細ページは、プロダクト・詳細・ローンチ・マッチ・対戦相手の照会を各1回で読む。定期の取り直しは`productLiveMatch`(プロダクト・ローンチ・マッチの照会を各1回)だけに重ね、開催中のマッチか変化を待つ状態がある間だけ動く。1つのタブが`LIVE_REFRESH_INTERVAL_MS`ごとに1回取得し、中継の経路のIP制限の回数に数えられる(010)。サポーターの一覧は20件ずつで、側の索引の範囲だけを読む(match-engine)。
 - 初回の表示はサーバーで描画し(NFR-PERF-001)、ディレクトリの条件の変更は直前の結果を残したまま取り直す。
 
 ## Migration Strategy
