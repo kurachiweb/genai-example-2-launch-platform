@@ -10,10 +10,12 @@ import {
   SEARCH_INDEX_REFRESH_RETRY,
 } from '../../lib/core/messaging/contracts/search-index-refresh.ts';
 import { USER_LIFECYCLE_RETRY_POLICY } from '../../lib/core/identity/user-lifecycle.ts';
+import { MATCH_EVENT_RETRY_POLICY } from '../../lib/core/match/match-events.ts';
 import {
   RECHECK_DISPOSABLE_EMAIL_MESSAGE,
   RUN_USER_LIFECYCLE_MESSAGE,
 } from '../../lib/core/messaging/contracts/identity.ts';
+import { RUN_MATCH_EVENT_MESSAGE } from '../../lib/core/messaging/contracts/match.ts';
 import { RUN_PRODUCT_LIFECYCLE_MESSAGE } from '../../lib/core/messaging/contracts/product.ts';
 import type { MessageHandlerRegistration } from '../../lib/core/messaging/message-contract.ts';
 import { PAYMENTS_REFUND_MESSAGE } from '../../lib/core/payments/refund-message.ts';
@@ -25,6 +27,7 @@ import {
 } from '../../lib/core/ultras/activation-message.ts';
 import { EVENT_EMAIL_TYPES } from '../application/email/email-types.ts';
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
+import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import { EVENT_MEDIA_HANDLER_TYPES } from '../application/media/media-handler-types.ts';
 import { MODERATION_RETRY_POLICY } from '../application/media/moderate-image-handler.ts';
 import { PURGE_IMAGE_CACHE_RETRY_POLICY } from '../application/media/purge-image-cache-handler.ts';
@@ -82,5 +85,10 @@ export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
       contract: RUN_PRODUCT_LIFECYCLE_MESSAGE,
       handler: EVENT_PRODUCT_TYPES.ProductLifecycleRunner,
       retry: PRODUCT_LIFECYCLE_RETRY_POLICY,
+    },
+    {
+      contract: RUN_MATCH_EVENT_MESSAGE,
+      handler: EVENT_MATCH_TYPES.MatchEventRunner,
+      retry: MATCH_EVENT_RETRY_POLICY,
     },
   ]);
