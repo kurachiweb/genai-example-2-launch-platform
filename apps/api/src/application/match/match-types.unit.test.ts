@@ -10,6 +10,9 @@ const EXPECTED_NAMES = [
   'ProductMatchClosureSyncHandler',
   'SettlementStore',
   'MatchSettlement',
+  'PairingStore',
+  'RandomSource',
+  'QualifierPairingService',
 ] as const;
 
 describe('MATCH_TYPES', () => {

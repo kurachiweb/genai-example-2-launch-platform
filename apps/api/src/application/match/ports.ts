@@ -1,4 +1,5 @@
 import type { MatchPhase } from '../../../lib/core/match/match-model.ts';
+import type { BusinessDate } from '../../../lib/core/time/business-time.ts';
 import type {
   EntryTally,
   MatchOutcome,
@@ -73,4 +74,27 @@ export interface SettlementStore {
     outcomes: readonly SettlementWrite[],
     at: Date,
   ): Promise<readonly string[]>;
+}
+
+// already-completedは、その日のペアリングが一度完了していること
+export type PairingDayState = 'begun' | 'already-completed';
+
+export interface PairingCounts {
+  // 組んだマッチの側のローンチの数
+  readonly launches: number;
+  readonly matches: number;
+}
+
+export interface PairingStore {
+  // 実施日の記録が無ければ未完了で作り、あれば変えない
+  beginDay(date: BusinessDate, at: Date): Promise<PairingDayState>;
+  // 既に完了していれば最初の完了の日時を保ち、件数を足す
+  completeDay(
+    date: BusinessDate,
+    counts: PairingCounts,
+    at: Date,
+  ): Promise<void>;
+  isDayCompleted(date: BusinessDate): Promise<boolean>;
+  // 実施日の予選の側のローンチ。紐付けを解除した側は含めない
+  pairedLaunchIds(date: BusinessDate): Promise<ReadonlySet<string>>;
 }

@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
+import type { RandomSource } from '../../lib/core/match/qualifier-pairing.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { createMatchPlatformModule } from '../../lib/workers/match/match-platform-module.ts';
 import {
@@ -10,15 +11,22 @@ import {
 } from '../application/match/match-settlement.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
 import type {
+  PairingStore,
   SettlementStore,
   UpvoteStore,
 } from '../application/match/ports.ts';
+import {
+  type QualifierPairingService,
+  StoreQualifierPairingService,
+} from '../application/match/qualifier-pairing-service.ts';
 import {
   StoreUpvoteService,
   type UpvoteService,
 } from '../application/match/upvote-service.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { AccountMatchClosureSyncHandler } from '../infrastructure/match/account-match-closure-sync-handler.ts';
+import { CryptoRandomSource } from '../infrastructure/match/crypto-random-source.ts';
+import { D1PairingStore } from '../infrastructure/match/d1-pairing-store.ts';
 import { D1SettlementStore } from '../infrastructure/match/d1-settlement-store.ts';
 import { D1UpvoteStore } from '../infrastructure/match/d1-upvote-store.ts';
 import { ProductMatchClosureSyncHandler } from '../infrastructure/match/product-match-closure-sync-handler.ts';
@@ -41,5 +49,10 @@ export const API_MATCH_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     ).to(ProductMatchClosureSyncHandler);
     bind<SettlementStore>(MATCH_TYPES.SettlementStore).to(D1SettlementStore);
     bind<MatchSettlement>(MATCH_TYPES.MatchSettlement).to(StoreMatchSettlement);
+    bind<PairingStore>(MATCH_TYPES.PairingStore).to(D1PairingStore);
+    bind<RandomSource>(MATCH_TYPES.RandomSource).to(CryptoRandomSource);
+    bind<QualifierPairingService>(MATCH_TYPES.QualifierPairingService).to(
+      StoreQualifierPairingService,
+    );
   }),
 };
