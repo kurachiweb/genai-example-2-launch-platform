@@ -1,3 +1,4 @@
+import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
 import { INQUIRY_TYPES } from '../application/inquiry/inquiry-types.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
@@ -31,5 +32,10 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       name: 'match-engine.account-match-closure',
       events: ['withdrawn', 'suspended'],
       handler: MATCH_TYPES.AccountMatchClosureSyncHandler,
+    },
+    {
+      name: 'directory-discovery.account-index-removal',
+      events: ['withdrawn', 'suspended'],
+      handler: DIRECTORY_TYPES.AccountIndexRemovalSyncHandler,
     },
   ];

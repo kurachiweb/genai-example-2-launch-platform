@@ -1,3 +1,4 @@
+import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
 import type { ProductLifecycleSyncRegistration } from '../infrastructure/product/product-lifecycle-sync-handler.ts';
 
@@ -8,5 +9,10 @@ export const PRODUCT_LIFECYCLE_SYNC_HANDLERS: readonly ProductLifecycleSyncRegis
       name: 'match-engine.product-match-closure',
       events: ['hidden', 'deleted'],
       handler: MATCH_TYPES.ProductMatchClosureSyncHandler,
+    },
+    {
+      name: 'directory-discovery.product-index-removal',
+      events: ['deleted', 'hidden'],
+      handler: DIRECTORY_TYPES.ProductIndexRemovalSyncHandler,
     },
   ];

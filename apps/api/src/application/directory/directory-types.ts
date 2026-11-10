@@ -27,6 +27,14 @@ const SupporterListReader: unique symbol = Symbol.for(
   'directory.SupporterListReader',
 );
 
+const AccountIndexRemovalSyncHandler: unique symbol = Symbol.for(
+  'directory.AccountIndexRemovalSyncHandler',
+);
+
+const ProductIndexRemovalSyncHandler: unique symbol = Symbol.for(
+  'directory.ProductIndexRemovalSyncHandler',
+);
+
 export const DIRECTORY_TYPES = Object.freeze({
   DirectoryReader,
   DirectoryCategoryReader,
@@ -36,4 +44,6 @@ export const DIRECTORY_TYPES = Object.freeze({
   LaunchHighlightsReader,
   ItemMetricSources,
   ItemMetricsReader,
+  AccountIndexRemovalSyncHandler,
+  ProductIndexRemovalSyncHandler,
 });

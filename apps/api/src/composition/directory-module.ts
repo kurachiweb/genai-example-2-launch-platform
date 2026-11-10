@@ -40,6 +40,10 @@ import {
   DirectorySupporterListReader,
   type SupporterListReader,
 } from '../application/directory/supporter-list-reader.ts';
+import { AccountIndexRemovalSyncHandler } from '../infrastructure/directory/account-index-removal-sync-handler.ts';
+import { ProductIndexRemovalSyncHandler } from '../infrastructure/directory/product-index-removal-sync-handler.ts';
+import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
+import type { ProductLifecycleSyncHandler } from '../infrastructure/product/product-lifecycle-sync-handler.ts';
 import { DIRECTORY_ITEM_METRIC_SOURCES } from './directory-item-metric-sources.ts';
 
 const resolverOf =
@@ -47,7 +51,7 @@ const resolverOf =
   <T>(identifier: ServiceIdentifier<T>): T =>
     context.get(identifier);
 
-// 一覧の照会(DIRECTORY_PLATFORM_TYPES)・プロダクトとカテゴリの照会と要約の供給元(PRODUCT_PLATFORM_TYPES・PRODUCT_TYPES)・マッチとサポーターの照会(MATCH_PLATFORM_TYPES)は各機能の束縛を使う
+// 一覧の照会(DIRECTORY_PLATFORM_TYPES)・プロダクトとカテゴリの照会と要約の供給元(PRODUCT_PLATFORM_TYPES・PRODUCT_TYPES)・マッチとサポーターの照会(MATCH_PLATFORM_TYPES)・索引文書の文(SEARCH_TYPES)は各機能の束縛を使う
 export const DIRECTORY_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'directory',
   bindings: new ContainerModule(({ bind }) => {
@@ -80,5 +84,11 @@ export const DIRECTORY_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<SupporterListReader>(DIRECTORY_TYPES.SupporterListReader).to(
       DirectorySupporterListReader,
     );
+    bind<UserLifecycleSyncHandler>(
+      DIRECTORY_TYPES.AccountIndexRemovalSyncHandler,
+    ).to(AccountIndexRemovalSyncHandler);
+    bind<ProductLifecycleSyncHandler>(
+      DIRECTORY_TYPES.ProductIndexRemovalSyncHandler,
+    ).to(ProductIndexRemovalSyncHandler);
   }),
 };

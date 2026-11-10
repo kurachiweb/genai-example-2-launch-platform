@@ -12,10 +12,12 @@ const EXPECTED_NAMES = [
   'ProductPageReader',
   'LiveMatchReader',
   'SupporterListReader',
+  'AccountIndexRemovalSyncHandler',
+  'ProductIndexRemovalSyncHandler',
 ] as const;
 
 describe('DIRECTORY_TYPES', () => {
-  test('apiのディレクトリのユースケースと供給元の一覧の識別子だけを持つ', () => {
+  test('apiのディレクトリのユースケース・供給元の一覧・同期の処理の識別子だけを持つ', () => {
     expect(Object.keys(DIRECTORY_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );
