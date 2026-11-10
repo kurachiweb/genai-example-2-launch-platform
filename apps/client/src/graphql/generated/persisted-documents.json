@@ -1,4 +1,6 @@
 {
+  "sha256:ec12184573e6602c07891ff6ede6a92821b6fcd270fcebf63b64d5182b182dee": "query ClientDirectoryCategories { directoryCategories { handle id name } }",
+  "sha256:98bd712fadac35dcb09420e8fa1b2f5100282ec06528b10e80d28b9dd2e01a3e": "query ClientDirectory($input: DirectoryInput!) { directory(input: $input) { applied { category from page q sort to } businessToday items { awards { count kind labels } category { handle id name } handle isViewerOwn logo { fallbackFormat height id objectKey width } metrics { key value } name owner { avatar { fallbackFormat height id objectKey width } handle nickname } tagline websiteUrl win { kind launchDate upvoteCount } } page pageCount searchTerms totalCount } }",
   "sha256:2a5e67f3c1b64838df2c0c323fab25ed80f89e0c56f58fd2bcc6ae3e76583218": "mutation ClientCompleteSecondFactorLogin($input: CompleteSecondFactorLoginInput!) { completeSecondFactorLogin(input: $input) { id } }",
   "sha256:c512d6387b1888f3b40034cad109c27d09c805940a226412e3082c1939225461": "mutation ClientConfirmEmailChange($token: String!) { confirmEmailChange(token: $token) { viewer { id } } }",
   "sha256:2c986aa7e78feaf09e6115e21264cc394141eb5a2aa3595af8198871db50c326": "mutation ClientConfirmPasswordChange($token: String!) { confirmPasswordChange(token: $token) { viewer { id } } }",

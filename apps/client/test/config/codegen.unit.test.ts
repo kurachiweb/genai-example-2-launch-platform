@@ -102,6 +102,11 @@ const MATCH_OPERATION_NAMES = [
   'ClientUpvoteHistory',
 ] as const;
 
+const DIRECTORY_OPERATION_NAMES = [
+  'ClientDirectory',
+  'ClientDirectoryCategories',
+] as const;
+
 const bodyOfOperation = (
   documents: Record<string, string>,
   name: string,
@@ -176,6 +181,15 @@ describe('利用者側のコード生成の生成物', () => {
 
   test.each(MATCH_OPERATION_NAMES)(
     '操作の一覧はマッチの操作%sを持つ',
+    async (name) => {
+      const documents = await readPersistedDocuments(GENERATED_DIR);
+
+      expect(bodyOfOperation(documents, name)).toBeDefined();
+    },
+  );
+
+  test.each(DIRECTORY_OPERATION_NAMES)(
+    '操作の一覧はディレクトリの操作%sを持つ',
     async (name) => {
       const documents = await readPersistedDocuments(GENERATED_DIR);
 
