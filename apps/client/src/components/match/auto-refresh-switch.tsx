@@ -5,14 +5,14 @@ import { Switch } from '../../../lib/components/ui/switch/switch.tsx';
 import {
   AUTO_REFRESH_DESCRIPTION,
   AUTO_REFRESH_LABEL,
-} from './top-page-messages.ts';
+} from './auto-refresh-messages.ts';
 
 export interface AutoRefreshSwitchProps {
   readonly checked: boolean;
   readonly onCheckedChange: (checked: boolean) => void;
 }
 
-// トップページの全ての区画の定期の取り直し・毎秒の数値の更新・演出を1つで止めるため、区画の見出しの近くではなく上部の行の先頭に置く
+// ページの全ての区画の定期の取り直し・毎秒の数値の更新・演出を1つで止めるため、区画の見出しの近くではなくページの上部に置く
 export function AutoRefreshSwitch({
   checked,
   onCheckedChange,

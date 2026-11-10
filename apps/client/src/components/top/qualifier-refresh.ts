@@ -3,16 +3,9 @@ import type {
   ClientQualifierBoardQuery,
   MatchFragment,
 } from '../../graphql/generated/graphql.ts';
+import { FOLLOW_UP_REFETCH_LIMIT } from '../match/follow-up-refetch.ts';
 
 type QualifierBoard = ClientQualifierBoardQuery['qualifierBoard'];
-
-// 境界の時刻の直後に結果の確定やマッチの開始を待つ取り直しの上限。自動更新がオフでも、この回数までは取り直す
-export const FOLLOW_UP_REFETCH_LIMIT = 10;
-
-export interface QueryUpdateCounts {
-  readonly dataUpdateCount: number;
-  readonly errorUpdateCount: number;
-}
 
 export interface QualifierRefreshInput {
   readonly board: QualifierBoard | undefined;
@@ -20,9 +13,6 @@ export interface QualifierRefreshInput {
   // ページを表示した時点と最後の境界の取り直しのうち後の時点からの、取得の更新の回数
   readonly updatesSinceBaseline: number;
 }
-
-export const updateCountOf = (state: QueryUpdateCounts | undefined): number =>
-  state === undefined ? 0 : state.dataUpdateCount + state.errorUpdateCount;
 
 const hasLiveMatch = (board: QualifierBoard): boolean =>
   board.matches.some(({ phase }) => phase === 'LIVE');

@@ -1,7 +1,6 @@
 import { ClockIcon } from 'lucide-react';
 
 import { DateTime } from '../../../lib/components/datetime/date-time.tsx';
-import { useServerCountdown } from '../match/use-server-countdown.ts';
 import {
   COUNTDOWN_END_SUFFIX,
   COUNTDOWN_LABEL,
@@ -10,6 +9,7 @@ import {
   countdownDigitsOf,
   countdownReadingOf,
 } from './full-time-countdown-text.ts';
+import { useServerCountdown } from './use-server-countdown.ts';
 
 export interface FullTimeCountdownProps {
   readonly phase: 'LIVE' | 'RESULT';

@@ -8,17 +8,17 @@
 
 部品の置き場所は、共通部品のディレクトリと、画面のアプリの`src/`からのパスで示す。`<ページ>`は区画を並べるページ、`<ドメイン>`は集計値を持つ機能ごとに置き換える。
 
-| 部品                                                        | 置き場所                                                                                   | 役割                                                                    |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `LIVE_REFRESH_INTERVAL_MS`・`LIVE_REFRESH_QUERY_OPTIONS`    | 共通部品の`utilities/query/live-refresh.ts`                                                | 定期再取得の間隔と共通の値                                              |
-| `RecoverableSlot`                                           | 共通部品の`components/state/recoverable-slot.tsx`                                          | 区画ごとのエラーの境界と読み込み中の表示                                |
-| `useTurnstileToken`・`TurnstileWidget`・`sendWithTurnstile` | 共通部品の`components/bot-protection/`・`utilities/bot-protection/`                        | bot判定のウィジェットとトークンの取り出し                               |
-| `useBoundaryRefresh`                                        | 画面のアプリの`components/time/use-boundary-refresh.ts`                                    | 境界の時刻のタイマーによる取り直し                                      |
-| 区画の型・置き場所の並べ方                                  | 画面のアプリの`components/<ページ>/<ページ>-section-types.ts`・`<ページ>-section-order.ts` | 区画の契約と、置き場所ごとの並べ替え                                    |
-| 区画の登録口                                                | 画面のアプリの`composition/<ページ>-sections.ts`                                           | 各機能が区画を追記する一覧                                              |
-| 自動更新の切り替え                                          | 画面のアプリの`components/<ページ>/auto-refresh-switch.tsx`                                | ページ全体の定期の取り直し・毎秒の数値の更新・演出を止める`Switch`      |
-| `useServerCountdown`                                        | 画面のアプリの`components/<ドメイン>/use-server-countdown.ts`                              | サーバーの時刻に合わせた残りの秒数                                      |
-| bot判定の提供部品と取り出しのフック                         | 画面のアプリの`components/<ドメイン>/<操作>-bot-protection.tsx`・`<操作>-turnstile.ts`     | ページに1つのウィジェットのトークンを、ページの全ての操作のフックへ渡す |
+| 部品                                                        | 置き場所                                                                                                                             | 役割                                                                    |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `LIVE_REFRESH_INTERVAL_MS`・`LIVE_REFRESH_QUERY_OPTIONS`    | 共通部品の`utilities/query/live-refresh.ts`                                                                                          | 定期再取得の間隔と共通の値                                              |
+| `RecoverableSlot`                                           | 共通部品の`components/state/recoverable-slot.tsx`                                                                                    | 区画ごとのエラーの境界と読み込み中の表示                                |
+| `useTurnstileToken`・`TurnstileWidget`・`sendWithTurnstile` | 共通部品の`components/bot-protection/`・`utilities/bot-protection/`                                                                  | bot判定のウィジェットとトークンの取り出し                               |
+| `useBoundaryRefresh`                                        | 画面のアプリの`components/time/use-boundary-refresh.ts`                                                                              | 境界の時刻のタイマーによる取り直し                                      |
+| 区画の型・置き場所の並べ方                                  | 画面のアプリの`components/<ページ>/<ページ>-section-types.ts`・`<ページ>-section-order.ts`                                           | 区画の契約と、置き場所ごとの並べ替え                                    |
+| 区画の登録口                                                | 画面のアプリの`composition/<ページ>-sections.ts`                                                                                     | 各機能が区画を追記する一覧                                              |
+| 自動更新の切り替え                                          | 画面のアプリの`components/<ページ>/auto-refresh-switch.tsx`。複数のページが使う場合は`components/<ドメイン>/auto-refresh-switch.tsx` | ページ全体の定期の取り直し・毎秒の数値の更新・演出を止める`Switch`      |
+| `useServerCountdown`                                        | 画面のアプリの`components/<ドメイン>/use-server-countdown.ts`                                                                        | サーバーの時刻に合わせた残りの秒数                                      |
+| bot判定の提供部品と取り出しのフック                         | 画面のアプリの`components/<ドメイン>/<操作>-bot-protection.tsx`・`<操作>-turnstile.ts`                                               | ページに1つのウィジェットのトークンを、ページの全ての操作のフックへ渡す |
 
 | 用語               | 意味                                                                                                                    |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------- |

@@ -17,13 +17,13 @@ import {
   withUpdatedMatch,
 } from '../../graphql/qualifier-board.ts';
 import { useViewer } from '../auth/use-viewer.ts';
+import { updateCountOf } from '../match/follow-up-refetch.ts';
 import { useBoundaryRefresh } from '../time/use-boundary-refresh.ts';
 import {
   canQualifierBoardChange,
   isFollowUpExhausted,
   orderMatchesBy,
   qualifierRefetchIntervalOf,
-  updateCountOf,
 } from './qualifier-refresh.ts';
 import { FOLLOW_UP_EXHAUSTED_MESSAGE } from './qualifier-section-messages.ts';
 import { QualifierSection } from './qualifier-section.tsx';

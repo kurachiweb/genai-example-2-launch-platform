@@ -19,7 +19,7 @@ import {
   UPVOTE_CANCELLED_MESSAGE,
   UPVOTED_MESSAGE,
 } from '../../apps/client/src/components/match/upvote-messages.ts';
-import { AUTO_REFRESH_LABEL } from '../../apps/client/src/components/top/top-page-messages.ts';
+import { AUTO_REFRESH_LABEL } from '../../apps/client/src/components/match/auto-refresh-messages.ts';
 import {
   LIVE_MATCH_BADGE,
   UNLISTED_BADGE,

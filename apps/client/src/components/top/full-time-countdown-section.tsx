@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import type { ClientQualifierBoardQuery } from '../../graphql/generated/graphql.ts';
 import { qualifierBoardQueryOptions } from '../../graphql/qualifier-board.ts';
 import { useViewer } from '../auth/use-viewer.ts';
-import { FullTimeCountdown } from './full-time-countdown.tsx';
+import { FullTimeCountdown } from '../match/full-time-countdown.tsx';
 import type { TopPageSectionContext } from './top-page-section-types.ts';
 
 const fullTimeAtOf = ({ qualifierBoard }: ClientQualifierBoardQuery): string =>

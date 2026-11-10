@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RecoverableSlot } from '../../../lib/components/state/recoverable-slot.tsx';
 import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import { CONTACT_HREF, SITE_NAME } from '../layout/site-links.ts';
-import { AutoRefreshSwitch } from './auto-refresh-switch.tsx';
+import { AutoRefreshSwitch } from '../match/auto-refresh-switch.tsx';
 import { GuestHero } from './guest-hero.tsx';
 import { TOP_PAGE_HEADING_ID } from './top-page-heading-id.ts';
 import { groupTopPageSections } from './top-page-section-order.ts';
