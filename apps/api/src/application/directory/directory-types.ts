@@ -35,6 +35,10 @@ const ProductIndexRemovalSyncHandler: unique symbol = Symbol.for(
   'directory.ProductIndexRemovalSyncHandler',
 );
 
+const ProductIndexRefreshSaveHook: unique symbol = Symbol.for(
+  'directory.ProductIndexRefreshSaveHook',
+);
+
 export const DIRECTORY_TYPES = Object.freeze({
   DirectoryReader,
   DirectoryCategoryReader,
@@ -46,4 +50,5 @@ export const DIRECTORY_TYPES = Object.freeze({
   ItemMetricsReader,
   AccountIndexRemovalSyncHandler,
   ProductIndexRemovalSyncHandler,
+  ProductIndexRefreshSaveHook,
 });

@@ -14,10 +14,11 @@ const EXPECTED_NAMES = [
   'SupporterListReader',
   'AccountIndexRemovalSyncHandler',
   'ProductIndexRemovalSyncHandler',
+  'ProductIndexRefreshSaveHook',
 ] as const;
 
 describe('DIRECTORY_TYPES', () => {
-  test('apiのディレクトリのユースケース・供給元の一覧・同期の処理の識別子だけを持つ', () => {
+  test('apiのディレクトリのユースケース・供給元の一覧・同期の処理・保存の処理の識別子だけを持つ', () => {
     expect(Object.keys(DIRECTORY_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

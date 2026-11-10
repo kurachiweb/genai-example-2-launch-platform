@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
+import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
 import {
   createProductSaveHooks,
   type ProductSaveHook,
@@ -16,8 +17,13 @@ const resolveStub: Parameters<typeof createProductSaveHooks>[1] = () =>
   STUB_HOOK as never;
 
 describe('PRODUCT_SAVE_HOOKS', () => {
-  test('初版の登録口は空である', () => {
-    expect(PRODUCT_SAVE_HOOKS).toStrictEqual([]);
+  test('directory-discoveryの索引の更新待ちの処理だけを登録する', () => {
+    expect(PRODUCT_SAVE_HOOKS).toStrictEqual([
+      {
+        name: 'directory-discovery.product-index-refresh',
+        hook: DIRECTORY_TYPES.ProductIndexRefreshSaveHook,
+      },
+    ]);
   });
 
   test('登録は<spec名>.<名詞句>の名前が重複せず、保存の登録口の部品を組み立てられる', () => {
