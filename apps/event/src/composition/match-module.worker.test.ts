@@ -2,9 +2,7 @@ import { resetSync } from '@logtape/logtape';
 import {
   applyD1Migrations,
   createExecutionContext,
-  createMessageBatch,
   type D1Migration,
-  getQueueResult,
 } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import { type Container, ContainerModule } from 'inversify';
@@ -28,10 +26,12 @@ import {
   type MatchEventRegistration,
 } from '../../lib/core/match/match-events.ts';
 import { RUN_MATCH_EVENT_MESSAGE } from '../../lib/core/messaging/contracts/match.ts';
-import type { QueueEnvelope } from '../../lib/core/messaging/envelope.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { createQueueDispatcher } from '../../lib/workers/messaging/queue-consumer.ts';
-import { DECIDED_AT } from '../../lib/workers/match/testing/directory-fixtures.ts';
+import {
+  DECIDED_AT,
+  STARTS_AT,
+} from '../../lib/workers/match/testing/directory-fixtures.ts';
 import {
   insertHandlerRun,
   insertMatchEvents,
@@ -41,12 +41,12 @@ import {
 } from '../../lib/workers/match/testing/event-fixtures.ts';
 import { matchIdOf } from '../../lib/workers/match/testing/match-fixtures.ts';
 import { seedMatchPlatformSample } from '../../lib/workers/match/testing/match-platform-fixtures.ts';
-import { T0 } from '../../lib/workers/product/testing/product-fixtures.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import {
   MATCH_EVENT_ORDER_WAIT_SECONDS,
   MatchEventRunner,
 } from '../application/match/match-event-runner.ts';
+import { QualifierOutcomeHandler } from '../application/match/qualifier-outcome-handler.ts';
 import { MATCH_EVENT_HANDLERS } from './match-event-handlers.ts';
 import {
   createEventMatchModule,
@@ -55,29 +55,11 @@ import {
 } from './match-module.ts';
 import { MESSAGE_HANDLERS } from './message-handlers.ts';
 import { MODULES } from './modules.ts';
-
-declare global {
-  // @cloudflare/vitest-pool-workers 0.23.0の型定義はgetQueueResultの戻り値にこの型を使うが、宣言を含まない
-  interface FetcherQueueResult {
-    readonly outcome: string;
-    readonly ackAll: boolean;
-    readonly retryBatch: { readonly retry: boolean };
-    readonly explicitAcks: readonly string[];
-    readonly retryMessages: readonly { readonly msgId: string }[];
-  }
-}
-
-interface MessageOutcome {
-  readonly acked: boolean;
-  readonly retried: boolean;
-  readonly resentDelaySeconds?: number | undefined;
-}
-
-type QueueHandler = (
-  batch: MessageBatch,
-  env: Env,
-  ctx: ExecutionContext,
-) => Promise<void>;
+import {
+  dispatchMatchEvent,
+  matchEventEnvelope,
+  type QueueHandler,
+} from './testing/match-event-queue.ts';
 
 // TEST_MIGRATIONSはvitest.worker.config.tsだけが渡すテスト用のバインディングで、実行時の環境の型には含めない
 const testEnv = env as Env & { readonly TEST_MIGRATIONS: D1Migration[] };
@@ -109,8 +91,6 @@ const FAKE_REGISTRATIONS: readonly MatchEventRegistration[] = [
   },
 ];
 
-let envelopeCount = 0;
-
 function createContainer(kind: (typeof INVOCATION_KINDS)[number]): Container {
   return createInvocationContainer(
     {
@@ -124,73 +104,6 @@ function createContainer(kind: (typeof INVOCATION_KINDS)[number]): Container {
     },
     MODULES,
   );
-}
-
-// 封筒のIDはULIDの形でなければデッドレターへ移るため、ULIDの形の連番を振る
-function matchEventEnvelope(eventId: string): QueueEnvelope {
-  envelopeCount += 1;
-  return {
-    v: 1,
-    type: RUN_MATCH_EVENT_MESSAGE.type,
-    id: `01JD0MMSG${String(envelopeCount).padStart(17, '0')}`,
-    sentAt: T0.toISOString(),
-    body: { eventId },
-  };
-}
-
-function isMatchEventEnvelope(sent: unknown): boolean {
-  return (
-    typeof sent === 'object' &&
-    sent !== null &&
-    'type' in sent &&
-    sent.type === RUN_MATCH_EVENT_MESSAGE.type
-  );
-}
-
-// 本番と同じQueueのconsumer・メッセージの処理の一覧・モジュールの一覧で処理する
-const defaultQueueHandler: QueueHandler = (batch, runtimeEnv, ctx) =>
-  createQueueDispatcher(MESSAGE_HANDLERS, MODULES).dispatch(
-    batch,
-    runtimeEnv,
-    ctx,
-  );
-
-// 遅延の指定(defer)はackして同じ封筒を送り直すため、送り直しの遅延秒数をsendの呼び出しの引数で確かめる
-async function dispatch(
-  envelope: QueueEnvelope,
-  handler: QueueHandler = defaultQueueHandler,
-): Promise<MessageOutcome> {
-  const batch = createMessageBatch(env.JOBS_QUEUE_NAME, [
-    { id: envelope.id, timestamp: T0, attempts: 1, body: envelope },
-  ]);
-  const [message] = batch.messages;
-  if (message === undefined) {
-    throw new Error('バッチにメッセージが無い');
-  }
-  const deadLetterSpy = vi.spyOn(env.JOBS_DLQ, 'send');
-  // 続きの再送が後のテストの途中で届かないよう、実際には送らない
-  const resendSpy = vi.spyOn(env.JOBS_QUEUE, 'send').mockResolvedValue({
-    metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
-  });
-  const ctx = createExecutionContext();
-  try {
-    await handler(batch, env, ctx);
-    const { explicitAcks, retryMessages } = await getQueueResult(batch, ctx);
-    // 封筒や本文の不正でデッドレターへ移ったメッセージもackされるため、処理まで届いたことを確かめる
-    expect(deadLetterSpy).not.toHaveBeenCalled();
-    const resend = resendSpy.mock.calls
-      .filter(([sent]) => isMatchEventEnvelope(sent))
-      .at(-1);
-    return {
-      acked: explicitAcks.includes(message.id),
-      retried: retryMessages.some(({ msgId }) => msgId === message.id),
-      ...(resend === undefined
-        ? {}
-        : { resentDelaySeconds: resend[1]?.delaySeconds }),
-    };
-  } finally {
-    resendSpy.mockRestore();
-  }
 }
 
 // eventのマッチのモジュールだけを偽の登録で組み立て直し、偽の処理の束縛を加えた一覧で本番と同じconsumerを動かす
@@ -275,20 +188,31 @@ describe('イベントサーバーのモジュールの一覧へのマッチの�
   });
 
   test.each(INVOCATION_KINDS)(
-    '%s経路の処理単位のコンテナから、マッチイベントの実行器を実装のクラスに解決する',
+    '%s経路の処理単位のコンテナから、マッチイベントの実行器と予選の結果の記録の処理を実装のクラスに解決する',
     (kind) => {
       const container = createContainer(kind);
 
       expect(container.get(EVENT_MATCH_TYPES.MatchEventRunner)).toBeInstanceOf(
         MatchEventRunner,
       );
+      expect(
+        container.get(EVENT_MATCH_TYPES.QualifierOutcomeHandler),
+      ).toBeInstanceOf(QualifierOutcomeHandler);
     },
   );
 });
 
 describe('マッチイベントの処理の登録口', () => {
-  test('初版は処理を持たない凍結済みの配列で、登録の検証を通る', () => {
-    expect(MATCH_EVENT_HANDLERS).toStrictEqual([]);
+  test('予選の結果の記録の処理を、予選の確定のイベントに帯の1100で登録した凍結済みの配列で、登録の検証を通る', () => {
+    expect(MATCH_EVENT_HANDLERS).toStrictEqual([
+      {
+        name: 'match-engine.qualifier-outcome',
+        events: ['decided'],
+        kinds: ['qualifier'],
+        order: 1100,
+        handler: EVENT_MATCH_TYPES.QualifierOutcomeHandler,
+      },
+    ]);
     expect(Object.isFrozen(MATCH_EVENT_HANDLERS)).toBe(true);
     expect(() => createMatchEventRegistry(MATCH_EVENT_HANDLERS)).not.toThrow();
   });
@@ -356,10 +280,12 @@ describe('マッチイベントのメッセージの処理の登録', () => {
 describe('マッチイベントのメッセージの処理', () => {
   test('処理の登録が無いイベントは完了にしてackする', async () => {
     await insertMatchEvents([
-      { index: EVENT, match: MATCH, type: 'decided', occurredAt: DECIDED_AT },
+      { index: EVENT, match: MATCH, type: 'started', occurredAt: STARTS_AT },
     ]);
 
-    const outcome = await dispatch(matchEventEnvelope(matchEventIdOf(EVENT)));
+    const outcome = await dispatchMatchEvent(
+      matchEventEnvelope(matchEventIdOf(EVENT)),
+    );
 
     expect(outcome).toStrictEqual({ acked: true, retried: false });
     await expect(readMatchEvent(matchEventIdOf(EVENT))).resolves.toMatchObject({
@@ -368,7 +294,9 @@ describe('マッチイベントのメッセージの処理', () => {
   });
 
   test('存在しないイベントのメッセージは何もせずackする', async () => {
-    const outcome = await dispatch(matchEventEnvelope(matchEventIdOf(EVENT)));
+    const outcome = await dispatchMatchEvent(
+      matchEventEnvelope(matchEventIdOf(EVENT)),
+    );
 
     expect(outcome).toStrictEqual({ acked: true, retried: false });
   });
@@ -384,7 +312,9 @@ describe('マッチイベントのメッセージの処理', () => {
       { index: EVENT, match: MATCH, type: 'decided', occurredAt: DECIDED_AT },
     ]);
 
-    const outcome = await dispatch(matchEventEnvelope(matchEventIdOf(EVENT)));
+    const outcome = await dispatchMatchEvent(
+      matchEventEnvelope(matchEventIdOf(EVENT)),
+    );
 
     expect(outcome).toStrictEqual({
       acked: true,
@@ -404,7 +334,7 @@ describe('マッチイベントのメッセージの処理', () => {
     const handler = createFakeQueueHandler(calls, { remaining: 1 });
     const envelope = matchEventEnvelope(matchEventIdOf(EVENT));
 
-    const first = await dispatch(envelope, handler);
+    const first = await dispatchMatchEvent(envelope, handler);
 
     expect(first).toMatchObject({ acked: false, retried: true });
     expect(calls.map(({ name }) => name)).toStrictEqual(['first', 'second']);
@@ -422,7 +352,7 @@ describe('マッチイベントのメッセージの処理', () => {
       status: 'pending',
     });
 
-    const second = await dispatch(envelope, handler);
+    const second = await dispatchMatchEvent(envelope, handler);
 
     expect(second).toStrictEqual({ acked: true, retried: false });
     expect(calls.map(({ name }) => name)).toStrictEqual([
@@ -446,7 +376,7 @@ describe('マッチイベントのメッセージの処理', () => {
     await insertHandlerRun(1, EVENT, 'match-test.first');
     const calls: { readonly name: string; readonly event: MatchEvent }[] = [];
 
-    const outcome = await dispatch(
+    const outcome = await dispatchMatchEvent(
       matchEventEnvelope(matchEventIdOf(EVENT)),
       createFakeQueueHandler(calls, { remaining: 0 }),
     );
