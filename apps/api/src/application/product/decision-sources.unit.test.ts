@@ -6,7 +6,9 @@ import {
   assertDecisionSourceRegistrations,
   callDecisionSources,
   type DecisionSourceRegistration,
+  type LaunchSummaryContribution,
   type LaunchSummarySource,
+  pickLaunchSummaries,
   type ProductLockSource,
   type RegisteredDecisionSource,
   type RelaunchConditionSource,
@@ -241,5 +243,32 @@ describe('callDecisionSources', () => {
       'product',
     ]);
     expect(records[0]?.properties).toStrictEqual({ sourceName: 'a.broken' });
+  });
+});
+
+describe('pickLaunchSummaries', () => {
+  const contribution = (
+    launchId: string,
+    label: string,
+    rank: number,
+  ): LaunchSummaryContribution => ({ launchId, label, inMatch: false, rank });
+
+  test('ローンチごとにrankの大きい要約を採り、同じrankなら先に受け取った要約を残す', () => {
+    const picked = pickLaunchSummaries([
+      contribution('l-1', '週間2位', 1),
+      contribution('l-1', '週間1位', 2),
+      contribution('l-1', '週間1位(後)', 2),
+      contribution('l-2', '年間1位', 5),
+      contribution('l-2', '週間3位', 1),
+    ]);
+
+    expect([...picked]).toStrictEqual([
+      ['l-1', contribution('l-1', '週間1位', 2)],
+      ['l-2', contribution('l-2', '年間1位', 5)],
+    ]);
+  });
+
+  test('要約が無ければ空のMapを返す', () => {
+    expect(pickLaunchSummaries([]).size).toBe(0);
   });
 });

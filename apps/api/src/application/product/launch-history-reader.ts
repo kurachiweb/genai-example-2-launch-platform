@@ -24,8 +24,8 @@ import type { SessionView } from '../../../lib/core/session/session-view.ts';
 import type { Clock } from '../../../lib/core/time/clock.ts';
 import {
   callDecisionSources,
-  type LaunchSummaryContribution,
   type LaunchSummarySource,
+  pickLaunchSummaries,
   type ProductAwardContribution,
   type RegisteredDecisionSource,
 } from './decision-sources.ts';
@@ -108,22 +108,10 @@ interface PageSummaries {
   readonly awards: ReadonlyMap<string, readonly AwardEntry[]>;
 }
 
-// 供給元は登録の順に並んでいるため、同じ順位なら先の供給元の要約が残る
-function pickSummaries(
-  contributions: readonly LaunchSummaryContribution[],
-): ReadonlyMap<string, LaunchSummaryContribution> {
-  const picked = new Map<string, LaunchSummaryContribution>();
-  for (const contribution of contributions) {
-    const current = picked.get(contribution.launchId);
-    if (current === undefined || contribution.rank > current.rank) {
-      picked.set(contribution.launchId, contribution);
-    }
-  }
-  return picked;
-}
-
 function toPageSummaries(results: readonly SummaryResult[]): PageSummaries {
-  const picked = pickSummaries(results.flatMap(({ launches }) => launches));
+  const picked = pickLaunchSummaries(
+    results.flatMap(({ launches }) => launches),
+  );
   return {
     launches: new Map(
       [...picked].map(([launchId, { label, inMatch }]) => [

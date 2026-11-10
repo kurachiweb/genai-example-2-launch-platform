@@ -105,31 +105,33 @@ const DECISION_SOURCE_LABEL = '判定の供給元';
 
 const logger = getAppLogger(['api', 'application', 'product']);
 
+// sourceLabelは違反の文言に出す登録口の呼び名
 export function assertDecisionSourceRegistrations(
   registrations: readonly Pick<
     DecisionSourceRegistration<unknown>,
     'name' | 'order'
   >[],
+  sourceLabel: string = DECISION_SOURCE_LABEL,
 ): void {
   const names = new Set<string>();
   const orders = new Map<number, string>();
   for (const { name, order } of registrations) {
-    assertLifecycleHandlerName(name, DECISION_SOURCE_LABEL);
+    assertLifecycleHandlerName(name, sourceLabel);
     if (names.has(name)) {
       throw new LifecycleRegistrationError(
-        `${DECISION_SOURCE_LABEL}の名前が重複しています: ${JSON.stringify(name)}`,
+        `${sourceLabel}の名前が重複しています: ${JSON.stringify(name)}`,
       );
     }
     names.add(name);
     if (!Number.isInteger(order)) {
       throw new LifecycleRegistrationError(
-        `${DECISION_SOURCE_LABEL}${JSON.stringify(name)}のorderは整数で指定してください: ${String(order)}`,
+        `${sourceLabel}${JSON.stringify(name)}のorderは整数で指定してください: ${String(order)}`,
       );
     }
     const colliding = orders.get(order);
     if (colliding !== undefined) {
       throw new LifecycleRegistrationError(
-        `${DECISION_SOURCE_LABEL}${JSON.stringify(colliding)}と${JSON.stringify(name)}のorderが重複しています: ${String(order)}`,
+        `${sourceLabel}${JSON.stringify(colliding)}と${JSON.stringify(name)}のorderが重複しています: ${String(order)}`,
       );
     }
     orders.set(order, name);
@@ -172,4 +174,18 @@ export async function callDecisionSources<T, R>(
     });
   }
   return { results, failed };
+}
+
+// 供給元の結果を登録の順に連結して渡せば、同じ順位なら先の供給元の要約が残る
+export function pickLaunchSummaries(
+  contributions: readonly LaunchSummaryContribution[],
+): ReadonlyMap<string, LaunchSummaryContribution> {
+  const picked = new Map<string, LaunchSummaryContribution>();
+  for (const contribution of contributions) {
+    const current = picked.get(contribution.launchId);
+    if (current === undefined || contribution.rank > current.rank) {
+      picked.set(contribution.launchId, contribution);
+    }
+  }
+  return picked;
 }
