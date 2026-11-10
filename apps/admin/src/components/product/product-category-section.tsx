@@ -10,7 +10,6 @@ import {
   adminProductCategoriesQueryOptions,
   invalidateProductCategoryQueries,
   toAdminProductCategoryItems,
-  toCategoryFormError,
 } from '../../graphql/admin-product-categories.ts';
 import {
   AdminCreateProductCategoryDocument,
@@ -38,14 +37,6 @@ const toInput = ({
   name,
   handle: handle ?? '',
 });
-
-const rethrowForForm = async (save: Promise<unknown>): Promise<void> => {
-  try {
-    await save;
-  } catch (error) {
-    throw toCategoryFormError(error);
-  }
-};
 
 // カテゴリのページのプロダクトカテゴリの区画。標準カテゴリの保護・名前とハンドルの重複・紐付くプロダクトのある削除はAPIサーバーが拒否し、その文言をダイアログに示す。
 // カテゴリの編集部品に理由の入力欄が無いため、理由は送らない
@@ -79,22 +70,21 @@ export function ProductCategorySection() {
       withHandle
       canEdit={canEdit}
       validateHandle={validateProductCategoryHandle}
-      onCreate={(values) =>
-        rethrowForForm(
-          createCategory.mutateAsync({ variables: { input: toInput(values) } }),
-        )
-      }
-      onUpdate={(id, values) =>
-        rethrowForForm(
-          updateCategory.mutateAsync({
-            variables: { id, input: toInput(values) },
-          }),
-        )
-      }
+      onCreate={async (values) => {
+        await createCategory.mutateAsync({
+          variables: { input: toInput(values) },
+        });
+      }}
+      onUpdate={async (id, values) => {
+        await updateCategory.mutateAsync({
+          variables: { id, input: toInput(values) },
+        });
+      }}
       onDelete={async (id) => {
         await deleteCategory.mutateAsync({ variables: { id } });
       }}
       failureMessageOf={failureMessageOf}
+      serverFieldPrefix="input"
       deleteDescriptionOf={deleteDescriptionOf}
       deleteAudited
     />

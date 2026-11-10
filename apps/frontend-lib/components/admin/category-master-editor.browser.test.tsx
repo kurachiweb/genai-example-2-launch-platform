@@ -18,6 +18,10 @@ const AUDITED_NOTICE = 'この操作は監査ログに記録されます。';
 
 const FAILURE_MESSAGE = 'このカテゴリは使われているため削除できません。';
 
+const NAME_TAKEN_MESSAGE = 'このカテゴリ名は既に使われています。';
+
+const HANDLE_TAKEN_MESSAGE = 'このハンドルは既に使われています。';
+
 const CATEGORIES: CategoryMasterEditorProps['categories'] = [
   {
     id: 'c1',
@@ -265,6 +269,94 @@ describe('CategoryMasterEditor', () => {
       .click();
 
     expect(onCreate).toHaveBeenCalledExactlyOnceWith({ name: '開発支援' });
+  });
+
+  test('サーバーの欄の接頭辞を渡すと、追加の保存で返った接頭辞の下の名前とハンドルの重複を、それぞれの欄のエラーとして示す', async () => {
+    const error = new GraphQLClientError({
+      code: 'category_name_taken',
+      message: NAME_TAKEN_MESSAGE,
+      status: 409,
+      details: [
+        {
+          field: 'input.name',
+          code: 'unavailable',
+          message: NAME_TAKEN_MESSAGE,
+        },
+        {
+          field: 'input.handle',
+          code: 'unavailable',
+          message: HANDLE_TAKEN_MESSAGE,
+        },
+      ],
+    });
+    const failureMessageOf = vi.fn(() => FAILURE_MESSAGE);
+    await renderEditor(
+      { serverFieldPrefix: 'input' },
+      mocks({
+        onCreate: vi.fn<OnCreate>(() => Promise.reject(error)),
+        failureMessageOf,
+      }),
+    );
+
+    await addButton().click();
+    const dialogName = 'カテゴリを追加';
+    const handleBox = formDialog(dialogName).getByRole('textbox', {
+      name: 'ハンドル',
+      exact: true,
+    });
+    await nameBox(dialogName).fill('開発ツール');
+    await handleBox.fill('developer-tools');
+    await formDialog(dialogName)
+      .getByRole('button', { name: '追加', exact: true })
+      .click();
+
+    await expect
+      .element(nameBox(dialogName))
+      .toHaveAttribute('aria-invalid', 'true');
+    await expect.element(handleBox).toHaveAttribute('aria-invalid', 'true');
+    await expect
+      .element(formDialog(dialogName).getByText(NAME_TAKEN_MESSAGE))
+      .toBeVisible();
+    await expect
+      .element(formDialog(dialogName).getByText(HANDLE_TAKEN_MESSAGE))
+      .toBeVisible();
+    expect(formDialog(dialogName).getByRole('alert').query()).toBeNull();
+    expect(failureMessageOf).not.toHaveBeenCalled();
+  });
+
+  test('サーバーの欄の接頭辞を渡さなければ、保存で返った名前の欄の違反を、接頭辞を外さずに名前の欄のエラーとして示す', async () => {
+    const error = new GraphQLClientError({
+      code: 'category_name_taken',
+      message: NAME_TAKEN_MESSAGE,
+      status: 409,
+      details: [
+        { field: 'name', code: 'unavailable', message: NAME_TAKEN_MESSAGE },
+      ],
+    });
+    const failureMessageOf = vi.fn(() => FAILURE_MESSAGE);
+    await renderEditor(
+      { withHandle: false },
+      mocks({
+        onCreate: vi.fn<OnCreate>(() => Promise.reject(error)),
+        failureMessageOf,
+      }),
+    );
+
+    await addButton().click();
+    const dialogName = 'カテゴリを追加';
+    await nameBox(dialogName).fill('アカウント');
+    await formDialog(dialogName)
+      .getByRole('button', { name: '追加', exact: true })
+      .click();
+
+    await expect
+      .element(nameBox(dialogName))
+      .toHaveAttribute('aria-invalid', 'true');
+    await expect
+      .element(formDialog(dialogName).getByText(NAME_TAKEN_MESSAGE))
+      .toBeVisible();
+    expect(formDialog(dialogName).getByRole('alert').query()).toBeNull();
+    expect(failureMessageOf).not.toHaveBeenCalled();
   });
 
   test('追加で使用できない文字を含む名前を入力すると、欄のエラーを示して保存できず、アクセシビリティの検査の違反が0件', async () => {

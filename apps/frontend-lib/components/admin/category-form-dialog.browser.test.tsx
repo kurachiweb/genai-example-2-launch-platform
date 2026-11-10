@@ -23,6 +23,8 @@ const FAILURE_MESSAGE = '同じ名前のカテゴリが既にあります。';
 const HANDLE_FORMAT_MESSAGE =
   'ハンドルは半角英小文字・数字・ハイフンで入力してください。';
 
+const HANDLE_TAKEN_MESSAGE = 'このハンドルは既に使われています。';
+
 const NAME_REQUIRED_MESSAGE = 'カテゴリ名を入力してください。';
 
 const NAME_TOO_LONG_MESSAGE = 'カテゴリ名は30文字以内で入力してください。';
@@ -38,6 +40,7 @@ interface HarnessProps {
   readonly initialValues?: CategoryFormDialogProps['initialValues'];
   readonly validateHandle?: CategoryFormDialogProps['validateHandle'];
   readonly failureMessageOf?: Mock<(error: unknown) => string>;
+  readonly serverFieldPrefix?: string;
 }
 
 function Harness({
@@ -46,6 +49,7 @@ function Harness({
   initialValues,
   validateHandle,
   failureMessageOf = vi.fn(() => FAILURE_MESSAGE),
+  serverFieldPrefix,
 }: HarnessProps) {
   const [open, setOpen] = useState(false);
   return (
@@ -68,6 +72,7 @@ function Harness({
         validateHandle={validateHandle}
         onSubmit={onSubmit}
         failureMessageOf={failureMessageOf}
+        serverFieldPrefix={serverFieldPrefix}
       />
     </div>
   );
@@ -310,6 +315,74 @@ describe('CategoryFormDialog', () => {
     await expect.element(nameBox()).toHaveFocus();
     await expect.element(dialog().getByText(FAILURE_MESSAGE)).toBeVisible();
     expect(failureMessageOf).not.toHaveBeenCalled();
+  });
+
+  test('サーバーの欄の接頭辞を渡すと、接頭辞の下の名前とハンドルの欄の違反を、それぞれの欄のエラーとして示す', async () => {
+    const error = new GraphQLClientError({
+      code: 'validation_error',
+      message: 'validation_error',
+      status: 400,
+      details: [
+        { field: 'input.name', code: 'name_taken', message: FAILURE_MESSAGE },
+        {
+          field: 'input.handle',
+          code: 'handle_taken',
+          message: HANDLE_TAKEN_MESSAGE,
+        },
+      ],
+    });
+    const failureMessageOf = vi.fn(() => FAILURE_MESSAGE);
+    await render(
+      <Harness
+        onSubmit={vi.fn<OnSubmit>(() => Promise.reject(error))}
+        failureMessageOf={failureMessageOf}
+        withHandle
+        serverFieldPrefix="input"
+      />,
+    );
+    await openDialog();
+    await nameBox().fill('開発ツール');
+    await handleBox().fill('developer-tools');
+
+    await submitButton().click();
+
+    await expect.element(nameBox()).toHaveAttribute('aria-invalid', 'true');
+    await expect.element(handleBox()).toHaveAttribute('aria-invalid', 'true');
+    await expect.element(nameBox()).toHaveFocus();
+    await expect.element(dialog().getByText(FAILURE_MESSAGE)).toBeVisible();
+    await expect
+      .element(dialog().getByText(HANDLE_TAKEN_MESSAGE))
+      .toBeVisible();
+    expect(dialog().getByRole('alert').query()).toBeNull();
+    expect(failureMessageOf).not.toHaveBeenCalled();
+  });
+
+  test('サーバーの欄の接頭辞を渡さなければ、接頭辞の付いた欄の違反を欄に対応しない失敗としてダイアログの中に示す', async () => {
+    const error = new GraphQLClientError({
+      code: 'validation_error',
+      message: 'validation_error',
+      status: 400,
+      details: [
+        { field: 'input.name', code: 'name_taken', message: FAILURE_MESSAGE },
+      ],
+    });
+    const failureMessageOf = vi.fn(() => FAILURE_MESSAGE);
+    await render(
+      <Harness
+        onSubmit={vi.fn<OnSubmit>(() => Promise.reject(error))}
+        failureMessageOf={failureMessageOf}
+      />,
+    );
+    await openDialog();
+    await nameBox().fill('開発ツール');
+
+    await submitButton().click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent(FAILURE_MESSAGE);
+    expect(failureMessageOf).toHaveBeenCalledExactlyOnceWith(error);
+    await expect.element(nameBox()).not.toHaveAttribute('aria-invalid', 'true');
   });
 
   test('保存の処理中は、保存のボタンにフォーカスを保ったまま処理中を示し、右上の「閉じる」を無効にし、取り消し・Escape・ダイアログの外の押下では閉じない', async () => {

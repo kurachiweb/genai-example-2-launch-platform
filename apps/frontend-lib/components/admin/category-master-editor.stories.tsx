@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 import { fn, screen } from 'storybook/test';
 
+import { GraphQLClientError } from '../../utilities/graphql/graphql-result.ts';
 import { CategoryMasterEditor } from './category-master-editor.tsx';
 
 const HANDLE_FORMAT_MESSAGE =
@@ -148,5 +149,46 @@ export const DeletionRejected: Story = {
       await screen.findByRole('button', { name: '「開発ツール」を削除' }),
     );
     await userEvent.click(await screen.findByRole('button', { name: '削除' }));
+  },
+};
+
+export const SaveRejectedOnFields: Story = {
+  args: {
+    serverFieldPrefix: 'input',
+    onCreate: fn(() =>
+      Promise.reject(
+        new GraphQLClientError({
+          code: 'category_name_taken',
+          message: 'このカテゴリ名は既に使われています。',
+          status: 409,
+          details: [
+            {
+              field: 'input.name',
+              code: 'unavailable',
+              message: 'このカテゴリ名は既に使われています。',
+            },
+            {
+              field: 'input.handle',
+              code: 'unavailable',
+              message: 'このハンドルは既に使われています。',
+            },
+          ],
+        }),
+      ),
+    ),
+  },
+  play: async ({ userEvent }) => {
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'カテゴリを追加' }),
+    );
+    await userEvent.type(
+      await screen.findByRole('textbox', { name: 'カテゴリ名(必須)' }),
+      '開発ツール',
+    );
+    await userEvent.type(
+      screen.getByRole('textbox', { name: 'ハンドル' }),
+      'developer-tools',
+    );
+    await userEvent.click(screen.getByRole('button', { name: '追加' }));
   },
 };

@@ -55,6 +55,7 @@ export interface CategoryMasterEditorProps {
   readonly deleteDescriptionOf?:
     ((category: CategoryMasterItem) => string) | undefined;
   readonly deleteAudited?: boolean | undefined;
+  readonly serverFieldPrefix?: string | undefined;
 }
 
 interface DialogState {
@@ -114,6 +115,7 @@ export function CategoryMasterEditor({
   failureMessageOf,
   deleteDescriptionOf,
   deleteAudited = false,
+  serverFieldPrefix,
 }: CategoryMasterEditorProps) {
   const headingId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -272,6 +274,7 @@ export function CategoryMasterEditor({
             : onUpdate(editing.id, values)
         }
         failureMessageOf={failureMessageOf}
+        serverFieldPrefix={serverFieldPrefix}
       />
       <ConfirmActionDialog
         key={`deletion-${String(deletion.session)}`}

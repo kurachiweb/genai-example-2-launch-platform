@@ -44,6 +44,7 @@ export interface CategoryFormDialogProps {
   // 拒否・失敗は例外で知らせる
   readonly onSubmit: (values: CategoryFormValues) => Promise<void>;
   readonly failureMessageOf: (error: unknown) => string;
+  readonly serverFieldPrefix?: string | undefined;
 }
 
 interface CategoryFormInput {
@@ -108,6 +109,7 @@ interface CategoryFormProps {
   readonly pending: boolean;
   readonly onSubmit: (values: CategoryFormValues) => Promise<void>;
   readonly failureMessageOf: (error: unknown) => string;
+  readonly serverFieldPrefix: string | undefined;
   readonly onCancel: () => void;
 }
 
@@ -120,6 +122,7 @@ function CategoryForm({
   pending,
   onSubmit,
   failureMessageOf,
+  serverFieldPrefix,
   onCancel,
 }: CategoryFormProps) {
   const schema = useMemo(
@@ -144,6 +147,7 @@ function CategoryForm({
       onSubmitError={(error) => {
         setFailure(failureMessageOf(error));
       }}
+      serverFieldPrefix={serverFieldPrefix}
       className="flex flex-col gap-4"
     >
       {failure === undefined ? null : (
@@ -200,6 +204,7 @@ export function CategoryFormDialog({
   validateHandle,
   onSubmit,
   failureMessageOf,
+  serverFieldPrefix,
 }: CategoryFormDialogProps) {
   const [pending, setPending] = useState(false);
   // 処理中の状態は再描画の後に効くため、同じ描画の間に届いた閉じる操作もここで止める
@@ -273,6 +278,7 @@ export function CategoryFormDialog({
           pending={pending}
           onSubmit={submit}
           failureMessageOf={failureMessageOf}
+          serverFieldPrefix={serverFieldPrefix}
           onCancel={requestClose}
         />
       </DialogContent>
