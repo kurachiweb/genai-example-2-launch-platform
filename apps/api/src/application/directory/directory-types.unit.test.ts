@@ -9,6 +9,9 @@ const EXPECTED_NAMES = [
   'ItemMetricsReader',
   'DirectoryReader',
   'DirectoryCategoryReader',
+  'ProductPageReader',
+  'LiveMatchReader',
+  'SupporterListReader',
 ] as const;
 
 describe('DIRECTORY_TYPES', () => {

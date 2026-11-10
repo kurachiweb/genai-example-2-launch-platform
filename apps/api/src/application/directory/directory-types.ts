@@ -17,9 +17,22 @@ const DirectoryCategoryReader: unique symbol = Symbol.for(
   'directory.DirectoryCategoryReader',
 );
 
+const ProductPageReader: unique symbol = Symbol.for(
+  'directory.ProductPageReader',
+);
+
+const LiveMatchReader: unique symbol = Symbol.for('directory.LiveMatchReader');
+
+const SupporterListReader: unique symbol = Symbol.for(
+  'directory.SupporterListReader',
+);
+
 export const DIRECTORY_TYPES = Object.freeze({
   DirectoryReader,
   DirectoryCategoryReader,
+  ProductPageReader,
+  LiveMatchReader,
+  SupporterListReader,
   LaunchHighlightsReader,
   ItemMetricSources,
   ItemMetricsReader,
