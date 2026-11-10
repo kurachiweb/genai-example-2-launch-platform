@@ -4,14 +4,22 @@ import { ContainerModule } from 'inversify';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { createMatchPlatformModule } from '../../lib/workers/match/match-platform-module.ts';
+import {
+  type MatchSettlement,
+  StoreMatchSettlement,
+} from '../application/match/match-settlement.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
-import type { UpvoteStore } from '../application/match/ports.ts';
+import type {
+  SettlementStore,
+  UpvoteStore,
+} from '../application/match/ports.ts';
 import {
   StoreUpvoteService,
   type UpvoteService,
 } from '../application/match/upvote-service.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { AccountMatchClosureSyncHandler } from '../infrastructure/match/account-match-closure-sync-handler.ts';
+import { D1SettlementStore } from '../infrastructure/match/d1-settlement-store.ts';
 import { D1UpvoteStore } from '../infrastructure/match/d1-upvote-store.ts';
 import { ProductMatchClosureSyncHandler } from '../infrastructure/match/product-match-closure-sync-handler.ts';
 import type { ProductLifecycleSyncHandler } from '../infrastructure/product/product-lifecycle-sync-handler.ts';
@@ -31,5 +39,7 @@ export const API_MATCH_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ProductLifecycleSyncHandler>(
       MATCH_TYPES.ProductMatchClosureSyncHandler,
     ).to(ProductMatchClosureSyncHandler);
+    bind<SettlementStore>(MATCH_TYPES.SettlementStore).to(D1SettlementStore);
+    bind<MatchSettlement>(MATCH_TYPES.MatchSettlement).to(StoreMatchSettlement);
   }),
 };

@@ -1,4 +1,8 @@
 import type { MatchPhase } from '../../../lib/core/match/match-model.ts';
+import type {
+  EntryTally,
+  MatchOutcome,
+} from '../../../lib/core/match/match-decision.ts';
 import type { UpvoteAction } from '../../domain/match/upvote-plan.ts';
 
 export interface UpvoteState {
@@ -46,4 +50,27 @@ export interface MatchBoardStore {
     matchIds: readonly string[],
     userId: string,
   ): Promise<ReadonlyMap<string, string>>;
+}
+
+export interface DueSettlement {
+  readonly matchId: string;
+  // 側の番号の順。値は保存済みの集計値
+  readonly entries: readonly EntryTally[];
+  readonly entryCount: 1 | 2;
+}
+
+export interface SettlementWrite {
+  readonly matchId: string;
+  readonly outcome: MatchOutcome;
+  readonly eventId: string;
+}
+
+export interface SettlementStore {
+  // 開始が記録され終了の日時を過ぎた未確定のマッチを、終了の日時とIDの順に返す
+  listDue(now: Date, limit: number): Promise<readonly DueSettlement[]>;
+  // 1〜50件を1つの一括の書き込みで確定し、確定したマッチのイベントのIDを返す。既に確定していたマッチは変えず、イベントも作らない
+  writeOutcomes(
+    outcomes: readonly SettlementWrite[],
+    at: Date,
+  ): Promise<readonly string[]>;
 }

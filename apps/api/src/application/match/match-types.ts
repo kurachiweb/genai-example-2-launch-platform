@@ -10,9 +10,15 @@ const ProductMatchClosureSyncHandler: unique symbol = Symbol.for(
   'match.ProductMatchClosureSyncHandler',
 );
 
+const SettlementStore: unique symbol = Symbol.for('match.SettlementStore');
+
+const MatchSettlement: unique symbol = Symbol.for('match.MatchSettlement');
+
 export const MATCH_TYPES = Object.freeze({
   UpvoteStore,
   UpvoteService,
   AccountMatchClosureSyncHandler,
   ProductMatchClosureSyncHandler,
+  SettlementStore,
+  MatchSettlement,
 });

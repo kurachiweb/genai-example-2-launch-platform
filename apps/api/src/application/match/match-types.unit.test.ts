@@ -8,6 +8,8 @@ const EXPECTED_NAMES = [
   'UpvoteService',
   'AccountMatchClosureSyncHandler',
   'ProductMatchClosureSyncHandler',
+  'SettlementStore',
+  'MatchSettlement',
 ] as const;
 
 describe('MATCH_TYPES', () => {
