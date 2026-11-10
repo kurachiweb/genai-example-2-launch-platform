@@ -24,6 +24,7 @@ import type {
   ProductDirectory,
 } from '../../lib/core/product/ports.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { clearDirectoryTables } from '../../lib/workers/directory/testing/directory-listing-fixtures.ts';
 import {
   AFTER_DECISION,
   DECIDED_AT,
@@ -59,6 +60,14 @@ const EARLY_END_MATCH = 2;
 const EVENT = 10;
 
 const EARLY_ENDED_AT = new Date(STARTS_AT.getTime() + 3_600_000);
+
+// 同じ予選の確定のイベントで他の機能が登録した処理も動くため、予選の結果の記録の処理の完了だけを読む
+async function readQualifierOutcomeRuns() {
+  const runs = await readHandlerRuns();
+  return runs.filter(
+    ({ handlerName }) => handlerName === 'match-engine.qualifier-outcome',
+  );
+}
 
 // product-launchの照会の口で、ローンチの記録された結果と照会の時点の状態を読む
 async function readLaunch(
@@ -143,6 +152,7 @@ beforeEach(async () => {
   for (const method of ['debug', 'info', 'warn', 'error'] as const) {
     vi.spyOn(console, method).mockImplementation(() => {});
   }
+  await clearDirectoryTables();
   await seedMatchPlatformSample();
 });
 
@@ -180,7 +190,7 @@ describe('予選の結果の記録の処理(match-engine.qualifier-outcome)', ()
       outcome: 'lost',
       decidedAt: DECIDED_AT,
     });
-    await expect(readHandlerRuns()).resolves.toMatchObject([
+    await expect(readQualifierOutcomeRuns()).resolves.toMatchObject([
       {
         eventId: matchEventIdOf(EVENT),
         handlerName: 'match-engine.qualifier-outcome',
@@ -272,6 +282,6 @@ describe('予選の結果の記録の処理(match-engine.qualifier-outcome)', ()
       outcome: 'won',
       decidedAt: DECIDED_AT,
     });
-    await expect(readHandlerRuns()).resolves.toHaveLength(1);
+    await expect(readQualifierOutcomeRuns()).resolves.toHaveLength(1);
   });
 });

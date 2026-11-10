@@ -37,6 +37,7 @@ import {
   type ProductLifecycleAsyncHandler,
 } from '../../lib/core/product/product-lifecycle.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { clearDirectoryTables } from '../../lib/workers/directory/testing/directory-listing-fixtures.ts';
 import {
   eventIdOf,
   insertEvent,
@@ -265,6 +266,7 @@ beforeEach(async () => {
   for (const method of ['debug', 'info', 'warn', 'error'] as const) {
     vi.spyOn(console, method).mockImplementation(() => {});
   }
+  await clearDirectoryTables();
   await seedDirectoryOwners();
 });
 

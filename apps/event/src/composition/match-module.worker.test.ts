@@ -41,6 +41,7 @@ import {
 } from '../../lib/workers/match/testing/event-fixtures.ts';
 import { matchIdOf } from '../../lib/workers/match/testing/match-fixtures.ts';
 import { seedMatchPlatformSample } from '../../lib/workers/match/testing/match-platform-fixtures.ts';
+import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import {
   MATCH_EVENT_ORDER_WAIT_SECONDS,
@@ -203,7 +204,7 @@ describe('イベントサーバーのモジュールの一覧へのマッチの�
 });
 
 describe('マッチイベントの処理の登録口', () => {
-  test('予選の結果の記録の処理を、予選の確定のイベントに帯の1100で登録した凍結済みの配列で、登録の検証を通る', () => {
+  test('予選の結果の記録の処理(1100)とディレクトリの掲載の記録の処理(1200)を予選の確定のイベントに登録した凍結済みの配列で、登録の検証を通る', () => {
     expect(MATCH_EVENT_HANDLERS).toStrictEqual([
       {
         name: 'match-engine.qualifier-outcome',
@@ -211,6 +212,13 @@ describe('マッチイベントの処理の登録口', () => {
         kinds: ['qualifier'],
         order: 1100,
         handler: EVENT_MATCH_TYPES.QualifierOutcomeHandler,
+      },
+      {
+        name: 'directory-discovery.qualifier-listing',
+        events: ['decided'],
+        kinds: ['qualifier'],
+        order: 1200,
+        handler: EVENT_DIRECTORY_TYPES.QualifierListingHandler,
       },
     ]);
     expect(Object.isFrozen(MATCH_EVENT_HANDLERS)).toBe(true);

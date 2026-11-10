@@ -9,6 +9,7 @@ import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-pl
 import { PRODUCT_PLATFORM_MODULE } from '../../lib/workers/product/product-platform-module.ts';
 import { PROFILE_PLATFORM_MODULE } from '../../lib/workers/profile/profile-platform-module.ts';
 import { createImageGatewayModule } from '../presentation/media/image-gateway-module.ts';
+import { EVENT_DIRECTORY_MODULE } from './directory-module.ts';
 import { EVENT_EMAIL_MODULE } from './email-module.ts';
 import type { EventEnv } from './env-schema.ts';
 import { EVENT_IDENTITY_MODULE } from './identity-module.ts';
@@ -53,6 +54,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_MATCH_PLATFORM_MODULE,
     EVENT_MATCH_MODULE,
     DIRECTORY_PLATFORM_MODULE,
+    EVENT_DIRECTORY_MODULE,
     EVENT_PROFILE_MODULE,
     EVENT_SEARCH_PLATFORM_MODULE,
     EVENT_SEARCH_MODULE,
