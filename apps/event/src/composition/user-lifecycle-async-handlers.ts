@@ -1,6 +1,7 @@
 import type { UserLifecycleAsyncRegistration } from '../../lib/core/identity/user-lifecycle.ts';
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
 import { EVENT_INQUIRY_TYPES } from '../application/inquiry/event-inquiry-types.ts';
+import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
@@ -63,6 +64,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['purge_due'],
       order: 1000,
       handler: EVENT_PRODUCT_TYPES.UserProductErasureHandler,
+    },
+    {
+      name: 'match-engine.account-decision-follow-up',
+      events: ['withdrawn', 'suspended'],
+      order: 1100,
+      handler: EVENT_MATCH_TYPES.AccountDecisionFollowUpHandler,
     },
     {
       name: 'identity-auth.email-suppression-cleanup',

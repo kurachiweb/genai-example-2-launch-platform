@@ -11,6 +11,13 @@ describe('EVENT_MATCH_TYPES', () => {
     expect(names.has('QualifierOutcomeHandler')).toBe(true);
   });
 
+  test('ユーザーとプロダクトの即時の終了の後続の処理の識別子を持つ', () => {
+    const names = new Set(Object.keys(EVENT_MATCH_TYPES));
+
+    expect(names.has('AccountDecisionFollowUpHandler')).toBe(true);
+    expect(names.has('ProductDecisionFollowUpHandler')).toBe(true);
+  });
+
   test('識別子はグローバルのシンボル登録簿のmatch.event.<名前>である', () => {
     for (const [name, identifier] of Object.entries(EVENT_MATCH_TYPES)) {
       expect<symbol>(identifier).toBe(Symbol.for(`match.event.${name}`));

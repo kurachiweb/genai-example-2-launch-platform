@@ -1,4 +1,5 @@
 import type { ProductLifecycleAsyncRegistration } from '../../lib/core/product/product-lifecycle.ts';
+import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 
 // プロダクトの非公開化・復元・論理削除・物理削除の時期の到来の後にイベントサーバーで自分のデータを変える機能が、登録をここへ追記する。
@@ -16,5 +17,11 @@ export const PRODUCT_LIFECYCLE_ASYNC_HANDLERS: readonly ProductLifecycleAsyncReg
       events: ['purge_due'],
       order: 1000,
       handler: EVENT_PRODUCT_TYPES.ProductImageErasureHandler,
+    },
+    {
+      name: 'match-engine.product-decision-follow-up',
+      events: ['hidden', 'deleted'],
+      order: 1100,
+      handler: EVENT_MATCH_TYPES.ProductDecisionFollowUpHandler,
     },
   ]);

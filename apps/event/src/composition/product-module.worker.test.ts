@@ -350,7 +350,11 @@ describe('イベントサーバーのモジュールの一覧へのプロダク�
 
 describe('プロダクトライフサイクルの非同期の処理の登録口', () => {
   test('非公開化・復元に画像の隔離を、物理削除の時期の到来に画像の削除を、どちらも順序1000で凍結済みの配列に登録する', () => {
-    expect(PRODUCT_LIFECYCLE_ASYNC_HANDLERS).toStrictEqual([
+    expect(
+      PRODUCT_LIFECYCLE_ASYNC_HANDLERS.filter(({ name }) =>
+        name.startsWith('product-launch.'),
+      ),
+    ).toStrictEqual([
       {
         name: 'product-launch.image-quarantine',
         events: ['hidden', 'unhidden'],
@@ -367,7 +371,7 @@ describe('プロダクトライフサイクルの非同期の処理の登録口'
     expect(Object.isFrozen(PRODUCT_LIFECYCLE_ASYNC_HANDLERS)).toBe(true);
   });
 
-  test('登録の検証を通り、種類ごとに本specの処理だけが並ぶ', () => {
+  test('登録の検証を通り、種類ごとに本specの処理が帯の大きい他の機能の処理より前に並ぶ', () => {
     const registry = createProductLifecycleRegistry(
       PRODUCT_LIFECYCLE_ASYNC_HANDLERS,
     );
@@ -376,6 +380,7 @@ describe('プロダクトライフサイクルの非同期の処理の登録口'
 
     expect(namesOf('hidden')).toStrictEqual([
       'product-launch.image-quarantine',
+      'match-engine.product-decision-follow-up',
     ]);
     expect(namesOf('unhidden')).toStrictEqual([
       'product-launch.image-quarantine',
@@ -383,7 +388,9 @@ describe('プロダクトライフサイクルの非同期の処理の登録口'
     expect(namesOf('purge_due')).toStrictEqual([
       'product-launch.image-erasure',
     ]);
-    expect(namesOf('deleted')).toStrictEqual([]);
+    expect(namesOf('deleted')).toStrictEqual([
+      'match-engine.product-decision-follow-up',
+    ]);
   });
 
   test('同じ種類でorderが重複した登録は、最初のメッセージではなくモジュールの組み立ての時点で例外になる', () => {

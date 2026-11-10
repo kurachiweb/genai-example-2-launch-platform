@@ -266,6 +266,7 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
       'payments.open-checkout-expiry',
       'ultras-subscription.subscription-cancellation',
       OWNED_IMAGE_QUARANTINE_NAME,
+      'match-engine.account-decision-follow-up',
     ]);
     expect(
       registry.handlersFor('unsuspended').map(({ name }) => name),

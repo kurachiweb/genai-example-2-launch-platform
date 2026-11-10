@@ -309,12 +309,14 @@ describe('メッセージの処理と波及処理の登録', () => {
     expect(namesFor('withdrawn')).toStrictEqual([
       'payments.open-checkout-expiry',
       'ultras-subscription.subscription-cancellation',
+      'match-engine.account-decision-follow-up',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(namesFor('suspended')).toStrictEqual([
       'payments.open-checkout-expiry',
       'ultras-subscription.subscription-cancellation',
       'user-profile-social.owned-image-quarantine',
+      'match-engine.account-decision-follow-up',
     ]);
   });
 

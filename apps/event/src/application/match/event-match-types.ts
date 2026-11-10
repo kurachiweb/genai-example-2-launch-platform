@@ -5,8 +5,16 @@ const MatchEventRunner: unique symbol = Symbol.for(
 const QualifierOutcomeHandler: unique symbol = Symbol.for(
   'match.event.QualifierOutcomeHandler',
 );
+const AccountDecisionFollowUpHandler: unique symbol = Symbol.for(
+  'match.event.AccountDecisionFollowUpHandler',
+);
+const ProductDecisionFollowUpHandler: unique symbol = Symbol.for(
+  'match.event.ProductDecisionFollowUpHandler',
+);
 
 export const EVENT_MATCH_TYPES = Object.freeze({
   MatchEventRunner,
   QualifierOutcomeHandler,
+  AccountDecisionFollowUpHandler,
+  ProductDecisionFollowUpHandler,
 });

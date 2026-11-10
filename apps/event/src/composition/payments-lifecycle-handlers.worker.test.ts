@@ -551,6 +551,7 @@ describe('退会・停止での未完了の決済セッションの失効', () =
     );
     await expect(completedHandlerNames()).resolves.toStrictEqual([
       EMAIL_SUPPRESSION_CLEANUP,
+      'match-engine.account-decision-follow-up',
       OPEN_CHECKOUT_EXPIRY,
       SUBSCRIPTION_CANCELLATION,
     ]);
