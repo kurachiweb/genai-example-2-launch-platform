@@ -9,6 +9,12 @@ export type AccountStatus =
   | 'ACTIVE'
   | 'SUSPENDED';
 
+/** 不戦勝の理由。ABSENTは対戦相手なし、FORFEITはマッチ直前の相手の該当、EARLYはマッチ中の即時の終了 */
+export type ByeReason =
+  | 'ABSENT'
+  | 'EARLY'
+  | 'FORFEIT';
+
 /** 権利を付与できなかった理由 */
 export type CheckoutRejectionReason =
   /** 同じ対象の二重の支払い */
@@ -103,6 +109,41 @@ export type LoginInput = {
   password: string;
 };
 
+/** マッチの決着。VOTESはUpvote数、LAST_UPVOTEは同数での最終Upvote時間、NO_VOTESは両者0票の両者敗北、BOTH_FORFEITEDは両方の側の該当による両者敗北 */
+export type MatchDecision =
+  | 'BOTH_FORFEITED'
+  | 'BYE'
+  | 'LAST_UPVOTE'
+  | 'NO_VOTES'
+  | 'VOTES'
+  | 'WALKOVER';
+
+/** 側の結果。BYEは対戦相手なしの不戦勝、WALKOVERは相手の該当(退会・停止・非公開化など)による勝利 */
+export type MatchEntryResult =
+  | 'BYE'
+  | 'LOST'
+  | 'WALKOVER'
+  | 'WON';
+
+/** マッチの種別 */
+export type MatchKind =
+  | 'QUALIFIER'
+  | 'WEEK'
+  | 'YEAR';
+
+/** マッチの状態。照会の時点の時刻から導く。SCHEDULEDは開始前、LIVEはマッチ中、TALLYINGは終了の日時を過ぎて確定の前、FINISHEDは結果の確定の後 */
+export type MatchPhase =
+  | 'FINISHED'
+  | 'LIVE'
+  | 'SCHEDULED'
+  | 'TALLYING';
+
+/** トーナメントの段階。予選と段階の名前を持たないラウンドはnull */
+export type MatchStage =
+  | 'FINAL'
+  | 'QUARTERFINAL'
+  | 'SEMIFINAL';
+
 /** AVIF・WebPに非対応のブラウザ向けの形式。原本がJPEGならJPG、SVGならSVG(SVGはこの形式だけで表示する)、それ以外はPNG */
 export type MediaImageFallbackFormat =
   | 'JPG'
@@ -174,6 +215,11 @@ export type PurchaseKind =
   | 'ULTRAS'
   | 'WEEK_TOURNAMENT_ENTRY'
   | 'YEAR_TOURNAMENT_ENTRY';
+
+/** トップページの予選の表示。LIVEは終了の時刻(23:40)の前、RESULTはその後の結果の表示 */
+export type QualifierBoardPhase =
+  | 'LIVE'
+  | 'RESULT';
 
 export type QualifierOutcome =
   | 'LOST'
@@ -258,6 +304,24 @@ export type UpdateProductInput = {
   /** 編集画面を開いたときの現在のハンドル */
   productHandle: string;
 };
+
+/** Upvoteする側 */
+export type UpvoteInput = {
+  entryId: string | number;
+  matchId: string | number;
+};
+
+/** 閲覧者がUpvoteできない理由 */
+export type UpvoteRestriction =
+  | 'ACCOUNT_UNAVAILABLE'
+  | 'EMAIL_NOT_VERIFIED'
+  | 'GUEST'
+  | 'NOT_ACCEPTING'
+  | 'OWN_MATCH';
+
+export type MatchByeFragment = { reason: ByeReason, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, endedEarly: boolean }, entry: { id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } };
+
+export type MatchFragment = { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> };
 
 export type ClientCompleteSecondFactorLoginMutationVariables = Exact<{
   input: CompleteSecondFactorLoginInput;
@@ -455,6 +519,34 @@ export type ClientLegalDocumentQueryVariables = Exact<{
 
 export type ClientLegalDocumentQuery = { legalDocument: { latest: { versionNumber: number, publishedAt: string, body: string } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string }> } };
 
+export type ClientCancelUpvoteMutationVariables = Exact<{
+  matchId: string | number;
+}>;
+
+
+export type ClientCancelUpvoteMutation = { cancelUpvote: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> } };
+
+export type ClientQualifierBoardQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientQualifierBoardQuery = { qualifierBoard: { date: string, serverTime: string, phase: QualifierBoardPhase, fullTimeAt: string, nextKickoffAt: string, awaitingKickoff: boolean, heldCount: number, matches: Array<{ id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> }>, byes: Array<{ reason: ByeReason, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, endedEarly: boolean }, entry: { id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } }> } };
+
+export type ClientUpvoteHistoryQueryVariables = Exact<{
+  userHandle: string;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientUpvoteHistoryQuery = { upvoteHistory: { totalCount: number, dateTotals: Array<{ date: string, count: number }>, nodes: Array<{ id: string, date: string, kind: MatchKind, round: number | null, stage: MatchStage | null, live: boolean, product: { handle: string, name: string, listed: boolean, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }, owner: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }>, pageInfo: { endCursor: string | null, hasNextPage: boolean } } | null };
+
+export type ClientUpvoteMutationVariables = Exact<{
+  input: UpvoteInput;
+}>;
+
+
+export type ClientUpvoteMutation = { upvote: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> } };
+
 export type ClientCheckoutQueryVariables = Exact<{
   purchaseId: string | number;
 }>;
@@ -647,7 +739,8 @@ export type ClientViewerUltrasQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type ClientViewerUltrasQuery = { viewerUltras: { entitled: boolean, canOpenPortal: boolean, plan: { status: UltrasPlanStatus, startedAt: string, currentPeriodEndsAt: string | null, canceledAt: string | null, benefitEndsAt: string | null } | null } | null };
 
-
+export const MatchByeFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MatchBye"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchBye"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}}]}},{"kind":"Field","name":{"kind":"Name","value":"entry"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchByeFragment, unknown>;
+export const MatchFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Match"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Match"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}},{"kind":"Field","name":{"kind":"Name","value":"viewerRestriction"}},{"kind":"Field","name":{"kind":"Name","value":"viewerUpvotedEntryId"}},{"kind":"Field","name":{"kind":"Name","value":"entries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchFragment, unknown>;
 export const ClientCompleteSecondFactorLoginDocument = {"__meta__":{"hash":"sha256:2a5e67f3c1b64838df2c0c323fab25ed80f89e0c56f58fd2bcc6ae3e76583218"}} as unknown as DocumentNode<ClientCompleteSecondFactorLoginMutation, ClientCompleteSecondFactorLoginMutationVariables>;
 export const ClientConfirmEmailChangeDocument = {"__meta__":{"hash":"sha256:c512d6387b1888f3b40034cad109c27d09c805940a226412e3082c1939225461"}} as unknown as DocumentNode<ClientConfirmEmailChangeMutation, ClientConfirmEmailChangeMutationVariables>;
 export const ClientConfirmPasswordChangeDocument = {"__meta__":{"hash":"sha256:2c986aa7e78feaf09e6115e21264cc394141eb5a2aa3595af8198871db50c326"}} as unknown as DocumentNode<ClientConfirmPasswordChangeMutation, ClientConfirmPasswordChangeMutationVariables>;
@@ -677,6 +770,10 @@ export const ClientSubmitGuestInquiryDocument = {"__meta__":{"hash":"sha256:c27d
 export const ClientSubmitMemberInquiryDocument = {"__meta__":{"hash":"sha256:7ebab58e872b46e2a761386272da3c3445de825ebadc2a5801dd3347924a4f76"}} as unknown as DocumentNode<ClientSubmitMemberInquiryMutation, ClientSubmitMemberInquiryMutationVariables>;
 export const ClientLegalDocumentVersionDocument = {"__meta__":{"hash":"sha256:cf73a2a49fc87037feed659bbc7f29a53ac80fac211fc9fc3db3b49e69a0aab0"}} as unknown as DocumentNode<ClientLegalDocumentVersionQuery, ClientLegalDocumentVersionQueryVariables>;
 export const ClientLegalDocumentDocument = {"__meta__":{"hash":"sha256:14a871d7ed29487fa12d6b46bf699e04496bef6ee024891e2467fedcdbf634c9"}} as unknown as DocumentNode<ClientLegalDocumentQuery, ClientLegalDocumentQueryVariables>;
+export const ClientCancelUpvoteDocument = {"__meta__":{"hash":"sha256:3933043522f1a733ac1cc95c6a3681241cdbd9bdc2cf40fdcc5a1d43c09a9e71"}} as unknown as DocumentNode<ClientCancelUpvoteMutation, ClientCancelUpvoteMutationVariables>;
+export const ClientQualifierBoardDocument = {"__meta__":{"hash":"sha256:ff5034376bc2a441316796107a70892c5558bbe135b0720c923dd6741a8e74bf"}} as unknown as DocumentNode<ClientQualifierBoardQuery, ClientQualifierBoardQueryVariables>;
+export const ClientUpvoteHistoryDocument = {"__meta__":{"hash":"sha256:311e7a62c4316504ae269836d447c7a3260d4b88784431dd975868b3df1ae2fe"}} as unknown as DocumentNode<ClientUpvoteHistoryQuery, ClientUpvoteHistoryQueryVariables>;
+export const ClientUpvoteDocument = {"__meta__":{"hash":"sha256:56fccaa8654bd2a433c662ef3558247b8a1840c759148008430a57a49eee8d32"}} as unknown as DocumentNode<ClientUpvoteMutation, ClientUpvoteMutationVariables>;
 export const ClientCheckoutDocument = {"__meta__":{"hash":"sha256:0f679bb5c2a93b4ed3e1f29d8979625648aac67e378081ec195e3a671b265736"}} as unknown as DocumentNode<ClientCheckoutQuery, ClientCheckoutQueryVariables>;
 export const ClientConfirmCheckoutReturnDocument = {"__meta__":{"hash":"sha256:20ff36981f1f184bf48fea1f093f64a915395179e0a5e7bf171a6786ca473b30"}} as unknown as DocumentNode<ClientConfirmCheckoutReturnMutation, ClientConfirmCheckoutReturnMutationVariables>;
 export const ClientPaymentHistoryDocument = {"__meta__":{"hash":"sha256:723fccc8cbea4146117d0a1b8aee0a88b01acc1488cf7fb836a129079e19b1c5"}} as unknown as DocumentNode<ClientPaymentHistoryQuery, ClientPaymentHistoryQueryVariables>;

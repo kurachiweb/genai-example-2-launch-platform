@@ -1,0 +1,17 @@
+query ClientQualifierBoard {
+  qualifierBoard {
+    date
+    serverTime
+    phase
+    fullTimeAt
+    nextKickoffAt
+    awaitingKickoff
+    heldCount
+    matches {
+      ...Match
+    }
+    byes {
+      ...MatchBye
+    }
+  }
+}

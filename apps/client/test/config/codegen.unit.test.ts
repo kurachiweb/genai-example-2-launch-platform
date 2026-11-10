@@ -95,6 +95,13 @@ const ULTRAS_OPERATION_NAMES = [
   'ClientCreateUltrasPortalSession',
 ] as const;
 
+const MATCH_OPERATION_NAMES = [
+  'ClientQualifierBoard',
+  'ClientUpvote',
+  'ClientCancelUpvote',
+  'ClientUpvoteHistory',
+] as const;
+
 const bodyOfOperation = (
   documents: Record<string, string>,
   name: string,
@@ -160,6 +167,15 @@ describe('利用者側のコード生成の生成物', () => {
 
   test.each(ULTRAS_OPERATION_NAMES)(
     '操作の一覧はUltrasの操作%sを持つ',
+    async (name) => {
+      const documents = await readPersistedDocuments(GENERATED_DIR);
+
+      expect(bodyOfOperation(documents, name)).toBeDefined();
+    },
+  );
+
+  test.each(MATCH_OPERATION_NAMES)(
+    '操作の一覧はマッチの操作%sを持つ',
     async (name) => {
       const documents = await readPersistedDocuments(GENERATED_DIR);
 

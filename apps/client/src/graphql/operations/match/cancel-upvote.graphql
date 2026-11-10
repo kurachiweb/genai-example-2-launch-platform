@@ -1,0 +1,5 @@
+mutation ClientCancelUpvote($matchId: ID!) {
+  cancelUpvote(matchId: $matchId) {
+    ...Match
+  }
+}
