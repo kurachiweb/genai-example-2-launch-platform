@@ -284,6 +284,52 @@ describe('基準勝利', () => {
       ],
     });
   });
+
+  test('予選の勝利の後にトーナメントで勝利しても、予選の勝利を基準勝利にする', async () => {
+    const tournamentWindow = qualifierWindow(parseBusinessDate('2026-11-22'));
+    await insertMatch({
+      index: 3,
+      columns: {
+        kind: 'week',
+        round: 1,
+        matchDate: '2026-11-22',
+        startedAt: tournamentWindow.startsAt,
+        startsAt: tournamentWindow.startsAt,
+        endsAt: tournamentWindow.endsAt,
+        decidedAt: qualifierDecidedAt('2026-11-22'),
+        decision: 'votes',
+      },
+      entries: [
+        {
+          index: 901,
+          launch: qualifierLaunchOf(2),
+          product: TWICE,
+          owner: OWNER,
+          columns: { upvoteCount: 20, result: 'won' },
+        },
+        {
+          index: 902,
+          launch: qualifierLaunchOf(2, 1),
+          product: LOSER,
+          owner: OWNER,
+          columns: { upvoteCount: 3, result: 'lost' },
+        },
+      ],
+    });
+
+    const { rows } = await pageOf();
+
+    expect(rows).toEqual([
+      {
+        productId: productIdOf(TWICE),
+        baseWin: {
+          launchId: launchIdOf(qualifierLaunchOf(2)),
+          matchDate: parseBusinessDate('2026-11-20'),
+          upvoteCount: 8,
+        },
+      },
+    ]);
+  });
 });
 
 describe('期間', () => {
