@@ -2,6 +2,7 @@ import { adminSchemaModule } from '../presentation/graphql/modules/admin/index.t
 import { identitySchemaModule } from '../presentation/graphql/modules/identity/index.ts';
 import { inquirySchemaModule } from '../presentation/graphql/modules/inquiry/index.ts';
 import { legalSchemaModule } from '../presentation/graphql/modules/legal/index.ts';
+import { matchSchemaModule } from '../presentation/graphql/modules/match/index.ts';
 import { mediaSchemaModule } from '../presentation/graphql/modules/media/index.ts';
 import { paymentsSchemaModule } from '../presentation/graphql/modules/payments/index.ts';
 import { productSchemaModule } from '../presentation/graphql/modules/product/index.ts';
@@ -21,4 +22,5 @@ export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
   ultrasSchemaModule,
   profileSchemaModule,
   productSchemaModule,
+  matchSchemaModule,
 ];

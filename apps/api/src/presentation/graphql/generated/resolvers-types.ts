@@ -5,6 +5,7 @@ import type { InquiryMessageModel, InquiryReplyAuthorModel, InquiryComposerModel
 import type { UserSummarySource } from '../modules/profile/user-summary.ts';
 import type { PublicProfileModel, PublicProfileRedirectModel, MyProfileModel } from '../modules/profile/mappers.ts';
 import type { MyProductModel, ProductScreenshotModel, LaunchHistoryProductModel } from '../modules/product/mappers.ts';
+import type { MatchSource, MatchEntrySource, MatchProductSource } from '../modules/match/mappers.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -291,6 +292,12 @@ export type AuditOperator = {
   /** 削除済みの管理者ではnull */
   nickname?: Maybe<Scalars['String']['output']>;
 };
+
+/** 不戦勝の理由。ABSENTは対戦相手なし、FORFEITはマッチ直前の相手の該当、EARLYはマッチ中の即時の終了 */
+export type ByeReason =
+  | 'ABSENT'
+  | 'EARLY'
+  | 'FORFEIT';
 
 /** 決済画面と決済後のランディングが表示する購入 */
 export type Checkout = {
@@ -623,6 +630,102 @@ export type LoginSucceeded = {
   __typename?: 'LoginSucceeded';
   viewer: Viewer;
 };
+
+export type Match = {
+  __typename?: 'Match';
+  /** 実施日(業務日付のYYYY-MM-DD) */
+  date: Scalars['String']['output'];
+  /** 確定の前はnull */
+  decision?: Maybe<MatchDecision>;
+  /** マッチ中の即時の終了で確定した */
+  endedEarly: Scalars['Boolean']['output'];
+  endsAt: Scalars['DateTime']['output'];
+  /** 側の番号の順 */
+  entries: Array<MatchEntry>;
+  id: Scalars['ID']['output'];
+  kind: MatchKind;
+  phase: MatchPhase;
+  /** トーナメントのラウンドの番号(1回戦が1)。予選はnull */
+  round?: Maybe<Scalars['Int']['output']>;
+  stage?: Maybe<MatchStage>;
+  startsAt: Scalars['DateTime']['output'];
+  /** 閲覧者がUpvoteできなければその理由。できればnull */
+  viewerRestriction?: Maybe<UpvoteRestriction>;
+  /** 閲覧者が有効なUpvoteをしている側。未ログイン・Upvoteなしはnull */
+  viewerUpvotedEntryId?: Maybe<Scalars['ID']['output']>;
+};
+
+/** 対戦カードにしない不戦勝のマッチ */
+export type MatchBye = {
+  __typename?: 'MatchBye';
+  /** 勝ち上がる側 */
+  entry: MatchEntry;
+  match: Match;
+  reason: ByeReason;
+};
+
+/** マッチの決着。VOTESはUpvote数、LAST_UPVOTEは同数での最終Upvote時間、NO_VOTESは両者0票の両者敗北、BOTH_FORFEITEDは両方の側の該当による両者敗北 */
+export type MatchDecision =
+  | 'BOTH_FORFEITED'
+  | 'BYE'
+  | 'LAST_UPVOTE'
+  | 'NO_VOTES'
+  | 'VOTES'
+  | 'WALKOVER';
+
+export type MatchEntry = {
+  __typename?: 'MatchEntry';
+  /** 配色の番号。紐付けを解除した側は0、それ以外はプロダクトのIDで決まる1〜12 */
+  colorIndex: Scalars['Int']['output'];
+  id: Scalars['ID']['output'];
+  /** 閲覧者自身のプロダクトの側 */
+  isViewerOwn: Scalars['Boolean']['output'];
+  /** 表示できなければnull(非公開化・投稿者の退会や停止・論理削除・紐付けの解除) */
+  product?: Maybe<MatchProduct>;
+  /** 確定の前はnull */
+  result?: Maybe<MatchEntryResult>;
+  upvoteCount: Scalars['Int']['output'];
+};
+
+/** 側の結果。BYEは対戦相手なしの不戦勝、WALKOVERは相手の該当(退会・停止・非公開化など)による勝利 */
+export type MatchEntryResult =
+  | 'BYE'
+  | 'LOST'
+  | 'WALKOVER'
+  | 'WON';
+
+/** マッチの種別 */
+export type MatchKind =
+  | 'QUALIFIER'
+  | 'WEEK'
+  | 'YEAR';
+
+/** マッチの状態。照会の時点の時刻から導く。SCHEDULEDは開始前、LIVEはマッチ中、TALLYINGは終了の日時を過ぎて確定の前、FINISHEDは結果の確定の後 */
+export type MatchPhase =
+  | 'FINISHED'
+  | 'LIVE'
+  | 'SCHEDULED'
+  | 'TALLYING';
+
+/** マッチの側のプロダクト */
+export type MatchProduct = {
+  __typename?: 'MatchProduct';
+  category: ProductCategory;
+  handle: Scalars['String']['output'];
+  /** 掲載済み(可視かつ予選で勝利したローンチがある) */
+  listed: Scalars['Boolean']['output'];
+  /** 画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
+  logo?: Maybe<MediaImage>;
+  name: Scalars['String']['output'];
+  tagline: Scalars['String']['output'];
+  websiteUrl: Scalars['String']['output'];
+};
+
+/** トーナメントの段階。予選と段階の名前を持たないラウンドはnull */
+export type MatchStage =
+  | 'FINAL'
+  | 'QUARTERFINAL'
+  | 'SEMIFINAL';
 
 /** ファイル用の用途のファイル */
 export type MediaAttachment = {
@@ -1408,6 +1511,33 @@ export type PurchaseKind =
   | 'WEEK_TOURNAMENT_ENTRY'
   | 'YEAR_TOURNAMENT_ENTRY';
 
+/** トップページの当日の予選 */
+export type QualifierBoard = {
+  __typename?: 'QualifierBoard';
+  /** 当日のペアリングが未完了、または開始の日時を過ぎて開始も確定もしていない当日の予選がある */
+  awaitingKickoff: Scalars['Boolean']['output'];
+  /** 不戦勝。マッチのIDの順 */
+  byes: Array<MatchBye>;
+  /** 業務日付(YYYY-MM-DD) */
+  date: Scalars['String']['output'];
+  /** 当日の予選の終了の時刻 */
+  fullTimeAt: Scalars['DateTime']['output'];
+  /** 対戦カードと即時の終了の不戦勝の数 */
+  heldCount: Scalars['Int']['output'];
+  /** 対戦カード。合計のUpvote数が最も多いマッチを先頭に、残りを合計の少ない順に並べる */
+  matches: Array<Match>;
+  /** 翌日のキックオフの時刻 */
+  nextKickoffAt: Scalars['DateTime']['output'];
+  phase: QualifierBoardPhase;
+  /** 照会の時点のサーバーの時刻。カウントダウンを合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+};
+
+/** トップページの予選の表示。LIVEは終了の時刻(23:40)の前、RESULTはその後の結果の表示 */
+export type QualifierBoardPhase =
+  | 'LIVE'
+  | 'RESULT';
+
 export type QualifierOutcome =
   | 'LOST'
   | 'WON';
@@ -1480,6 +1610,8 @@ export type Query = {
   profileAwards?: Maybe<Array<ProductAward>>;
   /** 見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す */
   publicProfile?: Maybe<PublicProfileResult>;
+  /** トップページの当日の予選。開始済みの予選を対戦カードと不戦勝に分けて返す。ログインを求めない */
+  qualifierBoard: QualifierBoard;
   /** APIサーバーの時刻とデータベースへの到達可否 */
   systemStatus: SystemStatus;
   /** Ultrasの月額の価格と新規の加入の受付の状態。ログイン不要 */
@@ -1787,6 +1919,14 @@ export type UpdateUltrasPromotionSettingInput = {
   reason?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** 閲覧者がUpvoteできない理由 */
+export type UpvoteRestriction =
+  | 'ACCOUNT_UNAVAILABLE'
+  | 'EMAIL_NOT_VERIFIED'
+  | 'GUEST'
+  | 'NOT_ACCEPTING'
+  | 'OWN_MATCH';
+
 /** ログイン中の端末 */
 export type UserSessionSummary = {
   __typename?: 'UserSessionSummary';
@@ -1950,6 +2090,7 @@ export type ResolversTypes = {
   AuditLogPage: ResolverTypeWrapper<AuditLogPage>;
   AuditOperator: ResolverTypeWrapper<AuditOperator>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
+  ByeReason: ByeReason;
   Checkout: ResolverTypeWrapper<Checkout>;
   CheckoutRejectionReason: CheckoutRejectionReason;
   CheckoutReturnResult: ResolverTypeWrapper<CheckoutReturnResult>;
@@ -1993,6 +2134,15 @@ export type ResolversTypes = {
   LoginInput: LoginInput;
   LoginResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['LoginResult']>;
   LoginSucceeded: ResolverTypeWrapper<Omit<LoginSucceeded, 'viewer'> & { viewer: ResolversTypes['Viewer'] }>;
+  Match: ResolverTypeWrapper<MatchSource>;
+  MatchBye: ResolverTypeWrapper<Omit<MatchBye, 'entry' | 'match'> & { entry: ResolversTypes['MatchEntry'], match: ResolversTypes['Match'] }>;
+  MatchDecision: MatchDecision;
+  MatchEntry: ResolverTypeWrapper<MatchEntrySource>;
+  MatchEntryResult: MatchEntryResult;
+  MatchKind: MatchKind;
+  MatchPhase: MatchPhase;
+  MatchProduct: ResolverTypeWrapper<MatchProductSource>;
+  MatchStage: MatchStage;
   MediaAttachment: ResolverTypeWrapper<MediaAttachment>;
   MediaImage: ResolverTypeWrapper<MediaImage>;
   MediaImageFallbackFormat: MediaImageFallbackFormat;
@@ -2031,6 +2181,8 @@ export type ResolversTypes = {
   PublicProfileResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['PublicProfileResult']>;
   PublishLegalDocumentInput: PublishLegalDocumentInput;
   PurchaseKind: PurchaseKind;
+  QualifierBoard: ResolverTypeWrapper<Omit<QualifierBoard, 'byes' | 'matches'> & { byes: Array<ResolversTypes['MatchBye']>, matches: Array<ResolversTypes['Match']> }>;
+  QualifierBoardPhase: QualifierBoardPhase;
   QualifierOutcome: QualifierOutcome;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   ReAuthenticationInput: ReAuthenticationInput;
@@ -2056,6 +2208,7 @@ export type ResolversTypes = {
   UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
+  UpvoteRestriction: UpvoteRestriction;
   UserSessionSummary: ResolverTypeWrapper<UserSessionSummary>;
   UserSummary: ResolverTypeWrapper<UserSummarySource>;
   Viewer: ResolverTypeWrapper<ViewerSource>;
@@ -2123,6 +2276,10 @@ export type ResolversParentTypes = {
   LoginInput: LoginInput;
   LoginResult: ResolversUnionTypes<ResolversParentTypes>['LoginResult'];
   LoginSucceeded: Omit<LoginSucceeded, 'viewer'> & { viewer: ResolversParentTypes['Viewer'] };
+  Match: MatchSource;
+  MatchBye: Omit<MatchBye, 'entry' | 'match'> & { entry: ResolversParentTypes['MatchEntry'], match: ResolversParentTypes['Match'] };
+  MatchEntry: MatchEntrySource;
+  MatchProduct: MatchProductSource;
   MediaAttachment: MediaAttachment;
   MediaImage: MediaImage;
   MemberInquiry: MemberInquiryModel;
@@ -2155,6 +2312,7 @@ export type ResolversParentTypes = {
   PublicProfileRedirect: PublicProfileRedirectModel;
   PublicProfileResult: ResolversUnionTypes<ResolversParentTypes>['PublicProfileResult'];
   PublishLegalDocumentInput: PublishLegalDocumentInput;
+  QualifierBoard: Omit<QualifierBoard, 'byes' | 'matches'> & { byes: Array<ResolversParentTypes['MatchBye']>, matches: Array<ResolversParentTypes['Match']> };
   Query: Record<PropertyKey, never>;
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: RecoveryCodeSet;
@@ -2502,6 +2660,47 @@ export type LoginSucceededResolvers<ContextType = GraphQLContext, ParentType ext
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
+export type MatchResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Match'] = ResolversParentTypes['Match']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  decision?: Resolver<Maybe<ResolversTypes['MatchDecision']>, ParentType, ContextType>;
+  endedEarly?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  endsAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  entries?: Resolver<Array<ResolversTypes['MatchEntry']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['MatchKind'], ParentType, ContextType>;
+  phase?: Resolver<ResolversTypes['MatchPhase'], ParentType, ContextType>;
+  round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  stage?: Resolver<Maybe<ResolversTypes['MatchStage']>, ParentType, ContextType>;
+  startsAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  viewerRestriction?: Resolver<Maybe<ResolversTypes['UpvoteRestriction']>, ParentType, ContextType>;
+  viewerUpvotedEntryId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+};
+
+export type MatchByeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MatchBye'] = ResolversParentTypes['MatchBye']> = {
+  entry?: Resolver<ResolversTypes['MatchEntry'], ParentType, ContextType>;
+  match?: Resolver<ResolversTypes['Match'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['ByeReason'], ParentType, ContextType>;
+};
+
+export type MatchEntryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MatchEntry'] = ResolversParentTypes['MatchEntry']> = {
+  colorIndex?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  isViewerOwn?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  product?: Resolver<Maybe<ResolversTypes['MatchProduct']>, ParentType, ContextType>;
+  result?: Resolver<Maybe<ResolversTypes['MatchEntryResult']>, ParentType, ContextType>;
+  upvoteCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type MatchProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MatchProduct'] = ResolversParentTypes['MatchProduct']> = {
+  category?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  listed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tagline?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  websiteUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type MediaAttachmentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MediaAttachment'] = ResolversParentTypes['MediaAttachment']> = {
   byteSize?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   contentType?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -2761,6 +2960,18 @@ export type PublicProfileResultResolvers<ContextType = GraphQLContext, ParentTyp
   __resolveType: TypeResolveFn<'PublicProfile' | 'PublicProfileRedirect', ParentType, ContextType>;
 };
 
+export type QualifierBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['QualifierBoard'] = ResolversParentTypes['QualifierBoard']> = {
+  awaitingKickoff?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  byes?: Resolver<Array<ResolversTypes['MatchBye']>, ParentType, ContextType>;
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  fullTimeAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  heldCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  matches?: Resolver<Array<ResolversTypes['Match']>, ParentType, ContextType>;
+  nextKickoffAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  phase?: Resolver<ResolversTypes['QualifierBoardPhase'], ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
   adminInquiries?: Resolver<ResolversTypes['AdminInquiryPage'], ParentType, ContextType, Partial<QueryAdminInquiriesArgs>>;
@@ -2795,6 +3006,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   productOwnerStatus?: Resolver<Maybe<ResolversTypes['ProductOwnerStatus']>, ParentType, ContextType, RequireFields<QueryProductOwnerStatusArgs, 'productHandle'>>;
   profileAwards?: Resolver<Maybe<Array<ResolversTypes['ProductAward']>>, ParentType, ContextType, RequireFields<QueryProfileAwardsArgs, 'userHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
+  qualifierBoard?: Resolver<ResolversTypes['QualifierBoard'], ParentType, ContextType>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   ultrasOffer?: Resolver<ResolversTypes['UltrasOffer'], ParentType, ContextType>;
   ultrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType>;
@@ -2934,6 +3146,10 @@ export type Resolvers<ContextType = GraphQLContext> = {
   LegalRevision?: LegalRevisionResolvers<ContextType>;
   LoginResult?: LoginResultResolvers<ContextType>;
   LoginSucceeded?: LoginSucceededResolvers<ContextType>;
+  Match?: MatchResolvers<ContextType>;
+  MatchBye?: MatchByeResolvers<ContextType>;
+  MatchEntry?: MatchEntryResolvers<ContextType>;
+  MatchProduct?: MatchProductResolvers<ContextType>;
   MediaAttachment?: MediaAttachmentResolvers<ContextType>;
   MediaImage?: MediaImageResolvers<ContextType>;
   MemberInquiry?: MemberInquiryResolvers<ContextType>;
@@ -2961,6 +3177,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   PublicProfile?: PublicProfileResolvers<ContextType>;
   PublicProfileRedirect?: PublicProfileRedirectResolvers<ContextType>;
   PublicProfileResult?: PublicProfileResultResolvers<ContextType>;
+  QualifierBoard?: QualifierBoardResolvers<ContextType>;
   Query?: QueryResolvers<ContextType>;
   RecoveryCodeSet?: RecoveryCodeSetResolvers<ContextType>;
   RelaunchBlockView?: RelaunchBlockViewResolvers<ContextType>;
