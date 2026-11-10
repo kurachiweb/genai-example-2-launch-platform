@@ -139,6 +139,41 @@ export const MATCH_TYPE_DEFS = /* GraphQL */ `
     byes: [MatchBye!]!
   }
 
+  "Upvote履歴の項目。Upvoteの日時と識別子は生活時間帯を推測させないため返さない"
+  type UpvoteHistoryItem {
+    "マッチのID"
+    id: ID!
+    matchId: ID!
+    kind: MatchKind!
+    "トーナメントのラウンドの番号(1回戦が1)。予選はnull"
+    round: Int
+    stage: MatchStage
+    "実施日(業務日付のYYYY-MM-DD)"
+    date: String!
+    "Upvoteを受け付けている間(マッチ中)だけ真"
+    live: Boolean!
+    "Upvoteした側のプロダクト"
+    product: MatchProduct!
+    "プロダクトの投稿者。表示できなければnull"
+    owner: UserSummary
+  }
+
+  "Upvote履歴の実施日ごとの件数"
+  type UpvoteDateTotal {
+    "実施日(業務日付のYYYY-MM-DD)"
+    date: String!
+    "読み込み済みの項目の数ではなく、その日の表示できる項目の総数"
+    count: Int!
+  }
+
+  type UpvoteHistoryConnection {
+    totalCount: Int!
+    "ページ内の項目の実施日を新しい順に"
+    dateTotals: [UpvoteDateTotal!]!
+    nodes: [UpvoteHistoryItem!]!
+    pageInfo: PageInfo!
+  }
+
   "Upvoteする側"
   input UpvoteInput {
     matchId: ID!
@@ -148,6 +183,12 @@ export const MATCH_TYPE_DEFS = /* GraphQL */ `
   type Query {
     "トップページの当日の予選。開始済みの予選を対戦カードと不戦勝に分けて返す。ログインを求めない"
     qualifierBoard: QualifierBoard!
+    "公開プロフィールのUpvote履歴。利用者の有効なUpvoteを、非公開化中・投稿者の停止中や退会済み・論理削除・紐付けの解除のプロダクトを除いて実施日とUpvoteの日時の新しい順に返す。ログインを求めない。利用者を表示できなければnull。firstは1〜20"
+    upvoteHistory(
+      userHandle: String!
+      first: Int!
+      after: String
+    ): UpvoteHistoryConnection
   }
 
   type Mutation {

@@ -12,6 +12,7 @@ import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { defineLoader } from '../../loaders.ts';
 import { productCategoryOf, productImageOf } from '../product/product-views.ts';
+import { userSummaryLoader } from '../profile/user-summary.ts';
 import {
   MATCH_DECISION_VALUES,
   MATCH_ENTRY_RESULT_VALUES,
@@ -95,5 +96,9 @@ export const matchViewResolvers = {
       productCategoryOf(product.categoryId, context),
     logo: (product, _args, context) =>
       productImageOf(product.logoFileId, context),
+  },
+  UpvoteHistoryItem: {
+    owner: (item, _args, context) =>
+      context.loaders.get(userSummaryLoader).load(item.ownerUserId),
   },
 } satisfies Resolvers;

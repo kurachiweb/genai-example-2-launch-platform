@@ -1478,6 +1478,11 @@ type Query {
   """有料プラン導線の機能フラグの現在の値と最後の変更。閲覧のみ以上の管理者"""
   ultrasPromotionSetting: UltrasPromotionSetting!
 
+  """
+  公開プロフィールのUpvote履歴。利用者の有効なUpvoteを、非公開化中・投稿者の停止中や退会済み・論理削除・紐付けの解除のプロダクトを除いて実施日とUpvoteの日時の新しい順に返す。ログインを求めない。利用者を表示できなければnull。firstは1〜20
+  """
+  upvoteHistory(after: String, first: Int!, userHandle: String!): UpvoteHistoryConnection
+
   """ログイン中の利用者。未ログイン・無効なセッションではnull"""
   viewer: Viewer
 
@@ -1675,6 +1680,47 @@ input UpdateUltrasPromotionSettingInput {
 
   """監査ログに残す理由(任意)"""
   reason: String
+}
+
+"""Upvote履歴の実施日ごとの件数"""
+type UpvoteDateTotal {
+  """読み込み済みの項目の数ではなく、その日の表示できる項目の総数"""
+  count: Int!
+
+  """実施日(業務日付のYYYY-MM-DD)"""
+  date: String!
+}
+
+type UpvoteHistoryConnection {
+  """ページ内の項目の実施日を新しい順に"""
+  dateTotals: [UpvoteDateTotal!]!
+  nodes: [UpvoteHistoryItem!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"""Upvote履歴の項目。Upvoteの日時と識別子は生活時間帯を推測させないため返さない"""
+type UpvoteHistoryItem {
+  """実施日(業務日付のYYYY-MM-DD)"""
+  date: String!
+
+  """マッチのID"""
+  id: ID!
+  kind: MatchKind!
+
+  """Upvoteを受け付けている間(マッチ中)だけ真"""
+  live: Boolean!
+  matchId: ID!
+
+  """プロダクトの投稿者。表示できなければnull"""
+  owner: UserSummary
+
+  """Upvoteした側のプロダクト"""
+  product: MatchProduct!
+
+  """トーナメントのラウンドの番号(1回戦が1)。予選はnull"""
+  round: Int
+  stage: MatchStage
 }
 
 """Upvoteする側"""

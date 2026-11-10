@@ -5,7 +5,7 @@ import type { InquiryMessageModel, InquiryReplyAuthorModel, InquiryComposerModel
 import type { UserSummarySource } from '../modules/profile/user-summary.ts';
 import type { PublicProfileModel, PublicProfileRedirectModel, MyProfileModel } from '../modules/profile/mappers.ts';
 import type { MyProductModel, ProductScreenshotModel, LaunchHistoryProductModel } from '../modules/product/mappers.ts';
-import type { MatchSource, MatchEntrySource, MatchProductSource } from '../modules/match/mappers.ts';
+import type { MatchSource, MatchEntrySource, MatchProductSource, UpvoteHistoryItemModel } from '../modules/match/mappers.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -1632,6 +1632,8 @@ export type Query = {
   ultrasOffer: UltrasOffer;
   /** 有料プラン導線の機能フラグの現在の値と最後の変更。閲覧のみ以上の管理者 */
   ultrasPromotionSetting: UltrasPromotionSetting;
+  /** 公開プロフィールのUpvote履歴。利用者の有効なUpvoteを、非公開化中・投稿者の停止中や退会済み・論理削除・紐付けの解除のプロダクトを除いて実施日とUpvoteの日時の新しい順に返す。ログインを求めない。利用者を表示できなければnull。firstは1〜20 */
+  upvoteHistory?: Maybe<UpvoteHistoryConnection>;
   /** ログイン中の利用者。未ログイン・無効なセッションではnull */
   viewer?: Maybe<Viewer>;
   /** ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull */
@@ -1752,6 +1754,13 @@ export type QueryProfileAwardsArgs = {
 
 export type QueryPublicProfileArgs = {
   handle: Scalars['String']['input'];
+};
+
+
+export type QueryUpvoteHistoryArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first: Scalars['Int']['input'];
+  userHandle: Scalars['String']['input'];
 };
 
 /** 重要な操作の本人確認 */
@@ -1931,6 +1940,44 @@ export type UpdateUltrasPromotionSettingInput = {
   expectedVersion: Scalars['Int']['input'];
   /** 監査ログに残す理由(任意) */
   reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** Upvote履歴の実施日ごとの件数 */
+export type UpvoteDateTotal = {
+  __typename?: 'UpvoteDateTotal';
+  /** 読み込み済みの項目の数ではなく、その日の表示できる項目の総数 */
+  count: Scalars['Int']['output'];
+  /** 実施日(業務日付のYYYY-MM-DD) */
+  date: Scalars['String']['output'];
+};
+
+export type UpvoteHistoryConnection = {
+  __typename?: 'UpvoteHistoryConnection';
+  /** ページ内の項目の実施日を新しい順に */
+  dateTotals: Array<UpvoteDateTotal>;
+  nodes: Array<UpvoteHistoryItem>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+/** Upvote履歴の項目。Upvoteの日時と識別子は生活時間帯を推測させないため返さない */
+export type UpvoteHistoryItem = {
+  __typename?: 'UpvoteHistoryItem';
+  /** 実施日(業務日付のYYYY-MM-DD) */
+  date: Scalars['String']['output'];
+  /** マッチのID */
+  id: Scalars['ID']['output'];
+  kind: MatchKind;
+  /** Upvoteを受け付けている間(マッチ中)だけ真 */
+  live: Scalars['Boolean']['output'];
+  matchId: Scalars['ID']['output'];
+  /** プロダクトの投稿者。表示できなければnull */
+  owner?: Maybe<UserSummary>;
+  /** Upvoteした側のプロダクト */
+  product: MatchProduct;
+  /** トーナメントのラウンドの番号(1回戦が1)。予選はnull */
+  round?: Maybe<Scalars['Int']['output']>;
+  stage?: Maybe<MatchStage>;
 };
 
 /** Upvoteする側 */
@@ -2228,6 +2275,9 @@ export type ResolversTypes = {
   UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
+  UpvoteDateTotal: ResolverTypeWrapper<UpvoteDateTotal>;
+  UpvoteHistoryConnection: ResolverTypeWrapper<Omit<UpvoteHistoryConnection, 'nodes'> & { nodes: Array<ResolversTypes['UpvoteHistoryItem']> }>;
+  UpvoteHistoryItem: ResolverTypeWrapper<UpvoteHistoryItemModel>;
   UpvoteInput: UpvoteInput;
   UpvoteRestriction: UpvoteRestriction;
   UserSessionSummary: ResolverTypeWrapper<UserSessionSummary>;
@@ -2356,6 +2406,9 @@ export type ResolversParentTypes = {
   UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
+  UpvoteDateTotal: UpvoteDateTotal;
+  UpvoteHistoryConnection: Omit<UpvoteHistoryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['UpvoteHistoryItem']> };
+  UpvoteHistoryItem: UpvoteHistoryItemModel;
   UpvoteInput: UpvoteInput;
   UserSessionSummary: UserSessionSummary;
   UserSummary: UserSummarySource;
@@ -3034,6 +3087,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   ultrasOffer?: Resolver<ResolversTypes['UltrasOffer'], ParentType, ContextType>;
   ultrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType>;
+  upvoteHistory?: Resolver<Maybe<ResolversTypes['UpvoteHistoryConnection']>, ParentType, ContextType, RequireFields<QueryUpvoteHistoryArgs, 'first' | 'userHandle'>>;
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
   viewerUltras?: Resolver<Maybe<ResolversTypes['ViewerUltras']>, ParentType, ContextType>;
 };
@@ -3088,6 +3142,30 @@ export type UltrasPromotionSettingResolvers<ContextType = GraphQLContext, Parent
   updatedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
   updatedByNickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type UpvoteDateTotalResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UpvoteDateTotal'] = ResolversParentTypes['UpvoteDateTotal']> = {
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type UpvoteHistoryConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UpvoteHistoryConnection'] = ResolversParentTypes['UpvoteHistoryConnection']> = {
+  dateTotals?: Resolver<Array<ResolversTypes['UpvoteDateTotal']>, ParentType, ContextType>;
+  nodes?: Resolver<Array<ResolversTypes['UpvoteHistoryItem']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+  totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type UpvoteHistoryItemResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UpvoteHistoryItem'] = ResolversParentTypes['UpvoteHistoryItem']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['MatchKind'], ParentType, ContextType>;
+  live?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  matchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  owner?: Resolver<Maybe<ResolversTypes['UserSummary']>, ParentType, ContextType>;
+  product?: Resolver<ResolversTypes['MatchProduct'], ParentType, ContextType>;
+  round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  stage?: Resolver<Maybe<ResolversTypes['MatchStage']>, ParentType, ContextType>;
 };
 
 export type UserSessionSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UserSessionSummary'] = ResolversParentTypes['UserSessionSummary']> = {
@@ -3212,6 +3290,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   UltrasPlan?: UltrasPlanResolvers<ContextType>;
   UltrasPortalSession?: UltrasPortalSessionResolvers<ContextType>;
   UltrasPromotionSetting?: UltrasPromotionSettingResolvers<ContextType>;
+  UpvoteDateTotal?: UpvoteDateTotalResolvers<ContextType>;
+  UpvoteHistoryConnection?: UpvoteHistoryConnectionResolvers<ContextType>;
+  UpvoteHistoryItem?: UpvoteHistoryItemResolvers<ContextType>;
   UserSessionSummary?: UserSessionSummaryResolvers<ContextType>;
   UserSummary?: UserSummaryResolvers<ContextType>;
   Viewer?: ViewerResolvers<ContextType>;

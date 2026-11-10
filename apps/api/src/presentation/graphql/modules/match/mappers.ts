@@ -14,6 +14,10 @@ import type {
   QualifierBoard,
   QualifierBoardBye,
 } from '../../../../application/match/qualifier-board-reader.ts';
+import type {
+  UpvoteHistoryEntry,
+  UpvoteHistoryPage,
+} from '../../../../application/match/upvote-history-reader.ts';
 import type { ByeReason } from '../../../../domain/match/board-order.ts';
 import type { UpvoteRestriction } from '../../../../domain/match/upvote-plan.ts';
 
@@ -143,4 +147,50 @@ export const toQualifierBoard = (
   heldCount: board.heldCount,
   matches: [...board.cards],
   byes: board.byes.map(toMatchBye),
+});
+
+// 投稿者は項目のリゾルバが一括読み込みで引くため、IDだけを持つ。UpvoteのIDは時刻を含むため持たない
+export interface UpvoteHistoryItemModel {
+  readonly id: string;
+  readonly matchId: string;
+  readonly kind: MatchKindValue;
+  readonly round: number | null;
+  readonly stage: MatchStageValue | null;
+  readonly date: string;
+  readonly live: boolean;
+  readonly product: MatchProductSource;
+  readonly ownerUserId: string;
+}
+
+export interface UpvoteHistoryConnectionModel {
+  readonly totalCount: number;
+  readonly dateTotals: { readonly date: string; readonly count: number }[];
+  readonly nodes: UpvoteHistoryItemModel[];
+  readonly pageInfo: {
+    readonly hasNextPage: boolean;
+    readonly endCursor: string | null;
+  };
+}
+
+const toUpvoteHistoryItem = (
+  entry: UpvoteHistoryEntry,
+): UpvoteHistoryItemModel => ({
+  id: entry.matchId,
+  matchId: entry.matchId,
+  kind: MATCH_KIND_VALUES[entry.kind],
+  round: entry.round,
+  stage: entry.stage === null ? null : MATCH_STAGE_VALUES[entry.stage],
+  date: entry.matchDate,
+  live: entry.live,
+  product: entry.product,
+  ownerUserId: entry.ownerUserId,
+});
+
+export const toUpvoteHistoryConnection = (
+  page: UpvoteHistoryPage,
+): UpvoteHistoryConnectionModel => ({
+  totalCount: page.totalCount,
+  dateTotals: page.dateTotals.map(({ date, count }) => ({ date, count })),
+  nodes: page.entries.map(toUpvoteHistoryItem),
+  pageInfo: { hasNextPage: page.hasNextPage, endCursor: page.endCursor },
 });

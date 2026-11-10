@@ -198,6 +198,85 @@ export const CANCEL_UPVOTE = /* GraphQL */ `
   }
 `;
 
+export interface UpvoteHistoryItemFields {
+  readonly id: string;
+  readonly matchId: string;
+  readonly kind: MatchFields['kind'];
+  readonly round: number | null;
+  readonly stage: MatchFields['stage'];
+  readonly date: string;
+  readonly live: boolean;
+  readonly product: MatchProductFields;
+  readonly owner: {
+    readonly handle: string;
+    readonly nickname: string;
+    readonly avatar: MediaImageFields | null;
+  } | null;
+}
+
+export interface UpvoteHistoryFields {
+  readonly totalCount: number;
+  readonly dateTotals: readonly {
+    readonly date: string;
+    readonly count: number;
+  }[];
+  readonly nodes: readonly UpvoteHistoryItemFields[];
+  readonly pageInfo: {
+    readonly hasNextPage: boolean;
+    readonly endCursor: string | null;
+  };
+}
+
+export const UPVOTE_HISTORY = /* GraphQL */ `
+  query UpvoteHistory($userHandle: String!, $first: Int!, $after: String) {
+    upvoteHistory(userHandle: $userHandle, first: $first, after: $after) {
+      totalCount
+      dateTotals {
+        date
+        count
+      }
+      nodes {
+        id
+        matchId
+        kind
+        round
+        stage
+        date
+        live
+        product {
+          handle
+          name
+          tagline
+          category {
+            id
+            name
+            handle
+            systemDefault
+          }
+          websiteUrl
+          logo {
+            id
+            objectKey
+          }
+          listed
+        }
+        owner {
+          handle
+          nickname
+          avatar {
+            id
+            objectKey
+          }
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+  }
+`;
+
 interface IdsArgs {
   readonly ids: readonly string[];
 }
@@ -235,7 +314,13 @@ const clockModule: AppModule<GatewayApp> = {
 };
 
 const matchGateway = createGraphQLGateway({
-  documents: [QUALIFIER_BOARD, MATCH_VIEWS, UPVOTE, CANCEL_UPVOTE],
+  documents: [
+    QUALIFIER_BOARD,
+    MATCH_VIEWS,
+    UPVOTE,
+    CANCEL_UPVOTE,
+    UPVOTE_HISTORY,
+  ],
   schemaModules: [
     mediaSchemaModule,
     profileSchemaModule,
@@ -340,6 +425,21 @@ export function cancelUpvote(matchId: string, options?: GatewayCallOptions) {
   return matchGateway.call<{ cancelUpvote: MatchFields | null }>(
     CANCEL_UPVOTE,
     { matchId },
+    options,
+  );
+}
+
+export function fetchUpvoteHistory(
+  variables: {
+    readonly userHandle: string;
+    readonly first: number;
+    readonly after?: string | null;
+  },
+  options?: GatewayCallOptions,
+) {
+  return matchGateway.call<{ upvoteHistory: UpvoteHistoryFields | null }>(
+    UPVOTE_HISTORY,
+    variables,
     options,
   );
 }
