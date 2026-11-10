@@ -57,6 +57,37 @@ export interface MatchBoardStore {
   ): Promise<ReadonlyMap<string, string>>;
 }
 
+// 公開の続きの位置からUpvoteの日時を推測させないため、日時とUpvoteのIDを持たず、利用者がマッチごとに1件だけ持つ有効なUpvoteをマッチのIDで指す
+export interface UpvoteHistoryPosition {
+  readonly matchDate: BusinessDate;
+  readonly matchId: string;
+}
+
+export interface UpvoteHistoryRecord {
+  readonly upvoteId: string;
+  readonly matchId: string;
+  readonly entryId: string;
+  readonly productId: string;
+  readonly matchDate: BusinessDate;
+  readonly upvotedAt: Date;
+}
+
+// 対象は利用者の有効なUpvoteのうち、側がプロダクトに紐付いていて、そのプロダクトが可視のもの
+export interface UpvoteHistoryStore {
+  count(userId: string): Promise<number>;
+  // 実施日・Upvoteの日時・IDの降順に位置より後からlimit件まで返す
+  list(input: {
+    readonly userId: string;
+    readonly limit: number;
+    readonly before: UpvoteHistoryPosition | undefined;
+  }): Promise<readonly UpvoteHistoryRecord[]>;
+  // 指定した実施日ごとの件数。対象の無い日は0
+  countByDates(
+    userId: string,
+    dates: readonly BusinessDate[],
+  ): Promise<ReadonlyMap<BusinessDate, number>>;
+}
+
 export interface DueSettlement {
   readonly matchId: string;
   // 側の番号の順。値は保存済みの集計値

@@ -25,6 +25,8 @@ const EXPECTED_NAMES = [
   'MatchBoardStore',
   'MatchViewReader',
   'QualifierBoardReader',
+  'UpvoteHistoryStore',
+  'UpvoteHistoryReader',
 ] as const;
 
 describe('MATCH_TYPES', () => {

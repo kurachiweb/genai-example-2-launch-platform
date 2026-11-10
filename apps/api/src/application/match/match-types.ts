@@ -60,6 +60,14 @@ const QualifierBoardReader: unique symbol = Symbol.for(
   'match.QualifierBoardReader',
 );
 
+const UpvoteHistoryStore: unique symbol = Symbol.for(
+  'match.UpvoteHistoryStore',
+);
+
+const UpvoteHistoryReader: unique symbol = Symbol.for(
+  'match.UpvoteHistoryReader',
+);
+
 export const MATCH_TYPES = Object.freeze({
   UpvoteStore,
   UpvoteService,
@@ -82,4 +90,6 @@ export const MATCH_TYPES = Object.freeze({
   MatchBoardStore,
   MatchViewReader,
   QualifierBoardReader,
+  UpvoteHistoryStore,
+  UpvoteHistoryReader,
 });

@@ -65,7 +65,7 @@ export interface MatchViewReader {
   }): Promise<ReadonlyMap<string, MatchView>>;
 }
 
-function productViewOf(summary: ProductSummaryRecord): MatchProductView {
+export function productViewOf(summary: ProductSummaryRecord): MatchProductView {
   return {
     productId: summary.productId,
     handle: summary.handle,

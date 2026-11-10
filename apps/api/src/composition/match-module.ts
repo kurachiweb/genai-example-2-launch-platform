@@ -34,6 +34,7 @@ import type {
   MatchIncidentReporter,
   PairingStore,
   SettlementStore,
+  UpvoteHistoryStore,
   UpvoteStore,
 } from '../application/match/ports.ts';
 import {
@@ -45,6 +46,10 @@ import {
   StoreQualifierPairingService,
 } from '../application/match/qualifier-pairing-service.ts';
 import {
+  StoreUpvoteHistoryReader,
+  type UpvoteHistoryReader,
+} from '../application/match/upvote-history-reader.ts';
+import {
   StoreUpvoteService,
   type UpvoteService,
 } from '../application/match/upvote-service.ts';
@@ -55,6 +60,7 @@ import { D1KickoffStore } from '../infrastructure/match/d1-kickoff-store.ts';
 import { D1MatchBoardStore } from '../infrastructure/match/d1-match-board-store.ts';
 import { D1PairingStore } from '../infrastructure/match/d1-pairing-store.ts';
 import { D1SettlementStore } from '../infrastructure/match/d1-settlement-store.ts';
+import { D1UpvoteHistoryStore } from '../infrastructure/match/d1-upvote-history-store.ts';
 import { D1UpvoteStore } from '../infrastructure/match/d1-upvote-store.ts';
 import { ProductMatchClosureSyncHandler } from '../infrastructure/match/product-match-closure-sync-handler.ts';
 import { SentryMatchIncidentReporter } from '../infrastructure/match/sentry-match-incident-reporter.ts';
@@ -109,6 +115,12 @@ export const API_MATCH_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<QualifierBoardReader>(MATCH_TYPES.QualifierBoardReader).to(
       DirectoryQualifierBoardReader,
+    );
+    bind<UpvoteHistoryStore>(MATCH_TYPES.UpvoteHistoryStore).to(
+      D1UpvoteHistoryStore,
+    );
+    bind<UpvoteHistoryReader>(MATCH_TYPES.UpvoteHistoryReader).to(
+      StoreUpvoteHistoryReader,
     );
   }),
 };
