@@ -8,6 +8,8 @@ import {
 import { LaunchHistoryCount } from '../launch-history/launch-history-count.tsx';
 import { LaunchHistoryPanel } from '../launch-history/launch-history-panel.tsx';
 import { ProfileAwardBadges } from '../launch-history/profile-award-badges.tsx';
+import { UpvoteHistoryCount } from '../upvote-history/upvote-history-count.tsx';
+import { UpvoteHistoryPanel } from '../upvote-history/upvote-history-panel.tsx';
 import { resolveProfileTab } from './public-profile-section-order.ts';
 
 // 実行の関数はサーバー専用の処理を読み込むため、登録箇所の部品を読み込むテストでは差し替える
@@ -16,7 +18,7 @@ vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
 }));
 
 describe('公開プロフィールの区画の登録箇所', () => {
-  test('タブにはproduct-launchのローンチ履歴を、受賞バッジにはproduct-launchの受賞バッジを登録し、「…」メニューの項目の登録箇所は空である', () => {
+  test('タブにはproduct-launchのローンチ履歴とmatch-engineのUpvote履歴を、受賞バッジにはproduct-launchの受賞バッジを登録し、「…」メニューの項目の登録箇所は空である', () => {
     expect(PUBLIC_PROFILE_TABS).toStrictEqual([
       {
         id: 'launches',
@@ -24,6 +26,13 @@ describe('公開プロフィールの区画の登録箇所', () => {
         order: 10,
         Count: LaunchHistoryCount,
         Panel: LaunchHistoryPanel,
+      },
+      {
+        id: 'upvotes',
+        label: 'Upvote履歴',
+        order: 20,
+        Count: UpvoteHistoryCount,
+        Panel: UpvoteHistoryPanel,
       },
     ]);
     expect(PUBLIC_PROFILE_BADGES).toStrictEqual([

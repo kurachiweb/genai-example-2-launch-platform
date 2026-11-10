@@ -17,6 +17,7 @@ import {
   ClientLaunchHistoryDocument,
   type ClientLaunchHistoryQuery,
   type ClientLaunchHistoryQueryVariables,
+  ClientUpvoteHistoryDocument,
 } from '../../graphql/generated/graphql.ts';
 import {
   PROFILE_HANDLE,
@@ -191,6 +192,9 @@ const respond = (responder: Responder) => {
   ) => {
     if (document === ClientLaunchHistoryDocument) {
       return Promise.resolve(responder(variables));
+    }
+    if (document === ClientUpvoteHistoryDocument) {
+      return Promise.resolve({ ok: true, data: { upvoteHistory: null } });
     }
     throw new Error('想定していない操作が実行されました。');
   }) as never);

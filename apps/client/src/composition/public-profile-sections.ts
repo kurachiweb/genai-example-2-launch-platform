@@ -7,6 +7,9 @@ import type {
   PublicProfileMenuItem,
   PublicProfileTab,
 } from '../components/profile/public-profile-section-types.ts';
+import { UpvoteHistoryCount } from '../components/upvote-history/upvote-history-count.tsx';
+import { UPVOTE_HISTORY_TAB_LABEL } from '../components/upvote-history/upvote-history-messages.ts';
+import { UpvoteHistoryPanel } from '../components/upvote-history/upvote-history-panel.tsx';
 
 // 公開プロフィールの右カラムに並べるタブの登録箇所。各specが自分のタブを追記する
 export const PUBLIC_PROFILE_TABS: readonly PublicProfileTab[] = Object.freeze([
@@ -16,6 +19,13 @@ export const PUBLIC_PROFILE_TABS: readonly PublicProfileTab[] = Object.freeze([
     order: 10,
     Count: LaunchHistoryCount,
     Panel: LaunchHistoryPanel,
+  },
+  {
+    id: 'upvotes',
+    label: UPVOTE_HISTORY_TAB_LABEL,
+    order: 20,
+    Count: UpvoteHistoryCount,
+    Panel: UpvoteHistoryPanel,
   },
 ]);
 

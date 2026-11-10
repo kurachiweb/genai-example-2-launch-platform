@@ -1,12 +1,11 @@
 import type { ReactNode } from 'react';
 
-import { Badge } from '../../../lib/components/ui/badge/badge.tsx';
 import { cn } from '../../../lib/utilities/class-names.ts';
 import type { MatchFragment } from '../../graphql/generated/graphql.ts';
 import { matchCardLabel } from './match-card-messages.ts';
 import { entryNameOf, matchHeadlineOf } from './match-card-model.ts';
-import { matchStageLabel } from './match-labels.ts';
 import { MatchStage } from './match-stage.tsx';
+import { MatchStageBadge } from './match-stage-badge.tsx';
 
 export interface MatchCardProps {
   readonly match: MatchFragment;
@@ -16,23 +15,6 @@ export interface MatchCardProps {
   readonly pendingEntryId?: string | null;
   readonly onToggleUpvote: (entryId: string) => void;
   readonly className?: string;
-}
-
-// 種別の印は、決勝をゴールド、それ以外のトーナメントをシルバー、予選を枠線だけで示す
-function StageBadge({ match }: { readonly match: MatchFragment }) {
-  const isTournament = match.kind !== 'QUALIFIER';
-  return (
-    <Badge
-      variant={isTournament ? 'default' : 'outline'}
-      translate="no"
-      className={cn(
-        isTournament && 'border-0 text-gold-foreground',
-        isTournament && (match.stage === 'FINAL' ? 'bg-gold' : 'bg-silver'),
-      )}
-    >
-      {matchStageLabel(match)}
-    </Badge>
-  );
 }
 
 function Headline({
@@ -80,7 +62,7 @@ export function MatchCard({
     >
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-2 text-xs">
         <Headline match={match} caption={caption} />
-        <StageBadge match={match} />
+        <MatchStageBadge match={match} />
       </header>
       <MatchStage
         match={match}
