@@ -1,0 +1,8 @@
+query ClientOwnerFollowStatus($handle: String!) {
+  publicProfile(handle: $handle) {
+    __typename
+    ... on PublicProfile {
+      viewerRelation
+    }
+  }
+}

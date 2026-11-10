@@ -105,6 +105,11 @@ const MATCH_OPERATION_NAMES = [
 const DIRECTORY_OPERATION_NAMES = [
   'ClientDirectory',
   'ClientDirectoryCategories',
+  'ClientProductPage',
+  'ClientProductLiveMatch',
+  'ClientMatchSupporters',
+  'ClientOwnerFollowStatus',
+  'ClientProductOwnerStatus',
 ] as const;
 
 const bodyOfOperation = (

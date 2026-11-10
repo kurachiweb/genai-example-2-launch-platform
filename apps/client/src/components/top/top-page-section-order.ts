@@ -1,3 +1,4 @@
+import { orderSections, sectionsByPlacement } from '../layout/section-order.ts';
 import type {
   QualifierListInsert,
   TopPagePlacement,
@@ -24,20 +25,14 @@ export type QualifierListItem<C> =
       readonly position: number;
     };
 
-const byOrder = <T extends { readonly order: number }>(
-  entries: readonly T[],
-): readonly T[] => entries.toSorted((a, b) => a.order - b.order);
-
 export const orderTopPageSections = (
   sections: readonly TopPageSection[],
-): readonly TopPageSection[] => byOrder(sections);
+): readonly TopPageSection[] => orderSections(sections);
 
 export const groupTopPageSections = (
   sections: readonly TopPageSection[],
 ): TopPageSectionGroups => {
-  const ordered = byOrder(sections);
-  const of = (placement: TopPagePlacement) =>
-    ordered.filter((section) => section.placement === placement);
+  const of = sectionsByPlacement(sections);
   return {
     banner: of('banner'),
     showcase: of('showcase'),
@@ -68,7 +63,7 @@ export const layoutQualifierList = <C>(
   cards: readonly C[],
   inserts: readonly QualifierListInsert[],
 ): readonly QualifierListItem<C>[] => {
-  const scheduled = byOrder(inserts).map((insert) => ({
+  const scheduled = orderSections(inserts).map((insert) => ({
     insert,
     count: qualifierInsertCount(cards.length, insert.every),
   }));

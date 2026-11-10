@@ -1,3 +1,4 @@
+import { orderSections, sectionsByPlacement } from '../layout/section-order.ts';
 import type {
   DirectoryListInsert,
   DirectoryPlacement,
@@ -22,16 +23,10 @@ export type DirectoryListEntry<T> =
       readonly position: number;
     };
 
-const byOrder = <T extends { readonly order: number }>(
-  entries: readonly T[],
-): readonly T[] => entries.toSorted((a, b) => a.order - b.order);
-
 export const groupDirectorySections = (
   sections: readonly DirectorySection[],
 ): DirectorySectionGroups => {
-  const ordered = byOrder(sections);
-  const of = (placement: DirectoryPlacement) =>
-    ordered.filter((section) => section.placement === placement);
+  const of = sectionsByPlacement(sections);
   return { banner: of('banner'), aside: of('aside'), bottom: of('bottom') };
 };
 
@@ -48,7 +43,7 @@ export const layoutDirectoryList = <T>(
   items: readonly T[],
   inserts: readonly DirectoryListInsert[],
 ): readonly DirectoryListEntry<T>[] => {
-  const ordered = byOrder(inserts);
+  const ordered = orderSections(inserts);
   ordered.forEach(assertEvery);
   return items.flatMap((item, index): DirectoryListEntry<T>[] => {
     const shown = index + 1;

@@ -1,0 +1,10 @@
+query ClientProductLiveMatch($productHandle: String!) {
+  productLiveMatch(productHandle: $productHandle) {
+    serverTime
+    awaitingChange
+    match {
+      ...Match
+      endsAt
+    }
+  }
+}

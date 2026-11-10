@@ -224,6 +224,13 @@ export type ProductFieldsInput = {
   websiteUrl: string;
 };
 
+/** マッチ履歴の対戦相手の見え方。NONEは対戦相手なし、PRIVATEは非公開化・投稿者の退会や停止・論理削除・紐付けの解除・不戦勝の相手、UNLISTEDは可視だが未掲載、LISTEDは掲載中 */
+export type ProductPageOpponentKind =
+  | 'LISTED'
+  | 'NONE'
+  | 'PRIVATE'
+  | 'UNLISTED';
+
 /** 公開プロフィールの閲覧者と表示される利用者の関係 */
 export type ProfileViewerRelation =
   | 'FOLLOWING'
@@ -362,6 +369,51 @@ export type ClientDirectoryQueryVariables = Exact<{
 
 
 export type ClientDirectoryQuery = { directory: { businessToday: string, page: number, pageCount: number, totalCount: number, searchTerms: Array<string>, applied: { q: string | null, category: string | null, from: string | null, to: string | null, sort: DirectorySort | null, page: number | null }, items: Array<{ handle: string, name: string, tagline: string, websiteUrl: string, isViewerOwn: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, owner: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null, win: { kind: DirectoryWinKind, launchDate: string, upvoteCount: number | null }, awards: Array<{ kind: ProductAwardKind, count: number, labels: Array<string> }>, metrics: Array<{ key: string, value: number }> }> } };
+
+export type ClientMatchSupportersQueryVariables = Exact<{
+  productHandle: string;
+  matchId: string | number;
+  entryId: string | number;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientMatchSupportersQuery = { matchSupporters: { nodes: Array<{ handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } | null };
+
+export type ClientOwnerFollowStatusQueryVariables = Exact<{
+  handle: string;
+}>;
+
+
+export type ClientOwnerFollowStatusQuery = { publicProfile:
+    | { __typename: 'PublicProfile', viewerRelation: ProfileViewerRelation }
+    | { __typename: 'PublicProfileRedirect' }
+   | null };
+
+export type ClientProductLiveMatchQueryVariables = Exact<{
+  productHandle: string;
+}>;
+
+
+export type ClientProductLiveMatchQuery = { productLiveMatch: { serverTime: string, awaitingChange: boolean, match: { endsAt: string, id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> } | null } | null };
+
+export type ClientProductOwnerStatusQueryVariables = Exact<{
+  productHandle: string;
+}>;
+
+
+export type ClientProductOwnerStatusQuery = { productOwnerStatus: { latestLaunch: { id: string, number: number, launchDate: string, kickoffAt: string, status: LaunchStatus, outcome: QualifierOutcome | null, summary: { label: string, inMatch: boolean } } | null, plan: { mode: LaunchPlanMode, currentLaunchDate: string | null, locked: boolean, lockUnknown: boolean, ultrasEntitled: boolean, window: { earliest: string, latest: string, relaunchIntervalDays: number | null, unavailable: Array<{ from: string, to: string, reason: LaunchDateUnavailableReason }> } | null, blocks: Array<{ code: string, message: string, releaseAt: string | null }>, locks: Array<{ code: string, message: string }> } } | null };
+
+export type ClientProductPageQueryVariables = Exact<{
+  handle: string;
+}>;
+
+
+export type ClientProductPageQuery = { productPage:
+    | { __typename: 'ProductPage', id: string, handle: string, name: string, tagline: string, websiteUrl: string, description: string, viewerIsOwner: boolean, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, screenshots: Array<{ fileId: string, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }>, owner: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }, awards: Array<{ kind: ProductAwardKind, count: number, labels: Array<string> }>, record: { firstLaunchDate: string | null, launchCount: number, wins: number, losses: number }, launches: Array<{ id: string, number: number, launchDate: string, kickoffAt: string, status: LaunchStatus, kickedOff: boolean, latestKickedOff: boolean, summary: { label: string, inMatch: boolean }, matches: Array<{ id: string, entryId: string, kind: MatchKind, round: number | null, stage: MatchStage | null, date: string, result: MatchEntryResult, decision: MatchDecision, endedEarly: boolean, ownUpvoteCount: number, opponentUpvoteCount: number | null, opponent: { kind: ProductPageOpponentKind, handle: string | null, name: string | null, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } }> }> }
+    | { __typename: 'ProductPageRedirect', handle: string }
+   | null };
 
 export type ClientCompleteSecondFactorLoginMutationVariables = Exact<{
   input: CompleteSecondFactorLoginInput;
@@ -783,6 +835,11 @@ export const MatchByeFragmentDoc = {"kind":"Document","definitions":[{"kind":"Fr
 export const MatchFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Match"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Match"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}},{"kind":"Field","name":{"kind":"Name","value":"viewerRestriction"}},{"kind":"Field","name":{"kind":"Name","value":"viewerUpvotedEntryId"}},{"kind":"Field","name":{"kind":"Name","value":"entries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchFragment, unknown>;
 export const ClientDirectoryCategoriesDocument = {"__meta__":{"hash":"sha256:ec12184573e6602c07891ff6ede6a92821b6fcd270fcebf63b64d5182b182dee"}} as unknown as DocumentNode<ClientDirectoryCategoriesQuery, ClientDirectoryCategoriesQueryVariables>;
 export const ClientDirectoryDocument = {"__meta__":{"hash":"sha256:98bd712fadac35dcb09420e8fa1b2f5100282ec06528b10e80d28b9dd2e01a3e"}} as unknown as DocumentNode<ClientDirectoryQuery, ClientDirectoryQueryVariables>;
+export const ClientMatchSupportersDocument = {"__meta__":{"hash":"sha256:ad24d977e800104a12793e736bc255ea593215b0a7f5f361e25938fd49124c7c"}} as unknown as DocumentNode<ClientMatchSupportersQuery, ClientMatchSupportersQueryVariables>;
+export const ClientOwnerFollowStatusDocument = {"__meta__":{"hash":"sha256:0300957c680bcbfda07b29c44addd9980fd4c8c41fc9a8bb6798543d1bcb265e"}} as unknown as DocumentNode<ClientOwnerFollowStatusQuery, ClientOwnerFollowStatusQueryVariables>;
+export const ClientProductLiveMatchDocument = {"__meta__":{"hash":"sha256:92342f5c738115984b0046edc048dac373e356d45cb24476b78fb16205607640"}} as unknown as DocumentNode<ClientProductLiveMatchQuery, ClientProductLiveMatchQueryVariables>;
+export const ClientProductOwnerStatusDocument = {"__meta__":{"hash":"sha256:9421f04de8a663379f0729e296406d84ab07ad3a1e9829bdd9bd994914f1aea6"}} as unknown as DocumentNode<ClientProductOwnerStatusQuery, ClientProductOwnerStatusQueryVariables>;
+export const ClientProductPageDocument = {"__meta__":{"hash":"sha256:64811745ada8f0c5f555bda41d5b916026763167c37fe22f27ce84723b3ff351"}} as unknown as DocumentNode<ClientProductPageQuery, ClientProductPageQueryVariables>;
 export const ClientCompleteSecondFactorLoginDocument = {"__meta__":{"hash":"sha256:2a5e67f3c1b64838df2c0c323fab25ed80f89e0c56f58fd2bcc6ae3e76583218"}} as unknown as DocumentNode<ClientCompleteSecondFactorLoginMutation, ClientCompleteSecondFactorLoginMutationVariables>;
 export const ClientConfirmEmailChangeDocument = {"__meta__":{"hash":"sha256:c512d6387b1888f3b40034cad109c27d09c805940a226412e3082c1939225461"}} as unknown as DocumentNode<ClientConfirmEmailChangeMutation, ClientConfirmEmailChangeMutationVariables>;
 export const ClientConfirmPasswordChangeDocument = {"__meta__":{"hash":"sha256:2c986aa7e78feaf09e6115e21264cc394141eb5a2aa3595af8198871db50c326"}} as unknown as DocumentNode<ClientConfirmPasswordChangeMutation, ClientConfirmPasswordChangeMutationVariables>;
