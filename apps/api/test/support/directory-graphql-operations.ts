@@ -42,9 +42,19 @@ import { IDENTITY_TYPES } from '../../src/application/identity/identity-types.ts
 import type { SessionIssuer } from '../../src/application/identity/session-issuer.ts';
 import { MODULES } from '../../src/composition/modules.ts';
 import { directorySchemaModule } from '../../src/presentation/graphql/modules/directory/index.ts';
+import { matchSchemaModule } from '../../src/presentation/graphql/modules/match/index.ts';
 import { mediaSchemaModule } from '../../src/presentation/graphql/modules/media/index.ts';
 import { productSchemaModule } from '../../src/presentation/graphql/modules/product/index.ts';
 import { profileSchemaModule } from '../../src/presentation/graphql/modules/profile/index.ts';
+import {
+  MATCH_SUPPORTERS,
+  PRODUCT_LIVE_MATCH,
+  PRODUCT_PAGE,
+  type ProductLiveMatchFields,
+  type ProductPageFields,
+  type ProductPageRedirectFields,
+  type SupporterConnectionFields,
+} from './directory-product-page-documents.ts';
 import {
   createGraphQLGateway,
   type GatewayApp,
@@ -272,11 +282,18 @@ export interface DirectoryPageFields {
 }
 
 const directoryGateway = createGraphQLGateway({
-  documents: [DIRECTORY, DIRECTORY_CATEGORIES],
+  documents: [
+    DIRECTORY,
+    DIRECTORY_CATEGORIES,
+    PRODUCT_PAGE,
+    PRODUCT_LIVE_MATCH,
+    MATCH_SUPPORTERS,
+  ],
   schemaModules: [
     mediaSchemaModule,
     profileSchemaModule,
     productSchemaModule,
+    matchSchemaModule,
     directorySchemaModule,
   ],
   overrides: [fixedClockModule, sourcesModule, ownerHidingModule],
@@ -347,4 +364,34 @@ export function fetchDirectoryCategories(options?: GatewayCallOptions) {
   return directoryGateway.call<{
     directoryCategories: readonly ProductCategoryFields[] | null;
   }>(DIRECTORY_CATEGORIES, {}, options);
+}
+
+export function fetchProductPage(handle: string, options?: GatewayCallOptions) {
+  return directoryGateway.call<{
+    productPage: ProductPageFields | ProductPageRedirectFields | null;
+  }>(PRODUCT_PAGE, { handle }, options);
+}
+
+export function fetchProductLiveMatch(
+  productHandle: string,
+  options?: GatewayCallOptions,
+) {
+  return directoryGateway.call<{
+    productLiveMatch: ProductLiveMatchFields | null;
+  }>(PRODUCT_LIVE_MATCH, { productHandle }, options);
+}
+
+export function fetchMatchSupporters(
+  variables: {
+    readonly productHandle: string;
+    readonly matchId: string;
+    readonly entryId: string;
+    readonly first: number;
+    readonly after?: string | null;
+  },
+  options?: GatewayCallOptions,
+) {
+  return directoryGateway.call<{
+    matchSupporters: SupporterConnectionFields | null;
+  }>(MATCH_SUPPORTERS, variables, options);
 }

@@ -7,6 +7,7 @@ import type { PublicProfileModel, PublicProfileRedirectModel, MyProfileModel } f
 import type { MyProductModel, ProductScreenshotModel, LaunchHistoryProductModel } from '../modules/product/mappers.ts';
 import type { MatchSource, MatchEntrySource, MatchProductSource, UpvoteHistoryItemModel } from '../modules/match/mappers.ts';
 import type { DirectoryItemModel } from '../modules/directory/mappers.ts';
+import type { ProductPageModel, ProductPageRedirectModel, ProductPageScreenshotModel, ProductPageOpponentModel, ProductLiveMatchModel } from '../modules/directory/product-page-mappers.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -1535,6 +1536,17 @@ export type ProductLaunchPlan = {
   window?: Maybe<LaunchDateWindow>;
 };
 
+/** プロダクト詳細ページの開催中のマッチ */
+export type ProductLiveMatch = {
+  __typename?: 'ProductLiveMatch';
+  /** 集計中のマッチがある、またはキックオフ済みのローンチの予選マッチが未作成・開始の時刻を過ぎて未開始 */
+  awaitingChange: Scalars['Boolean']['output'];
+  /** マッチ中・集計中の最も新しいマッチ。無ければnull */
+  match?: Maybe<Match>;
+  /** 照会の時点のサーバーの時刻。残り時間を合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+};
+
 /** ローンチ日・カテゴリの変更と削除の固定の理由 */
 export type ProductLockView = {
   __typename?: 'ProductLockView';
@@ -1548,6 +1560,120 @@ export type ProductOwnerStatus = {
   /** 取消を除く直近のローンチ */
   latestLaunch?: Maybe<ProductLaunch>;
   plan: ProductLaunchPlan;
+};
+
+/** プロダクト詳細ページ */
+export type ProductPage = {
+  __typename?: 'ProductPage';
+  /** Yearを先頭 */
+  awards: Array<ProductAward>;
+  category: ProductCategory;
+  /** マークダウンの説明文 */
+  description: Scalars['String']['output'];
+  /** 現在のハンドル。正規のURLに使う */
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 取消を除く、ローンチ日の新しい順 */
+  launches: Array<ProductPageLaunch>;
+  /** 掲載中。偽なら投稿者本人だけが見ている */
+  listed: Scalars['Boolean']['output'];
+  /** 画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
+  logo?: Maybe<MediaImage>;
+  name: Scalars['String']['output'];
+  owner: UserSummary;
+  record: ProductPageRecord;
+  /** 表示順 */
+  screenshots: Array<ProductPageScreenshot>;
+  tagline: Scalars['String']['output'];
+  viewerIsOwner: Scalars['Boolean']['output'];
+  /** 検証の済まないURLは空 */
+  websiteUrl: Scalars['String']['output'];
+};
+
+/** マッチ履歴のローンチのブロック */
+export type ProductPageLaunch = {
+  __typename?: 'ProductPageLaunch';
+  id: Scalars['ID']['output'];
+  /** マッチ中か結果が確定した */
+  kickedOff: Scalars['Boolean']['output'];
+  kickoffAt: Scalars['DateTime']['output'];
+  /** キックオフ済みで最も新しいローンチ */
+  latestKickedOff: Scalars['Boolean']['output'];
+  /** 業務日付(YYYY-MM-DD) */
+  launchDate: Scalars['String']['output'];
+  /** 結果が確定したマッチを実施日の新しい順に */
+  matches: Array<ProductPageMatch>;
+  /** 取消を除いて古い順に1から数える */
+  number: Scalars['Int']['output'];
+  status: LaunchStatus;
+  summary: LaunchSummary;
+};
+
+/** マッチ履歴の結果が確定したマッチのこのプロダクトの側 */
+export type ProductPageMatch = {
+  __typename?: 'ProductPageMatch';
+  /** 実施日(業務日付のYYYY-MM-DD) */
+  date: Scalars['String']['output'];
+  decision: MatchDecision;
+  /** マッチ中の即時の終了で確定した */
+  endedEarly: Scalars['Boolean']['output'];
+  /** このプロダクトの側。サポーターの一覧の照会に使う */
+  entryId: Scalars['ID']['output'];
+  id: Scalars['ID']['output'];
+  kind: MatchKind;
+  opponent: ProductPageOpponent;
+  /** 不戦勝(開始時点・マッチ中の相手の該当を含む)と対戦相手なしはnull */
+  opponentUpvoteCount?: Maybe<Scalars['Int']['output']>;
+  /** 確定時点の自身のUpvote数 */
+  ownUpvoteCount: Scalars['Int']['output'];
+  result: MatchEntryResult;
+  /** トーナメントのラウンドの番号(1回戦が1)。予選はnull */
+  round?: Maybe<Scalars['Int']['output']>;
+  stage?: Maybe<MatchStage>;
+};
+
+/** マッチ履歴の対戦相手。NONE・PRIVATEはハンドル・名称・ロゴがnull */
+export type ProductPageOpponent = {
+  __typename?: 'ProductPageOpponent';
+  /** LISTEDのときだけ値を持つ */
+  handle?: Maybe<Scalars['String']['output']>;
+  kind: ProductPageOpponentKind;
+  /** 画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
+  logo?: Maybe<MediaImage>;
+  name?: Maybe<Scalars['String']['output']>;
+};
+
+/** マッチ履歴の対戦相手の見え方。NONEは対戦相手なし、PRIVATEは非公開化・投稿者の退会や停止・論理削除・紐付けの解除・不戦勝の相手、UNLISTEDは可視だが未掲載、LISTEDは掲載中 */
+export type ProductPageOpponentKind =
+  | 'LISTED'
+  | 'NONE'
+  | 'PRIVATE'
+  | 'UNLISTED';
+
+/** ヘッダーの成績。勝ちは勝利・不戦勝、負けは敗北・両者敗北 */
+export type ProductPageRecord = {
+  __typename?: 'ProductPageRecord';
+  /** キックオフ済みで取り消されていないローンチの最も古いローンチ日(YYYY-MM-DD)。無ければnull */
+  firstLaunchDate?: Maybe<Scalars['String']['output']>;
+  /** キックオフ済みで取り消されていないローンチの数 */
+  launchCount: Scalars['Int']['output'];
+  losses: Scalars['Int']['output'];
+  wins: Scalars['Int']['output'];
+};
+
+/** 旧ハンドルでの照会。handleは転送先の現在のハンドル */
+export type ProductPageRedirect = {
+  __typename?: 'ProductPageRedirect';
+  handle: Scalars['String']['output'];
+};
+
+export type ProductPageResult = ProductPage | ProductPageRedirect;
+
+export type ProductPageScreenshot = {
+  __typename?: 'ProductPageScreenshot';
+  fileId: Scalars['ID']['output'];
+  /** 画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
+  image?: Maybe<MediaImage>;
 };
 
 export type ProductScreenshot = {
@@ -1691,6 +1817,8 @@ export type Query = {
   legalDocument: LegalDocument;
   /** 法務文書の指定した版。存在しない版はnull */
   legalDocumentVersion?: Maybe<LegalDocumentVersion>;
+  /** ログイン不要。マッチの側にUpvoteした利用者を、退会・停止を除いてUpvoteの日時の早い順に返す。表示できないプロダクト・他のプロダクトの側・確定していないマッチはnull。firstは1〜20 */
+  matchSupporters?: Maybe<SupporterConnection>;
   /** 本人の問い合わせのチャット。本人の問い合わせでなければnull */
   memberInquiry?: Maybe<MemberInquiry>;
   /** ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20 */
@@ -1715,8 +1843,12 @@ export type Query = {
   productCategories: Array<ProductCategory>;
   /** プロダクトのハンドルの使用可否。productHandleは編集中のプロダクトの現在のハンドルで、その現在と保持中の旧ハンドルは使えるものとして扱う */
   productHandleAvailability: HandleAvailability;
+  /** ログイン不要。詳細ページの開催中のマッチ(定期の取り直しの対象)。表示できない・旧ハンドルはnull */
+  productLiveMatch?: Maybe<ProductLiveMatch>;
   /** 現在のハンドルで本人のプロダクトだけ。それ以外はnull */
   productOwnerStatus?: Maybe<ProductOwnerStatus>;
+  /** ログイン不要。ハンドルは大文字小文字を区別しない。存在しない・未掲載の他者・閲覧できないプロダクトはnull(404)、表示できる旧ハンドルは転送先を返す */
+  productPage?: Maybe<ProductPageResult>;
   /** 公開プロフィールの受賞バッジ。launchHistoryと同じ対象のプロダクトの受賞を、Yearを先頭に種類ごとにまとめて返す。ラベルの先頭に受賞したプロダクトの名称を付ける。利用者を表示できなければnull */
   profileAwards?: Maybe<Array<ProductAward>>;
   /** 見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す */
@@ -1799,6 +1931,15 @@ export type QueryLegalDocumentVersionArgs = {
 };
 
 
+export type QueryMatchSupportersArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  entryId: Scalars['ID']['input'];
+  first: Scalars['Int']['input'];
+  matchId: Scalars['ID']['input'];
+  productHandle: Scalars['String']['input'];
+};
+
+
 export type QueryMemberInquiryArgs = {
   id: Scalars['ID']['input'];
 };
@@ -1844,8 +1985,18 @@ export type QueryProductHandleAvailabilityArgs = {
 };
 
 
+export type QueryProductLiveMatchArgs = {
+  productHandle: Scalars['String']['input'];
+};
+
+
 export type QueryProductOwnerStatusArgs = {
   productHandle: Scalars['String']['input'];
+};
+
+
+export type QueryProductPageArgs = {
+  handle: Scalars['String']['input'];
 };
 
 
@@ -1940,6 +2091,13 @@ export type SecondFactorRequired = {
   /** 第2要素の段階の要求と組にする値 */
   challenge: Scalars['String']['output'];
   expiresAt: Scalars['DateTime']['output'];
+};
+
+export type SupporterConnection = {
+  __typename?: 'SupporterConnection';
+  /** Upvoteの日時の早い順 */
+  nodes: Array<UserSummary>;
+  pageInfo: PageInfo;
 };
 
 export type SystemStatus = {
@@ -2221,6 +2379,10 @@ export type ResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | ( MyProductModel )
     | ( MyProductRedirect )
   ;
+  ProductPageResult:
+    | ( ProductPageModel )
+    | ( ProductPageRedirectModel )
+  ;
   PublicProfileResult:
     | ( PublicProfileModel )
     | ( PublicProfileRedirectModel )
@@ -2347,8 +2509,18 @@ export type ResolversTypes = {
   ProductFieldsInput: ProductFieldsInput;
   ProductLaunch: ResolverTypeWrapper<ProductLaunch>;
   ProductLaunchPlan: ResolverTypeWrapper<ProductLaunchPlan>;
+  ProductLiveMatch: ResolverTypeWrapper<ProductLiveMatchModel>;
   ProductLockView: ResolverTypeWrapper<ProductLockView>;
   ProductOwnerStatus: ResolverTypeWrapper<ProductOwnerStatus>;
+  ProductPage: ResolverTypeWrapper<ProductPageModel>;
+  ProductPageLaunch: ResolverTypeWrapper<Omit<ProductPageLaunch, 'matches'> & { matches: Array<ResolversTypes['ProductPageMatch']> }>;
+  ProductPageMatch: ResolverTypeWrapper<Omit<ProductPageMatch, 'opponent'> & { opponent: ResolversTypes['ProductPageOpponent'] }>;
+  ProductPageOpponent: ResolverTypeWrapper<ProductPageOpponentModel>;
+  ProductPageOpponentKind: ProductPageOpponentKind;
+  ProductPageRecord: ResolverTypeWrapper<ProductPageRecord>;
+  ProductPageRedirect: ResolverTypeWrapper<ProductPageRedirectModel>;
+  ProductPageResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['ProductPageResult']>;
+  ProductPageScreenshot: ResolverTypeWrapper<ProductPageScreenshotModel>;
   ProductScreenshot: ResolverTypeWrapper<ProductScreenshotModel>;
   ProfileViewerRelation: ProfileViewerRelation;
   ProfileWebsite: ResolverTypeWrapper<ProfileWebsite>;
@@ -2375,6 +2547,7 @@ export type ResolversTypes = {
   SecondFactorInput: SecondFactorInput;
   SecondFactorRequired: ResolverTypeWrapper<SecondFactorRequired>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
+  SupporterConnection: ResolverTypeWrapper<Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversTypes['UserSummary']> }>;
   SystemStatus: ResolverTypeWrapper<SystemStatus>;
   TotpSetup: ResolverTypeWrapper<TotpSetup>;
   UltrasOffer: ResolverTypeWrapper<UltrasOffer>;
@@ -2490,8 +2663,17 @@ export type ResolversParentTypes = {
   ProductFieldsInput: ProductFieldsInput;
   ProductLaunch: ProductLaunch;
   ProductLaunchPlan: ProductLaunchPlan;
+  ProductLiveMatch: ProductLiveMatchModel;
   ProductLockView: ProductLockView;
   ProductOwnerStatus: ProductOwnerStatus;
+  ProductPage: ProductPageModel;
+  ProductPageLaunch: Omit<ProductPageLaunch, 'matches'> & { matches: Array<ResolversParentTypes['ProductPageMatch']> };
+  ProductPageMatch: Omit<ProductPageMatch, 'opponent'> & { opponent: ResolversParentTypes['ProductPageOpponent'] };
+  ProductPageOpponent: ProductPageOpponentModel;
+  ProductPageRecord: ProductPageRecord;
+  ProductPageRedirect: ProductPageRedirectModel;
+  ProductPageResult: ResolversUnionTypes<ResolversParentTypes>['ProductPageResult'];
+  ProductPageScreenshot: ProductPageScreenshotModel;
   ProductScreenshot: ProductScreenshotModel;
   ProfileWebsite: ProfileWebsite;
   ProfileWebsiteInput: ProfileWebsiteInput;
@@ -2513,6 +2695,7 @@ export type ResolversParentTypes = {
   SecondFactorInput: SecondFactorInput;
   SecondFactorRequired: SecondFactorRequired;
   String: Scalars['String']['output'];
+  SupporterConnection: Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['UserSummary']> };
   SystemStatus: SystemStatus;
   TotpSetup: TotpSetup;
   UltrasOffer: UltrasOffer;
@@ -3153,6 +3336,12 @@ export type ProductLaunchPlanResolvers<ContextType = GraphQLContext, ParentType 
   window?: Resolver<Maybe<ResolversTypes['LaunchDateWindow']>, ParentType, ContextType>;
 };
 
+export type ProductLiveMatchResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductLiveMatch'] = ResolversParentTypes['ProductLiveMatch']> = {
+  awaitingChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  match?: Resolver<Maybe<ResolversTypes['Match']>, ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
 export type ProductLockViewResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductLockView'] = ResolversParentTypes['ProductLockView']> = {
   code?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -3161,6 +3350,80 @@ export type ProductLockViewResolvers<ContextType = GraphQLContext, ParentType ex
 export type ProductOwnerStatusResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductOwnerStatus'] = ResolversParentTypes['ProductOwnerStatus']> = {
   latestLaunch?: Resolver<Maybe<ResolversTypes['ProductLaunch']>, ParentType, ContextType>;
   plan?: Resolver<ResolversTypes['ProductLaunchPlan'], ParentType, ContextType>;
+};
+
+export type ProductPageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductPage'] = ResolversParentTypes['ProductPage']> = {
+  awards?: Resolver<Array<ResolversTypes['ProductAward']>, ParentType, ContextType>;
+  category?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType>;
+  description?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  launches?: Resolver<Array<ResolversTypes['ProductPageLaunch']>, ParentType, ContextType>;
+  listed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['UserSummary'], ParentType, ContextType>;
+  record?: Resolver<ResolversTypes['ProductPageRecord'], ParentType, ContextType>;
+  screenshots?: Resolver<Array<ResolversTypes['ProductPageScreenshot']>, ParentType, ContextType>;
+  tagline?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  viewerIsOwner?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  websiteUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type ProductPageLaunchResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductPageLaunch'] = ResolversParentTypes['ProductPageLaunch']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kickedOff?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  kickoffAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  latestKickedOff?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  launchDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  matches?: Resolver<Array<ResolversTypes['ProductPageMatch']>, ParentType, ContextType>;
+  number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['LaunchStatus'], ParentType, ContextType>;
+  summary?: Resolver<ResolversTypes['LaunchSummary'], ParentType, ContextType>;
+};
+
+export type ProductPageMatchResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductPageMatch'] = ResolversParentTypes['ProductPageMatch']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  decision?: Resolver<ResolversTypes['MatchDecision'], ParentType, ContextType>;
+  endedEarly?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  entryId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['MatchKind'], ParentType, ContextType>;
+  opponent?: Resolver<ResolversTypes['ProductPageOpponent'], ParentType, ContextType>;
+  opponentUpvoteCount?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  ownUpvoteCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  result?: Resolver<ResolversTypes['MatchEntryResult'], ParentType, ContextType>;
+  round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  stage?: Resolver<Maybe<ResolversTypes['MatchStage']>, ParentType, ContextType>;
+};
+
+export type ProductPageOpponentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductPageOpponent'] = ResolversParentTypes['ProductPageOpponent']> = {
+  handle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['ProductPageOpponentKind'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  name?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type ProductPageRecordResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductPageRecord'] = ResolversParentTypes['ProductPageRecord']> = {
+  firstLaunchDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  launchCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  losses?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  wins?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type ProductPageRedirectResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductPageRedirect'] = ResolversParentTypes['ProductPageRedirect']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type ProductPageResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductPageResult'] = ResolversParentTypes['ProductPageResult']> = {
+  __resolveType: TypeResolveFn<'ProductPage' | 'ProductPageRedirect', ParentType, ContextType>;
+};
+
+export type ProductPageScreenshotResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductPageScreenshot'] = ResolversParentTypes['ProductPageScreenshot']> = {
+  fileId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  image?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
 };
 
 export type ProductScreenshotResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductScreenshot'] = ResolversParentTypes['ProductScreenshot']> = {
@@ -3230,6 +3493,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   launchHistory?: Resolver<Maybe<ResolversTypes['LaunchHistoryConnection']>, ParentType, ContextType, RequireFields<QueryLaunchHistoryArgs, 'first' | 'userHandle'>>;
   legalDocument?: Resolver<ResolversTypes['LegalDocument'], ParentType, ContextType, RequireFields<QueryLegalDocumentArgs, 'kind'>>;
   legalDocumentVersion?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
+  matchSupporters?: Resolver<Maybe<ResolversTypes['SupporterConnection']>, ParentType, ContextType, RequireFields<QueryMatchSupportersArgs, 'entryId' | 'first' | 'matchId' | 'productHandle'>>;
   memberInquiry?: Resolver<Maybe<ResolversTypes['MemberInquiry']>, ParentType, ContextType, RequireFields<QueryMemberInquiryArgs, 'id'>>;
   myFollowers?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowersArgs, 'first'>>;
   myFollowing?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowingArgs, 'first'>>;
@@ -3242,7 +3506,9 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   paymentHistory?: Resolver<ResolversTypes['PaymentRecordConnection'], ParentType, ContextType, Partial<QueryPaymentHistoryArgs>>;
   productCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
   productHandleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryProductHandleAvailabilityArgs, 'handle'>>;
+  productLiveMatch?: Resolver<Maybe<ResolversTypes['ProductLiveMatch']>, ParentType, ContextType, RequireFields<QueryProductLiveMatchArgs, 'productHandle'>>;
   productOwnerStatus?: Resolver<Maybe<ResolversTypes['ProductOwnerStatus']>, ParentType, ContextType, RequireFields<QueryProductOwnerStatusArgs, 'productHandle'>>;
+  productPage?: Resolver<Maybe<ResolversTypes['ProductPageResult']>, ParentType, ContextType, RequireFields<QueryProductPageArgs, 'handle'>>;
   profileAwards?: Resolver<Maybe<Array<ResolversTypes['ProductAward']>>, ParentType, ContextType, RequireFields<QueryProfileAwardsArgs, 'userHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
   qualifierBoard?: Resolver<ResolversTypes['QualifierBoard'], ParentType, ContextType>;
@@ -3268,6 +3534,11 @@ export type SecondFactorRequiredResolvers<ContextType = GraphQLContext, ParentTy
   challenge?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type SupporterConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SupporterConnection'] = ResolversParentTypes['SupporterConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['UserSummary']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
 };
 
 export type SystemStatusResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SystemStatus'] = ResolversParentTypes['SystemStatus']> = {
@@ -3439,8 +3710,17 @@ export type Resolvers<ContextType = GraphQLContext> = {
   ProductCategory?: ProductCategoryResolvers<ContextType>;
   ProductLaunch?: ProductLaunchResolvers<ContextType>;
   ProductLaunchPlan?: ProductLaunchPlanResolvers<ContextType>;
+  ProductLiveMatch?: ProductLiveMatchResolvers<ContextType>;
   ProductLockView?: ProductLockViewResolvers<ContextType>;
   ProductOwnerStatus?: ProductOwnerStatusResolvers<ContextType>;
+  ProductPage?: ProductPageResolvers<ContextType>;
+  ProductPageLaunch?: ProductPageLaunchResolvers<ContextType>;
+  ProductPageMatch?: ProductPageMatchResolvers<ContextType>;
+  ProductPageOpponent?: ProductPageOpponentResolvers<ContextType>;
+  ProductPageRecord?: ProductPageRecordResolvers<ContextType>;
+  ProductPageRedirect?: ProductPageRedirectResolvers<ContextType>;
+  ProductPageResult?: ProductPageResultResolvers<ContextType>;
+  ProductPageScreenshot?: ProductPageScreenshotResolvers<ContextType>;
   ProductScreenshot?: ProductScreenshotResolvers<ContextType>;
   ProfileWebsite?: ProfileWebsiteResolvers<ContextType>;
   PublicProfile?: PublicProfileResolvers<ContextType>;
@@ -3451,6 +3731,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   RecoveryCodeSet?: RecoveryCodeSetResolvers<ContextType>;
   RelaunchBlockView?: RelaunchBlockViewResolvers<ContextType>;
   SecondFactorRequired?: SecondFactorRequiredResolvers<ContextType>;
+  SupporterConnection?: SupporterConnectionResolvers<ContextType>;
   SystemStatus?: SystemStatusResolvers<ContextType>;
   TotpSetup?: TotpSetupResolvers<ContextType>;
   UltrasOffer?: UltrasOfferResolvers<ContextType>;

@@ -45,6 +45,16 @@ const config: CodegenConfig = {
           UpvoteHistoryItem:
             '../modules/match/mappers.ts#UpvoteHistoryItemModel',
           DirectoryItem: '../modules/directory/mappers.ts#DirectoryItemModel',
+          ProductPage:
+            '../modules/directory/product-page-mappers.ts#ProductPageModel',
+          ProductPageRedirect:
+            '../modules/directory/product-page-mappers.ts#ProductPageRedirectModel',
+          ProductPageScreenshot:
+            '../modules/directory/product-page-mappers.ts#ProductPageScreenshotModel',
+          ProductPageOpponent:
+            '../modules/directory/product-page-mappers.ts#ProductPageOpponentModel',
+          ProductLiveMatch:
+            '../modules/directory/product-page-mappers.ts#ProductLiveMatchModel',
           LaunchHistoryProduct:
             '../modules/product/mappers.ts#LaunchHistoryProductModel',
         },

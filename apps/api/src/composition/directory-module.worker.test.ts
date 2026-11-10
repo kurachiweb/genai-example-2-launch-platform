@@ -22,6 +22,18 @@ import {
   type LaunchHighlightsReader,
   SourcedLaunchHighlightsReader,
 } from '../application/directory/launch-highlights-reader.ts';
+import {
+  DirectoryLiveMatchReader,
+  type LiveMatchReader,
+} from '../application/directory/live-match-reader.ts';
+import {
+  DirectoryProductPageReader,
+  type ProductPageReader,
+} from '../application/directory/product-page-reader.ts';
+import {
+  DirectorySupporterListReader,
+  type SupporterListReader,
+} from '../application/directory/supporter-list-reader.ts';
 import { DIRECTORY_ITEM_METRIC_SOURCES } from './directory-item-metric-sources.ts';
 import { MODULES } from './modules.ts';
 
@@ -60,6 +72,20 @@ describe('APIサーバーのディレクトリの束縛', () => {
     expect(
       container.get<ItemMetricsReader>(DIRECTORY_TYPES.ItemMetricsReader),
     ).toBeInstanceOf(SourcedItemMetricsReader);
+  });
+
+  test('プロダクト詳細ページ・開催中のマッチ・サポーターの一覧のユースケースを処理単位のコンテナから解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<ProductPageReader>(DIRECTORY_TYPES.ProductPageReader),
+    ).toBeInstanceOf(DirectoryProductPageReader);
+    expect(
+      container.get<LiveMatchReader>(DIRECTORY_TYPES.LiveMatchReader),
+    ).toBeInstanceOf(DirectoryLiveMatchReader);
+    expect(
+      container.get<SupporterListReader>(DIRECTORY_TYPES.SupporterListReader),
+    ).toBeInstanceOf(DirectorySupporterListReader);
   });
 
   test('項目の値の供給元は登録の一覧と同じ数だけ解決する', () => {

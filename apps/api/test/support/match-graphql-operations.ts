@@ -130,7 +130,7 @@ const MATCH_ENTRY_SELECTION = /* GraphQL */ `
   colorIndex
 `;
 
-const MATCH_SELECTION = /* GraphQL */ `
+export const MATCH_SELECTION = /* GraphQL */ `
   id
   kind
   round
