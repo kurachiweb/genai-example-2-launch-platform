@@ -32,25 +32,6 @@ const BACKEND_RATE_LIMIT_KEY =
 const BACKEND_KEYED_HASHER = 'apps/backend-lib/core/crypto/keyed-hasher.ts';
 const BACKEND_HEALTH_ROUTE = 'apps/backend-lib/workers/http/health-route.ts';
 const E2E_API_RATE_LIMIT = 'e2e/support/api-rate-limit.ts';
-const IDENTITY_RESOLVER_SUPPORT =
-  'apps/api/src/presentation/graphql/modules/identity/resolver-support.ts';
-const ADMIN_RESOLVER_SUPPORT =
-  'apps/api/src/presentation/graphql/modules/admin/resolver-support.ts';
-const CLIENT_AUTH_BOT_ACTIONS =
-  'apps/client/src/components/auth/bot-actions.ts';
-const ADMIN_AUTH_BOT_ACTIONS = 'apps/admin/src/components/auth/bot-actions.ts';
-const INQUIRY_RESOLVER_SUPPORT =
-  'apps/api/src/presentation/graphql/modules/inquiry/resolver-support.ts';
-const CLIENT_INQUIRY_BOT_ACTIONS =
-  'apps/client/src/components/inquiry/bot-actions.ts';
-const PROFILE_RESOLVER_SUPPORT =
-  'apps/api/src/presentation/graphql/modules/profile/resolver-support.ts';
-const CLIENT_PROFILE_BOT_ACTIONS =
-  'apps/client/src/components/profile/bot-actions.ts';
-const PRODUCT_RESOLVER_SUPPORT =
-  'apps/api/src/presentation/graphql/modules/product/resolver-support.ts';
-const CLIENT_PRODUCT_BOT_ACTIONS =
-  'apps/client/src/components/product/bot-actions.ts';
 const BACKEND_BUSINESS_TIME = 'apps/backend-lib/core/time/business-time.ts';
 const BACKEND_LAUNCH_STATUS = 'apps/backend-lib/core/product/launch-status.ts';
 const CLIENT_PRODUCT_BUSINESS_TIME =
@@ -619,27 +600,30 @@ interface BotActionCopy {
   readonly copy: DeclarationRef;
 }
 
+// 写しは画面のアプリの`src/components/<部品のディレクトリ>/bot-actions.ts`に、APIサーバーのスキーマモジュールの`resolver-support.ts`と同じ名前で置く
+const botActionCopy = (
+  apiModule: string,
+  app: 'client' | 'admin',
+  directory: string,
+  name: string,
+): BotActionCopy => ({
+  api: {
+    path: `apps/api/src/presentation/graphql/modules/${apiModule}/resolver-support.ts`,
+    name,
+  },
+  copy: {
+    path: `apps/${app}/src/components/${directory}/bot-actions.ts`,
+    name,
+  },
+});
+
 const BOT_ACTION_COPIES: readonly BotActionCopy[] = [
-  {
-    api: { path: IDENTITY_RESOLVER_SUPPORT, name: 'BOT_ACTIONS' },
-    copy: { path: CLIENT_AUTH_BOT_ACTIONS, name: 'BOT_ACTIONS' },
-  },
-  {
-    api: { path: ADMIN_RESOLVER_SUPPORT, name: 'ADMIN_BOT_ACTIONS' },
-    copy: { path: ADMIN_AUTH_BOT_ACTIONS, name: 'ADMIN_BOT_ACTIONS' },
-  },
-  {
-    api: { path: INQUIRY_RESOLVER_SUPPORT, name: 'INQUIRY_BOT_ACTIONS' },
-    copy: { path: CLIENT_INQUIRY_BOT_ACTIONS, name: 'INQUIRY_BOT_ACTIONS' },
-  },
-  {
-    api: { path: PROFILE_RESOLVER_SUPPORT, name: 'PROFILE_BOT_ACTIONS' },
-    copy: { path: CLIENT_PROFILE_BOT_ACTIONS, name: 'PROFILE_BOT_ACTIONS' },
-  },
-  {
-    api: { path: PRODUCT_RESOLVER_SUPPORT, name: 'PRODUCT_BOT_ACTIONS' },
-    copy: { path: CLIENT_PRODUCT_BOT_ACTIONS, name: 'PRODUCT_BOT_ACTIONS' },
-  },
+  botActionCopy('identity', 'client', 'auth', 'BOT_ACTIONS'),
+  botActionCopy('admin', 'admin', 'auth', 'ADMIN_BOT_ACTIONS'),
+  botActionCopy('inquiry', 'client', 'inquiry', 'INQUIRY_BOT_ACTIONS'),
+  botActionCopy('profile', 'client', 'profile', 'PROFILE_BOT_ACTIONS'),
+  botActionCopy('product', 'client', 'product', 'PRODUCT_BOT_ACTIONS'),
+  botActionCopy('match', 'client', 'match', 'MATCH_BOT_ACTIONS'),
 ];
 
 describe('bot判定の操作名の写し(components/*/bot-actions.ts)', () => {

@@ -10,12 +10,14 @@ export interface MatchFrameOptions {
   readonly host?: MotionHost;
   // 部品を置く枠の幅(px)。省略すると画面の幅いっぱいにする
   readonly width?: number;
+  // 表示中のページのURL。省略するとトップページにする
+  readonly path?: string;
 }
 
 // アプリの文書の外枠が置く表示設定とツールチップの文脈を与え、トップページの根と同じく自動更新の状態を祖先の属性で示す
 export function renderInMatchFrame(
   element: ReactNode,
-  { host = 'on', width }: MatchFrameOptions = {},
+  { host = 'on', width, path }: MatchFrameOptions = {},
 ) {
   const style = width === undefined ? undefined : { width };
   const autoRefresh = host === 'none' ? undefined : host;
@@ -29,5 +31,6 @@ export function renderInMatchFrame(
         </div>
       </TooltipProvider>
     </DisplayPreferencesProvider>,
+    { path },
   );
 }
