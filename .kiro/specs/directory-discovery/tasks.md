@@ -14,7 +14,7 @@
   - 完了状態: 単体テストと、集約点の全定義で全文検索の索引とトリガーの欠けが無いことの検査が成功し、マイグレーションをローカルに適用できる
   - _Requirements: 4.1, 12.1, 12.7_
 
-- [ ] 1.3 (P) ページ配置・文言規則に、本specの決定と画面と文言を先に書く
+- [x] 1.3 (P) ページ配置・文言規則に、本specの決定と画面と文言を先に書く
   - ページ配置: ディレクトリの区画の置き場所(仮3の注記)、詳細ページの区画の置き場所と順(本specの4件と後続specの予約)、仮1・仮2(基準勝利)・仮5(サポーターの数)の注記を、2026-10-24に開発者が確定した決定として加える
   - 文言規則: 設計のError Handlingに挙げた追加の文言(検索語の上限・関連度の併記・読み込み中・ディレクトリの説明・リンクのコピー・サポーターの一覧・マッチが無いブロック・接戦・不戦勝の説明・予約の状態の照会の失敗)を加える
   - 完了状態: 2つの文書が整形の検査を通り、6・7のタスクが参照する文言がすべて文言規則にある
@@ -328,3 +328,4 @@
 
 - 1.1: 規則は`apps/common-lib/directory/`(`directory-query-rules.ts`・`directory-period.ts`)、書記素の単位の切り詰め`truncateGraphemes`を`text/graphemes.ts`に加えた。`page`は数(URL)と10進の整数の形の文字列(GraphQLの`DirectoryInput.page: String`)の両方を受け、2以上の安全な整数だけを残す。`normalizeDirectoryQuery`は既定の項目も`undefined`で全6項目を返す。TanStack Routerの既定の解析で数になった`q`・`category`は文字列へ戻すが`1.50`→`1.5`のように形が変わり得るため、6.10で`parseSearch`の扱いを確かめる。`formatPeriodLabel`は同じ日なら1日だけ、両方無ければ「全期間」(設計に例が無く決めた)。「今年なら年を省く」書式はclientの`launch-date-format.ts`・apiの`product-errors.ts`と3箇所に重複(common-libからclientを読めないため)。`BusinessDateString`は`string`の別名で、型ガード`isBusinessDateString`と型`PeriodRange`・`CustomRangeErrors`を設計に加えて公開した
 - 1.2: テーブルは`apps/db/schema/directory/`(`product_search_documents`・`directory_entries`)、索引の定義`PRODUCT_SEARCH_INDEX`は`schema/directory/product-search-index.ts`で`schema/index.ts`から再エクスポートせず`search/search-indexes.ts`が直接読む(2.1の検索対象も直接読む)。マイグレーションは`20261110153547_directory_discovery`(生成)と`20261110153549_directory_discovery_fts`(`apps/db`の`bun run --silent db:search-index-sql product_search_documents`の出力)。`directory_entries`は追加と削除だけだが設計と既存の先例(`match_events`など)に合わせて`timestamps()`を持ち、db/003の「共通カラムを持たないテーブル(`created_at`だけ)」と食い違う。`product_id`の一意は列の`.unique()`(自動の一意索引)
+- 1.3: 6・7の画面の文言は`docs/GUIDES/service/design/003-text-and-copy-rules.md`、区画の置き場所・順は`002-page-layouts.md`を正とし、一字一句写す。設計・モックアップと違えて決めたもの: ページ送りの名前は「プロダクト一覧のページ送り」(設計は`aria-label="ページ"`、既存の文言規則の「一覧ごとに名前を決める」に従う)、日付は全て曜日なしの「9月15日」(今年でなければ年。モックアップは曜日付き、既存の`formatLaunchDate`に従う)、開催中のマッチの見出しは「Week 準決勝を戦っています」(match-engineの種別の印に合わせる)、スクリーンショットの代替テキストは「<名称>のスクリーンショット1枚目」、「受賞3回」はリンクにしない、`matchSupporters`のIDの形式違反は「マッチが見つからない」・`first`の範囲外はフォロー一覧の文言を流用、並び順だけ変えた0件は「条件なし」の0件の表示。置き場所の位置: ディレクトリはbanner=見出しの上・aside=一覧の横(1024px未満は下)・bottom=導線の下、詳細ページはbanner(全幅)→自動更新の切り替え→パンくずの順、投稿者本人向けの操作の登録口は進行状況の下・「編集」「再ローンチを予約」の上。ヘッダーの「ローンチ」の回数(キックオフ済みで取り消されていない)とマッチ履歴の件数のローンチの数(キックオフ前を含む取り消されていない全て)は数える対象が違う
