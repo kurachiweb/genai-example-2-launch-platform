@@ -1,15 +1,16 @@
 import { ChevronDownIcon } from 'lucide-react';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { cn } from '../../../lib/utilities/class-names.ts';
 
 export interface FilterTriggerProps extends Omit<
   ComponentProps<typeof Button>,
-  'children'
+  'children' | 'value'
 > {
   readonly label: string;
-  readonly value: string;
+  // 日付を<time>要素で示す値を渡せるよう、文字列に限らない。ボタンのvalue属性には渡さない
+  readonly value: ReactNode;
 }
 
 // 開閉の部品のトリガーの子として使うため、受け取ったpropsとrefをボタンへ渡す。項目名と値の間の空白は、横並びの表示には出ず、名前を「<項目名> <値>」と区切って読ませる
