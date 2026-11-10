@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { MatchDecision } from '../../../lib/core/match/match-model.ts';
-import { type BoardMatch, orderBoard } from './board-order.ts';
+import { type BoardMatch, orderBoard, placementOf } from './board-order.ts';
 
 const match = (
   matchId: string,
@@ -185,5 +185,21 @@ describe('orderBoard の実施数', () => {
     ]);
 
     expect(board.heldCount).toBe(0);
+  });
+});
+
+describe('placementOf', () => {
+  test('1件ずつ置き場所を決め、2つの側の対戦は対戦カード、対戦相手なしは不戦勝にする', () => {
+    expect(placementOf(match('m1'))).toEqual({ kind: 'card' });
+    expect(placementOf(match('m2', { entryCount: 1 }))).toEqual({
+      kind: 'bye',
+      reason: 'absent',
+    });
+  });
+
+  test('側が1つで2つの側の決着のマッチは、その1件だけをRangeErrorで拒否する', () => {
+    expect(() =>
+      placementOf(match('m1', { decision: 'votes', entryCount: 1 })),
+    ).toThrow(RangeError);
   });
 });

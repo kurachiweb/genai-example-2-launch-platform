@@ -23,14 +23,23 @@ import {
   StoreMatchSettlement,
 } from '../application/match/match-settlement.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
+import {
+  DirectoryMatchViewReader,
+  type MatchViewReader,
+} from '../application/match/match-view-reader.ts';
 import type {
   EntryEligibilityChecker,
   KickoffStore,
+  MatchBoardStore,
   MatchIncidentReporter,
   PairingStore,
   SettlementStore,
   UpvoteStore,
 } from '../application/match/ports.ts';
+import {
+  DirectoryQualifierBoardReader,
+  type QualifierBoardReader,
+} from '../application/match/qualifier-board-reader.ts';
 import {
   type QualifierPairingService,
   StoreQualifierPairingService,
@@ -43,6 +52,7 @@ import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-l
 import { AccountMatchClosureSyncHandler } from '../infrastructure/match/account-match-closure-sync-handler.ts';
 import { CryptoRandomSource } from '../infrastructure/match/crypto-random-source.ts';
 import { D1KickoffStore } from '../infrastructure/match/d1-kickoff-store.ts';
+import { D1MatchBoardStore } from '../infrastructure/match/d1-match-board-store.ts';
 import { D1PairingStore } from '../infrastructure/match/d1-pairing-store.ts';
 import { D1SettlementStore } from '../infrastructure/match/d1-settlement-store.ts';
 import { D1UpvoteStore } from '../infrastructure/match/d1-upvote-store.ts';
@@ -92,6 +102,13 @@ export const API_MATCH_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<ScheduledJobHandler>(MATCH_TYPES.MatchEventCleanupJob).to(
       MatchEventCleanupJob,
+    );
+    bind<MatchBoardStore>(MATCH_TYPES.MatchBoardStore).to(D1MatchBoardStore);
+    bind<MatchViewReader>(MATCH_TYPES.MatchViewReader).to(
+      DirectoryMatchViewReader,
+    );
+    bind<QualifierBoardReader>(MATCH_TYPES.QualifierBoardReader).to(
+      DirectoryQualifierBoardReader,
     );
   }),
 };

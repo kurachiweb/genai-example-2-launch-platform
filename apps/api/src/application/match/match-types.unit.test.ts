@@ -22,6 +22,9 @@ const EXPECTED_NAMES = [
   'MatchKickoffJob',
   'MatchEventRedispatchJob',
   'MatchEventCleanupJob',
+  'MatchBoardStore',
+  'MatchViewReader',
+  'QualifierBoardReader',
 ] as const;
 
 describe('MATCH_TYPES', () => {

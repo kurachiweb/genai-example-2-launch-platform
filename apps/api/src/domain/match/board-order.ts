@@ -22,7 +22,7 @@ export interface BoardOrder {
   readonly heldCount: number;
 }
 
-type Placement =
+export type Placement =
   | { readonly kind: 'card' }
   | { readonly kind: 'bye'; readonly reason: ByeReason }
   | { readonly kind: 'hidden' };
@@ -34,7 +34,7 @@ const TWO_SIDED_DECISIONS: ReadonlySet<MatchDecision> = new Set([
   'walkover',
 ]);
 
-function placementOf(match: BoardMatch): Placement {
+export function placementOf(match: BoardMatch): Placement {
   if (
     match.entryCount === 1 &&
     match.decision !== null &&

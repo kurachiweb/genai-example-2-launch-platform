@@ -52,6 +52,14 @@ const MatchEventCleanupJob: unique symbol = Symbol.for(
   'match.MatchEventCleanupJob',
 );
 
+const MatchBoardStore: unique symbol = Symbol.for('match.MatchBoardStore');
+
+const MatchViewReader: unique symbol = Symbol.for('match.MatchViewReader');
+
+const QualifierBoardReader: unique symbol = Symbol.for(
+  'match.QualifierBoardReader',
+);
+
 export const MATCH_TYPES = Object.freeze({
   UpvoteStore,
   UpvoteService,
@@ -71,4 +79,7 @@ export const MATCH_TYPES = Object.freeze({
   MatchKickoffJob,
   MatchEventRedispatchJob,
   MatchEventCleanupJob,
+  MatchBoardStore,
+  MatchViewReader,
+  QualifierBoardReader,
 });
