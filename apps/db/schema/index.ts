@@ -1,4 +1,5 @@
 export * from './admin/index.ts';
+export * from './directory/index.ts';
 export * from './email/email-alert-throttles.ts';
 export * from './email/email-cleanup-cursors.ts';
 export * from './email/email-send-records.ts';

@@ -66,6 +66,8 @@ describe('スキーマの集約点', () => {
     'match_events',
     'match_event_handler_runs',
     'qualifier_pairings',
+    'product_search_documents',
+    'directory_entries',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

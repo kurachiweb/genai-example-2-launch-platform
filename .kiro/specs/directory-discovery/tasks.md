@@ -8,7 +8,7 @@
   - 完了状態: 単体テストが成功し、apiとclientの型検査で規則を読み込める
   - _Requirements: 3.3, 3.4, 3.5, 3.7, 3.8, 3.10, 4.3, 5.1, 5.3, 5.6, 6.2_
 
-- [ ] 1.2 検索索引の文書と勝利したプロダクトの記録のテーブル、索引の定義、マイグレーションを作る
+- [x] 1.2 検索索引の文書と勝利したプロダクトの記録のテーブル、索引の定義、マイグレーションを作る
   - 先に、テーブルの定義の単体テストで、索引文書の共通の列と名称・タグラインの列、勝利したプロダクトの記録のプロダクトの一意索引・投稿者の索引・投稿者に外部キーが無いこと・`ON DELETE`の指定が無いことを確かめる
   - 索引の定義(重みは名称10・タグライン5・キーワード1)を索引の集約点に加え、mainの最新を取り込んでから通常のマイグレーションを生成し、索引の定義からSQLを出力するスクリプトの出力を貼ったカスタムマイグレーションを作る
   - 完了状態: 単体テストと、集約点の全定義で全文検索の索引とトリガーの欠けが無いことの検査が成功し、マイグレーションをローカルに適用できる
@@ -327,3 +327,4 @@
 ## Implementation Notes
 
 - 1.1: 規則は`apps/common-lib/directory/`(`directory-query-rules.ts`・`directory-period.ts`)、書記素の単位の切り詰め`truncateGraphemes`を`text/graphemes.ts`に加えた。`page`は数(URL)と10進の整数の形の文字列(GraphQLの`DirectoryInput.page: String`)の両方を受け、2以上の安全な整数だけを残す。`normalizeDirectoryQuery`は既定の項目も`undefined`で全6項目を返す。TanStack Routerの既定の解析で数になった`q`・`category`は文字列へ戻すが`1.50`→`1.5`のように形が変わり得るため、6.10で`parseSearch`の扱いを確かめる。`formatPeriodLabel`は同じ日なら1日だけ、両方無ければ「全期間」(設計に例が無く決めた)。「今年なら年を省く」書式はclientの`launch-date-format.ts`・apiの`product-errors.ts`と3箇所に重複(common-libからclientを読めないため)。`BusinessDateString`は`string`の別名で、型ガード`isBusinessDateString`と型`PeriodRange`・`CustomRangeErrors`を設計に加えて公開した
+- 1.2: テーブルは`apps/db/schema/directory/`(`product_search_documents`・`directory_entries`)、索引の定義`PRODUCT_SEARCH_INDEX`は`schema/directory/product-search-index.ts`で`schema/index.ts`から再エクスポートせず`search/search-indexes.ts`が直接読む(2.1の検索対象も直接読む)。マイグレーションは`20261110153547_directory_discovery`(生成)と`20261110153549_directory_discovery_fts`(`apps/db`の`bun run --silent db:search-index-sql product_search_documents`の出力)。`directory_entries`は追加と削除だけだが設計と既存の先例(`match_events`など)に合わせて`timestamps()`を持ち、db/003の「共通カラムを持たないテーブル(`created_at`だけ)」と食い違う。`product_id`の一意は列の`.unique()`(自動の一意索引)
