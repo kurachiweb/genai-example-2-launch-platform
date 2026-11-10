@@ -7,7 +7,7 @@ import type {
   UserLifecycleEvent,
 } from '../../../lib/core/identity/user-lifecycle.ts';
 
-// 状態の遷移と同じ一括の書き込みに入る文を返す。読み取りはしてよいが、書き込みは返す文だけで行い、利用者IDを条件にした集合に対する更新にする
+// 状態の遷移と同じ一括の書き込みに入る文を返す。読み取りはしてよいが、書き込みは返す文だけで行い、利用者IDを条件にした集合に対する更新・挿入・削除にする
 export interface UserLifecycleSyncHandler {
   statementsFor(
     event: UserLifecycleEvent,

@@ -7,7 +7,7 @@ import type {
   SyncProductLifecycleEventType,
 } from '../../../lib/core/product/product-lifecycle.ts';
 
-// 状態の変更と同じ一括の書き込みに入る文を返す。読み取りはしてよいが、書き込みは返す文だけで行い、プロダクトIDを条件にした集合に対する更新か挿入にする
+// 状態の変更と同じ一括の書き込みに入る文を返す。読み取りはしてよいが、書き込みは返す文だけで行い、プロダクトIDを条件にした集合に対する更新・挿入・削除にする
 export interface ProductLifecycleSyncHandler {
   statementsFor(
     event: ProductLifecycleEvent,
