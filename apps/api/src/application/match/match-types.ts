@@ -6,8 +6,13 @@ const AccountMatchClosureSyncHandler: unique symbol = Symbol.for(
   'match.AccountMatchClosureSyncHandler',
 );
 
+const ProductMatchClosureSyncHandler: unique symbol = Symbol.for(
+  'match.ProductMatchClosureSyncHandler',
+);
+
 export const MATCH_TYPES = Object.freeze({
   UpvoteStore,
   UpvoteService,
   AccountMatchClosureSyncHandler,
+  ProductMatchClosureSyncHandler,
 });

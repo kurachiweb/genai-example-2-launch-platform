@@ -7,6 +7,7 @@ const EXPECTED_NAMES = [
   'UpvoteStore',
   'UpvoteService',
   'AccountMatchClosureSyncHandler',
+  'ProductMatchClosureSyncHandler',
 ] as const;
 
 describe('MATCH_TYPES', () => {

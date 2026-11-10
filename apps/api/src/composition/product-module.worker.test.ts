@@ -247,7 +247,7 @@ describe('APIサーバーのプロダクトのモジュールの束縛', () => {
     ).toEqual([]);
   });
 
-  test('ライフサイクルの確定は、初版の空の同期の処理の登録口で組み立てた部品に解決し、非公開化をD1へ確定する', async () => {
+  test('ライフサイクルの確定は、同期の処理の登録口で組み立てた部品に解決し、非公開化をD1へ確定する', async () => {
     await insertUser(OWNER, { emailVerifiedAt: T0 });
     await insertProduct(1, OWNER);
     const committer = createContainer().get<ProductLifecycleCommitter>(

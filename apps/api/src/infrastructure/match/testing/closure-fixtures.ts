@@ -32,6 +32,9 @@ import {
   VOTER,
 } from './upvote-store-fixtures.ts';
 
+// 投稿者Aのプロダクト1。マッチ中・両側が投稿者A・開始前・前日のすべてのマッチに側を持つ
+export const OWNER_A_FIRST_PRODUCT = 1;
+
 export const SAME_OWNER_MATCH = 2;
 
 export const SCHEDULED_MATCH = 3;
@@ -349,4 +352,31 @@ export function voterLiveUpvoteRemoved(at: Date) {
       updatedAt: at,
     },
   } satisfies Readonly<Record<number, Partial<EntryState>>>;
+}
+
+// プロダクト1が該当したときの、マッチ中の2つのマッチの即時の終了と開始前のマッチの該当の記録。Upvoteと集計値は変えない
+export function productOneClosure(at: Date) {
+  return {
+    matches: {
+      [LIVE_MATCH]: {
+        decidedAt: at,
+        endedEarlyAt: at,
+        decision: 'walkover',
+        updatedAt: at,
+      },
+      [SAME_OWNER_MATCH]: {
+        decidedAt: at,
+        endedEarlyAt: at,
+        decision: 'walkover',
+        updatedAt: at,
+      },
+    },
+    entries: {
+      [ENTRY_A]: { result: 'lost', updatedAt: at },
+      [ENTRY_B]: { result: 'walkover', updatedAt: at },
+      [SAME_OWNER_ENTRY_1]: { result: 'lost', updatedAt: at },
+      [SAME_OWNER_ENTRY_2]: { result: 'walkover', updatedAt: at },
+      [SCHEDULED_ENTRY_A]: { forfeitedAt: at, updatedAt: at },
+    },
+  } satisfies Parameters<typeof expectedScenario>[0];
 }

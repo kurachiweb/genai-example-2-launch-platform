@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
+import { MATCH_TYPES } from '../application/match/match-types.ts';
 import { createD1ProductLifecycleCommitter } from '../infrastructure/product/d1-product-lifecycle-committer.ts';
 import { PRODUCT_LIFECYCLE_SYNC_HANDLERS } from './product-lifecycle-sync-handlers.ts';
 
@@ -10,8 +11,14 @@ const UNUSED_ID_GENERATOR = {
 };
 
 describe('PRODUCT_LIFECYCLE_SYNC_HANDLERS', () => {
-  test('初版の登録口は空である', () => {
-    expect(PRODUCT_LIFECYCLE_SYNC_HANDLERS).toStrictEqual([]);
+  test('match-engineの即時の終了を非公開化と削除に登録し、復元には登録しない', () => {
+    expect(PRODUCT_LIFECYCLE_SYNC_HANDLERS).toStrictEqual([
+      {
+        name: 'match-engine.product-match-closure',
+        events: ['hidden', 'deleted'],
+        handler: MATCH_TYPES.ProductMatchClosureSyncHandler,
+      },
+    ]);
   });
 
   test('登録は<spec名>.<名詞句>の名前と種類が重複せず、ライフサイクルの確定の部品を組み立てられる', () => {
