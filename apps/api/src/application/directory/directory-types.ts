@@ -11,7 +11,15 @@ const ItemMetricsReader: unique symbol = Symbol.for(
   'directory.ItemMetricsReader',
 );
 
+const DirectoryReader: unique symbol = Symbol.for('directory.DirectoryReader');
+
+const DirectoryCategoryReader: unique symbol = Symbol.for(
+  'directory.DirectoryCategoryReader',
+);
+
 export const DIRECTORY_TYPES = Object.freeze({
+  DirectoryReader,
+  DirectoryCategoryReader,
   LaunchHighlightsReader,
   ItemMetricSources,
   ItemMetricsReader,

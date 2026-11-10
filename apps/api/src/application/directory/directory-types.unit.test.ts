@@ -7,6 +7,8 @@ const EXPECTED_NAMES = [
   'LaunchHighlightsReader',
   'ItemMetricSources',
   'ItemMetricsReader',
+  'DirectoryReader',
+  'DirectoryCategoryReader',
 ] as const;
 
 describe('DIRECTORY_TYPES', () => {
