@@ -7,6 +7,7 @@ export * from './follow/index.ts';
 export * from './identity/index.ts';
 export * from './inquiry/index.ts';
 export * from './legal/index.ts';
+export * from './match/index.ts';
 export * from './media/media-file-quarantine-reasons.ts';
 export * from './media/media-files.ts';
 export * from './payments/index.ts';

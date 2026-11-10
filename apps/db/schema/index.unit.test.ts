@@ -60,6 +60,12 @@ describe('スキーマの集約点', () => {
     'product_launches',
     'product_lifecycle_events',
     'product_lifecycle_handler_runs',
+    'matches',
+    'match_entries',
+    'match_upvotes',
+    'match_events',
+    'match_event_handler_runs',
+    'qualifier_pairings',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共有の定義・テーブル・文言
-- [ ] 1.1 マッチの6テーブル・予選の勝利の部品を定義し、マイグレーションを作る
+- [x] 1.1 マッチの6テーブル・予選の勝利の部品を定義し、マイグレーションを作る
   - 前提: dev-tooling〜product-launchの17specの全タスクが完了していること(`users`とライフサイクルの登録口・`AccountGuard`・`LoginRequiredDialog`、product-launchの`ScheduledLaunchDirectory`・`LaunchOutcomeRecorder`・`ProductDirectory`・`visibleProducts()`・プロダクトライフサイクルの登録口、user-profile-socialの`PUBLIC_PROFILE_TABS`と`UserSummary`、frontend-platformの仮のトップページ・`useTurnstileToken`・状態表示、inquiry-chatの`LIVE_REFRESH_QUERY_OPTIONS`、paymentsの23:40のジョブ、E2Eの`e2e/support/mailpit.ts`・`e2e/support/local-d1.ts`)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、テーブルの定義の単体テストで、CHECK(種別・段階・決着・側の番号・結果・イベントの種類と状態・開始が終了より前)、部分一意索引(有効なUpvoteはマッチと利用者で1つ、予選の側のローンチは1つ)、一意索引(マッチと側の番号・マッチとイベントの種類・実施日のペアリング)、外部キー(`ON DELETE`の指定なし、投稿者のIDに外部キーが無いこと)を確かめる。ローカルD1のWorkers統合テストで、有効なUpvoteを同じマッチと利用者で2つ作れず論理削除の後は作れること(仮3)、同じローンチの予選の側を2つ作れないこと、予選の勝利の部品が勝利・不戦勝・相手の退会等による勝利の側だけを返し紐付けを解除した側を返さないことを確かめる
   - 作業量が3時間の上限に近いため、テーブルとマイグレーションを先に終え、予選の勝利の部品を最後に足す。bot対策の`action`はこのタスクで作らない(apiの定数は6.4、clientの写しは8.5が作る)。スキーマの集約点へ加え、mainの最新を取り込んでからマイグレーションを生成する
@@ -306,3 +306,7 @@
   - apiの`triggers.crons`の変更が`wrangler deploy`で反映される旨、本specの実装より前にstagingでマッチ中のまま固定されたローンチがあればproduct-launchの手順で結果を記録する旨、roadmapの帯の割り当ての表の本specの「使用中の値」(4:21は1100・1110、波及処理は1100)を作業の報告に記録する
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に運用の事項が載っている
   - _Requirements: 12.10, 13.1, 13.2_
+
+## Implementation Notes
+
+- 1.1: テーブルは`apps/db/schema/match/`、マイグレーションは`20261110032731_match_engine`。値の一覧(種別・段階・決着・結果・イベントの種類と状態・ペアリングの状態)は`apps/db`内だけの定数のため、2.1で`core/match`の値の一覧とテーブル定義の`enumValues`の一致を確かめる単体テストを加える(product-launchの`product-lifecycle-columns.unit.test.ts`と同じ形)。`qualifierWins()`は別名付きの副問い合わせを返す関数で、`const wins = qualifierWins()`と受けて`wins.productId`で結合する(design.mdの利用例`qualifierWins.productId`は動かない)。戻り値の`matchDate`は`string`、`lastUpvotedAt`・`decidedAt`はエポックミリ秒の`number`。`match_kind`は側とイベントにも同じCHECKを持つ。予選の側の部分一意索引は`match_entries_qualifier_launch_id_unique`(トーナメントの側のローンチには一意の制約が無い)
