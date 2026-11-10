@@ -1,3 +1,4 @@
 @import '../lib/styles/base.css';
+@import './components/match/stadium.css';
 
 @source '../lib/components';
