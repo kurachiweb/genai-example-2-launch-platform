@@ -15,6 +15,7 @@ export const cancelUpvoteLabel = (productName: string): string =>
 export const VOTE_UNIT = '票';
 
 // 未ログインの閲覧者はボタンを押せる状態で示し、押下でログインへ誘導するため理由を持たない
+// APIサーバーが同じ理由で拒否するときの文言(apps/apiのsrc/application/match/match-errors.tsのMATCH_ERRORSのupvote_own_match・upvote_not_accepting・email_not_verified・account_unavailable)と同じにする。一致はルートのconfig/match-contract-copies.unit.test.tsが確かめる
 export const UPVOTE_DISABLED_REASONS: Readonly<
   Record<Exclude<UpvoteRestriction, 'GUEST'>, string>
 > = Object.freeze({

@@ -2,6 +2,7 @@ import { inject, injectable } from 'inversify';
 
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
+import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { MATCH_PLATFORM_TYPES } from '../../../lib/core/match/identifiers.ts';
 import { qualifierWindow } from '../../../lib/core/match/match-model.ts';
 import type {
@@ -29,10 +30,18 @@ export const QUALIFIER_PAIRING_READ_LIMIT = 500;
 
 export const QUALIFIER_PAIRING_WRITE_LIMIT = 50;
 
+export const QUALIFIER_PAIRING_RETRY_LIMIT = 3;
+
 export interface QualifierPairingService {
   // 対象日の予選を組み、この呼び出しで予定したマッチと側のローンチの数を返す
   pair(date: BusinessDate): Promise<PairingCounts>;
 }
+
+interface ScheduledRound extends PairingCounts {
+  readonly skipped: number;
+}
+
+const logger = getAppLogger(['api', 'application', 'match']);
 
 function chunk<T>(items: readonly T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
@@ -65,19 +74,50 @@ export class StoreQualifierPairingService implements QualifierPairingService {
   async pair(date: BusinessDate): Promise<PairingCounts> {
     const at = this.clock.now();
     const state = await this.store.beginDay(date, at);
-    const candidates = await this.unpairedLaunches(date);
+    let candidates = await this.unpairedLaunches(date);
     if (state === 'already-completed' && candidates.length === 0) {
       return { launches: 0, matches: 0 };
     }
+    let launches = 0;
+    let matches = 0;
+    for (let retries = 0; ; retries += 1) {
+      const round = await this.scheduleRound(date, candidates, at);
+      launches += round.launches;
+      matches += round.matches;
+      if (round.skipped === 0) {
+        break;
+      }
+      // 別の実行が先に組んだローンチを含むマッチは作られず、その相手のローンチが組まれずに残るため組み直す。組み直しても残る日を完了にすると0:00の回復が組まないため、未完了のまま残して回復に委ねる
+      if (retries === QUALIFIER_PAIRING_RETRY_LIMIT) {
+        logger.warn(
+          '別の実行と重なり組めなかったマッチが残ったため、ペアリングを未完了のまま残しました',
+          { skipped: round.skipped },
+        );
+        return { launches, matches };
+      }
+      candidates = await this.unpairedLaunches(date);
+    }
+    const counts = { launches, matches };
+    await this.store.completeDay(date, counts, this.clock.now());
+    return counts;
+  }
+
+  private async scheduleRound(
+    date: BusinessDate,
+    candidates: readonly ScheduledLaunch[],
+    at: Date,
+  ): Promise<ScheduledRound> {
     const inputs = this.scheduleInputs(
       date,
       pairQualifiers(candidates, this.random),
     );
     let launches = 0;
     let matches = 0;
+    let skipped = 0;
     for (const page of chunk(inputs, QUALIFIER_PAIRING_WRITE_LIMIT)) {
-      const { created } = await this.scheduler.schedule(page, at);
-      const createdIds = new Set(created);
+      const result = await this.scheduler.schedule(page, at);
+      const createdIds = new Set(result.created);
+      skipped += result.skipped.length;
       for (const input of page) {
         if (createdIds.has(input.matchId)) {
           matches += 1;
@@ -85,9 +125,7 @@ export class StoreQualifierPairingService implements QualifierPairingService {
         }
       }
     }
-    const counts = { launches, matches };
-    await this.store.completeDay(date, counts, this.clock.now());
-    return counts;
+    return { launches, matches, skipped };
   }
 
   private async unpairedLaunches(

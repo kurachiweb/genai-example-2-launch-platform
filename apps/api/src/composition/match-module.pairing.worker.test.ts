@@ -215,6 +215,69 @@ describe('APIサーバーのマッチのモジュールのペアリングの束�
     expect(await readDay()).toMatchObject({ status: 'completed' });
   });
 
+  test('別の実行が先に組んだローンチの相手を組み直し、全てのローンチを1回ずつ組んでから完了を記録する', async () => {
+    await seedScheduledLaunches(4);
+    const container = createContainer();
+    const scheduler = container.get<MatchScheduler>(
+      MATCH_PLATFORM_TYPES.MatchScheduler,
+    );
+    const ids = container.get<IdGenerator>(PLATFORM_TYPES.IdGenerator);
+    let calls = 0;
+    const racingOnFirstWrite: MatchScheduler = {
+      async schedule(inputs, at) {
+        calls += 1;
+        const contested = inputs[0]?.entries[0];
+        if (calls === 1 && contested !== undefined) {
+          const window = qualifierWindow(DATE);
+          await scheduler.schedule(
+            [
+              {
+                matchId: ids.generate(),
+                kind: 'qualifier',
+                round: null,
+                stage: null,
+                matchDate: DATE,
+                startsAt: window.startsAt,
+                endsAt: window.endsAt,
+                entries: [contested],
+              },
+            ],
+            at,
+          );
+        }
+        return scheduler.schedule(inputs, at);
+      },
+    };
+    const service = new StoreQualifierPairingService(
+      container.get<PairingStore>(MATCH_TYPES.PairingStore),
+      container.get<ScheduledLaunchDirectory>(
+        PRODUCT_PLATFORM_TYPES.ScheduledLaunchDirectory,
+      ),
+      racingOnFirstWrite,
+      new CryptoRandomSource(),
+      systemClock,
+      ids,
+    );
+
+    const counts = await service.pair(DATE);
+
+    expect(calls).toBe(2);
+    expect(counts).toEqual({ launches: 3, matches: 2 });
+    const allLaunches = await pairedLaunches();
+    expect(allLaunches.toSorted()).toEqual([
+      launchIdOf(1),
+      launchIdOf(2),
+      launchIdOf(3),
+      launchIdOf(4),
+    ]);
+    expect(await readMatchRows()).toHaveLength(3);
+    expect(await readDay()).toMatchObject({
+      status: 'completed',
+      launchCount: 3,
+      matchCount: 2,
+    });
+  });
+
   test('完了した日に同じペアリングを再び行っても、マッチと記録を変えない', async () => {
     await seedScheduledLaunches(5);
     const service = createContainer().get<QualifierPairingService>(

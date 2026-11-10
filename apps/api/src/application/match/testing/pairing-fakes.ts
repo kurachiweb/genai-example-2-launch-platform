@@ -80,6 +80,7 @@ export interface PairingDayRecord {
 export interface FakePairingStore extends PairingStore {
   readonly days: Map<BusinessDate, PairingDayRecord>;
   readonly calls: string[];
+  readonly paired: Set<string>;
 }
 
 export function createFakePairingStore(
@@ -97,6 +98,7 @@ export function createFakePairingStore(
   return {
     days,
     calls,
+    paired,
     beginDay(date): Promise<PairingDayState> {
       calls.push('beginDay');
       const day = days.get(date);
@@ -139,9 +141,12 @@ export interface FakeMatchScheduler extends MatchScheduler {
   }[];
 }
 
-// skippedLaunchesのローンチを含むマッチは、同時に組まれていた扱いで作らない
+// skippedLaunchesのローンチは別の実行が先に組んだ扱いで、それを含むマッチは作らない。pairedを渡すと、作ったマッチの側と別の実行が組んだローンチをその日の予選に組まれたものとして加える
 export function createFakeMatchScheduler(
-  options: { readonly skippedLaunches?: ReadonlySet<string> } = {},
+  options: {
+    readonly skippedLaunches?: ReadonlySet<string>;
+    readonly paired?: Set<string>;
+  } = {},
 ): FakeMatchScheduler {
   const skippedLaunches = options.skippedLaunches ?? new Set<string>();
   const calls: FakeMatchScheduler['calls'] = [];
@@ -151,6 +156,16 @@ export function createFakeMatchScheduler(
       calls.push({ inputs, at });
       const isSkipped = (input: MatchScheduleInput) =>
         input.entries.some((entry) => skippedLaunches.has(entry.launchId));
+      const pairedNow = inputs.flatMap((input) =>
+        input.entries
+          .map((entry) => entry.launchId)
+          .filter(
+            (launchId) => !isSkipped(input) || skippedLaunches.has(launchId),
+          ),
+      );
+      for (const launchId of pairedNow) {
+        options.paired?.add(launchId);
+      }
       return Promise.resolve({
         created: inputs
           .filter((input) => !isSkipped(input))

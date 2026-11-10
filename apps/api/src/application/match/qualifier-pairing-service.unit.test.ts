@@ -1,10 +1,11 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
 
 import { qualifierWindow } from '../../../lib/core/match/match-model.ts';
 import type { ScheduledLaunch } from '../../../lib/core/product/ports.ts';
-import type { PairingStore } from './ports.ts';
 import {
   QUALIFIER_PAIRING_READ_LIMIT,
+  QUALIFIER_PAIRING_RETRY_LIMIT,
   QUALIFIER_PAIRING_WRITE_LIMIT,
   StoreQualifierPairingService,
 } from './qualifier-pairing-service.ts';
@@ -12,6 +13,7 @@ import {
   COMPLETED_NOW,
   createFakeMatchScheduler,
   createFakePairingStore,
+  type FakePairingStore,
   createFakeScheduledLaunchDirectory,
   createPairingMatchIds,
   lastIndexRandom,
@@ -22,10 +24,38 @@ import {
 } from './testing/pairing-fakes.ts';
 import { createSteppingClock } from './testing/settlement-fakes.ts';
 
+const records: LogRecord[] = [];
+
+beforeEach(() => {
+  records.length = 0;
+  configureSync({
+    reset: true,
+    sinks: {
+      capture: (record) => {
+        records.push(record);
+      },
+    },
+    loggers: [
+      { category: ['api'], sinks: ['capture'], lowestLevel: 'debug' },
+      { category: ['logtape', 'meta'], sinks: [], lowestLevel: 'warning' },
+    ],
+  });
+});
+
+afterEach(() => {
+  resetSync();
+});
+
+function matchLogs() {
+  return records
+    .filter((record) => record.category.join('.') === 'api.application.match')
+    .map(({ level, properties }) => ({ level, properties }));
+}
+
 function serviceOf(
   launches: readonly ScheduledLaunch[],
   options: {
-    readonly store?: PairingStore;
+    readonly store?: FakePairingStore;
     readonly skippedLaunches?: ReadonlySet<string>;
   } = {},
 ) {
@@ -33,6 +63,7 @@ function serviceOf(
   const directory = createFakeScheduledLaunchDirectory(launches);
   const scheduler = createFakeMatchScheduler({
     skippedLaunches: options.skippedLaunches,
+    paired: store.paired,
   });
   const service = new StoreQualifierPairingService(
     store,
@@ -54,9 +85,10 @@ function scheduledLaunchIds(
 }
 
 describe('StoreQualifierPairingService.pair', () => {
-  test('読み取りは500件・書き込みは50マッチずつである', () => {
+  test('読み取りは500件・書き込みは50マッチずつ、組み直しは3回までである', () => {
     expect(QUALIFIER_PAIRING_READ_LIMIT).toBe(500);
     expect(QUALIFIER_PAIRING_WRITE_LIMIT).toBe(50);
+    expect(QUALIFIER_PAIRING_RETRY_LIMIT).toBe(3);
   });
 
   test('対象日の予定のローンチを500件ずつ、次のページが無くなるまで読む', async () => {
@@ -181,20 +213,84 @@ describe('StoreQualifierPairingService.pair', () => {
     });
   });
 
-  test('同時に組まれていて予定されなかったマッチは件数に数えない', async () => {
+  test('別の実行が先に組んだローンチを含むマッチは数えず、相手のローンチを組み直してから記録を完了にする', async () => {
     const store = createFakePairingStore();
-    const { service } = serviceOf(scheduledLaunches(4), {
+    const { service, scheduler } = serviceOf(scheduledLaunches(4), {
       store,
       skippedLaunches: new Set(['launch-0003']),
     });
 
     const summary = await service.pair(PAIRING_DATE);
 
-    expect(summary).toEqual({ launches: 2, matches: 1 });
-    expect(store.days.get(PAIRING_DATE)).toMatchObject({
-      launches: 2,
-      matches: 1,
+    expect(
+      scheduler.calls.map(({ inputs }) =>
+        inputs.map((input) => input.entries.map((entry) => entry.launchId)),
+      ),
+    ).toEqual([
+      [
+        ['launch-0001', 'launch-0002'],
+        ['launch-0003', 'launch-0004'],
+      ],
+      [['launch-0004']],
+    ]);
+    expect(scheduler.calls.map(({ at }) => at)).toEqual([
+      PAIRING_NOW,
+      PAIRING_NOW,
+    ]);
+    expect(summary).toEqual({ launches: 3, matches: 2 });
+    expect(store.calls).toEqual([
+      'beginDay',
+      'pairedLaunchIds',
+      'pairedLaunchIds',
+      'completeDay',
+    ]);
+    expect(store.days.get(PAIRING_DATE)).toEqual({
+      completedAt: COMPLETED_NOW,
+      launches: 3,
+      matches: 2,
     });
+    expect(matchLogs()).toEqual([]);
+  });
+
+  test('組み直すローンチが残らなければ、予定を書かずに記録を完了にする', async () => {
+    const store = createFakePairingStore();
+    const { service, scheduler } = serviceOf(scheduledLaunches(2), {
+      store,
+      skippedLaunches: new Set(['launch-0001', 'launch-0002']),
+    });
+
+    const summary = await service.pair(PAIRING_DATE);
+
+    expect(scheduler.calls).toHaveLength(1);
+    expect(summary).toEqual({ launches: 0, matches: 0 });
+    expect(store.days.get(PAIRING_DATE)?.completedAt).toEqual(COMPLETED_NOW);
+  });
+
+  test('組み直しを3回行っても予定されないマッチが残れば、記録を完了にせず、warnのログに件数だけを出す', async () => {
+    const store = createFakePairingStore();
+    const { service, scheduler } = serviceOf(scheduledLaunches(5), { store });
+    const scheduled: number[] = [];
+    scheduler.schedule = (inputs) => {
+      scheduled.push(inputs.length);
+      const created = scheduled.length === 1 ? inputs.slice(0, 1) : [];
+      for (const entry of created.flatMap((input) => input.entries)) {
+        store.paired.add(entry.launchId);
+      }
+      return Promise.resolve({
+        created: created.map((input) => input.matchId),
+        skipped: inputs.slice(created.length).map((input) => input.matchId),
+      });
+    };
+
+    const summary = await service.pair(PAIRING_DATE);
+
+    expect(scheduled).toEqual([3, 2, 2, 2]);
+    expect(summary).toEqual({ launches: 2, matches: 1 });
+    expect(store.calls).not.toContain('completeDay');
+    expect(store.days.get(PAIRING_DATE)?.completedAt).toBeNull();
+    expect(matchLogs()).toEqual([
+      { level: 'warning', properties: { skipped: 2 } },
+    ]);
   });
 
   test('対象のローンチが無い未完了の日も、記録を完了にする', async () => {
