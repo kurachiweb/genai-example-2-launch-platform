@@ -6,7 +6,7 @@ export interface SectionHeadingProps {
   readonly icon: ReactNode;
   readonly title: string;
   // 見出しの右に添える試合数や時刻などの補足
-  readonly meta: ReactNode;
+  readonly meta?: ReactNode;
 }
 
 export function SectionHeading({ id, icon, title, meta }: SectionHeadingProps) {
@@ -19,9 +19,11 @@ export function SectionHeading({ id, icon, title, meta }: SectionHeadingProps) {
         {icon}
         {title}
       </h2>
-      <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        {meta}
-      </p>
+      {meta !== undefined && (
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          {meta}
+        </p>
+      )}
     </div>
   );
 }
