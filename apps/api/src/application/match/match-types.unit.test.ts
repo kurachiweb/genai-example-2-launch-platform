@@ -3,7 +3,11 @@ import { describe, expect, test } from 'bun:test';
 import { MATCH_PLATFORM_TYPES } from '../../../lib/core/match/identifiers.ts';
 import { MATCH_TYPES } from './match-types.ts';
 
-const EXPECTED_NAMES = ['UpvoteStore', 'UpvoteService'] as const;
+const EXPECTED_NAMES = [
+  'UpvoteStore',
+  'UpvoteService',
+  'AccountMatchClosureSyncHandler',
+] as const;
 
 describe('MATCH_TYPES', () => {
   test('apiのマッチのストア・ユースケースの識別子だけを持つ', () => {
