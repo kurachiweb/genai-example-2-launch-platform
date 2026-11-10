@@ -13,6 +13,10 @@ const EXPECTED_NAMES = [
   'PairingStore',
   'RandomSource',
   'QualifierPairingService',
+  'KickoffStore',
+  'EntryEligibilityChecker',
+  'MatchIncidentReporter',
+  'MatchKickoff',
 ] as const;
 
 describe('MATCH_TYPES', () => {

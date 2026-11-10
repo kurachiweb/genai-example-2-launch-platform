@@ -22,6 +22,18 @@ const QualifierPairingService: unique symbol = Symbol.for(
   'match.QualifierPairingService',
 );
 
+const KickoffStore: unique symbol = Symbol.for('match.KickoffStore');
+
+const EntryEligibilityChecker: unique symbol = Symbol.for(
+  'match.EntryEligibilityChecker',
+);
+
+const MatchIncidentReporter: unique symbol = Symbol.for(
+  'match.MatchIncidentReporter',
+);
+
+const MatchKickoff: unique symbol = Symbol.for('match.MatchKickoff');
+
 export const MATCH_TYPES = Object.freeze({
   UpvoteStore,
   UpvoteService,
@@ -32,4 +44,8 @@ export const MATCH_TYPES = Object.freeze({
   PairingStore,
   RandomSource,
   QualifierPairingService,
+  KickoffStore,
+  EntryEligibilityChecker,
+  MatchIncidentReporter,
+  MatchKickoff,
 });

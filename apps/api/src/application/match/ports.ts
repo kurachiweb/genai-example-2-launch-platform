@@ -1,7 +1,11 @@
-import type { MatchPhase } from '../../../lib/core/match/match-model.ts';
+import type {
+  MatchKind,
+  MatchPhase,
+} from '../../../lib/core/match/match-model.ts';
 import type { BusinessDate } from '../../../lib/core/time/business-time.ts';
 import type {
   EntryTally,
+  KickoffOutcome,
   MatchOutcome,
 } from '../../../lib/core/match/match-decision.ts';
 import type { UpvoteAction } from '../../domain/match/upvote-plan.ts';
@@ -97,4 +101,58 @@ export interface PairingStore {
   isDayCompleted(date: BusinessDate): Promise<boolean>;
   // 実施日の予選の側のローンチ。紐付けを解除した側は含めない
   pairedLaunchIds(date: BusinessDate): Promise<ReadonlySet<string>>;
+}
+
+export interface KickoffEntry {
+  readonly entryId: string;
+  // 紐付けを解除した側はnull
+  readonly launchId: string | null;
+  readonly productId: string | null;
+  // 予定の間に該当が記録されている
+  readonly forfeited: boolean;
+}
+
+export interface DueKickoff {
+  readonly matchId: string;
+  readonly kind: MatchKind;
+  readonly startsAt: Date;
+  // 側の番号の順
+  readonly entries: readonly KickoffEntry[];
+}
+
+export interface KickoffWrite {
+  readonly matchId: string;
+  readonly outcome: KickoffOutcome;
+  readonly eventId: string;
+  // 判定で該当とした側。読み取りの後に他の側へ該当が記録されたマッチは書き込まない
+  readonly forfeitedEntryIds: readonly string[];
+}
+
+export interface KickoffStore {
+  // 開始の日時を過ぎて開始も確定もしていないマッチを、開始の日時とIDの順に返す
+  listDue(now: Date, limit: number): Promise<readonly DueKickoff[]>;
+  // 1〜50件を1つの一括の書き込みで開始または決着し、書き込んだマッチのイベントのIDを返す。既に開始・確定していたマッチは変えず、イベントも作らない
+  writeKickoffs(
+    items: readonly KickoffWrite[],
+    at: Date,
+  ): Promise<readonly string[]>;
+}
+
+export interface EntryEligibilityChecker {
+  // 開始の時点で該当する側のID
+  forfeitedEntries(
+    items: readonly Pick<DueKickoff, 'kind' | 'entries'>[],
+    now: Date,
+  ): Promise<ReadonlySet<string>>;
+}
+
+export interface MatchIncident {
+  readonly kind: 'match-kickoff-late';
+  // 開始の日時から遅れて開始・決着したマッチの数
+  readonly count: number;
+}
+
+export interface MatchIncidentReporter {
+  // 運用者が検知できるようログとエラートラッキングへ送る。個人情報を含めない
+  report(incident: MatchIncident): void;
 }

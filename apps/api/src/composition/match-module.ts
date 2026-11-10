@@ -5,12 +5,20 @@ import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { RandomSource } from '../../lib/core/match/qualifier-pairing.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { createMatchPlatformModule } from '../../lib/workers/match/match-platform-module.ts';
+import { DirectoryEntryEligibilityChecker } from '../application/match/entry-eligibility.ts';
+import {
+  type MatchKickoff,
+  StoreMatchKickoff,
+} from '../application/match/match-kickoff.ts';
 import {
   type MatchSettlement,
   StoreMatchSettlement,
 } from '../application/match/match-settlement.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
 import type {
+  EntryEligibilityChecker,
+  KickoffStore,
+  MatchIncidentReporter,
   PairingStore,
   SettlementStore,
   UpvoteStore,
@@ -26,10 +34,12 @@ import {
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { AccountMatchClosureSyncHandler } from '../infrastructure/match/account-match-closure-sync-handler.ts';
 import { CryptoRandomSource } from '../infrastructure/match/crypto-random-source.ts';
+import { D1KickoffStore } from '../infrastructure/match/d1-kickoff-store.ts';
 import { D1PairingStore } from '../infrastructure/match/d1-pairing-store.ts';
 import { D1SettlementStore } from '../infrastructure/match/d1-settlement-store.ts';
 import { D1UpvoteStore } from '../infrastructure/match/d1-upvote-store.ts';
 import { ProductMatchClosureSyncHandler } from '../infrastructure/match/product-match-closure-sync-handler.ts';
+import { SentryMatchIncidentReporter } from '../infrastructure/match/sentry-match-incident-reporter.ts';
 import type { ProductLifecycleSyncHandler } from '../infrastructure/product/product-lifecycle-sync-handler.ts';
 
 export const API_MATCH_PLATFORM_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> =
@@ -54,5 +64,13 @@ export const API_MATCH_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<QualifierPairingService>(MATCH_TYPES.QualifierPairingService).to(
       StoreQualifierPairingService,
     );
+    bind<KickoffStore>(MATCH_TYPES.KickoffStore).to(D1KickoffStore);
+    bind<EntryEligibilityChecker>(MATCH_TYPES.EntryEligibilityChecker).to(
+      DirectoryEntryEligibilityChecker,
+    );
+    bind<MatchIncidentReporter>(MATCH_TYPES.MatchIncidentReporter).to(
+      SentryMatchIncidentReporter,
+    );
+    bind<MatchKickoff>(MATCH_TYPES.MatchKickoff).to(StoreMatchKickoff);
   }),
 };
