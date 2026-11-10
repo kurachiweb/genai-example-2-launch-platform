@@ -11,6 +11,7 @@ import {
   RECHECK_DISPOSABLE_EMAIL_MESSAGE,
   RUN_USER_LIFECYCLE_MESSAGE,
 } from './identity.ts';
+import { RUN_MATCH_EVENT_MESSAGE } from './match.ts';
 import { RUN_PRODUCT_LIFECYCLE_MESSAGE } from './product.ts';
 import { SEARCH_INDEX_REFRESH_MESSAGE } from './search-index-refresh.ts';
 
@@ -26,4 +27,5 @@ export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
     PAYMENTS_REFUND_MESSAGE,
     ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE,
     RUN_PRODUCT_LIFECYCLE_MESSAGE,
+    RUN_MATCH_EVENT_MESSAGE,
   ]);
