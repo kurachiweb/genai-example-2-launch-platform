@@ -530,8 +530,8 @@ sequenceDiagram
 
 - イベントの挿入の`product_id`を`CASE WHEN <状態の条件> THEN ? ELSE NULL END`にし、条件(削除は版の一致・未削除・投稿者が可視・予選の固定でない、非公開化は未削除かつ`hidden_at IS NULL`、復元は未削除かつ`hidden_at IS NOT NULL`)を満たさなければ全体を取り消す。
 - 本specの文: 削除は`products.deleted_at`と`previousHandleSoftDelete`(旧ハンドルの転送を止める。現在のハンドルは物理削除まで使用中のまま、旧ハンドルは他のプロダクトが設定できる、仮5)。非公開化は`hidden_at`と未開始のローンチの取消(`launch_date > 今日`、12.7)。復元は`hidden_at = NULL`だけで、取消を戻さない(12.9)。
-- 操作(application層の`ProductDeletion`・`ProductVisibilityControl`)は`ProductLifecycleCommitter`のポートと`ProductMessagePublisher`だけを使い、同期の処理の文の収集と一括の書き込みはD1の実装`D1ProductLifecycleCommitter`(infrastructure層)が行う。
-- 送信の失敗はイベントを`pending`のまま残し、4:21の`product-launch.lifecycle-redispatch`が送り直す(12.5)。非同期の処理の例外は`PRODUCT_LIFECYCLE_RETRY_POLICY`(5回・300秒から倍・上限3600秒)で再試行され、上限でデッドレターとSentryに通知される。
+- 操作(application層の`ProductDeletion`・`ProductVisibilityControl`)は`ProductLifecycleCommitter`のポート・`ProductMessagePublisher`・`ProductIncidentReporter`だけを使い、同期の処理の文の収集と一括の書き込みはD1の実装`D1ProductLifecycleCommitter`(infrastructure層)が行う。
+- 送信の失敗は確定済みの操作を失敗させず、`error`のログと`ProductIncidentReporter`の`product-lifecycle-publish-failed`(イベントとプロダクトのIDだけ)でSentryへ報告し(backend/007の「状態の遷移の確定」と同じ)、イベントを`pending`のまま残して4:21の`product-launch.lifecycle-redispatch`が送り直す(12.5)。非同期の処理の例外は`PRODUCT_LIFECYCLE_RETRY_POLICY`(5回・300秒から倍・上限3600秒)で再試行され、上限でデッドレターとSentryに通知される。
 
 ### 物理削除
 
@@ -1469,7 +1469,7 @@ export interface ProductDescriptionEditor {
 
 - `register`(リゾルバが`requireVerifiedUser`の後、1.7・1.8): (1)カテゴリの存在(`category_not_found`、1.4)。(2)ハンドルの予約語(`isReservedHandle(PRODUCT_HANDLE_RULE)`)と`ProductStore.isHandleOccupied`(他のプロダクトの現在のハンドル、論理削除済みを含む。他のプロダクトの旧ハンドルは使用中としない、2.3・2.4・仮5)で`handle_unavailable`。(3)`computeLaunchDateWindow({ basis: null })`と`checkLaunchDate`(`launch_date_unavailable`、詳細は`{ field: 'launchDate', code: <理由>, message }`で、選べる日は文言の中だけに示す。共通の`FieldErrorDetail`が追加の値を持たないため、4.7)。(4)画像の`claim`(ロゴ`product-logo`・スクリーンショット`product-screenshot`、保有者は本人)と`findMany`のバイト数で`checkScreenshotTotals`(`invalid_upload`・`screenshot_limit_exceeded`、3.3・3.4)。(5)`ProductStore.insert`(製品・最初のローンチ・スクリーンショットの一括の書き込み、`user_id`の`CASE`式で投稿者が確認済みで可視・ハンドルが使用中でないこと、他のプロダクトが同じハンドルを旧ハンドルとして保持していれば`previousHandleRelease`でその行を消すこと、2.5・2.11)。
 - `update`(リゾルバが`requireWritableUser`の後): (1)`ProductStore.findForOwner(userId, productHandle)`(現在のハンドルで本人のもの。無ければ`product_not_found`)と版の照合(`product_update_conflict`、7.3)。(2)`ProductStateEvaluator.evaluate`。(3)`planProductEdit`(`launch-not-allowed`は計画が`blocked`なら`relaunch_blocked`と最初の理由の文言、最初の理由が非公開化(`product_hidden`)なら`product_hidden`と予約の文言、`unknown`なら`decision_unavailable`。`product-errors.ts`の`relaunchBlockedError(block)`で作る)。(4)カテゴリかローンチを変えるとき、固定なら`product_locked`、固定が`unknown`なら`decision_unavailable`(6.1・6.2・6.5)。それ以外の項目は固定の期間でも保存する(6.4)。(5)ローンチの日付を`checkLaunchDate`(`state.window`、4.7)。(6)ハンドルが`changed`で自分の旧ハンドルと`isSameHandle`でなければ予約語と使用中の判定(2.3〜2.5)。(7)新しい画像の`claim`と合計(3.3・3.4)。(8)`ProductStore.save`。(9)確定の後に`replaced`のロゴを`eraseNow`(3.6)、`removed`のスクリーンショットを`markDeleted`(3.7)。失敗は結果を変えず`warn`のログ(ファイルのIDだけ)。
-- `delete`(リゾルバが`requireWritableUser`の後): `findForOwner`→版→`evaluate`の固定(`product_locked`・`decision_unavailable`)→`ProductLifecycleCommitter.commit({ type: 'deleted', productId, expectedVersion, at })`→`ProductMessagePublisher.publish(RUN_PRODUCT_LIFECYCLE_MESSAGE, { eventId })`。送信の失敗は成功として扱い、日次の送り直しに任せる(8.1)。
+- `delete`(リゾルバが`requireWritableUser`の後): `findForOwner`→版→`evaluate`の固定(`product_locked`・`decision_unavailable`)→`ProductLifecycleCommitter.commit({ type: 'deleted', productId, expectedVersion, at })`→`ProductMessagePublisher.publish(RUN_PRODUCT_LIFECYCLE_MESSAGE, { eventId })`。送信の失敗は成功として扱い、`product-lifecycle-publish-failed`をSentryへ報告して日次の送り直しに任せる(8.1)。
 - `ProductDescriptionEditor`: `findForOwner`(無ければ`product_not_found`)→`markdownTextSchema(PRODUCT_DESCRIPTION_RULE)`による検証(違反は`validation_error`で詳細の欄は`descriptionMarkdown`、`withValidatedArgs`と同じ形)→`ProductStore.updateDescription`(版を1増やす)→結果が`hidden`なら`AppError({ kind: 'conflict', code: 'product_hidden', message: 'このプロダクトは公開が停止されているため、説明文を更新できません。' })`、`not-found`なら`AppError({ kind: 'not_found', code: 'product_not_found', message: 'プロダクトが見つかりません。' })`、`account-unavailable`なら`requireWritableUser`と同じ`account_unavailable`(403)を投げる(これらの結果ではストアが確定の後の処理を呼んでいない)。bot対策の検証をユースケースに含めない(7.8)。利用者はpublic-apiだけで、非公開化中の拒否は公開APIの経路の規則である(7.9、仮12)。画面の`updateProduct`は仮7のとおり非公開化中も内容の編集を受け付ける。
 - 3つの保存(`register`・`update`・`ProductDescriptionEditor`)の`PRODUCT_SAVE_HOOKS`の文と確定の後の処理は、`ProductStore`のD1の実装(`D1ProductStore`、infrastructure層)が一括の書き込みの末尾に加え、確定の後に呼ぶ(14.9、仮11)。ユースケースは保存の登録口とデータベースの接続を受け取らない。削除・非公開化・復元はプロダクトライフサイクル、退会・停止・停止解除はユーザーライフサイクルで伝わるため、保存の登録口では呼ばない。
 - 未確認の利用者は登録だけを拒否し、編集・削除は拒否しない(research.mdの確認済み事項)。
@@ -1628,22 +1628,27 @@ export interface ProductMessagePublisher {
   ): Promise<string>;
 }
 // application/product/ports.ts
-// application層はSentryの送信部品を読み込めないため、期限超過と送り直しの続くイベントの報告をこの形で受け取る(identity-authのAuthIncidentReporterと同じ)
+// application層はSentryの送信部品を読み込めないため、期限超過・送り直しの続くイベント・確定の後の送信の失敗の報告をこの形で受け取る(identity-authのAuthIncidentReporterと同じ)
 export type ProductIncident =
   | { readonly kind: 'product-purge-overdue'; readonly count: number }
   | {
       readonly kind: 'product-lifecycle-events-redispatched';
       readonly count: number;
       readonly stuckEventIds: readonly string[];
+    }
+  | {
+      readonly kind: 'product-lifecycle-publish-failed';
+      readonly eventId: string;
+      readonly productId: string;
     };
 export interface ProductIncidentReporter {
   report(incident: ProductIncident): void;
 }
 ```
 
-- `ProductIncidentReporter`はapiの`PRODUCT_TYPES.ProductIncidentReporter`で束縛し、Sentryへ送る実装を`infrastructure/product/sentry-product-incident-reporter.ts`に置く(`infrastructure/auth/sentry-auth-incident-reporter.ts`と同じ形)。`ProductMaintenanceJobs`がこれを受け取る。
+- `ProductIncidentReporter`はapiの`PRODUCT_TYPES.ProductIncidentReporter`で束縛し、Sentryへ送る実装を`infrastructure/product/sentry-product-incident-reporter.ts`に置く(`infrastructure/auth/sentry-auth-incident-reporter.ts`と同じ形)。`ProductMaintenanceJobs`と、確定の後の送信の失敗を報告する`ProductDeletion`・`ProductVisibilityControl`(共通の送信部品`dispatchProductLifecycleEvent`)がこれを受け取る。送信の失敗の報告の属性はイベントとプロダクトのIDだけで、ULIDの形でない値は`unknown`に置き換える。
 - `ProductMessagePublisher`は識別子を持たず、使う側(`ProductDeletion`・`ProductVisibilityControl`・`ProductMaintenanceJobs`)が`@inject(PLATFORM_TYPES.MessagePublisher)`で受け取る(media-pipelineの`MediaJobMessagePublisher`・identity-authの`IdentityMessagePublisher`と同じ)。本節の「送信」は`ProductMessagePublisher.publish(RUN_PRODUCT_LIFECYCLE_MESSAGE, { eventId })`を指す。ジョブの記録の読み書きは`core/product`の`ProductLifecycleStore`の型で`PRODUCT_PLATFORM_TYPES.ProductLifecycleStore`から受け取る。application層の各ファイルは`**/lib/workers/**`を読み込まない。
-- 呼び出し元(ugc-moderation)が管理者の権限・理由・監査ログ・通知を持つ。本操作口は呼び出し元の主体を判定しない(identity-authの`UserSuspension`と同じ形)。`hide`は`ProductLifecycleCommitter.commit({ type: 'hidden' })`(未開始のローンチの取消を含む、12.7)→送信。`unhide`は`unhidden`で、取消を戻さない(12.9)。既に同じ状態なら`unchanged`でイベントを作らない(12.6)。ugc-moderationは、必要なら自分の同期の処理を`PRODUCT_LIFECYCLE_SYNC_HANDLERS`に登録して、理由の記録を同じ一括の書き込みに含められる。
+- 呼び出し元(ugc-moderation)が管理者の権限・理由・監査ログ・通知を持つ。本操作口は呼び出し元の主体を判定しない(identity-authの`UserSuspension`と同じ形)。`hide`は`ProductLifecycleCommitter.commit({ type: 'hidden' })`(未開始のローンチの取消を含む、12.7)→送信。`unhide`は`unhidden`で、取消を戻さない(12.9)。送信の失敗は削除と同じく`changed`を返し、`product-lifecycle-publish-failed`を報告する。既に同じ状態なら`unchanged`でイベントを作らない(12.6)。ugc-moderationは、必要なら自分の同期の処理を`PRODUCT_LIFECYCLE_SYNC_HANDLERS`に登録して、理由の記録を同じ一括の書き込みに含められる。
 
 | ジョブの名前                          | 時刻 | `order` | 処理                                                                                                                                                                                                                                                |
 | ------------------------------------- | ---- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1871,7 +1876,7 @@ export interface ProductLifecycleCommitter {
 ```
 
 - 一括の書き込みの並び(12.3): (1)イベントの挿入(`product_id`の`CASE`式で状態の条件、System Flows)。(2)`products`の更新(`deleted`は`deleted_at`、`hidden`は`hidden_at`、`unhidden`は`hidden_at = NULL`、いずれも`version + 1`)。(3)本specの文(`deleted`は`previousHandleSoftDelete(PRODUCT_HANDLE_NAMESPACE)`(2.9)、`hidden`は`UPDATE product_launches SET cancelled_at = ? WHERE product_id = ? AND outcome IS NULL AND cancelled_at IS NULL AND launch_date > <今日>`(12.7))。(4)登録された同期の処理の文(登録の順)。失敗は読み直しで分類する。
-- 規約: 同期の処理はプロダクトIDを条件にした集合に対する更新だけを返す。マッチの即時の終了(match-engine)などに使う。
+- 規約: 同期の処理はプロダクトIDを条件にした集合に対する更新か挿入だけを返す(保存の処理の規約と同じ。`backend/012`に記載する)。マッチの即時の終了(match-engine)などに使う。
 
 #### ProductWithdrawalSyncHandler・LaunchCancellationSyncHandler
 
@@ -2142,6 +2147,7 @@ export declare class ProductLifecycleRunner implements MessageHandler<{
 | `product-launch.image-erasure`    | プロダクトの`purge_due`          | 1000    | `imageFileIds`を`MediaFiles.eraseNow`(既に消えたものは数えない)。`done`(8.4)                                                                                                     |
 | `product-launch.product-erasure`  | ユーザーの`purge_due`            | 1000    | `listOwnedProductIds(userId, 50)`が空なら`done`。`purge_due`の無いものに`createPurgeDueEvents`→送信。全件の作成から10分以上経って行が残れば例外、それ以外は`continue`(13.4)      |
 
+- `product-launch.image-quarantine`が理由を加えるのは、処理の時点のロゴとスクリーンショット(非公開化の時点の画像)だけである。非公開化中も内容を編集できる(仮7)が、その間に追加・差し替えた画像には`product_hidden`を加えない。非公開化中のプロダクトは可視でないため詳細ページが投稿者本人にも見つからない扱いになり、一覧・検索・ローンチ履歴から除かれ、画像のURLも推測できないため、これを許容する(2026-11-10に開発者が確定、12.8)。
 - 前の2件は`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`(`composition/product-lifecycle-async-handlers.ts`、`createProductLifecycleRegistry`で検証)、3件目は`USER_LIFECYCLE_ASYNC_HANDLERS`へ加える。いずれも冪等(対象を呼び出しのたびにD1から求め直す、8.8)。
 - 依存: 実行器と3つの処理はapplication層に置き、記録の読み書きは`core/product`の`ProductLifecycleStore`、画像は`core/media`の`MediaFiles`・`MediaQuarantine`の型で受け取る。`product-launch.product-erasure`の送信は`ProductMessagePublisher`(`@inject(PLATFORM_TYPES.MessagePublisher)`)で行う。`**/lib/workers/**`を読み込まない。物理削除の一括の書き込みは`ProductPurgeStore`のD1の実装(`infrastructure/product/d1-product-purge-store.ts`)だけが行う。
 - 退会者の画像はuser-profile-socialの610で既に消えていることがあり、`eraseNow`は存在しないIDを数えずに成功する前提で使う(media-pipelineの契約を確かめるテストを置く)。
@@ -2187,7 +2193,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 
 - ルート(`_authenticated`の下、未ログインはログインへ誘導して戻す、1.11): `/my/products`(`MyProductListPage`)、`/my/products/new`(`ProductForm`の登録)、`/my/products/$handle/edit`(`loader`で`myProduct`を読み、`null`は`notFound()`(7.4)、`MyProductRedirect`は`redirect({ to: '/my/products/$handle/edit', params, statusCode: 302 })`(7.5))。`head`は`buildSitePageHead`(`src/head/page-heads.ts`、「自分のプロダクト」「プロダクトを登録」「<名称>を編集」)。取得の設定と、生成物の型から画面の型への変換は`src/graphql/my-products.ts`(単体テスト付き)に置く。
 - `MyProductListPage`: `h1`「自分のプロダクト」と説明文、右上に「新しいプロダクトを登録」(主要ボタン、9.6)。`myProducts`を`infiniteQueryOptions`(キーに閲覧者のIDを入れる)で`first: 20`ずつ取得し、`loader`で`queryClient.infiniteQuery(...).catch(() => undefined)`を待ち、「さらに読み込む」で続きを後ろに加える(9.1、frontend/006の続けて読み込む一覧)。0件は`EmptyState`(「まだプロダクトはありません。」と、ローンチ日に予選マッチで1対1の対戦が始まり勝利するとディレクトリに掲載される旨と登録への導線、9.5)。初回ローディングはカードの形のスケルトン。最初の取得の失敗は一覧の位置の`PartialErrorState`(再試行・問い合わせ、文言は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`)、続きの取得の失敗は「さらに読み込む」の近くの`role="alert"`の文言で示し、読み込みの後のフォーカスの移動はfrontend/006に従う。各カードは`<article>`に見た目のクラスを付けて描く(frontend-libにカードの部品は無い)。停止中は上部に停止中の案内(問い合わせへの導線)を出し、登録と編集の導線を無効にする(9.7)。
-- `MyProductCard`: 左にロゴ(`MediaPicture`の`square` 64、プレースホルダーは名称の頭文字、3.8)、名称・ハンドル(`@`なし)・カテゴリのバッジ、非公開化中は「公開停止中」のバッジ。`LaunchStatusText`(直近のローンチ)と`LaunchPlanNotice`(次回の予約)を並べ、操作は「編集」と、非公開化中でなければ「詳細を見る」(`/p/<ハンドル>`、9.3)。カードの下に`MY_PRODUCT_SECTIONS`を`order`順に個別のエラー境界で描く(9.4)。PCは横並び、640px未満は縦に積む。
+- `MyProductCard`: 左にロゴ(`MediaPicture`の`square-sm`(64px)、プレースホルダーは名称の頭文字、3.8)、名称・ハンドル(`@`なし)・カテゴリのバッジ、非公開化中は「公開停止中」のバッジ。`LaunchStatusText`(直近のローンチ)と`LaunchPlanNotice`(次回の予約)を並べ、操作は「編集」と、非公開化中でなければ「詳細を見る」(`/p/<ハンドル>`、9.3)。カードの下に`MY_PRODUCT_SECTIONS`を`order`順に個別のエラー境界で描く(9.4)。PCは横並び、640px未満は縦に積む。
 - `LaunchStatusText`: `scheduled`・`paired`は「キックオフ予定」と`<time datetime>`の利用者のタイムゾーンの日時と相対表現(「あと2日」)、`in_progress`は「予選マッチ中」と「トップページで見る」、`finished`は「ディレクトリ掲載」または「予選敗北」とローンチ日、`canceled`は「取消」(9.2・9.8)。ローンチ日は業務日付のまま`<time datetime="YYYY-MM-DD">`で示し、利用者のタイムゾーンで日をずらさない。日付は今年(利用者のタイムゾーン)なら年を省く。
 - `LaunchPlanNotice`: `new`は「このプロダクトは◯月◯日以降のローンチ日を選べます。」と「次回のローンチを予約」(編集画面へ)、`reschedule`は「ローンチ日は編集画面で変更できます。」、`blocked`は理由の文言と、解除の日時があれば「解除: <日時>(あと3日)」、`unknown`は「ローンチの状態を確認できませんでした。」。固定の期間は「マッチ直前・マッチ中のため、ローンチ日・カテゴリの変更と削除はできません。」、固定の判定の失敗(`lockUnknown`)は`unknown`でなければ確認できなかった旨を加える(5.2・5.4・6.3)。`placement`(`list`・`edit`)が`edit`なら「次回のローンチを予約」も`reschedule`の「ローンチ日は編集画面で変更できます。」も出さない(編集画面ではローンチ日の欄で予約・変更し、固定の期間は固定の理由だけを示す)。`editable`(既定は真)が偽なら一覧でも出さない(停止中の利用者、9.7)。
 
@@ -2195,7 +2201,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 
 - `ProductForm`(登録と編集で共通): `useAppForm<ProductFormInput, ProductFormOutput>(schema, { defaultValues })`(`defaultValues`は使うスキーマの全欄)と`AppForm`(`serverFieldPrefix="input"`)、`product-form-schema.ts`はサーバーと同じ定数と判定(1.1〜1.3)。フォームの値は`RegisterProductInput`・`UpdateProductInput`の形に合わせ、編集する値を`fields`の下に置き(欄の名前は`fields.name`・`fields.tagline`・`fields.categoryId`・`fields.handle`・`fields.websiteUrl`・`fields.description`・`fields.logoFileId`・`fields.screenshotFileIds`)、ローンチ日は`fields`の外の`launchDate`に置くため、サーバーの詳細の経路(`input.fields.<名前>`・`input.launchDate`)から`input.`を除いた経路が欄の名前とそろう。`fields`そのものに付く詳細は欄をまとめた値の経路のため、フォーム全体の失敗になる。スキーマはカレンダーを描くかで分けた定数から選んで渡し(描画ごとに作らない。計画の取り直しで切り替わった後の検証のし直しは`useAppForm`に任せる)、ローンチ日の欄を描く間(登録と、編集の計画が`reschedule`・`new`)は`launchDate`を含むスキーマ(登録は必須、編集の`new`は未選択を`null`にする)、描かない間(固定の期間・`blocked`・`unknown`)は`launchDate`を含まないスキーマを使い、`onSubmit`で`launchDate: null`(ローンチを変えない)を足す。編集の`productHandle`(編集画面を開いたハンドル)と`expectedVersion`(読み込んだ版)はスキーマの入力に含めず、`onSubmit`で読み込んだ値から足す。編集のスキーマは、固定の期間に`FormField`の`disabled`で無効にするカテゴリ(`fields.categoryId`)を任意(`.optional()`)にし、無効の欄の値は`onSubmit`へ渡す値から外れるため、`UpdateProductInput`に要るカテゴリは`onSubmit`で読み込んだプロダクトのカテゴリのIDから足す。1カラム(最大幅768px)で、見出し付きの区画を上から「基本情報」(ロゴ・名称・タグライン・カテゴリ・ハンドル・外部WebサイトURL)・「説明文」(`MarkdownEditor`、`maxGraphemes` 20000、`preview`はプロダクト詳細と同じ`useMarkdownOptions({ externalLinkRel: ['noopener'] })`、`value`・`onValueChange`・`onBlur`・`ref`・`labelId`・`describedById`・`invalid`・`placeholder`を`FormField`の値から明示的に渡す(`onValueChange`・`onBlur`・`placeholder`は必須で、`labelId`はラベルとの関連付けとラベルの押下でのフォーカスのため。上流の利用箇所と同じ形)、1.5)・「スクリーンショット」・「ローンチ日」の順に置き、末尾に送信のボタン(登録は「ローンチを予約🚀」、編集は「変更を保存」)を置く。bot対策のウィジェット(`action` `product_save`)は非表示で場所を取らず、判定の失敗の文言だけを出す。各欄はフォーカスアウトで検証する(1.9)。サーバーのエラーは`AppForm`が`applyServerFieldErrors`で欄へ示し、`onSubmitError`で`product_update_conflict`は再読み込みの案内、`launch_date_unavailable`はローンチ日の欄に選べる最も早い日、それ以外の失敗と欄に対応しない詳細は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言を示す。未確認の利用者には登録画面の上部に確認が必要な旨と確認メールの再送への導線を出し、入力と送信を無効にする(1.7。各欄は`FormField`の`disabled`で無効にし、送信ボタンは`SubmitButton`の`disabled`で無効にする)。成功は登録で「プロダクトを登録しました。」とキックオフの日時の`notify`を出して`/my/products`へ(1.10)、編集で「変更を保存しました。」と、ハンドルが変わっていれば新しい編集画面のURLへ`replace`(7.6)。
 - 基本の欄の部品(`LogoField`・`ScreenshotsField`・`ProductHandleField`・`CategorySelect`)は`AppForm`の中に置き、フォームの文脈(`useFormContext`)から`control`を読んで`FormField`を描く。欄の名前は`fields.logoFileId`・`fields.screenshotFileIds`・`fields.handle`・`fields.categoryId`で固定し(`ProductBasicFieldValues`)、ローンチ日を含む・含まないどちらのスキーマのフォームにも置ける。無効は各部品の`disabled`を`FormField`の`disabled`へ渡す。
-- `LogoField`: `ImageUploadField`(`constraints: { purpose: 'product-logo', allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: 512000, subjectLabel: 'ロゴ' }`、`edit: { aspect: 1, maxLongSide: 512 }`、`contactAvailable`は`CLIENT_PROFILE.contactAvailable`、3.1)と現在のロゴの表示・「ロゴを差し替え」。編集で読み込んだロゴ(`current`)を選んでいる間だけ`MediaPicture`の`square` 64で示し、選択のボタンの文言はロゴが未設定なら「画像を選択」、設定済み(読み込んだロゴかアップロード済み)なら「ロゴを差し替え」にする。
+- `LogoField`: `ImageUploadField`(`constraints: { purpose: 'product-logo', allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: 512000, subjectLabel: 'ロゴ' }`、`edit: { aspect: 1, maxLongSide: 512 }`、`contactAvailable`は`CLIENT_PROFILE.contactAvailable`、3.1)と現在のロゴの表示・「ロゴを差し替え」。編集で読み込んだロゴ(`current`)を選んでいる間だけ`MediaPicture`の`square-sm`(64px)で示し、選択のボタンの文言はロゴが未設定なら「画像を選択」、設定済み(読み込んだロゴかアップロード済み)なら「ロゴを差し替え」にする。
 - `ScreenshotsField`: `ImageUploadField`(`multiple`、`label`、`onUploaded`、`contactAvailable`は`CLIENT_PROFILE.contactAvailable`、`constraints: { purpose: 'product-screenshot', allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: 5242880, subjectLabel: 'スクリーンショット', maxCount: 20, maxTotalBytes: 10485760, existingCount, existingTotalBytes }`(`existingCount`・`existingTotalBytes`は現在の値)、`edit: { aspect: 'free', maxLongSide: 1920 }`、3.2・3.3)。`LogoField`も`label`と`onUploaded`を渡す。選択の順に`MediaPicture`の`display={{ kind: 'screenshot', variant: 'thumb' }}`の一覧と各画像の「取り除く」、枚数と合計の表示(「3/20枚・2.1MB/10MB」、欄の説明として選択のボタンに結び付ける)。読み込んだ画像は`initial`(`ProductScreenshotEntry`の`fileId`・`image`・`byteSize`)で受け取り、アップロードした画像は`UploadedFile`の`byteSize`で合計に加える。取り除くと同じ位置の次の画像(無ければ前の画像、それも無ければ選択のボタン)の「取り除く」へフォーカスを移す。`ImageUploadField`は作り直さず(`key`を変えない)、その一覧は直前の選択の送信の記録として取り除いた画像も残し、フォームの値と`MediaPicture`の一覧を正とする。作り直すと送信中のアップロードが中断され、送れなかった画像が値にも一覧にも入らず失敗も示されないためである。編集画面は`MyProduct.screenshots`の各画像の`byteSize`(画像の記録が無ければ0)を`initial`へ渡し、保存済みの合計を数える。
 - `ProductHandleField`: `/p/`の接頭辞付きの入力欄。フォーカスアウトで形式→`productHandleAvailability`(編集中は`productHandle`を渡す)、`UNAVAILABLE`で「このハンドルは既に使われています。別の文字列を入力してください。」(2.6)。形式はフォームのスキーマの`fields.handle`の規則(`PRODUCT_HANDLE_RULE`・`PRODUCT_HANDLE_MESSAGES`)を`trigger`で確かめ、編集で読み込んだ時点のハンドル(`currentHandle`)のままなら問い合わせない。保持中の旧ハンドルがあれば「以前のハンドル◯◯は、次にハンドルを変更するか他のプロダクトが同じハンドルを設定するまで、新しいURLへ転送されます。」(2.10)。
 - `CategorySelect`: `productCategories`の順(追加の順・「その他」が末尾)のセレクト(欄の名前は`fields.categoryId`)。固定の期間は`FormField`の`disabled`で無効にし(入力要素の`disabled`の属性だけでは無効にしない)、理由(`disabledReason`、呼び出し側が固定の文言を渡す)を`FormField`の説明として`aria-describedby`で示す(6.3)。一覧を開くとフォーカスが一覧へ移るため、開いている間のフォーカスアウトでは検証しない。無効の間の値は`onSubmit`へ渡す値から外れ、`ProductForm`の`onSubmit`が読み込んだカテゴリを足す。
@@ -2214,7 +2220,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 
 - 登録: `PUBLIC_PROFILE_TABS`に`{ id: 'launches', label: 'ローンチ履歴', order: 10, Count: LaunchHistoryCount, Panel: LaunchHistoryPanel }`(10.1)。最小の`order`のため既定のタブになる。
 - `LaunchHistoryCount`・`LaunchHistoryPanel`は同じ問い合わせ(`launchHistory`、`first: 20`)を使い、件数は`totalCount`。パネルは`infiniteQueryOptions`の「さらに読み込む」で続きを後ろに加える(10.3、frontend/006の続けて読み込む一覧)。取得の設定と変換は`src/graphql/launch-history.ts`(単体テスト付き)に置く。本人で未掲載のプロダクトがあれば一覧の上に「未掲載のプロダクトはあなたにだけ表示されています。予選で勝利するとディレクトリに掲載され、誰でも見られるようになります。」(10.8)。0件は「まだローンチしたプロダクトはありません。」と、本人には説明とローンチの予約への導線(10.10)。最初の取得の失敗は一覧の位置の`PartialErrorState`(「ローンチしたプロダクトを読み込めませんでした。時間をおいて再度お試しください。」と再試行)、続きの取得の失敗は「さらに読み込む」の近くの`role="alert"`の文言で示す(frontend/006)。タブのパネルは`RecoverableSlot`が包むが、この文言を出すためにパネルが自分で失敗を扱う。
-- `LaunchHistoryItem`: ロゴ(`square` 64)・受賞バッジ(`AwardBadgeList`。ゴールド、Yearを先頭、複数は「×3」、ツールチップにラベル)・名称(`/p/<ハンドル>`へのリンクを項目全体に広げる)・タグライン(2行で省略)・カテゴリ(`/p?category=<ハンドル>`)・「サイトを開く」(`target="_blank"`、`listed`なら`rel="noopener"`、それ以外は`rel="noopener ugc"`、10.7)・本人に「編集」(10.4)。ローンチは「第◯回」・ローンチ日・要約を3件まで、残りは「他◯回を表示」(10.5)。`inMatch`は「トップページで見る」、キックオフ予定は利用者のタイムゾーンの日時と相対表現。ローンチの行は要約に`summary.label`(トーナメントの要約を含む)を使い、ローンチ日・キックオフの日時・「トップページで見る」は9.2の`LaunchDateText`・`KickoffTime`・`WATCH_ON_TOP_LABEL`で描く(`LaunchStatusText`は終了したローンチを予選の結果の文言で示すため使わない)。本人で未掲載は「未掲載・あなたにだけ表示」のバッジ(10.8)。閲覧者が停止中の本人なら「非公開」のバッジを付けて薄く表示し、リンク・「サイトを開く」・「編集」を出さない(10.9)。
+- `LaunchHistoryItem`: ロゴ(`MediaPicture`の`square-sm`(64px))・受賞バッジ(`AwardBadgeList`。ゴールド、Yearを先頭、複数は「×3」、ツールチップにラベル)・名称(`/p/<ハンドル>`へのリンクを項目全体に広げる)・タグライン(2行で省略)・カテゴリ(`/p?category=<ハンドル>`)・「サイトを開く」(`target="_blank"`、`listed`なら`rel="noopener"`、それ以外は`rel="noopener ugc"`、10.7)・本人に「編集」(10.4)。ローンチは「第◯回」・ローンチ日・要約を3件まで、残りは「他◯回を表示」(10.5)。`inMatch`は「トップページで見る」、キックオフ予定は利用者のタイムゾーンの日時と相対表現。ローンチの行は要約に`summary.label`(トーナメントの要約を含む)を使い、ローンチ日・キックオフの日時・「トップページで見る」は9.2の`LaunchDateText`・`KickoffTime`・`WATCH_ON_TOP_LABEL`で描く(`LaunchStatusText`は終了したローンチを予選の結果の文言で示すため使わない)。本人で未掲載は「未掲載・あなたにだけ表示」のバッジ(10.8)。閲覧者が停止中の本人なら「非公開」のバッジを付けて薄く表示し、リンク・「サイトを開く」・「編集」を出さない(10.9)。
 
 #### ProfileAwardBadges・AwardBadgeList
 
@@ -2227,7 +2233,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 #### ProductCategorySection
 
 - 登録: `CATEGORY_SECTIONS`に`{ id: 'product-launch.product-categories', order: 10, title: 'プロダクトカテゴリ', component: ProductCategorySection }`(11.10)。
-- `CategoryMasterEditor`(`withHandle: true`、`canEdit`は`useAdminRole`がモデレーター以上)。「その他」は各項目(`CategoryMasterItem`)の`systemDefault`を`true`にする。名前の検証は部品の中の`CategoryFormDialog`が`checkCategoryName`を呼ぶ(呼ぶ側からは渡さない)。ハンドルの検証は`validateHandle: (handle) => string | undefined`に、`checkHandleFormat(PRODUCT_CATEGORY_HANDLE_RULE)`の結果を文言に直す関数を渡す。削除の確認の説明は`deleteDescriptionOf`(論理削除済みで物理削除前のプロダクトも数え、14日待てば削除できる旨、仮9)、監査ログに記録される旨は`deleteAudited`で示す。操作の拒否(`product_category_in_use`など)と失敗は、`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言をそのまま、11.3〜11.7)。
+- `CategoryMasterEditor`(`withHandle: true`、`canEdit`は`useAdminRole`がモデレーター以上)。「その他」は各項目(`CategoryMasterItem`)の`systemDefault`を`true`にする。名前の検証は部品の中の`CategoryFormDialog`が`checkCategoryName`を呼ぶ(呼ぶ側からは渡さない)。ハンドルの検証は`validateHandle: (handle) => string | undefined`に、`checkHandleFormat(PRODUCT_CATEGORY_HANDLE_RULE)`の結果を文言に直す関数を渡す。削除の確認の説明は`deleteDescriptionOf`(論理削除済みで物理削除前のプロダクトも数え、14日待てば削除できる旨、仮9)、監査ログに記録される旨は`deleteAudited`で示す。名前・ハンドルの違反と重複の欄の詳細(`input.name`・`input.handle`)は、`serverFieldPrefix="input"`を渡してダイアログのそれぞれの欄に示す。操作の拒否(`product_category_in_use`など)と失敗は、`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言をそのまま、11.3〜11.7)。
 - 理由(11.8、2026-11-09に開発者が確定): `CategoryMasterEditor`には理由の入力欄が無く、削除は`reason="none"`で固定のため、本区画は理由を送らない(`undefined`)。監査ログには理由なしで記録し、記録される旨を`deleteAudited`で示す。問い合わせカテゴリの区画と同じ振る舞いで、上流の部品は変えない。APIの`reason`の引数は任意のまま残す。
 - 取得の設定・変換・無効化は`src/graphql/admin-product-categories.ts`(単体テスト付き)に置く(inquiryの`src/graphql/admin-inquiry-categories.ts`と同じ形)。
 
@@ -2301,7 +2307,7 @@ erDiagram
 
 - 想定内の失敗は`AppError`で返し、画面が`extensions.code`で出し分ける。保存の競合は一括の書き込みの取り消しと読み直しで分類する。
 - 判定(固定・次回の予約)の供給元の失敗は、関係する操作を`decision_unavailable`で拒否する(安全側)。表示(ローンチ履歴の要約・受賞)の供給元の失敗は予選の結果からの要約で縮退する。Ultrasの判定の失敗は選べる日を出さず`decision_unavailable`にする。
-- 画像の削除の失敗は保存の結果を変えない(media-pipelineの日次バッチが完了させる)。ライフサイクルの送信の失敗は日次の送り直しで回復する。非同期の処理の例外は再試行に任せる。
+- 画像の削除の失敗は保存の結果を変えない(media-pipelineの日次バッチが完了させる)。ライフサイクルの送信の失敗は日次の送り直しで回復する。削除・非公開化・復元の確定の後の送信の失敗は操作を成功として返し、`product-lifecycle-publish-failed`でSentryへ報告する。eventの`product-launch.product-erasure`の送信の失敗は`error`のログだけで続け、行が残れば待ちの上限の例外の再試行を使い切ったデッドレターで通知される。非同期の処理の例外は再試行に任せる。
 - 画面に出す失敗の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(利用者側は`CLIENT_PROFILE`、管理者側は`ADMIN_PROFILE`)。管理者側のカテゴリの区画は`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない。
 
 ### Error Categories and Responses
@@ -2329,8 +2335,8 @@ erDiagram
 
 ### Monitoring
 
-- `getAppLogger(['api'|'event', 'application', 'product'])`で、プロダクトID・ローンチID・イベントID・結果の種類・件数だけを記録する(14.8)。説明文・外部WebサイトURL・入力されたハンドル・名称は記録しない。
-- Sentry: `product-purge-overdue`・`product-lifecycle-events-redispatched`(4:21)、非同期の処理の再試行の上限(デッドレター)。`AppError`は送らない。
+- ログは`getAppLogger`のカテゴリ`['api', 'application', 'product']`(apiのユースケースとジョブ)・`['api', 'infrastructure', 'product']`(保存の処理・期限超過などのSentryへの報告)・`['event', 'product', 'lifecycle']`(eventの実行器と非同期の処理)で、プロダクトID・ローンチID・イベントID・結果の種類・件数だけを記録する(14.8)。説明文・外部WebサイトURL・入力されたハンドル・名称は記録しない。
+- Sentry: `product-purge-overdue`・`product-lifecycle-events-redispatched`(4:21)、`product-lifecycle-publish-failed`(削除・非公開化・復元の確定の後の送信の失敗)、4:21のジョブの送信の失敗(`ProductDailyJobError`)、非同期の処理の再試行の上限(デッドレター)。`AppError`は送らない。
 
 ## Testing Strategy
 
