@@ -29,6 +29,7 @@ import {
 } from './testing/product-fakes.ts';
 import {
   createFakeLifecycleCommitter,
+  createFakeProductIncidentReporter,
   createFakeProductMessagePublisher,
   LIFECYCLE_EVENT_ID,
   unexpectedFailureOf,
@@ -78,11 +79,13 @@ function setup(options: DeletionSetupOptions = {}) {
   const fakePublisher = createFakeProductMessagePublisher(calls, {
     error: options.publishError,
   });
+  const fakeReporter = createFakeProductIncidentReporter(calls);
   const deletion: ProductDeletion = new StoreProductDeletion(
     store,
     fakeEvaluator.evaluator,
     fakeCommitter.committer,
     fakePublisher.publisher,
+    fakeReporter.reporter,
     fixedClock,
   );
   return {
@@ -91,6 +94,7 @@ function setup(options: DeletionSetupOptions = {}) {
     ...fakeEvaluator,
     ...fakeCommitter,
     ...fakePublisher,
+    ...fakeReporter,
   };
 }
 
@@ -98,7 +102,8 @@ const INPUT = { productHandle: 'launch-meter', expectedVersion: 3 } as const;
 
 describe('ProductDeletion.delete', () => {
   test('本人のプロダクト→版→固定の判定→確定→送信の順に進め、読み取った版で削除を確定してから実行を送る', async () => {
-    const { deletion, calls, requests, commands, published } = setup();
+    const { deletion, calls, requests, commands, published, incidents } =
+      setup();
 
     await deletion.delete(currentUserOf(), INPUT);
 
@@ -135,6 +140,7 @@ describe('ProductDeletion.delete', () => {
         body: { eventId: LIFECYCLE_EVENT_ID },
       },
     ]);
+    expect(incidents).toEqual([]);
   });
 
   test('他人・論理削除済み・旧ハンドルなど本人の現在のハンドルで見つからなければproduct_not_foundで拒否し、判定も確定もしない', async () => {
@@ -224,13 +230,21 @@ describe('ProductDeletion.delete', () => {
     expect(calls).not.toContain('publisher.publish');
   });
 
-  test('送信に失敗しても削除は確定済みのため成功として扱い、イベントとプロダクトのIDをerrorのログに残す', async () => {
+  test('送信に失敗しても削除は確定済みのため成功として扱い、イベントとプロダクトのIDをerrorのログに残して運用者へ通知する', async () => {
     const publishError = new Error('Queueへの送信に失敗した');
-    const { deletion, published } = setup({ publishError });
+    const { deletion, calls, published, incidents } = setup({ publishError });
 
     await deletion.delete(currentUserOf(), INPUT);
 
     expect(published).toHaveLength(1);
+    expect(calls.slice(-2)).toEqual(['publisher.publish', 'reporter.report']);
+    expect(incidents).toEqual([
+      {
+        kind: 'product-lifecycle-publish-failed',
+        eventId: LIFECYCLE_EVENT_ID,
+        productId: PRODUCT_ID,
+      },
+    ]);
     const errors = records.filter((record) => record.level === 'error');
     expect(errors).toHaveLength(1);
     expect(errors[0]?.category).toEqual(['api', 'application', 'product']);

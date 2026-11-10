@@ -20,6 +20,8 @@ const EVENT_ID = '01HZX3Y7Q2M4N5P6R7S8T9V0W1';
 
 const OTHER_EVENT_ID = '01HZX3Y7Q2M4N5P6R7S8T9V0W2';
 
+const PRODUCT_ID = '01HZX3Y7Q2M4N5P6R7S8T9V0W3';
+
 const EMAIL = 'taro.yamada@mail.example';
 
 // 実際の初期化(重複の除外と除去処理を含む)を通すため、計装した定期実行の中で報告する
@@ -116,6 +118,42 @@ describe('SentryProductIncidentReporter(エラートラッキング)', () => {
     expect(JSON.stringify(event)).not.toContain(EMAIL);
   });
 
+  test('ライフサイクルイベントの送信の失敗を、errorでイベントとプロダクトのIDのタグを付けて送る', async () => {
+    const event = await reportOne({
+      kind: 'product-lifecycle-publish-failed',
+      eventId: EVENT_ID,
+      productId: PRODUCT_ID,
+    });
+
+    expect(event).toMatchObject({
+      level: 'error',
+      logentry: {
+        message: 'プロダクトライフサイクルイベントの送信に失敗しました',
+      },
+      fingerprint: ['product', 'product-lifecycle-publish-failed'],
+    });
+    expect(event.tags).toStrictEqual({
+      product_incident: 'product-lifecycle-publish-failed',
+      lifecycle_event_id: EVENT_ID,
+      product_id: PRODUCT_ID,
+    });
+  });
+
+  test('識別子の形でない送信の失敗のイベントとプロダクトのIDは、タグに入れずunknownに置き換える', async () => {
+    const event = await reportOne({
+      kind: 'product-lifecycle-publish-failed',
+      eventId: EMAIL,
+      productId: EMAIL,
+    });
+
+    expect(event.tags).toStrictEqual({
+      product_incident: 'product-lifecycle-publish-failed',
+      lifecycle_event_id: 'unknown',
+      product_id: 'unknown',
+    });
+    expect(JSON.stringify(event)).not.toContain(EMAIL);
+  });
+
   test('同じ報告が続けて起きても、重複の除外で捨てずに毎回送る', async () => {
     const incident: ProductIncident = {
       kind: 'product-purge-overdue',
@@ -139,8 +177,13 @@ describe('SentryProductIncidentReporter(ログ)', () => {
       count: 5,
       stuckEventIds: [EVENT_ID],
     });
+    reporter.report({
+      kind: 'product-lifecycle-publish-failed',
+      eventId: EVENT_ID,
+      productId: PRODUCT_ID,
+    });
 
-    expect(logs).toHaveLength(2);
+    expect(logs).toHaveLength(3);
     expect(logs[0]).toMatchObject({
       level: 'error',
       category: 'api.infrastructure.product',
@@ -155,5 +198,27 @@ describe('SentryProductIncidentReporter(ログ)', () => {
       count: 5,
       stuckEventIds: [EVENT_ID],
     });
+    expect(logs[2]).toMatchObject({
+      level: 'error',
+      category: 'api.infrastructure.product',
+      message: 'プロダクトライフサイクルイベントの送信に失敗しました',
+      incident: 'product-lifecycle-publish-failed',
+      eventId: EVENT_ID,
+      productId: PRODUCT_ID,
+    });
+  });
+
+  test('送信の失敗のイベントとプロダクトのIDに個人情報が紛れても、ログに出さない', () => {
+    const logs = configureRecordingLogs();
+    const reporter = new SentryProductIncidentReporter();
+
+    reporter.report({
+      kind: 'product-lifecycle-publish-failed',
+      eventId: EMAIL,
+      productId: EMAIL,
+    });
+
+    expect(logs[0]).toMatchObject({ eventId: 'unknown', productId: 'unknown' });
+    expect(JSON.stringify(logs)).not.toContain(EMAIL);
   });
 });

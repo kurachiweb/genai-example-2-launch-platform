@@ -2,6 +2,8 @@ import { AppError } from '../../../../lib/core/errors/app-error.ts';
 import type { MessageContract } from '../../../../lib/core/messaging/message-contract.ts';
 import type {
   ProductLifecycleCommand,
+  ProductIncident,
+  ProductIncidentReporter,
   ProductLifecycleCommitResult,
   ProductLifecycleCommitter,
   ProductMessagePublisher,
@@ -78,6 +80,26 @@ export function createFakeProductMessagePublisher(
         return options.error === undefined
           ? Promise.resolve(MESSAGE_ID)
           : Promise.reject(options.error);
+      },
+    },
+  };
+}
+
+export interface FakeProductIncidentReporter {
+  readonly reporter: ProductIncidentReporter;
+  readonly incidents: ProductIncident[];
+}
+
+export function createFakeProductIncidentReporter(
+  calls: string[],
+): FakeProductIncidentReporter {
+  const incidents: ProductIncident[] = [];
+  return {
+    incidents,
+    reporter: {
+      report(incident) {
+        calls.push('reporter.report');
+        incidents.push(incident);
       },
     },
   };

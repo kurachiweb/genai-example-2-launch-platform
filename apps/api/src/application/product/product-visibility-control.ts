@@ -2,6 +2,7 @@ import { inject, injectable } from 'inversify';
 
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type {
+  ProductIncidentReporter,
   ProductLifecycleCommitter,
   ProductMessagePublisher,
 } from './ports.ts';
@@ -26,6 +27,8 @@ export class StoreProductVisibilityControl implements ProductVisibilityControl {
     private readonly committer: ProductLifecycleCommitter,
     @inject(PLATFORM_TYPES.MessagePublisher)
     private readonly publisher: ProductMessagePublisher,
+    @inject(PRODUCT_TYPES.ProductIncidentReporter)
+    private readonly reporter: ProductIncidentReporter,
   ) {}
 
   hide(productId: string, at: Date): Promise<VisibilityChangeResult> {
@@ -54,7 +57,11 @@ export class StoreProductVisibilityControl implements ProductVisibilityControl {
           'プロダクトの非公開化・復元の確定が想定外の理由で取り消されました',
         );
       case 'committed':
-        await dispatchProductLifecycleEvent(this.publisher, result.event);
+        await dispatchProductLifecycleEvent(
+          this.publisher,
+          this.reporter,
+          result.event,
+        );
         return 'changed';
     }
   }

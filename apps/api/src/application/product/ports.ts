@@ -235,6 +235,11 @@ export type ProductIncident =
       readonly kind: 'product-lifecycle-events-redispatched';
       readonly count: number;
       readonly stuckEventIds: readonly string[];
+    }
+  | {
+      readonly kind: 'product-lifecycle-publish-failed';
+      readonly eventId: string;
+      readonly productId: string;
     };
 
 // application層はSentryの送信部品を読み込めないため、運用者が検知すべき出来事をこの形で受け取る

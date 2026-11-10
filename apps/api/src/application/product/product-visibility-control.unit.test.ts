@@ -12,6 +12,7 @@ import { rejectionOf } from './testing/product-editor-fixtures.ts';
 import { PRODUCT_NOW } from './testing/product-fakes.ts';
 import {
   createFakeLifecycleCommitter,
+  createFakeProductIncidentReporter,
   createFakeProductMessagePublisher,
   LIFECYCLE_EVENT_ID,
   unexpectedFailureOf,
@@ -54,11 +55,19 @@ function setup(options: VisibilitySetupOptions = {}) {
   const fakePublisher = createFakeProductMessagePublisher(calls, {
     error: options.publishError,
   });
+  const fakeReporter = createFakeProductIncidentReporter(calls);
   const control: ProductVisibilityControl = new StoreProductVisibilityControl(
     fakeCommitter.committer,
     fakePublisher.publisher,
+    fakeReporter.reporter,
   );
-  return { control, calls, ...fakeCommitter, ...fakePublisher };
+  return {
+    control,
+    calls,
+    ...fakeCommitter,
+    ...fakePublisher,
+    ...fakeReporter,
+  };
 }
 
 const OPERATIONS = [
@@ -68,7 +77,7 @@ const OPERATIONS = [
 
 describe.each(OPERATIONS)('ProductVisibilityControl.%s', (operation, type) => {
   test(`${type}を受け取った時刻で確定し、確定の後に実行を送ってchangedを返す`, async () => {
-    const { control, calls, commands, published } = setup();
+    const { control, calls, commands, published, incidents } = setup();
 
     const result = await control[operation](LIFECYCLE_PRODUCT_ID, PRODUCT_NOW);
 
@@ -83,6 +92,7 @@ describe.each(OPERATIONS)('ProductVisibilityControl.%s', (operation, type) => {
         body: { eventId: LIFECYCLE_EVENT_ID },
       },
     ]);
+    expect(incidents).toEqual([]);
   });
 
   test('既に同じ状態ならunchangedを返し、送信しない', async () => {
@@ -127,13 +137,25 @@ describe.each(OPERATIONS)('ProductVisibilityControl.%s', (operation, type) => {
     },
   );
 
-  test('送信に失敗しても確定済みのためchangedを返し、イベントとプロダクトのIDをerrorのログに残す', async () => {
+  test('送信に失敗しても確定済みのためchangedを返し、イベントとプロダクトのIDをerrorのログに残して運用者へ通知する', async () => {
     const publishError = new Error('Queueへの送信に失敗した');
-    const { control } = setup({ publishError });
+    const { control, calls, incidents } = setup({ publishError });
 
     const result = await control[operation](LIFECYCLE_PRODUCT_ID, PRODUCT_NOW);
 
     expect(result).toBe('changed');
+    expect(calls).toEqual([
+      'committer.commit',
+      'publisher.publish',
+      'reporter.report',
+    ]);
+    expect(incidents).toEqual([
+      {
+        kind: 'product-lifecycle-publish-failed',
+        eventId: LIFECYCLE_EVENT_ID,
+        productId: LIFECYCLE_PRODUCT_ID,
+      },
+    ]);
     const errors = records.filter((record) => record.level === 'error');
     expect(errors).toHaveLength(1);
     expect(errors[0]?.properties).toEqual({

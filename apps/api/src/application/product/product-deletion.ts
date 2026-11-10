@@ -5,6 +5,7 @@ import type { AppError } from '../../../lib/core/errors/app-error.ts';
 import type { CurrentUser } from '../../../lib/core/identity/account-guard.ts';
 import type { Clock } from '../../../lib/core/time/clock.ts';
 import type {
+  ProductIncidentReporter,
   ProductLifecycleCommitter,
   ProductLifecycleRejection,
   ProductMessagePublisher,
@@ -45,6 +46,8 @@ export class StoreProductDeletion implements ProductDeletion {
     private readonly committer: ProductLifecycleCommitter,
     @inject(PLATFORM_TYPES.MessagePublisher)
     private readonly publisher: ProductMessagePublisher,
+    @inject(PRODUCT_TYPES.ProductIncidentReporter)
+    private readonly reporter: ProductIncidentReporter,
     @inject(PLATFORM_TYPES.Clock) private readonly clock: Clock,
   ) {}
 
@@ -94,6 +97,10 @@ export class StoreProductDeletion implements ProductDeletion {
     if (result.kind === 'unchanged') {
       throw new Error('プロダクトの削除の確定が想定外の結果を返しました');
     }
-    await dispatchProductLifecycleEvent(this.publisher, result.event);
+    await dispatchProductLifecycleEvent(
+      this.publisher,
+      this.reporter,
+      result.event,
+    );
   }
 }
