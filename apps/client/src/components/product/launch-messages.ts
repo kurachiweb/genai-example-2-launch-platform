@@ -38,3 +38,7 @@ export const ULTRAS_RELAUNCH_PROMOTION =
   'Ultrasなら敗北後2日で再ローンチできます。';
 
 export const PRICING_LINK_LABEL = '料金を見る';
+
+export const RESERVE_LAUNCH_LABEL = 'ローンチを予約🚀';
+
+export const RESERVE_LAUNCH_GUEST_LABEL = 'ログインしてローンチを予約🚀';

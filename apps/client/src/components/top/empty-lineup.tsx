@@ -1,16 +1,7 @@
-import { Link } from '@tanstack/react-router';
-import { RocketIcon } from 'lucide-react';
-
-import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
-import { Button } from '../../../lib/components/ui/button/button.tsx';
-import { NEW_PRODUCT_HREF } from '../layout/site-links.ts';
 import type { TeamColorPair } from '../match/team-colors.ts';
 import { StadiumPitch } from '../match/stadium-pitch.tsx';
-import {
-  EMPTY_LINEUP_ACTION,
-  EMPTY_LINEUP_GUEST_ACTION,
-  EMPTY_LINEUP_MESSAGE,
-} from './qualifier-section-messages.ts';
+import { ReserveLaunchLink } from '../product/reserve-launch-link.tsx';
+import { EMPTY_LINEUP_MESSAGE } from './qualifier-section-messages.ts';
 
 export interface EmptyLineupProps {
   readonly signedIn: boolean;
@@ -27,27 +18,6 @@ const DESERTED_PITCH = {
   isDeserted: true,
 } as const;
 
-// 導線の遷移先は共通ヘッダーの「ローンチする」と同じく、未ログインはプロダクト登録を戻り先にしたログイン、ログイン中はプロダクト登録
-function ReserveLaunchLink({ signedIn }: EmptyLineupProps) {
-  const content = (
-    <>
-      <RocketIcon aria-hidden="true" />
-      {signedIn ? EMPTY_LINEUP_ACTION : EMPTY_LINEUP_GUEST_ACTION}
-    </>
-  );
-  return (
-    <Button asChild size="lg">
-      {signedIn ? (
-        <PathLink href={NEW_PRODUCT_HREF}>{content}</PathLink>
-      ) : (
-        <Link to="/auth/login" search={{ redirect: NEW_PRODUCT_HREF }}>
-          {content}
-        </Link>
-      )}
-    </Button>
-  );
-}
-
 export function EmptyLineup({ signedIn }: EmptyLineupProps) {
   return (
     <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-card">
@@ -63,7 +33,7 @@ export function EmptyLineup({ signedIn }: EmptyLineupProps) {
         <p className="rounded-xl bg-card/90 px-5 py-3 text-base font-semibold text-card-foreground backdrop-blur">
           {EMPTY_LINEUP_MESSAGE}
         </p>
-        <ReserveLaunchLink signedIn={signedIn} />
+        <ReserveLaunchLink signedIn={signedIn} size="lg" />
       </div>
     </div>
   );
