@@ -44,6 +44,7 @@ const config: CodegenConfig = {
           MatchProduct: '../modules/match/mappers.ts#MatchProductSource',
           UpvoteHistoryItem:
             '../modules/match/mappers.ts#UpvoteHistoryItemModel',
+          DirectoryItem: '../modules/directory/mappers.ts#DirectoryItemModel',
           LaunchHistoryProduct:
             '../modules/product/mappers.ts#LaunchHistoryProductModel',
         },

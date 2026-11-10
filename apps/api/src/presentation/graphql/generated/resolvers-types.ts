@@ -6,6 +6,7 @@ import type { UserSummarySource } from '../modules/profile/user-summary.ts';
 import type { PublicProfileModel, PublicProfileRedirectModel, MyProfileModel } from '../modules/profile/mappers.ts';
 import type { MyProductModel, ProductScreenshotModel, LaunchHistoryProductModel } from '../modules/product/mappers.ts';
 import type { MatchSource, MatchEntrySource, MatchProductSource, UpvoteHistoryItemModel } from '../modules/match/mappers.ts';
+import type { DirectoryItemModel } from '../modules/directory/mappers.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -381,6 +382,98 @@ export type ConfirmationResult = {
   /** 確定の操作をした端末が同じ利用者としてログイン中なら、入れ替えた後の利用者 */
   viewer?: Maybe<Viewer>;
 };
+
+/** サーバーが正規化した条件。既定の値の項目はnull */
+export type DirectoryAppliedQuery = {
+  __typename?: 'DirectoryAppliedQuery';
+  /** 解決したカテゴリのハンドル */
+  category?: Maybe<Scalars['String']['output']>;
+  from?: Maybe<Scalars['String']['output']>;
+  page?: Maybe<Scalars['Int']['output']>;
+  q?: Maybe<Scalars['String']['output']>;
+  sort?: Maybe<DirectorySort>;
+  to?: Maybe<Scalars['String']['output']>;
+};
+
+/** URLのクエリと同じ条件。不正な値はエラーにせず既定の値として扱う */
+export type DirectoryInput = {
+  /** カテゴリのハンドル(大文字小文字を区別しない) */
+  category?: InputMaybe<Scalars['String']['input']>;
+  /** 業務日付(YYYY-MM-DD) */
+  from?: InputMaybe<Scalars['String']['input']>;
+  /** 2以上の10進の整数 */
+  page?: InputMaybe<Scalars['String']['input']>;
+  q?: InputMaybe<Scalars['String']['input']>;
+  /** relevance・newest・oldest・upvotes */
+  sort?: InputMaybe<Scalars['String']['input']>;
+  /** 業務日付(YYYY-MM-DD) */
+  to?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** ディレクトリの一覧の項目 */
+export type DirectoryItem = {
+  __typename?: 'DirectoryItem';
+  /** Yearを先頭 */
+  awards: Array<ProductAward>;
+  category: ProductCategory;
+  handle: Scalars['String']['output'];
+  isViewerOwn: Scalars['Boolean']['output'];
+  /** 画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる */
+  logo?: Maybe<MediaImage>;
+  /** 登録の順。供給に失敗した値は含まない */
+  metrics: Array<DirectoryItemMetric>;
+  name: Scalars['String']['output'];
+  /** 表示できなければnull */
+  owner?: Maybe<UserSummary>;
+  tagline: Scalars['String']['output'];
+  /** 検証の済まないURLは空 */
+  websiteUrl: Scalars['String']['output'];
+  win: DirectoryWin;
+};
+
+/** 他の機能が一覧の項目に加える値 */
+export type DirectoryItemMetric = {
+  __typename?: 'DirectoryItemMetric';
+  key: Scalars['String']['output'];
+  value: Scalars['Int']['output'];
+};
+
+/** ディレクトリの一覧の1ページ */
+export type DirectoryPage = {
+  __typename?: 'DirectoryPage';
+  applied: DirectoryAppliedQuery;
+  /** 照会の時点の業務日付(YYYY-MM-DD) */
+  businessToday: Scalars['String']['output'];
+  items: Array<DirectoryItem>;
+  page: Scalars['Int']['output'];
+  pageCount: Scalars['Int']['output'];
+  /** 名称・タグラインの強調に使う検索語 */
+  searchTerms: Array<Scalars['String']['output']>;
+  totalCount: Scalars['Int']['output'];
+};
+
+/** ディレクトリの並び順。RELEVANCEは検索語があるときだけ選べる */
+export type DirectorySort =
+  | 'NEWEST'
+  | 'OLDEST'
+  | 'RELEVANCE'
+  | 'UPVOTES';
+
+/** 一覧に表示する基準勝利の予選マッチ */
+export type DirectoryWin = {
+  __typename?: 'DirectoryWin';
+  kind: DirectoryWinKind;
+  /** 基準勝利のローンチ日(YYYY-MM-DD) */
+  launchDate: Scalars['String']['output'];
+  /** 基準勝利での自身のUpvote数。BYEはnull */
+  upvoteCount?: Maybe<Scalars['Int']['output']>;
+};
+
+/** 基準勝利の種類。VICTORYは勝敗の付いた勝利、BYEは対戦相手なし・マッチ直前の相手の該当による不戦勝、EARLYはマッチ中の相手の該当による即時の終了 */
+export type DirectoryWinKind =
+  | 'BYE'
+  | 'EARLY'
+  | 'VICTORY';
 
 /** 下書きの破棄 */
 export type DiscardLegalDocumentDraftInput = {
@@ -1582,6 +1675,10 @@ export type Query = {
   auditLogs: AuditLogPage;
   /** 本人の購入の決済画面の表示事項。他人・存在しない購入はcheckout_not_found */
   checkout: Checkout;
+  /** ログイン不要。予選に勝利した掲載中のプロダクトを1ページ20件で返す */
+  directory: DirectoryPage;
+  /** ログイン不要。掲載中のプロダクトの数が多い順・同数は名称順で、標準カテゴリを末尾に置き、掲載の無いカテゴリも返す */
+  directoryCategories: Array<ProductCategory>;
   /** ハンドルの使用可否。自分の現在と保持中の旧ハンドルは使えるものとして扱う */
   handleAvailability: HandleAvailability;
   /** 問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く */
@@ -1671,6 +1768,11 @@ export type QueryAuditLogsArgs = {
 
 export type QueryCheckoutArgs = {
   purchaseId: Scalars['ID']['input'];
+};
+
+
+export type QueryDirectoryArgs = {
+  input: DirectoryInput;
 };
 
 
@@ -2167,6 +2269,14 @@ export type ResolversTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
+  DirectoryAppliedQuery: ResolverTypeWrapper<DirectoryAppliedQuery>;
+  DirectoryInput: DirectoryInput;
+  DirectoryItem: ResolverTypeWrapper<DirectoryItemModel>;
+  DirectoryItemMetric: ResolverTypeWrapper<DirectoryItemMetric>;
+  DirectoryPage: ResolverTypeWrapper<Omit<DirectoryPage, 'items'> & { items: Array<ResolversTypes['DirectoryItem']> }>;
+  DirectorySort: DirectorySort;
+  DirectoryWin: ResolverTypeWrapper<DirectoryWin>;
+  DirectoryWinKind: DirectoryWinKind;
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
   FollowEntry: ResolverTypeWrapper<Omit<FollowEntry, 'user'> & { user: ResolversTypes['UserSummary'] }>;
   FollowEntryConnection: ResolverTypeWrapper<Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversTypes['FollowEntry']> }>;
@@ -2321,6 +2431,12 @@ export type ResolversParentTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
   DateTime: Scalars['DateTime']['output'];
+  DirectoryAppliedQuery: DirectoryAppliedQuery;
+  DirectoryInput: DirectoryInput;
+  DirectoryItem: DirectoryItemModel;
+  DirectoryItemMetric: DirectoryItemMetric;
+  DirectoryPage: Omit<DirectoryPage, 'items'> & { items: Array<ResolversParentTypes['DirectoryItem']> };
+  DirectoryWin: DirectoryWin;
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
   FollowEntry: Omit<FollowEntry, 'user'> & { user: ResolversParentTypes['UserSummary'] };
   FollowEntryConnection: Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['FollowEntry']> };
@@ -2610,6 +2726,50 @@ export type ConfirmationResultResolvers<ContextType = GraphQLContext, ParentType
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
   name: 'DateTime';
 }
+
+export type DirectoryAppliedQueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DirectoryAppliedQuery'] = ResolversParentTypes['DirectoryAppliedQuery']> = {
+  category?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  from?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  page?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  q?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  sort?: Resolver<Maybe<ResolversTypes['DirectorySort']>, ParentType, ContextType>;
+  to?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type DirectoryItemResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DirectoryItem'] = ResolversParentTypes['DirectoryItem']> = {
+  awards?: Resolver<Array<ResolversTypes['ProductAward']>, ParentType, ContextType>;
+  category?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  isViewerOwn?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  metrics?: Resolver<Array<ResolversTypes['DirectoryItemMetric']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<Maybe<ResolversTypes['UserSummary']>, ParentType, ContextType>;
+  tagline?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  websiteUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  win?: Resolver<ResolversTypes['DirectoryWin'], ParentType, ContextType>;
+};
+
+export type DirectoryItemMetricResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DirectoryItemMetric'] = ResolversParentTypes['DirectoryItemMetric']> = {
+  key?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  value?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type DirectoryPageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DirectoryPage'] = ResolversParentTypes['DirectoryPage']> = {
+  applied?: Resolver<ResolversTypes['DirectoryAppliedQuery'], ParentType, ContextType>;
+  businessToday?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  items?: Resolver<Array<ResolversTypes['DirectoryItem']>, ParentType, ContextType>;
+  page?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  pageCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  searchTerms?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  totalCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type DirectoryWinResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DirectoryWin'] = ResolversParentTypes['DirectoryWin']> = {
+  kind?: Resolver<ResolversTypes['DirectoryWinKind'], ParentType, ContextType>;
+  launchDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  upvoteCount?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+};
 
 export type FollowEntryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['FollowEntry'] = ResolversParentTypes['FollowEntry']> = {
   followedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
@@ -3062,6 +3222,8 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
   checkout?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<QueryCheckoutArgs, 'purchaseId'>>;
+  directory?: Resolver<ResolversTypes['DirectoryPage'], ParentType, ContextType, RequireFields<QueryDirectoryArgs, 'input'>>;
+  directoryCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
   handleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryHandleAvailabilityArgs, 'handle'>>;
   inquiryCategories?: Resolver<Array<ResolversTypes['InquiryCategory']>, ParentType, ContextType>;
   inquiryComposer?: Resolver<Maybe<ResolversTypes['InquiryComposer']>, ParentType, ContextType>;
@@ -3228,6 +3390,11 @@ export type Resolvers<ContextType = GraphQLContext> = {
   CheckoutSummary?: CheckoutSummaryResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
+  DirectoryAppliedQuery?: DirectoryAppliedQueryResolvers<ContextType>;
+  DirectoryItem?: DirectoryItemResolvers<ContextType>;
+  DirectoryItemMetric?: DirectoryItemMetricResolvers<ContextType>;
+  DirectoryPage?: DirectoryPageResolvers<ContextType>;
+  DirectoryWin?: DirectoryWinResolvers<ContextType>;
   FollowEntry?: FollowEntryResolvers<ContextType>;
   FollowEntryConnection?: FollowEntryConnectionResolvers<ContextType>;
   FollowState?: FollowStateResolvers<ContextType>;

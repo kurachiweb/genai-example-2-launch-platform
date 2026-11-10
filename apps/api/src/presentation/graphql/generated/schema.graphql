@@ -373,6 +373,109 @@ type ConfirmationResult {
 """UTCのRFC 3339形式の日時"""
 scalar DateTime
 
+"""サーバーが正規化した条件。既定の値の項目はnull"""
+type DirectoryAppliedQuery {
+  """解決したカテゴリのハンドル"""
+  category: String
+  from: String
+  page: Int
+  q: String
+  sort: DirectorySort
+  to: String
+}
+
+"""URLのクエリと同じ条件。不正な値はエラーにせず既定の値として扱う"""
+input DirectoryInput {
+  """カテゴリのハンドル(大文字小文字を区別しない)"""
+  category: String
+
+  """業務日付(YYYY-MM-DD)"""
+  from: String
+
+  """2以上の10進の整数"""
+  page: String
+  q: String
+
+  """relevance・newest・oldest・upvotes"""
+  sort: String
+
+  """業務日付(YYYY-MM-DD)"""
+  to: String
+}
+
+"""ディレクトリの一覧の項目"""
+type DirectoryItem {
+  """Yearを先頭"""
+  awards: [ProductAward!]!
+  category: ProductCategory!
+  handle: String!
+  isViewerOwn: Boolean!
+
+  """画像の記録が無ければnull。隔離中の画像は枠だけを返し、objectKeyが空になる"""
+  logo: MediaImage
+
+  """登録の順。供給に失敗した値は含まない"""
+  metrics: [DirectoryItemMetric!]!
+  name: String!
+
+  """表示できなければnull"""
+  owner: UserSummary
+  tagline: String!
+
+  """検証の済まないURLは空"""
+  websiteUrl: String!
+  win: DirectoryWin!
+}
+
+"""他の機能が一覧の項目に加える値"""
+type DirectoryItemMetric {
+  key: String!
+  value: Int!
+}
+
+"""ディレクトリの一覧の1ページ"""
+type DirectoryPage {
+  applied: DirectoryAppliedQuery!
+
+  """照会の時点の業務日付(YYYY-MM-DD)"""
+  businessToday: String!
+  items: [DirectoryItem!]!
+  page: Int!
+  pageCount: Int!
+
+  """名称・タグラインの強調に使う検索語"""
+  searchTerms: [String!]!
+  totalCount: Int!
+}
+
+"""ディレクトリの並び順。RELEVANCEは検索語があるときだけ選べる"""
+enum DirectorySort {
+  NEWEST
+  OLDEST
+  RELEVANCE
+  UPVOTES
+}
+
+"""一覧に表示する基準勝利の予選マッチ"""
+type DirectoryWin {
+  kind: DirectoryWinKind!
+
+  """基準勝利のローンチ日(YYYY-MM-DD)"""
+  launchDate: String!
+
+  """基準勝利での自身のUpvote数。BYEはnull"""
+  upvoteCount: Int
+}
+
+"""
+基準勝利の種類。VICTORYは勝敗の付いた勝利、BYEは対戦相手なし・マッチ直前の相手の該当による不戦勝、EARLYはマッチ中の相手の該当による即時の終了
+"""
+enum DirectoryWinKind {
+  BYE
+  EARLY
+  VICTORY
+}
+
 """下書きの破棄"""
 input DiscardLegalDocumentDraftInput {
   expectedStateVersion: Int!
@@ -1396,6 +1499,12 @@ type Query {
 
   """本人の購入の決済画面の表示事項。他人・存在しない購入はcheckout_not_found"""
   checkout(purchaseId: ID!): Checkout!
+
+  """ログイン不要。予選に勝利した掲載中のプロダクトを1ページ20件で返す"""
+  directory(input: DirectoryInput!): DirectoryPage!
+
+  """ログイン不要。掲載中のプロダクトの数が多い順・同数は名称順で、標準カテゴリを末尾に置き、掲載の無いカテゴリも返す"""
+  directoryCategories: [ProductCategory!]!
 
   """ハンドルの使用可否。自分の現在と保持中の旧ハンドルは使えるものとして扱う"""
   handleAvailability(handle: String!): HandleAvailability!
