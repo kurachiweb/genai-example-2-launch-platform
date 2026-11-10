@@ -73,6 +73,10 @@ describe('SentryMatchIncidentReporter(エラートラッキング)', () => {
       'qualifier-pairing-late',
       '前日に完了していなかった予選のペアリングを、開始の前に行いました',
     ],
+    [
+      'match-settlement-overdue',
+      '終了の日時から1時間を過ぎても確定していないマッチがあります',
+    ],
   ] as const)(
     '日次の処理の遅れ(%s)を、errorで種類ごとの文言・指紋と件数を添えて送る',
     async (kind, message) => {

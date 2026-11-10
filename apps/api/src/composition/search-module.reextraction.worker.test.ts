@@ -243,6 +243,8 @@ describe('検索対象のある日次の再抽出', () => {
         expect.objectContaining({
           name: 'product-launch.lifecycle-redispatch',
         }),
+        expect.objectContaining({ name: 'match-engine.event-redispatch' }),
+        expect.objectContaining({ name: 'match-engine.event-cleanup' }),
         expect.objectContaining({
           name: REEXTRACTION_JOB_NAME,
           result: 'succeeded',

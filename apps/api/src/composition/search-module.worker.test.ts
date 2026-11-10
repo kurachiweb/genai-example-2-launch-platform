@@ -55,6 +55,10 @@ const PRODUCT_JOB_NAMES = [
   'product-launch.purge-orchestrator',
   'product-launch.lifecycle-redispatch',
 ];
+const MATCH_JOB_NAMES = [
+  'match-engine.event-redispatch',
+  'match-engine.event-cleanup',
+];
 const REEXTRACTION_CATEGORY = 'api.search.reextraction';
 
 function createContainer() {
@@ -149,6 +153,7 @@ describe('APIサーバーの検索のモジュール', () => {
       ...MEDIA_JOB_NAMES,
       'email-delivery.cleanup',
       ...PRODUCT_JOB_NAMES,
+      ...MATCH_JOB_NAMES,
       REEXTRACTION_JOB_NAME,
     ]);
   });
@@ -215,6 +220,8 @@ describe('定期実行からの日次の再抽出', () => {
         expect.objectContaining({ name: 'email-delivery.cleanup' }),
         expect.objectContaining({ name: PRODUCT_JOB_NAMES[0] }),
         expect.objectContaining({ name: PRODUCT_JOB_NAMES[1] }),
+        expect.objectContaining({ name: MATCH_JOB_NAMES[0] }),
+        expect.objectContaining({ name: MATCH_JOB_NAMES[1] }),
         expect.objectContaining({
           name: REEXTRACTION_JOB_NAME,
           result: 'succeeded',

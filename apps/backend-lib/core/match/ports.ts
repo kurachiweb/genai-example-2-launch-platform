@@ -169,7 +169,7 @@ export interface MatchEventStore {
 }
 
 export interface MatchEventDispatcher {
-  // 失敗したイベントはpendingのまま残り、次のジョブの掃き出しと4:21に送り直される
+  // 失敗したイベントはpendingのまま残り、4:21の送り直しのジョブが送り直す
   publish(eventIds: readonly string[]): Promise<void>;
 }
 

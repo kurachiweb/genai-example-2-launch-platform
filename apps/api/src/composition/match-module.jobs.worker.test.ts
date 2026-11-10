@@ -38,6 +38,8 @@ import {
   insertUser,
 } from '../../lib/workers/product/testing/product-fixtures.ts';
 import {
+  MatchEventCleanupJob,
+  MatchEventRedispatchJob,
   MatchKickoffJob,
   MatchSettlementJob,
   QualifierPairingJob,
@@ -146,7 +148,7 @@ afterAll(() => {
 });
 
 describe('APIサーバーのマッチのモジュールの日次のジョブの束縛', () => {
-  test('処理単位のコンテナから、確定・ペアリング・開始のジョブをそれぞれの実装に解決する', () => {
+  test('処理単位のコンテナから、確定・ペアリング・開始・イベントの送り直しと削除のジョブをそれぞれの実装に解決する', () => {
     const container = createContainer();
 
     expect(container.get(MATCH_TYPES.MatchSettlementJob)).toBeInstanceOf(
@@ -158,6 +160,25 @@ describe('APIサーバーのマッチのモジュールの日次のジョブの�
     expect(container.get(MATCH_TYPES.MatchKickoffJob)).toBeInstanceOf(
       MatchKickoffJob,
     );
+    expect(container.get(MATCH_TYPES.MatchEventRedispatchJob)).toBeInstanceOf(
+      MatchEventRedispatchJob,
+    );
+    expect(container.get(MATCH_TYPES.MatchEventCleanupJob)).toBeInstanceOf(
+      MatchEventCleanupJob,
+    );
+  });
+
+  test('4:21の起動で、イベントの送り直しと削除のジョブが束縛から解決されて成功する', async () => {
+    const logs = recordConsole();
+
+    await runScheduled(DATE, { hour: 4, minute: 21 });
+
+    expect(
+      jobResults(logs).filter(({ name }) => name.startsWith('match-engine.')),
+    ).toEqual([
+      { name: 'match-engine.event-redispatch', result: 'succeeded' },
+      { name: 'match-engine.event-cleanup', result: 'succeeded' },
+    ]);
   });
 
   test('23:40と23:45の起動で前日の業務日付の翌日の予選を組み、0:00の起動はペアリングの遅れを報告しない', async () => {

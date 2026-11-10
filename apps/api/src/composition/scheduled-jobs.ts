@@ -7,6 +7,8 @@ import { API_EMAIL_TYPES } from '../application/email/email-cleanup-job.ts';
 import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
 import { GUEST_INQUIRY_RETENTION_JOB_DEFINITION } from '../application/inquiry/jobs/guest-inquiry-retention-job.ts';
 import {
+  MATCH_EVENT_CLEANUP_JOB_DEFINITION,
+  MATCH_EVENT_REDISPATCH_JOB_DEFINITION,
   MATCH_KICKOFF_JOB_DEFINITION,
   MATCH_SETTLEMENT_JOB_DEFINITION,
   QUALIFIER_PAIRING_JOB_DEFINITION,
@@ -82,6 +84,8 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   },
   PRODUCT_PURGE_ORCHESTRATOR_JOB_DEFINITION,
   PRODUCT_LIFECYCLE_REDISPATCH_JOB_DEFINITION,
+  MATCH_EVENT_REDISPATCH_JOB_DEFINITION,
+  MATCH_EVENT_CLEANUP_JOB_DEFINITION,
   {
     name: 'content-processing.keyword-reextraction',
     at: { hour: 4, minute: 21 },

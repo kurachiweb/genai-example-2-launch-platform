@@ -1,10 +1,12 @@
 import {
   and,
   asc,
+  count,
   eq,
   inArray,
   isNotNull,
   isNull,
+  lt,
   lte,
   type SQL,
   sql,
@@ -129,6 +131,14 @@ export class D1SettlementStore implements SettlementStore {
     return outcomes.flatMap((item) =>
       stored.has(item.eventId) ? [item.eventId] : [],
     );
+  }
+
+  async countOverdue(endedBefore: Date): Promise<number> {
+    const [row] = await this.db
+      .select({ overdue: count() })
+      .from(matches)
+      .where(and(isNull(matches.decidedAt), lt(matches.endsAt, endedBefore)));
+    return row?.overdue ?? 0;
   }
 
   // Upvote数・最終Upvote時間・記録の順は保存済みの値を確定値として残し、結果だけを書く

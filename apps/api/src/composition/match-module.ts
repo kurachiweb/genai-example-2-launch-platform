@@ -8,6 +8,8 @@ import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { createMatchPlatformModule } from '../../lib/workers/match/match-platform-module.ts';
 import { DirectoryEntryEligibilityChecker } from '../application/match/entry-eligibility.ts';
 import {
+  MatchEventCleanupJob,
+  MatchEventRedispatchJob,
   MatchKickoffJob,
   MatchSettlementJob,
   QualifierPairingJob,
@@ -85,5 +87,11 @@ export const API_MATCH_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
       QualifierPairingJob,
     );
     bind<ScheduledJobHandler>(MATCH_TYPES.MatchKickoffJob).to(MatchKickoffJob);
+    bind<ScheduledJobHandler>(MATCH_TYPES.MatchEventRedispatchJob).to(
+      MatchEventRedispatchJob,
+    );
+    bind<ScheduledJobHandler>(MATCH_TYPES.MatchEventCleanupJob).to(
+      MatchEventCleanupJob,
+    );
   }),
 };

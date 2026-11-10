@@ -13,6 +13,8 @@ const MESSAGES: Readonly<Record<MatchIncident['kind'], string>> = {
     '終了の時刻のジョブで確定できなかったマッチを、ペアリングの前に確定しました',
   'qualifier-pairing-late':
     '前日に完了していなかった予選のペアリングを、開始の前に行いました',
+  'match-settlement-overdue':
+    '終了の日時から1時間を過ぎても確定していないマッチがあります',
 };
 
 const CONTEXT_NAME = 'match_incident';

@@ -22,7 +22,7 @@ describe('プロダクトのジョブの定期実行の一覧への登録', () =
     expect(() => createCronRegistry(SCHEDULED_JOBS)).not.toThrow();
   });
 
-  test('4:21の起動では、メールの後始末(900)の後、検索のキーワードの再抽出(2300)の前に、物理削除の開始・送り直しの順に動く', () => {
+  test('4:21の起動では、メールの後始末(900)の直後に物理削除の開始・送り直しの順に動き、検索のキーワードの再抽出(2300)より前に終える', () => {
     const orders = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(DAILY_CRON)
       .map(({ name, order }) => ({ name, order }));
@@ -31,12 +31,16 @@ describe('プロダクトのジョブの定期実行の一覧への登録', () =
     );
 
     expect(DAILY_CRON).toBe('21 12 * * *');
-    expect(orders.slice(purgeIndex - 1, purgeIndex + 3)).toEqual([
+    expect(orders.slice(purgeIndex - 1, purgeIndex + 2)).toEqual([
       { name: 'email-delivery.cleanup', order: 900 },
       { name: 'product-launch.purge-orchestrator', order: 1000 },
       { name: 'product-launch.lifecycle-redispatch', order: 1010 },
-      { name: 'content-processing.keyword-reextraction', order: 2300 },
     ]);
+    expect(
+      orders.findIndex(
+        ({ name }) => name === 'content-processing.keyword-reextraction',
+      ),
+    ).toBeGreaterThan(purgeIndex + 1);
   });
 
   test('本機能のジョブの順は、割り当てられた1000番台の帯に収まる', () => {

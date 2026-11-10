@@ -3,6 +3,8 @@ import { describe, expect, test } from 'bun:test';
 import { createCronRegistry } from '../../lib/core/scheduling/cron-registry.ts';
 import { toUtcCronExpression } from '../../lib/core/time/business-time.ts';
 import {
+  MATCH_EVENT_CLEANUP_JOB_DEFINITION,
+  MATCH_EVENT_REDISPATCH_JOB_DEFINITION,
   MATCH_KICKOFF_JOB_DEFINITION,
   MATCH_SETTLEMENT_JOB_DEFINITION,
   QUALIFIER_PAIRING_JOB_DEFINITION,
@@ -13,12 +15,20 @@ import { SCHEDULED_JOBS } from '../../src/composition/scheduled-jobs.ts';
 const SETTLEMENT_CRON = toUtcCronExpression({ hour: 23, minute: 40 });
 const PAIRING_CRON = toUtcCronExpression({ hour: 23, minute: 45 });
 const KICKOFF_CRON = toUtcCronExpression({ hour: 0, minute: 0 });
+const MAINTENANCE_CRON = toUtcCronExpression({ hour: 4, minute: 21 });
 
 const DAILY_JOBS = [
   MATCH_SETTLEMENT_JOB_DEFINITION,
   QUALIFIER_PAIRING_JOB_DEFINITION,
   MATCH_KICKOFF_JOB_DEFINITION,
 ] as const;
+
+const MAINTENANCE_JOBS = [
+  MATCH_EVENT_REDISPATCH_JOB_DEFINITION,
+  MATCH_EVENT_CLEANUP_JOB_DEFINITION,
+] as const;
+
+const ALL_JOBS = [...DAILY_JOBS, ...MAINTENANCE_JOBS] as const;
 
 describe('マッチの日次のジョブの定期実行の一覧への登録', () => {
   test('確定・ペアリング・開始の3つの定義を、業務時刻23:40・23:45・0:00とorder 1100で定める', () => {
@@ -44,8 +54,25 @@ describe('マッチの日次のジョブの定期実行の一覧への登録', (
     ]);
   });
 
-  test('3つの定義を、そのまま定期実行の一覧に載せる', () => {
-    for (const definition of DAILY_JOBS) {
+  test('イベントの送り直しと削除の2つの定義を、業務時刻4:21とorder 1100・1110で定める', () => {
+    expect(MAINTENANCE_JOBS).toEqual([
+      {
+        name: 'match-engine.event-redispatch',
+        at: { hour: 4, minute: 21 },
+        order: 1100,
+        handler: MATCH_TYPES.MatchEventRedispatchJob,
+      },
+      {
+        name: 'match-engine.event-cleanup',
+        at: { hour: 4, minute: 21 },
+        order: 1110,
+        handler: MATCH_TYPES.MatchEventCleanupJob,
+      },
+    ]);
+  });
+
+  test('5つの定義を、そのまま定期実行の一覧に載せる', () => {
+    for (const definition of ALL_JOBS) {
       expect(SCHEDULED_JOBS).toContain(definition);
     }
   });
@@ -79,8 +106,24 @@ describe('マッチの日次のジョブの定期実行の一覧への登録', (
     ]);
   });
 
+  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、送り直しの後に削除が動く', () => {
+    const jobs = createCronRegistry(SCHEDULED_JOBS).jobsFor(MAINTENANCE_CRON);
+    const orders = jobs.map(({ order }) => order);
+
+    expect(MAINTENANCE_CRON).toBe('21 12 * * *');
+    expect(new Set(orders).size).toBe(orders.length);
+    expect(
+      jobs
+        .filter(({ name }) => name.startsWith('match-engine.'))
+        .map(({ name, order }) => ({ name, order })),
+    ).toEqual([
+      { name: 'match-engine.event-redispatch', order: 1100 },
+      { name: 'match-engine.event-cleanup', order: 1110 },
+    ]);
+  });
+
   test('本機能のジョブの順は、割り当てられた1100番台の帯に収まる', () => {
-    for (const { order } of DAILY_JOBS) {
+    for (const { order } of ALL_JOBS) {
       expect(order).toBeGreaterThanOrEqual(1100);
       expect(order).toBeLessThan(1200);
     }

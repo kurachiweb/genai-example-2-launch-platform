@@ -25,7 +25,11 @@ import {
   type MatchSettlement,
 } from './match-settlement.ts';
 import { MATCH_TYPES } from './match-types.ts';
-import type { MatchIncidentReporter, PairingStore } from './ports.ts';
+import type {
+  MatchIncidentReporter,
+  PairingStore,
+  SettlementStore,
+} from './ports.ts';
 import type { QualifierPairingService } from './qualifier-pairing-service.ts';
 
 export const MATCH_EVENT_SWEEP_LIMIT = 50;
@@ -60,6 +64,39 @@ export const MATCH_KICKOFF_JOB_DEFINITION: ScheduledJobDefinition =
     order: MATCH_JOB_ORDER,
     handler: MATCH_TYPES.MatchKickoffJob,
   });
+
+const MAINTENANCE_TIME = Object.freeze({ hour: 4, minute: 21 });
+
+export const MATCH_EVENT_REDISPATCH_JOB_DEFINITION: ScheduledJobDefinition =
+  Object.freeze({
+    name: 'match-engine.event-redispatch',
+    at: MAINTENANCE_TIME,
+    order: MATCH_JOB_ORDER,
+    handler: MATCH_TYPES.MatchEventRedispatchJob,
+  });
+
+export const MATCH_EVENT_CLEANUP_JOB_DEFINITION: ScheduledJobDefinition =
+  Object.freeze({
+    name: 'match-engine.event-cleanup',
+    at: MAINTENANCE_TIME,
+    order: MATCH_JOB_ORDER + 10,
+    handler: MATCH_TYPES.MatchEventCleanupJob,
+  });
+
+const MILLISECONDS_PER_HOUR = 3_600_000;
+
+export const MATCH_EVENT_REDISPATCH_LIMIT = 100;
+
+export const MATCH_EVENT_STALE_AFTER_MS = MILLISECONDS_PER_HOUR;
+
+export const MATCH_SETTLEMENT_OVERDUE_AFTER_MS = MILLISECONDS_PER_HOUR;
+
+export const MATCH_EVENT_RETENTION_MS = 30 * MILLISECONDS_PER_DAY;
+
+// 起動の時間の予算とD1の負荷に収めるため1回の起動で消す件数を区切り、残りは翌日の起動に任せる
+export const MATCH_EVENT_CLEANUP_BATCH_SIZE = 500;
+
+export const MATCH_EVENT_CLEANUP_MAX_BATCHES = 10;
 
 const logger = getAppLogger(['api', 'application', 'match']);
 
@@ -209,6 +246,89 @@ export class MatchKickoffJob implements ScheduledJobHandler {
       latePairedMatches,
       started,
       decided,
+    });
+  }
+}
+
+@injectable()
+export class MatchEventRedispatchJob implements ScheduledJobHandler {
+  constructor(
+    @inject(MATCH_PLATFORM_TYPES.MatchEventStore)
+    private readonly events: MatchEventStore,
+    @inject(MATCH_PLATFORM_TYPES.MatchEventDispatcher)
+    private readonly dispatcher: MatchEventDispatcher,
+    @inject(MATCH_TYPES.SettlementStore)
+    private readonly settlements: SettlementStore,
+    @inject(MATCH_TYPES.MatchIncidentReporter)
+    private readonly reporter: MatchIncidentReporter,
+    @inject(PLATFORM_TYPES.Clock) private readonly clock: Clock,
+  ) {}
+
+  // 送信に失敗したイベントもpendingのまま最後の送信の日時が進むため、翌日の起動が再び拾う
+  async run(): Promise<void> {
+    const now = this.clock.now();
+    const swept = await sweepMissingDecidedEvents(
+      this.events,
+      this.dispatcher,
+      now,
+    );
+    // ストアは「より前」で比べるため、ちょうど1時間前に送ったイベントも含めるよう1ミリ秒後を渡す
+    const stale = await this.events.listStalePending(
+      new Date(now.getTime() - MATCH_EVENT_STALE_AFTER_MS + 1),
+      MATCH_EVENT_REDISPATCH_LIMIT,
+    );
+    const eventIds = stale.map(({ id }) => id);
+    if (eventIds.length > 0) {
+      await this.dispatcher.publish(eventIds);
+      await this.events.markRedispatched(eventIds, now);
+    }
+    const overdue = await this.settlements.countOverdue(
+      new Date(now.getTime() - MATCH_SETTLEMENT_OVERDUE_AFTER_MS),
+    );
+    if (overdue > 0) {
+      this.reporter.report({
+        kind: 'match-settlement-overdue',
+        count: overdue,
+      });
+    }
+    logger.info('滞ったマッチイベントを送り直しました', {
+      swept,
+      redispatched: eventIds.length,
+      overdue,
+    });
+  }
+}
+
+@injectable()
+export class MatchEventCleanupJob implements ScheduledJobHandler {
+  constructor(
+    @inject(MATCH_PLATFORM_TYPES.MatchEventStore)
+    private readonly events: MatchEventStore,
+    @inject(PLATFORM_TYPES.Clock) private readonly clock: Clock,
+  ) {}
+
+  async run(): Promise<void> {
+    const completedBefore = new Date(
+      this.clock.now().getTime() - MATCH_EVENT_RETENTION_MS,
+    );
+    let deleted = 0;
+    let batches = 0;
+    let lastCount: number;
+    do {
+      lastCount = await this.events.deleteCompletedBefore(
+        completedBefore,
+        MATCH_EVENT_CLEANUP_BATCH_SIZE,
+      );
+      deleted += lastCount;
+      batches += 1;
+    } while (
+      lastCount === MATCH_EVENT_CLEANUP_BATCH_SIZE &&
+      batches < MATCH_EVENT_CLEANUP_MAX_BATCHES
+    );
+    logger.info('完了から30日を過ぎたマッチイベントを削除しました', {
+      deleted,
+      batches,
+      limitReached: lastCount === MATCH_EVENT_CLEANUP_BATCH_SIZE,
     });
   }
 }

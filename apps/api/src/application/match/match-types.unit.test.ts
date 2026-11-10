@@ -20,6 +20,8 @@ const EXPECTED_NAMES = [
   'MatchSettlementJob',
   'QualifierPairingJob',
   'MatchKickoffJob',
+  'MatchEventRedispatchJob',
+  'MatchEventCleanupJob',
 ] as const;
 
 describe('MATCH_TYPES', () => {

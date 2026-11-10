@@ -78,6 +78,8 @@ export interface SettlementStore {
     outcomes: readonly SettlementWrite[],
     at: Date,
   ): Promise<readonly string[]>;
+  // 終了の日時がendedBeforeより前の未確定のマッチの数。開始されないまま終了の日時を過ぎたマッチも確定されずに残るため、開始の記録の有無を問わない
+  countOverdue(endedBefore: Date): Promise<number>;
 }
 
 // already-completedは、その日のペアリングが一度完了していること
@@ -152,7 +154,9 @@ export type MatchIncident =
   // 終了の時刻のジョブで確定できず、ペアリングの前に確定したマッチの数
   | { readonly kind: 'match-settlement-late'; readonly count: number }
   // 前日に完了していなかったペアリングを開始の前に行い、予定したマッチの数
-  | { readonly kind: 'qualifier-pairing-late'; readonly count: number };
+  | { readonly kind: 'qualifier-pairing-late'; readonly count: number }
+  // 終了の日時から一定の時間を過ぎても確定していないマッチの数
+  | { readonly kind: 'match-settlement-overdue'; readonly count: number };
 
 export interface MatchIncidentReporter {
   // 運用者が検知できるようログとエラートラッキングへ送る。個人情報を含めない

@@ -83,6 +83,9 @@ export function createFakeSettlementStore(
       });
       return Promise.resolve(eventIds);
     },
+    countOverdue() {
+      throw new Error('終了時の確定は未確定のマッチを数えない');
+    },
   };
 }
 

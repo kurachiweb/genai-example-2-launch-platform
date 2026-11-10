@@ -19,7 +19,7 @@ export class QueueMatchEventDispatcher implements MatchEventDispatcher {
     this.logger = getAppLogger([appName, 'match', 'events']);
   }
 
-  // 送れなかったイベントはpendingのまま残り、次のジョブの先頭の掃き出しと4:21の送り直しが拾うため、呼び出し側の処理を止めない
+  // 送れなかったイベントはpendingのまま残り、4:21の送り直しのジョブが拾うため、呼び出し側の処理を止めない
   async publish(eventIds: readonly string[]): Promise<void> {
     const queue = [...new Set(eventIds)];
     const worker = async (): Promise<void> => {
