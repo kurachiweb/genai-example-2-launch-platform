@@ -34,7 +34,7 @@ import { IDENTITY_MODULE } from './identity-module.ts';
 import { INQUIRY_MODULE } from './inquiry-module.ts';
 import { INTERNAL_ROUTES } from './internal-routes.ts';
 import { LEGAL_MODULE } from './legal-module.ts';
-import { API_MATCH_PLATFORM_MODULE } from './match-module.ts';
+import { API_MATCH_MODULE, API_MATCH_PLATFORM_MODULE } from './match-module.ts';
 import { API_MEDIA_MODULE, API_MEDIA_PLATFORM_MODULE } from './media-module.ts';
 import { MEDIA_REVIEW_POLICY_BINDINGS } from './media-review-policy.ts';
 import {
@@ -130,4 +130,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_ULTRAS_MODULE,
   PROFILE_MODULE,
   PRODUCT_MODULE,
+  API_MATCH_MODULE,
 ];
