@@ -71,7 +71,7 @@
   - _Requirements: 12.4, 12.5, 12.7, 13.5_
 
 - [ ] 3. APIサーバーの読み取り
-- [ ] 3.1 (P) 詳細ページの公開範囲と基準勝利の種類の純粋な規則を作る
+- [x] 3.1 (P) 詳細ページの公開範囲と基準勝利の種類の純粋な規則を作る
   - 先に、単体テストで、公開範囲(不在・可視でない(非公開・停止・退会)・未掲載の他者と本人・旧ハンドルの転送と転送しない場合・現在のハンドル)、基準勝利の種類(勝利・対戦相手なし・開始時点の相手の該当・早期の相手の該当)を確かめる
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
   - _Boundary: ProductPageAccess、BaseWin_
@@ -336,3 +336,4 @@
 - 2.3: 検索の結合は`ftsRankedSources(PRODUCT_SEARCH_INDEX, matchExpression)`の副問い合わせ(別名`product_search_matches`)を一覧と件数の両方に`$dynamic()`で内部結合する。D1の実装は検索式だけを受け、検索式は呼び出し側(3.4の`DirectoryReader`)がcommon-libの`normalizeSearchTerms`→`buildFtsMatchExpression`で作る。テストの補助`indexProduct`(`workers/directory/testing/directory-listing-fixtures.ts`)は2.1の検索対象の読み取りから実物の部品で索引文書を書く。検索のテストは`d1-directory-listing.search.worker.test.ts`
 - 2.4: `countByCategory(): Promise<ReadonlyMap<string, number>>`を契約とD1の実装に加えた。掲載の無いカテゴリはMapに入らないため、3.4の`DirectoryCategoryReader`は`get(id) ?? 0`で受ける。掲載数は`qualifierWins()`を結合せず`visibleProducts() AND wonLaunchExists()`で数えるため、`outcome='won'`のローンチが必ず予選の勝利を持つ前提で一覧の総件数と一致する(テストで確認)。カテゴリの絞り込みは`listed`の条件に`productInCategory`を足し、一覧と件数の両方に掛かる
 - 2.5: 記録のストアは`workers/directory/d1-directory-entry-store.ts`、投稿者の全ての索引文書を消す文は`workers/directory/product-index-removal-statements.ts`の`accountIndexRemovalStatement(userId)`(読み取りをせず`source_id IN (SELECT product_id FROM directory_entries WHERE owner_user_id = ?)`の1文、5.1が使う)、束縛は`workers/directory/directory-platform-module.ts`の`DIRECTORY_PLATFORM_MODULE`。設計との相違: (1) 主キーの`id`を作るため`PLATFORM_TYPES.IdGenerator`を注入する(設計のコンストラクタはDatabaseだけ。既存の`D1MatchScheduler`と同じ)。(2) `erase`は索引文書を`SearchIndexStatements.deleteSources`ではなくDrizzleで直接消す(検索の束縛への依存を避けるため。全文検索の索引は1.2の`AFTER DELETE`トリガーで消える。db/004の「削除」の節の書き方からは外れる)。`record`は15行ずつの挿入を1回の`db.batch`にまとめる(1行6変数)。eventの`MODULES`では既存の`match-module.worker.test.ts`の制約(`EVENT_MATCH_MODULE`は`EVENT_MATCH_PLATFORM_MODULE`の直後)のため`EVENT_MATCH_MODULE`の後、apiでは`API_MATCH_PLATFORM_MODULE`の直後に置いた。テストの補助は`testing/directory-entry-fixtures.ts`(`createStatementRecordingDatabase`)・`testing/directory-platform-fixtures.ts`
+- 3.1: 規則は`apps/api/src/domain/directory/product-page-access.ts`の`decideProductPageAccess({ resolution, viewerUserId })`(`not-found`・`redirect`・`render`(`productId`・`ownerView`・`unlisted`))と`base-win.ts`の`classifyBaseWin(match, launchId)`。設計が決めていない振る舞い: マッチが`undefined`か自分の側が無いときは`victory`(物理削除との競合だけで起き、3.4の可視でない行の除外で落ちる。3.4で`warn`を残すかを検討する)、自分の側の`result`が`lost`・`null`なら`RangeError`(上流の不変条件の破れ。Error Handlingの「部分的な一覧を出さない」に合う)。ハンドルの形式の検査(8.7)は3.5の`ProductPageReader.read`で行う
