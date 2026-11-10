@@ -19,6 +19,7 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthVerifyEmailRouteImport } from './routes/auth/verify-email'
 import { Route as LegalIndexRouteImport } from './routes/legal/index'
+import { Route as PIndexRouteImport } from './routes/p/index'
 import { Route as PrivacyIndexRouteImport } from './routes/privacy/index'
 import { Route as SystemStatusRouteImport } from './routes/system/status'
 import { Route as TermsIndexRouteImport } from './routes/terms/index'
@@ -91,6 +92,11 @@ const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
 const LegalIndexRoute = LegalIndexRouteImport.update({
   id: '/legal/',
   path: '/legal/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PIndexRoute = PIndexRouteImport.update({
+  id: '/p/',
+  path: '/p/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrivacyIndexRoute = PrivacyIndexRouteImport.update({
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/system/status': typeof SystemStatusRoute
   '/legal/': typeof LegalIndexRoute
+  '/p/': typeof PIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/checkout/$purchaseId': typeof AuthenticatedCheckoutPurchaseIdRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/system/status': typeof SystemStatusRoute
   '/legal': typeof LegalIndexRoute
+  '/p': typeof PIndexRoute
   '/privacy': typeof PrivacyIndexRoute
   '/terms': typeof TermsIndexRoute
   '/checkout/$purchaseId': typeof AuthenticatedCheckoutPurchaseIdRoute
@@ -307,6 +315,7 @@ export interface FileRoutesById {
   '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/system/status': typeof SystemStatusRoute
   '/legal/': typeof LegalIndexRoute
+  '/p/': typeof PIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
   '/terms/': typeof TermsIndexRoute
   '/_authenticated/checkout/$purchaseId': typeof AuthenticatedCheckoutPurchaseIdRoute
@@ -343,6 +352,7 @@ export interface FileRouteTypes {
     | '/auth/verify-email'
     | '/system/status'
     | '/legal/'
+    | '/p/'
     | '/privacy/'
     | '/terms/'
     | '/checkout/$purchaseId'
@@ -376,6 +386,7 @@ export interface FileRouteTypes {
     | '/auth/verify-email'
     | '/system/status'
     | '/legal'
+    | '/p'
     | '/privacy'
     | '/terms'
     | '/checkout/$purchaseId'
@@ -411,6 +422,7 @@ export interface FileRouteTypes {
     | '/auth/verify-email'
     | '/system/status'
     | '/legal/'
+    | '/p/'
     | '/privacy/'
     | '/terms/'
     | '/_authenticated/checkout/$purchaseId'
@@ -446,6 +458,7 @@ export interface RootRouteChildren {
   AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
   SystemStatusRoute: typeof SystemStatusRoute
   LegalIndexRoute: typeof LegalIndexRoute
+  PIndexRoute: typeof PIndexRoute
   PrivacyIndexRoute: typeof PrivacyIndexRoute
   TermsIndexRoute: typeof TermsIndexRoute
   AuthEmailChangeConfirmRoute: typeof AuthEmailChangeConfirmRoute
@@ -527,6 +540,13 @@ declare module '@tanstack/react-router' {
       path: '/legal'
       fullPath: '/legal/'
       preLoaderRoute: typeof LegalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/': {
+      id: '/p/'
+      path: '/p'
+      fullPath: '/p/'
+      preLoaderRoute: typeof PIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/privacy/': {
@@ -754,6 +774,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthVerifyEmailRoute: AuthVerifyEmailRoute,
   SystemStatusRoute: SystemStatusRoute,
   LegalIndexRoute: LegalIndexRoute,
+  PIndexRoute: PIndexRoute,
   PrivacyIndexRoute: PrivacyIndexRoute,
   TermsIndexRoute: TermsIndexRoute,
   AuthEmailChangeConfirmRoute: AuthEmailChangeConfirmRoute,

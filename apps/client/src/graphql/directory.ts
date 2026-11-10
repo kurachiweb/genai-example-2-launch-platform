@@ -1,6 +1,10 @@
-import { queryOptions } from '@tanstack/react-query';
+import { type QueryClient, queryOptions } from '@tanstack/react-query';
 
-import type { DirectoryQuery } from '../../common-lib/directory/directory-query-rules.ts';
+import {
+  type DirectoryQuery,
+  type DirectorySort,
+  normalizeDirectoryQuery,
+} from '../../common-lib/directory/directory-query-rules.ts';
 import { executeGraphQL } from '../../lib/start/graphql/execute-graphql.ts';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
 import { requireData } from '../../lib/utilities/graphql/graphql-result.ts';
@@ -8,7 +12,9 @@ import { graphqlQueryKey } from '../../lib/utilities/graphql/persisted-document.
 import {
   ClientDirectoryCategoriesDocument,
   ClientDirectoryDocument,
+  type ClientDirectoryQuery,
   type DirectoryInput,
+  type DirectorySort as AppliedSort,
 } from './generated/graphql.ts';
 import type { ClientViewer } from './viewer.ts';
 
@@ -51,3 +57,58 @@ export const directoryQueryOptions = (
 
 export const directoryCategoriesQueryOptions = () =>
   graphqlQueryOptions(ClientDirectoryCategoriesDocument, {});
+
+const SORT_OF_APPLIED: Readonly<Record<AppliedSort, DirectorySort>> =
+  Object.freeze({
+    RELEVANCE: 'relevance',
+    NEWEST: 'newest',
+    OLDEST: 'oldest',
+    UPVOTES: 'upvotes',
+  });
+
+// サーバーが解決した条件(存在しないカテゴリを外し、ハンドルを保存済みの表記にしたもの)を、URLの条件と同じ形にする
+export const directoryQueryOfApplied = ({
+  q,
+  category,
+  from,
+  to,
+  sort,
+  page,
+}: ClientDirectoryQuery['directory']['applied']): DirectoryQuery =>
+  normalizeDirectoryQuery({
+    q,
+    category,
+    from,
+    to,
+    sort: sort === null ? undefined : SORT_OF_APPLIED[sort],
+    page,
+  });
+
+export interface DirectoryLoaderArgs {
+  readonly context: {
+    readonly queryClient: QueryClient;
+    readonly viewer: ClientViewer | null;
+  };
+  readonly deps: DirectoryQuery;
+  readonly cause: 'preload' | 'enter' | 'stay';
+}
+
+// 最初の表示(サーバーでの描画を含む)は一覧とカテゴリの選択肢を待って描く。取得の失敗は検索欄と絞り込み欄を残して一覧の位置で再試行できるよう、例外にせずキャッシュに残す。
+// 同じ画面の中の条件の変更で待つと、ルーターが前の条件の画面を保ったまま待ち、画面が直前の一覧を残して読み込み中を示せないため、取得を始めるだけにする
+export async function loadDirectory({
+  context: { queryClient, viewer },
+  deps,
+  cause,
+}: DirectoryLoaderArgs): Promise<void> {
+  const loading = Promise.all([
+    queryClient
+      .query({ ...directoryQueryOptions(deps, viewer), staleTime: 'static' })
+      .catch(() => undefined),
+    queryClient
+      .query({ ...directoryCategoriesQueryOptions(), staleTime: 'static' })
+      .catch(() => undefined),
+  ]);
+  if (cause !== 'stay') {
+    await loading;
+  }
+}

@@ -5,6 +5,7 @@ import {
   buildCheckoutHead,
   buildCheckoutReturnHead,
   buildContactHead,
+  buildDirectoryHead,
   buildInquiryChatHead,
   buildLegalDocumentHead,
   buildLegalVersionHead,
@@ -117,6 +118,21 @@ describe('buildPricingHead', () => {
         },
       ],
       links: [{ rel: 'canonical', href: '/pricing' }],
+    });
+  });
+});
+
+describe('buildDirectoryHead', () => {
+  test('ディレクトリのタイトルと見出しの説明文の説明、条件を含まないディレクトリの正規のURLを付ける', () => {
+    expect(buildDirectoryHead()).toStrictEqual({
+      meta: [
+        { title: 'ディレクトリ | Launch Stadium' },
+        {
+          name: 'description',
+          content: '予選マッチに勝利したプロダクトだけが並ぶカタログです。',
+        },
+      ],
+      links: [{ rel: 'canonical', href: '/p' }],
     });
   });
 });

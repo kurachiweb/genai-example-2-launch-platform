@@ -8,6 +8,10 @@ import {
   type LegalDocumentKind,
   legalVersionTitle,
 } from '../../common-lib/legal/legal-documents.ts';
+import {
+  DIRECTORY_PAGE_DESCRIPTION,
+  DIRECTORY_PAGE_TITLE,
+} from '../components/directory/directory-page-messages.ts';
 import { INQUIRY_CHAT_PAGE_TITLE } from '../components/inquiry/inquiry-chat-messages.ts';
 import { CONTACT_PAGE_TITLE } from '../components/inquiry/inquiry-contact-messages.ts';
 import {
@@ -16,6 +20,7 @@ import {
 } from '../components/payments/checkout-messages.ts';
 import {
   CONTACT_HREF,
+  DIRECTORY_HREF,
   profileHref,
   SITE_NAME,
 } from '../components/layout/site-links.ts';
@@ -97,6 +102,14 @@ export const buildPricingHead = () =>
     title: PRICING_PAGE_TITLE,
     description: PRICING_PAGE_DESCRIPTION,
     canonicalUrl: PRICING_PAGE_HREF,
+  });
+
+// 条件ごとのURLは同じ一覧の並べ替え・絞り込みのため、正規のURLは条件を含まないディレクトリにする
+export const buildDirectoryHead = () =>
+  buildSitePageHead({
+    title: DIRECTORY_PAGE_TITLE,
+    description: DIRECTORY_PAGE_DESCRIPTION,
+    canonicalUrl: DIRECTORY_HREF,
   });
 
 // 本人だけが読むページのため、検索の索引の対象外にする
