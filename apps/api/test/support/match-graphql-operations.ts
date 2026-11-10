@@ -182,6 +182,22 @@ export const MATCH_VIEWS = /* GraphQL */ `
   }
 `;
 
+export const UPVOTE = /* GraphQL */ `
+  mutation Upvote($input: UpvoteInput!) {
+    upvote(input: $input) {
+      ${MATCH_SELECTION}
+    }
+  }
+`;
+
+export const CANCEL_UPVOTE = /* GraphQL */ `
+  mutation CancelUpvote($matchId: ID!) {
+    cancelUpvote(matchId: $matchId) {
+      ${MATCH_SELECTION}
+    }
+  }
+`;
+
 interface IdsArgs {
   readonly ids: readonly string[];
 }
@@ -219,7 +235,7 @@ const clockModule: AppModule<GatewayApp> = {
 };
 
 const matchGateway = createGraphQLGateway({
-  documents: [QUALIFIER_BOARD, MATCH_VIEWS],
+  documents: [QUALIFIER_BOARD, MATCH_VIEWS, UPVOTE, CANCEL_UPVOTE],
   schemaModules: [
     mediaSchemaModule,
     profileSchemaModule,
@@ -286,6 +302,10 @@ export function codesOf(response: GatewayResponse): (string | undefined)[] {
   return (response.errors ?? []).map((error) => error.extensions?.code);
 }
 
+export function detailsOf(response: GatewayResponse) {
+  return response.errors?.[0]?.extensions?.details ?? [];
+}
+
 export function fetchQualifierBoard(options?: GatewayCallOptions) {
   return matchGateway.call<{ qualifierBoard: QualifierBoardFields | null }>(
     QUALIFIER_BOARD,
@@ -301,6 +321,25 @@ export function fetchMatchViews(
   return matchGateway.call<{ matchViews: readonly (MatchFields | null)[] }>(
     MATCH_VIEWS,
     { ids },
+    options,
+  );
+}
+
+export function upvote(
+  input: { readonly matchId: string; readonly entryId: string },
+  options?: GatewayCallOptions,
+) {
+  return matchGateway.call<{ upvote: MatchFields | null }>(
+    UPVOTE,
+    { input },
+    options,
+  );
+}
+
+export function cancelUpvote(matchId: string, options?: GatewayCallOptions) {
+  return matchGateway.call<{ cancelUpvote: MatchFields | null }>(
+    CANCEL_UPVOTE,
+    { matchId },
     options,
   );
 }

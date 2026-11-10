@@ -830,6 +830,9 @@ type Mutation {
   """この端末のログアウト"""
   adminLogout: Boolean!
 
+  """メールアドレスが確認済みの利用者がマッチ中のマッチのUpvoteを取り消す。Upvoteしていなくても成功する。更新後のマッチを返す"""
+  cancelUpvote(matchId: ID!): Match!
+
   """パスワードの変更。操作した端末へ新しいセッションを発行する"""
   changeAdminPassword(
     """設定する新しいパスワード"""
@@ -1022,6 +1025,11 @@ type Mutation {
 
   """機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者"""
   updateUltrasPromotionSetting(input: UpdateUltrasPromotionSettingInput!): UltrasPromotionSetting!
+
+  """
+  メールアドレスが確認済みの利用者がマッチ中のマッチの一方の側にUpvoteする。もう一方の側にUpvote済みなら付け替え、同じ側なら何も変えない。更新後のマッチを返す
+  """
+  upvote(input: UpvoteInput!): Match!
 
   """メールアドレスの確認の確定"""
   verifyEmail(token: String!): Boolean!
@@ -1667,6 +1675,12 @@ input UpdateUltrasPromotionSettingInput {
 
   """監査ログに残す理由(任意)"""
   reason: String
+}
+
+"""Upvoteする側"""
+input UpvoteInput {
+  entryId: ID!
+  matchId: ID!
 }
 
 """閲覧者がUpvoteできない理由"""

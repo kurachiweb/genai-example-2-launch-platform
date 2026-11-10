@@ -2,6 +2,7 @@ import { defineSchemaModule } from '../../schema-module.ts';
 import { boardResolvers } from './board-resolvers.ts';
 import { matchViewResolvers } from './match-views.ts';
 import { MATCH_TYPE_DEFS } from './type-defs.ts';
+import { upvoteResolvers } from './upvote-resolvers.ts';
 
 export const matchSchemaModule = defineSchemaModule({
   name: 'match',
@@ -9,5 +10,6 @@ export const matchSchemaModule = defineSchemaModule({
   resolvers: {
     ...matchViewResolvers,
     Query: { ...boardResolvers.Query },
+    Mutation: { ...upvoteResolvers.Mutation },
   },
 });

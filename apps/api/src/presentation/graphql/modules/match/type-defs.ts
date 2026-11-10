@@ -139,8 +139,21 @@ export const MATCH_TYPE_DEFS = /* GraphQL */ `
     byes: [MatchBye!]!
   }
 
+  "Upvoteする側"
+  input UpvoteInput {
+    matchId: ID!
+    entryId: ID!
+  }
+
   type Query {
     "トップページの当日の予選。開始済みの予選を対戦カードと不戦勝に分けて返す。ログインを求めない"
     qualifierBoard: QualifierBoard!
+  }
+
+  type Mutation {
+    "メールアドレスが確認済みの利用者がマッチ中のマッチの一方の側にUpvoteする。もう一方の側にUpvote済みなら付け替え、同じ側なら何も変えない。更新後のマッチを返す"
+    upvote(input: UpvoteInput!): Match!
+    "メールアドレスが確認済みの利用者がマッチ中のマッチのUpvoteを取り消す。Upvoteしていなくても成功する。更新後のマッチを返す"
+    cancelUpvote(matchId: ID!): Match!
   }
 `;

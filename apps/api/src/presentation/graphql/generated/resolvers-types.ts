@@ -810,6 +810,8 @@ export type Mutation = {
   adminLogin: AdminSecondFactorRequired;
   /** この端末のログアウト */
   adminLogout: Scalars['Boolean']['output'];
+  /** メールアドレスが確認済みの利用者がマッチ中のマッチのUpvoteを取り消す。Upvoteしていなくても成功する。更新後のマッチを返す */
+  cancelUpvote: Match;
   /** パスワードの変更。操作した端末へ新しいセッションを発行する */
   changeAdminPassword: Scalars['Boolean']['output'];
   /** ロールの変更 */
@@ -928,6 +930,8 @@ export type Mutation = {
   updateProductCategory: ProductCategory;
   /** 機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者 */
   updateUltrasPromotionSetting: UltrasPromotionSetting;
+  /** メールアドレスが確認済みの利用者がマッチ中のマッチの一方の側にUpvoteする。もう一方の側にUpvote済みなら付け替え、同じ側なら何も変えない。更新後のマッチを返す */
+  upvote: Match;
   /** メールアドレスの確認の確定 */
   verifyEmail: Scalars['Boolean']['output'];
   /** 退会 */
@@ -938,6 +942,11 @@ export type Mutation = {
 export type MutationAdminLoginArgs = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
+};
+
+
+export type MutationCancelUpvoteArgs = {
+  matchId: Scalars['ID']['input'];
 };
 
 
@@ -1232,6 +1241,11 @@ export type MutationUpdateProductCategoryArgs = {
 
 export type MutationUpdateUltrasPromotionSettingArgs = {
   input: UpdateUltrasPromotionSettingInput;
+};
+
+
+export type MutationUpvoteArgs = {
+  input: UpvoteInput;
 };
 
 
@@ -1919,6 +1933,12 @@ export type UpdateUltrasPromotionSettingInput = {
   reason?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** Upvoteする側 */
+export type UpvoteInput = {
+  entryId: Scalars['ID']['input'];
+  matchId: Scalars['ID']['input'];
+};
+
 /** 閲覧者がUpvoteできない理由 */
 export type UpvoteRestriction =
   | 'ACCOUNT_UNAVAILABLE'
@@ -2208,6 +2228,7 @@ export type ResolversTypes = {
   UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
+  UpvoteInput: UpvoteInput;
   UpvoteRestriction: UpvoteRestriction;
   UserSessionSummary: ResolverTypeWrapper<UserSessionSummary>;
   UserSummary: ResolverTypeWrapper<UserSummarySource>;
@@ -2335,6 +2356,7 @@ export type ResolversParentTypes = {
   UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
+  UpvoteInput: UpvoteInput;
   UserSessionSummary: UserSessionSummary;
   UserSummary: UserSummarySource;
   Viewer: ViewerSource;
@@ -2748,6 +2770,7 @@ export type MoneyResolvers<ContextType = GraphQLContext, ParentType extends Reso
 export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   adminLogin?: Resolver<ResolversTypes['AdminSecondFactorRequired'], ParentType, ContextType, RequireFields<MutationAdminLoginArgs, 'email' | 'password'>>;
   adminLogout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  cancelUpvote?: Resolver<ResolversTypes['Match'], ParentType, ContextType, RequireFields<MutationCancelUpvoteArgs, 'matchId'>>;
   changeAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationChangeAdminPasswordArgs, 'newPassword' | 'reAuthentication'>>;
   changeAdminRole?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationChangeAdminRoleArgs, 'id' | 'role'>>;
   changeInquiryStatus?: Resolver<ResolversTypes['AdminInquiry'], ParentType, ContextType, RequireFields<MutationChangeInquiryStatusArgs, 'inquiryId' | 'status'>>;
@@ -2807,6 +2830,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   updateProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationUpdateProductArgs, 'input'>>;
   updateProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationUpdateProductCategoryArgs, 'id' | 'input'>>;
   updateUltrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType, RequireFields<MutationUpdateUltrasPromotionSettingArgs, 'input'>>;
+  upvote?: Resolver<ResolversTypes['Match'], ParentType, ContextType, RequireFields<MutationUpvoteArgs, 'input'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
 };
