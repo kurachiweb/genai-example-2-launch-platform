@@ -17,7 +17,7 @@
   - _Requirements: 13.5_
 
 - [ ] 2. 契約と共有部品
-- [ ] 2.1 マッチの状態・決着・ペアリングの純粋な規則を作る
+- [x] 2.1 マッチの状態・決着・ペアリングの純粋な規則を作る
   - 先に、単体テストで、状態の導出(開始の記録の前後・終了の日時の23:39:59と23:40・確定)、予選の開始と終了の日時(UTCの8:00と翌日7:40)、終了時の決着(予選ルールの判定の例: 12対9・7対7で14:02と18:30・0対0・3対0、最終Upvote時間が一致したときの記録の順(仮2))、開始時点の決着(不戦勝・一方の該当・両方の該当(仮4)・側1つの該当)、ペアリング(予選ルールの9個の例を決まった乱数で手順どおりに組むこと、偶数・1個・0個、同じ投稿者の組を避けないこと(仮5))、乱数の値の範囲と棄却法を確かめる
   - 業務時刻の計算はbackend-platformの部品を使い、データベースと実時間に依存させない
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
@@ -311,3 +311,4 @@
 
 - 1.1: テーブルは`apps/db/schema/match/`、マイグレーションは`20261110032731_match_engine`。値の一覧(種別・段階・決着・結果・イベントの種類と状態・ペアリングの状態)は`apps/db`内だけの定数のため、2.1で`core/match`の値の一覧とテーブル定義の`enumValues`の一致を確かめる単体テストを加える(product-launchの`product-lifecycle-columns.unit.test.ts`と同じ形)。`qualifierWins()`は別名付きの副問い合わせを返す関数で、`const wins = qualifierWins()`と受けて`wins.productId`で結合する(design.mdの利用例`qualifierWins.productId`は動かない)。戻り値の`matchDate`は`string`、`lastUpvotedAt`・`decidedAt`はエポックミリ秒の`number`。`match_kind`は側とイベントにも同じCHECKを持つ。予選の側の部分一意索引は`match_entries_qualifier_launch_id_unique`(トーナメントの側のローンチには一意の制約が無い)
 - 1.2: 画面の文言は`docs/GUIDES/service/design/003-text-and-copy-rules.md`を正とし、6.3・6.4・8.xの実装はここから一字一句写す。設計が決めていなかった文言は003で決めた(カウントダウンの読み上げ「フルタイムまであと12時間34分」・1時間未満「…あと34分」・1分未満「…あと1分未満」、Upvote履歴の日付の小見出しの件数「3件」、投稿者のリンクの読み上げの接頭辞「投稿者:」、Upvote履歴の空の状態の導線「トップページで開催中のマッチを見る」、ログインのダイアログの説明と未ログインの案内はモックアップから)。Upvote・取り消しの`validation_error`(IDの形式違反・マッチに無い側)は「マッチが見つからない」と同じ文言、`upvoteHistory`の`invalid_cursor`・`first`の範囲外は`launchHistory`の既存の文言を使う。予選の見出しの試合数は対戦カードと即時に終了したマッチの数(対戦相手なし・開始時点の相手の該当の不戦勝と両者敗北は数えない)。種別の印は「Week 準決勝」のように半角スペースで区切る(表記規則の例外として明記)。比率のバーの代替テキストは「<名称>12票、<名称>9票」。8.10で仮のトップページを消すとき、003の「トップページの仮の表示」(「トップページは準備中です。」)の行も消す。product detailの節の「トップページと同じ演出」の記述はdirectory-discoveryの範囲として残した
+- 2.1: 規則は`apps/backend-lib/core/match/`の`match-model.ts`(値の一覧・`deriveMatchPhase`・`QUALIFIER_SCHEDULE`・`qualifierWindow`・`isWinningResult`)・`match-decision.ts`(`decideAtKickoff`・`decideAtFullTime`)・`qualifier-pairing.ts`(`pairQualifiers`・棄却法の`createUniformRandomSource(nextUint32)`)。5.2の`CryptoRandomSource`は`createUniformRandomSource(() => crypto.getRandomValues(new Uint32Array(1))[0])`で包むだけにする。2.2の`core/match/match-events.ts`は値の一覧(`MATCH_EVENT_TYPES`・`MATCH_EVENT_STATUSES`)だけを先に作ったので、2.2は同じファイルへ追記する。`QUALIFIER_SCHEDULE.pairing`はproduct-launchの`core/product/launch-status.ts`の`PAIRING_TIME`を再利用する(設計の許可された依存に無い結合。値を二重に持たないため)。不整合な集計値(同数で1以上なのに最終Upvote時間が無い等)と側が0個・3個以上の`decideAtKickoff`は`RangeError`。開始時点に側1つだけが該当すると決着`both_forfeited`・結果`lost`。テーブル定義との値の照合は`workers/match/match-columns.unit.test.ts`(`qualifier_pairings.status`はcoreに一覧が無いため対象外)。CLAUDE.mdのディレクトリ構成への`core/match`・`workers/match`の追記は9.1で行う
