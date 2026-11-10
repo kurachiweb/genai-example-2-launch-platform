@@ -1,25 +1,16 @@
-import { ChevronUpIcon, ExternalLinkIcon, PackageIcon } from 'lucide-react';
+import { ChevronUpIcon, PackageIcon } from 'lucide-react';
 
 import { NumberText } from '../../../lib/components/datetime/number-text.tsx';
 import { MediaPicture } from '../../../lib/components/media/media-picture.tsx';
-import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { Badge } from '../../../lib/components/ui/badge/badge.tsx';
-import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { cn } from '../../../lib/utilities/class-names.ts';
-import { checkExternalUrl } from '../../../common-lib/url/external-url.ts';
-import { productDetailHref } from '../layout/site-links.ts';
-import {
-  OPEN_SITE_LABEL,
-  openSiteLabelPrefix,
-} from '../launch-history/launch-history-messages.ts';
-import { NEW_TAB_NOTICE } from '../profile/profile-messages.ts';
 import { VOTE_UNIT } from './match-card-messages.ts';
 import type { EntryOutcome, MatchEntryView } from './match-card-model.ts';
 import { HIDDEN_PRODUCT_NAME } from './match-labels.ts';
 import type { PitchSide } from './pitch-model.ts';
+import { ProductNameLink } from './product-name-link.tsx';
+import { ProductSiteLink } from './product-site-link.tsx';
 import { UpvoteButton } from './upvote-button.tsx';
-
-type MatchProductView = NonNullable<MatchEntryView['product']>;
 
 export interface ProductPanelProps {
   readonly entry: MatchEntryView;
@@ -48,49 +39,6 @@ function VoteCount({ count }: { readonly count: number }) {
         <span className="sr-only">{VOTE_UNIT}</span>
       </span>
     </p>
-  );
-}
-
-function SiteLink({
-  product,
-  siteRel,
-}: {
-  readonly product: MatchProductView;
-  readonly siteRel: string;
-}) {
-  // 保存時の検証を通った値だけが入る前提だが、危険なスキームのリンクを作らないよう描画でも確かめる
-  if (checkExternalUrl(product.websiteUrl) !== 'ok') {
-    return null;
-  }
-  return (
-    <Button asChild size="xs" variant="outline" className="rounded-full px-3">
-      <a href={product.websiteUrl} target="_blank" rel={siteRel}>
-        <span className="sr-only">{openSiteLabelPrefix(product.name)}</span>
-        {OPEN_SITE_LABEL}
-        <ExternalLinkIcon aria-hidden="true" />
-        <span className="sr-only">{NEW_TAB_NOTICE}</span>
-      </a>
-    </Button>
-  );
-}
-
-function ProductName({
-  product,
-  linked,
-}: {
-  readonly product: MatchProductView;
-  readonly linked: boolean;
-}) {
-  if (!linked) {
-    return product.name;
-  }
-  return (
-    <PathLink
-      href={productDetailHref(product.handle)}
-      className="rounded-sm text-inherit no-underline hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-    >
-      {product.name}
-    </PathLink>
   );
 }
 
@@ -161,8 +109,9 @@ export function ProductPanel({
               <Badge variant="outline">{product.category.name}</Badge>
             </div>
             <h3 className="mt-1 text-base font-extrabold tracking-tight wrap-anywhere text-foreground @[768px]:text-lg">
-              <ProductName
-                product={product}
+              <ProductNameLink
+                name={product.name}
+                handle={product.handle}
                 linked={product.listed || entry.isViewerOwn}
               />
             </h3>
@@ -170,7 +119,11 @@ export function ProductPanel({
               {product.tagline}
             </p>
             <div className={cn('mt-2 flex', isRight && MIRRORED_ROW)}>
-              <SiteLink product={product} siteRel={siteRel} />
+              <ProductSiteLink
+                name={product.name}
+                websiteUrl={product.websiteUrl}
+                rel={siteRel}
+              />
             </div>
           </div>
         </>

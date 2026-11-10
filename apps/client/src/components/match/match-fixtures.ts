@@ -1,4 +1,7 @@
-import type { MatchFragment } from '../../graphql/generated/graphql.ts';
+import type {
+  MatchByeFragment,
+  MatchFragment,
+} from '../../graphql/generated/graphql.ts';
 import type { MatchEntryView } from './match-card-model.ts';
 
 type EntrySide = 'left' | 'right';
@@ -74,3 +77,31 @@ export const matchOf = (
   entries: [entryOf('left'), entryOf('right')],
   ...overrides,
 });
+
+export const BYE_MATCH_ID = '01JD0MATCH0000000000000002';
+
+type ByeOverrides = {
+  readonly match?: Partial<MatchByeFragment['match']>;
+  readonly entry?: Partial<MatchByeFragment['entry']>;
+  readonly reason?: MatchByeFragment['reason'];
+};
+
+export const byeOf = ({
+  match = {},
+  entry = {},
+  reason,
+}: ByeOverrides = {}): MatchByeFragment => {
+  const byeMatch: MatchByeFragment['match'] = {
+    id: BYE_MATCH_ID,
+    kind: 'QUALIFIER',
+    round: null,
+    stage: null,
+    endedEarly: false,
+    ...match,
+  };
+  return {
+    reason: reason ?? (byeMatch.endedEarly ? 'EARLY' : 'ABSENT'),
+    match: byeMatch,
+    entry: entryOf('left', { result: 'BYE', ...entry }),
+  };
+};
