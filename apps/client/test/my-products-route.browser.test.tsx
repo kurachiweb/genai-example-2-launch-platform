@@ -17,7 +17,7 @@ import type {
   MyProductSection,
   MyProductSectionContext,
 } from '../src/components/product/product-section-types.ts';
-import { BOUNDARY_REFRESH_DELAY_MS } from '../src/components/product/use-boundary-refresh.ts';
+import { BOUNDARY_REFRESH_DELAY_MS } from '../src/components/time/use-boundary-refresh.ts';
 import {
   ClientMyProductsDocument,
   type ClientMyProductsQuery,

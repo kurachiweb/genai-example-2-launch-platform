@@ -10,7 +10,7 @@ import { applyColorScheme, COLOR_SCHEMES } from '../lib/test/computed-style.ts';
 import { emulateBrowserDisplay } from '../lib/test/display-emulation.ts';
 import { resetFakeTurnstile } from '../lib/test/fake-turnstile.tsx';
 import type { MyProductSection } from '../src/components/product/product-section-types.ts';
-import { BOUNDARY_REFRESH_DELAY_MS } from '../src/components/product/use-boundary-refresh.ts';
+import { BOUNDARY_REFRESH_DELAY_MS } from '../src/components/time/use-boundary-refresh.ts';
 import {
   ClientMyProductDocument,
   ClientUpdateProductDocument,

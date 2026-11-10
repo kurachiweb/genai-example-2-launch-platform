@@ -37,7 +37,7 @@ import {
 import { LaunchDateField } from './launch-date-field.tsx';
 import type { LaunchDateFieldValues } from './launch-date-field-values.ts';
 import { ultrasOfferQueryOptions } from '../../graphql/ultras.ts';
-import { BOUNDARY_REFRESH_DELAY_MS } from './use-boundary-refresh.ts';
+import { BOUNDARY_REFRESH_DELAY_MS } from '../time/use-boundary-refresh.ts';
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 

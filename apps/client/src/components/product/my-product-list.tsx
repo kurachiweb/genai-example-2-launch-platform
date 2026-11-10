@@ -15,6 +15,7 @@ import {
   toMyProductCards,
 } from '../../graphql/my-products.ts';
 import { useFollowListFocus } from '../profile/use-follow-list-focus.ts';
+import { useBoundaryRefresh } from '../time/use-boundary-refresh.ts';
 import { MyProductCard } from './my-product-card.tsx';
 import { MyProductCardSkeletons } from './my-product-card-skeletons.tsx';
 import {
@@ -25,7 +26,6 @@ import {
 } from './my-product-messages.ts';
 import { MyProductSectionSlots } from './my-product-section-slots.tsx';
 import type { MyProductSection } from './product-section-types.ts';
-import { useBoundaryRefresh } from './use-boundary-refresh.ts';
 
 export interface MyProductListProps {
   readonly viewerId: string;

@@ -11,6 +11,7 @@ import {
   toMyProductLookup,
   toProductCategoryViews,
 } from '../../graphql/my-products.ts';
+import { useBoundaryRefresh } from '../time/use-boundary-refresh.ts';
 import { DANGER_SECTION_HEADING } from './product-edit-messages.ts';
 import {
   changeLockReasonOf,
@@ -25,7 +26,6 @@ import type {
   MyProductSection,
   ProductDeleteNotice,
 } from './product-section-types.ts';
-import { useBoundaryRefresh } from './use-boundary-refresh.ts';
 import { useProductUpdate } from './use-product-update.ts';
 
 export interface ProductEditContentProps {
