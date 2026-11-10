@@ -333,7 +333,11 @@ describe('Upvoteの物理削除とマッチ記録の紐付けの解除の処理�
       createProductLifecycleRegistry(PRODUCT_LIFECYCLE_ASYNC_HANDLERS)
         .handlersFor('purge_due')
         .map(({ name }) => name),
-    ).toStrictEqual(['product-launch.image-erasure', ENTRY_UNLINK_NAME]);
+    ).toStrictEqual([
+      'product-launch.image-erasure',
+      ENTRY_UNLINK_NAME,
+      'directory-discovery.entry-erasure',
+    ]);
   });
 
   test.each(INVOCATION_KINDS)(

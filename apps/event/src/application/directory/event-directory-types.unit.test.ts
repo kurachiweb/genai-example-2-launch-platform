@@ -4,11 +4,14 @@ import { DIRECTORY_PLATFORM_TYPES } from '../../../lib/core/directory/identifier
 import { EVENT_DIRECTORY_TYPES } from './event-directory-types.ts';
 
 describe('EVENT_DIRECTORY_TYPES', () => {
-  test('予選の勝利による掲載の記録の処理と、更新待ちの書き込みの単位の識別子を持つ', () => {
-    const names = new Set(Object.keys(EVENT_DIRECTORY_TYPES));
-
-    expect(names.has('QualifierListingHandler')).toBe(true);
-    expect(names.has('ProductIndexPendingMarker')).toBe(true);
+  test('掲載の記録・索引の作り直し・記録の物理削除の処理と、更新待ちの書き込みの単位の識別子を持つ', () => {
+    expect(Object.keys(EVENT_DIRECTORY_TYPES).toSorted()).toStrictEqual([
+      'AccountIndexRestoreHandler',
+      'EntryErasureHandler',
+      'ProductIndexPendingMarker',
+      'ProductIndexRestoreHandler',
+      'QualifierListingHandler',
+    ]);
   });
 
   test('識別子はグローバルのシンボル登録簿のdirectory.event.<名前>である', () => {

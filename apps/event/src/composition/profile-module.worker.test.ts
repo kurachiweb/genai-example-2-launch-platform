@@ -271,7 +271,10 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
     ]);
     expect(
       registry.handlersFor('unsuspended').map(({ name }) => name),
-    ).toStrictEqual([OWNED_IMAGE_QUARANTINE_NAME]);
+    ).toStrictEqual([
+      OWNED_IMAGE_QUARANTINE_NAME,
+      'directory-discovery.account-index-restore',
+    ]);
   });
 
   test.each(INVOCATION_KINDS)(
