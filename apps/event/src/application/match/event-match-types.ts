@@ -11,10 +11,22 @@ const AccountDecisionFollowUpHandler: unique symbol = Symbol.for(
 const ProductDecisionFollowUpHandler: unique symbol = Symbol.for(
   'match.event.ProductDecisionFollowUpHandler',
 );
+const MatchPurgeStore: unique symbol = Symbol.for(
+  'match.event.MatchPurgeStore',
+);
+const UpvoteErasureHandler: unique symbol = Symbol.for(
+  'match.event.UpvoteErasureHandler',
+);
+const EntryUnlinkHandler: unique symbol = Symbol.for(
+  'match.event.EntryUnlinkHandler',
+);
 
 export const EVENT_MATCH_TYPES = Object.freeze({
   MatchEventRunner,
   QualifierOutcomeHandler,
   AccountDecisionFollowUpHandler,
   ProductDecisionFollowUpHandler,
+  MatchPurgeStore,
+  UpvoteErasureHandler,
+  EntryUnlinkHandler,
 });

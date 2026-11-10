@@ -387,6 +387,7 @@ describe('プロダクトライフサイクルの非同期の処理の登録口'
     ]);
     expect(namesOf('purge_due')).toStrictEqual([
       'product-launch.image-erasure',
+      'match-engine.entry-unlink',
     ]);
     expect(namesOf('deleted')).toStrictEqual([
       'match-engine.product-decision-follow-up',

@@ -72,6 +72,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       handler: EVENT_MATCH_TYPES.AccountDecisionFollowUpHandler,
     },
     {
+      name: 'match-engine.upvote-erasure',
+      events: ['purge_due'],
+      order: 1100,
+      handler: EVENT_MATCH_TYPES.UpvoteErasureHandler,
+    },
+    {
       name: 'identity-auth.email-suppression-cleanup',
       events: ['withdrawn'],
       order: 10000,

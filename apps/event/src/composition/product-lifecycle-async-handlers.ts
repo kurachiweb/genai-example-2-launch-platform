@@ -24,4 +24,10 @@ export const PRODUCT_LIFECYCLE_ASYNC_HANDLERS: readonly ProductLifecycleAsyncReg
       order: 1100,
       handler: EVENT_MATCH_TYPES.ProductDecisionFollowUpHandler,
     },
+    {
+      name: 'match-engine.entry-unlink',
+      events: ['purge_due'],
+      order: 1100,
+      handler: EVENT_MATCH_TYPES.EntryUnlinkHandler,
+    },
   ]);

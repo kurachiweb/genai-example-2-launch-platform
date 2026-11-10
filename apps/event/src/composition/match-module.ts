@@ -21,9 +21,13 @@ import {
   AccountDecisionFollowUpHandler,
   ProductDecisionFollowUpHandler,
 } from '../application/match/decision-follow-up-handlers.ts';
+import { EntryUnlinkHandler } from '../application/match/entry-unlink-handler.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import { MatchEventRunner } from '../application/match/match-event-runner.ts';
+import type { MatchPurgeStore } from '../application/match/ports.ts';
 import { QualifierOutcomeHandler } from '../application/match/qualifier-outcome-handler.ts';
+import { UpvoteErasureHandler } from '../application/match/upvote-erasure-handler.ts';
+import { D1MatchPurgeStore } from '../infrastructure/match/d1-match-purge-store.ts';
 import type { EventEnv } from './env-schema.ts';
 import { MATCH_EVENT_HANDLERS } from './match-event-handlers.ts';
 
@@ -36,7 +40,7 @@ export interface EventMatchModuleOptions {
   readonly eventHandlers: readonly MatchEventRegistration[];
 }
 
-// 共通の束縛(EVENT_MATCH_PLATFORM_MODULE・PRODUCT_PLATFORM_MODULE)が登録されている前提で、マッチイベントの実行器と予選の結果の記録の処理、ユーザー・プロダクトのライフサイクルの登録口から呼ばれる即時の終了の後続の処理を束縛する
+// 共通の束縛(EVENT_MATCH_PLATFORM_MODULE・PRODUCT_PLATFORM_MODULE)が登録されている前提で、マッチイベントの実行器と予選の結果の記録の処理、ユーザー・プロダクトのライフサイクルの登録口から呼ばれる即時の終了の後続の処理と、Upvoteの物理削除・マッチ記録の紐付けの解除の処理とそのストアを束縛する
 export function createEventMatchModule(
   options: EventMatchModuleOptions,
 ): EventAppModule {
@@ -54,6 +58,15 @@ export function createEventMatchModule(
       bind<ProductLifecycleAsyncHandler>(
         EVENT_MATCH_TYPES.ProductDecisionFollowUpHandler,
       ).to(ProductDecisionFollowUpHandler);
+      bind<MatchPurgeStore>(EVENT_MATCH_TYPES.MatchPurgeStore).to(
+        D1MatchPurgeStore,
+      );
+      bind<UserLifecycleAsyncHandler>(
+        EVENT_MATCH_TYPES.UpvoteErasureHandler,
+      ).to(UpvoteErasureHandler);
+      bind<ProductLifecycleAsyncHandler>(
+        EVENT_MATCH_TYPES.EntryUnlinkHandler,
+      ).to(EntryUnlinkHandler);
       bind<MessageHandler<RunMatchEventBody>>(
         EVENT_MATCH_TYPES.MatchEventRunner,
       ).toDynamicValue(
