@@ -5,6 +5,7 @@ import {
   DIRECTORY_LIST_INSERTS,
   DIRECTORY_PAGE_SECTIONS,
 } from '../../composition/directory-sections.ts';
+import { DIRECTORY_PLACEMENTS } from './directory-section-order.ts';
 import type { DirectoryPlacement } from './directory-section-types.ts';
 
 const SECTION_ID_PATTERN = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/u;
@@ -12,7 +13,7 @@ const SECTION_ID_PATTERN = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/u;
 // APIサーバーの一覧の項目の値の供給元の登録のkeyと同じ形
 const METRIC_KEY_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
 
-const PLACEMENTS: readonly DirectoryPlacement[] = ['banner', 'aside', 'bottom'];
+const PLACEMENTS: readonly DirectoryPlacement[] = DIRECTORY_PLACEMENTS;
 
 describe('ディレクトリの登録箇所', () => {
   test('初版の区画・一覧の差し込み・項目の値の3つの登録箇所は空である', () => {
