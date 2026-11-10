@@ -25,9 +25,9 @@ export function staleEventOf(
   };
 }
 
-function unused(name: string): never {
+const unused = (name: string) => (): never => {
   throw new Error(`4:21のジョブは${name}を呼ばない`);
-}
+};
 
 export interface FakeMaintenanceEventStore extends MatchEventStore {
   readonly sweeps: { readonly decidedSince: Date; readonly at: Date }[];
@@ -87,11 +87,11 @@ export function createFakeMaintenanceEventStore(
         options.deletedPerCall?.[deletions.length - 1] ?? 0,
       );
     },
-    findEvent: () => unused('findEvent'),
-    findOldestPending: () => unused('findOldestPending'),
-    completedHandlers: () => unused('completedHandlers'),
-    markHandlerCompleted: () => unused('markHandlerCompleted'),
-    markEventCompleted: () => unused('markEventCompleted'),
+    findEvent: unused('findEvent'),
+    findOldestPending: unused('findOldestPending'),
+    completedHandlers: unused('completedHandlers'),
+    markHandlerCompleted: unused('markHandlerCompleted'),
+    markEventCompleted: unused('markEventCompleted'),
   };
 }
 
@@ -111,7 +111,7 @@ export function createFakeOverdueSettlementStore(
       overdueQueries.push(endedBefore);
       return Promise.resolve(overdue);
     },
-    listDue: () => unused('listDue'),
-    writeOutcomes: () => unused('writeOutcomes'),
+    listDue: unused('listDue'),
+    writeOutcomes: unused('writeOutcomes'),
   };
 }

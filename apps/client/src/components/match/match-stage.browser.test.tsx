@@ -99,6 +99,37 @@ describe('MatchStageの演出', () => {
     expect(track.style.getPropertyValue('--ball-at')).toBe('1');
   });
 
+  test('Upvoteの演出は、ボールをゴールで止めてから比率の境目へ戻し、観客の盛り上がりとともに終える', async () => {
+    await renderStage('on');
+    await upvote('Pitch Notes');
+    await waitUntilExcited('left');
+    const trackStyleOf = (name: string): string =>
+      (
+        visible('[data-vote-ball-track]')[0] as HTMLElement
+      ).style.getPropertyValue(name);
+    await expect
+      .poll(() => visible('[data-vote-ball][data-flying="true"]'))
+      .toHaveLength(1);
+
+    await expect
+      .poll(() => visible('[data-vote-ball][data-flying="true"]'))
+      .toHaveLength(0);
+    expect(trackStyleOf('--ball-at')).toBe('1');
+    await expect
+      .poll(() => trackStyleOf('--ball-duration'), { timeout: 3000 })
+      .toBe('2500ms');
+    expect(trackStyleOf('--ball-at')).toBe(String(13 / 22));
+    await expect
+      .poll(() => trackStyleOf('--ball-duration'), { timeout: 5000 })
+      .toBe('400ms');
+    expect(trackStyleOf('--ball-at')).toBe(String(13 / 22));
+    await expect
+      .poll(() => visible('[data-pitch-crowd="left"][data-excited="true"]'), {
+        timeout: 7000,
+      })
+      .toHaveLength(0);
+  });
+
   test('同じ側へ続けてUpvoteが反映されると、観客の跳ねる演出をやり直す', async () => {
     await renderStage('on');
     await upvote('Pitch Notes');

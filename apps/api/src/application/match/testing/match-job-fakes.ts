@@ -65,9 +65,9 @@ export interface FakeSweepEventStore extends MatchEventStore {
   }[];
 }
 
-function unused(name: string): never {
+const unused = (name: string) => (): never => {
   throw new Error(`ジョブの掃き出しは${name}を呼ばない`);
-}
+};
 
 // 呼ばれるたびにpagesの次の要素を作ったイベントとして返し、尽きたら空を返す
 export function createFakeSweepEventStore(
@@ -82,14 +82,14 @@ export function createFakeSweepEventStore(
       sweeps.push({ decidedSince, at, limit });
       return Promise.resolve(pages[sweeps.length - 1] ?? []);
     },
-    findEvent: () => unused('findEvent'),
-    findOldestPending: () => unused('findOldestPending'),
-    completedHandlers: () => unused('completedHandlers'),
-    markHandlerCompleted: () => unused('markHandlerCompleted'),
-    markEventCompleted: () => unused('markEventCompleted'),
-    listStalePending: () => unused('listStalePending'),
-    markRedispatched: () => unused('markRedispatched'),
-    deleteCompletedBefore: () => unused('deleteCompletedBefore'),
+    findEvent: unused('findEvent'),
+    findOldestPending: unused('findOldestPending'),
+    completedHandlers: unused('completedHandlers'),
+    markHandlerCompleted: unused('markHandlerCompleted'),
+    markEventCompleted: unused('markEventCompleted'),
+    listStalePending: unused('listStalePending'),
+    markRedispatched: unused('markRedispatched'),
+    deleteCompletedBefore: unused('deleteCompletedBefore'),
   };
 }
 
@@ -180,9 +180,9 @@ export function createFakeCompletionStore(
       checked.push(date);
       return Promise.resolve(completed.includes(date));
     },
-    beginDay: () => unused('beginDay'),
-    completeDay: () => unused('completeDay'),
-    pairedLaunchIds: () => unused('pairedLaunchIds'),
+    beginDay: unused('beginDay'),
+    completeDay: unused('completeDay'),
+    pairedLaunchIds: unused('pairedLaunchIds'),
   };
 }
 

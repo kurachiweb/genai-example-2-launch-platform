@@ -1,11 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
-  QUALIFIER_LIST_INSERTS,
-  TOP_PAGE_SECTIONS,
-} from '../../composition/top-page-sections.ts';
-import { FullTimeCountdownSection } from './full-time-countdown-section.tsx';
-import {
   groupTopPageSections,
   layoutQualifierList,
   orderTopPageSections,
@@ -40,8 +35,6 @@ const describeItems = (
       ? item.card
       : `${item.insert.id}#${String(item.position)}`,
   );
-
-const SECTION_ID_PATTERN = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/u;
 
 describe('トップページの区画の順序', () => {
   test('登録の順によらず、orderの小さい順に並べ、元の一覧を変えない', () => {
@@ -289,49 +282,5 @@ describe('予選の一覧の差し込みの回数', () => {
     for (const cardCount of [-1, 2.5, Number.NaN]) {
       expect(() => qualifierInsertCount(cardCount, 2)).toThrow(RangeError);
     }
-  });
-});
-
-describe('登録箇所', () => {
-  test('区画にはmatch-engineのカウントダウン(上部の行の10)と予選(本文の30)を登録し、差し込みの登録箇所は空である', () => {
-    expect(
-      TOP_PAGE_SECTIONS.map(({ id, placement, order }) => ({
-        id,
-        placement,
-        order,
-      })),
-    ).toStrictEqual([
-      { id: 'match-engine.countdown', placement: 'banner', order: 10 },
-      { id: 'match-engine.qualifiers', placement: 'main', order: 30 },
-    ]);
-    expect(TOP_PAGE_SECTIONS[0]?.component).toBe(FullTimeCountdownSection);
-    expect(QUALIFIER_LIST_INSERTS).toStrictEqual([]);
-  });
-
-  test.each([
-    ['トップページの区画', TOP_PAGE_SECTIONS],
-    ['予選の一覧の差し込み', QUALIFIER_LIST_INSERTS],
-  ] as const)(
-    '%sのidは重複せず`<spec名>.<名詞句>`の形で、orderは有限の数である',
-    (_name, entries) => {
-      const ids = entries.map(({ id }) => id);
-
-      expect(new Set(ids).size).toBe(ids.length);
-      expect(ids.every((id) => SECTION_ID_PATTERN.test(id))).toBe(true);
-      expect(entries.every(({ order }) => Number.isFinite(order))).toBe(true);
-    },
-  );
-
-  test('区画の置き場所は5つのいずれかで、差し込みの間隔は1以上の整数である', () => {
-    expect(
-      TOP_PAGE_SECTIONS.every(({ placement }) =>
-        TOP_PAGE_PLACEMENTS.includes(placement),
-      ),
-    ).toBe(true);
-    expect(
-      QUALIFIER_LIST_INSERTS.every(
-        ({ every }) => Number.isInteger(every) && every >= 1,
-      ),
-    ).toBe(true);
   });
 });

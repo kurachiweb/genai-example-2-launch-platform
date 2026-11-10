@@ -10,7 +10,12 @@ import {
   COLOR_SCHEMES,
 } from '../../../lib/test/computed-style.ts';
 import { emulateReducedMotion } from '../../../lib/test/reduced-motion.ts';
-import type { PitchOrientation, PitchProps } from './pitch-model.ts';
+import {
+  GOAL_STAND_DOTS,
+  MAX_CROWD_DOTS,
+  type PitchOrientation,
+  type PitchProps,
+} from './pitch-model.ts';
 import { StadiumPitch } from './stadium-pitch.tsx';
 
 type MotionHost = 'on' | 'off' | 'none';
@@ -102,6 +107,17 @@ describe('StadiumPitch', () => {
       expect(crowdDots('right')).toHaveLength(1);
       expect(crowdDots('left')[0]?.getAttribute('fill')).toBe('#1d4ed8');
       expect(crowdDots('right')[0]?.getAttribute('fill')).toBe('#be123c');
+    },
+  );
+
+  test.each(ORIENTATIONS)(
+    '向きが%sのピッチは、ゴール裏に収まらない観客をサイドスタンドへ置き、1つの側の観客を上限の数で止める',
+    async (orientation) => {
+      await renderPitch({ orientation, leftVotes: 250, rightVotes: 999 });
+
+      expect(crowdDots('left')).toHaveLength(251);
+      expect(crowdDots('right')).toHaveLength(MAX_CROWD_DOTS);
+      expect(GOAL_STAND_DOTS).toBeLessThan(251);
     },
   );
 
