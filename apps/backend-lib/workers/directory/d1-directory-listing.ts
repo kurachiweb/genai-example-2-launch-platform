@@ -17,6 +17,7 @@ import { users } from '../../../db/schema/identity/users.ts';
 import { qualifierWins } from '../../../db/schema/match/match-queries.ts';
 import { products } from '../../../db/schema/product/products.ts';
 import {
+  productInCategory,
   visibleProducts,
   wonLaunchExists,
 } from '../../../db/schema/product/visibility.ts';
@@ -123,7 +124,13 @@ export class D1DirectoryListing implements DirectoryListingQuery {
       eq(baseWins.rank, BASE_WIN_RANK),
     );
     const search = searchMatchesOf(input.matchExpression);
-    const listed = and(visibleProducts(), wonLaunchExists());
+    const listed = and(
+      visibleProducts(),
+      wonLaunchExists(),
+      input.categoryId === undefined
+        ? undefined
+        : productInCategory(input.categoryId),
+    );
     const pageQuery = this.db
       .with(baseWins)
       .select({
@@ -168,5 +175,16 @@ export class D1DirectoryListing implements DirectoryListingQuery {
         },
       })),
     };
+  }
+
+  // products.id・products.category_idだけを読む(product-launchが後続specに許す集計の範囲)
+  async countByCategory(): Promise<ReadonlyMap<string, number>> {
+    const rows = await this.db
+      .select({ categoryId: products.categoryId, listed: count(products.id) })
+      .from(products)
+      .innerJoin(users, eq(users.id, products.userId))
+      .where(and(visibleProducts(), wonLaunchExists()))
+      .groupBy(products.categoryId);
+    return new Map(rows.map((row) => [row.categoryId, row.listed]));
   }
 }

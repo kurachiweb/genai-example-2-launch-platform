@@ -57,7 +57,7 @@
   - _Depends: 2.1_
   - _Requirements: 4.1, 4.2, 4.8, 5.2_
 
-- [ ] 2.4 一覧の照会にカテゴリの絞り込みとカテゴリごとの掲載数を加える
+- [x] 2.4 一覧の照会にカテゴリの絞り込みとカテゴリごとの掲載数を加える
   - product-launchの仮11の`productInCategory(categoryId)`を、`visibleProducts()`・`wonLaunchExists()`と組み合わせて使い、`products`は`id`・`category_id`だけを読む
   - 先に、Workers統合テストで、カテゴリの絞り込みが期間・検索・並び順と組み合わさること、カテゴリごとの掲載数が掲載中のプロダクトだけを数えることを確かめる
   - 完了状態: Workers統合テストが成功する
@@ -334,3 +334,4 @@
 - 2.1: 検索対象は`apps/backend-lib/workers/search/targets/product.ts`の`PRODUCT_SEARCH_TARGET`(名前`product`)。`read`は`D1ProductDirectory.findSummaries([id],'visible')`の`listed`(`visibleProducts() and wonLaunchExists()`)で判定し`findDetail`で説明文を読む(2回の読み取り。条件付きの書き込みが`isIndexable`を見直すため間の競合は無害)。キーワード抽出に送るのは説明文だけ。検索対象のテストはbackend-lib(apiで実行、eventのWorkers統合テストは`lib/**`を除くため)、Queueの経路の結合のテストはeventの`src/composition/search-module.product.worker.test.ts`(集約点を差し替えない)。apiの`search-module.worker.test.ts`の空の集約点の期待を`['product']`へ改めた。`docs/GUIDES/service/legal/003-privacy-policy-outline.md`は外部APIへ送るものを「プロダクト名・タグライン・説明文」と書くが実装と設計は説明文だけ(記載が広いだけで漏えいではない。external/002は一致を求めるため開発者の判断事項)
 - 2.2: 契約は`apps/backend-lib/core/directory/ports.ts`(`DirectoryListingQuery`・`DirectoryEntryStore`(型のみ、D1の実装は2.5)、設計に加えて名前付きの型`DirectoryBaseWin`・`DirectoryListingPage`・`DirectoryEntry`)、識別子は`identifiers.ts`の`DIRECTORY_PLATFORM_TYPES`(`DirectoryListingQuery`・`DirectoryEntryStore`の2つ)、D1の実装は`workers/directory/d1-directory-listing.ts`。設計の`countByCategory`は中身の無い仮の実装を避けるため2.4で契約と実装に一緒に加える。期間の条件は設計の`?1 IS NULL OR …`ではなく指定があるときだけ足す(意味は同じ)。CTEの名前は`base_wins`、窓関数の列は`base_win_rank`。`relevance`は関連度が無い間は`newest`と同じ並びで、2.3は`orderOf`の`relevance`の先頭に`rank ASC`を足す。`categoryId`・`matchExpression`は2.2では受け取るだけ。テストの補助は`workers/directory/testing/directory-listing-fixtures.ts`(`clearDirectoryTables`は`directory_entries`を消してから`clearMatchTables`)。「復元」は非公開の解除として確かめた(product-launchに論理削除の取り消しが無い)。2.3か2.4で、予選の勝利の後にトーナメントで勝っても基準勝利が予選の勝利のままであることのテストを足す(要件1.8を直接確かめる)
 - 2.3: 検索の結合は`ftsRankedSources(PRODUCT_SEARCH_INDEX, matchExpression)`の副問い合わせ(別名`product_search_matches`)を一覧と件数の両方に`$dynamic()`で内部結合する。D1の実装は検索式だけを受け、検索式は呼び出し側(3.4の`DirectoryReader`)がcommon-libの`normalizeSearchTerms`→`buildFtsMatchExpression`で作る。テストの補助`indexProduct`(`workers/directory/testing/directory-listing-fixtures.ts`)は2.1の検索対象の読み取りから実物の部品で索引文書を書く。検索のテストは`d1-directory-listing.search.worker.test.ts`
+- 2.4: `countByCategory(): Promise<ReadonlyMap<string, number>>`を契約とD1の実装に加えた。掲載の無いカテゴリはMapに入らないため、3.4の`DirectoryCategoryReader`は`get(id) ?? 0`で受ける。掲載数は`qualifierWins()`を結合せず`visibleProducts() AND wonLaunchExists()`で数えるため、`outcome='won'`のローンチが必ず予選の勝利を持つ前提で一覧の総件数と一致する(テストで確認)。カテゴリの絞り込みは`listed`の条件に`productInCategory`を足し、一覧と件数の両方に掛かる

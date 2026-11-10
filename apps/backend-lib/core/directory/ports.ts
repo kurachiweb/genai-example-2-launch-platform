@@ -33,6 +33,8 @@ export interface DirectoryListingPage {
 export interface DirectoryListingQuery {
   // 一覧と総件数を1回の一括の読み取りで読む
   page(input: DirectoryListingInput): Promise<DirectoryListingPage>;
+  // カテゴリID → 掲載中のプロダクトの数。掲載中のプロダクトが無いカテゴリは含めない
+  countByCategory(): Promise<ReadonlyMap<string, number>>;
 }
 
 export interface DirectoryEntry {
