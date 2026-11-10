@@ -264,3 +264,132 @@
 - 追加した節: 「user-profile-socialの部品の使い方」(`UserAvatar`・`FollowButton`・キャッシュの更新の規則)。
 - 変えたdesign.mdの節: Requirements Traceability(7.1〜7.9・8.8・8.10の関数名)、ProductPageReaderの手順、client(`DirectoryRoute`・`DirectoryItem`・`ProductPageRoute`・`OwnerFollow`・`SupportersPanel`の記述と上記の新しい節)、DirectoryViewsの`nodes`の注記。
 - tasks.mdは変えていない(`ensureQueryData`・`buildPageHead`・`UserAvatar`の大きさの記述が無いため)。要件定義書の改訂は不要。
+
+---
+
+## 上流の実装の完了後のギャップ分析(2026-11-10)
+
+`/kiro-validate-gap directory-discovery`による。上の節(2026-10-24)は上流が未実装の時点で設計の契約から分析した。本節は、上流(match-engine・product-launch・user-profile-social・content-processing・identity-auth・frontend-platformなど)の実装が完了した後に、design.mdが前提にした契約を実装済みのコードと照合した結果である。要件・設計・タスクはまだ変えていない。
+
+### 現状
+
+- 本specのコードは無い(`apps/**/directory`・`apps/client/src/routes/p`・`apps/db/schema/directory`はいずれも無い)。一方で`/p`へのリンクは既にある(`apps/client/src/components/layout/site-links.ts`の`DIRECTORY_HREF`・`productDetailHref`、`product-form-messages.ts`)。ルートができるまでは404になる。
+- 上流は、roadmapで本specより前の機能のうちhelp-centerを除いて実装済み。本specが依存するのはmatch-engineだけで、help-centerには依存しない。
+- **全文検索の登録口は空である**。`SEARCH_INDEXES`(`apps/db/search/search-indexes.ts`)と`SEARCH_TARGETS`(`apps/backend-lib/workers/search/targets/index.ts`)はどちらも空の配列で、help-centerが未実装のため、本specの`product`が初めての実際の検索対象になる。design.mdが先例に挙げるhelp-centerの登録はコードに無く、同じ形はテスト用の`workers/search/testing/fixture-search-target.ts`だけにある。
+- 拡張の登録口はすべて空か上流の登録だけで、本specの`order`(1200)は空いている: `PRODUCT_SAVE_HOOKS`(空)・`LAUNCH_SUMMARY_SOURCES`(空)・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`/`ASYNC_HANDLERS`・`MATCH_EVENT_HANDLERS`(`match-engine.qualifier-outcome`の1100だけ)・`USER_LIFECYCLE_ASYNC_HANDLERS`(1100まで使用)。
+- 技術ドキュメントの番号`db/007`・`frontend/014`は、既存の文書にも他specの予約にも使われていない。
+- design.mdの「Existing Architecture Analysis」の「実装済みはdev-toolingだけである」は古い記述である。
+
+### 要件と資産の対応
+
+タグは**Missing**(本specが作る)・**Constraint**(既存の規約や実装による制約)・**Unknown**(設計で調べる)。
+
+| 要件                      | 使う既存の資産(実在を確認)                                                                                                                                                                                                                    | ギャップ                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1 掲載の条件              | `qualifierWins()`(`apps/db/schema/match/match-queries.ts`)・`visibleProducts()`・`wonLaunchExists()`・`productInCategory()`(`apps/db/schema/product/visibility.ts`)                                                                           | **Constraint**: `qualifierWins()`は別名付きの副問い合わせで、`const wins = qualifierWins()`と受けて`wins.productId`で結合する(design.mdの例`qualifierWins.productId`は動かない)。`lastUpvotedAt`・`decidedAt`はエポックミリ秒の数値、`matchDate`は文字列                                                                                                                                   |
+| 2 一覧の項目              | `ProductDirectory.findSummaries`・`MatchDirectory.listByLaunches`(`endedEarly`・`decision`)・`fallbackLaunchSummary`・`groupAwards`・`mediaFileLoader`・`toMediaImage`                                                                        | **Missing**: `DIRECTORY_ITEM_METRIC_SOURCES`・`DirectoryItemMetricSource`。不戦勝の種類は`qualifierWins()`に無く、`bye`(相手なし)と`walkover`+`endedEarly`(マッチ中)/`walkover`のみ(直前)で分ける(設計どおり)                                                                                                                                                                              |
+| 3 絞り込み                | `ProductCategoryDirectory.list`・`findByHandle`・`business-time.ts`(`BusinessDate`・`parseBusinessDate`・`toBusinessDateTime`)・shadcn/uiの`sheet`・`popover`・`select`・`input`                                                              | **Missing**: `common-lib/directory`の規則・期間の展開。`BusinessTime`という名前の値は無く、モジュールの関数を使う                                                                                                                                                                                                                                                                          |
+| 4 キーワード検索          | `ftsRankedSources`・`bm25Rank`・`normalizeSearchTerms`・`buildFtsMatchExpression`・`findHighlightRanges`・`countGraphemes`・`HighlightedText`                                                                                                 | **Constraint**: 全文検索の基盤を実際の検索対象で使う初めての機能になる(上記)。**Missing**: 索引文書のテーブル・FTS5のカスタムマイグレーション                                                                                                                                                                                                                                              |
+| 5 並べ替え・6 ページ分け  | 索引`match_entries_match_kind_match_date_idx`・`product_id`の索引(`apps/db/schema/match/match-entries.ts`)                                                                                                                                    | **Missing**: 窓関数による基準勝利の問い合わせ(`DirectoryListingQuery`)。**Unknown**: 勝利の数が増えたときの性能(launch-readinessで検証、既存のRisksどおり)                                                                                                                                                                                                                                 |
+| 7 ディレクトリの画面      | `buildSitePageHead`(`apps/client/src/head/page-heads.ts`)・状態表示の部品(`frontend-lib/components/state/`)・`RecoverableSlot`・`TOP_PAGE_SECTIONS`の形                                                                                       | **Constraint**: shadcn/uiのカード(`ui/card`)は移植されていない(design.mdのAllowed Dependenciesはカードを挙げる)                                                                                                                                                                                                                                                                            |
+| 8 公開範囲とURL           | `ProductDirectory.resolveHandle`(`current`・`previous`・`none`)・`checkHandleFormat(value, rule)`・`PRODUCT_HANDLE_RULE`・`loadPublicProfile`(`apps/client/src/graphql/public-profile.ts`の302と検索パラメーターの維持)・`not-found-page.tsx` | 一致。302の作りはルートではなく`loadPublicProfile`の中にあり、本specも同じ形にできる                                                                                                                                                                                                                                                                                                       |
+| 9 詳細ページの構成        | `MatchCard`・`useUpvote`・`UpvoteBotProtection`・`loadMatchView`・`stadium.css`、トップページの`AutoRefreshSwitch`・`qualifier-refresh.ts`・`use-server-countdown.ts`・`full-time-countdown*.tsx`                                             | **Constraint/Missing**: 開催中のマッチの区画は、2026-11-10に加わった規則「[集計値と残り時間を表示し続ける画面](../../../docs/GUIDES/tech/frontend/013-live-scoreboard.md)」と「[表示中の画面の定期再取得](../../../docs/GUIDES/tech/frontend/010-live-refresh-queries.md)」の対象である。設計は定期再取得・止める手段・`data-auto-refresh`・時刻の補正・境界での取り直しを持たない(下記G1) |
+| 10 マッチ履歴とサポーター | `MatchDirectory.listByLaunches`(相手の側も返す)・`SupporterDirectory.listSupporters`(limitが1〜20以外は`RangeError`)・`encodeCursor`・`decodeCursor`・`userSummaryLoader`・`UserAvatar`(`32\|64\|128`)                                        | **Constraint**: `encodeCursor`は`Record<string, string \| number>`で、`upvotedAt`をDateのまま渡せない                                                                                                                                                                                                                                                                                      |
+| 11 投稿者本人向けの操作   | `productOwnerStatus(productHandle)`(clientだけ・ログイン必須)・`FollowButton`(`initialFollowing`・`onChange`)・`publicProfile`(union型)・`PUBLIC_PROFILE_QUERY_PREFIX`                                                                        | **Constraint**: `productOwnerStatus`の`summary`は予選の結果だけの縮退版。`publicProfile`は`PublicProfile \| PublicProfileRedirect`のunionで、操作は`... on PublicProfile { viewerRelation }`と書く                                                                                                                                                                                         |
+| 12 検索索引               | `defineSearchTarget`・`SearchIndexStatements`(`markPending`・`deleteSources`)・`SearchIndexRefreshRequester`・`PRODUCT_SAVE_HOOKS`(`statementsFor`・`afterCommit`)・各ライフサイクルの登録口・`D1ProductDirectory`                            | **Constraint**: 同期の処理の文の規約は削除の文を挙げていない(下記G2)。`isIndexable`は`EXISTS`の中身を返す約束(下記G3)                                                                                                                                                                                                                                                                      |
+| 13 連携と運用             | `createMatchEventRegistry`・`createProductLifecycleRegistry`・`createProductSaveHooks`・`triggerScheduled`(`e2e/support/scheduled-trigger.ts`)・`executeLocalD1`                                                                              | **Constraint**: 既存のテスト`product-lifecycle-sync-handlers.worker.test.ts`・`product-save-hooks.worker.test.ts`が登録口の中身を完全一致で比べるため、登録の追加で期待値の書き換えが要る。`e2e/support/match-fixtures.ts`は無く、match-engineの手順は`e2e/client/match-steps.ts`にある                                                                                                    |
+| 14 ドキュメントとテスト   | `runAxe`・各テストの種別の設定                                                                                                                                                                                                                | 一致                                                                                                                                                                                                                                                                                                                                                                                       |
+
+### 設計と実装の相違
+
+設計の書き方の誤りで、方針の判断は要らないもの(design.mdの修正で済む):
+
+| #   | design.mdの記述                                                                            | 実装                                                                                                                                                                 | 直し方                                                                          |
+| --- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| D1  | `listLaunches(ids)`(797行目付近)                                                           | `listLaunches(productIds, now)`(`core/product/ports.ts`)。ローンチの無い・論理削除済みのIDはMapに入らない                                                            | `now`を渡し、`get(id) ?? []`で受ける                                            |
+| D2  | `findMatches([matchId])`(850行目付近)                                                      | `findMatches(matchIds, now)`(`core/match/ports.ts`)                                                                                                                  | `now`を渡す                                                                     |
+| D3  | `liveMatch`は`matchViewLoader`                                                             | ローダーのキーは`{ matchId, session }`。match-engineのtasks.md 6.3は後続specに`loadMatchView(context, matchId)`だけを使わせる                                        | `loadMatchView`に改める                                                         |
+| D4  | `isIndexable(id): EXISTS(SELECT 1 …)`(581行目)                                             | `isIndexable`は`EXISTS`の中身を返し、包むのは`search-index-repository.ts`                                                                                            | `SELECT 1 …`だけを返す(G3)                                                      |
+| D5  | `encodeCursor({ upvotedAt, upvoteId })`                                                    | 引数は`Record<string, string \| number>`                                                                                                                             | `upvotedAt`をエポックミリ秒にする                                               |
+| D6  | `qualifierWins.productId`のような結合の例                                                  | 別名付きの副問い合わせ                                                                                                                                               | `const wins = qualifierWins()`で受ける                                          |
+| D7  | Allowed Dependenciesの`e2e/support/match-fixtures.ts`                                      | 無い。match-engineは`e2e/client/match-steps.ts`(`moveLaunchesToDate`・`startQualifiers`など)に置いた                                                                 | 依存の記述を`match-steps.ts`に改める(本specの補助は設計どおり新設)              |
+| D8  | shadcn/uiのカード                                                                          | `frontend-lib/components/ui/card`は無い                                                                                                                              | 素のマークアップとデザイントークンで描くか、カードを移植する(後者はG4)          |
+| D9  | `TurnstileWidget`(`match_upvote`)を詳細ページに1つ置き、判定の枠と場所を設けない(1167行目) | ウィジェットは`UpvoteBotProtection`(`components/match/upvote-bot-protection.tsx`)の中にあり、`useUpvote`はその内側でしか呼べない。失敗時は`role="alert"`の文言を描く | ページ(または開催中のマッチの区画)を`UpvoteBotProtection`で包む(G1と一緒に直す) |
+| D10 | 「実装済みはdev-toolingだけである」(82行目)                                                | 上流は実装済み                                                                                                                                                       | 記述を改める                                                                    |
+| D11 | 同期の処理の登録の検証は名前と種類                                                         | 実装どおり(同期は`{ name, events, handler }`で`order`を持たない)                                                                                                     | 変更なし。既存のテストの期待値の書き換えをタスクに書く                          |
+
+方針の判断が要るもの:
+
+- **G1 開催中のマッチの区画が、表示し続ける画面の規則を満たさない(影響が最も大きい)**
+  - 要件9.6は「トップページと同じ対戦カード・演出・残り時間の表示」を、9.9は演出を開催中のマッチに限ることを求める。設計(2026-10-24)は`MatchCard`・`useUpvote`を使うことだけを書く。
+  - その後match-engineが規則([frontend/013](../../../docs/GUIDES/tech/frontend/013-live-scoreboard.md)・[backend/014](../../../docs/GUIDES/tech/backend/014-time-boxed-voting.md)、2026-11-10)を加えた。規則が求めるのは、定期再取得と止める手段(WCAG 2.2.2)、ページの根の`data-auto-refresh`、サーバーの時刻との差の補正、境界の時刻での取り直し、結果を待つ取り直し、bot判定のトークンの共有、`RecoverableSlot`による区画の包みである。match-engineのresearch.mdも「`MatchCard`を使っても演出は既定で動かず、自分の停止手段と`data-auto-refresh="on"`が要る」と申し送っている。
+  - トップページの実装は`components/top/`(`AutoRefreshSwitch`・`qualifier-refresh.ts`・`full-time-countdown*.tsx`)と`components/match/`(`use-server-countdown.ts`)にあり、トップページ専用の置き場所のものがある。
+- **G2 同期の処理が削除の文を返すことを規約が明記していない**
+  - [backend/007の文の規約](../../../docs/GUIDES/tech/backend/007-user-lifecycle-events.md#文の規約)は「利用者のIDを条件にした集合に対する更新」、[backend/012](../../../docs/GUIDES/tech/backend/012-aggregate-lifecycle-events.md#状態の変化の確定)と`ProductLifecycleSyncHandler`のコメントは「集約のIDを条件にした集合に対する更新か挿入」としている。設計の`account-index-removal`・`product-index-removal`は`DELETE`(`deleteSources`・`accountIndexRemovalStatement`)を返す。既存の同期の処理で削除の文を返すものは無く、本specが初めてになる。
+  - 規約の趣旨(行ごとの文を返さない、確定の時点の全ての行に効く)は集合の`DELETE … WHERE source_id IN (SELECT …)`でも満たす。
+- **G3 `isIndexable`の書き方**: D4のとおり。中身の`SELECT 1 FROM products JOIN users … WHERE products.id = ? AND visibleProducts() AND wonLaunchExists()`を返す。テスト用の検索対象(`fixture-search-target.ts`)が先例になる。
+- **G4 カードの部品**: D8。詳細ページのサイドバー(投稿者本人向けの操作・評価)とモックアップがカードの見た目を使う。共通部品の規則([共通化の対象](../../../docs/GUIDES/tech/frontend/005-shared-components.md#共通化の対象))で、複数のページが使うならfrontend-libへ移植する対象になる。後続のengagement(評価のカード)も使う見込みである。
+
+### 実装の方法の選択肢
+
+本specの全体の方式(新しいモジュールを作り、上流へは登録口への追記だけ)は承認済みの設計で決まっており、上流の実装もその前提で用意されているため、全体の選択肢は比べ直さない。判断が要るG1・G2・G4について選択肢を示す。
+
+**G1 開催中のマッチの区画**
+
+| 案             | 内容                                                                                                                                                                                                                | 利点                                                           | 欠点                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| A 既存を広げる | トップページの部品(`AutoRefreshSwitch`・取り直しの補助・カウントダウン)を`components/match/`などの共有の置き場所へ移し、詳細ページから使う。ページを`UpvoteBotProtection`で包み、根に`data-auto-refresh`を付ける    | トップページと同じ動きになり(要件9.6)、規則013をそのまま満たす | match-engineのファイルを動かす(本specの境界の外への変更)。トップページのテストの書き換えが要る |
+| B 新しく作る   | 詳細ページ用に、1件のマッチの定期再取得・止める手段・残り時間を本specの部品として作る。`MatchCard`・`useUpvote`・`use-server-countdown.ts`だけを使う                                                                | 上流のファイルを変えない                                       | トップページとほぼ同じ処理が2つになり、動きがずれやすい。規則013の各節を自分で満たす必要がある |
+| C 組み合わせる | 部品の移動はせず、トップページの部品で既に共有の置き場所にあるもの(`components/match/`)を使い、トップページ専用の小さな部品(`AutoRefreshSwitch`程度)だけ共有へ移す。1件の取り直しは本specが規則010・013に沿って作る | 上流への変更を最小にしつつ、見た目と停止の操作をそろえる       | どの部品を移すかの線引きを設計で決める必要がある                                               |
+
+**G2 同期の処理の削除の文**
+
+| 案             | 内容                                                                                      | 利点                             | 欠点                                                                                                             |
+| -------------- | ----------------------------------------------------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| A 規約を改める | backend/007・012と契約のコメントの「更新か挿入」を「更新・挿入・削除」にする              | 設計を変えない。規約の趣旨と合う | 技術ドキュメントと上流のコメントの変更(文言だけ)が要る                                                           |
+| B 設計を変える | 同期では索引文書を消さず、`markPending`(挿入か更新)だけを返し、非同期の作り直しで消させる | 規約の文言のまま                 | 要件12.4・12.5(確定の後に索引が残らない)を満たせない。content-processingの処理が掲載中でないものを消す契約が無い |
+
+**G4 カードの部品**
+
+| 案                 | 内容                                                       | 利点                       | 欠点                                     |
+| ------------------ | ---------------------------------------------------------- | -------------------------- | ---------------------------------------- |
+| A 移植する         | モックアップの`components/ui/card`をfrontend-libへ移植する | engagementなど後続も使える | frontend-libの部品とStorybookが1つ増える |
+| B 素のマークアップ | 枠線・角丸・余白をデザイントークンで書く                   | 追加の部品が無い           | 後続specで同じ見た目を書き直すことになる |
+
+### 工数とリスク
+
+- **工数: L(1〜2週間)**。2テーブル(索引文書・勝利したプロダクトの記録)・FTS5・窓関数の一覧、api・eventの処理7つ、GraphQLのモジュール、2画面と約40の部品、E2E。上流の部品はすべて揃っており、新しい外部連携やパッケージは無いためXLではない。G1でトップページの部品の移動(案A)を選ぶと上限側に寄る。
+- **リスク: Medium**。上流の契約は小さな相違を除いて設計どおりで、規約と先例(トップページ・公開プロフィール・ライフサイクルの処理)もある。ただし、(1)全文検索の基盤を実際の検索対象で使う初めての機能であり、索引の作成・抽出・日次の再抽出の経路を通しで動かすのが初めてになる。(2)開催中のマッチの区画が当日に加わった規則013の対象になる。(3)基準勝利の窓関数の性能は件数が増えるまで確かめられない。
+
+### 設計フェーズへの推奨
+
+- 推奨: 承認済みの設計の方式を保ったまま、design.mdをD1〜D11とG1〜G4に合わせて改訂する(要件は変えない見込み)。改訂の後に`/kiro-validate-design directory-discovery`と`/kiro-spec-tasks directory-discovery`でタスクを直す。G1・G2・G4は開発者の判断を要する。
+- 開発者に確かめる論点:
+  1. G1: 開催中のマッチの区画の作り方(上のA・B・C)。
+  2. G2: 削除の文を同期の処理の規約に加えるか(A)。
+  3. G4: カードの部品を移植するか(A)、素のマークアップで書くか(B)。
+- 設計で調べる項目(Research Needed):
+  - 全文検索の基盤の通しの動作: `product`を登録した後の`search-index-migrations.unit.test.ts`・`targets/index.unit.test.ts`の通過、`print-search-index-sql.ts product_search_documents`の出力、キーワード抽出の偽物を使ったWorkers統合テストの組み方(テスト用の検索対象の先例を確認)。
+  - 規則013の各節(時刻の補正・境界の取り直し・結果を待つ取り直し・トークンの共有・演出の停止)のうち、1件のマッチを表示する詳細ページに要るものの範囲。
+  - `productOwnerStatus`の縮退版の`summary`と、`LaunchHighlightsReader`の要約の使い分け(投稿者本人向けの操作の見出し)。
+  - 予選の勝利を合成したデータでの一覧の問い合わせの読み取り行数(D1の`meta.rows_read`)。
+
+## ギャップ分析の論点の開発者による確定(2026-11-10)
+
+上の節のG1・G2・G4を開発者に1件ずつ確かめた。G1・G2は推奨どおり、G4は推奨と異なる案に決まった。D1〜D11(設計の書き方の誤り)とG3もあわせて直した。要件は変えていない。
+
+| #   | 論点                         | 決定                                                                                                                                                                           | 推奨との関係   |
+| --- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
+| G1  | 開催中のマッチの区画の作り方 | トップページの汎用の部品(自動更新の切り替え・残り時間・結果を待つ取り直しの上限と回数)だけを`components/match/`へ移し、1件のマッチの取り直しは本specが規則010・013に沿って作る | 推奨どおり     |
+| G2  | 同期の処理の削除の文         | 規約に削除を加える(backend/007・012と、同期の処理の契約のコメントを「集合に対する更新・挿入・削除」に改める)                                                                   | 推奨どおり     |
+| G4  | 枠の部品                     | shadcn/uiの`Card`をfrontend-libに作る(モックアップにもカードの部品は無かったため、既定の`Card`を基に作る)                                                                      | 推奨と異なる案 |
+
+反映した内容:
+
+- G2(この時点で反映済み): `docs/GUIDES/tech/backend/007-user-lifecycle-events.md`の文の規約と、`012-aggregate-lifecycle-events.md`の状態の変化の確定の節を「集合に対する更新・挿入・削除」に改め、削除を使う場面(状態の遷移の後に残してはならない派生のデータ)を書いた。保存の処理の文は更新か挿入のまま(013-pluggable-decision-sources)。`apps/api/src/infrastructure/identity/user-lifecycle-sync-handler.ts`と`apps/api/src/infrastructure/product/product-lifecycle-sync-handler.ts`の契約のコメントを同じ文言にした(コメントだけの変更で、振る舞いは変わらない)。
+- design.md:
+  - G1: 開催中のマッチを`productPage`から外し、定期の取り直しの対象の小さな操作`productLiveMatch`(`serverTime`・`match`・`awaitingChange`)とユースケース`LiveMatchReader`を加えた。System Flowsに「開催中のマッチの取り直し」を加え、`ProductPage`(切り替えの状態・`data-auto-refresh`・`AutoRefreshSwitch`・`useBoundaryRefresh`・`RecoverableSlot`・`UpvoteBotProtection`)と`LiveMatchSection`(`FullTimeCountdown`・`live-match-refresh.ts`の判定・結果を待つ取り直し・確定での詳細ページの取得の無効化)を書き直した。詳細ページの区画の文脈に`autoRefresh`・`reportAutoUpdating`を加えた(後続specの区画の型が変わるため、Revalidation Triggersに挙げた)。移す部品の節と、上流への影響の表に「match-engine(画面)」の行を加えた。
+  - G4: frontend-libの`components/ui/card/`(部分ごとのファイル・カタログ・ブラウザテスト)をFile Structure Planと上流への影響の表に加え、`OwnerCard`を`Card`で描く形にした。
+  - G3・D1〜D11: `isIndexable`は`EXISTS`の中身だけを返す形、`listLaunches`・`listByLaunches`・`findMatches`への`now`、`loadMatchView`、`qualifierWins()`の受け方、`encodeCursor`へのエポックミリ秒、`e2e/client/match-steps.ts`、既存の登録口のテストの期待値の書き換え、Existing Architecture Analysisの記述、`RecoverableSlot`と差し込みの規則(013)を直した。
+- tasks.md: 1.4(トップページの汎用の部品の移動とfrontend/013の表の改訂)・1.5(frontend-libの`Card`とfrontend/005の一覧)を加えた。2.1・2.2・3.5・4.2・5.1・5.4・6.9・7.1・7.6・7.7・7.8・9.1を上記に合わせて直した。タスクの番号は変えていない。
+- 承認(`spec.json`の`approvals`)は維持した。ただし設計に新しい操作とタスクが加わったため、実装の前に`/kiro-validate-design directory-discovery`による設計の確認と、タスクの計画の独立した確認を行うのが望ましい。
