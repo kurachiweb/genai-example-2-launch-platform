@@ -118,7 +118,7 @@ describe('APIサーバーの検索のモジュール', () => {
 
     expect(
       container.get<SearchTargetCatalog>(SEARCH_TYPES.TargetCatalog).names(),
-    ).toEqual([]);
+    ).toEqual(['product']);
     expect(container.get(SEARCH_TYPES.IndexStore)).toBeInstanceOf(
       D1SearchIndexRepository,
     );
@@ -160,7 +160,7 @@ describe('APIサーバーの検索のモジュール', () => {
 });
 
 describe('定期実行からの日次の再抽出', () => {
-  test('検索対象が登録されていない4:21の起動で、要求を送らずに検索対象の無い要約をログに出して成功する', async () => {
+  test('再抽出の候補の索引文書が無い4:21の起動で、要求を送らずに検索対象ごとの要約をログに出して成功する', async () => {
     const send = vi.spyOn(env.JOBS_QUEUE, 'send');
     const logs = recordConsole();
 
@@ -172,7 +172,15 @@ describe('定期実行からの日次の再抽出', () => {
     ).toEqual([
       expect.objectContaining({
         level: 'info',
-        targets: [],
+        targets: [
+          {
+            target: 'product',
+            status: 'completed',
+            found: 0,
+            requested: 0,
+            failed: 0,
+          },
+        ],
         requested: 0,
         failed: 0,
       }),

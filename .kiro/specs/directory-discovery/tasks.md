@@ -36,7 +36,7 @@
   - _Requirements: 11.1_
 
 - [ ] 2. 共有部品
-- [ ] 2.1 プロダクトの検索対象を作り、検索対象の集約点に加える
+- [x] 2.1 プロダクトの検索対象を作り、検索対象の集約点に加える
   - 先に、ローカルD1のWorkers統合テストで、掲載中のプロダクトだけを読み(名称・タグライン・説明文、版は読み取りの時刻)、未掲載・非公開化・投稿者の停止・論理削除で読み取りが空になり索引の対象の条件が偽になること、content-processingの索引の更新の処理(キーワードの抽出は固定の結果の偽物)で索引文書が作られ、名称の前方一致と説明文のキーワードで検索できること、索引に名称・タグライン・キーワード以外を含めないことを確かめる
   - 索引の対象の条件(`isIndexable`)は`EXISTS`の中身(`SELECT 1 …`)だけを返す(包むのはcontent-processingの書き込みの側)。help-centerが未実装のため、検索対象と索引の定義の集約点への最初の登録になる。登録の形はテスト用の検索対象`workers/search/testing/fixture-search-target.ts`を先例にする
   - 完了状態: Workers統合テストと、検索対象の集約点の全定義の検証の単体テストが成功する
@@ -331,3 +331,4 @@
 - 1.3: 6・7の画面の文言は`docs/GUIDES/service/design/003-text-and-copy-rules.md`、区画の置き場所・順は`002-page-layouts.md`を正とし、一字一句写す。設計・モックアップと違えて決めたもの: ページ送りの名前は「プロダクト一覧のページ送り」(設計は`aria-label="ページ"`、既存の文言規則の「一覧ごとに名前を決める」に従う)、日付は全て曜日なしの「9月15日」(今年でなければ年。モックアップは曜日付き、既存の`formatLaunchDate`に従う)、開催中のマッチの見出しは「Week 準決勝を戦っています」(match-engineの種別の印に合わせる)、スクリーンショットの代替テキストは「<名称>のスクリーンショット1枚目」、「受賞3回」はリンクにしない、`matchSupporters`のIDの形式違反は「マッチが見つからない」・`first`の範囲外はフォロー一覧の文言を流用、並び順だけ変えた0件は「条件なし」の0件の表示。置き場所の位置: ディレクトリはbanner=見出しの上・aside=一覧の横(1024px未満は下)・bottom=導線の下、詳細ページはbanner(全幅)→自動更新の切り替え→パンくずの順、投稿者本人向けの操作の登録口は進行状況の下・「編集」「再ローンチを予約」の上。ヘッダーの「ローンチ」の回数(キックオフ済みで取り消されていない)とマッチ履歴の件数のローンチの数(キックオフ前を含む取り消されていない全て)は数える対象が違う
 - 1.4: 移した先は`apps/client/src/components/match/`(`auto-refresh-switch.tsx`・`auto-refresh-messages.ts`・`full-time-countdown.tsx`・`full-time-countdown-text.ts`・`follow-up-refetch.ts`)。7.7・7.8はここから読む。範囲外だが移動に伴い`e2e/client/match-steps.ts`の`AUTO_REFRESH_LABEL`の読み込みと`docs/onboardings/project-values.md`の取り直しの上限のパスを直した。match-engineのImplementation Notes(8.7・8.9・8.10)の旧パスは履歴として残した。`components/ultras/portal-return-rules.ts`に`QueryUpdateCounts`・`updateCountOf`と同じ定義の重複が以前からある(範囲外のため残した)
 - 1.5: `Card`は`apps/frontend-lib/components/ui/card/`の7ファイル(shadcn/ui new-york v4の既定に`border-border`を加えた)。`CardTitle`は`<div>`で見出しの意味を持たないため、7.6の`OwnerCard`は中に見出しの要素を置き、区画にするときは`Card`に`role="region"`・`aria-labelledby`を渡す(005の使い方の表に記載)
+- 2.1: 検索対象は`apps/backend-lib/workers/search/targets/product.ts`の`PRODUCT_SEARCH_TARGET`(名前`product`)。`read`は`D1ProductDirectory.findSummaries([id],'visible')`の`listed`(`visibleProducts() and wonLaunchExists()`)で判定し`findDetail`で説明文を読む(2回の読み取り。条件付きの書き込みが`isIndexable`を見直すため間の競合は無害)。キーワード抽出に送るのは説明文だけ。検索対象のテストはbackend-lib(apiで実行、eventのWorkers統合テストは`lib/**`を除くため)、Queueの経路の結合のテストはeventの`src/composition/search-module.product.worker.test.ts`(集約点を差し替えない)。apiの`search-module.worker.test.ts`の空の集約点の期待を`['product']`へ改めた。`docs/GUIDES/service/legal/003-privacy-policy-outline.md`は外部APIへ送るものを「プロダクト名・タグライン・説明文」と書くが実装と設計は説明文だけ(記載が広いだけで漏えいではない。external/002は一致を求めるため開発者の判断事項)
