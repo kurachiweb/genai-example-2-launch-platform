@@ -9,6 +9,8 @@ import {
 } from '../../lib/utilities/graphql/persisted-document.ts';
 import { entryOf, matchOf } from '../components/match/match-fixtures.ts';
 import {
+  ClientOwnerFollowStatusDocument,
+  type ClientOwnerFollowStatusQuery,
   ClientProductLiveMatchDocument,
   type ClientProductLiveMatchQuery,
   ClientProductPageDocument,
@@ -16,10 +18,13 @@ import {
 } from './generated/graphql.ts';
 import {
   loadProductPage,
+  ownerFollowingOf,
+  ownerFollowStatusQueryOptions,
   productLiveMatchQueryOptions,
   productPageQueryOptions,
   type ProductPageView,
   toProductPageView,
+  withOwnerFollowing,
   withUpdatedLiveMatch,
 } from './product-page.ts';
 import type { ClientViewer } from './viewer.ts';
@@ -296,5 +301,69 @@ describe('withUpdatedLiveMatch', () => {
     expect(withUpdatedLiveMatch(noMatch, matchOf())).toBe(noMatch);
     expect(withUpdatedLiveMatch(hidden, matchOf())).toBe(hidden);
     expect(withUpdatedLiveMatch(undefined, matchOf())).toBeUndefined();
+  });
+});
+
+const followStatusOf = (
+  viewerRelation: 'OWNER' | 'FOLLOWING' | 'NOT_FOLLOWING',
+): ClientOwnerFollowStatusQuery => ({
+  publicProfile: { __typename: 'PublicProfile', viewerRelation },
+});
+
+const OWNER_REDIRECT: ClientOwnerFollowStatusQuery = {
+  publicProfile: { __typename: 'PublicProfileRedirect' },
+};
+
+const OWNER_MISSING: ClientOwnerFollowStatusQuery = { publicProfile: null };
+
+describe('ownerFollowStatusQueryOptions', () => {
+  test('フォロー中の照会の操作と投稿者のハンドルの後に、閲覧者のIDか未ログインの印をキーへ加える', () => {
+    expect([
+      ...ownerFollowStatusQueryOptions(VIEWER, 'scout_ken').queryKey,
+    ]).toStrictEqual([
+      ...graphqlQueryKey(ClientOwnerFollowStatusDocument, {
+        handle: 'scout_ken',
+      }),
+      VIEWER.id,
+    ]);
+    expect(
+      ownerFollowStatusQueryOptions(null, 'scout_ken').queryKey.at(-1),
+    ).toBe('guest');
+  });
+});
+
+describe('ownerFollowingOf', () => {
+  test('フォロー中なら真、未フォローなら偽を返す', () => {
+    expect(ownerFollowingOf(followStatusOf('FOLLOWING'))).toBe(true);
+    expect(ownerFollowingOf(followStatusOf('NOT_FOLLOWING'))).toBe(false);
+  });
+
+  test('本人・転送・見つからない投稿者はフォローの対象にならないためundefinedを返す', () => {
+    expect(ownerFollowingOf(followStatusOf('OWNER'))).toBeUndefined();
+    expect(ownerFollowingOf(OWNER_REDIRECT)).toBeUndefined();
+    expect(ownerFollowingOf(OWNER_MISSING)).toBeUndefined();
+  });
+});
+
+describe('withOwnerFollowing', () => {
+  test('フォロー・解除の結果で関係だけを合わせ、元の結果は変えない', () => {
+    const notFollowing = followStatusOf('NOT_FOLLOWING');
+
+    expect(withOwnerFollowing(notFollowing, true)).toStrictEqual(
+      followStatusOf('FOLLOWING'),
+    );
+    expect(
+      withOwnerFollowing(followStatusOf('FOLLOWING'), false),
+    ).toStrictEqual(notFollowing);
+    expect(notFollowing).toStrictEqual(followStatusOf('NOT_FOLLOWING'));
+  });
+
+  test('本人・転送・見つからない投稿者・取得の結果が無いキャッシュは変えない', () => {
+    const owner = followStatusOf('OWNER');
+
+    expect(withOwnerFollowing(owner, true)).toBe(owner);
+    expect(withOwnerFollowing(OWNER_REDIRECT, true)).toBe(OWNER_REDIRECT);
+    expect(withOwnerFollowing(OWNER_MISSING, true)).toBe(OWNER_MISSING);
+    expect(withOwnerFollowing(undefined, true)).toBeUndefined();
   });
 });

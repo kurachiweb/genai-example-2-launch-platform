@@ -1,6 +1,11 @@
 import { ExternalLinkIcon } from 'lucide-react';
 
 import { Button } from '../../../lib/components/ui/button/button.tsx';
+import type {
+  ButtonSize,
+  ButtonVariant,
+} from '../../../lib/components/ui/button/button-variants.ts';
+import { cn } from '../../../lib/utilities/class-names.ts';
 import { checkExternalUrl } from '../../../common-lib/url/external-url.ts';
 import {
   OPEN_SITE_LABEL,
@@ -13,19 +18,30 @@ export interface ProductSiteLinkProps {
   readonly websiteUrl: string;
   // 外部Webサイトへのリンクのrel。表示場所ごとの値はページ構成の「外部Webサイトへのリンク」に従う
   readonly rel: string;
+  readonly size?: ButtonSize;
+  readonly variant?: ButtonVariant;
+  readonly className?: string;
 }
 
 export function ProductSiteLink({
   name,
   websiteUrl,
   rel,
+  size = 'xs',
+  variant = 'outline',
+  className,
 }: ProductSiteLinkProps) {
   // 保存時の検証を通った値だけが入る前提だが、危険なスキームのリンクを作らないよう描画でも確かめる
   if (checkExternalUrl(websiteUrl) !== 'ok') {
     return null;
   }
   return (
-    <Button asChild size="xs" variant="outline" className="rounded-full px-3">
+    <Button
+      asChild
+      size={size}
+      variant={variant}
+      className={cn('rounded-full px-3', className)}
+    >
       <a href={websiteUrl} target="_blank" rel={rel}>
         <span className="sr-only">{openSiteLabelPrefix(name)}</span>
         {OPEN_SITE_LABEL}

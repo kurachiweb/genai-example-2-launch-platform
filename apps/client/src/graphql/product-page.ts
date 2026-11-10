@@ -8,6 +8,8 @@ import { checkHandleFormat } from '../../common-lib/handles/handle-rules.ts';
 import { PRODUCT_HANDLE_RULE } from '../../common-lib/product/product-input-rules.ts';
 import { productDetailHref } from '../components/layout/site-links.ts';
 import {
+  ClientOwnerFollowStatusDocument,
+  type ClientOwnerFollowStatusQuery,
   ClientProductLiveMatchDocument,
   type ClientProductLiveMatchQuery,
   ClientProductPageDocument,
@@ -146,5 +148,57 @@ export function withUpdatedLiveMatch(
   return {
     ...data,
     productLiveMatch: { ...live, match: { ...live.match, ...match } },
+  };
+}
+
+// 閲覧者と投稿者の関係の応答のため、同じタブでログイン・ログアウトした後に前の閲覧者の関係を使わないよう、共通の取得の補助のキーの後に閲覧者のIDを加える
+export const ownerFollowStatusQueryOptions = (
+  viewer: ClientViewer | null,
+  ownerHandle: string,
+) =>
+  queryOptions({
+    queryKey: [
+      ...graphqlQueryKey(ClientOwnerFollowStatusDocument, {
+        handle: ownerHandle,
+      }),
+      viewerScopeOf(viewer),
+    ],
+    queryFn: async ({ signal }) =>
+      requireData(
+        await executeGraphQL(
+          ClientOwnerFollowStatusDocument,
+          { handle: ownerHandle },
+          { signal },
+        ),
+      ),
+  });
+
+// フォローの対象にならない(本人・照会と詳細ページの間に投稿者のハンドルが変わった・見えなくなった)ならundefined
+export const ownerFollowingOf = ({
+  publicProfile,
+}: ClientOwnerFollowStatusQuery): boolean | undefined => {
+  if (
+    publicProfile?.__typename !== 'PublicProfile' ||
+    publicProfile.viewerRelation === 'OWNER'
+  ) {
+    return undefined;
+  }
+  return publicProfile.viewerRelation === 'FOLLOWING';
+};
+
+// フォロー・解除の結果で、取得し直さずに関係を合わせる。フォローの対象にならない結果は変えない
+export function withOwnerFollowing(
+  data: ClientOwnerFollowStatusQuery | undefined,
+  following: boolean,
+): ClientOwnerFollowStatusQuery | undefined {
+  if (data === undefined || ownerFollowingOf(data) === undefined) {
+    return data;
+  }
+  return {
+    ...data,
+    publicProfile: {
+      __typename: 'PublicProfile',
+      viewerRelation: following ? 'FOLLOWING' : 'NOT_FOLLOWING',
+    },
   };
 }
