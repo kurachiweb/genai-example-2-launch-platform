@@ -77,7 +77,7 @@
   - _Boundary: ProductPageAccess、BaseWin_
   - _Requirements: 2.7, 2.8, 2.9, 2.10, 8.2, 8.3, 8.4, 8.5, 8.6_
 
-- [ ] 3.2 (P) マッチ履歴と通算成績の純粋な規則を作る
+- [x] 3.2 (P) マッチ履歴と通算成績の純粋な規則を作る
   - 先に、単体テストで、マッチ履歴の行(確定前の除外・実施日の新しい順・対戦相手の4つの見え方と紐付けの解除・接戦・不戦勝と早期の不戦勝の相手の数の欠落・両者敗北)、通算成績と初ローンチ日とローンチ回数(取消とキックオフ前の除外)を確かめる
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
   - _Boundary: MatchHistory_
@@ -337,3 +337,4 @@
 - 2.4: `countByCategory(): Promise<ReadonlyMap<string, number>>`を契約とD1の実装に加えた。掲載の無いカテゴリはMapに入らないため、3.4の`DirectoryCategoryReader`は`get(id) ?? 0`で受ける。掲載数は`qualifierWins()`を結合せず`visibleProducts() AND wonLaunchExists()`で数えるため、`outcome='won'`のローンチが必ず予選の勝利を持つ前提で一覧の総件数と一致する(テストで確認)。カテゴリの絞り込みは`listed`の条件に`productInCategory`を足し、一覧と件数の両方に掛かる
 - 2.5: 記録のストアは`workers/directory/d1-directory-entry-store.ts`、投稿者の全ての索引文書を消す文は`workers/directory/product-index-removal-statements.ts`の`accountIndexRemovalStatement(userId)`(読み取りをせず`source_id IN (SELECT product_id FROM directory_entries WHERE owner_user_id = ?)`の1文、5.1が使う)、束縛は`workers/directory/directory-platform-module.ts`の`DIRECTORY_PLATFORM_MODULE`。設計との相違: (1) 主キーの`id`を作るため`PLATFORM_TYPES.IdGenerator`を注入する(設計のコンストラクタはDatabaseだけ。既存の`D1MatchScheduler`と同じ)。(2) `erase`は索引文書を`SearchIndexStatements.deleteSources`ではなくDrizzleで直接消す(検索の束縛への依存を避けるため。全文検索の索引は1.2の`AFTER DELETE`トリガーで消える。db/004の「削除」の節の書き方からは外れる)。`record`は15行ずつの挿入を1回の`db.batch`にまとめる(1行6変数)。eventの`MODULES`では既存の`match-module.worker.test.ts`の制約(`EVENT_MATCH_MODULE`は`EVENT_MATCH_PLATFORM_MODULE`の直後)のため`EVENT_MATCH_MODULE`の後、apiでは`API_MATCH_PLATFORM_MODULE`の直後に置いた。テストの補助は`testing/directory-entry-fixtures.ts`(`createStatementRecordingDatabase`)・`testing/directory-platform-fixtures.ts`
 - 3.1: 規則は`apps/api/src/domain/directory/product-page-access.ts`の`decideProductPageAccess({ resolution, viewerUserId })`(`not-found`・`redirect`・`render`(`productId`・`ownerView`・`unlisted`))と`base-win.ts`の`classifyBaseWin(match, launchId)`。設計が決めていない振る舞い: マッチが`undefined`か自分の側が無いときは`victory`(物理削除との競合だけで起き、3.4の可視でない行の除外で落ちる。3.4で`warn`を残すかを検討する)、自分の側の`result`が`lost`・`null`なら`RangeError`(上流の不変条件の破れ。Error Handlingの「部分的な一覧を出さない」に合う)。ハンドルの形式の検査(8.7)は3.5の`ProductPageReader.read`で行う
+- 3.2: 規則は`apps/api/src/domain/directory/match-history.ts`の`toHistoryRows`・`summarizeRecord`(戻り値の型`MatchRecordSummary`)と、設計に加えた`isKickedOff`(status `in_progress`・`finished`。3.5の`kickedOff`はこれを使う)。自分の側はプロダクトIDで選ぶ(設計の本文は`entryId`だが契約の入力は`productId`で意味は同じ)。同じ日のマッチは`decidedAt`の新しい順。自分の側が無いマッチは飛ばし、確定のマッチの`result`・`decision`が無ければ`RangeError`。勝ち数は上流の`isWinningResult`で、予選とトーナメントを区別しない。3.5への申し送り: `HistoryRow`は`launchId`を持たないため、取消のローンチのマッチの除外は3.5が取消を除いたローンチのIDだけで`listByLaunches`を呼ぶことに頼る(テストで確かめる)。ローンチごとのブロックは3.5でマッチをローンチごとに分けてから`toHistoryRows`を呼ぶ
