@@ -39,6 +39,7 @@ export function SortSelect({ query, onChange }: SortSelectProps) {
         <FilterTrigger
           label={SORT_SELECT_LABEL}
           value={SORT_LABELS[selected]}
+          active={query.sort !== undefined}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">

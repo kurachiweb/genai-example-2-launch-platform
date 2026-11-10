@@ -42,6 +42,7 @@ export function CategoryPicker({
           label={CATEGORY_PICKER_LABEL}
           value={displayValue}
           disabled={loading}
+          active={!loading && selected !== undefined}
           className="max-w-72"
         />
       </PopoverTrigger>

@@ -79,6 +79,7 @@ export function PeriodFilter({
               value={
                 <PeriodLabel range={range} businessToday={businessToday} />
               }
+              active={key !== 'all'}
               className="max-w-80"
             />
           </DropdownMenuTrigger>
