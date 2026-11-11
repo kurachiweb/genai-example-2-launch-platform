@@ -3,16 +3,19 @@ import type { Mock } from 'vitest';
 
 import { HELP_CATEGORY_OTHER_ID } from '../common-lib/help/help-category-constants.ts';
 import { parseHelpArticleFilter } from '../src/components/help/help-article-filter.ts';
+import { parseHelpArticleOrderSearch } from '../src/components/help/help-article-order-search.ts';
 import { loadAdminHelpArticlesPage } from '../src/graphql/admin-help-articles.ts';
 import {
   AdminHelpArticlesDocument,
   type AdminHelpArticlesQuery,
   AdminHelpCategoriesDocument,
   type AdminHelpCategoriesQuery,
+  AdminReorderHelpArticlesDocument,
   type AdminRole,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
 import { Route as HelpArticlesRoute } from '../src/routes/_authenticated/help-articles/index.tsx';
+import { Route as HelpArticleOrderRoute } from '../src/routes/_authenticated/help-articles/order.tsx';
 import {
   type GraphQLHandler,
   respondAdminGraphQL,
@@ -22,6 +25,8 @@ import { adminWithRole } from './admin-viewer-fixtures.ts';
 import { type PageRootRoute, renderPageRouter } from './page-router.tsx';
 
 export const HELP_ARTICLES_PATH = '/help-articles';
+
+export const HELP_ARTICLE_ORDER_PATH = '/help-articles/order';
 
 export type AdminHelpArticleRowFields =
   AdminHelpArticlesQuery['adminHelpArticles'][number];
@@ -163,17 +168,96 @@ export const ALL_ARTICLES = helpArticlesQueryOf([
   OTHER_DELETED_AUTHOR_ARTICLE,
 ]);
 
-// 記事の全件・カテゴリの一覧・ログイン中の管理者の取得に応答し、記事とカテゴリはテストが渡した応答にする
+const orderRowOf = (
+  fields: Pick<
+    AdminHelpArticleRowFields,
+    'id' | 'handle' | 'title' | 'status' | 'pinned' | 'sortOrder' | 'updatedAt'
+  >,
+): AdminHelpArticleRowFields =>
+  Object.freeze({
+    categoryId: USAGE_CATEGORY.id,
+    categoryName: USAGE_CATEGORY.name,
+    creatorAdminId: SUPPORT_AUTHOR_ID,
+    creator: SUPPORT_AUTHOR,
+    createdAt: '2026-11-01T00:00:00.000Z',
+    ...fields,
+  });
+
+// 並べ替えの画面の「使い方」の記事。並び順の値の順は、ピン留めの群がB・A、その他の群がC・D・E
+export const ORDER_PINNED_A = orderRowOf({
+  id: '01JD0HART00000000000000011',
+  handle: 'getting-started',
+  title: 'はじめに',
+  status: 'PUBLISHED',
+  pinned: true,
+  sortOrder: 3,
+  updatedAt: '2026-11-10T00:00:00.000Z',
+});
+
+export const ORDER_PINNED_B = orderRowOf({
+  id: '01JD0HART00000000000000012',
+  handle: 'cannot-sign-in',
+  title: 'ログインできない',
+  status: 'DRAFT',
+  pinned: true,
+  sortOrder: 1,
+  updatedAt: '2026-11-08T00:00:00.000Z',
+});
+
+export const ORDER_OTHER_C = orderRowOf({
+  id: '01JD0HART00000000000000013',
+  handle: 'edit-profile',
+  title: 'プロフィールの編集',
+  status: 'PUBLISHED',
+  pinned: false,
+  sortOrder: 2,
+  updatedAt: '2026-11-07T00:00:00.000Z',
+});
+
+export const ORDER_OTHER_D = orderRowOf({
+  id: '01JD0HART00000000000000014',
+  handle: 'delete-account',
+  title: 'アカウントの削除',
+  status: 'DRAFT',
+  pinned: false,
+  sortOrder: 4,
+  updatedAt: '2026-11-09T00:00:00.000Z',
+});
+
+export const ORDER_OTHER_E = orderRowOf({
+  id: '01JD0HART00000000000000015',
+  handle: 'notification-settings',
+  title: 'お知らせの設定',
+  status: 'PUBLISHED',
+  pinned: false,
+  sortOrder: 5,
+  updatedAt: '2026-11-06T00:00:00.000Z',
+});
+
+// APIが返す更新日時の新しい順。「料金」には下書きの記事が1件、「その他」には記事が無い
+export const ORDER_ARTICLES = helpArticlesQueryOf([
+  ORDER_PINNED_A,
+  DRAFT_ARTICLE,
+  ORDER_OTHER_D,
+  ORDER_PINNED_B,
+  ORDER_OTHER_C,
+  ORDER_OTHER_E,
+]);
+
+// 記事の全件・カテゴリの一覧・記事の並べ替え・ログイン中の管理者の取得に応答し、記事とカテゴリと並べ替えはテストが渡した応答にする
 export function respondAdminHelpArticlesGraphQL(
   executeGraphQL: Mock,
   {
     role,
     articles = () => success(ALL_ARTICLES),
     categories = () => success(HELP_CATEGORIES),
+    reorder = () =>
+      Promise.reject(new Error('想定していない並べ替えが実行されました。')),
   }: {
     readonly role: AdminRole;
     readonly articles?: GraphQLHandler;
     readonly categories?: GraphQLHandler;
+    readonly reorder?: GraphQLHandler;
   },
 ): void {
   respondAdminGraphQL(executeGraphQL, {
@@ -181,6 +265,7 @@ export function respondAdminHelpArticlesGraphQL(
     handlers: new Map<unknown, GraphQLHandler>([
       [AdminHelpArticlesDocument, articles],
       [AdminHelpCategoriesDocument, categories],
+      [AdminReorderHelpArticlesDocument, reorder],
     ]),
   });
 }
@@ -207,6 +292,13 @@ const createRoutes = (rootRoute: PageRootRoute) => {
           loader: loadAdminHelpArticlesPage,
           component: HelpArticlesRoute.options.component,
         }),
+        createRoute({
+          getParentRoute: () => helpArticlesRoute,
+          path: 'order',
+          validateSearch: parseHelpArticleOrderSearch,
+          loader: loadAdminHelpArticlesPage,
+          component: HelpArticleOrderRoute.options.component,
+        }),
       ]),
     ]),
   ];
@@ -215,5 +307,11 @@ const createRoutes = (rootRoute: PageRootRoute) => {
 export const renderHelpArticlesPage = (
   role: AdminRole,
   path: string = HELP_ARTICLES_PATH,
+) =>
+  renderPageRouter({ path, createRoutes, cachedViewer: adminWithRole(role) });
+
+export const renderHelpArticleOrderPage = (
+  role: AdminRole,
+  path: string = HELP_ARTICLE_ORDER_PATH,
 ) =>
   renderPageRouter({ path, createRoutes, cachedViewer: adminWithRole(role) });

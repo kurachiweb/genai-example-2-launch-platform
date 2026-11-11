@@ -25,12 +25,17 @@ const ID_MAX = 64;
 const isHelpArticleStatus = (value: unknown): value is HelpArticleStatus =>
   (HELP_ARTICLE_STATUSES as readonly unknown[]).includes(value);
 
-const idField = z.string().min(1).max(ID_MAX).optional().catch(undefined);
+export const HELP_ID_SEARCH_FIELD = z
+  .string()
+  .min(1)
+  .max(ID_MAX)
+  .optional()
+  .catch(undefined);
 
 // 共有されたURLや手で書き換えたURLの不正な値は、一覧を表示できなくせず、その条件を未指定として扱う
 const FILTER_SCHEMA = z.object({
-  creator: idField,
-  category: idField,
+  creator: HELP_ID_SEARCH_FIELD,
+  category: HELP_ID_SEARCH_FIELD,
   status: z
     .custom<HelpArticleStatus>(isHelpArticleStatus)
     .optional()

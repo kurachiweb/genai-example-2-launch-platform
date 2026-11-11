@@ -213,6 +213,19 @@ export const toHelpArticleOrderGroups = (
   };
 };
 
+// 並べ替えの応答はそのカテゴリの記事だけのため、全件の取得の結果のうち同じ記事だけを置き換え、全件の更新日時の新しい順を保つ
+export const mergeReorderedHelpArticles = (
+  { adminHelpArticles }: AdminHelpArticlesQuery,
+  reordered: readonly AdminHelpArticleRowFragment[],
+): AdminHelpArticlesQuery => {
+  const reorderedById = new Map(reordered.map((row) => [row.id, row]));
+  return {
+    adminHelpArticles: adminHelpArticles.map(
+      (row) => reorderedById.get(row.id) ?? row,
+    ),
+  };
+};
+
 // 記事の作成・削除・カテゴリの変更はカテゴリの記事の件数を変え、ハンドルの保存は使用可否を変えるため、それらの取得もまとめて無効にする
 export async function invalidateHelpArticleQueries(
   queryClient: QueryClient,
@@ -229,7 +242,7 @@ export async function invalidateHelpArticleQueries(
   );
 }
 
-// 一覧は全件を読んで画面で絞り込むため、条件で取得し直さない。失敗は例外にせずキャッシュに残し、一覧の位置に再試行とともに示す
+// 一覧と記事の並べ替えの画面は全件を読み、絞り込みとカテゴリの選択を画面の中で行うため、条件で取得し直さない。失敗は例外にせずキャッシュに残し、一覧・並びの位置に再試行とともに示す
 export async function loadAdminHelpArticlesPage({
   context: { queryClient },
 }: {

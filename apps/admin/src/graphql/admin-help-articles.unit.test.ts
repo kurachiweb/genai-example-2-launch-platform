@@ -9,6 +9,7 @@ import {
   helpArticleHandleAvailabilityQueryOptions,
   invalidateHelpArticleQueries,
   loadAdminHelpArticlesPage,
+  mergeReorderedHelpArticles,
   toAdminHelpArticle,
   toAdminHelpArticleDetail,
   toAdminHelpArticleRows,
@@ -245,6 +246,30 @@ describe('toHelpArticleOrderGroups', () => {
       pinned: [],
       others: [],
     });
+  });
+});
+
+describe('mergeReorderedHelpArticles', () => {
+  test('並べ替えの応答の記事だけを置き換え、全件の更新日時の新しい順と他のカテゴリの記事を保つ', () => {
+    const others = rowOf({ id: 'x', title: 'X', categoryId: PRICING_ID });
+    const first = rowOf({ id: 'a', title: 'A', sortOrder: 1 });
+    const second = rowOf({ id: 'b', title: 'B', sortOrder: 2 });
+    const data = { adminHelpArticles: [second, others, first] };
+
+    const merged = mergeReorderedHelpArticles(data, [
+      { ...second, sortOrder: 1 },
+      { ...first, sortOrder: 2 },
+    ]);
+
+    expect(
+      merged.adminHelpArticles.map(({ id, sortOrder }) => [id, sortOrder]),
+    ).toStrictEqual([
+      ['b', 1],
+      ['x', 1],
+      ['a', 2],
+    ]);
+    expect(merged.adminHelpArticles[1]).toBe(others);
+    expect(data.adminHelpArticles[0]).toBe(second);
   });
 });
 

@@ -467,6 +467,48 @@ describe('カテゴリの並べ替え', () => {
     });
   });
 
+  test('読み込みの間は「キャンセル」を押せないことを伝えて編集を続け、読み込みのボタンの外へ移したフォーカスを読み込みの後に奪わない', async () => {
+    let reloading: Promise<unknown> | null = null;
+    let finishReload: (value: unknown) => void = () => undefined;
+    await renderSection('MODERATOR', {
+      categories: () => reloading ?? success(categoriesOf(CATEGORIES)),
+      reorder: () =>
+        failure({
+          code: 'help_order_outdated',
+          message: OUTDATED_MESSAGE,
+          status: 409,
+        }),
+    });
+
+    await userEvent.click(editOrderButton());
+    await userEvent.click(moveButton('使い方', '上'));
+    await userEvent.click(saveButton());
+    await expect.element(reloadButton()).toBeVisible();
+    reloading = new Promise((resolve) => {
+      finishReload = resolve;
+    });
+
+    await userEvent.click(reloadButton());
+    await expect
+      .element(cancelButton())
+      .toHaveAttribute('aria-disabled', 'true');
+    cancelButton().element().focus();
+    await userEvent.keyboard('{Enter}');
+
+    await expect.element(orderList()).toBeVisible();
+    expect(orderNames()).toStrictEqual(['料金', '使い方', 'その他']);
+    await expect.element(cancelButton()).toHaveFocus();
+
+    finishReload(success(categoriesOf([...CATEGORIES, ACCOUNT])));
+
+    await expect.element(reloadButton()).not.toBeInTheDocument();
+    await expect
+      .poll(orderNames)
+      .toStrictEqual(['料金', 'その他', '使い方', 'アカウント']);
+    await expect.element(cancelButton()).toHaveFocus();
+    await expect.element(cancelButton()).not.toHaveAttribute('aria-disabled');
+  });
+
   test('並べ替えの途中に表でカテゴリの名前を変えると、手元の並びを保ったまま新しい名前で示す', async () => {
     let current: readonly Category[] = CATEGORIES;
     const renamed = { ...USAGE, name: '使い方のヒント' };

@@ -81,3 +81,18 @@ export const HELP_ALL_CATEGORIES_LABEL = 'すべてのカテゴリ';
 export const HELP_STATUS_FILTER_LABEL = 'ステータス';
 
 export const HELP_ALL_STATUSES_LABEL = 'すべてのステータス';
+
+export const HELP_ARTICLE_ORDER_TITLE = 'ヘルプ記事の並び順';
+
+export const HELP_ARTICLE_ORDER_DESCRIPTION =
+  'カテゴリごとに、ヘルプトップとフッターに並ぶ記事の順を変更します。ピン留めの記事は、その他の記事より前に並びます。';
+
+export const HELP_ARTICLE_ORDER_CATEGORY_LABEL = 'カテゴリ';
+
+export const HELP_PINNED_ARTICLES_LABEL = 'ピン留めの記事';
+
+export const HELP_OTHER_ARTICLES_LABEL = 'その他の記事';
+
+export const HELP_ARTICLE_ORDER_EMPTY_MESSAGE = '該当する記事はありません。';
+
+export const HELP_ORDER_UNDO_LABEL = '元に戻す';

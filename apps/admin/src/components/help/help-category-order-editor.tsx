@@ -80,10 +80,11 @@ export function HelpCategoryOrderEditor({
   const [reloading, setReloading] = useState(false);
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
+  const reloadButtonRef = useRef<HTMLButtonElement>(null);
   const pendingFocusRef = useRef<FocusTarget | null>(null);
   const saving = reorderCategories.isPending;
 
-  // 押したボタンが編集の開始・終了や読み込みで消えるため、描き直した後に続きの操作へフォーカスを移す
+  // 押したボタンが編集の開始・終了や読み込みで消えるため、描き直した後に続きの操作へフォーカスを移す。読み込みの間に利用者が移したフォーカスは奪わない
   useLayoutEffect(() => {
     const target = pendingFocusRef.current;
     if (target === null) {
@@ -150,7 +151,12 @@ export function HelpCategoryOrderEditor({
         ...adminHelpCategoriesQueryOptions(),
         staleTime: 0,
       });
-      pendingFocusRef.current = 'order-controls';
+      if (
+        reloadButtonRef.current !== null &&
+        document.activeElement === reloadButtonRef.current
+      ) {
+        pendingFocusRef.current = 'order-controls';
+      }
       setFailure(null);
       setDraft(toHelpCategories(latest));
     } catch (error) {
@@ -204,6 +210,7 @@ export function HelpCategoryOrderEditor({
           <FormMessage role="alert">{failure.message}</FormMessage>
           {failure.outdated ? (
             <Button
+              ref={reloadButtonRef}
               type="button"
               variant="outline"
               size="sm"
@@ -242,9 +249,9 @@ export function HelpCategoryOrderEditor({
         <Button
           type="button"
           variant="outline"
-          aria-disabled={saving ? true : undefined}
+          aria-disabled={saving || reloading ? true : undefined}
           onClick={() => {
-            if (!saving) {
+            if (!saving && !reloading) {
               finishEditing();
             }
           }}
