@@ -13,8 +13,6 @@ import {
 import { createDatabase } from '../../../db/client.ts';
 import { helpArticles } from '../../../db/schema/help/help-articles.ts';
 import { helpCategories } from '../../../db/schema/help/help-categories.ts';
-import { buildIndexDocument } from '../../../lib/core/search/index-document.ts';
-import { selectKeywords } from '../../../lib/core/search/keyword-selection.ts';
 import {
   db,
   helpArticleIdOf,
@@ -24,9 +22,6 @@ import {
   insertHelpCategory,
   T0,
 } from '../../../lib/workers/help/testing/help-fixtures.ts';
-import { D1SearchIndexRepository } from '../../../lib/workers/search/search-index-repository.ts';
-import { createSearchTargetRegistry } from '../../../lib/workers/search/search-target-definition.ts';
-import { HELP_ARTICLE_SEARCH_TARGET } from '../../../lib/workers/search/targets/help-articles.ts';
 import { createBatchRecordingD1 } from '../../../test/support/batch-recording-d1.ts';
 import type {
   PublicHelpSearchHitRecord,
@@ -35,6 +30,7 @@ import type {
 import { D1PublicHelpStore } from './d1-public-help-store.ts';
 import {
   createArticleStore,
+  indexPublishedHelpArticle,
   resetHelpArticleTables,
   savedRecordOf,
   updateInputOf,
@@ -47,11 +43,6 @@ const CREATED_LATER = new Date('2026-11-02T00:00:00.000Z');
 const UPDATED_AT = new Date('2026-11-03T04:05:06.000Z');
 
 const store = new D1PublicHelpStore(db);
-
-const indexRepository = new D1SearchIndexRepository(
-  db,
-  createSearchTargetRegistry([HELP_ARTICLE_SEARCH_TARGET]),
-);
 
 function publishedOf(
   articleIndex: number,
@@ -68,41 +59,6 @@ function publishedOf(
     createdAt: T0,
     ...overrides,
   };
-}
-
-// 公開の記事を、索引の更新の処理と同じ組み立てで索引に載せる
-async function indexArticle(
-  articleIndex: number,
-  keywords: readonly string[] = [],
-): Promise<void> {
-  const sourceId = helpArticleIdOf(articleIndex);
-  const source = await HELP_ARTICLE_SEARCH_TARGET.read(db, sourceId);
-  if (source === undefined) {
-    throw new Error(
-      `記事${String(articleIndex)}は公開でないため索引文書を作れない`,
-    );
-  }
-  const document = await buildIndexDocument(HELP_ARTICLE_SEARCH_TARGET, source);
-  const result = await indexRepository.upsert(
-    HELP_ARTICLE_SEARCH_TARGET.name,
-    sourceId,
-    {
-      sourceVersion: document.sourceVersion,
-      texts: document.texts,
-      keywords: {
-        kind: 'set',
-        value: selectKeywords(
-          keywords.map((name) => ({ name, type: 'OTHER' })),
-        ),
-      },
-      keywordStatus: 'extracted',
-      extractionInputHash: document.extractionInputHash,
-      statusChangedAt: T0,
-    },
-  );
-  if (result !== 'written') {
-    throw new Error(`記事${String(articleIndex)}の索引文書を書き込めなかった`);
-  }
 }
 
 function matchExpressionOf(query: string): string {
@@ -364,11 +320,11 @@ describe('D1PublicHelpStore', () => {
         title: 'Rocket draft',
         subtitle: 'Moon',
       });
-      await indexArticle(ROCKET);
-      await indexArticle(OPERATORS);
-      await indexArticle(KEYWORD_ONLY, ['Telescope']);
-      await indexArticle(GARDEN);
-      await indexArticle(STALE_DRAFT);
+      await indexPublishedHelpArticle(ROCKET);
+      await indexPublishedHelpArticle(OPERATORS);
+      await indexPublishedHelpArticle(KEYWORD_ONLY, ['Telescope']);
+      await indexPublishedHelpArticle(GARDEN);
+      await indexPublishedHelpArticle(STALE_DRAFT);
       // 下書きへ戻した後、索引から消える前の状態
       await db
         .update(helpArticles)

@@ -567,6 +567,24 @@ enum HandleAvailability {
   UNAVAILABLE
 }
 
+type HelpArticle {
+  """nullは削除済みの管理者"""
+  author: HelpArticleAuthor
+
+  """マークダウン"""
+  body: String!
+  categoryName: String!
+
+  """現在のハンドルの表記"""
+  handle: String!
+
+  """同じカテゴリの他の公開の記事をヘルプトップと同じ順で並べる"""
+  relatedArticles: [HelpArticleSummary!]!
+  subtitle: String!
+  title: String!
+  updatedAt: DateTime!
+}
+
 type HelpArticleAuthor {
   avatar: MediaImage
   nickname: String!
@@ -592,9 +610,29 @@ enum HelpArticleHandleAvailability {
   UNAVAILABLE
 }
 
+type HelpArticleLink {
+  handle: String!
+  title: String!
+}
+
+"""公開の記事の旧ハンドルで要求された時の転送先"""
+type HelpArticleRedirect {
+  """現在のハンドルの表記"""
+  handle: String!
+}
+
+union HelpArticleResult = HelpArticle | HelpArticleRedirect
+
 enum HelpArticleStatus {
   DRAFT
   PUBLISHED
+}
+
+type HelpArticleSummary {
+  handle: String!
+  pinned: Boolean!
+  subtitle: String!
+  title: String!
 }
 
 type HelpCategory {
@@ -604,6 +642,19 @@ type HelpCategory {
   name: String!
   sortOrder: Int!
   systemDefault: Boolean!
+}
+
+type HelpCenterCategory {
+  """ピン留めの群に続けてそれ以外の群を、それぞれ管理者が指定した並び順で並べる"""
+  articles: [HelpArticleSummary!]!
+  name: String!
+}
+
+type HelpSearchHit {
+  categoryName: String!
+  handle: String!
+  subtitle: String!
+  title: String!
 }
 
 """問い合わせのカテゴリ"""
@@ -1763,8 +1814,17 @@ type Query {
   """ハンドルの使用可否。自分の現在と保持中の旧ハンドルは使えるものとして扱う"""
   handleAvailability(handle: String!): HandleAvailability!
 
+  """見つからない・下書き・形式違反のハンドルではnull(404)"""
+  helpArticle(handle: String!): HelpArticleResult
+
   """articleIdは編集中の記事のIDで、作成では省く"""
   helpArticleHandleAvailability(articleId: ID, handle: String!): HelpArticleHandleAvailability!
+
+  """前後の空白を除き50文字に切り詰めた検索語で、公開の記事を関連度の高い順に返す"""
+  helpArticleSearch(query: String!): [HelpSearchHit!]!
+
+  """公開の記事を持つカテゴリを管理者が指定した並び順で返す"""
+  helpCenter: [HelpCenterCategory!]!
 
   """問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く"""
   inquiryCategories: [InquiryCategory!]!
@@ -1817,6 +1877,9 @@ type Query {
 
   """ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順)"""
   paymentHistory(after: String, first: Int): PaymentRecordConnection!
+
+  """公開のピン留めの記事をヘルプトップと同じ順で返す"""
+  pinnedHelpArticles: [HelpArticleLink!]!
 
   """プロダクトカテゴリを追加の順で、標準カテゴリを末尾に置いて返す"""
   productCategories: [ProductCategory!]!

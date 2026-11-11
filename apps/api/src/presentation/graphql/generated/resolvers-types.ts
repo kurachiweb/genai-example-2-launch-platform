@@ -571,6 +571,22 @@ export type HandleAvailability =
   | 'INVALID'
   | 'UNAVAILABLE';
 
+export type HelpArticle = {
+  __typename?: 'HelpArticle';
+  /** nullは削除済みの管理者 */
+  author?: Maybe<HelpArticleAuthor>;
+  /** マークダウン */
+  body: Scalars['String']['output'];
+  categoryName: Scalars['String']['output'];
+  /** 現在のハンドルの表記 */
+  handle: Scalars['String']['output'];
+  /** 同じカテゴリの他の公開の記事をヘルプトップと同じ順で並べる */
+  relatedArticles: Array<HelpArticleSummary>;
+  subtitle: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
 export type HelpArticleAuthor = {
   __typename?: 'HelpArticleAuthor';
   avatar?: Maybe<MediaImage>;
@@ -595,9 +611,32 @@ export type HelpArticleHandleAvailability =
   | 'INVALID'
   | 'UNAVAILABLE';
 
+export type HelpArticleLink = {
+  __typename?: 'HelpArticleLink';
+  handle: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+};
+
+/** 公開の記事の旧ハンドルで要求された時の転送先 */
+export type HelpArticleRedirect = {
+  __typename?: 'HelpArticleRedirect';
+  /** 現在のハンドルの表記 */
+  handle: Scalars['String']['output'];
+};
+
+export type HelpArticleResult = HelpArticle | HelpArticleRedirect;
+
 export type HelpArticleStatus =
   | 'DRAFT'
   | 'PUBLISHED';
+
+export type HelpArticleSummary = {
+  __typename?: 'HelpArticleSummary';
+  handle: Scalars['String']['output'];
+  pinned: Scalars['Boolean']['output'];
+  subtitle: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+};
 
 export type HelpCategory = {
   __typename?: 'HelpCategory';
@@ -607,6 +646,21 @@ export type HelpCategory = {
   name: Scalars['String']['output'];
   sortOrder: Scalars['Int']['output'];
   systemDefault: Scalars['Boolean']['output'];
+};
+
+export type HelpCenterCategory = {
+  __typename?: 'HelpCenterCategory';
+  /** ピン留めの群に続けてそれ以外の群を、それぞれ管理者が指定した並び順で並べる */
+  articles: Array<HelpArticleSummary>;
+  name: Scalars['String']['output'];
+};
+
+export type HelpSearchHit = {
+  __typename?: 'HelpSearchHit';
+  categoryName: Scalars['String']['output'];
+  handle: Scalars['String']['output'];
+  subtitle: Scalars['String']['output'];
+  title: Scalars['String']['output'];
 };
 
 /** 問い合わせのカテゴリ */
@@ -1958,8 +2012,14 @@ export type Query = {
   directoryCategories: Array<ProductCategory>;
   /** ハンドルの使用可否。自分の現在と保持中の旧ハンドルは使えるものとして扱う */
   handleAvailability: HandleAvailability;
+  /** 見つからない・下書き・形式違反のハンドルではnull(404) */
+  helpArticle?: Maybe<HelpArticleResult>;
   /** articleIdは編集中の記事のIDで、作成では省く */
   helpArticleHandleAvailability: HelpArticleHandleAvailability;
+  /** 前後の空白を除き50文字に切り詰めた検索語で、公開の記事を関連度の高い順に返す */
+  helpArticleSearch: Array<HelpSearchHit>;
+  /** 公開の記事を持つカテゴリを管理者が指定した並び順で返す */
+  helpCenter: Array<HelpCenterCategory>;
   /** 問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く */
   inquiryCategories: Array<InquiryCategory>;
   /** 問い合わせフォームに表示する送信者。停止していないログイン中の利用者だけ値を返す */
@@ -1992,6 +2052,8 @@ export type Query = {
   newProductLaunchWindow: LaunchDateWindow;
   /** ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順) */
   paymentHistory: PaymentRecordConnection;
+  /** 公開のピン留めの記事をヘルプトップと同じ順で返す */
+  pinnedHelpArticles: Array<HelpArticleLink>;
   /** プロダクトカテゴリを追加の順で、標準カテゴリを末尾に置いて返す */
   productCategories: Array<ProductCategory>;
   /** プロダクトのハンドルの使用可否。productHandleは編集中のプロダクトの現在のハンドルで、その現在と保持中の旧ハンドルは使えるものとして扱う */
@@ -2071,9 +2133,19 @@ export type QueryHandleAvailabilityArgs = {
 };
 
 
+export type QueryHelpArticleArgs = {
+  handle: Scalars['String']['input'];
+};
+
+
 export type QueryHelpArticleHandleAvailabilityArgs = {
   articleId?: InputMaybe<Scalars['ID']['input']>;
   handle: Scalars['String']['input'];
+};
+
+
+export type QueryHelpArticleSearchArgs = {
+  query: Scalars['String']['input'];
 };
 
 
@@ -2542,6 +2614,10 @@ export type DirectiveResolverFn<TResult = Record<PropertyKey, never>, TParent = 
 
 /** Mapping of union types */
 export type ResolversUnionTypes<_RefType extends Record<string, unknown>> = {
+  HelpArticleResult:
+    | ( Omit<HelpArticle, 'author'> & { author?: Maybe<_RefType['HelpArticleAuthor']> } )
+    | ( HelpArticleRedirect )
+  ;
   LoginResult:
     | ( Omit<LoginSucceeded, 'viewer'> & { viewer: _RefType['Viewer'] } )
     | ( SecondFactorRequired )
@@ -2621,11 +2697,18 @@ export type ResolversTypes = {
   FollowState: ResolverTypeWrapper<FollowState>;
   GuestInquiryInput: GuestInquiryInput;
   HandleAvailability: HandleAvailability;
+  HelpArticle: ResolverTypeWrapper<Omit<HelpArticle, 'author'> & { author?: Maybe<ResolversTypes['HelpArticleAuthor']> }>;
   HelpArticleAuthor: ResolverTypeWrapper<HelpArticleAuthorSource>;
   HelpArticleFields: HelpArticleFields;
   HelpArticleHandleAvailability: HelpArticleHandleAvailability;
+  HelpArticleLink: ResolverTypeWrapper<HelpArticleLink>;
+  HelpArticleRedirect: ResolverTypeWrapper<HelpArticleRedirect>;
+  HelpArticleResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['HelpArticleResult']>;
   HelpArticleStatus: HelpArticleStatus;
+  HelpArticleSummary: ResolverTypeWrapper<HelpArticleSummary>;
   HelpCategory: ResolverTypeWrapper<HelpCategory>;
+  HelpCenterCategory: ResolverTypeWrapper<HelpCenterCategory>;
+  HelpSearchHit: ResolverTypeWrapper<HelpSearchHit>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   InquiryCategory: ResolverTypeWrapper<InquiryCategory>;
   InquiryComposer: ResolverTypeWrapper<InquiryComposerModel>;
@@ -2802,9 +2885,16 @@ export type ResolversParentTypes = {
   FollowEntryConnection: Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['FollowEntry']> };
   FollowState: FollowState;
   GuestInquiryInput: GuestInquiryInput;
+  HelpArticle: Omit<HelpArticle, 'author'> & { author?: Maybe<ResolversParentTypes['HelpArticleAuthor']> };
   HelpArticleAuthor: HelpArticleAuthorSource;
   HelpArticleFields: HelpArticleFields;
+  HelpArticleLink: HelpArticleLink;
+  HelpArticleRedirect: HelpArticleRedirect;
+  HelpArticleResult: ResolversUnionTypes<ResolversParentTypes>['HelpArticleResult'];
+  HelpArticleSummary: HelpArticleSummary;
   HelpCategory: HelpCategory;
+  HelpCenterCategory: HelpCenterCategory;
+  HelpSearchHit: HelpSearchHit;
   ID: Scalars['ID']['output'];
   InquiryCategory: InquiryCategory;
   InquiryComposer: InquiryComposerModel;
@@ -3202,10 +3292,43 @@ export type FollowStateResolvers<ContextType = GraphQLContext, ParentType extend
   handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
+export type HelpArticleResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpArticle'] = ResolversParentTypes['HelpArticle']> = {
+  author?: Resolver<Maybe<ResolversTypes['HelpArticleAuthor']>, ParentType, ContextType>;
+  body?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  categoryName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  relatedArticles?: Resolver<Array<ResolversTypes['HelpArticleSummary']>, ParentType, ContextType>;
+  subtitle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type HelpArticleAuthorResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpArticleAuthor'] = ResolversParentTypes['HelpArticleAuthor']> = {
   avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
   nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type HelpArticleLinkResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpArticleLink'] = ResolversParentTypes['HelpArticleLink']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type HelpArticleRedirectResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpArticleRedirect'] = ResolversParentTypes['HelpArticleRedirect']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type HelpArticleResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpArticleResult'] = ResolversParentTypes['HelpArticleResult']> = {
+  __resolveType: TypeResolveFn<'HelpArticle' | 'HelpArticleRedirect', ParentType, ContextType>;
+};
+
+export type HelpArticleSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpArticleSummary'] = ResolversParentTypes['HelpArticleSummary']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  pinned?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  subtitle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type HelpCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpCategory'] = ResolversParentTypes['HelpCategory']> = {
@@ -3214,6 +3337,18 @@ export type HelpCategoryResolvers<ContextType = GraphQLContext, ParentType exten
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   sortOrder?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   systemDefault?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type HelpCenterCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpCenterCategory'] = ResolversParentTypes['HelpCenterCategory']> = {
+  articles?: Resolver<Array<ResolversTypes['HelpArticleSummary']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type HelpSearchHitResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpSearchHit'] = ResolversParentTypes['HelpSearchHit']> = {
+  categoryName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  subtitle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type InquiryCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryCategory'] = ResolversParentTypes['InquiryCategory']> = {
@@ -3745,7 +3880,10 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   directory?: Resolver<ResolversTypes['DirectoryPage'], ParentType, ContextType, RequireFields<QueryDirectoryArgs, 'input'>>;
   directoryCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
   handleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryHandleAvailabilityArgs, 'handle'>>;
+  helpArticle?: Resolver<Maybe<ResolversTypes['HelpArticleResult']>, ParentType, ContextType, RequireFields<QueryHelpArticleArgs, 'handle'>>;
   helpArticleHandleAvailability?: Resolver<ResolversTypes['HelpArticleHandleAvailability'], ParentType, ContextType, RequireFields<QueryHelpArticleHandleAvailabilityArgs, 'handle'>>;
+  helpArticleSearch?: Resolver<Array<ResolversTypes['HelpSearchHit']>, ParentType, ContextType, RequireFields<QueryHelpArticleSearchArgs, 'query'>>;
+  helpCenter?: Resolver<Array<ResolversTypes['HelpCenterCategory']>, ParentType, ContextType>;
   inquiryCategories?: Resolver<Array<ResolversTypes['InquiryCategory']>, ParentType, ContextType>;
   inquiryComposer?: Resolver<Maybe<ResolversTypes['InquiryComposer']>, ParentType, ContextType>;
   launchHistory?: Resolver<Maybe<ResolversTypes['LaunchHistoryConnection']>, ParentType, ContextType, RequireFields<QueryLaunchHistoryArgs, 'first' | 'userHandle'>>;
@@ -3762,6 +3900,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
   newProductLaunchWindow?: Resolver<ResolversTypes['LaunchDateWindow'], ParentType, ContextType>;
   paymentHistory?: Resolver<ResolversTypes['PaymentRecordConnection'], ParentType, ContextType, Partial<QueryPaymentHistoryArgs>>;
+  pinnedHelpArticles?: Resolver<Array<ResolversTypes['HelpArticleLink']>, ParentType, ContextType>;
   productCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
   productHandleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryProductHandleAvailabilityArgs, 'handle'>>;
   productLiveMatch?: Resolver<Maybe<ResolversTypes['ProductLiveMatch']>, ParentType, ContextType, RequireFields<QueryProductLiveMatchArgs, 'productHandle'>>;
@@ -3931,8 +4070,15 @@ export type Resolvers<ContextType = GraphQLContext> = {
   FollowEntry?: FollowEntryResolvers<ContextType>;
   FollowEntryConnection?: FollowEntryConnectionResolvers<ContextType>;
   FollowState?: FollowStateResolvers<ContextType>;
+  HelpArticle?: HelpArticleResolvers<ContextType>;
   HelpArticleAuthor?: HelpArticleAuthorResolvers<ContextType>;
+  HelpArticleLink?: HelpArticleLinkResolvers<ContextType>;
+  HelpArticleRedirect?: HelpArticleRedirectResolvers<ContextType>;
+  HelpArticleResult?: HelpArticleResultResolvers<ContextType>;
+  HelpArticleSummary?: HelpArticleSummaryResolvers<ContextType>;
   HelpCategory?: HelpCategoryResolvers<ContextType>;
+  HelpCenterCategory?: HelpCenterCategoryResolvers<ContextType>;
+  HelpSearchHit?: HelpSearchHitResolvers<ContextType>;
   InquiryCategory?: InquiryCategoryResolvers<ContextType>;
   InquiryComposer?: InquiryComposerResolvers<ContextType>;
   InquiryMessage?: InquiryMessageResolvers<ContextType>;

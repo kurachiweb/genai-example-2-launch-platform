@@ -16,12 +16,15 @@ import { helpArticleSearchDocuments } from '../../../../db/schema/help/help-arti
 import { helpArticles } from '../../../../db/schema/help/help-articles.ts';
 import { helpCategories } from '../../../../db/schema/help/help-categories.ts';
 import type { PreparedAuditEntry } from '../../../../lib/core/admin/audit-log.ts';
+import { buildIndexDocument } from '../../../../lib/core/search/index-document.ts';
+import { selectKeywords } from '../../../../lib/core/search/keyword-selection.ts';
 import {
   clearHelpTables,
   db,
   helpArticleIdOf,
   T0,
 } from '../../../../lib/workers/help/testing/help-fixtures.ts';
+import { D1SearchIndexRepository } from '../../../../lib/workers/search/search-index-repository.ts';
 import { createSearchIndexStatements } from '../../../../lib/workers/search/search-index-statements.ts';
 import { createSearchTargetRegistry } from '../../../../lib/workers/search/search-target-definition.ts';
 import { HELP_ARTICLE_SEARCH_TARGET } from '../../../../lib/workers/search/targets/help-articles.ts';
@@ -215,6 +218,43 @@ export async function readIndexDocuments() {
     })
     .from(helpArticleSearchDocuments)
     .orderBy(asc(helpArticleSearchDocuments.sourceId));
+}
+
+const indexRepository = new D1SearchIndexRepository(db, registry);
+
+// 公開の記事を、索引の更新の処理と同じ組み立てで索引に載せる
+export async function indexPublishedHelpArticle(
+  articleIndex: number,
+  keywords: readonly string[] = [],
+): Promise<void> {
+  const sourceId = helpArticleIdOf(articleIndex);
+  const source = await HELP_ARTICLE_SEARCH_TARGET.read(db, sourceId);
+  if (source === undefined) {
+    throw new Error(
+      `記事${String(articleIndex)}は公開でないため索引文書を作れない`,
+    );
+  }
+  const document = await buildIndexDocument(HELP_ARTICLE_SEARCH_TARGET, source);
+  const result = await indexRepository.upsert(
+    HELP_ARTICLE_SEARCH_TARGET.name,
+    sourceId,
+    {
+      sourceVersion: document.sourceVersion,
+      texts: document.texts,
+      keywords: {
+        kind: 'set',
+        value: selectKeywords(
+          keywords.map((name) => ({ name, type: 'OTHER' })),
+        ),
+      },
+      keywordStatus: 'extracted',
+      extractionInputHash: document.extractionInputHash,
+      statusChangedAt: T0,
+    },
+  );
+  if (result !== 'written') {
+    throw new Error(`記事${String(articleIndex)}の索引文書を書き込めなかった`);
+  }
 }
 
 // 索引の更新の処理を通さず、抽出の済んだ索引文書の行だけを作る

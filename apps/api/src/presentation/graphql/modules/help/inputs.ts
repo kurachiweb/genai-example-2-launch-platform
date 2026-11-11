@@ -11,6 +11,7 @@ import {
   HELP_REORDER_MAX,
   type HelpTextCheck,
 } from '../../../../../common-lib/help/help-input-rules.ts';
+import { normalizeHelpSearchText } from '../../../../../common-lib/help/help-query-rules.ts';
 import { trimWhiteSpace } from '../../../../../common-lib/text/white-space.ts';
 import { markdownTextSchema } from '../../../../../common-lib/validation/markdown-text-schema.ts';
 import type { HelpArticleWrite } from '../../../../application/help/ports.ts';
@@ -129,4 +130,9 @@ export const HELP_ARTICLE_HANDLE_AVAILABILITY_ARGS = z.object({
 export const REORDER_HELP_ARTICLES_ARGS = z.object({
   categoryId: idOf(INPUT_MESSAGES.orderInvalid),
   orderedIds,
+});
+
+// URLのクエリの値を受けるため、上限を超えた検索語も拒否せず前後の空白を除いて上限の文字数に切り詰める。空白だけはundefined
+export const HELP_ARTICLE_SEARCH_ARGS = z.object({
+  query: z.string().transform(normalizeHelpSearchText),
 });
