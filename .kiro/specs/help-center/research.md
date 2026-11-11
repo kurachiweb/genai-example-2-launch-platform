@@ -189,7 +189,7 @@
 
 ## Synthesis
 
-- **Generalization**: 公開状態を持つ対象のハンドルの解決(`activeCondition`と保持者の状態の確認)と、対象の削除での旧ハンドルの物理削除を、ハンドル基盤の技術ドキュメント(`backend/011`)の節として一般化する。見出しから作る目次は、他の長い本文(法務文書など)でも使える規約として`frontend/011`にまとめる。上下の移動の並べ替えの部品は、カテゴリと記事の両方で同じ部品を使う。
+- **Generalization**: 公開状態を持つ対象のハンドルの解決(`activeCondition`と保持者の状態の確認)と、対象の削除での旧ハンドルの物理削除を、ハンドル基盤の技術ドキュメント(`backend/011`)の節として一般化する。見出しから作る目次は、他の長い本文(法務文書など)でも使える規約として`frontend/008`の「目次の作り方」に追記する(2026-11-11のG2の確定)。上下の移動の並べ替えの部品は、カテゴリと記事の両方で同じ部品を使う。
 - **Build vs Adopt**: ハンドルの規則と旧ハンドルの解放はuser-profile-social、マークダウン・検索・強調表示はcontent-processing、権限・監査ログ・管理者の照会・共通部品はadmin-foundation、カテゴリのページはinquiry-chat、フッターと状態表示はfrontend-platformの部品を使う。目次と並べ替えの部品は既存の部品が無く作る。モバイルの折りたたみはネイティブの`<details>`を、並び順の一括の更新はSQLiteの`json_each`を採用する。新しいパッケージは無い。
 - **Simplification**: 版の履歴・論理削除・下書きのプレビューのURL・目次の現在位置の強調・一覧の絞り込みのAPI・群ごとの並び順の系列・ドラッグ&ドロップを持たない。eventの束縛・4:21のジョブ・ライフサイクルの波及処理を持たない。
 
@@ -201,7 +201,7 @@
 - 並べ替えの最中に別の管理者が記事を追加・削除・移動する — 対象の集合の確認の文で保存を拒否し、最新の並びの読み込みを案内する。
 - 同じ旧ハンドルを2つの保存が同時に取りにいく — 現在のハンドルの一意索引で一方だけが確定し、解放は確定した保存のトランザクションでだけ行われる。Workers統合テストで確かめる。
 - 全ページのフッターがピン留め記事を取得する — 取得は1回の索引付きの読み取りで、失敗や遅れは描画しないことで吸収する。TanStack Queryのキャッシュで同じページの再描画では取得しない。
-- 技術ドキュメントの番号の重なり — 本specは`frontend/011`を使い、product-launchは`frontend/012-business-date-calendar.md`を使う(roadmapの順で本specが先)。タスク8で空きを確かめ、食い違えば報告する。
+- 技術ドキュメントの番号の重なり — 2026-11-11のG2の確定で、本specは新しい番号の文書を作らず`frontend/008`に追記するため、重なりは無い。`frontend/011`は欠番のまま残る(product-launchの要確認4で開発者が許している)。
 - 管理者のニックネームが利用者側に公開される — FR-HELP-008の要件どおり。管理者のIDは公開のGraphQLに出さない。
 
 ## References
@@ -254,7 +254,7 @@
 - inquiry-chat(上流): `CATEGORY_SECTIONS`に`help-center.help-categories`(`order` 20)を加える(契約どおり)。
 - frontend-platform(上流): `SITE_LAYOUT_SLOTS.footerHelpLinks`に`PinnedHelpLinks`を加える(契約どおり)。
 - roadmap: 本specは4:21のジョブとユーザーライフサイクルの波及処理を持たないため、帯の割り当ての表の本specの「使用中の値」は「—」のままである。本specはroadmapを編集しない指示のため、コントローラーへ報告する。
-- product-launch(並行・後続): ハンドル基盤を同じく使う。技術ドキュメントの番号は本specが`frontend/011`、product-launchが`frontend/012-business-date-calendar.md`を使う(roadmapの順)。
+- product-launch(並行・後続): ハンドル基盤を同じく使う。技術ドキュメントの番号は、本specが`frontend/011`を作らないため重ならない(G2)。
 - launch-readiness(後続): 本番のヘルプ記事の本文の投入(運用)と、全体のE2E回帰にヘルプの流れ(並べ替えを含む)を含める。性能の検証のデータ規模に、100,000文字の本文のヘルプ記事の詳細ページの表示を含める(仮1)。
 
 ## 設計のレビュー(2026-10-23)
@@ -313,3 +313,129 @@
 - **移したもの**: 本specが所有する契約の移動は無い。`HelpAuthorLookup`(application層)が受け取るadmin-foundationの`AdminDirectory`と識別子`ADMIN_PLATFORM_TYPES`は、admin-foundationの改訂で`backend-lib/core/admin`へ移ったため、読み込み先を明記した。検索対象`HELP_ARTICLE_SEARCH_TARGET`は`workers/search/targets`に置いたまま、集約点を通して束縛の部品だけが使う。
 - **新しいポートと実装**: 無い。
 - **変えた箇所**: design.mdのAllowed Dependencies(admin-foundationの行)・Dependency Direction・HelpModule、brief.mdの作成者の表示の行。tasks.mdは置き場所を書いていないため変えていない。要件と受け入れ基準は変えていない。
+
+---
+
+## 実装前のギャップ分析(2026-11-11、上流specの実装の完了後)
+
+### 分析の前提
+
+- **状態**: 要件・設計・タスクは承認済み(`ready_for_implementation`は`false`)。設計は2026-10-23〜11-02に、上流specが未実装の段階で設計文書の契約を前提に作った。2026-11-11の時点で上流の6spec(user-profile-social・content-processing・admin-foundation・inquiry-chat・frontend-platform・legal-pages)と、同じ部品を先に使ったproduct-launch・directory-discoveryの実装が完了している。ヘルプのコード・テーブル・マイグレーション・GraphQLの操作・E2Eはまだ無い。
+- **方法**: design.mdのAllowed Dependencies・Modified Files・File Structure Planの識別子と置き場所を実際のコードで照合し、設計の後に作成・改訂された技術文書(`security/007`・`frontend/008`・`frontend/014`・`db/003`・`db/004`・`backend/004`・`backend/011`)の規則と突き合わせた。steeringは`roadmap.md`だけで、product.md・tech.md・structure.mdは無い(CLAUDE.md・tech-stack.md・技術文書で代替)。
+- **本節の扱い**: 設計を変えず、設計フェーズ(設計の改訂)へ持ち込む情報と選択肢を記録する。
+
+### 契約の照合の結果(差異なし)
+
+次の契約は、設計が前提にした形と意味のまま実装されている。
+
+- ハンドル基盤: `defineHandleNamespace`(`activeCondition`は解決だけに使う)・`resolveHandle`(旧ハンドルの解決は保持者の状態を見ない)・`isHandleOccupied`(既定で他の対象の現在のハンドルだけ)・`handleOccupiedCondition`・`previousHandleUpsert(db, ns, { id, ownerId, handle, now })`・`previousHandleRelease(db, ns, { handle, exceptOwnerId })`(物理削除)・`previousHandleDelete`・`previousHandleColumns({ ownerColumnName, references })`(`handle`は`textNoCase().notNull().unique()`、`ownerId`は一意)。`backend/011`の「保存の一括の書き込み」は「解放を置き換えより前に置く」と定め、設計の更新の順((3)解放→(4)置き換え)と一致する。
+- 検索の基盤: `defineSearchTarget`(`fields`の`format`・`textColumn`・`extract`、`read`・`isIndexable`)、登録時の検証(元テキストの列と項目の一致、抽出の対象が1つ以上)、`SearchIndexStatements.markPending(target, sourceId, now)`・`deleteSources(target, sourceIds)`、`SearchIndexRefreshRequester.requestRefresh`(送信の失敗は例外にしない)。`SEARCH_TARGETS`・`SEARCH_INDEXES`はproductの1件だけで、追記の形も設計どおり。
+- 管理者の基盤: `AuditTargetKind`に`help-article`・`category`がある。`AUDIT_ACTIONS`は`audit-actions/<spec名>.ts`の連結。`AdminDirectory.findProfiles`と`ADMIN_PLATFORM_TYPES`は`backend-lib/core/admin`にあり、`AdminProfileView`は`{ id, nickname, title, avatarFileId }`。`buildAuditLogStatements(db, entry, guard?)`は`api/src/infrastructure/admin/audit-log-statements.ts`。
+- 登録箇所: `ADMIN_NAV_ITEMS`の説明に「ヘルプ記事100」、`CategorySection`の説明に「help-centerのヘルプ記事カテゴリ20」が予約済み。`SITE_LAYOUT_SLOTS.footerHelpLinks`は空の配列で、部品は包む要素を持たずに0個以上の`li`を描く契約(設計の`PinnedHelpLinks`と一致)。
+- `CategoryMasterEditor`のprops: `title`・`categories`・`withHandle`・`canEdit`・`onCreate`・`onUpdate`・`onDelete`・`failureMessageOf`・`deleteDescriptionOf`・`deleteAudited`・`serverFieldPrefix`。並べ替えは持たない。`InquiryCategorySection`(`apps/admin/src/components/inquiry/inquiry-category-section.tsx`)が同じ使い方の実例である。
+- マークダウン: `renderMarkdown`の`headings`(`depth`・`id`・`text`)、`useMarkdownOptions({ externalLinkRel, sameOriginLinkRel?, idScope? })`、`markdownTextSchema({ label, maxGraphemes, required })`、`MarkdownEditor`の`maxGraphemes`。
+- データ: `textNoCase`、標準カテゴリの初期データのカスタムマイグレーション(inquiry-chatの`01JC0000000000000000000000`。設計の`HELP_CATEGORY_OTHER_ID`は`…0001`で、`db/003`の「ULIDの時刻部と`created_at`を一致させる」規則に従えばよい)。
+- 文書: `frontend/011`は空き番号のまま(010・012〜014は使用済み)。要件定義書の改訂(FR-ADMAG-029など)は適用済み。
+
+### 要件と資産の対応
+
+| 要件                     | 使う既存の資産(実在を確認)                                                                                                                                          | ギャップ                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1(カテゴリ別の一覧)      | `EmptyState`・`ErrorState`・`LoadingSkeleton`、`site-links.ts`のヘルプトップのリンク                                                                                | **Missing**: ヘルプのテーブル・照会・画面の全て                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 2(検索)                  | `normalizeSearchTerms`・`buildFtsMatchExpression`・`ftsRankedSources`・`HighlightedText`、directory-discoveryの検索欄の実例                                         | **Constraint**: `frontend/014`の「クエリの正規化」は上限を超えたURLの検索語を黙って切り詰める(directory-discoveryの`normalizeDirectoryQuery`も同じ)。要件2.3と設計はURLの`q`が上限を超えると検索せずに上限の超過を示す。**Constraint**: `frontend/014`の「送信でだけ検索する入力欄」(上限の手前から文字数を示す、消去のボタン、URLの外からの変更で入力欄を戻す)が設計の`HelpSearchForm`に無い                                                                                  |
+| 3(詳細・目次)            | `MarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`、共通ヘッダーの`sticky top-0`(directoryの`scroll-mt-20`の実例)                                       | **Constraint**: `frontend/008`に「目次の作り方」の節(`headings`から作る`nav`、`id`をキーにする規則)が既にある。設計の`frontend/011-table-of-contents.md`の新規作成と内容が重なる。**Missing**: 目次の部品(既存の部品は無い)                                                                                                                                                                                                                                                    |
+| 4・7(公開範囲・ハンドル) | ハンドル基盤の全部品、`/p/$handle`・`/@{$handle}`の302の実例(`graphql/product-page.ts`の`statusCode: 302`)                                                          | **Constraint**: `backend/011`の「新しい対象を足す手順」5は名前空間を`workers/<対象>/`に置くと定め、実装もproduct・profileが`backend-lib/workers/<対象>/`に置く。設計は`api/src/infrastructure/help/help-handle-namespace.ts`に置く                                                                                                                                                                                                                                             |
+| 5(フッター)              | `footerHelpLinks`                                                                                                                                                   | 差異なし                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 6・8(作成・編集・削除)   | `MarkdownEditor`(legal-pagesの`legal-draft-form.tsx`が100,000文字で使う実例)、`AuditLogRecorder.prepare`、`ConfirmActionDialog`                                     | **Constraint**: `AuditEntryInput`は`{ operatorAdminId, action, targetIds, reason?, detail?, occurredAt }`で、`detail`の値は文字列に限る。設計のユースケースの記述は`targets`と書き、`count`・`reassignedCount`の型を書いていない。**Constraint**: ユースケースが投げるエラーの定義は、inquiry・productと同じくapplication層(`application/<機能>/<機能>-errors.ts`)に置く必要がある(application層はpresentation層を読めない)。設計は`presentation/.../help/errors.ts`だけを置く |
+| 9(管理の一覧・並べ替え)  | `AdminDataTable`・`AdminFilterBar`・`AdminPageHeader`、問い合わせの一覧のURLの条件の実例(`admin-inquiry-search.ts`の`toAdminInquirySearch`を`validateSearch`に渡す) | **Missing**: 上下の移動の並べ替えの部品(既存の部品もドラッグ&ドロップのパッケージも無い)。設計どおり新規に作る                                                                                                                                                                                                                                                                                                                                                                 |
+| 10(索引)                 | `markPending`・`deleteSources`・`requestRefresh`、日次の再抽出                                                                                                      | 差異なし。抽出の対象を本文だけにする設計は、プライバシーポリシーの大枠の記載と一致する(productはタグラインも送るが、ヘルプは影響を受けない)                                                                                                                                                                                                                                                                                                                                    |
+| 11(カテゴリ)             | `CategoryMasterEditor`、inquiry-chatの付け替えと初期データの実装、`category-sections.ts`                                                                            | 差異なし                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 12(権限・監査ログ)       | `requireAdmin`・`hasRole`・`RoleGate`・`useAdminRole`                                                                                                               | **Constraint**: `security/007`(2026-11-05改訂)の「宣言の入口」は管理者側のリゾルバを`adminOnly`で包むと定め、`backend/004`は呼び出し元の確認の包みを「各機能が持つ」とする。実装ではinquiry・product・adminのモジュールが`resolver-support.ts`に`adminOnly`(productは`clientOnly`も)を持ち、directoryの公開の照会は`clientOnly`で包む。設計には`adminOnly`・`clientOnly`と`resolver-support.ts`が無い                                                                          |
+| 13(文書とテスト)         | `e2e/admin/admin-test.ts`・`client-page-test.ts`・`category-steps.ts`、`e2e/client/markdown-steps.ts`、索引を待つ`waitForDirectorySearchResult`(`toPass`)           | **Constraint**: E2Eは機能の操作の手順を`<手順の名前>-steps.ts`に分ける規約になっている(CLAUDE.mdのディレクトリ構成)。設計は`help-center.e2e.test.ts`の1ファイルだけを挙げ、既存の補助(カテゴリの区画の操作・マークダウンの入力・管理画面から利用者側のページを開く文脈)に触れていない                                                                                                                                                                                          |
+
+### 設計の後に定着した画面の構成の規約
+
+設計の File Structure Plan は、ルートのファイルに`loader`・`head`を書く前提である。実装済みのclient・adminは次の構成にそろっている。規則の文書に明記された項目と、実装の慣習だけの項目を分けて記す。
+
+- 文書の規則: `frontend/006`の「取得の補助とloader」は、`ensureQueryData`を非推奨とし`queryClient.query({ ...graphqlQueryOptions(...), staleTime: 'static' })`を使うと定める。設計の`/help`・`/help/$handle`の`loader`は`ensureQueryData`と書いている。
+- 実装の慣習: 取得の設定・`loader`の関数・表示用への変換を`src/graphql/<機能>.ts`(単体テストを併置)に置き、`head`は`src/head/page-heads.ts`(adminは`buildAdminPageHead`)で作り、ルートのファイルは部品と関数をつなぐだけにする。adminでは画面の本体を`components/pages/<画面>-page.tsx`、文言を`components/<機能>/<機能>-messages.ts`に置く。
+- 実装の慣習: 管理者側のGraphQLの操作は、productが`operations/product/`の直下に平らに置く。設計の`operations/help/articles/`・`categories/`の入れ子も`src/graphql/operations/**/*.graphql`の規則の範囲内である。
+
+### 実装の方針の選択肢
+
+#### 案A: 設計のまま実装し、規約の差は実装中に合わせる
+
+- 設計とタスクを改訂せずに着手し、上記の差(`adminOnly`・`clientOnly`、エラーの置き場所、`ensureQueryData`、取得の補助と`head`の置き場所、`AuditEntryInput`の項目名)を各タスクの実装で既存の規約に合わせ、tasks.mdのImplementation Notesに記録する。
+- ✅ 着手が早い。上流の契約は全て実在し、形も変わっていない。
+- ❌ 開発者の判断が要る3件(URLの検索語の超過・目次の文書の番号・名前空間の置き場所)を実装者が決めることになる。設計とコードの相違が実装の後に残る。
+
+#### 案B: 着手の前に設計を改訂する
+
+- 判断が要る3件を開発者に確かめ、機械的な差も含めて design.md の File Structure Plan・Components・Allowed Dependencies と tasks.md を改訂してから実装する。
+- ✅ 設計・タスク・コードが一致したまま進む。タスクの境界(`_Boundary:_`)とファイルの一覧が実際の構成に合う。
+- ❌ 改訂とレビューの手間がかかる。差の大半は既存の規約への機械的な合わせ込みで、振る舞いは変わらない。
+
+#### 案C: 判断が要る件だけを設計で確定し、機械的な差は実装で合わせる(折衷)
+
+- 判断が要る3件だけを開発者に確かめて requirements.md・design.md に反映し、機械的な差は案Aと同じく実装中に合わせて Implementation Notes に記録する。
+- ✅ 振る舞いと文書の構成に関わる決定だけを先に固め、改訂の量を抑える。
+- ❌ File Structure Plan のファイルの一覧が実際の構成(取得の補助・`head`・`resolver-support.ts`・application層のエラー)と一部ずれたまま残る。
+
+### 開発者の判断が要る論点
+
+| #   | 論点                                                        | 根拠                                                                                                                   | 選択肢                                                                                                                                                                                                            |
+| --- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | URLの検索語`q`が50文字を超える場合の扱い                    | 要件2.3(検索を実行せずに上限を示す)、`frontend/014`の「クエリの正規化」(黙って切り詰める)、directory-discoveryの実装   | (A)要件2.3のまま上限の超過の状態を示す(`frontend/014`の例外として設計に理由を書く) / (B)`frontend/014`に合わせて切り詰めて検索し、要件2.3を検索欄の送信だけに限る                                                 |
+| G2  | 目次の技術文書                                              | 設計の`frontend/011-table-of-contents.md`の新規作成、`frontend/008`の既存の「目次の作り方」                            | (A)設計どおり`frontend/011`を作り、`frontend/008`の節から参照させる / (B)`frontend/008`の「目次の作り方」に固定の配置・折りたたみ・`scroll-margin-top`の規約を追記し、`frontend/011`を作らない                    |
+| G3  | ハンドルの名前空間`HELP_ARTICLE_HANDLE_NAMESPACE`の置き場所 | `backend/011`の手順5(`workers/<対象>/`)、product・profileの実装、設計(apiだけが使うため`api/src/infrastructure/help/`) | (A)文書の規約どおり`backend-lib/workers/help/`に置く / (B)設計どおり`api/src/infrastructure/help/`に置き、`backend/011`の手順5に「1つのアプリだけが使う対象はそのアプリのinfrastructure層に置いてよい」旨を加える |
+
+- `adminOnly`・`clientOnly`は`backend/004`が「各機能が持つ」と定めるため判断の対象にせず、`presentation/graphql/modules/help/resolver-support.ts`に置く案を設計へ加える。同じ包みは既にinquiry・product・adminの3か所にあり、本specで4か所目になる。共通化はリファクタリングとして別に扱う。
+
+### 規模とリスク
+
+- **規模: L(1〜2週間)**。4テーブルと2つのカスタムマイグレーション、検索対象、16のGraphQLの操作、利用者側と管理者側の画面(並べ替えの部品を含む)、E2Eと文書の更新がある。上流の部品は全て実在し、新しいパッケージは無い。
+- **リスク: Medium**。上流の契約との結合は低いリスクだが、(1)記事の存在と版・並べ替えの対象の集合の確認の文はSQLiteの制約の検査の順に依存する(product・profileの保存の確認の文が先例)、(2)100,000文字の本文の描画の時間は未計測(content-processingの代表の計測は20,000文字)、(3)上記のG1〜G3と規約の差を実装中に取り違えると、設計とコードの相違が残る。
+
+### 設計フェーズへの申し送り
+
+- **推奨の進め方**: 案C。G1〜G3を開発者に1件ずつ確かめ、確定した案を requirements.md・design.md に反映する。あわせて、振る舞いを変えない次の差を design.md に書き足すと、タスクの境界と実際のファイルが一致する。
+  - `presentation/graphql/modules/help/resolver-support.ts`(`adminOnly`・`clientOnly`)と、公開の4操作を`clientOnly`、管理者側の12操作を`adminOnly`で包むこと。
+  - `application/help/help-errors.ts`(ユースケースが投げるエラーの定義)と、presentation層の`errors.ts`は入力の文言だけを持つこと。
+  - client・adminの`src/graphql/help-*.ts`(取得の設定と`loader`)・`src/head/page-heads.ts`への追記・adminの`components/pages/`と文言のファイル、`ensureQueryData`から`queryClient.query({ staleTime: 'static' })`への置き換え。
+  - `AuditLogRecorder.prepare`の入力の項目名(`operatorAdminId`・`targetIds`・`occurredAt`)と、詳細の値(`count`・`reassignedCount`・`fromStatus`・`toStatus`)を文字列にすること。
+  - `HelpSearchForm`に`frontend/014`の「送信でだけ検索する入力欄」の残りの規則(上限の手前からの文字数の表示・消去のボタン・URLの外からの変更での入力欄の更新)を加えること。
+  - E2Eの手順を`e2e/admin/help-center-steps.ts`などに分け、`admin-test.ts`・`client-page-test.ts`・`category-steps.ts`・`markdown-steps.ts`と、索引を待つ`toPass`の形を再利用すること。
+  - Existing Architecture Analysisの「実装済みはdev-toolingだけ」を現状に改めること。
+- **Research Needed**:
+  - 100,000文字の代表的な本文の`renderMarkdown`の実測の時間(設計の1,500ms以内の目安が妥当か)。legal-pagesは同じ上限の本文を描くが、100,000文字の計測は持たない。
+  - 記事の公開から検索の結果に出るまでの時間(Queueを1回経る。directory-discoveryは2回で90秒を待つ)と、E2Eの待ちの上限。
+  - 確認の文の先例(`apps/api/src/infrastructure/product/product-save-guards.ts`)の形を、`helpArticleExistsGuard`・`helpOrderGuard`に流用できるか。
+
+## ギャップ分析の論点の確定(2026-11-11に開発者が確定)
+
+- **状態**: 「実装前のギャップ分析」の「開発者の判断が要る論点」のG1〜G3を開発者に1件ずつ確かめ、3件とも推奨の案に確定した。`requirements.md`の「実装前のギャップ分析での決定」にも同じ行がある。
+
+| #   | 確定した案                                                                                                                                                                             | 変えた箇所                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | (B)`frontend/014`とdirectory-discoveryに合わせ、URLとAPIの入力の検索語を前後の空白を除いて50書記素に切り詰めて検索する。上限の超過で検索せずに上限を示すのは検索欄からの送信だけにする | 要件2.3を検索欄からの送信に限り、要件2.9(URLの`q`の切り詰め)を加えた(受け入れ基準は105件から106件)。design.mdに`common-lib/help/help-query-rules.ts`の`normalizeHelpSearchText`・`normalizeHelpTopQuery`を加え、`/help`の`validateSearch`・`loader`、`PublicHelpReader.search`、`HelpInputs`、Error Handlingの`validation_error`の行、追跡表、テストの観点を改めた。tasks.mdの1.1・5.3・6.2の確かめる内容と要件の番号を改めた |
+| G2  | (B)目次の配置の規約を`frontend/008`の「目次の作り方」に追記し、`frontend/011`を作らない                                                                                                | design.mdのThis Spec Owns・Revalidation Triggers・上流への影響の表(content-processingの行)・File Structure Plan・Modified Files・HelpTechDocs・本プロジェクト固有の値の表、tasks.mdのタスク8、本書のSynthesis・Risks・後続specへの影響。要件13.4は文書の番号を指定しないため変えていない                                                                                                                                      |
+| G3  | (A)`HELP_ARTICLE_HANDLE_NAMESPACE`を`backend/011`の手順5とproduct・profileの実装に合わせ`apps/backend-lib/workers/help/help-article-handle-namespace.ts`に置く                         | design.mdのThis Spec Owns・Selected pattern・New components rationale・Dependency Direction・File Structure Plan・コンポーネントの一覧の表・`HelpHandleNamespace`の契約のファイル名、tasks.mdの3.1。`backend/011`の変更は要らない                                                                                                                                                                                             |
+
+- **残る事項**: 「設計フェーズへの申し送り」のうち、振る舞いを変えない規約の差(`adminOnly`・`clientOnly`と`resolver-support.ts`、application層のエラーの定義、`ensureQueryData`の置き換え、取得の補助と`head`の置き場所、`AuditEntryInput`の項目名、`HelpSearchForm`の`frontend/014`の残りの規則、E2Eの手順のファイル)は、今回の確定の対象に含めていない(次の節で反映した)。
+
+## 申し送りの規約の差の反映(2026-11-11、開発者の指示)
+
+- **状態**: 「実装前のギャップ分析」の「設計フェーズへの申し送り」のうち、振る舞いを変えない規約の差を、開発者の指示で推奨どおりdesign.mdとtasks.mdへ反映した。要件と受け入れ基準は変えていない。
+
+| 項目                         | 反映した内容                                                                                                                                                                                                                                                                                       | 変えた箇所                                                                                                                                                   |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 呼び出し元の確認の包み       | `presentation/graphql/modules/help/resolver-support.ts`に`clientOnly`・`adminOnly`を置き、利用者側の4操作と管理者側の12操作を包む。`adminOnly`の内側を`withValidatedArgs`、その内側で`requireAdmin`を呼ぶ(`backend/004`、`security/007`の「宣言の入口」)                                           | design.mdのExisting Architecture Analysis・File Structure Plan・HelpSchemaModule・Testing Strategy・Security Considerations、tasks.mdの5.1・5.3              |
+| エラーの定義の置き場所       | ユースケースが投げるエラーのコード・種類・文言をapplication層の`help-errors.ts`に置き、presentation層の`errors.ts`は入力の検証の文言だけを持つ                                                                                                                                                     | design.mdのExisting Architecture Analysis・File Structure Plan・HelpArticleEditor・HelpSchemaModule・Error Strategy、tasks.mdの3.1・3.5・5.1                 |
+| 取得の方法                   | `ensureQueryData`を`queryClient.query({ ...graphqlQueryOptions(...), staleTime: 'static' })`に置き換える(`frontend/006`)                                                                                                                                                                           | design.mdのAllowed Dependencies(frontend-platform)・client・admin、tasks.mdの6.2                                                                             |
+| 取得の補助と`head`の置き場所 | clientは`src/graphql/help-center.ts`・`src/head/page-heads.ts`(`buildSitePageHead`)・`NotFoundPage`、adminは`src/graphql/admin-help-articles.ts`・`admin-help-categories.ts`・`buildAdminPageHead`・`components/pages/`の画面の本体、両アプリの`components/help/help-messages.ts`                  | design.mdのExisting Architecture Analysis・File Structure Plan・Modified Files・client・admin・Testing Strategy、tasks.mdの6.1・6.2・6.5・7.1・7.3・7.4・7.6 |
+| 監査ログの入力               | `AuditEntryInput`の`operatorAdminId`・`targetIds`・`occurredAt`を渡し、詳細の値(ステータス・件数)を文字列にする                                                                                                                                                                                    | design.mdのHelpArticleEditor・HelpCategoryService、tasks.mdの3.2・3.5                                                                                        |
+| 検索欄の規則                 | `HelpSearchForm`に、`HELP_SEARCH_COUNTER_FROM`(40)書記素を超えたときの文字数の表示、上限の超過と回復の読み上げ、消去のボタン、URLの外からの変更での入力欄の更新、`resetScroll: false`の遷移を加える(`frontend/014`の「送信でだけ検索する入力欄」、directory-discoveryの`SearchForm`と同じ振る舞い) | design.mdのHelpInputRules・HelpSearchForm・Testing Strategy・本specが定める固有の値、tasks.mdの6.2                                                           |
+| E2Eの手順                    | 画面の操作の手順を`e2e/admin/help-center-steps.ts`に分け、`admin-test.ts`・`client-page-test.ts`・`category-steps.ts`・`e2e/client/markdown-steps.ts`を再利用し、索引の更新を`toPass`で待つ                                                                                                        | design.mdのThis Spec Owns・Allowed Dependencies(e2e)・File Structure Plan・HelpCenterE2E・Testing Strategy、tasks.mdの9.1                                    |
+| 既存の構成の記述             | Existing Architecture Analysisの「実装済みはdev-toolingだけ」を、上流specとproduct-launch・directory-discoveryが実装済みの現状に改める                                                                                                                                                             | design.mdのExisting Architecture Analysis                                                                                                                    |
+
+- **判断**: `HelpSearchForm`はdirectory-discoveryの`SearchForm`と同じ振る舞いを本specの部品として作る。両方ともclientの部品のため、`frontend/005`の「2つ目のアプリで同じ部品が必要になった時点で共通部品へ移す」の条件には当たらない。

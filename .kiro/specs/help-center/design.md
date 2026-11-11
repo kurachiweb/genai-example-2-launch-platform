@@ -28,12 +28,12 @@
 ### This Spec Owns
 
 - ヘルプのデータ: `help_categories`・`help_articles`・`help_article_previous_handles`・`help_article_search_documents`(`apps/db/schema/help/`)と全文検索の索引`help_article_search_documents_fts`・トリガー、標準カテゴリ「その他」の初期データ、カテゴリと記事の並び順の列。
-- 共有の定義`apps/common-lib/help/`(入力の上限と判定・ハンドルの規則`HELP_ARTICLE_HANDLE_RULE`・ステータス・標準カテゴリのID・本文のリンクの`rel`・並び順の規則)と、監査ログの操作種別`apps/common-lib/admin/audit-actions/help-center.ts`。
+- 共有の定義`apps/common-lib/help/`(入力の上限と判定・ヘルプトップのURLのクエリの正規化・ハンドルの規則`HELP_ARTICLE_HANDLE_RULE`・ステータス・標準カテゴリのID・本文のリンクの`rel`・並び順の規則)と、監査ログの操作種別`apps/common-lib/admin/audit-actions/help-center.ts`。
 - 検索対象`help-article`(`apps/backend-lib/workers/search/targets/help-articles.ts`)と索引の定義`HELP_ARTICLE_SEARCH_INDEX`。
-- apiのヘルプの業務処理(`domain/help`・`application/help`・`infrastructure/help`)、ハンドルの対象の記述`HELP_ARTICLE_HANDLE_NAMESPACE`、GraphQLのスキーマモジュール`help`(利用者側の4操作と管理者側の12操作)。
+- apiのヘルプの業務処理(`domain/help`・`application/help`・`infrastructure/help`)、ハンドルの対象の記述`HELP_ARTICLE_HANDLE_NAMESPACE`(`apps/backend-lib/workers/help/`、G3)、GraphQLのスキーマモジュール`help`(利用者側の4操作と管理者側の12操作)。
 - clientの`/help`・`/help/$handle`の画面と部品、フッターの部品`PinnedHelpLinks`。
 - adminの`/help-articles`・`/help-articles/new`・`/help-articles/$articleId`・`/help-articles/order`の画面と部品、カテゴリの区画`HelpCategorySection`と並べ替えの部品。
-- E2Eテスト`e2e/admin/help-center.e2e.test.ts`、技術ドキュメント`frontend/011-table-of-contents.md`の新規作成と`backend/011-handle-namespaces.md`への節の追記、サービス仕様(ページ配置・文言規則・準拠方針)と`docs/onboardings/project-values.md`の追記。
+- E2Eテスト`e2e/admin/help-center.e2e.test.ts`と画面の操作の手順`e2e/admin/help-center-steps.ts`、技術ドキュメント`frontend/008-markdown-editor-and-content.md`の「目次の作り方」への目次の配置の規約の追記(G2)と`backend/011-handle-namespaces.md`への節の追記、サービス仕様(ページ配置・文言規則・準拠方針)と`docs/onboardings/project-values.md`の追記。
 
 ### Out of Boundary
 
@@ -57,7 +57,8 @@
   - GraphQLの操作は各アプリの`src/graphql/operations/help/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
   - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。画面側のスキーマの`zod`の値は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
   - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
-- e2e: `resolveE2ETargets`(`e2e/support/targets.ts`)。
+  - 取得: `loader`は`queryClient.query({ ...graphqlQueryOptions(...), staleTime: 'static' })`で読み、非推奨の`ensureQueryData`を使わない(`frontend/006`の「取得の補助とloader」)。取得の設定・`loader`の関数・表示用への変換は各アプリの`src/graphql/`に置き、clientの`head`は`src/head/page-heads.ts`の`buildSitePageHead`、adminの`head`は`buildAdminPageHead`で作る。clientの404は`components/pages/not-found-page.tsx`の`NotFoundPage`を`notFoundComponent`に使う。
+- e2e: `resolveE2ETargets`(`e2e/support/targets.ts`)、`e2e/admin/admin-test.ts`・`client-page-test.ts`・`category-steps.ts`、`e2e/client/markdown-steps.ts`。
 - npmパッケージ: 新規は無い。
 - 後続specは、本specのGraphQLの公開の操作と`PinnedHelpLinks`の表示だけに触れ、`help_*`のテーブルを直接読み書きしない。
 
@@ -69,17 +70,17 @@
 - inquiry-chatの`CategorySection`の形と`order`(help-center 20)。
 - frontend-platformの`SiteLayoutSlots.footerHelpLinks`の形と描画の位置(`<ul>`の中の`<li>`)。
 - 本specのGraphQLの公開の操作(`helpCenter`・`helpArticle`・`helpArticleSearch`・`pinnedHelpArticles`)の形(launch-readinessのE2E回帰)と、本文の上限100,000文字(launch-readinessの性能のデータ規模)。
-- 技術ドキュメントの番号`frontend/011`(product-launchは`frontend/012-business-date-calendar.md`を使い、roadmapの順で本specが`011`を使う)。
+- `frontend/008`の「目次の作り方」の節の構成(本specが目次の配置の規約を追記する、G2)と、`frontend/014`の「クエリの正規化」の検索語の規則(ヘルプトップのURLの`q`が従う、G1)。
 
 ### 上流への影響
 
-| 上流spec            | 変更                                                                                                                                                                                                          | 影響と再検証                                                                                                                  |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| content-processing  | `apps/db/search/search-indexes.ts`の`SEARCH_INDEXES`と`apps/backend-lib/workers/search/targets/index.ts`の`SEARCH_TARGETS`に追記                                                                              | 契約どおり。`targets/index.unit.test.ts`と`search-index-migrations.unit.test.ts`が新しい定義でも成功することを確かめる        |
-| admin-foundation    | `apps/common-lib/admin/audit-actions/index.ts`に`help-center.ts`を連結、`apps/admin/src/composition/admin-navigation.ts`に`/help-articles`(100)                                                               | 契約どおり                                                                                                                    |
-| inquiry-chat        | `apps/admin/src/composition/category-sections.ts`に`help-center.help-categories`(20)                                                                                                                          | 契約どおり。カテゴリのページのテストが区画の追加後も成功することを確かめる                                                    |
-| frontend-platform   | `apps/client/src/composition/layout-slots.ts`の`footerHelpLinks`に`PinnedHelpLinks`                                                                                                                           | 契約どおり。フッターのテストが部品の追加後も成功することを確かめる                                                            |
-| user-profile-social | ファイルの変更は無い。`previousHandleRelease`と、他の対象の現在のハンドルだけを使用中とする`isHandleOccupied`・`handleOccupiedCondition`を使う。`docs/GUIDES/tech/backend/011-handle-namespaces.md`に節を追記 | user-profile-socialの設計(仮2の確定)の契約どおり。部品が実装されていなければ、タスク1.1の前提の確認で保留して開発者へ報告する |
+| 上流spec            | 変更                                                                                                                                                                                                                                           | 影響と再検証                                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| content-processing  | `apps/db/search/search-indexes.ts`の`SEARCH_INDEXES`と`apps/backend-lib/workers/search/targets/index.ts`の`SEARCH_TARGETS`に追記、`docs/GUIDES/tech/frontend/008-markdown-editor-and-content.md`の「目次の作り方」に目次の配置の規約を追記(G2) | 契約どおり。`targets/index.unit.test.ts`と`search-index-migrations.unit.test.ts`が新しい定義でも成功することを確かめる        |
+| admin-foundation    | `apps/common-lib/admin/audit-actions/index.ts`に`help-center.ts`を連結、`apps/admin/src/composition/admin-navigation.ts`に`/help-articles`(100)                                                                                                | 契約どおり                                                                                                                    |
+| inquiry-chat        | `apps/admin/src/composition/category-sections.ts`に`help-center.help-categories`(20)                                                                                                                                                           | 契約どおり。カテゴリのページのテストが区画の追加後も成功することを確かめる                                                    |
+| frontend-platform   | `apps/client/src/composition/layout-slots.ts`の`footerHelpLinks`に`PinnedHelpLinks`                                                                                                                                                            | 契約どおり。フッターのテストが部品の追加後も成功することを確かめる                                                            |
+| user-profile-social | ファイルの変更は無い。`previousHandleRelease`と、他の対象の現在のハンドルだけを使用中とする`isHandleOccupied`・`handleOccupiedCondition`を使う。`docs/GUIDES/tech/backend/011-handle-namespaces.md`に節を追記                                  | user-profile-socialの設計(仮2の確定)の契約どおり。部品が実装されていなければ、タスク1.1の前提の確認で保留して開発者へ報告する |
 
 - 上流specの設計文書の変更は無い。roadmapの帯の割り当ての表の本specの「使用中の値」は「—」のままである(本specはroadmapを編集しない)。
 
@@ -87,10 +88,12 @@
 
 ### Existing Architecture Analysis
 
-- 上流の15specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする(roadmapの順でuser-profile-socialまでが先に実装される)。実装済みはdev-toolingだけである。
+- 上流の15specと、同じハンドル基盤・検索の基盤・カテゴリの区画を先に使ったproduct-launch・directory-discoveryは、2026-11-11の時点で実装済みである。本specは、それらが実装で確定した契約と規約(research.mdの「実装前のギャップ分析」)に従う。
 - 管理操作は、application層で`AuditLogRecorder.prepare`を呼び、infrastructure層のストアで操作の文と`buildAuditLogStatements`を同じ`db.batch()`に入れる(admin-foundationの規約`backend/008`)。
 - 検索の索引の更新は、ドメインの一括の書き込みに`markPending`(作成・編集)または`deleteSources`(削除)を入れ、確定の後に`requestRefresh`でQueueへ送る。eventの`SearchIndexRefreshHandler`が`SEARCH_TARGETS`の定義の`read`で元データを読み直す(content-processing)。
 - 管理画面のカテゴリのページは`CATEGORY_SECTIONS`の区画を`order`順に並べ、区画ごとにエラー境界で包む(inquiry-chat)。`CategoryMasterEditor`は渡された配列の順でカテゴリを表示し、並べ替えの機能を持たない(admin-foundation)。利用者側のフッターは`footerHelpLinks`の部品を、ヘルプトップのリンクの後に描く(frontend-platform)。
+- GraphQLのリゾルバは、呼び出し元の確認の包み(`clientOnly`・`adminOnly`)を各機能のスキーマモジュールの`resolver-support.ts`に持つ(`backend/004`・`security/007`)。ユースケースが投げる想定内の失敗の定義は、application層の`<機能>-errors.ts`に置く(inquiry・productと同じ。application層はpresentation層を読み込めない)。
+- client・adminのルートのファイルは部品と関数をつなぐだけにし、取得の設定と`loader`の関数を`src/graphql/<機能>.ts`、clientの`head`の組み立てを`src/head/page-heads.ts`に置く。adminは画面の本体を`components/pages/`、文言を`components/<機能>/<機能>-messages.ts`に置く。
 - マークダウンの描画はフロントエンドで行い、APIは原文の文字列を返す(content-processing)。
 
 ### Architecture Pattern & Boundary Map
@@ -163,15 +166,15 @@ graph TB
 
 **Architecture Integration**:
 
-- Selected pattern: クリーンアーキテクチャ(apiの`domain`→`application`→`infrastructure`・`presentation`→`composition`)。並び順の規則は管理画面の並べ替えの画面も使うため`common-lib/help`に、ハンドルの変更の種類・カテゴリの保護は`domain/help`に置く。ユースケースはポート越しにD1を使い、ハンドル基盤と検索の基盤の部品はD1の実装(`infrastructure/help`)だけが呼ぶ。
+- Selected pattern: クリーンアーキテクチャ(apiの`domain`→`application`→`infrastructure`・`presentation`→`composition`)。並び順の規則は管理画面の並べ替えの画面も使うため`common-lib/help`に、ハンドルの変更の種類・カテゴリの保護は`domain/help`に置く。ユースケースはポート越しにD1を使い、ハンドル基盤と検索の基盤の部品は、D1の実装(`infrastructure/help`)と`backend-lib/workers`の名前空間・検索対象の定義だけが呼ぶ。
 - Domain/feature boundaries: ヘルプの記事・カテゴリ・並び順・索引文書は本spec、ハンドルの規則と旧ハンドルの解放の文はuser-profile-social、索引の更新と検索式はcontent-processing、管理者と監査ログはadmin-foundation、ページの枠はinquiry-chat・frontend-platform。
 - Existing patterns preserved: 登録箇所への追記による区画とメニューの追加、操作と監査ログの同じ一括の書き込み、`CASE`式のNOT NULL制約の違反による一括の書き込みの取り消し、標準カテゴリの固定ULIDと初期データのカスタムマイグレーション、`/@{$handle}`と同じ302の明示。
-- New components rationale: 検索対象はeventの索引の更新の処理が読むため`backend-lib`に置く。ハンドルの対象の記述はapiだけが使うため`api/infrastructure`に置く。目次は既存の部品が無いため、`renderMarkdown`の見出しから作る。並べ替えは`CategoryMasterEditor`が持たないため、本specが上下の移動の部品`ReorderableList`を作り、カテゴリと記事の両方の並べ替えに使う。
+- New components rationale: 検索対象はeventの索引の更新の処理が読むため`backend-lib`に置く。ハンドルの対象の記述は、現時点ではapiだけが使うが、ハンドル基盤の規約(`backend/011`の「新しい対象を足す手順」)とproduct・profileの実装にそろえて`backend-lib/workers/help`に置く(G3)。目次は既存の部品が無いため、`renderMarkdown`の見出しから作る。並べ替えは`CategoryMasterEditor`が持たないため、本specが上下の移動の部品`ReorderableList`を作り、カテゴリと記事の両方の並べ替えに使う。
 - Steering compliance: Inversifyの`@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・FTS5はカスタムマイグレーション)、テーブルの作成時の`textNoCase`、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、サンプルの`.example`。
 
 ### Dependency Direction
 
-`apps/common-lib/help` → `apps/db/schema/help`(`apps/db/search`へ定義を登録) → `apps/backend-lib/workers/search/targets/help-articles.ts` → 各アプリの`src`(apiは`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib/help`は他の層を読み込まない(`common-lib/handles`・`common-lib/markdown`の型と関数だけを読む)。client・adminは`common-lib/help`・`frontend-lib`・GraphQLの操作だけを読み込み、互いのコードを読まない。`application/help`はD1・ハンドル基盤・検索の基盤の関数を直接読み込まない(ポート経由。`common-lib`の純粋な判定は使ってよい)。`application/help`が受け取る他specの契約と識別子は`backend-lib/core`(`core/admin`の`AdminDirectory`・`ADMIN_PLATFORM_TYPES`、`core/search`の`SEARCH_TYPES`)から読み込み、`**/lib/workers/**`を型も含めて読み込まない。`workers/search/targets/help-articles.ts`の`HELP_ARTICLE_SEARCH_TARGET`は検索対象の集約点(`SEARCH_TARGETS`)を通して`createSearchPlatformModule`だけが使い、application層は読み込まない。
+`apps/common-lib/help` → `apps/db/schema/help`(`apps/db/search`へ定義を登録) → `apps/backend-lib/workers/search/targets/help-articles.ts`・`apps/backend-lib/workers/help/help-article-handle-namespace.ts` → 各アプリの`src`(apiは`domain` → `application` → `infrastructure`・`presentation` → `composition`)。`common-lib/help`は他の層を読み込まない(`common-lib/handles`・`common-lib/markdown`の型と関数だけを読む)。client・adminは`common-lib/help`・`frontend-lib`・GraphQLの操作だけを読み込み、互いのコードを読まない。`application/help`はD1・ハンドル基盤・検索の基盤の関数を直接読み込まない(ポート経由。`common-lib`の純粋な判定は使ってよい)。`application/help`が受け取る他specの契約と識別子は`backend-lib/core`(`core/admin`の`AdminDirectory`・`ADMIN_PLATFORM_TYPES`、`core/search`の`SEARCH_TYPES`)から読み込み、`**/lib/workers/**`を型も含めて読み込まない。`workers/search/targets/help-articles.ts`の`HELP_ARTICLE_SEARCH_TARGET`は検索対象の集約点(`SEARCH_TARGETS`)を通して`createSearchPlatformModule`だけが使い、application層は読み込まない。
 
 ### Technology Stack
 
@@ -192,6 +195,7 @@ apps/
 ├── common-lib/
 │   ├── help/                                            # 4アプリ共通(各ファイルに同名の*.unit.test.ts)
 │   │   ├── help-input-rules.ts                          # HELP_ARTICLE_HANDLE_RULE・上限・checkHelpTitle・checkHelpSubtitle・checkHelpSearchQuery・HELP_ARTICLE_EXTERNAL_LINK_REL
+│   │   ├── help-query-rules.ts                          # normalizeHelpSearchText・normalizeHelpTopQuery(G1、frontend/014のクエリの正規化)
 │   │   ├── help-article-status.ts                       # HELP_ARTICLE_STATUSES・HELP_ARTICLE_STATUS_LABELS
 │   │   ├── help-category-constants.ts                   # HELP_CATEGORY_OTHER_ID・HELP_CATEGORY_OTHER_NAME
 │   │   ├── help-ordering.ts                             # sortHelpCategories・sortHelpArticles・groupPublishedArticles・splitPinnedGroups・moveItem(仮3)
@@ -208,14 +212,16 @@ apps/
 │       ├── <日時>_help_center/migration.sql              # 生成(textNoCase・CHECK・索引)
 │       ├── <日時>_help_center_seed/migration.sql         # 標準カテゴリ「その他」の挿入(カスタム)
 │       └── <日時>_help_center_fts/migration.sql          # 全文検索の索引とトリガー(カスタム、print-search-index-sqlの出力)
-├── backend-lib/workers/search/targets/
-│   └── help-articles.ts                                 # HELP_ARTICLE_SEARCH_TARGET(Workers統合テストを併置)
+├── backend-lib/workers/
+│   ├── search/targets/help-articles.ts                  # HELP_ARTICLE_SEARCH_TARGET(Workers統合テストを併置)
+│   └── help/help-article-handle-namespace.ts            # HELP_ARTICLE_HANDLE_NAMESPACE(G3、Workers統合テストを併置)
 ├── api/src/
 │   ├── domain/help/                                     # 純粋な規則(Bunの単体テスト)
 │   │   ├── help-handle-change.ts                        # planHelpHandleChange
 │   │   └── help-category-rules.ts                       # checkHelpCategoryEditable(仮5)
 │   ├── application/help/                                # ユースケース(Bunの単体テスト)
 │   │   ├── help-types.ts                                # HELP_TYPES
+│   │   ├── help-errors.ts                               # HELP_ERRORS・helpError(ユースケースが投げる想定内の失敗のコード・種類・文言)
 │   │   ├── ports.ts                                     # HelpArticleStore・HelpCategoryStore・PublicHelpStoreと各型
 │   │   ├── help-authors.ts                              # HelpAuthorLookup(AdminDirectoryから作成者の表示)
 │   │   ├── help-article-editor.ts                       # 作成・編集・削除・カテゴリ内の並べ替え
@@ -223,7 +229,6 @@ apps/
 │   │   ├── help-category-service.ts                     # 一覧・追加・名前の変更・削除と付け替え・並べ替え
 │   │   └── public-help-reader.ts                        # ヘルプトップ・記事の解決・ピン留め・検索
 │   ├── infrastructure/help/                             # Workers統合テスト
-│   │   ├── help-handle-namespace.ts                     # HELP_ARTICLE_HANDLE_NAMESPACE
 │   │   ├── help-guards.ts                               # 記事の存在と版の確認の文・並び順の対象の集合の確認の文
 │   │   ├── d1-help-article-store.ts                     # 作成・更新・削除・並べ替えの一括の書き込みと読み取り
 │   │   ├── d1-help-category-store.ts                    # カテゴリの書き込み・付け替え・並べ替え・件数
@@ -231,7 +236,8 @@ apps/
 │   ├── presentation/graphql/modules/help/               # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
 │   │   ├── inputs.ts                                    # zodスキーマ(common-libの規則とmarkdownTextSchema)
-│   │   ├── errors.ts                                    # エラーコードと文言
+│   │   ├── errors.ts                                    # 入力の検証の欄ごとの文言(ユースケースのエラーはapplication層のhelp-errors.ts)
+│   │   ├── resolver-support.ts                          # clientOnly・adminOnly(呼び出し元の確認の包み)
 │   │   ├── author-fields.ts                             # HelpArticleAuthor.avatarのリゾルバ
 │   │   ├── public-resolvers.ts                          # helpCenter・helpArticle・helpArticleSearch・pinnedHelpArticles
 │   │   ├── admin-article-resolvers.ts                   # 記事の照会・使用可否・作成・編集・削除・並べ替え
@@ -241,8 +247,11 @@ apps/
 ├── client/src/
 │   ├── routes/help/index.tsx                            # /help(検索のクエリq)
 │   ├── routes/help/$handle.tsx                          # /help/{handle}(302・404の分岐)
+│   ├── graphql/help-center.ts                           # 取得の設定・loadHelpTopPage・loadHelpArticlePage・表示用への変換(*.unit.test.ts)
+│   ├── head/page-heads.ts                               # buildHelpTopHead・buildHelpArticleHeadを追記
 │   ├── components/help/                                 # 1ファイル1コンポーネント(browser testを併置)
-│   │   ├── help-search-form.tsx                         # 検索欄(50文字の検証)
+│   │   ├── help-messages.ts                             # ヘルプの画面の文言
+│   │   ├── help-search-form.tsx                         # 検索欄(50文字の検証・文字数の表示・消去・URLとの同期)
 │   │   ├── help-category-list.tsx                       # カテゴリ別の一覧
 │   │   ├── help-article-link-item.tsx                   # タイトルとサブタイトルの項目
 │   │   ├── help-search-results.tsx                      # 検索結果と強調表示・0件
@@ -261,7 +270,11 @@ apps/
 │   │   ├── new.tsx                                      # /help-articles/new
 │   │   ├── order.tsx                                    # /help-articles/order(クエリcategory)
 │   │   └── $articleId.tsx                               # /help-articles/{id}
+│   ├── components/pages/                                # 画面の本体(help-articles-page・help-article-new-page・help-article-edit-page・help-article-order-page、browser testを併置)
+│   ├── graphql/admin-help-articles.ts                   # 記事の取得の設定・loader・取り直し・表示用への変換(*.unit.test.ts)
+│   ├── graphql/admin-help-categories.ts                 # カテゴリの取得の設定・取り直し・表示用への変換(*.unit.test.ts)
 │   ├── components/help/                                 # 1ファイル1コンポーネント(browser testを併置)
+│   │   ├── help-messages.ts                             # 管理画面のヘルプの文言
 │   │   ├── help-article-filter.ts                       # 条件の解析・作成者の選択肢・絞り込み(*.unit.test.ts)
 │   │   ├── help-article-filters.tsx                     # 絞り込みのバー
 │   │   ├── help-article-table.tsx                       # 全件の表
@@ -277,10 +290,10 @@ apps/
 │       ├── articles/*.graphql                           # 記事の照会・使用可否・作成・編集・削除・並べ替え
 │       └── categories/*.graphql                         # カテゴリの照会・追加・名前の変更・削除・並べ替え
 e2e/admin/help-center.e2e.test.ts                        # 管理画面の操作から利用者側の表示まで
-docs/GUIDES/tech/frontend/011-table-of-contents.md        # 見出しから作る目次の規約
+e2e/admin/help-center-steps.ts                           # ヘルプの画面の操作の手順(記事の作成・並べ替え・検索の結果の待ち)
 ```
 
-テストは各ファイルの隣に置く(`*.unit.test.ts`・`*.worker.test.ts`・`*.browser.test.tsx`)。文書の番号はroadmapの順でinquiry-chat(`frontend/010`)の後の空き番号`frontend/011`に固定する。
+テストは各ファイルの隣に置く(`*.unit.test.ts`・`*.worker.test.ts`・`*.browser.test.tsx`)。目次の配置の規約は新しい文書を作らず、`frontend/008`の「目次の作り方」に追記する(G2)。
 
 ### Modified Files
 
@@ -290,10 +303,12 @@ docs/GUIDES/tech/frontend/011-table-of-contents.md        # 見出しから作�
 - `apps/common-lib/admin/audit-actions/index.ts`(admin-foundation) — `help-center.ts`の配列を連結する。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts` — `HELP_MODULE`・`helpSchemaModule`を加える。
 - `apps/client/src/composition/layout-slots.ts`(frontend-platform) — `footerHelpLinks`に`PinnedHelpLinks`を加える。
+- `apps/client/src/head/page-heads.ts` — `/help`・`/help/$handle`の`head`の組み立て(`buildSitePageHead`)を加える。
 - `apps/admin/src/composition/admin-navigation.ts`(admin-foundation) — `{ to: '/help-articles', label: 'ヘルプ記事', order: 100 }`。
 - `apps/admin/src/composition/category-sections.ts`(inquiry-chat) — `{ id: 'help-center.help-categories', order: 20, title: 'ヘルプ記事カテゴリ', component: HelpCategorySection }`。
 - `docs/GUIDES/tech/backend/011-handle-namespaces.md`(user-profile-social) — 「公開状態を持つ対象と、対象の削除での旧ハンドル」の節。
-- `docs/GUIDES/tech/frontend/README.md` — 文書一覧の行。
+- `docs/GUIDES/tech/frontend/008-markdown-editor-and-content.md`(content-processing) — 「目次の作り方」に、PCの固定の配置・モバイルの`<details>`の折りたたみ・`scroll-margin-top`による固定ヘッダーの回避・見出しが無い場合に描かないこと・ランドマークの名前を追記する(G2)。
+- `docs/GUIDES/tech/frontend/README.md` — `008`の行の説明を追記の内容に合わせる。
 - `docs/GUIDES/service/design/002-page-layouts.md` — 「ヘルプ」節(ヘルプトップの一覧と検索、記事詳細の配置と目次、フッターのピン留め記事、管理者が指定する並び順とピン留めの群(仮3))、「旧ハンドルの保持とリダイレクト」の予約語の対象がユーザー・プロダクトだけでヘルプ記事を含まない旨(仮2)、「外部Webサイトへのリンク」の表にヘルプ記事の本文(`noopener`)、管理者側のヘルプ記事の画面(一覧・作成・編集・削除・絞り込み・記事の並べ替え`/help-articles/order`)とカテゴリのページのヘルプ記事カテゴリの区画(並べ替えを含む)。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 入力欄の表にヘルプ記事の本文(100,000文字・必須・マークダウン、仮1)、本機能のエラー・状態・トーストの文言(Error Handlingの表)。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — 「ヘルプ記事の旧ハンドル文字列」の行の削除方法に、他の記事が同じ文字列をハンドルに設定した時点での物理削除を加える(仮4)。
@@ -391,95 +406,95 @@ flowchart TB
 
 ## Requirements Traceability
 
-| Requirement             | Summary                                  | Components                                                                                                                       | Interfaces                                                            | Flows                      |
-| ----------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------- |
-| 1.1, 1.2, 1.3, 1.4      | カテゴリ別の一覧と並び                   | HelpOrdering、PublicHelpReader、D1PublicHelpStore、HelpCategoryList、HelpArticleLinkItem                                         | `helpCenter`・`groupPublishedArticles`                                | —                          |
-| 1.5, 1.6, 1.7           | 閲覧・空・状態                           | HelpTopRoute、HelpSearchForm、HelpTopSkeleton                                                                                    | `EmptyState`・`ErrorState`                                            | —                          |
-| 2.1, 2.2                | 検索と検索式                             | PublicHelpReader、D1PublicHelpStore、HelpArticleSearchTarget、HelpSearchIndex                                                    | `helpArticleSearch`・`buildFtsMatchExpression`・`ftsRankedSources`    | —                          |
-| 2.3                     | 50文字の上限                             | HelpInputRules、HelpInputs、HelpSearchForm、HelpTopRoute                                                                         | `checkHelpSearchQuery`                                                | —                          |
-| 2.4, 2.5, 2.6, 2.7      | 結果の表示・0件・空・復元                | HelpSearchResults、HelpTopRoute                                                                                                  | `HighlightedText`・`validateSearch`                                   | —                          |
-| 2.8                     | 詳細ページからの検索                     | HelpSearchForm、HelpArticlePage                                                                                                  | `/help?q=`                                                            | —                          |
-| 3.1, 3.2, 3.10, 3.11    | 詳細の表示・正規のURL・タイトル・状態    | HelpArticleRoute、HelpArticlePage、HelpArticleSkeleton、PublicHelpReader                                                         | `helpArticle`・`buildPageHead`                                        | 公開の記事の解決           |
-| 3.3, 3.4                | 作成者と削除済み                         | HelpAuthors、HelpAuthorFields、HelpArticleAuthor                                                                                 | `AdminDirectory.findProfiles`・`HelpArticleAuthor`                    | —                          |
-| 3.5, 3.6                | 更新日時と本文                           | HelpArticlePage、HelpBodyRenderBenchmark                                                                                         | `DateTime`・`MarkdownContent`・`HELP_ARTICLE_EXTERNAL_LINK_REL`       | —                          |
-| 3.7, 3.8                | 目次                                     | HelpTableOfContents                                                                                                              | `RenderedMarkdown.headings`                                           | —                          |
-| 3.9                     | 同カテゴリの記事                         | RelatedHelpArticles、D1PublicHelpStore、HelpOrdering                                                                             | `HelpArticle.relatedArticles`                                         | —                          |
-| 4.1, 4.6                | 下書きの除外                             | D1PublicHelpStore、HelpArticleSearchTarget、D1HelpArticleStore、PinnedHelpLinks                                                  | `publishedHelpArticle`・`deleteSources`                               | 記事の保存                 |
-| 4.2, 4.3, 4.4, 4.5, 4.7 | 404と302                                 | PublicHelpReader、HelpArticleRoute、HelpHandleNamespace                                                                          | `helpArticle`(nullは404)・`HelpArticleRedirect`                       | 公開の記事の解決           |
-| 5.1, 5.2, 5.3, 5.4      | フッター                                 | PinnedHelpLinks、PublicHelpReader、HelpOrdering                                                                                  | `pinnedHelpArticles`・`footerHelpLinks`                               | —                          |
-| 6.1, 6.2, 6.4           | 入力の検証                               | HelpInputRules、HelpInputs、HelpArticleFormSchema、HelpArticleForm                                                               | `createHelpArticle`・`updateHelpArticle`                              | —                          |
-| 6.3                     | マークダウンの入力欄                     | HelpArticleForm                                                                                                                  | `MarkdownEditor`                                                      | —                          |
-| 6.5, 6.8, 6.9           | カテゴリの不在・競合・削除済み           | HelpArticleEditor、D1HelpArticleStore、HelpGuards                                                                                | `expectedRevision`・`help_article_conflict`・`help_article_not_found` | 記事の保存                 |
-| 6.6, 6.7                | 作成者と更新日時                         | HelpArticleEditor、D1HelpArticleStore                                                                                            | `created_by_admin_id`・`updated_at`                                   | 記事の保存                 |
-| 6.10, 6.11              | 保存後と公開ページの導線                 | HelpArticleNewRoute、HelpArticleEditRoute、HelpArticleForm                                                                       | `clientSiteOrigin`                                                    | —                          |
-| 6.12                    | 作成とカテゴリの変更での末尾への配置     | D1HelpArticleStore                                                                                                               | `sort_order`の副問い合わせ                                            | 記事の保存                 |
-| 7.1, 7.2, 7.5           | 形式・大文字小文字・予約語なし           | HelpInputRules、HelpInputs、HelpArticleEditor                                                                                    | `HELP_ARTICLE_HANDLE_RULE`(`reservedWords`は空)・`checkHandleFormat`  | —                          |
-| 7.3, 7.6                | 使用中・同時の保存                       | HelpArticleEditor、D1HelpArticleStore、HelpHandleNamespace                                                                       | `isHandleOccupied`・`handleOccupiedCondition`                         | 記事の保存                 |
-| 7.4                     | 他の記事の旧ハンドルの解放               | D1HelpArticleStore、HelpHandleNamespace                                                                                          | `previousHandleRelease`                                               | 記事の保存                 |
-| 7.7, 7.11               | フォーカスアウトの判定と旧ハンドルの案内 | HelpArticleAdminReader、HelpArticleHandleField                                                                                   | `helpArticleHandleAvailability`・`AdminHelpArticle.previousHandle`    | —                          |
-| 7.8, 7.9, 7.10          | 旧ハンドルの保持                         | HelpHandleChange、D1HelpArticleStore                                                                                             | `planHelpHandleChange`・`previousHandleUpsert`                        | 記事の保存                 |
-| 8.1, 8.5                | 削除の確認と移動                         | HelpArticleDeleteButton                                                                                                          | `ConfirmActionDialog`                                                 | —                          |
-| 8.2, 8.3, 8.4           | 物理削除と索引の削除                     | HelpArticleEditor、D1HelpArticleStore、HelpGuards                                                                                | `deleteHelpArticle`・`previousHandleDelete`・`deleteSources`          | 記事の削除とカテゴリの削除 |
-| 9.1, 9.2                | 全件の表                                 | HelpArticlesRoute、HelpArticleTable、HelpArticleAdminReader                                                                      | `adminHelpArticles`                                                   | —                          |
-| 9.3, 9.4, 9.5, 9.6      | 絞り込みと状態                           | HelpArticleFilter、HelpArticleFilters、HelpArticlesRoute                                                                         | `filterHelpArticles`・`buildCreatorOptions`                           | —                          |
-| 9.7                     | メニュー                                 | AdminNavigationRegistration                                                                                                      | `ADMIN_NAV_ITEMS`                                                     | —                          |
-| 9.8                     | 記事の並べ替えの画面                     | HelpArticleOrderRoute、HelpArticleOrderEditor、ReorderableList、HelpOrdering                                                     | `splitPinnedGroups`・`moveItem`                                       | 並べ替え                   |
-| 9.9, 9.10, 9.11         | 並べ替えの保存・古い並び・ピン留め       | HelpArticleEditor、D1HelpArticleStore、HelpGuards、HelpOrdering                                                                  | `reorderHelpArticles`・`helpOrderGuard`・`help_order_outdated`        | 並べ替え                   |
-| 10.1, 10.2, 10.4, 10.5  | 索引の作成と更新                         | D1HelpArticleStore、HelpArticleEditor、HelpArticleSearchTarget、HelpSearchIndex                                                  | `markPending`・`requestRefresh`・`SearchTargetDefinition.read`        | 記事の保存                 |
-| 10.3                    | 下書き・削除での索引の削除               | D1HelpArticleStore                                                                                                               | `deleteSources`                                                       | 記事の保存                 |
-| 10.6                    | 外部へ送る内容                           | HelpArticleSearchTarget                                                                                                          | `SearchFieldSpec.extract`                                             | —                          |
-| 11.1, 11.2, 11.3        | 追加・名前の変更・保護                   | HelpCategoryService、D1HelpCategoryStore、HelpCategoryRules、HelpSchema                                                          | `createHelpCategory`・`renameHelpCategory`                            | —                          |
-| 11.4, 11.5, 11.6        | 削除と付け替え                           | HelpCategoryService、D1HelpCategoryStore、HelpCategorySection                                                                    | `deleteHelpCategory`・`articleCount`                                  | 記事の削除とカテゴリの削除 |
-| 11.7                    | カテゴリの並び                           | HelpOrdering、HelpCategoryService、HelpArticleForm                                                                               | `sortHelpCategories`                                                  | —                          |
-| 11.8                    | カテゴリのページの区画                   | HelpCategorySection、CategorySectionRegistration                                                                                 | `CATEGORY_SECTIONS`                                                   | —                          |
-| 11.9, 11.10, 11.11      | カテゴリの並べ替え・追加の末尾・古い並び | HelpCategoryOrderEditor、ReorderableList、HelpCategoryService、D1HelpCategoryStore、HelpGuards                                   | `reorderHelpCategories`・`helpOrderGuard`・`help_order_outdated`      | 並べ替え                   |
-| 12.1                    | モデレーター以上                         | HelpSchemaModule                                                                                                                 | `requireAdmin(context, 'moderator')`                                  | —                          |
-| 12.2                    | 閲覧のみの表示                           | HelpArticleTable、HelpArticleForm、HelpArticleDeleteButton、HelpCategorySection、HelpArticleOrderEditor、HelpCategoryOrderEditor | `RoleGate`・`useAdminRole`                                            | —                          |
-| 12.3, 12.4, 12.5, 12.6  | 監査ログ                                 | HelpAuditActions、HelpArticleEditor、HelpCategoryService、D1HelpArticleStore、D1HelpCategoryStore                                | `AuditLogRecorder.prepare`・`buildAuditLogStatements`                 | 記事の保存・並べ替え       |
-| 12.7                    | ログ                                     | 全コンポーネント(Monitoringの規約)                                                                                               | `getAppLogger`                                                        | —                          |
-| 13.1, 13.2, 13.3        | テスト                                   | Testing Strategy、HelpCenterE2E                                                                                                  | —                                                                     | —                          |
-| 13.4                    | 技術ドキュメント                         | HelpTechDocs                                                                                                                     | —                                                                     | —                          |
-| 13.5                    | サービス仕様                             | HelpServiceSpecs                                                                                                                 | —                                                                     | —                          |
+| Requirement             | Summary                                                 | Components                                                                                                                       | Interfaces                                                            | Flows                      |
+| ----------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------- |
+| 1.1, 1.2, 1.3, 1.4      | カテゴリ別の一覧と並び                                  | HelpOrdering、PublicHelpReader、D1PublicHelpStore、HelpCategoryList、HelpArticleLinkItem                                         | `helpCenter`・`groupPublishedArticles`                                | —                          |
+| 1.5, 1.6, 1.7           | 閲覧・空・状態                                          | HelpTopRoute、HelpSearchForm、HelpTopSkeleton                                                                                    | `EmptyState`・`ErrorState`                                            | —                          |
+| 2.1, 2.2                | 検索と検索式                                            | PublicHelpReader、D1PublicHelpStore、HelpArticleSearchTarget、HelpSearchIndex                                                    | `helpArticleSearch`・`buildFtsMatchExpression`・`ftsRankedSources`    | —                          |
+| 2.3, 2.9                | 50文字の上限(検索欄の送信の拒否とURLの検索語の切り詰め) | HelpInputRules、HelpQueryRules、HelpInputs、HelpSearchForm、HelpTopRoute、PublicHelpReader                                       | `checkHelpSearchQuery`・`normalizeHelpSearchText`                     | —                          |
+| 2.4, 2.5, 2.6, 2.7      | 結果の表示・0件・空・復元                               | HelpSearchResults、HelpTopRoute                                                                                                  | `HighlightedText`・`validateSearch`                                   | —                          |
+| 2.8                     | 詳細ページからの検索                                    | HelpSearchForm、HelpArticlePage                                                                                                  | `/help?q=`                                                            | —                          |
+| 3.1, 3.2, 3.10, 3.11    | 詳細の表示・正規のURL・タイトル・状態                   | HelpArticleRoute、HelpArticlePage、HelpArticleSkeleton、PublicHelpReader                                                         | `helpArticle`・`buildPageHead`                                        | 公開の記事の解決           |
+| 3.3, 3.4                | 作成者と削除済み                                        | HelpAuthors、HelpAuthorFields、HelpArticleAuthor                                                                                 | `AdminDirectory.findProfiles`・`HelpArticleAuthor`                    | —                          |
+| 3.5, 3.6                | 更新日時と本文                                          | HelpArticlePage、HelpBodyRenderBenchmark                                                                                         | `DateTime`・`MarkdownContent`・`HELP_ARTICLE_EXTERNAL_LINK_REL`       | —                          |
+| 3.7, 3.8                | 目次                                                    | HelpTableOfContents                                                                                                              | `RenderedMarkdown.headings`                                           | —                          |
+| 3.9                     | 同カテゴリの記事                                        | RelatedHelpArticles、D1PublicHelpStore、HelpOrdering                                                                             | `HelpArticle.relatedArticles`                                         | —                          |
+| 4.1, 4.6                | 下書きの除外                                            | D1PublicHelpStore、HelpArticleSearchTarget、D1HelpArticleStore、PinnedHelpLinks                                                  | `publishedHelpArticle`・`deleteSources`                               | 記事の保存                 |
+| 4.2, 4.3, 4.4, 4.5, 4.7 | 404と302                                                | PublicHelpReader、HelpArticleRoute、HelpHandleNamespace                                                                          | `helpArticle`(nullは404)・`HelpArticleRedirect`                       | 公開の記事の解決           |
+| 5.1, 5.2, 5.3, 5.4      | フッター                                                | PinnedHelpLinks、PublicHelpReader、HelpOrdering                                                                                  | `pinnedHelpArticles`・`footerHelpLinks`                               | —                          |
+| 6.1, 6.2, 6.4           | 入力の検証                                              | HelpInputRules、HelpInputs、HelpArticleFormSchema、HelpArticleForm                                                               | `createHelpArticle`・`updateHelpArticle`                              | —                          |
+| 6.3                     | マークダウンの入力欄                                    | HelpArticleForm                                                                                                                  | `MarkdownEditor`                                                      | —                          |
+| 6.5, 6.8, 6.9           | カテゴリの不在・競合・削除済み                          | HelpArticleEditor、D1HelpArticleStore、HelpGuards                                                                                | `expectedRevision`・`help_article_conflict`・`help_article_not_found` | 記事の保存                 |
+| 6.6, 6.7                | 作成者と更新日時                                        | HelpArticleEditor、D1HelpArticleStore                                                                                            | `created_by_admin_id`・`updated_at`                                   | 記事の保存                 |
+| 6.10, 6.11              | 保存後と公開ページの導線                                | HelpArticleNewRoute、HelpArticleEditRoute、HelpArticleForm                                                                       | `clientSiteOrigin`                                                    | —                          |
+| 6.12                    | 作成とカテゴリの変更での末尾への配置                    | D1HelpArticleStore                                                                                                               | `sort_order`の副問い合わせ                                            | 記事の保存                 |
+| 7.1, 7.2, 7.5           | 形式・大文字小文字・予約語なし                          | HelpInputRules、HelpInputs、HelpArticleEditor                                                                                    | `HELP_ARTICLE_HANDLE_RULE`(`reservedWords`は空)・`checkHandleFormat`  | —                          |
+| 7.3, 7.6                | 使用中・同時の保存                                      | HelpArticleEditor、D1HelpArticleStore、HelpHandleNamespace                                                                       | `isHandleOccupied`・`handleOccupiedCondition`                         | 記事の保存                 |
+| 7.4                     | 他の記事の旧ハンドルの解放                              | D1HelpArticleStore、HelpHandleNamespace                                                                                          | `previousHandleRelease`                                               | 記事の保存                 |
+| 7.7, 7.11               | フォーカスアウトの判定と旧ハンドルの案内                | HelpArticleAdminReader、HelpArticleHandleField                                                                                   | `helpArticleHandleAvailability`・`AdminHelpArticle.previousHandle`    | —                          |
+| 7.8, 7.9, 7.10          | 旧ハンドルの保持                                        | HelpHandleChange、D1HelpArticleStore                                                                                             | `planHelpHandleChange`・`previousHandleUpsert`                        | 記事の保存                 |
+| 8.1, 8.5                | 削除の確認と移動                                        | HelpArticleDeleteButton                                                                                                          | `ConfirmActionDialog`                                                 | —                          |
+| 8.2, 8.3, 8.4           | 物理削除と索引の削除                                    | HelpArticleEditor、D1HelpArticleStore、HelpGuards                                                                                | `deleteHelpArticle`・`previousHandleDelete`・`deleteSources`          | 記事の削除とカテゴリの削除 |
+| 9.1, 9.2                | 全件の表                                                | HelpArticlesRoute、HelpArticleTable、HelpArticleAdminReader                                                                      | `adminHelpArticles`                                                   | —                          |
+| 9.3, 9.4, 9.5, 9.6      | 絞り込みと状態                                          | HelpArticleFilter、HelpArticleFilters、HelpArticlesRoute                                                                         | `filterHelpArticles`・`buildCreatorOptions`                           | —                          |
+| 9.7                     | メニュー                                                | AdminNavigationRegistration                                                                                                      | `ADMIN_NAV_ITEMS`                                                     | —                          |
+| 9.8                     | 記事の並べ替えの画面                                    | HelpArticleOrderRoute、HelpArticleOrderEditor、ReorderableList、HelpOrdering                                                     | `splitPinnedGroups`・`moveItem`                                       | 並べ替え                   |
+| 9.9, 9.10, 9.11         | 並べ替えの保存・古い並び・ピン留め                      | HelpArticleEditor、D1HelpArticleStore、HelpGuards、HelpOrdering                                                                  | `reorderHelpArticles`・`helpOrderGuard`・`help_order_outdated`        | 並べ替え                   |
+| 10.1, 10.2, 10.4, 10.5  | 索引の作成と更新                                        | D1HelpArticleStore、HelpArticleEditor、HelpArticleSearchTarget、HelpSearchIndex                                                  | `markPending`・`requestRefresh`・`SearchTargetDefinition.read`        | 記事の保存                 |
+| 10.3                    | 下書き・削除での索引の削除                              | D1HelpArticleStore                                                                                                               | `deleteSources`                                                       | 記事の保存                 |
+| 10.6                    | 外部へ送る内容                                          | HelpArticleSearchTarget                                                                                                          | `SearchFieldSpec.extract`                                             | —                          |
+| 11.1, 11.2, 11.3        | 追加・名前の変更・保護                                  | HelpCategoryService、D1HelpCategoryStore、HelpCategoryRules、HelpSchema                                                          | `createHelpCategory`・`renameHelpCategory`                            | —                          |
+| 11.4, 11.5, 11.6        | 削除と付け替え                                          | HelpCategoryService、D1HelpCategoryStore、HelpCategorySection                                                                    | `deleteHelpCategory`・`articleCount`                                  | 記事の削除とカテゴリの削除 |
+| 11.7                    | カテゴリの並び                                          | HelpOrdering、HelpCategoryService、HelpArticleForm                                                                               | `sortHelpCategories`                                                  | —                          |
+| 11.8                    | カテゴリのページの区画                                  | HelpCategorySection、CategorySectionRegistration                                                                                 | `CATEGORY_SECTIONS`                                                   | —                          |
+| 11.9, 11.10, 11.11      | カテゴリの並べ替え・追加の末尾・古い並び                | HelpCategoryOrderEditor、ReorderableList、HelpCategoryService、D1HelpCategoryStore、HelpGuards                                   | `reorderHelpCategories`・`helpOrderGuard`・`help_order_outdated`      | 並べ替え                   |
+| 12.1                    | モデレーター以上                                        | HelpSchemaModule                                                                                                                 | `requireAdmin(context, 'moderator')`                                  | —                          |
+| 12.2                    | 閲覧のみの表示                                          | HelpArticleTable、HelpArticleForm、HelpArticleDeleteButton、HelpCategorySection、HelpArticleOrderEditor、HelpCategoryOrderEditor | `RoleGate`・`useAdminRole`                                            | —                          |
+| 12.3, 12.4, 12.5, 12.6  | 監査ログ                                                | HelpAuditActions、HelpArticleEditor、HelpCategoryService、D1HelpArticleStore、D1HelpCategoryStore                                | `AuditLogRecorder.prepare`・`buildAuditLogStatements`                 | 記事の保存・並べ替え       |
+| 12.7                    | ログ                                                    | 全コンポーネント(Monitoringの規約)                                                                                               | `getAppLogger`                                                        | —                          |
+| 13.1, 13.2, 13.3        | テスト                                                  | Testing Strategy、HelpCenterE2E                                                                                                  | —                                                                     | —                          |
+| 13.4                    | 技術ドキュメント                                        | HelpTechDocs                                                                                                                     | —                                                                     | —                          |
+| 13.5                    | サービス仕様                                            | HelpServiceSpecs                                                                                                                 | —                                                                     | —                          |
 
 ## Components and Interfaces
 
-| Component                                                                                                                          | Domain/Layer        | Intent                                                   | Req Coverage                                                                                            | Key Dependencies                                                               | Contracts |
-| ---------------------------------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------- |
-| HelpInputRules・HelpArticleStatus・HelpCategoryConstants                                                                           | common-lib          | 上限・判定・ハンドルの規則・ステータス・標準カテゴリ     | 2.3, 6.1, 6.2, 7.1, 7.2, 7.5, 11.3                                                                      | handles (P0)、content-processing (P0)                                          | Service   |
-| HelpOrdering                                                                                                                       | common-lib          | 並び順・ピン留めの群・上下の移動の純粋な規則             | 1.2, 1.3, 3.9, 5.2, 9.8, 9.11, 11.7                                                                     | —                                                                              | Service   |
-| HelpAuditActions                                                                                                                   | common-lib          | 監査ログの操作種別                                       | 12.3, 12.5, 12.6                                                                                        | admin-foundation (P0)                                                          | State     |
-| HelpSchema・HelpSearchIndex                                                                                                        | db                  | 4テーブル・並び順の列・索引の定義・初期データ            | 4.1, 6.6, 6.7, 6.12, 7.2, 7.8, 10.1, 11.2, 11.3                                                         | backend-platform (P0)、handles (P0)、search (P0)                               | State     |
-| HelpArticleSearchTarget                                                                                                            | backend-lib/search  | 検索対象の読み取りと公開の条件                           | 2.1, 4.1, 10.1, 10.2, 10.5, 10.6                                                                        | content-processing (P0)                                                        | Service   |
-| HelpHandleChange・HelpCategoryRules                                                                                                | api/domain          | ハンドルの変更の種類・標準カテゴリの保護                 | 7.8, 7.9, 7.10, 11.3                                                                                    | HelpInputRules (P0)                                                            | Service   |
-| HelpPorts・HelpAuthors                                                                                                             | api/application     | ポートと作成者の表示                                     | 3.3, 3.4, 9.4                                                                                           | AdminDirectory (P0)                                                            | Service   |
-| HelpArticleEditor                                                                                                                  | api/application     | 記事の作成・編集・削除・並べ替え                         | 6.1, 6.5〜6.9, 6.12, 7.3, 7.4, 7.6, 7.8〜7.10, 8.2〜8.4, 9.9, 9.10, 10.1, 10.4, 12.3, 12.4              | HelpArticleStore (P0)、AuditLogRecorder (P0)、SearchIndexRefreshRequester (P1) | Service   |
-| HelpArticleAdminReader                                                                                                             | api/application     | 全件・1件・ハンドルの使用可否                            | 7.7, 9.1, 9.2, 9.4                                                                                      | HelpArticleStore (P0)、HelpAuthors (P0)                                        | Service   |
-| HelpCategoryService                                                                                                                | api/application     | カテゴリの一覧・追加・名前の変更・削除・並べ替え         | 11.1〜11.7, 11.9〜11.11, 12.3                                                                           | HelpCategoryStore (P0)、AuditLogRecorder (P0)                                  | Service   |
-| PublicHelpReader                                                                                                                   | api/application     | ヘルプトップ・記事の解決・ピン留め・検索                 | 1.1〜1.4, 2.1, 2.2, 3.1, 3.9, 4.1〜4.5, 5.1, 5.2, 10.5                                                  | PublicHelpStore (P0)、HelpAuthors (P0)                                         | Service   |
-| HelpHandleNamespace・HelpGuards                                                                                                    | api/infrastructure  | ハンドルの対象の記述と、存在・版・並び順の対象の確認の文 | 4.2, 4.4, 6.8, 6.9, 7.3, 7.4, 8.4, 9.10, 11.11                                                          | handles (P0)                                                                   | Service   |
-| D1HelpArticleStore・D1HelpCategoryStore・D1PublicHelpStore                                                                         | api/infrastructure  | D1の実装                                                 | 2.1, 4.1, 4.6, 6.5〜6.9, 6.12, 7.4, 7.6, 7.8, 8.2, 9.9, 10.1, 10.3, 11.2, 11.4, 11.6, 11.9, 11.10, 12.4 | D1 (P0)、search (P0)、handles (P0)                                             | State     |
-| HelpSchemaModule(HelpInputs・HelpAuthorFields・各リゾルバ)                                                                         | api/presentation    | GraphQLの型と操作                                        | 2.3, 3.3, 6.1, 6.2, 7.1, 9.9, 11.9, 12.1                                                                | api-gateway (P0)、admin-foundation (P0)                                        | API       |
-| HelpModule                                                                                                                         | api/composition     | apiの束縛                                                | 12.1                                                                                                    | Inversify (P0)                                                                 | —         |
-| HelpBodyRenderBenchmark                                                                                                            | common-lib(テスト)  | 100,000文字の本文の描画時間の計測                        | 3.6                                                                                                     | content-processing (P0)                                                        | —         |
-| HelpTopRoute・HelpSearchForm・HelpCategoryList・HelpArticleLinkItem・HelpSearchResults・HelpTopSkeleton                            | client              | ヘルプトップと検索                                       | 1.\*, 2.\*                                                                                              | HighlightedText (P1)                                                           | State     |
-| HelpArticleRoute・HelpArticlePage・HelpArticleAuthor・HelpTableOfContents・RelatedHelpArticles・HelpArticleSkeleton                | client              | 記事詳細                                                 | 3.\*, 4.2〜4.5, 4.7                                                                                     | MarkdownContent (P0)、MediaPicture (P1)                                        | State     |
-| PinnedHelpLinks                                                                                                                    | client              | フッターのピン留め記事                                   | 4.1, 5.\*                                                                                               | footerHelpLinks (P0)                                                           | State     |
-| HelpArticlesRoute・HelpArticleFilter・HelpArticleFilters・HelpArticleTable・AdminNavigationRegistration                            | admin               | 一覧と絞り込み                                           | 9.1〜9.7, 12.2                                                                                          | AdminDataTable (P0)、AdminFilterBar (P0)                                       | State     |
-| HelpArticleNewRoute・HelpArticleEditRoute・HelpArticleFormSchema・HelpArticleForm・HelpArticleHandleField・HelpArticleDeleteButton | admin               | 作成・編集・削除                                         | 6.1〜6.4, 6.10, 6.11, 7.7, 7.11, 8.1, 8.5, 11.7, 12.2                                                   | MarkdownEditor (P0)、ConfirmActionDialog (P0)                                  | State     |
-| ReorderableList・HelpArticleOrderRoute・HelpArticleOrderEditor・HelpCategoryOrderEditor                                            | admin               | 上下の移動による並べ替え                                 | 9.8〜9.11, 11.9〜11.11, 12.2                                                                            | HelpOrdering (P0)                                                              | State     |
-| HelpCategorySection・CategorySectionRegistration                                                                                   | admin               | カテゴリの区画                                           | 11.5, 11.7, 11.8, 11.9, 12.2                                                                            | CategoryMasterEditor (P0)                                                      | State     |
-| HelpCenterE2E                                                                                                                      | e2e                 | 管理画面から利用者側までの流れ                           | 13.3                                                                                                    | admin-bootstrap (P0)                                                           | —         |
-| HelpTechDocs                                                                                                                       | docs/GUIDES/tech    | `frontend/011`と`backend/011`の節                        | 13.4                                                                                                    | —                                                                              | —         |
-| HelpServiceSpecs                                                                                                                   | docs/GUIDES/service | ページ配置・文言規則・準拠方針・固有の値                 | 13.5                                                                                                    | —                                                                              | —         |
+| Component                                                                                                                          | Domain/Layer                                                | Intent                                                                    | Req Coverage                                                                                            | Key Dependencies                                                               | Contracts |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | --------- |
+| HelpInputRules・HelpQueryRules・HelpArticleStatus・HelpCategoryConstants                                                           | common-lib                                                  | 上限・判定・URLのクエリの正規化・ハンドルの規則・ステータス・標準カテゴリ | 2.3, 2.9, 6.1, 6.2, 7.1, 7.2, 7.5, 11.3                                                                 | handles (P0)、content-processing (P0)                                          | Service   |
+| HelpOrdering                                                                                                                       | common-lib                                                  | 並び順・ピン留めの群・上下の移動の純粋な規則                              | 1.2, 1.3, 3.9, 5.2, 9.8, 9.11, 11.7                                                                     | —                                                                              | Service   |
+| HelpAuditActions                                                                                                                   | common-lib                                                  | 監査ログの操作種別                                                        | 12.3, 12.5, 12.6                                                                                        | admin-foundation (P0)                                                          | State     |
+| HelpSchema・HelpSearchIndex                                                                                                        | db                                                          | 4テーブル・並び順の列・索引の定義・初期データ                             | 4.1, 6.6, 6.7, 6.12, 7.2, 7.8, 10.1, 11.2, 11.3                                                         | backend-platform (P0)、handles (P0)、search (P0)                               | State     |
+| HelpArticleSearchTarget                                                                                                            | backend-lib/search                                          | 検索対象の読み取りと公開の条件                                            | 2.1, 4.1, 10.1, 10.2, 10.5, 10.6                                                                        | content-processing (P0)                                                        | Service   |
+| HelpHandleChange・HelpCategoryRules                                                                                                | api/domain                                                  | ハンドルの変更の種類・標準カテゴリの保護                                  | 7.8, 7.9, 7.10, 11.3                                                                                    | HelpInputRules (P0)                                                            | Service   |
+| HelpPorts・HelpAuthors                                                                                                             | api/application                                             | ポートと作成者の表示                                                      | 3.3, 3.4, 9.4                                                                                           | AdminDirectory (P0)                                                            | Service   |
+| HelpArticleEditor                                                                                                                  | api/application                                             | 記事の作成・編集・削除・並べ替え                                          | 6.1, 6.5〜6.9, 6.12, 7.3, 7.4, 7.6, 7.8〜7.10, 8.2〜8.4, 9.9, 9.10, 10.1, 10.4, 12.3, 12.4              | HelpArticleStore (P0)、AuditLogRecorder (P0)、SearchIndexRefreshRequester (P1) | Service   |
+| HelpArticleAdminReader                                                                                                             | api/application                                             | 全件・1件・ハンドルの使用可否                                             | 7.7, 9.1, 9.2, 9.4                                                                                      | HelpArticleStore (P0)、HelpAuthors (P0)                                        | Service   |
+| HelpCategoryService                                                                                                                | api/application                                             | カテゴリの一覧・追加・名前の変更・削除・並べ替え                          | 11.1〜11.7, 11.9〜11.11, 12.3                                                                           | HelpCategoryStore (P0)、AuditLogRecorder (P0)                                  | Service   |
+| PublicHelpReader                                                                                                                   | api/application                                             | ヘルプトップ・記事の解決・ピン留め・検索                                  | 1.1〜1.4, 2.1, 2.2, 3.1, 3.9, 4.1〜4.5, 5.1, 5.2, 10.5                                                  | PublicHelpStore (P0)、HelpAuthors (P0)                                         | Service   |
+| HelpHandleNamespace・HelpGuards                                                                                                    | backend-lib/workers(名前空間)・api/infrastructure(確認の文) | ハンドルの対象の記述と、存在・版・並び順の対象の確認の文                  | 4.2, 4.4, 6.8, 6.9, 7.3, 7.4, 8.4, 9.10, 11.11                                                          | handles (P0)                                                                   | Service   |
+| D1HelpArticleStore・D1HelpCategoryStore・D1PublicHelpStore                                                                         | api/infrastructure                                          | D1の実装                                                                  | 2.1, 4.1, 4.6, 6.5〜6.9, 6.12, 7.4, 7.6, 7.8, 8.2, 9.9, 10.1, 10.3, 11.2, 11.4, 11.6, 11.9, 11.10, 12.4 | D1 (P0)、search (P0)、handles (P0)                                             | State     |
+| HelpSchemaModule(HelpInputs・HelpAuthorFields・各リゾルバ)                                                                         | api/presentation                                            | GraphQLの型と操作                                                         | 2.9, 3.3, 6.1, 6.2, 7.1, 9.9, 11.9, 12.1                                                                | api-gateway (P0)、admin-foundation (P0)                                        | API       |
+| HelpModule                                                                                                                         | api/composition                                             | apiの束縛                                                                 | 12.1                                                                                                    | Inversify (P0)                                                                 | —         |
+| HelpBodyRenderBenchmark                                                                                                            | common-lib(テスト)                                          | 100,000文字の本文の描画時間の計測                                         | 3.6                                                                                                     | content-processing (P0)                                                        | —         |
+| HelpTopRoute・HelpSearchForm・HelpCategoryList・HelpArticleLinkItem・HelpSearchResults・HelpTopSkeleton                            | client                                                      | ヘルプトップと検索                                                        | 1.\*, 2.\*                                                                                              | HighlightedText (P1)                                                           | State     |
+| HelpArticleRoute・HelpArticlePage・HelpArticleAuthor・HelpTableOfContents・RelatedHelpArticles・HelpArticleSkeleton                | client                                                      | 記事詳細                                                                  | 3.\*, 4.2〜4.5, 4.7                                                                                     | MarkdownContent (P0)、MediaPicture (P1)                                        | State     |
+| PinnedHelpLinks                                                                                                                    | client                                                      | フッターのピン留め記事                                                    | 4.1, 5.\*                                                                                               | footerHelpLinks (P0)                                                           | State     |
+| HelpArticlesRoute・HelpArticleFilter・HelpArticleFilters・HelpArticleTable・AdminNavigationRegistration                            | admin                                                       | 一覧と絞り込み                                                            | 9.1〜9.7, 12.2                                                                                          | AdminDataTable (P0)、AdminFilterBar (P0)                                       | State     |
+| HelpArticleNewRoute・HelpArticleEditRoute・HelpArticleFormSchema・HelpArticleForm・HelpArticleHandleField・HelpArticleDeleteButton | admin                                                       | 作成・編集・削除                                                          | 6.1〜6.4, 6.10, 6.11, 7.7, 7.11, 8.1, 8.5, 11.7, 12.2                                                   | MarkdownEditor (P0)、ConfirmActionDialog (P0)                                  | State     |
+| ReorderableList・HelpArticleOrderRoute・HelpArticleOrderEditor・HelpCategoryOrderEditor                                            | admin                                                       | 上下の移動による並べ替え                                                  | 9.8〜9.11, 11.9〜11.11, 12.2                                                                            | HelpOrdering (P0)                                                              | State     |
+| HelpCategorySection・CategorySectionRegistration                                                                                   | admin                                                       | カテゴリの区画                                                            | 11.5, 11.7, 11.8, 11.9, 12.2                                                                            | CategoryMasterEditor (P0)                                                      | State     |
+| HelpCenterE2E                                                                                                                      | e2e                                                         | 管理画面から利用者側までの流れ                                            | 13.3                                                                                                    | admin-bootstrap (P0)                                                           | —         |
+| HelpTechDocs                                                                                                                       | docs/GUIDES/tech                                            | `frontend/008`の目次の節への追記と`backend/011`の節                       | 13.4                                                                                                    | —                                                                              | —         |
+| HelpServiceSpecs                                                                                                                   | docs/GUIDES/service                                         | ページ配置・文言規則・準拠方針・固有の値                                  | 13.5                                                                                                    | —                                                                              | —         |
 
 ### common-lib
 
-#### HelpInputRules・HelpArticleStatus・HelpCategoryConstants
+#### HelpInputRules・HelpQueryRules・HelpArticleStatus・HelpCategoryConstants
 
 | Field        | Detail                                                                |
 | ------------ | --------------------------------------------------------------------- |
 | Intent       | 4アプリで共有する上限・判定・ハンドルの規則・ステータス・標準カテゴリ |
-| Requirements | 2.3, 6.1, 6.2, 7.1, 7.2, 7.5, 11.3                                    |
+| Requirements | 2.3, 2.9, 6.1, 6.2, 7.1, 7.2, 7.5, 11.3                               |
 
 **Contracts**: Service [x]
 
@@ -493,6 +508,7 @@ export declare const HELP_TITLE_MAX: 100;
 export declare const HELP_SUBTITLE_MAX: 100;
 export declare const HELP_BODY_MAX: 100000; // 仮1
 export declare const HELP_SEARCH_QUERY_MAX: 50;
+export declare const HELP_SEARCH_COUNTER_FROM: 40; // 検索欄の文字数の表示を始める書記素数(frontend/014)
 export declare const HELP_SEARCH_RESULT_LIMIT: 100;
 export declare const HELP_REORDER_MAX: 1000; // 1回の並べ替えで受け付ける件数の上限
 export type HelpTextCheck = 'empty' | 'too-long' | 'forbidden-characters';
@@ -504,8 +520,19 @@ export declare function checkHelpSubtitle(
 ): HelpTextCheck | undefined;
 export declare function checkHelpSearchQuery(
   value: string,
-): 'too-long' | undefined; // 書記素で50以下
+): 'too-long' | undefined; // 検索欄の送信の前の検証(2.3)。書記素で50以下
 export declare const HELP_ARTICLE_EXTERNAL_LINK_REL: readonly LinkRelToken[]; // ['noopener']
+
+// help/help-query-rules.ts(G1。frontend/014の「クエリの正規化」とdirectory-discoveryのnormalizeDirectoryQueryと同じ規則)
+export interface HelpTopQuery {
+  readonly q: string | undefined;
+}
+export declare function normalizeHelpSearchText(
+  raw: unknown,
+): string | undefined; // 数として届いた値は文字列へ戻す。前後の空白を除き、HELP_SEARCH_QUERY_MAXの書記素に切り詰めてもう一度前後の空白を除く。空・文字列でも数でもない値はundefined
+export declare function normalizeHelpTopQuery(
+  raw: Readonly<Record<string, unknown>>,
+): HelpTopQuery; // ルートのvalidateSearchが使う。ルーターが元の値を残さないよう、項目をundefinedを含めて全て返す
 
 // help/help-article-status.ts
 export type HelpArticleStatus = 'draft' | 'published';
@@ -866,11 +893,11 @@ export interface HelpArticleEditor {
 }
 ```
 
-- `create`: (1)`HelpArticleStore.isHandleOccupied`(他の記事の現在のハンドル、7.3)→`help_article_handle_unavailable`。予約語の判定はしない(7.5)。(2)`AuditLogRecorder.prepare({ action: 'help-article.create', targets: [id], reason, detail: { status } })`。(3)`create`の結果を分類(`category-missing`→`validation_error`(`categoryId`、6.5)、`handle-unavailable`→同時の保存の競合で`help_article_handle_unavailable`(7.6))。保存の一括の書き込みは同じ旧ハンドルを保持する他の記事のその旧ハンドルを解放する(7.4)。(4)公開なら`SearchIndexRefreshRequester.requestRefresh('help-article', id)`(10.1)。
+- `create`: (1)`HelpArticleStore.isHandleOccupied`(他の記事の現在のハンドル、7.3)→`help_article_handle_unavailable`。予約語の判定はしない(7.5)。(2)`AuditLogRecorder.prepare({ operatorAdminId: admin.id, action: 'help-article.create', targetIds: [id], reason, detail: { status }, occurredAt: now })`。(3)`create`の結果を分類(`category-missing`→`validation_error`(`categoryId`、6.5)、`handle-unavailable`→同時の保存の競合で`help_article_handle_unavailable`(7.6))。保存の一括の書き込みは同じ旧ハンドルを保持する他の記事のその旧ハンドルを解放する(7.4)。(4)公開なら`SearchIndexRefreshRequester.requestRefresh('help-article', id)`(10.1)。
 - `update`: (1)`findById`で現在の記事を読み、無ければ`help_article_not_found`(6.9)。`expectedRevision`と異なれば`help_article_conflict`(6.8)。(2)`planHelpHandleChange`。`changed`で新しいハンドルが記事自身の旧ハンドルと`isSameHandle`でなければ使用中の判定(7.3・7.10)。`case-only`・`none`は判定しない。(3)`categoryChanged`は現在のカテゴリと入力のカテゴリの比較(6.12)。(4)`prepare`(`help-article.update`、ステータスが変われば`fromStatus`・`toStatus`)。(5)`update`の結果を分類(`not-found`・`conflict`・`category-missing`・`handle-unavailable`)。(6)公開なら`requestRefresh`。
 - `delete`: `findById`で無ければ`help_article_not_found`(8.4)→`prepare`(`help-article.delete`)→`HelpArticleStore.delete`(`not-found`も同じコード)。
 - `reorder`: `prepare`(`help-article.reorder`、対象はカテゴリ、詳細`count`)→`HelpArticleStore.reorder`。`outdated`は`help_order_outdated`(9.10)。結果は`listAll`のうちそのカテゴリの記事。索引の更新は依頼しない。
-- 作成者は`admin.id`を作成時だけ記録し、更新では渡さない(6.6)。時刻は`Clock`、IDは`IdGenerator`。
+- 作成者は`admin.id`を作成時だけ記録し、更新では渡さない(6.6)。時刻は`Clock`、IDは`IdGenerator`。監査ログの準備(`AuditEntryInput`)には`operatorAdminId`・`action`・`targetIds`・`reason`・`detail`・`occurredAt`を渡し、`detail`の値は全て文字列にする(件数は`String(count)`、ステータスは`draft`・`published`)。想定内の失敗は`help-errors.ts`の`helpError(<コード>)`で投げる。
 - `requestRefresh`は送信の失敗を例外にしない(content-processing)。保存は成功のまま返す(10.4)。未登録の検索対象の`SearchTargetRegistryError`と、契約に合わない本文などの送信前の検証の失敗の`MessagePublishError`だけは呼び出し側の誤りとして投げる(`help-article`は`SEARCH_TARGETS`に登録し、本文は`{ target, sourceId }`のため、正しい実装では起きない)。
 
 #### HelpArticleAdminReader
@@ -904,7 +931,7 @@ export interface HelpArticleAdminReader {
 
 - `list()`: `sortHelpCategories`で並べる(11.7)。管理画面の区画・並べ替えの部品と記事のカテゴリの選択肢が使う。
 - `create(admin, { name })`・`rename(admin, { id, name })`: `checkCategoryName`(1〜30書記素、11.1)→名前の変更は`findById`(無ければ`help_category_not_found`)と`checkHelpCategoryEditable`(`help_category_protected`、11.3)→`prepare`→ストア(`name-taken`は`help_category_name_taken`、11.2)。追加は並び順の末尾に置く(11.10)。
-- `delete(admin, { id })`: `findById`(無ければ`help_category_not_found`)→`checkHelpCategoryEditable`→`articleCount`を詳細`reassignedCount`に入れた`prepare`→`deleteAndReassign`(11.4・12.3)。戻り値に付け替えた件数を返す。
+- `delete(admin, { id })`: `findById`(無ければ`help_category_not_found`)→`checkHelpCategoryEditable`→`articleCount`を文字列にして詳細`reassignedCount`に入れた`prepare`→`deleteAndReassign`(11.4・12.3)。戻り値に付け替えた件数を返す。
 - `reorder(admin, { orderedIds })`: `prepare`(`help-category.reorder`、詳細`count`)→`reorder`。`outdated`は`help_order_outdated`(11.11)。標準カテゴリも並べ替えの対象にする(11.9)。
 - カテゴリの操作は理由を受け取らず、監査ログの理由は空になる。admin-foundationの`CategoryMasterEditor`の`onCreate`・`onUpdate`・`onDelete`が理由の入力を持たないためで、問い合わせカテゴリ(inquiry-chat)と同じ扱いである(要件12.3の理由は任意)。並べ替えも同じく理由を受け取らない。
 
@@ -958,7 +985,7 @@ export interface PublicHelpReader {
 - `helpCenter`: `listPublished`→`groupPublishedArticles`(カテゴリの並び順・ピン留めの群・記事の並び順、1.1〜1.3)。
 - `findArticle`: (1)`checkHandleFormat(HELP_ARTICLE_HANDLE_RULE)`が`ok`でなければ`not-found`(4.3)。(2)`resolve`。`none`→`not-found`(4.2)。(3)`previous`→`findPublishedHandle`が無ければ`not-found`(4.5)、あれば`redirect`(4.4)。(4)`current`→`findPublishedDetail`(無ければ`not-found`)、`HelpAuthorLookup.find([createdByAdminId])`、`sameCategory`を`sortHelpArticles`で並べる(3.1・3.3・3.9)。
 - `pinned`: `listPublished`→`groupPublishedArticles`の順でピン留めだけを取り出す(5.1・5.2)。
-- `search`: `normalizeSearchTerms`→`buildFtsMatchExpression`が`undefined`なら空の配列。`PublicHelpStore.search(expr, HELP_SEARCH_RESULT_LIMIT)`(2.1・2.2)。表示の値は記事のテーブルの現在の値(10.5)。上限の検査はリゾルバの入力の検証で行う。
+- `search`: `normalizeSearchTerms`→`buildFtsMatchExpression`が`undefined`なら空の配列。`PublicHelpStore.search(expr, HELP_SEARCH_RESULT_LIMIT)`(2.1・2.2)。表示の値は記事のテーブルの現在の値(10.5)。検索語はリゾルバが`normalizeHelpSearchText`で切り詰めた値を受け、上限を超えた語も拒否しない(2.9)。
 
 ### api/infrastructure
 
@@ -967,7 +994,7 @@ export interface PublicHelpReader {
 **Contracts**: Service [x]
 
 ```typescript
-// help-handle-namespace.ts
+// apps/backend-lib/workers/help/help-article-handle-namespace.ts(G3。apiのinfrastructure層が読み込む)
 export declare const HELP_ARTICLE_HANDLE_NAMESPACE: HandleNamespace;
 // name 'help-article'、rule HELP_ARTICLE_HANDLE_RULE
 // current: help_articles(ownerId id、handle、activeCondition publishedHelpArticle)
@@ -1167,8 +1194,9 @@ type Mutation {
 | `reorderHelpArticles`・`reorderHelpCategories`                                                  | admin      | `requireAdmin(context, 'moderator')` | `unauthenticated`・`forbidden`・`validation_error`(重複・空・`HELP_REORDER_MAX`超過)・`help_order_outdated`                              |
 | `createHelpCategory`・`renameHelpCategory`・`deleteHelpCategory`                                | admin      | `requireAdmin(context, 'moderator')` | `unauthenticated`・`forbidden`・`validation_error`・`help_category_name_taken`・`help_category_protected`・`help_category_not_found`     |
 
-- 呼び出し元の判定: 利用者側の操作は`context.caller`が`client`でなければ`forbidden`。管理者側の操作は`requireAdmin`が呼び出し元を確かめる(12.1)。各操作は該当する呼び出し元の許可リストにだけ載る。
-- `HelpInputs`(`inputs.ts`、`withValidatedArgs`): タイトル・サブタイトルは`checkHelpTitle`・`checkHelpSubtitle`、ハンドルは`checkHandleFormat(HELP_ARTICLE_HANDLE_RULE)`、本文は`markdownTextSchema({ label: '本文', maxGraphemes: 100000, required: true })`、理由は`AUDIT_REASON_MAX`(500書記素)、検索語は`checkHelpSearchQuery`、並べ替えのIDの配列は1〜`HELP_REORDER_MAX`件で重複なし。違反は`validation_error`と欄ごとの詳細(`fields.title`など)。タイトル・サブタイトルは前後の空白を除いて保存する(6.1・6.2・7.1・2.3)。100,000文字の本文はUTF-8で約300,000バイトで、api-gatewayの要求の上限(1MiB)に収まる。
+- 呼び出し元の判定: `resolver-support.ts`の`clientOnly`・`adminOnly`で各リゾルバを包み、呼び出し元が違えば入力の検証より前に`forbidden`にする(`backend/004`、`security/007`の「宣言の入口」)。利用者側の4操作は`clientOnly`、管理者側の12操作は`adminOnly`で包み、その内側を`withValidatedArgs`、さらにその内側で`requireAdmin(context, <最低限のロール>)`を呼ぶ(12.1)。各操作は該当する呼び出し元の許可リストにだけ載る。
+- `HelpInputs`(`inputs.ts`、`withValidatedArgs`): タイトル・サブタイトルは`checkHelpTitle`・`checkHelpSubtitle`、ハンドルは`checkHandleFormat(HELP_ARTICLE_HANDLE_RULE)`、本文は`markdownTextSchema({ label: '本文', maxGraphemes: 100000, required: true })`、理由は`AUDIT_REASON_MAX`(500書記素)、検索語は文字列だけを検証し`normalizeHelpSearchText`で切り詰める(拒否しない、2.9)、並べ替えのIDの配列は1〜`HELP_REORDER_MAX`件で重複なし。違反は`validation_error`と欄ごとの詳細(`fields.title`など)。タイトル・サブタイトルは前後の空白を除いて保存する(6.1・6.2・7.1・2.9)。100,000文字の本文はUTF-8で約300,000バイトで、api-gatewayの要求の上限(1MiB)に収まる。
+- `errors.ts`は入力の検証の欄ごとの文言だけを持つ。ユースケースが投げるエラー(`help_article_*`・`help_order_outdated`・`help_category_*`)のコード・種類・文言は、application層の`help-errors.ts`に置く。
 - `HelpAuthorFields`(`author-fields.ts`): `HelpArticleAuthor.avatar`は`mediaFileLoader`→`toMediaImage`(隔離中は`objectKey`が`null`)。公開の型に管理者のIDを含めない(`AdminHelpArticleRow.creatorAdminId`は管理者側だけ)。
 
 ### api/composition
@@ -1185,10 +1213,12 @@ type Mutation {
 
 ### client
 
+- ルートのファイルは部品と関数をつなぐだけにし、取得の設定・`loader`の関数・表示用への変換を`src/graphql/help-center.ts`(単体テストを併置)、`head`の組み立てを`src/head/page-heads.ts`、文言を`components/help/help-messages.ts`に置く(productの`/p/$handle`と同じ構成)。
+
 #### HelpTopRoute・HelpSearchForm・HelpCategoryList・HelpArticleLinkItem・HelpSearchResults・HelpTopSkeleton
 
-- ルート`/help`(`routes/help/index.tsx`、ログイン不要): `validateSearch`で`q`(文字列、省略可)。`loaderDeps`は`q`。`loader`は`q`が空白だけ・未指定なら`helpCenter`、`checkHelpSearchQuery`が`too-long`なら照会せずに上限の超過の状態、それ以外は`helpArticleSearch`を`ensureQueryData`で読む(1.1・2.1・2.3・2.6・2.7)。`head`は`buildPageHead({ title: 'ヘルプ', canonicalUrl: clientSiteOrigin + '/help' })`。`pendingComponent`は`HelpTopSkeleton`、`errorComponent`は`ErrorState`(「ヘルプを読み込めませんでした。…」・再試行・問い合わせへの導線、1.7)。
-- `HelpSearchForm({ defaultValue })`: `<form role="search">`のラベル付きの入力欄と送信。送信前に`checkHelpSearchQuery`で検証し、超過なら欄の近くに「検索語は50文字以内で入力してください。」を出して移動しない。送信で`/help?q=<語>`へ移動する(記事詳細ページからも同じ部品、2.3・2.8)。
+- ルート`/help`(`routes/help/index.tsx`、ログイン不要): `validateSearch`は`normalizeHelpTopQuery`(空白だけ・未指定は`undefined`、50書記素を超える語は黙って切り詰める、2.9)。`loaderDeps`は`q`。`loader`は`q`が`undefined`なら`helpCenter`、それ以外は`helpArticleSearch`を`queryClient.query({ staleTime: 'static' })`で読む(1.1・2.1・2.6・2.7・2.9)。`loader`の関数は`loadHelpTopPage`。`head`は`buildHelpTopHead`(`buildSitePageHead({ title: 'ヘルプ', canonicalUrl: '/help' })`)。`pendingComponent`は`HelpTopSkeleton`、`errorComponent`は`ErrorState`(「ヘルプを読み込めませんでした。…」・再試行・問い合わせへの導線、1.7)。
+- `HelpSearchForm({ value })`: `frontend/014`の「送信でだけ検索する入力欄」に従う。名前を付けた`<form role="search">`に、ラベル付きの入力欄・消去のボタン・検索のボタンを置く。入力のたびには検索せず、Enterキーと検索のボタンでだけ送信する。送信前に`checkHelpSearchQuery`で検証し、超過なら欄の近くに「検索語は50文字以内で入力してください。」を`aria-describedby`で関連付けて出し、入力欄へフォーカスを戻して移動しない。前後の空白を除いた語が`HELP_SEARCH_COUNTER_FROM`(40)書記素を超えたら「文字数 <n>/50」を示して入力欄に関連付け、上限を超えた時と上限以内に戻った時だけ`length-limit-messages.ts`の文言を読み上げる。消去のボタンは入力欄を空にしてフォーカスを戻し、適用中の検索語があるときだけ検索語を外す。URLの`q`が外から変わったら(戻る・進む)、描画中に入力欄をその値へ戻す。送信で`/help?q=<語>`へ`router.navigate`(`resetScroll: false`)で移動する(記事詳細ページからも同じ部品、2.3・2.7・2.8)。振る舞いはdirectory-discoveryの`SearchForm`と同じで、文言は`help-messages.ts`に置く。
 - `HelpCategoryList({ categories })`: APIが返した順のまま、カテゴリごとに`<section>`と見出し(`h2`)、`HelpArticleLinkItem`の一覧(1.1〜1.4)。0件は`EmptyState`(「ヘルプ記事はまだありません。」と問い合わせへの導線、1.6)。
 - `HelpArticleLinkItem({ article, terms? })`: タイトルとサブタイトル、項目全体を`/help/<ハンドル>`へのリンク。ピン留めは視覚的な印と読み上げ用の「ピン留め」。`terms`があればタイトル・サブタイトルを`HighlightedText`で描く(1.4・2.4)。
 - `HelpSearchResults({ query, hits })`: 「「<語>」の検索結果」と件数、各項目に`HelpArticleLinkItem`(`terms`は`normalizeSearchTerms(query)`)とカテゴリ名(2.4)。0件は「「<語>」に一致するヘルプ記事はありません。」と「すべてのヘルプ記事を見る」(`/help`、2.5)。
@@ -1201,7 +1231,7 @@ export interface HelpTableOfContentsProps {
 }
 ```
 
-- ルート`/help/$handle`(`routes/help/$handle.tsx`、ログイン不要): `loader`は`checkHandleFormat(HELP_ARTICLE_HANDLE_RULE)`の違反で`notFound()`(4.3)、`helpArticle`を`ensureQueryData`で読み、`null`なら`notFound()`(4.2・4.7)、`HelpArticleRedirect`なら`redirect({ to: '/help/$handle', params: { handle }, search: 現在の検索パラメーター, statusCode: 302 })`(4.4)。`head`は`buildPageHead({ title: <記事のタイトル>, canonicalUrl: clientSiteOrigin + '/help/' + <現在のハンドル> })`(3.2・3.10)。`pendingComponent`は`HelpArticleSkeleton`、`errorComponent`は`ErrorState`(3.11)。404はfrontend-platformの`NotFoundView`。
+- ルート`/help/$handle`(`routes/help/$handle.tsx`、ログイン不要): `loader`は`checkHandleFormat(HELP_ARTICLE_HANDLE_RULE)`の違反で`notFound()`(4.3)、`helpArticle`を`queryClient.query({ staleTime: 'static' })`で読み、`null`なら`notFound()`(4.2・4.7)、`HelpArticleRedirect`なら`redirect({ to: '/help/$handle', params: { handle }, search: 現在の検索パラメーター, statusCode: 302 })`(4.4)。`loader`の関数(`loadHelpArticlePage`、productの`loadProductPage`と同じ形)は`head`の組み立てに渡すタイトルと現在のハンドルを返す。`head`は`buildHelpArticleHead`(`buildSitePageHead({ title: <記事のタイトル>, canonicalUrl: '/help/' + <現在のハンドル> })`、3.2・3.10)。`pendingComponent`は`HelpArticleSkeleton`、`errorComponent`は`ErrorState`(3.11)。404は`notFoundComponent`にclientの`NotFoundPage`(frontend-platformの`NotFoundView`を描くページの部品)を指定し、表示中の取り直しで部品が投げた404も同じ画面にする。
 - `HelpArticlePage`: 上部に`HelpSearchForm`と「ヘルプトップへ戻る」(`/help`)。カテゴリ名・タイトル(`h1`)・サブタイトル・`HelpArticleAuthor`・更新日時(`DateTime`、3.5)。本文は`useRenderedMarkdown(body, useMarkdownOptions({ externalLinkRel: HELP_ARTICLE_EXTERNAL_LINK_REL, idScope: 'article' }))`の結果を`MarkdownContent`で描く(3.6)。本文の見出しに`scroll-margin-top`(共通ヘッダーの高さ分)を付ける。PC(1024px以上)は本文と右側の`HelpTableOfContents`の2カラム、それ未満は1カラムで本文の前に目次を置く。本文の後に`RelatedHelpArticles`(3.9)。
 - `HelpArticleAuthor({ author })`: `MediaPicture`(`square-xs`)またはプレースホルダーと、ニックネーム・肩書き。`null`なら「削除済みの管理者」と`MediaPlaceholder`(3.3・3.4)。
 - `HelpTableOfContents`: 見出しが無ければ何も描かない(3.8)。PC用は`<nav aria-label="目次">`を`sticky`(共通ヘッダーの直下)で、モバイル用は`<details>`(`<summary>`は「目次」、既定は閉じる)で描き、CSSのブレークポイントで出し分ける。各項目は`#<見出しのID>`へのリンクで、`depth`に応じて字下げする(3.7)。
@@ -1209,9 +1239,11 @@ export interface HelpTableOfContentsProps {
 
 #### PinnedHelpLinks
 
-- `SITE_LAYOUT_SLOTS.footerHelpLinks`へ加える。`useQuery(graphqlQueryOptions(pinnedHelpArticlesDocument))`で取得し、各記事をAPIが返した順に`<li><a href="/help/<ハンドル>">タイトル</a></li>`で描く(5.1・5.2)。読み込み中と失敗では何も描かない(5.3)。新しいページの読み込みで取得し直す(5.4)。
+- `SITE_LAYOUT_SLOTS.footerHelpLinks`へ加える。`useQuery(graphqlQueryOptions(pinnedHelpArticlesDocument))`(取得の設定は`src/graphql/help-center.ts`)で取得し、各記事をAPIが返した順に`<li><a href="/help/<ハンドル>">タイトル</a></li>`で描く(5.1・5.2)。読み込み中と失敗では何も描かない(5.3)。新しいページの読み込みで取得し直す(5.4)。
 
 ### admin
+
+- 各ルートは`buildAdminPageHead({ title })`で`head`を作り、取得の設定・`loader`の関数・取り直し・表示用への変換を`src/graphql/admin-help-articles.ts`・`admin-help-categories.ts`(`queryClient.query({ staleTime: 'static' })`で読む)、画面の本体を`components/pages/`の`help-articles-page.tsx`・`help-article-new-page.tsx`・`help-article-edit-page.tsx`・`help-article-order-page.tsx`、文言を`components/help/help-messages.ts`に置く(問い合わせ・法務文書の管理画面と同じ構成)。
 
 #### HelpArticlesRoute・HelpArticleFilter・HelpArticleFilters・HelpArticleTable
 
@@ -1241,7 +1273,7 @@ export declare function filterHelpArticles<
 >(rows: readonly T[], filter: HelpArticleFilter): readonly T[]; // 全ての条件を満たす行
 ```
 
-- ルート`/help-articles`(`routes/_authenticated/help-articles/index.tsx`): `validateSearch`は`parseHelpArticleFilter`。`adminHelpArticles`と`adminHelpCategories`を読み、`AdminPageHeader`(「ヘルプ記事」、モデレーター以上に「新規作成」と「並び順を変更」(`/help-articles/order`)を`RoleGate`で表示し、閲覧のみには「並び順を見る」を表示、12.2)、`HelpArticleFilters`、`HelpArticleTable`(9.1・9.3・9.5)。
+- ルート`/help-articles`(`routes/_authenticated/help-articles/index.tsx`): `validateSearch`は`parseHelpArticleFilter`(問い合わせの一覧の`toAdminInquirySearch`と同じ形)。`adminHelpArticles`と`adminHelpCategories`を読み、`AdminPageHeader`(「ヘルプ記事」、モデレーター以上に「新規作成」と「並び順を変更」(`/help-articles/order`)を`RoleGate`で表示し、閲覧のみには「並び順を見る」を表示、12.2)、`HelpArticleFilters`、`HelpArticleTable`(9.1・9.3・9.5)。
 - `HelpArticleFilters`: `AdminFilterBar`に作成者(`buildCreatorOptions`)・カテゴリ(APIの並び順のまま)・ステータスの`select`。適用でURLのクエリを置き換える(9.3・9.4・9.5)。
 - `HelpArticleTable`: `AdminDataTable`(`pagination`なし)。列はタイトル(編集画面へのリンク)・ハンドル・カテゴリ・ステータス(バッジ)・ピン留め・作成者(`AdminAvatar`とニックネーム、削除済みは「削除済みの管理者」)・更新日時(`DateTime`)。空のメッセージは記事が0件なら「ヘルプ記事はまだありません。」、絞り込みの結果が0件なら「条件に一致するヘルプ記事はありません。」。取得エラーは`error`の再試行(文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`、9.2・9.6)。
 - `ADMIN_NAV_ITEMS`に「ヘルプ記事」(`/help-articles`・100)を加える(9.7)。
@@ -1305,8 +1337,8 @@ export interface ReorderableListProps<T> {
 
 #### HelpCenterE2E・HelpTechDocs・HelpServiceSpecs
 
-- `e2e/admin/help-center.e2e.test.ts`: `signInAsNewAdmin(page, { role: 'moderator' })`で管理者を用意し、利用者側のURLは`resolveE2ETargets(process.env)`の`client`から得る。流れは「Testing Strategy」のE2E。キーワード抽出はローカルで無効(`KEYWORD_EXTRACTOR=disabled`)のため、本文の語は正規化した本文の全体で一致する。索引の更新はQueueの処理を待つため、検索の結果は一定時間の再読み込みで待つ。
-- `frontend/011-table-of-contents.md`: 見出しの一覧から目次を作る規約(描画と同じ結果の見出しを使う、PCの固定とモバイルの`<details>`、`scroll-margin-top`による固定ヘッダーの回避、見出しが無い場合に描かない、ランドマークの名前)。本プロジェクト固有の値を含めない。
+- `e2e/admin/help-center.e2e.test.ts`と`e2e/admin/help-center-steps.ts`: テストは`admin-test.ts`の`test`(`signInAsNewAdmin(page, { role: 'moderator' })`で管理者を用意)と、同じテストで利用者側のページを開く`client-page-test.ts`の文脈を使い、利用者側のURLは`resolveE2ETargets(process.env)`の`client`から得る。記事の作成・編集・並べ替え・検索の結果の待ちなどの画面の操作は`help-center-steps.ts`に手順の関数として置き、カテゴリの区画の操作は既存の`category-steps.ts`、本文の入力は`e2e/client/markdown-steps.ts`を使う。流れは「Testing Strategy」のE2E。キーワード抽出はローカルで無効(`KEYWORD_EXTRACTOR=disabled`)のため、本文の語は正規化した本文の全体で一致する。索引の更新はQueueの処理を1回経るため、検索の結果はdirectory-discoveryの`waitForDirectorySearchResult`と同じく、検索のページを読み込み直して結果が現れるまで`expect(...).toPass({ timeout })`で待ち、時間切れの文言に確かめるべきログを書く。
+- `frontend/008-markdown-editor-and-content.md`の「目次の作り方」への追記(G2): 見出しの一覧から作る目次の配置の規約(PCの固定とモバイルの`<details>`、`scroll-margin-top`による固定ヘッダーの回避、見出しが無い場合に描かない、ランドマークの名前)。既存の節の規則(描画と同じ結果の見出しを使う、`id`をキーにする)を重ねて書かない。本プロジェクト固有の値を含めない。
 - `backend/011-handle-namespaces.md`への節「公開状態を持つ対象と、対象の削除での旧ハンドル」: `activeCondition`で解決の対象を絞り使用中の判定は全行の現在のハンドルにする規約、旧ハンドルの解決の結果の保持者の状態を読み取り側で確かめる規約、公開されていない対象(下書き)の保存でも現在のハンドルの書き込みの後に`previousHandleRelease`で他の対象の旧ハンドルを解放する規約(解放された旧URLは、保存した対象が公開されるまで存在しない場合と同じ応答になる)、対象の物理削除で旧ハンドルを先に物理削除する規約。
 - サービス仕様の更新は「Modified Files」のとおり。
 
@@ -1346,22 +1378,23 @@ export interface ReorderableListProps<T> {
 ### Error Strategy
 
 - 想定内の失敗は`AppError`で返し、画面が`extensions.code`で出し分ける。保存・削除・並べ替えの競合は一括の書き込みの取り消しと読み直しで分類する。
+- 想定内の失敗の定義(コード・種類・文言)はapplication層の`help-errors.ts`に置き、presentation層の`errors.ts`は入力の検証の文言だけを持つ。
 - 索引の更新の依頼の失敗は保存の結果を変えない(content-processingの日次の再抽出が完了させる)。作成者の照会の失敗は記事の表示を止めず、作成者を削除済みとして`warn`のログを残す(NFR-AVAIL-002の縮退)。フッターのピン留め記事の失敗はフッターに何も足さない。
 - 画面に出す失敗の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(利用者側は`CLIENT_PROFILE`、管理者側は`ADMIN_PROFILE`)。管理者側の画面(一覧・編集・並べ替え・カテゴリの区画)は`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない。
 
 ### Error Categories and Responses
 
-| コード                            | 種類(状態コード) | 場面                                           | 文言(文言規則に追加・既存)                                                                                                                                        |
-| --------------------------------- | ---------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `help_article_handle_unavailable` | conflict(409)    | 他の記事の現在のハンドル・同時の保存(7.3・7.6) | 既存「このハンドルは既に使われています。別の文字列を入力してください。」(詳細`fields.handle`)                                                                     |
-| `help_article_conflict`           | conflict(409)    | 開いた後の別の保存(6.8)                        | 「このヘルプ記事は別の画面で変更されました。最新の内容を読み込んでから保存してください。」                                                                        |
-| `help_article_not_found`          | not_found(404)   | 開いた後の削除(6.9・8.4)                       | 「このヘルプ記事は削除されています。」                                                                                                                            |
-| `help_order_outdated`             | conflict(409)    | 並べ替えの対象の追加・削除・移動(9.10・11.11)  | 「並び順が別の画面で変更されました。最新の並びを読み込んでから並べ替えてください。」                                                                              |
-| `help_category_name_taken`        | conflict(409)    | カテゴリ名の重複(11.2)                         | 「同じ名前のカテゴリが既にあります。」                                                                                                                            |
-| `help_category_protected`         | conflict(409)    | 「その他」の名前の変更・削除(11.3)             | 「標準カテゴリ「その他」は変更・削除できません。」                                                                                                                |
-| `help_category_not_found`         | not_found(404)   | 削除済みのカテゴリの変更・削除                 | 「このカテゴリは削除されています。」                                                                                                                              |
-| `validation_error`                | bad_request(400) | 入力                                           | 欄ごとの文言。カテゴリの不在は「カテゴリを選択してください。」、検索語は「検索語は50文字以内で入力してください。」、本文は`markdownTextSchema`の文言(100,000文字) |
-| `unauthenticated`・`forbidden`    | 既存             | 既存                                           | 既存の文言                                                                                                                                                        |
+| コード                            | 種類(状態コード) | 場面                                           | 文言(文言規則に追加・既存)                                                                                    |
+| --------------------------------- | ---------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `help_article_handle_unavailable` | conflict(409)    | 他の記事の現在のハンドル・同時の保存(7.3・7.6) | 既存「このハンドルは既に使われています。別の文字列を入力してください。」(詳細`fields.handle`)                 |
+| `help_article_conflict`           | conflict(409)    | 開いた後の別の保存(6.8)                        | 「このヘルプ記事は別の画面で変更されました。最新の内容を読み込んでから保存してください。」                    |
+| `help_article_not_found`          | not_found(404)   | 開いた後の削除(6.9・8.4)                       | 「このヘルプ記事は削除されています。」                                                                        |
+| `help_order_outdated`             | conflict(409)    | 並べ替えの対象の追加・削除・移動(9.10・11.11)  | 「並び順が別の画面で変更されました。最新の並びを読み込んでから並べ替えてください。」                          |
+| `help_category_name_taken`        | conflict(409)    | カテゴリ名の重複(11.2)                         | 「同じ名前のカテゴリが既にあります。」                                                                        |
+| `help_category_protected`         | conflict(409)    | 「その他」の名前の変更・削除(11.3)             | 「標準カテゴリ「その他」は変更・削除できません。」                                                            |
+| `help_category_not_found`         | not_found(404)   | 削除済みのカテゴリの変更・削除                 | 「このカテゴリは削除されています。」                                                                          |
+| `validation_error`                | bad_request(400) | 入力                                           | 欄ごとの文言。カテゴリの不在は「カテゴリを選択してください。」、本文は`markdownTextSchema`の文言(100,000文字) |
+| `unauthenticated`・`forbidden`    | 既存             | 既存                                           | 既存の文言                                                                                                    |
 
 - 状態・トーストの文言(文言規則に追加): 「ヘルプ記事を作成しました。」「ヘルプ記事を保存しました。」「ヘルプ記事を削除しました。」「並び順を保存しました。」、ヘルプトップの0件「ヘルプ記事はまだありません。」、検索の0件「「◯◯」に一致するヘルプ記事はありません。」「すべてのヘルプ記事を見る」、取得エラー「ヘルプを読み込めませんでした。時間をおいて再試行してください。」、管理者側の0件「ヘルプ記事はまだありません。」「条件に一致するヘルプ記事はありません。」、作成者の削除済み「削除済みの管理者」、旧ハンドルの案内と他の記事の旧ハンドルの解放の案内(HelpArticleHandleField)、カテゴリの変更で末尾に置かれる旨、削除の確認(HelpArticleDeleteButton)、カテゴリの削除の確認の件数と末尾への配置、並べ替えのボタンの名前と移動の読み上げ(ReorderableList)、目次「目次」、同カテゴリ「<カテゴリ名>の他の記事」。
 
@@ -1373,26 +1406,28 @@ export interface ReorderableListProps<T> {
 ## Testing Strategy
 
 - Unit Tests(Bun、`*.unit.test.ts`):
-  - `help-input-rules`: タイトル・サブタイトルの100・101書記素と絵文字、空白だけの拒否、禁止文字、検索語の50・51書記素、本文の上限100,000、ハンドルの規則の50・51文字と予約語が空であること(`admin`・`Support`・`launchstadium`が形式の検査を通る)(2.3・6.1・6.2・7.1・7.2・7.5)。
+  - `help-query-rules`: URLのクエリの`q`の空白だけ・未指定が`undefined`になること、51書記素の語が50書記素に切り詰められ切り詰めの後に前後の空白が除かれること、数として届いた値が文字列に戻ること、`true`・`null`が`undefined`になること(2.6・2.9)。
+  - `help-input-rules`: タイトル・サブタイトルの100・101書記素と絵文字、空白だけの拒否、禁止文字、検索欄の検索語の50・51書記素、本文の上限100,000、ハンドルの規則の50・51文字と予約語が空であること(`admin`・`Support`・`launchstadium`が形式の検査を通る)(2.3・6.1・6.2・7.1・7.2・7.5)。
   - `help-ordering`(common-lib): カテゴリの並び順と同値の作成の古い順・IDの順、ピン留めの群が先頭で各群が並び順の順、`splitPinnedGroups`、記事の無いカテゴリの除外、ピン留めのフッターの順、`moveItem`の上下・端での不変・元の配列を変えないこと(1.2・1.3・3.9・5.2・9.8・9.11・11.7)。
   - `help-handle-change`・`help-category-rules`: `none`・`case-only`・`changed`、標準カテゴリの名前の変更・削除の保護(7.8〜7.10・11.3)。
   - ユースケース(模擬のポート): `HelpArticleEditor`の判定の順序(存在→版→使用中→監査ログの準備→保存→公開だけ索引の依頼)、予約語を判定しないこと、`case-only`で判定しないこと、記事自身の旧ハンドルへの戻し、カテゴリの変更の検出、保存の結果の各種類のコード、作成者を作成時だけ渡すこと、索引の依頼が下書き・並べ替えで呼ばれないこと、並べ替えの`outdated`のコード。`HelpArticleAdminReader`の使用可否の4値と作成者の照会が1回であること、作成者の照会の例外で削除済みになり結果が返ること。`PublicHelpReader`の形式違反・不在・下書きの旧ハンドルの404、旧ハンドルの302、作成者の削除済み、検索語が空の空配列。`HelpCategoryService`の保護・重複・付け替えの件数・並べ替えの`outdated`(3.1〜3.4・4.2〜4.5・6.5〜6.9・6.12・7.3〜7.10・8.2〜8.4・9.4・9.9・9.10・10.1・11.1〜11.4・11.9〜11.11)。
   - `audit-actions/help-center`: 8つの操作種別の名前・対象・理由・詳細の鍵が`defineAuditAction`を通ること(12.3・12.5・12.6)。
   - `help-body-render`: 100,000文字の本文の描画が1,500ms以内(3.6・仮1)。
+  - clientの`graphql/help-center.ts`・adminの`graphql/admin-help-articles.ts`・`admin-help-categories.ts`: `loader`の分岐(検索語の有無・形式違反の404・nullの404・転送の302)と表示用への変換(1.1・2.1・3.2・4.2〜4.4)。
   - adminの`help-article-filter`・`help-article-form-schema`: 条件の解析(不正な値の無視)、作成者の選択肢と削除済みの1つの選択肢、3条件の組み合わせ、フォームの上限(9.3〜9.5・6.1・6.2)。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts`、ローカルD1):
   - スキーマ: `help_categories.name`の大文字小文字だけが違う名前の拒否、`help_articles.handle`の大文字小文字の一意、CHECKの拒否、初期データの「その他」と並び順1(7.2・11.2・11.3)。
   - 検索対象: 公開の記事だけを`read`し、下書きで`undefined`・`isIndexable`が偽、版が`revision`であること、content-processingの処理で索引が作られ本文の語・タイトルの前方一致で検索できること(2.1・2.2・4.1・10.1・10.2)。
   - `D1HelpArticleStore`: 作成・更新・削除・並べ替えが監査ログと同じ一括の書き込みで確定すること、存在と版の確認の文で不在・版の違いが監査ログを含め全体を取り消し、存在して版が一致すれば何も書かないこと、同じハンドルの同時の2つの保存で1つだけ成功すること、他の記事の旧ハンドルと同じハンドルの作成・変更でその旧ハンドルの行が同じ一括の書き込みで消え、保存が取り消されれば残ること、同じ旧ハンドルを2つの保存が同時に取りにいくと一方だけが確定し旧ハンドルの行が残らないこと、下書きの記事が他の記事の旧ハンドルを取った後はそのURLが404になること、旧ハンドルの置き換え、作成とカテゴリの変更で移動先の末尾に置かれピン留めの切り替えでは並び順が変わらないこと、並べ替えで指定の順に並び更新日時と版が変わらないこと、並べ替えの対象の集合が違えば全体が取り消されること、下書きへの変更と削除で索引文書が消え公開で`pending`になること、削除で旧ハンドルが消え同じハンドルを他の記事が使えること、カテゴリの不在の取り消し(4.6・6.5〜6.9・6.12・7.3・7.4・7.6・7.8・8.2・8.3・9.9〜9.11・10.1・10.3・12.3・12.4)。
   - `D1HelpCategoryStore`: 名前の重複、追加で並び順の末尾、削除で下書き・公開の記事が「その他」の末尾へ元の相対的な順で付け替わり`updated_at`・`revision`が変わらず監査ログが同じ一括の書き込みに入ること、並べ替えと集合の違いでの取り消し(11.2・11.4・11.6・11.9〜11.11)。
-  - `D1PublicHelpStore`・スキーマモジュール: `helpCenter`の並び(カテゴリの並び順・ピン留めの群・記事の並び順)と下書きの除外、`helpArticle`の大文字小文字の解決・`HelpArticleRedirect`・下書きと旧ハンドルのnull・解放された旧ハンドルが新しい記事を表示すること、`helpArticleSearch`の51文字の拒否と下書きの除外と記号を含む語、`pinnedHelpArticles`の順、管理者側の操作の`viewer`での照会の許可と変更・並べ替えの`forbidden`、`client`・`admin`の呼び出し元の取り違えの拒否、各エラーコード、`HelpArticleAuthor.avatar`の隔離中の`objectKey`のnull、作成者が削除された記事の`author`のnull、100,000文字の本文の保存(1.1〜1.4・2.1〜2.3・3.1〜3.4・4.1〜4.5・5.1・5.2・6.1・12.1)。
+  - `D1PublicHelpStore`・スキーマモジュール: `helpCenter`の並び(カテゴリの並び順・ピン留めの群・記事の並び順)と下書きの除外、`helpArticle`の大文字小文字の解決・`HelpArticleRedirect`・下書きと旧ハンドルのnull・解放された旧ハンドルが新しい記事を表示すること、`helpArticleSearch`の51文字の語の切り詰め(拒否しない)と下書きの除外と記号を含む語、`pinnedHelpArticles`の順、管理者側の操作の`viewer`での照会の許可と変更・並べ替えの`forbidden`、`client`・`admin`の呼び出し元の取り違えの拒否(入力が不正でも入力の検証より前に`forbidden`)、各エラーコード、`HelpArticleAuthor.avatar`の隔離中の`objectKey`のnull、作成者が削除された記事の`author`のnull、100,000文字の本文の保存(1.1〜1.4・2.1・2.2・2.9・3.1〜3.4・4.1〜4.5・5.1・5.2・6.1・12.1)。
 - E2E/UI Tests:
-  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `HelpSearchForm`の51文字の表示と移動しないこと、`HelpCategoryList`の見出しと項目・0件、`HelpSearchResults`の強調と0件、`HelpArticlePage`の本文の別オリジンのリンクの`target`と`rel`・更新日時の`<time datetime>`・目次のリンクで見出しが固定ヘッダーに隠れないこと、`HelpArticleAuthor`の削除済み、`HelpTableOfContents`のPCの`nav`とモバイルの`details`・見出しが無いとき、`RelatedHelpArticles`の0件、`PinnedHelpLinks`の順と失敗で何も描かないこと、`HelpArticleTable`・`HelpArticleFilters`の列と絞り込みとURL、`HelpArticleForm`のフォーカスアウトの検証・使用中と旧ハンドルの解放の表示・旧ハンドルの案内・閲覧のみの無効・サーバーのエラーの表示・100,000文字のカウンター、`HelpArticleDeleteButton`の確認、`ReorderableList`の上下の移動・端のボタンの無効・フォーカスの維持・読み上げ、`HelpArticleOrderEditor`の2つの群と保存と古い並びの表示、`HelpCategoryOrderEditor`の編集と保存、`HelpCategorySection`の件数の確認と閲覧のみ(1.4〜1.6・2.3〜2.5・3.3〜3.9・5.1〜5.3・6.2〜6.5・6.8〜6.12・7.7・7.11・8.1・8.5・9.2〜9.6・9.8〜9.10・11.5・11.9・11.11・12.2)。ルートの`loader`の404・302(`statusCode`の明示とクエリの引き継ぎ)・canonical・検索のクエリの復元(2.6・2.7・3.2・4.2〜4.4)。
-  - E2E(`e2e/admin/help-center.e2e.test.ts`、モデレーター): カテゴリ「使い方」と「料金」を追加→「料金」を「使い方」より前へ並べ替え→公開・ピン留めの記事Aと公開の記事C・D(「使い方」)と下書きの記事Bを作成→記事の並べ替えでDをCより前に→利用者側の`/help`で「料金」の後に「使い方」が並びAが先頭・D・Cの順でBが出ないこと、フッターにAのタイトル、`/help/<Bのハンドル>`が404→`/help/<Aのハンドルの大文字>`で200とcanonical、目次のリンクで見出しへ移動→検索でAが出ることとBが出ないこと(索引の更新を待つ)→Aのハンドルを変更して旧URLが302で新しいURLへ移ること(転送を追わない要求で状態と`Location`)→CのハンドルをAの旧ハンドルに変更して、そのURLがCを表示し302にならないこと→「使い方」を削除してA・C・Dが「その他」に出ること→Aを削除して新しいURLが404になること→監査ログの画面に各操作の表示名が出ること→閲覧のみの管理者で一覧と並び順は見えるが「新規作成」と並べ替えのボタンが無いこと(1.2・1.3・4.2・4.4・5.1・7.4・7.8・8.2・8.3・9.8・9.9・11.4・11.9・12.2・12.6・13.3)。
+  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `HelpSearchForm`の51文字の表示と移動しないこと・41文字からの文字数の表示と上限の超過と回復の読み上げ・消去のボタン・URLの外からの変更での入力欄の更新、`HelpCategoryList`の見出しと項目・0件、`HelpSearchResults`の強調と0件、`HelpArticlePage`の本文の別オリジンのリンクの`target`と`rel`・更新日時の`<time datetime>`・目次のリンクで見出しが固定ヘッダーに隠れないこと、`HelpArticleAuthor`の削除済み、`HelpTableOfContents`のPCの`nav`とモバイルの`details`・見出しが無いとき、`RelatedHelpArticles`の0件、`PinnedHelpLinks`の順と失敗で何も描かないこと、`HelpArticleTable`・`HelpArticleFilters`の列と絞り込みとURL、`HelpArticleForm`のフォーカスアウトの検証・使用中と旧ハンドルの解放の表示・旧ハンドルの案内・閲覧のみの無効・サーバーのエラーの表示・100,000文字のカウンター、`HelpArticleDeleteButton`の確認、`ReorderableList`の上下の移動・端のボタンの無効・フォーカスの維持・読み上げ、`HelpArticleOrderEditor`の2つの群と保存と古い並びの表示、`HelpCategoryOrderEditor`の編集と保存、`HelpCategorySection`の件数の確認と閲覧のみ(1.4〜1.6・2.3〜2.5・3.3〜3.9・5.1〜5.3・6.2〜6.5・6.8〜6.12・7.7・7.11・8.1・8.5・9.2〜9.6・9.8〜9.10・11.5・11.9・11.11・12.2)。ルートの`loader`の404・302(`statusCode`の明示とクエリの引き継ぎ)・canonical・検索のクエリの復元・51書記素のクエリ`q`の切り詰め(2.6・2.7・2.9・3.2・4.2〜4.4)。
+  - E2E(`e2e/admin/help-center.e2e.test.ts`と手順の`help-center-steps.ts`、モデレーター): カテゴリ「使い方」と「料金」を追加→「料金」を「使い方」より前へ並べ替え→公開・ピン留めの記事Aと公開の記事C・D(「使い方」)と下書きの記事Bを作成→記事の並べ替えでDをCより前に→利用者側の`/help`で「料金」の後に「使い方」が並びAが先頭・D・Cの順でBが出ないこと、フッターにAのタイトル、`/help/<Bのハンドル>`が404→`/help/<Aのハンドルの大文字>`で200とcanonical、目次のリンクで見出しへ移動→検索でAが出ることとBが出ないこと(索引の更新を待つ)→Aのハンドルを変更して旧URLが302で新しいURLへ移ること(転送を追わない要求で状態と`Location`)→CのハンドルをAの旧ハンドルに変更して、そのURLがCを表示し302にならないこと→「使い方」を削除してA・C・Dが「その他」に出ること→Aを削除して新しいURLが404になること→監査ログの画面に各操作の表示名が出ること→閲覧のみの管理者で一覧と並び順は見えるが「新規作成」と並べ替えのボタンが無いこと(1.2・1.3・4.2・4.4・5.1・7.4・7.8・8.2・8.3・9.8・9.9・11.4・11.9・12.2・12.6・13.3)。
 
 ## Security Considerations
 
-- 認可: 変更・並べ替えの操作はモデレーター以上、照会は全ロール(`requireAdmin`)。利用者側の操作は呼び出し元`client`に限る。作成者のIDは利用者側へ出さない。
+- 認可: 変更・並べ替えの操作はモデレーター以上、照会は全ロール(`requireAdmin`)。利用者側の操作は`clientOnly`で呼び出し元`client`に、管理者側の操作は`adminOnly`で呼び出し元`admin`に限る。作成者のIDは利用者側へ出さない。
 - XSS: 本文はcontent-processingのサニタイズを経て描画し、タイトル・サブタイトル・カテゴリ名はReactのテキストとして描く。検索結果の強調は`HighlightedText`(テキストの分割)で行う。
 - 検索式の注入: 検索語は`buildFtsMatchExpression`で引用し、バインド変数で渡す(FR-FTS-002)。並べ替えのIDの配列はJSONの文字列としてバインド変数で渡す。
 - 情報の推測の防止: 存在しない・下書き・形式違反のハンドルは同一の404。下書きの記事の旧ハンドルも転送しない。
@@ -1415,16 +1450,16 @@ export interface ReorderableListProps<T> {
 
 ### 本specが定める固有の値
 
-| 項目                   | 値                                                                                                                                                                                           |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 上限                   | タイトル・サブタイトル各100書記素、本文100,000書記素(仮1)、ハンドル50文字、検索語50書記素、検索結果100件、カテゴリ名30書記素、理由500書記素、並べ替え1回1,000件                              |
-| 予約語                 | なし(仮2)                                                                                                                                                                                    |
-| 並び順                 | カテゴリと記事の`sort_order`(管理者が指定、仮3)。カテゴリ内はピン留めの群を先頭。追加・作成・カテゴリの変更・付け替えは末尾                                                                  |
-| 標準カテゴリ           | 「その他」・`01JC0000000000000000000001`・並び順1                                                                                                                                            |
-| 検索対象               | `help-article`(索引文書`help_article_search_documents`、重みはタイトル10・サブタイトル5・キーワード1)                                                                                        |
-| 監査ログの操作種別     | `help-article.create`・`help-article.update`・`help-article.delete`・`help-article.reorder`・`help-category.create`・`help-category.rename`・`help-category.delete`・`help-category.reorder` |
-| 管理画面               | メニュー「ヘルプ記事」`/help-articles`(100)、記事の並べ替え`/help-articles/order`、区画`help-center.help-categories`(20)                                                                     |
-| 本文のリンク           | 別オリジンは`noopener`、`idScope`は表示`article`・プレビュー`preview`                                                                                                                        |
-| 描画の予算             | 100,000文字の本文を1,500ms以内(開発コンテナのBun)                                                                                                                                            |
-| 4:21のジョブ・波及処理 | なし(roadmapの帯の「使用中の値」は「—」)                                                                                                                                                     |
-| 技術ドキュメントの番号 | `frontend/011-table-of-contents.md`(新規)、`backend/011-handle-namespaces.md`(節の追記)                                                                                                      |
+| 項目                   | 値                                                                                                                                                                                              |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 上限                   | タイトル・サブタイトル各100書記素、本文100,000書記素(仮1)、ハンドル50文字、検索語50書記素(40書記素を超えると文字数を表示)、検索結果100件、カテゴリ名30書記素、理由500書記素、並べ替え1回1,000件 |
+| 予約語                 | なし(仮2)                                                                                                                                                                                       |
+| 並び順                 | カテゴリと記事の`sort_order`(管理者が指定、仮3)。カテゴリ内はピン留めの群を先頭。追加・作成・カテゴリの変更・付け替えは末尾                                                                     |
+| 標準カテゴリ           | 「その他」・`01JC0000000000000000000001`・並び順1                                                                                                                                               |
+| 検索対象               | `help-article`(索引文書`help_article_search_documents`、重みはタイトル10・サブタイトル5・キーワード1)                                                                                           |
+| 監査ログの操作種別     | `help-article.create`・`help-article.update`・`help-article.delete`・`help-article.reorder`・`help-category.create`・`help-category.rename`・`help-category.delete`・`help-category.reorder`    |
+| 管理画面               | メニュー「ヘルプ記事」`/help-articles`(100)、記事の並べ替え`/help-articles/order`、区画`help-center.help-categories`(20)                                                                        |
+| 本文のリンク           | 別オリジンは`noopener`、`idScope`は表示`article`・プレビュー`preview`                                                                                                                           |
+| 描画の予算             | 100,000文字の本文を1,500ms以内(開発コンテナのBun)                                                                                                                                               |
+| 4:21のジョブ・波及処理 | なし(roadmapの帯の「使用中の値」は「—」)                                                                                                                                                        |
+| 技術ドキュメント       | `frontend/008-markdown-editor-and-content.md`の「目次の作り方」(追記、G2)、`backend/011-handle-namespaces.md`(節の追記)                                                                         |
