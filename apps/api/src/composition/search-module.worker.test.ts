@@ -118,7 +118,7 @@ describe('APIサーバーの検索のモジュール', () => {
 
     expect(
       container.get<SearchTargetCatalog>(SEARCH_TYPES.TargetCatalog).names(),
-    ).toEqual(['product']);
+    ).toEqual(['product', 'help-article']);
     expect(container.get(SEARCH_TYPES.IndexStore)).toBeInstanceOf(
       D1SearchIndexRepository,
     );
@@ -175,6 +175,13 @@ describe('定期実行からの日次の再抽出', () => {
         targets: [
           {
             target: 'product',
+            status: 'completed',
+            found: 0,
+            requested: 0,
+            failed: 0,
+          },
+          {
+            target: 'help-article',
             status: 'completed',
             found: 0,
             requested: 0,
