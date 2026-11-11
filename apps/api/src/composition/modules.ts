@@ -32,6 +32,7 @@ import { ADMIN_MODULE } from './admin-module.ts';
 import { DIRECTORY_MODULE } from './directory-module.ts';
 import { API_EMAIL_MODULE } from './email-module.ts';
 import { GRAPHQL_SCHEMA_MODULES } from './graphql-modules.ts';
+import { HELP_MODULE } from './help-module.ts';
 import { IDENTITY_MODULE } from './identity-module.ts';
 import { INQUIRY_MODULE } from './inquiry-module.ts';
 import { INTERNAL_ROUTES } from './internal-routes.ts';
@@ -127,6 +128,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   { name: 'uploader-eligibility', bindings: UPLOADER_ELIGIBILITY_BINDINGS },
   LEGAL_MODULE,
   INQUIRY_MODULE,
+  HELP_MODULE,
   API_PAYMENTS_PLATFORM_MODULE,
   API_PAYMENTS_MODULE,
   API_ULTRAS_PLATFORM_MODULE,
