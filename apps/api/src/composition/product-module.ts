@@ -1,9 +1,5 @@
 import type { Hono } from 'hono';
-import {
-  ContainerModule,
-  type ResolutionContext,
-  type ServiceIdentifier,
-} from 'inversify';
+import { ContainerModule } from 'inversify';
 
 import type { Database } from '../../db/client.ts';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
@@ -80,6 +76,7 @@ import {
 } from '../infrastructure/product/product-save-hooks.ts';
 import { ProductWithdrawalSyncHandler } from '../infrastructure/product/product-withdrawal-sync-handler.ts';
 import { SentryProductIncidentReporter } from '../infrastructure/product/sentry-product-incident-reporter.ts';
+import { resolverOf } from './container-resolver.ts';
 import {
   LAUNCH_SUMMARY_SOURCES,
   PRODUCT_LOCK_SOURCES,
@@ -87,11 +84,6 @@ import {
 } from './product-decision-sources.ts';
 import { PRODUCT_LIFECYCLE_SYNC_HANDLERS } from './product-lifecycle-sync-handlers.ts';
 import { PRODUCT_SAVE_HOOKS } from './product-save-hooks.ts';
-
-const resolverOf =
-  (context: ResolutionContext) =>
-  <T>(identifier: ServiceIdentifier<T>): T =>
-    context.get(identifier);
 
 // 表示用の照会とハンドルの対象(PRODUCT_PLATFORM_TYPES)・利用者の解決(PROFILE_PLATFORM_TYPES)・ログイン中の利用者(IDENTITY_PLATFORM_TYPES)・ファイル(MEDIA_TYPES)・時計とID生成とデータベース(PLATFORM_TYPES)・Ultrasの判定(ULTRAS_TYPES)・監査ログの記録(ADMIN_PLATFORM_TYPES)は各機能の共通の束縛を使う
 export const PRODUCT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {

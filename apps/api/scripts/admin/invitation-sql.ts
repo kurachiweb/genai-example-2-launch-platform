@@ -1,3 +1,7 @@
+import { sqlStringLiteral } from './sql-string-literal.ts';
+
+export { sqlStringLiteral } from './sql-string-literal.ts';
+
 export interface InvitationSqlInput {
   readonly existingInvitedAdminId: string | undefined;
   readonly newAdminId: string;
@@ -8,21 +12,11 @@ export interface InvitationSqlInput {
   readonly expiresAt: Date;
 }
 
-const CONTROL_CHARACTER = /\p{Cc}/u;
-
 const SUPER_ADMIN_ROLE = sqlStringLiteral('super_admin');
 
 const INVITED_STATUS = sqlStringLiteral('invited');
 
 const INVITATION_PURPOSE = sqlStringLiteral('invitation');
-
-// 値はwranglerのコマンドの引数やSQLのファイルへ埋め込まれ、文の分割をwranglerに委ねるため、引用符の内側でも扱いが揺れ得る制御文字は受け付けない
-export function sqlStringLiteral(value: string): string {
-  if (CONTROL_CHARACTER.test(value)) {
-    throw new Error('SQLの文字列のリテラルに制御文字は使えません。');
-  }
-  return `'${value.replaceAll("'", "''")}'`;
-}
 
 function epochMillisLiteral(date: Date): string {
   const millis = date.getTime();

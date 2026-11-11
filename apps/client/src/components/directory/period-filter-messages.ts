@@ -2,8 +2,6 @@ import {
   formatPeriodLabel,
   type BusinessDateString,
   type PeriodPreset,
-  type PeriodRange,
-  periodKeyOf,
 } from '../../../common-lib/directory/directory-period.ts';
 
 export const PERIOD_FILTER_LABEL = '期間';
@@ -42,14 +40,3 @@ export const periodDateLabel = (
   date: BusinessDateString,
   businessToday: BusinessDateString,
 ): string => formatPeriodLabel({ from: date, to: date }, businessToday);
-
-// 名前や読み上げに使う文字列の期間の表示。画面に描くときは日付を<time>要素で示すPeriodLabelを使う
-export const periodDisplayLabel = (
-  range: PeriodRange,
-  businessToday: BusinessDateString,
-): string => {
-  const key = periodKeyOf(range, businessToday);
-  return key === 'custom'
-    ? formatPeriodLabel(range, businessToday)
-    : PERIOD_OPTION_LABELS[key];
-};

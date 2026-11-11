@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 
 import { SEARCH_INDEXES } from '../../../../db/search/search-indexes.ts';
 import { createSearchTargetRegistry } from '../search-target-definition.ts';

@@ -1,7 +1,8 @@
-import { qualifierWindow } from '../../apps/backend-lib/core/match/match-model.ts';
+import { sqlStringLiteral } from '../../apps/api/scripts/admin/sql-string-literal.ts';
+import type { MatchWindow } from '../../apps/backend-lib/core/match/match-model.ts';
 import { parseBusinessDate } from '../../apps/backend-lib/core/time/business-time.ts';
 import { PRODUCT_CATEGORY_OTHER_ID } from '../../apps/common-lib/product/product-category-constants.ts';
-import { type LocalD1Row, sqlStringLiteral } from './local-d1.ts';
+import type { LocalD1Row } from './local-d1-command.ts';
 import { TEST_EMAIL_DOMAIN } from './test-email.ts';
 
 export interface EndedQualifierInput {
@@ -30,8 +31,10 @@ export interface EndedQualifierIds {
   readonly upvoteId: string;
 }
 
+// 単体テストのカバレッジが読み込んだ他のアプリのファイルを分母に数えるため、予選の時間帯はマッチのモデルを読まずに呼び出し側から受け取る
 export interface EndedQualifierWrite {
   readonly businessDate: string;
+  readonly window: MatchWindow;
   readonly now: Date;
   readonly ids: EndedQualifierIds;
 }
@@ -39,6 +42,7 @@ export interface EndedQualifierWrite {
 export interface ListedProductsInput {
   readonly count: number;
   readonly matchDate: string;
+  readonly window: MatchWindow;
   readonly now: Date;
   readonly suffix: string;
   readonly nextId: () => string;
@@ -69,6 +73,7 @@ export interface ListedProductsPlan {
   readonly owner: ListedProductsOwner;
   readonly products: readonly PlannedListedProduct[];
   readonly matchDate: string;
+  readonly window: MatchWindow;
   readonly now: Date;
 }
 
@@ -222,15 +227,12 @@ export function parseEndedQualifierLookup(
 // 開始を記録済みで終了の日時を過ぎた未確定の予選を作り、勝つ側にだけサポーターのUpvoteを入れて側の集計値をUpvoteの記録とそろえる。確定と後続の処理は23:40のジョブに任せる
 export function endedQualifierInsertSql(
   resolved: ResolvedQualifier,
-  { businessDate, now, ids }: EndedQualifierWrite,
+  { businessDate, window, now, ids }: EndedQualifierWrite,
 ): string {
   const date = sqlStringLiteral(parseBusinessDate(businessDate));
   const nowMs = now.getTime();
   const startsAt = new Date(
-    Math.min(
-      qualifierWindow(parseBusinessDate(businessDate)).startsAt.getTime(),
-      nowMs - STARTED_AGO_MS,
-    ),
+    Math.min(window.startsAt.getTime(), nowMs - STARTED_AGO_MS),
   );
   const upvotedAt = new Date(nowMs - UPVOTED_AGO_MS);
   const endsAt = new Date(nowMs - ENDED_AGO_MS);
@@ -268,6 +270,7 @@ const listedNumberOf = (index: number): string =>
 export function planListedProducts({
   count,
   matchDate,
+  window,
   now,
   suffix,
   nextId,
@@ -309,6 +312,7 @@ export function planListedProducts({
     owner,
     products,
     matchDate: parseBusinessDate(matchDate),
+    window,
     now,
   };
 }
@@ -318,16 +322,13 @@ export function listedProductsInsertSql({
   owner,
   products,
   matchDate,
+  window,
   now,
 }: ListedProductsPlan): string {
   const created = timeLiteral(now);
   const date = sqlStringLiteral(matchDate);
-  const kickoff = timeLiteral(
-    qualifierWindow(parseBusinessDate(matchDate)).startsAt,
-  );
-  const fullTime = timeLiteral(
-    qualifierWindow(parseBusinessDate(matchDate)).endsAt,
-  );
+  const kickoff = timeLiteral(window.startsAt);
+  const fullTime = timeLiteral(window.endsAt);
   const rows = (valuesOfProduct: (product: PlannedListedProduct) => string[]) =>
     products.map((product) => valuesOf(valuesOfProduct(product))).join(', ');
   return [

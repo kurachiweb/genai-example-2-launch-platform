@@ -3,8 +3,6 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { join } from 'node:path';
 
-import { qualifierWindow } from '../../apps/backend-lib/core/match/match-model.ts';
-import { parseBusinessDate } from '../../apps/backend-lib/core/time/business-time.ts';
 import { readNestedD1Migrations } from '../../config/vitest/read-nested-d1-migrations.ts';
 import {
   type EndedQualifierInput,
@@ -32,10 +30,12 @@ const OTHER_CATEGORY_ID = '01JD0000000000000000000000';
 
 const BUSINESS_DATE = '2026-11-11';
 
-const NOW = new Date(
-  qualifierWindow(parseBusinessDate(BUSINESS_DATE)).startsAt.getTime() +
-    10 * 60 * 60 * 1000,
-);
+const WINDOW = {
+  startsAt: new Date('2026-11-11T08:00:00.000Z'),
+  endsAt: new Date('2026-11-12T07:40:00.000Z'),
+};
+
+const NOW = new Date(WINDOW.startsAt.getTime() + 10 * 60 * 60 * 1000);
 
 const INPUT: EndedQualifierInput = {
   winnerHandle: 'Winner-Product',
@@ -208,6 +208,7 @@ describe('endedQualifierInsertSql', () => {
     db.run(
       endedQualifierInsertSql(RESOLVED, {
         businessDate: BUSINESS_DATE,
+        window: WINDOW,
         now: NOW,
         ids,
       }),
@@ -225,6 +226,7 @@ describe('endedQualifierInsertSql', () => {
     db.run(
       endedQualifierInsertSql(RESOLVED, {
         businessDate: BUSINESS_DATE,
+        window: WINDOW,
         now: NOW,
         ids,
       }),
@@ -281,14 +283,12 @@ describe('endedQualifierInsertSql', () => {
   });
 
   test('業務日付の開始の直後でも開始の日時を終了の日時より前にする', () => {
-    const justAfterKickoff = new Date(
-      qualifierWindow(parseBusinessDate(BUSINESS_DATE)).startsAt.getTime() +
-        1000,
-    );
+    const justAfterKickoff = new Date(WINDOW.startsAt.getTime() + 1000);
 
     db.run(
       endedQualifierInsertSql(RESOLVED, {
         businessDate: BUSINESS_DATE,
+        window: WINDOW,
         now: justAfterKickoff,
         ids,
       }),
@@ -305,10 +305,16 @@ describe('endedQualifierInsertSql', () => {
 describe('planListedProducts・listedProductsInsertSql', () => {
   const MATCH_DATE = '2026-11-10';
 
+  const MATCH_WINDOW = {
+    startsAt: new Date('2026-11-10T08:00:00.000Z'),
+    endsAt: new Date('2026-11-11T07:40:00.000Z'),
+  };
+
   const plan = () =>
     planListedProducts({
       count: 21,
       matchDate: MATCH_DATE,
+      window: MATCH_WINDOW,
       now: NOW,
       suffix: 'a1b2c3d4',
       nextId,
@@ -340,12 +346,14 @@ describe('planListedProducts・listedProductsInsertSql', () => {
     expect(queryRows(LISTED_COUNT_SQL)).toStrictEqual([{ listed: 21 }]);
     expect(
       queryRows(
-        `SELECT DISTINCT m.kind, m.decision, m.started_at = m.decided_at AS decided_at_kickoff, e.slot, e.upvote_count FROM matches m JOIN match_entries e ON e.match_id = m.id`,
+        `SELECT DISTINCT m.kind, m.decision, m.starts_at, m.ends_at, m.started_at = m.decided_at AS decided_at_kickoff, e.slot, e.upvote_count FROM matches m JOIN match_entries e ON e.match_id = m.id`,
       ),
     ).toStrictEqual([
       {
         kind: 'qualifier',
         decision: 'bye',
+        starts_at: MATCH_WINDOW.startsAt.getTime(),
+        ends_at: MATCH_WINDOW.endsAt.getTime(),
         decided_at_kickoff: 1,
         slot: 1,
         upvote_count: 0,
@@ -408,6 +416,7 @@ describe('planListedProducts・listedProductsInsertSql', () => {
         planListedProducts({
           count,
           matchDate: MATCH_DATE,
+          window: MATCH_WINDOW,
           now: NOW,
           suffix: 'a1b2c3d4',
           nextId,

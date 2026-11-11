@@ -15,7 +15,10 @@ import {
   downloadPathOf,
   encodeFileNameHeader,
 } from '../../common-lib/media/upload-protocol.ts';
-import { countGraphemes } from '../../common-lib/text/graphemes.ts';
+import {
+  countGraphemes,
+  truncateGraphemes,
+} from '../../common-lib/text/graphemes.ts';
 
 const APP_DIR = join(import.meta.dirname, '..');
 
@@ -47,6 +50,7 @@ describe('共用部品の兄弟の相対パスでの参照', () => {
 
   test('読み込んだ共用部品の関数を呼べる', () => {
     expect(countGraphemes('👨‍👩‍👧あ')).toBe(2);
+    expect(truncateGraphemes('👨‍👩‍👧あい', 2)).toBe('👨‍👩‍👧あ');
   });
 
   test.each(COMMON_LIB_RUNTIME_PACKAGES)(

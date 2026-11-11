@@ -1,5 +1,7 @@
 import { randomBytes } from 'node:crypto';
 
+import { qualifierWindow } from '../../apps/backend-lib/core/match/match-model.ts';
+import { parseBusinessDate } from '../../apps/backend-lib/core/time/business-time.ts';
 import { DIRECTORY_PAGE_SIZE } from '../../apps/common-lib/directory/directory-query-rules.ts';
 import { moveLaunchesToDate } from '../client/match-steps.ts';
 import {
@@ -70,7 +72,12 @@ export async function createEndedQualifier(
     upvoteId: nextFixtureId(),
   };
   const inserted = await executeLocalD1(
-    endedQualifierInsertSql(resolved, { businessDate, now: new Date(), ids }),
+    endedQualifierInsertSql(resolved, {
+      businessDate,
+      window: qualifierWindow(parseBusinessDate(businessDate)),
+      now: new Date(),
+      ids,
+    }),
   );
   if (inserted.length !== 1) {
     throw new Error(
@@ -88,6 +95,7 @@ export async function createListedProducts({
   const plan = planListedProducts({
     count,
     matchDate,
+    window: qualifierWindow(parseBusinessDate(matchDate)),
     now: new Date(),
     suffix: randomBytes(SUFFIX_BYTES).toString('hex'),
     nextId: nextFixtureId,

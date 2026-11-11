@@ -14,7 +14,7 @@ export interface PeriodLabelProps {
   readonly businessToday: BusinessDateString;
 }
 
-// プリセットと一致する期間はプリセットの名前、一致しない期間は両端の業務日付を<time>要素で示す。文字の並びはperiodDisplayLabelと同じ
+// プリセットと一致する期間はプリセットの名前、一致しない期間は両端の業務日付を<time>要素で示す
 export function PeriodLabel({ range, businessToday }: PeriodLabelProps) {
   const key = periodKeyOf(range, businessToday);
   if (key !== 'custom') {

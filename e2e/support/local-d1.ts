@@ -11,7 +11,7 @@ import {
 export type { LocalD1Row } from './local-d1-command.ts';
 
 // SQLへ埋め込む値は、招待の発行コマンドと同じ規則で必ずこの関数で文字列のリテラルにする
-export { sqlStringLiteral } from '../../apps/api/scripts/admin/invitation-sql.ts';
+export { sqlStringLiteral } from '../../apps/api/scripts/admin/sql-string-literal.ts';
 
 const API_DIR = join(import.meta.dirname, '..', '..', 'apps', 'api');
 

@@ -1,9 +1,5 @@
 import type { Hono } from 'hono';
-import {
-  ContainerModule,
-  type ResolutionContext,
-  type ServiceIdentifier,
-} from 'inversify';
+import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
@@ -46,12 +42,8 @@ import { ProductIndexRemovalSyncHandler } from '../infrastructure/directory/prod
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import type { ProductLifecycleSyncHandler } from '../infrastructure/product/product-lifecycle-sync-handler.ts';
 import type { ProductSaveHook } from '../infrastructure/product/product-save-hooks.ts';
+import { resolverOf } from './container-resolver.ts';
 import { DIRECTORY_ITEM_METRIC_SOURCES } from './directory-item-metric-sources.ts';
-
-const resolverOf =
-  (context: ResolutionContext) =>
-  <T>(identifier: ServiceIdentifier<T>): T =>
-    context.get(identifier);
 
 // 一覧の照会と勝利したプロダクトの記録(DIRECTORY_PLATFORM_TYPES)・プロダクトとカテゴリの照会と要約の供給元(PRODUCT_PLATFORM_TYPES・PRODUCT_TYPES)・マッチとサポーターの照会(MATCH_PLATFORM_TYPES)・索引文書の文と更新の要求(SEARCH_TYPES)は各機能の束縛を使う
 export const DIRECTORY_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {

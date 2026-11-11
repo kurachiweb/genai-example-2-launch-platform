@@ -180,7 +180,7 @@ export const articleSearchIndex = defineSearchIndex({
 
 - 両アプリの合成ルートは`createSearchPlatformModule(SEARCH_TARGETS, <アプリ名>)`を登録する。登録の検証(`createSearchTargetRegistry`)はモジュールを作るisolateの起動時に行い、誤りを最初の処理単位ではなく起動時に検出する。`<アプリ名>`はログのカテゴリの先頭になる(「[カテゴリ](../infra/004-logging-and-error-tracking.md#カテゴリ)」)。
 - `createSearchPlatformModule`は、検索対象の一覧(`SEARCH_TYPES.TargetCatalog`)・索引文書の書き込み(`IndexStore`)・元データの読み出し(`SourceProvider`)・更新の要求(`RefreshRequester`)・更新待ちの印と削除の文(`IndexStatements`)を、処理単位のコンテナへ束縛する。
-- 単体テスト`workers/search/targets/index.unit.test.ts`(共通ライブラリの検査担当のアプリの単体テストで実行する。検査担当は「[JavaScript・TypeScriptの記法と設定ファイルの規約](../coding/001-javascript-typescript-conventions.md#前提と用語)」の用語)が、`SEARCH_TARGETS`の登録が成功すること、全ての検索対象の`index`が`SEARCH_INDEXES`にあること(参照が同じであること)を確かめる。
+- Workers統合テスト`workers/search/targets/index.worker.test.ts`(共通ライブラリの検査担当のアプリのWorkers統合テストで実行する。検査担当は「[JavaScript・TypeScriptの記法と設定ファイルの規約](../coding/001-javascript-typescript-conventions.md#前提と用語)」の用語)が、`SEARCH_TARGETS`の登録が成功すること、全ての検索対象の`index`が`SEARCH_INDEXES`にあること(参照が同じであること)を確かめる。検索対象の定義は元データを読むためにデータベースの照会の部品を読み込み、単体テストで読み込むとそれらのファイルが単体テストのカバレッジの分母に入って閾値を下回るため、単体テストにしない。
 
 ### 検索対象の定義
 

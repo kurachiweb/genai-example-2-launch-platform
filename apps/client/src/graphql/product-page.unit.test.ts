@@ -1,7 +1,14 @@
 import { describe, expect, mock, test } from 'bun:test';
-import type { InfiniteData, QueryClient } from '@tanstack/react-query';
+import { type InfiniteData, QueryClient } from '@tanstack/react-query';
 import { isNotFound, isRedirect } from '@tanstack/react-router';
 
+import {
+  graphqlResponse,
+  htmlResponse,
+  recordingApi,
+  renderContextOf,
+  runInStartRequest,
+} from '../../lib/test/start-request-fixtures.ts';
 import { GraphQLClientError } from '../../lib/utilities/graphql/graphql-result.ts';
 import {
   documentIdOf,
@@ -578,5 +585,102 @@ describe('toMatchSupporters', () => {
         ),
       ),
     ).toStrictEqual([supporterOf('a'), supporterOf('b'), supporterOf('c')]);
+  });
+});
+
+// 外部へ通信しないよう、描画の文脈のAPIを偽物にしてサーバーの分岐で取得し、APIへ送った識別子と変数を読み取る
+const runThroughApi = async (
+  run: (queryClient: QueryClient) => Promise<unknown>,
+  respond: () => Response,
+) => {
+  const api = recordingApi(() => Promise.resolve(respond()));
+  const queryClient = new QueryClient();
+  let result: unknown;
+  await runInStartRequest({
+    context: renderContextOf({ api, reported: [] }),
+    render: async () => {
+      result = await run(queryClient);
+      return htmlResponse();
+    },
+  });
+  const sent = await Promise.all(api.requests.map((request) => request.json()));
+  return { result, sent };
+};
+
+describe('取得の処理', () => {
+  const DATA = { marker: 'response' };
+
+  test.each([
+    [
+      '詳細ページ',
+      (client: QueryClient) =>
+        client.query(productPageQueryOptions(VIEWER, 'Pitch-Notes')),
+      documentIdOf(ClientProductPageDocument),
+      { handle: 'Pitch-Notes' },
+    ],
+    [
+      '開催中のマッチ(ハンドルは照会と同じく同一視した形)',
+      (client: QueryClient) =>
+        client.query(productLiveMatchQueryOptions(VIEWER, 'Pitch-Notes')),
+      documentIdOf(ClientProductLiveMatchDocument),
+      { productHandle: 'pitch-notes' },
+    ],
+    [
+      '投稿者のフォロー中の照会',
+      (client: QueryClient) =>
+        client.query(ownerFollowStatusQueryOptions(VIEWER, 'scout_ken')),
+      documentIdOf(ClientOwnerFollowStatusDocument),
+      { handle: 'scout_ken' },
+    ],
+    [
+      '投稿者本人向けの照会',
+      (client: QueryClient) =>
+        client.query(productOwnerStatusQueryOptions(VIEWER, 'Pitch-Notes')),
+      documentIdOf(ClientProductOwnerStatusDocument),
+      { productHandle: 'Pitch-Notes' },
+    ],
+  ] as const)(
+    '%sの取得は、キーと同じ変数で操作を実行して結果のdataを返す',
+    async (_case, run, documentId, variables) => {
+      const { result, sent } = await runThroughApi(run, () =>
+        graphqlResponse({ data: DATA }),
+      );
+
+      expect(sent).toStrictEqual([{ documentId, variables }]);
+      expect(result).toStrictEqual(DATA);
+    },
+  );
+
+  test('サポーターの一覧は、最初のページを件数だけ、続きのページをカーソルも変数にして実行する', async () => {
+    const firstPage = supportersPageOf(['a'], {
+      hasNextPage: true,
+      endCursor: 'cursor-1',
+    });
+    const variables = {
+      ...SUPPORTERS_TARGET,
+      first: MATCH_SUPPORTERS_PAGE_SIZE,
+    };
+
+    const { result, sent } = await runThroughApi(
+      async (client) => {
+        const options = matchSupportersQueryOptions(VIEWER, SUPPORTERS_TARGET);
+        await client.infiniteQuery(options);
+        return client.infiniteQuery({ ...options, pages: 2 });
+      },
+      () => graphqlResponse({ data: firstPage }),
+    );
+
+    expect(sent).toStrictEqual([
+      { documentId: documentIdOf(ClientMatchSupportersDocument), variables },
+      { documentId: documentIdOf(ClientMatchSupportersDocument), variables },
+      {
+        documentId: documentIdOf(ClientMatchSupportersDocument),
+        variables: { ...variables, after: 'cursor-1' },
+      },
+    ]);
+    expect(result).toStrictEqual({
+      pages: [firstPage, firstPage],
+      pageParams: [null, 'cursor-1'],
+    });
   });
 });
