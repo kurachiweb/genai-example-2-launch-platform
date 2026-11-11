@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  helpArticleDeleteTitle,
   helpCategoryDeleteDescription,
   helpItemMovedAnnouncement,
+  helpPreviousHandleGuidance,
   moveDownName,
   moveUpName,
 } from './help-messages.ts';
@@ -27,6 +29,20 @@ describe('カテゴリの削除の確認の文言', () => {
     );
     expect(helpCategoryDeleteDescription(0)).toBe(
       '付け替わる記事は0件です。付け替えた記事は「その他」の末尾に並びます。',
+    );
+  });
+});
+
+describe('記事の編集の文言', () => {
+  test('以前のハンドルの案内は、以前のハンドルと転送が終わる条件を示す', () => {
+    expect(helpPreviousHandleGuidance('old-handle')).toBe(
+      '以前のハンドルold-handleのURLは、次にハンドルを変更するか、記事を削除するか、他の記事が同じハンドルを設定するまで新しいURLへ転送されます。',
+    );
+  });
+
+  test('削除の確認の題名は、記事のタイトルを『』で囲んで示す', () => {
+    expect(helpArticleDeleteTitle('ログインできない')).toBe(
+      'ヘルプ記事『ログインできない』を削除しますか?',
     );
   });
 });
