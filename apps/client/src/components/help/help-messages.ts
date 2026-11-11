@@ -27,3 +27,5 @@ export const helpSearchNoResults = (query: string): string =>
 export const HELP_ALL_ARTICLES_LABEL = 'すべてのヘルプ記事を見る';
 
 export const HELP_SEARCH_COUNT_LOADING = '読み込み中…';
+
+export const HELP_TABLE_OF_CONTENTS_LABEL = '目次';
