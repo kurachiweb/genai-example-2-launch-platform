@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共有の規則・テーブル・文書の先行の更新
-- [ ] 1.1 ヘルプの入力規則・ステータス・標準カテゴリと、監査ログの操作種別を共有定義として作る
+- [x] 1.1 ヘルプの入力規則・ステータス・標準カテゴリと、監査ログの操作種別を共有定義として作る
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-delivery・content-processing・media-pipeline・identity-auth・admin-foundation・legal-pages・inquiry-chat・payments・ultras-subscription・user-profile-socialの全タスクが完了していること(ハンドル基盤と旧ハンドルの解放の文`previousHandleRelease`・全文検索の基盤とマークダウンの部品・権限と監査ログと管理者の照会と共通部品・カテゴリのページの登録口・フッターの登録口・E2Eの管理者ログインの補助)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、タイトル・サブタイトルの100・101書記素と絵文字・空白だけ・禁止文字、検索欄の検索語の50・51書記素、URLのクエリの検索語の正規化(空白だけ・未指定の既定の値、51書記素の50書記素への切り詰め、数として届いた値の文字列への戻し)、本文の上限100,000、ハンドルの規則の50・51文字と予約語が空であること(`admin`・`Support`・`launchstadium`が形式の検査を通る)、並べ替えの件数の上限、ステータスの表示名、標準カテゴリの固定のID、8つの監査ログの操作種別(名前・対象の種類・理由は任意・詳細の鍵)の単体テストを書く
   - 4アプリが読み込める共有ディレクトリに置き、zodを使わず書記素の数え方と禁止文字の判定はcontent-processingの部品を使う。監査ログの操作種別を集約点へ連結する
@@ -210,3 +210,7 @@
   - research.mdの「要件定義書の改訂が必要な箇所」(確定した仮1〜仮5に伴う改訂)を作業の報告に記録する
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に要件定義書の改訂の推奨が載っている
   - _Requirements: 12.7, 13.1, 13.2_
+
+## Implementation Notes
+
+- 1.1: 規則は`apps/common-lib/help/`(`help-input-rules.ts`・`help-query-rules.ts`・`help-article-status.ts`・`help-category-constants.ts`)、操作種別は`admin/audit-actions/help-center.ts`。設計に無い`HELP_BODY_RULE`(`MarkdownTextRule`、本文・100,000・必須)を`PRODUCT_DESCRIPTION_RULE`・`LEGAL_BODY_RULE`の先例に倣って加えたので、3.x・5.x・7.xは本文の規則にこれを使う。入力の検証の文言は設計どおりcommon-libに置かずapiの`errors.ts`・adminの`help-messages.ts`に置く。`normalizeHelpSearchText`はdirectory-discoveryの非公開の`normalizeSearchText`と同じ規則の再実装(約20行の重複、共通化は任意としてレビューで残した)。`checkHelpSearchQuery`は前後の空白を除いてから数える。`help-category.reorder`は対象無しだが`defineAuditAction`の制約で`maxTargets: 1`。1.2の初期データは`HELP_CATEGORY_OTHER_ID`(`01JC0000000000000000000001`)・「その他」・並び順1。100,000文字の本文の描画は約132ms
