@@ -18,6 +18,8 @@ import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authen
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthVerifyEmailRouteImport } from './routes/auth/verify-email'
+import { Route as HelpIndexRouteImport } from './routes/help/index'
+import { Route as HelpHandleRouteImport } from './routes/help/$handle'
 import { Route as LegalIndexRouteImport } from './routes/legal/index'
 import { Route as PIndexRouteImport } from './routes/p/index'
 import { Route as PHandleRouteImport } from './routes/p/$handle'
@@ -88,6 +90,16 @@ const AuthRegisterRoute = AuthRegisterRouteImport.update({
 const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
   id: '/auth/verify-email',
   path: '/auth/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpIndexRoute = HelpIndexRouteImport.update({
+  id: '/help/',
+  path: '/help/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpHandleRoute = HelpHandleRouteImport.update({
+  id: '/help/$handle',
+  path: '/help/$handle',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LegalIndexRoute = LegalIndexRouteImport.update({
@@ -248,8 +260,10 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/help/$handle': typeof HelpHandleRoute
   '/p/$handle': typeof PHandleRoute
   '/system/status': typeof SystemStatusRoute
+  '/help/': typeof HelpIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/p/': typeof PIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
@@ -283,8 +297,10 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/help/$handle': typeof HelpHandleRoute
   '/p/$handle': typeof PHandleRoute
   '/system/status': typeof SystemStatusRoute
+  '/help': typeof HelpIndexRoute
   '/legal': typeof LegalIndexRoute
   '/p': typeof PIndexRoute
   '/privacy': typeof PrivacyIndexRoute
@@ -321,8 +337,10 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/help/$handle': typeof HelpHandleRoute
   '/p/$handle': typeof PHandleRoute
   '/system/status': typeof SystemStatusRoute
+  '/help/': typeof HelpIndexRoute
   '/legal/': typeof LegalIndexRoute
   '/p/': typeof PIndexRoute
   '/privacy/': typeof PrivacyIndexRoute
@@ -359,8 +377,10 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/verify-email'
+    | '/help/$handle'
     | '/p/$handle'
     | '/system/status'
+    | '/help/'
     | '/legal/'
     | '/p/'
     | '/privacy/'
@@ -394,8 +414,10 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/verify-email'
+    | '/help/$handle'
     | '/p/$handle'
     | '/system/status'
+    | '/help'
     | '/legal'
     | '/p'
     | '/privacy'
@@ -431,8 +453,10 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/verify-email'
+    | '/help/$handle'
     | '/p/$handle'
     | '/system/status'
+    | '/help/'
     | '/legal/'
     | '/p/'
     | '/privacy/'
@@ -468,8 +492,10 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
+  HelpHandleRoute: typeof HelpHandleRoute
   PHandleRoute: typeof PHandleRoute
   SystemStatusRoute: typeof SystemStatusRoute
+  HelpIndexRoute: typeof HelpIndexRoute
   LegalIndexRoute: typeof LegalIndexRoute
   PIndexRoute: typeof PIndexRoute
   PrivacyIndexRoute: typeof PrivacyIndexRoute
@@ -546,6 +572,20 @@ declare module '@tanstack/react-router' {
       path: '/auth/verify-email'
       fullPath: '/auth/verify-email'
       preLoaderRoute: typeof AuthVerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/': {
+      id: '/help/'
+      path: '/help'
+      fullPath: '/help/'
+      preLoaderRoute: typeof HelpIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help/$handle': {
+      id: '/help/$handle'
+      path: '/help/$handle'
+      fullPath: '/help/$handle'
+      preLoaderRoute: typeof HelpHandleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/legal/': {
@@ -792,8 +832,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   AuthVerifyEmailRoute: AuthVerifyEmailRoute,
+  HelpHandleRoute: HelpHandleRoute,
   PHandleRoute: PHandleRoute,
   SystemStatusRoute: SystemStatusRoute,
+  HelpIndexRoute: HelpIndexRoute,
   LegalIndexRoute: LegalIndexRoute,
   PIndexRoute: PIndexRoute,
   PrivacyIndexRoute: PrivacyIndexRoute,

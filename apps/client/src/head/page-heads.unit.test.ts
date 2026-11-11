@@ -6,6 +6,7 @@ import {
   buildCheckoutReturnHead,
   buildContactHead,
   buildDirectoryHead,
+  buildHelpTopHead,
   buildInquiryChatHead,
   buildLegalDocumentHead,
   buildLegalVersionHead,
@@ -134,6 +135,15 @@ describe('buildDirectoryHead', () => {
         },
       ],
       links: [{ rel: 'canonical', href: '/p' }],
+    });
+  });
+});
+
+describe('buildHelpTopHead', () => {
+  test('ヘルプのタイトルと、検索語を含まないヘルプトップの正規のURLを付ける', () => {
+    expect(buildHelpTopHead()).toStrictEqual({
+      meta: [{ title: 'ヘルプ | Launch Stadium' }],
+      links: [{ rel: 'canonical', href: '/help' }],
     });
   });
 });

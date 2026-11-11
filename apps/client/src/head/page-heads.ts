@@ -12,6 +12,7 @@ import {
   DIRECTORY_PAGE_DESCRIPTION,
   DIRECTORY_PAGE_TITLE,
 } from '../components/directory/directory-page-messages.ts';
+import { HELP_TOP_TITLE } from '../components/help/help-messages.ts';
 import { INQUIRY_CHAT_PAGE_TITLE } from '../components/inquiry/inquiry-chat-messages.ts';
 import { CONTACT_PAGE_TITLE } from '../components/inquiry/inquiry-contact-messages.ts';
 import {
@@ -21,6 +22,7 @@ import {
 import {
   CONTACT_HREF,
   DIRECTORY_HREF,
+  HELP_TOP_HREF,
   productDetailHref,
   profileHref,
   SITE_NAME,
@@ -113,6 +115,10 @@ export const buildDirectoryHead = () =>
     description: DIRECTORY_PAGE_DESCRIPTION,
     canonicalUrl: DIRECTORY_HREF,
   });
+
+// 検索結果は同じヘルプトップの中の表示のため、正規のURLは検索語を含まないヘルプトップにする
+export const buildHelpTopHead = () =>
+  buildSitePageHead({ title: HELP_TOP_TITLE, canonicalUrl: HELP_TOP_HREF });
 
 // 本人だけが読むページのため、検索の索引の対象外にする
 export const buildInquiryChatHead = () =>

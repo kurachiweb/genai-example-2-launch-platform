@@ -21,6 +21,8 @@ export const DIRECTORY_HREF = '/p';
 
 export const CONTACT_HREF = '/contact';
 
+export const HELP_TOP_HREF = '/help';
+
 export const PRICING_HREF = '/pricing';
 
 export const TERMS_HREF = LEGAL_DOCUMENT_PATHS.terms;
@@ -33,7 +35,7 @@ export const MENU_LABEL = 'メニュー';
 
 export const PRIMARY_NAVIGATION_LINKS: readonly SiteLink[] = Object.freeze([
   { href: DIRECTORY_HREF, label: 'ディレクトリ' },
-  { href: '/help', label: 'ヘルプ' },
+  { href: HELP_TOP_HREF, label: 'ヘルプ' },
 ]);
 
 export const LAUNCH_LABEL = 'ローンチする';
@@ -72,7 +74,7 @@ export const userMenuLabel = (nickname: string): string =>
 export const FOOTER_HELP_NAVIGATION_LABEL = 'ヘルプ';
 
 export const FOOTER_HELP_TOP_LINK: SiteLink = Object.freeze({
-  href: '/help',
+  href: HELP_TOP_HREF,
   label: 'ヘルプ',
 });
 
