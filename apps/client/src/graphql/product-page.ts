@@ -8,8 +8,14 @@ import { notFound, redirect } from '@tanstack/react-router';
 
 import { executeGraphQL } from '../../lib/start/graphql/execute-graphql.ts';
 import { requireData } from '../../lib/utilities/graphql/graphql-result.ts';
-import { graphqlQueryKey } from '../../lib/utilities/graphql/persisted-document.ts';
-import { checkHandleFormat } from '../../common-lib/handles/handle-rules.ts';
+import {
+  documentIdOf,
+  graphqlQueryKey,
+} from '../../lib/utilities/graphql/persisted-document.ts';
+import {
+  checkHandleFormat,
+  toHandleKey,
+} from '../../common-lib/handles/handle-rules.ts';
 import { PRODUCT_HANDLE_RULE } from '../../common-lib/product/product-input-rules.ts';
 import { productDetailHref } from '../components/layout/site-links.ts';
 import {
@@ -71,12 +77,18 @@ export const productPageQueryOptions = (
       ),
   });
 
-// マッチの閲覧者ごとの項目(Upvote済みの側・自分のプロダクト・Upvoteできない理由)を含むため、詳細ページと同じく閲覧者のIDをキーに加える
+export const PRODUCT_PAGE_QUERY_PREFIX = Object.freeze([
+  documentIdOf(ClientProductPageDocument),
+] as const);
+
+// マッチの閲覧者ごとの項目(Upvote済みの側・自分のプロダクト・Upvoteできない理由)を含むため、詳細ページと同じく閲覧者のIDをキーに加える。
+// loaderはURLのハンドル、区画は現在のハンドルで読み、照会は大文字小文字を同一視するため、同一視した形にそろえて同じキャッシュに当てる
 export const productLiveMatchQueryOptions = (
   viewer: ClientViewer | null,
-  productHandle: string,
-) =>
-  queryOptions({
+  handle: string,
+) => {
+  const productHandle = toHandleKey(handle);
+  return queryOptions({
     queryKey: [
       ...graphqlQueryKey(ClientProductLiveMatchDocument, { productHandle }),
       viewerScopeOf(viewer),
@@ -90,6 +102,7 @@ export const productLiveMatchQueryOptions = (
         ),
       ),
   });
+};
 
 export const toProductPageView = ({
   productPage,

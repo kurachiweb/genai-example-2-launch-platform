@@ -26,6 +26,7 @@ import {
   matchSupportersQueryOptions,
   ownerFollowingOf,
   ownerFollowStatusQueryOptions,
+  PRODUCT_PAGE_QUERY_PREFIX,
   productLiveMatchQueryOptions,
   productOwnerStatusQueryOptions,
   productPageQueryOptions,
@@ -154,6 +155,33 @@ describe('productLiveMatchQueryOptions', () => {
     expect(
       productLiveMatchQueryOptions(null, 'pitch-notes').queryKey.at(-1),
     ).toBe('guest');
+  });
+
+  test('照会で同一視される大文字小文字の違うハンドルは、同じキーにする', () => {
+    expect([
+      ...productLiveMatchQueryOptions(VIEWER, 'PITCH-Notes').queryKey,
+    ]).toStrictEqual([
+      ...productLiveMatchQueryOptions(VIEWER, 'Pitch-Notes').queryKey,
+    ]);
+    expect([
+      ...productLiveMatchQueryOptions(VIEWER, 'Pitch-Notes').queryKey,
+    ]).toStrictEqual([
+      ...graphqlQueryKey(ClientProductLiveMatchDocument, {
+        productHandle: 'pitch-notes',
+      }),
+      VIEWER.id,
+    ]);
+  });
+});
+
+describe('PRODUCT_PAGE_QUERY_PREFIX', () => {
+  test('閲覧者とハンドルによらず詳細ページの取得の全てのキーの先頭に当たる', () => {
+    expect([...PRODUCT_PAGE_QUERY_PREFIX]).toStrictEqual([
+      documentIdOf(ClientProductPageDocument),
+    ]);
+    expect(
+      productPageQueryOptions(VIEWER, 'PITCH-Notes').queryKey.slice(0, 1),
+    ).toStrictEqual([...PRODUCT_PAGE_QUERY_PREFIX]);
   });
 });
 
