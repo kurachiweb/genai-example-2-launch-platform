@@ -298,6 +298,36 @@ describe('renameHelpCategory', () => {
   });
 });
 
+describe('カテゴリのIDの文字数', () => {
+  test.each([
+    {
+      name: 'renameHelpCategory',
+      call: () =>
+        renameHelpCategory(
+          { id: 'x'.repeat(65), name: '請求' },
+          asHelpAdmin(moderator),
+        ),
+    },
+    {
+      name: 'deleteHelpCategory',
+      call: () =>
+        deleteHelpCategory({ id: 'x'.repeat(65) }, asHelpAdmin(moderator)),
+    },
+  ])('$nameは65文字のIDをIDの欄の検証のエラーで拒否する', async ({ call }) => {
+    const response = await call();
+
+    expect(codesOf(response)).toEqual(['validation_error']);
+    expect(detailsOf(response)).toEqual([
+      {
+        field: 'id',
+        code: 'too_big',
+        message: 'このカテゴリは削除されています。',
+      },
+    ]);
+    expect(await readAuditLogSummaries()).toEqual([]);
+  });
+});
+
 describe('deleteHelpCategory', () => {
   test('モデレーターがカテゴリを削除すると、下書きを含む記事を標準カテゴリの末尾へ付け替え、付け替えた件数を返す', async () => {
     await seedTwoCategories();
@@ -489,6 +519,22 @@ describe('reorderHelpCategories', () => {
       expect(await readAuditLogSummaries()).toEqual([]);
     },
   );
+
+  test('65文字のIDを含む並びを、その要素の欄の検証のエラーで拒否する', async () => {
+    const response = await reorderHelpCategories(
+      { orderedIds: [HELP_CATEGORY_OTHER_ID, 'x'.repeat(65)] },
+      asHelpAdmin(moderator),
+    );
+
+    expect(codesOf(response)).toEqual(['validation_error']);
+    expect(detailsOf(response)).toEqual([
+      {
+        field: 'orderedIds.1',
+        code: 'too_big',
+        message: ORDER_OUTDATED_MESSAGE,
+      },
+    ]);
+  });
 });
 
 // 入力の検証が先に走れば`validation_error`になる不正な入力で、呼び出し元の確認が先に拒否することを確かめる

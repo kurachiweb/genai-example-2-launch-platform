@@ -8,6 +8,7 @@ import type { MyProductModel, ProductScreenshotModel, LaunchHistoryProductModel 
 import type { MatchSource, MatchEntrySource, MatchProductSource, UpvoteHistoryItemModel } from '../modules/match/mappers.ts';
 import type { DirectoryItemModel } from '../modules/directory/mappers.ts';
 import type { ProductPageModel, ProductPageRedirectModel, ProductPageScreenshotModel, ProductPageOpponentModel, ProductLiveMatchModel } from '../modules/directory/product-page-mappers.ts';
+import type { HelpArticleAuthorSource } from '../modules/help/author-fields.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
 export type InputMaybe<T> = Maybe<T>;
@@ -55,6 +56,42 @@ export type AdminConfirmationResult = {
   __typename?: 'AdminConfirmationResult';
   /** 確定の操作をした端末が同じ管理者としてログイン中なら、入れ替えた後の管理者 */
   viewer?: Maybe<AdminViewer>;
+};
+
+export type AdminHelpArticle = {
+  __typename?: 'AdminHelpArticle';
+  body: Scalars['String']['output'];
+  categoryId: Scalars['ID']['output'];
+  categoryName: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  /** nullは削除済みの管理者 */
+  creator?: Maybe<HelpArticleAuthor>;
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  pinned: Scalars['Boolean']['output'];
+  previousHandle?: Maybe<Scalars['String']['output']>;
+  revision: Scalars['Int']['output'];
+  status: HelpArticleStatus;
+  subtitle: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type AdminHelpArticleRow = {
+  __typename?: 'AdminHelpArticleRow';
+  categoryId: Scalars['ID']['output'];
+  categoryName: Scalars['String']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  /** nullは削除済みの管理者 */
+  creator?: Maybe<HelpArticleAuthor>;
+  creatorAdminId: Scalars['ID']['output'];
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  pinned: Scalars['Boolean']['output'];
+  sortOrder: Scalars['Int']['output'];
+  status: HelpArticleStatus;
+  title: Scalars['String']['output'];
+  updatedAt: Scalars['DateTime']['output'];
 };
 
 /** 管理画面の問い合わせの詳細 */
@@ -384,6 +421,16 @@ export type ConfirmationResult = {
   viewer?: Maybe<Viewer>;
 };
 
+export type CreateHelpArticleInput = {
+  fields: HelpArticleFields;
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type DeleteHelpArticlePayload = {
+  __typename?: 'DeleteHelpArticlePayload';
+  id: Scalars['ID']['output'];
+};
+
 export type DeleteHelpCategoryPayload = {
   __typename?: 'DeleteHelpCategoryPayload';
   id: Scalars['ID']['output'];
@@ -523,6 +570,34 @@ export type HandleAvailability =
   | 'AVAILABLE'
   | 'INVALID'
   | 'UNAVAILABLE';
+
+export type HelpArticleAuthor = {
+  __typename?: 'HelpArticleAuthor';
+  avatar?: Maybe<MediaImage>;
+  nickname: Scalars['String']['output'];
+  title?: Maybe<Scalars['String']['output']>;
+};
+
+export type HelpArticleFields = {
+  body: Scalars['String']['input'];
+  categoryId: Scalars['ID']['input'];
+  handle: Scalars['String']['input'];
+  pinned: Scalars['Boolean']['input'];
+  status: HelpArticleStatus;
+  subtitle: Scalars['String']['input'];
+  title: Scalars['String']['input'];
+};
+
+export type HelpArticleHandleAvailability =
+  | 'AVAILABLE'
+  /** 他の記事の旧ハンドルと一致する。保存するとその記事の旧URLの転送が無くなる */
+  | 'AVAILABLE_RELEASES_PREVIOUS'
+  | 'INVALID'
+  | 'UNAVAILABLE';
+
+export type HelpArticleStatus =
+  | 'DRAFT'
+  | 'PUBLISHED';
 
 export type HelpCategory = {
   __typename?: 'HelpCategory';
@@ -945,6 +1020,7 @@ export type Mutation = {
   confirmEmailChange: ConfirmationResult;
   /** パスワード変更の確定 */
   confirmPasswordChange: ConfirmationResult;
+  createHelpArticle: AdminHelpArticle;
   createHelpCategory: HelpCategory;
   /** カテゴリの追加。モデレーター以上 */
   createInquiryCategory: InquiryCategory;
@@ -954,6 +1030,7 @@ export type Mutation = {
   createUltrasPortalSession: UltrasPortalSession;
   /** 管理者の削除 */
   deleteAdmin: Scalars['Boolean']['output'];
+  deleteHelpArticle: DeleteHelpArticlePayload;
   deleteHelpCategory: DeleteHelpCategoryPayload;
   /** カテゴリの削除。紐付く問い合わせを標準カテゴリへ付け替える。モデレーター以上 */
   deleteInquiryCategory: Scalars['Boolean']['output'];
@@ -992,6 +1069,8 @@ export type Mutation = {
   renameHelpCategory: HelpCategory;
   /** カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上 */
   renameInquiryCategory: InquiryCategory;
+  /** ピン留めの群に続けてそれ以外の群の順でカテゴリの全記事のIDを渡す */
+  reorderHelpArticles: Array<AdminHelpArticleRow>;
   /** 全カテゴリのIDを並べたい順で渡す */
   reorderHelpCategories: Array<HelpCategory>;
   /** ログインの問い合わせへの管理者の返信。対応ステータスを変えない。モデレーター以上 */
@@ -1038,6 +1117,7 @@ export type Mutation = {
   unfollowUser: FollowState;
   /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
   updateAdminProfile: AdminAccount;
+  updateHelpArticle: AdminHelpArticle;
   /** メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない */
   updateMyProfile: MyProfile;
   /** 停止していない利用者が自分のプロダクトを保存する。bot判定の操作名はproduct_save */
@@ -1128,6 +1208,11 @@ export type MutationConfirmPasswordChangeArgs = {
 };
 
 
+export type MutationCreateHelpArticleArgs = {
+  input: CreateHelpArticleInput;
+};
+
+
 export type MutationCreateHelpCategoryArgs = {
   name: Scalars['String']['input'];
 };
@@ -1146,6 +1231,12 @@ export type MutationCreateProductCategoryArgs = {
 
 
 export type MutationDeleteAdminArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeleteHelpArticleArgs = {
   id: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
 };
@@ -1254,6 +1345,12 @@ export type MutationRenameInquiryCategoryArgs = {
 };
 
 
+export type MutationReorderHelpArticlesArgs = {
+  categoryId: Scalars['ID']['input'];
+  orderedIds: Array<Scalars['ID']['input']>;
+};
+
+
 export type MutationReorderHelpCategoriesArgs = {
   orderedIds: Array<Scalars['ID']['input']>;
 };
@@ -1356,6 +1453,11 @@ export type MutationUpdateAdminProfileArgs = {
   id: Scalars['ID']['input'];
   nickname: Scalars['String']['input'];
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationUpdateHelpArticleArgs = {
+  input: UpdateHelpArticleInput;
 };
 
 
@@ -1822,6 +1924,10 @@ export type Query = {
   __typename?: 'Query';
   /** 招待中を含む全管理者を登録の新しい順に返す */
   adminAccounts: Array<AdminAccount>;
+  /** 見つからなければnull */
+  adminHelpArticle?: Maybe<AdminHelpArticle>;
+  /** 下書きを含む全件を更新日時の新しい順で返す */
+  adminHelpArticles: Array<AdminHelpArticleRow>;
   /** 管理者が指定した並び順 */
   adminHelpCategories: Array<HelpCategory>;
   /** 管理画面のログインと未ログインの問い合わせの一覧(50件ずつ、受付日時の新しい順)。閲覧のみ以上 */
@@ -1852,6 +1958,8 @@ export type Query = {
   directoryCategories: Array<ProductCategory>;
   /** ハンドルの使用可否。自分の現在と保持中の旧ハンドルは使えるものとして扱う */
   handleAvailability: HandleAvailability;
+  /** articleIdは編集中の記事のIDで、作成では省く */
+  helpArticleHandleAvailability: HelpArticleHandleAvailability;
   /** 問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く */
   inquiryCategories: Array<InquiryCategory>;
   /** 問い合わせフォームに表示する送信者。停止していないログイン中の利用者だけ値を返す */
@@ -1915,6 +2023,11 @@ export type Query = {
 };
 
 
+export type QueryAdminHelpArticleArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type QueryAdminInquiriesArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<AdminInquiryFilterInput>;
@@ -1954,6 +2067,12 @@ export type QueryDirectoryArgs = {
 
 
 export type QueryHandleAvailabilityArgs = {
+  handle: Scalars['String']['input'];
+};
+
+
+export type QueryHelpArticleHandleAvailabilityArgs = {
+  articleId?: InputMaybe<Scalars['ID']['input']>;
   handle: Scalars['String']['input'];
 };
 
@@ -2216,6 +2335,13 @@ export type UltrasPromotionSetting = {
   version: Scalars['Int']['output'];
 };
 
+export type UpdateHelpArticleInput = {
+  expectedRevision: Scalars['Int']['input'];
+  fields: HelpArticleFields;
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
 export type UpdateMyProfileInput = {
   /** 保存後の画像。現在の画像のIDなら維持し、nullなら削除する */
   avatarFileId?: InputMaybe<Scalars['ID']['input']>;
@@ -2441,6 +2567,8 @@ export type ResolversTypes = {
   AdminAccount: ResolverTypeWrapper<AdminAccountSource>;
   AdminAccountStatus: AdminAccountStatus;
   AdminConfirmationResult: ResolverTypeWrapper<Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['AdminViewer']> }>;
+  AdminHelpArticle: ResolverTypeWrapper<Omit<AdminHelpArticle, 'creator'> & { creator?: Maybe<ResolversTypes['HelpArticleAuthor']> }>;
+  AdminHelpArticleRow: ResolverTypeWrapper<Omit<AdminHelpArticleRow, 'creator'> & { creator?: Maybe<ResolversTypes['HelpArticleAuthor']> }>;
   AdminInquiry: ResolverTypeWrapper<AdminInquiryModel>;
   AdminInquiryCategory: ResolverTypeWrapper<AdminInquiryCategory>;
   AdminInquiryFilterInput: AdminInquiryFilterInput;
@@ -2475,7 +2603,9 @@ export type ResolversTypes = {
   CheckoutSummary: ResolverTypeWrapper<CheckoutSummary>;
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
+  CreateHelpArticleInput: CreateHelpArticleInput;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
+  DeleteHelpArticlePayload: ResolverTypeWrapper<DeleteHelpArticlePayload>;
   DeleteHelpCategoryPayload: ResolverTypeWrapper<DeleteHelpCategoryPayload>;
   DirectoryAppliedQuery: ResolverTypeWrapper<DirectoryAppliedQuery>;
   DirectoryInput: DirectoryInput;
@@ -2491,6 +2621,10 @@ export type ResolversTypes = {
   FollowState: ResolverTypeWrapper<FollowState>;
   GuestInquiryInput: GuestInquiryInput;
   HandleAvailability: HandleAvailability;
+  HelpArticleAuthor: ResolverTypeWrapper<HelpArticleAuthorSource>;
+  HelpArticleFields: HelpArticleFields;
+  HelpArticleHandleAvailability: HelpArticleHandleAvailability;
+  HelpArticleStatus: HelpArticleStatus;
   HelpCategory: ResolverTypeWrapper<HelpCategory>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   InquiryCategory: ResolverTypeWrapper<InquiryCategory>;
@@ -2602,6 +2736,7 @@ export type ResolversTypes = {
   UltrasPlanStatus: UltrasPlanStatus;
   UltrasPortalSession: ResolverTypeWrapper<UltrasPortalSession>;
   UltrasPromotionSetting: ResolverTypeWrapper<UltrasPromotionSetting>;
+  UpdateHelpArticleInput: UpdateHelpArticleInput;
   UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
@@ -2620,6 +2755,8 @@ export type ResolversTypes = {
 export type ResolversParentTypes = {
   AdminAccount: AdminAccountSource;
   AdminConfirmationResult: Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['AdminViewer']> };
+  AdminHelpArticle: Omit<AdminHelpArticle, 'creator'> & { creator?: Maybe<ResolversParentTypes['HelpArticleAuthor']> };
+  AdminHelpArticleRow: Omit<AdminHelpArticleRow, 'creator'> & { creator?: Maybe<ResolversParentTypes['HelpArticleAuthor']> };
   AdminInquiry: AdminInquiryModel;
   AdminInquiryCategory: AdminInquiryCategory;
   AdminInquiryFilterInput: AdminInquiryFilterInput;
@@ -2650,7 +2787,9 @@ export type ResolversParentTypes = {
   CheckoutSummary: CheckoutSummary;
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
+  CreateHelpArticleInput: CreateHelpArticleInput;
   DateTime: Scalars['DateTime']['output'];
+  DeleteHelpArticlePayload: DeleteHelpArticlePayload;
   DeleteHelpCategoryPayload: DeleteHelpCategoryPayload;
   DirectoryAppliedQuery: DirectoryAppliedQuery;
   DirectoryInput: DirectoryInput;
@@ -2663,6 +2802,8 @@ export type ResolversParentTypes = {
   FollowEntryConnection: Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['FollowEntry']> };
   FollowState: FollowState;
   GuestInquiryInput: GuestInquiryInput;
+  HelpArticleAuthor: HelpArticleAuthorSource;
+  HelpArticleFields: HelpArticleFields;
   HelpCategory: HelpCategory;
   ID: Scalars['ID']['output'];
   InquiryCategory: InquiryCategory;
@@ -2751,6 +2892,7 @@ export type ResolversParentTypes = {
   UltrasPlan: UltrasPlan;
   UltrasPortalSession: UltrasPortalSession;
   UltrasPromotionSetting: UltrasPromotionSetting;
+  UpdateHelpArticleInput: UpdateHelpArticleInput;
   UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
@@ -2777,6 +2919,38 @@ export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType exten
 
 export type AdminConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminConfirmationResult'] = ResolversParentTypes['AdminConfirmationResult']> = {
   viewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
+};
+
+export type AdminHelpArticleResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminHelpArticle'] = ResolversParentTypes['AdminHelpArticle']> = {
+  body?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  categoryId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  categoryName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  creator?: Resolver<Maybe<ResolversTypes['HelpArticleAuthor']>, ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  pinned?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  previousHandle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  revision?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['HelpArticleStatus'], ParentType, ContextType>;
+  subtitle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminHelpArticleRowResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminHelpArticleRow'] = ResolversParentTypes['AdminHelpArticleRow']> = {
+  categoryId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  categoryName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  creator?: Resolver<Maybe<ResolversTypes['HelpArticleAuthor']>, ParentType, ContextType>;
+  creatorAdminId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  pinned?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  sortOrder?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['HelpArticleStatus'], ParentType, ContextType>;
+  title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
 };
 
 export type AdminInquiryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminInquiry'] = ResolversParentTypes['AdminInquiry']> = {
@@ -2959,6 +3133,10 @@ export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversT
   name: 'DateTime';
 }
 
+export type DeleteHelpArticlePayloadResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DeleteHelpArticlePayload'] = ResolversParentTypes['DeleteHelpArticlePayload']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+};
+
 export type DeleteHelpCategoryPayloadResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DeleteHelpCategoryPayload'] = ResolversParentTypes['DeleteHelpCategoryPayload']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   reassignedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -3022,6 +3200,12 @@ export type FollowStateResolvers<ContextType = GraphQLContext, ParentType extend
   followerCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   following?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type HelpArticleAuthorResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpArticleAuthor'] = ResolversParentTypes['HelpArticleAuthor']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type HelpCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpCategory'] = ResolversParentTypes['HelpCategory']> = {
@@ -3240,11 +3424,13 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   confirmCheckoutReturn?: Resolver<ResolversTypes['CheckoutReturnResult'], ParentType, ContextType, RequireFields<MutationConfirmCheckoutReturnArgs, 'sessionId'>>;
   confirmEmailChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmEmailChangeArgs, 'token'>>;
   confirmPasswordChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmPasswordChangeArgs, 'token'>>;
+  createHelpArticle?: Resolver<ResolversTypes['AdminHelpArticle'], ParentType, ContextType, RequireFields<MutationCreateHelpArticleArgs, 'input'>>;
   createHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationCreateHelpCategoryArgs, 'name'>>;
   createInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationCreateInquiryCategoryArgs, 'name'>>;
   createProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationCreateProductCategoryArgs, 'input'>>;
   createUltrasPortalSession?: Resolver<ResolversTypes['UltrasPortalSession'], ParentType, ContextType>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
+  deleteHelpArticle?: Resolver<ResolversTypes['DeleteHelpArticlePayload'], ParentType, ContextType, RequireFields<MutationDeleteHelpArticleArgs, 'id'>>;
   deleteHelpCategory?: Resolver<ResolversTypes['DeleteHelpCategoryPayload'], ParentType, ContextType, RequireFields<MutationDeleteHelpCategoryArgs, 'id'>>;
   deleteInquiryCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteInquiryCategoryArgs, 'id'>>;
   deleteProduct?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductArgs, 'expectedVersion' | 'productHandle'>>;
@@ -3265,6 +3451,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
   renameHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationRenameHelpCategoryArgs, 'id' | 'name'>>;
   renameInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationRenameInquiryCategoryArgs, 'id' | 'name'>>;
+  reorderHelpArticles?: Resolver<Array<ResolversTypes['AdminHelpArticleRow']>, ParentType, ContextType, RequireFields<MutationReorderHelpArticlesArgs, 'categoryId' | 'orderedIds'>>;
   reorderHelpCategories?: Resolver<Array<ResolversTypes['HelpCategory']>, ParentType, ContextType, RequireFields<MutationReorderHelpCategoriesArgs, 'orderedIds'>>;
   replyToInquiry?: Resolver<ResolversTypes['InquiryReplyResult'], ParentType, ContextType, RequireFields<MutationReplyToInquiryArgs, 'body' | 'inquiryId'>>;
   requestAdminEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminEmailChangeArgs, 'newEmail' | 'reAuthentication'>>;
@@ -3288,6 +3475,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
   unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
+  updateHelpArticle?: Resolver<ResolversTypes['AdminHelpArticle'], ParentType, ContextType, RequireFields<MutationUpdateHelpArticleArgs, 'input'>>;
   updateMyProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType, RequireFields<MutationUpdateMyProfileArgs, 'input'>>;
   updateProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationUpdateProductArgs, 'input'>>;
   updateProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationUpdateProductCategoryArgs, 'id' | 'input'>>;
@@ -3540,6 +3728,8 @@ export type QualifierBoardResolvers<ContextType = GraphQLContext, ParentType ext
 
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
+  adminHelpArticle?: Resolver<Maybe<ResolversTypes['AdminHelpArticle']>, ParentType, ContextType, RequireFields<QueryAdminHelpArticleArgs, 'id'>>;
+  adminHelpArticles?: Resolver<Array<ResolversTypes['AdminHelpArticleRow']>, ParentType, ContextType>;
   adminHelpCategories?: Resolver<Array<ResolversTypes['HelpCategory']>, ParentType, ContextType>;
   adminInquiries?: Resolver<ResolversTypes['AdminInquiryPage'], ParentType, ContextType, Partial<QueryAdminInquiriesArgs>>;
   adminInquiry?: Resolver<Maybe<ResolversTypes['AdminInquiry']>, ParentType, ContextType, RequireFields<QueryAdminInquiryArgs, 'id'>>;
@@ -3555,6 +3745,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   directory?: Resolver<ResolversTypes['DirectoryPage'], ParentType, ContextType, RequireFields<QueryDirectoryArgs, 'input'>>;
   directoryCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
   handleAvailability?: Resolver<ResolversTypes['HandleAvailability'], ParentType, ContextType, RequireFields<QueryHandleAvailabilityArgs, 'handle'>>;
+  helpArticleHandleAvailability?: Resolver<ResolversTypes['HelpArticleHandleAvailability'], ParentType, ContextType, RequireFields<QueryHelpArticleHandleAvailabilityArgs, 'handle'>>;
   inquiryCategories?: Resolver<Array<ResolversTypes['InquiryCategory']>, ParentType, ContextType>;
   inquiryComposer?: Resolver<Maybe<ResolversTypes['InquiryComposer']>, ParentType, ContextType>;
   launchHistory?: Resolver<Maybe<ResolversTypes['LaunchHistoryConnection']>, ParentType, ContextType, RequireFields<QueryLaunchHistoryArgs, 'first' | 'userHandle'>>;
@@ -3703,6 +3894,8 @@ export type ViewerUltrasResolvers<ContextType = GraphQLContext, ParentType exten
 export type Resolvers<ContextType = GraphQLContext> = {
   AdminAccount?: AdminAccountResolvers<ContextType>;
   AdminConfirmationResult?: AdminConfirmationResultResolvers<ContextType>;
+  AdminHelpArticle?: AdminHelpArticleResolvers<ContextType>;
+  AdminHelpArticleRow?: AdminHelpArticleRowResolvers<ContextType>;
   AdminInquiry?: AdminInquiryResolvers<ContextType>;
   AdminInquiryCategory?: AdminInquiryCategoryResolvers<ContextType>;
   AdminInquiryGuest?: AdminInquiryGuestResolvers<ContextType>;
@@ -3728,6 +3921,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   CheckoutSummary?: CheckoutSummaryResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
+  DeleteHelpArticlePayload?: DeleteHelpArticlePayloadResolvers<ContextType>;
   DeleteHelpCategoryPayload?: DeleteHelpCategoryPayloadResolvers<ContextType>;
   DirectoryAppliedQuery?: DirectoryAppliedQueryResolvers<ContextType>;
   DirectoryItem?: DirectoryItemResolvers<ContextType>;
@@ -3737,6 +3931,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   FollowEntry?: FollowEntryResolvers<ContextType>;
   FollowEntryConnection?: FollowEntryConnectionResolvers<ContextType>;
   FollowState?: FollowStateResolvers<ContextType>;
+  HelpArticleAuthor?: HelpArticleAuthorResolvers<ContextType>;
   HelpCategory?: HelpCategoryResolvers<ContextType>;
   InquiryCategory?: InquiryCategoryResolvers<ContextType>;
   InquiryComposer?: InquiryComposerResolvers<ContextType>;

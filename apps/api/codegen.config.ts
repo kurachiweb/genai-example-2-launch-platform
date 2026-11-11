@@ -57,6 +57,8 @@ const config: CodegenConfig = {
             '../modules/directory/product-page-mappers.ts#ProductLiveMatchModel',
           LaunchHistoryProduct:
             '../modules/product/mappers.ts#LaunchHistoryProductModel',
+          HelpArticleAuthor:
+            '../modules/help/author-fields.ts#HelpArticleAuthorSource',
         },
       },
     },

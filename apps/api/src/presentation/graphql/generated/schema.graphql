@@ -32,6 +32,42 @@ type AdminConfirmationResult {
   viewer: AdminViewer
 }
 
+type AdminHelpArticle {
+  body: String!
+  categoryId: ID!
+  categoryName: String!
+  createdAt: DateTime!
+
+  """nullは削除済みの管理者"""
+  creator: HelpArticleAuthor
+  handle: String!
+  id: ID!
+  pinned: Boolean!
+  previousHandle: String
+  revision: Int!
+  status: HelpArticleStatus!
+  subtitle: String!
+  title: String!
+  updatedAt: DateTime!
+}
+
+type AdminHelpArticleRow {
+  categoryId: ID!
+  categoryName: String!
+  createdAt: DateTime!
+
+  """nullは削除済みの管理者"""
+  creator: HelpArticleAuthor
+  creatorAdminId: ID!
+  handle: String!
+  id: ID!
+  pinned: Boolean!
+  sortOrder: Int!
+  status: HelpArticleStatus!
+  title: String!
+  updatedAt: DateTime!
+}
+
 """管理画面の問い合わせの詳細"""
 type AdminInquiry {
   category: InquiryCategory!
@@ -370,8 +406,17 @@ type ConfirmationResult {
   viewer: Viewer
 }
 
+input CreateHelpArticleInput {
+  fields: HelpArticleFields!
+  reason: String
+}
+
 """UTCのRFC 3339形式の日時"""
 scalar DateTime
+
+type DeleteHelpArticlePayload {
+  id: ID!
+}
 
 type DeleteHelpCategoryPayload {
   id: ID!
@@ -520,6 +565,36 @@ enum HandleAvailability {
   AVAILABLE
   INVALID
   UNAVAILABLE
+}
+
+type HelpArticleAuthor {
+  avatar: MediaImage
+  nickname: String!
+  title: String
+}
+
+input HelpArticleFields {
+  body: String!
+  categoryId: ID!
+  handle: String!
+  pinned: Boolean!
+  status: HelpArticleStatus!
+  subtitle: String!
+  title: String!
+}
+
+enum HelpArticleHandleAvailability {
+  AVAILABLE
+
+  """他の記事の旧ハンドルと一致する。保存するとその記事の旧URLの転送が無くなる"""
+  AVAILABLE_RELEASES_PREVIOUS
+  INVALID
+  UNAVAILABLE
+}
+
+enum HelpArticleStatus {
+  DRAFT
+  PUBLISHED
 }
 
 type HelpCategory {
@@ -988,6 +1063,7 @@ type Mutation {
 
   """パスワード変更の確定"""
   confirmPasswordChange(token: String!): ConfirmationResult!
+  createHelpArticle(input: CreateHelpArticleInput!): AdminHelpArticle!
   createHelpCategory(name: String!): HelpCategory!
 
   """カテゴリの追加。モデレーター以上"""
@@ -1003,6 +1079,7 @@ type Mutation {
 
   """管理者の削除"""
   deleteAdmin(id: ID!, reason: String): Boolean!
+  deleteHelpArticle(id: ID!, reason: String): DeleteHelpArticlePayload!
   deleteHelpCategory(id: ID!): DeleteHelpCategoryPayload!
 
   """カテゴリの削除。紐付く問い合わせを標準カテゴリへ付け替える。モデレーター以上"""
@@ -1059,6 +1136,9 @@ type Mutation {
 
   """カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上"""
   renameInquiryCategory(id: ID!, name: String!, reason: String): InquiryCategory!
+
+  """ピン留めの群に続けてそれ以外の群の順でカテゴリの全記事のIDを渡す"""
+  reorderHelpArticles(categoryId: ID!, orderedIds: [ID!]!): [AdminHelpArticleRow!]!
 
   """全カテゴリのIDを並べたい順で渡す"""
   reorderHelpCategories(orderedIds: [ID!]!): [HelpCategory!]!
@@ -1138,6 +1218,7 @@ type Mutation {
 
   """プロフィールの更新。avatarFileIdの省略は画像を取り除く"""
   updateAdminProfile(avatarFileId: ID, id: ID!, nickname: String!, title: String): AdminAccount!
+  updateHelpArticle(input: UpdateHelpArticleInput!): AdminHelpArticle!
 
   """メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない"""
   updateMyProfile(input: UpdateMyProfileInput!): MyProfile!
@@ -1631,6 +1712,12 @@ type Query {
   """招待中を含む全管理者を登録の新しい順に返す"""
   adminAccounts: [AdminAccount!]!
 
+  """見つからなければnull"""
+  adminHelpArticle(id: ID!): AdminHelpArticle
+
+  """下書きを含む全件を更新日時の新しい順で返す"""
+  adminHelpArticles: [AdminHelpArticleRow!]!
+
   """管理者が指定した並び順"""
   adminHelpCategories: [HelpCategory!]!
 
@@ -1675,6 +1762,9 @@ type Query {
 
   """ハンドルの使用可否。自分の現在と保持中の旧ハンドルは使えるものとして扱う"""
   handleAvailability(handle: String!): HandleAvailability!
+
+  """articleIdは編集中の記事のIDで、作成では省く"""
+  helpArticleHandleAvailability(articleId: ID, handle: String!): HelpArticleHandleAvailability!
 
   """問い合わせフォームのカテゴリの選択肢。追加の順で、標準カテゴリを末尾に置く"""
   inquiryCategories: [InquiryCategory!]!
@@ -1939,6 +2029,13 @@ type UltrasPromotionSetting {
 
   """変更のたびに1つ進む版。変更の入力にそのまま渡す"""
   version: Int!
+}
+
+input UpdateHelpArticleInput {
+  expectedRevision: Int!
+  fields: HelpArticleFields!
+  id: ID!
+  reason: String
 }
 
 input UpdateMyProfileInput {

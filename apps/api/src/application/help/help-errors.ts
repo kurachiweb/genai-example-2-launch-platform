@@ -82,12 +82,14 @@ const validationError = (detail: FieldErrorDetail): AppError =>
     details: [detail],
   });
 
+export const HELP_CATEGORY_MISSING_MESSAGE = 'カテゴリを選択してください。';
+
 // 選択肢を表示した後にカテゴリが削除された保存も、画面が選び直しを促せるようカテゴリの欄の検証のエラーにする
 export const helpCategoryMissingError = (): AppError =>
   validationError({
     field: 'categoryId',
     code: 'not-found',
-    message: 'カテゴリを選択してください。',
+    message: HELP_CATEGORY_MISSING_MESSAGE,
   });
 
 export const helpCategoryNameRejectedError = (

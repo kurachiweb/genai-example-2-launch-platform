@@ -20,11 +20,13 @@ import {
   insertAdmin,
 } from '../../src/infrastructure/admin/testing/admin-store-fixtures.ts';
 import { helpSchemaModule } from '../../src/presentation/graphql/modules/help/index.ts';
+import { mediaSchemaModule } from '../../src/presentation/graphql/modules/media/index.ts';
 import {
   createAdminGateway,
   issueAdminSession,
 } from './admin-graphql-harness.ts';
 import type { GatewayCallOptions, GatewayResponse } from './graphql-gateway.ts';
+import { HELP_ARTICLE_DOCUMENTS } from './help-article-graphql-documents.ts';
 import { configureRecordingLogs } from './observability-recording.ts';
 
 export interface HelpCategoryFields {
@@ -91,8 +93,9 @@ export const helpAdminGateway = createAdminGateway({
     RENAME_HELP_CATEGORY,
     DELETE_HELP_CATEGORY,
     REORDER_HELP_CATEGORIES,
+    ...HELP_ARTICLE_DOCUMENTS,
   ],
-  schemaModules: [helpSchemaModule],
+  schemaModules: [mediaSchemaModule, helpSchemaModule],
 });
 
 export const HELP_ADMINS = Object.freeze({
