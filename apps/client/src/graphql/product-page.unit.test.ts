@@ -100,7 +100,7 @@ const INTERNAL_ERROR = new GraphQLClientError({
   status: 500,
 });
 
-const LOCATION = { searchStr: '' };
+const LOCATION = { search: {} };
 
 const caught = async (promise: Promise<unknown>): Promise<unknown> =>
   promise.then(
@@ -268,14 +268,14 @@ describe('loadProductPage', () => {
     expect(isNotFound(error)).toBe(true);
   });
 
-  test('旧ハンドルは現在のハンドルのパスへ、状態コード302とクエリを引き継いで転送する', async () => {
+  test('旧ハンドルは現在のハンドルの詳細ページの経路へ、状態コード302と検索パラメーターを引き継いで転送する', async () => {
     const { queryClient } = queryClientWith(REDIRECT);
 
     const error = await caught(
       loadProductPage({
         context: { queryClient, viewer: null },
         params: { handle: 'old-notes' },
-        location: { searchStr: '?utm_source=share' },
+        location: { search: { utm_source: 'share' } },
       }),
     );
 
@@ -285,7 +285,9 @@ describe('loadProductPage', () => {
     }
     expect(error.status).toBe(302);
     expect(error.options).toMatchObject({
-      href: '/p/pitch-notes?utm_source=share',
+      to: '/p/$handle',
+      params: { handle: 'pitch-notes' },
+      search: { utm_source: 'share' },
       statusCode: 302,
     });
   });

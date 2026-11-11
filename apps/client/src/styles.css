@@ -1,5 +1,6 @@
 @import '../lib/styles/base.css';
 @import './components/match/stadium.css';
 @import './components/directory/directory.css';
+@import './components/product-page/product-page.css';
 
 @source '../lib/components';

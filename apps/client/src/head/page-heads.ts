@@ -21,6 +21,7 @@ import {
 import {
   CONTACT_HREF,
   DIRECTORY_HREF,
+  productDetailHref,
   profileHref,
   SITE_NAME,
 } from '../components/layout/site-links.ts';
@@ -33,6 +34,7 @@ import type {
   LegalDocumentLoaderData,
   LegalVersionLoaderData,
 } from '../graphql/legal-documents.ts';
+import type { ProductPageLoaderData } from '../graphql/product-page.ts';
 import type { PublicProfileLoaderData } from '../graphql/public-profile.ts';
 
 export interface RootHeadInput {
@@ -152,4 +154,17 @@ export const buildPublicProfileHead = (
     : buildSitePageHead({
         title: `${loaderData.nickname}(@${loaderData.handle})`,
         canonicalUrl: profileHref(loaderData.handle),
+      });
+
+// 現在のハンドルの表記のパスを正規のURLにして、表記の違うURLや旧ハンドルのURLを同じページとして索引へ載せる。未掲載のプロダクトは投稿者本人にだけ表示しているため索引の対象外にする。取得前や失敗ではタイトルを決められないため、サイト名だけにして正規のURLも付けない
+export const buildProductPageHead = (
+  loaderData: ProductPageLoaderData | undefined,
+) =>
+  loaderData === undefined
+    ? buildSitePageHead({ title: '' })
+    : buildSitePageHead({
+        title: loaderData.name,
+        description: loaderData.tagline,
+        canonicalUrl: productDetailHref(loaderData.handle),
+        ...(loaderData.listed ? {} : { noIndex: true }),
       });

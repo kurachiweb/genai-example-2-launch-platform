@@ -17,7 +17,6 @@ import {
   toHandleKey,
 } from '../../common-lib/handles/handle-rules.ts';
 import { PRODUCT_HANDLE_RULE } from '../../common-lib/product/product-input-rules.ts';
-import { productDetailHref } from '../components/layout/site-links.ts';
 import {
   ClientMatchSupportersDocument,
   type ClientMatchSupportersQuery,
@@ -53,7 +52,8 @@ interface ProductPageLoaderArgs {
     readonly viewer: ClientViewer | null;
   };
   readonly params: { readonly handle: string };
-  readonly location: { readonly searchStr: string };
+  // 経路に検索パラメーターの検証が無いため、URLのクエリを解析したままの値
+  readonly location: { readonly search: Readonly<Record<string, unknown>> };
 }
 
 const GUEST_SCOPE = 'guest';
@@ -104,6 +104,10 @@ export const productLiveMatchQueryOptions = (
   });
 };
 
+export const PRODUCT_LIVE_MATCH_QUERY_PREFIX = Object.freeze([
+  documentIdOf(ClientProductLiveMatchDocument),
+] as const);
+
 export const toProductPageView = ({
   productPage,
 }: ClientProductPageQuery): ProductPageView | undefined =>
@@ -134,7 +138,9 @@ export async function loadProductPage({
   }
   if (productPage.__typename === 'ProductPageRedirect') {
     throw redirect({
-      href: `${productDetailHref(productPage.handle)}${location.searchStr}`,
+      to: '/p/$handle',
+      params: { handle: productPage.handle },
+      search: location.search,
       statusCode: 302,
     });
   }
@@ -307,6 +313,10 @@ export const productOwnerStatusQueryOptions = (
         ),
       ),
   });
+
+export const PRODUCT_OWNER_STATUS_QUERY_PREFIX = Object.freeze([
+  documentIdOf(ClientProductOwnerStatusDocument),
+] as const);
 
 // 照会と詳細ページの間にハンドルが変わった・本人のプロダクトでなくなったならundefined
 export const toOwnerLaunchPlan = ({

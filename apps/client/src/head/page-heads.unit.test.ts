@@ -10,6 +10,7 @@ import {
   buildLegalDocumentHead,
   buildLegalVersionHead,
   buildPricingHead,
+  buildProductPageHead,
   buildPublicProfileHead,
   buildRootHead,
   buildSitePageHead,
@@ -254,6 +255,41 @@ describe('buildPublicProfileHead', () => {
 
   test('取得前や失敗でloaderの値が無いときは、サイト名だけのタイトルにして正規のURLを付けない', () => {
     expect(buildPublicProfileHead(undefined)).toStrictEqual({
+      meta: [{ title: 'Launch Stadium' }],
+      links: [],
+    });
+  });
+});
+
+describe('buildProductPageHead', () => {
+  const LOADER_DATA = {
+    handle: 'Pitch-Notes',
+    name: 'Pitch Notes',
+    tagline: 'ピッチの台本を書いて練習できるノートアプリ',
+    listed: true,
+  };
+
+  test('タイトルに名称、説明にタグラインを使い、正規のURLを現在のハンドルの表記のパスにする', () => {
+    expect(buildProductPageHead(LOADER_DATA)).toStrictEqual({
+      meta: [
+        { title: 'Pitch Notes | Launch Stadium' },
+        {
+          name: 'description',
+          content: 'ピッチの台本を書いて練習できるノートアプリ',
+        },
+      ],
+      links: [{ rel: 'canonical', href: '/p/Pitch-Notes' }],
+    });
+  });
+
+  test('未掲載のプロダクト(投稿者本人にだけ表示する)は、検索エンジンの登録を拒否する', () => {
+    expect(
+      buildProductPageHead({ ...LOADER_DATA, listed: false }).meta,
+    ).toContainEqual({ name: 'robots', content: 'noindex, nofollow' });
+  });
+
+  test('取得前や失敗でloaderの値が無いときは、サイト名だけのタイトルにして正規のURLを付けない', () => {
+    expect(buildProductPageHead(undefined)).toStrictEqual({
       meta: [{ title: 'Launch Stadium' }],
       links: [],
     });
