@@ -81,7 +81,7 @@
 - **Sources Consulted**: `docs/GUIDES/tech/db/002`(D1の`db.batch()`は1つのトランザクション)、user-profile-socialの保存の`CASE`式、identity-authの`UserLifecycleCommitter`、SQLiteの制約の検査の順(NOT NULLとCHECKは一意性より先に検査され、UPSERTの`ON CONFLICT`は一意性の衝突だけに働く)、SQLiteのJSON関数(`json_each`)と`group_concat`。
 - **Findings**:
   - 更新・削除の取り消しの条件(記事が存在し、更新では版が一致する)は、`UPDATE`・`DELETE`の対象が0行でもエラーにならないため、そのままでは監査ログの記録を止められない。一括の書き込みの先頭に「記事のテーブルへの、ハンドルの値を`(SELECT handle FROM help_articles WHERE id = ? AND revision = ?)`で読む`INSERT … ON CONFLICT DO NOTHING`」を置くと、存在しない・版が違う場合はNOT NULL制約の違反で全体が取り消され、存在する場合は一意の衝突で何も書かない。
-  - 並べ替えの対象の集合の確認は、対象のIDを昇順で`group_concat`した値と、渡されたIDを昇順で連結した値(バインド変数1つ)の比較を、標準カテゴリの行への`INSERT … ON CONFLICT DO NOTHING`の`name`の`CASE`式に入れれば、同じ方式で全体を取り消せる。件数によらずバインド変数は1つである。
+  - 並べ替えの対象の集合の確認は、渡されたIDのJSON配列の件数が対象の件数と同じで対象のIDが全て`json_each`に含まれるという集合の比較(`group_concat`は集約の順序が保証されず区切りの文字を含むIDで誤って一致し、対象が0件でNULLになるため採らない)を、標準カテゴリの行への`INSERT … ON CONFLICT DO NOTHING`の`name`の`CASE`式に入れれば、同じ方式で全体を取り消せる。件数によらずバインド変数は一定である。
   - 並び順の更新は`UPDATE … SET sort_order = (SELECT CAST(key AS INTEGER) + 1 FROM json_each(?) WHERE value = id)`の1文で、件数によらずバインド変数は2つである。
   - カテゴリの存在とハンドルの使用中の判定は、作成の`INSERT`・更新の`UPDATE`の`category_id`(NOT NULL)を`CASE WHEN <カテゴリが存在> AND NOT <handleOccupiedCondition> THEN ? ELSE NULL END`にして同じトランザクションで判定する。`handle`の一意索引と旧ハンドルの一意索引の違反も全体を取り消す。
   - 失敗の分類は取り消しの後の読み直しで行う(記事が無い→`help_article_not_found`、版が違う→`help_article_conflict`、カテゴリが無い→`validation_error`の`categoryId`、それ以外→`help_article_handle_unavailable`。並べ替えは`help_order_outdated`)。

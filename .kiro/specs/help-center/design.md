@@ -384,7 +384,7 @@ sequenceDiagram
     U-->>O: 並べ替えた後の一覧
 ```
 
-- 一括の書き込み: (1)並び順の対象の集合の確認の文(`helpOrderGuard`)。対象(カテゴリの全件、またはそのカテゴリの全記事)のIDを昇順で`group_concat`した値と、渡されたIDを昇順で連結した値(バインド変数1つ)が一致しなければ、標準カテゴリの行への`INSERT … ON CONFLICT DO NOTHING`の`name`をNULLにしてNOT NULL制約の違反で全体を取り消す。一致すれば一意の衝突で何も書かない。(2)`UPDATE <テーブル> SET sort_order = (SELECT CAST(key AS INTEGER) + 1 FROM json_each(?) WHERE value = <テーブル>.id) WHERE <対象の条件>`(順序のJSON配列をバインド変数1つで渡し、件数によらず1文で更新する。`updated_at`・`revision`は変えない、9.9)。(3)`buildAuditLogStatements`。
+- 一括の書き込み: (1)並び順の対象の集合の確認の文(`helpOrderGuard`)。渡されたIDのJSON配列について、件数が対象(カテゴリの全件、またはそのカテゴリの全記事)の件数と同じで、対象のIDが全て`json_each`に含まれる(集合が等しい)という条件を満たさなければ、標準カテゴリの行への`INSERT … ON CONFLICT DO NOTHING`の`name`をNULLにしてNOT NULL制約の違反で全体を取り消す。一致すれば一意の衝突で何も書かない。(2)`UPDATE <テーブル> SET sort_order = (SELECT CAST(key AS INTEGER) + 1 FROM json_each(?) WHERE value = <テーブル>.id) WHERE <対象の条件>`(順序のJSON配列をバインド変数1つで渡し、件数によらず1文で更新する。`updated_at`・`revision`は変えない、9.9)。(3)`buildAuditLogStatements`。
 - 取り消された場合は`outdated`として`help_order_outdated`を返す(9.10・11.11)。
 - 記事の並べ替えの画面は、ピン留めの群に続けてそれ以外の群の順でIDを送る。ピン留めの切り替えでは`sort_order`を変えないため、切り替えた記事は新しい群の中で同じ値の位置に表示される(9.11)。
 
@@ -1018,7 +1018,7 @@ export declare function helpOrderGuard(
 ```
 
 - `helpArticleExistsGuard`は`INSERT INTO help_articles (<全列>) VALUES (?, (SELECT handle FROM help_articles WHERE id = ? [AND revision = ?]), <その他の列はCHECKと外部キーを満たす固定値。カテゴリはHELP_CATEGORY_OTHER_ID>…) ON CONFLICT DO NOTHING`。記事が無い・版が違えば`handle`がNULLになりNOT NULL制約の違反で一括の書き込み全体を取り消す。記事があれば主キーと`handle`の一意の衝突で何も書かない。
-- `helpOrderGuard`は`INSERT INTO help_categories (id, name, …) VALUES (<HELP_CATEGORY_OTHER_ID>, CASE WHEN (SELECT group_concat(id, ',') FROM (SELECT id FROM <対象> ORDER BY id)) = ? THEN 'その他' ELSE NULL END, …) ON CONFLICT DO NOTHING`。対象の集合が渡されたIDの集合(昇順で連結した文字列)と違えば全体を取り消し、一致すれば標準カテゴリの行との一意の衝突で何も書かない。対象はカテゴリの全件、またはそのカテゴリの全記事(下書きを含む)。
+- `helpOrderGuard`は`INSERT INTO help_categories (id, name, …) VALUES (<HELP_CATEGORY_OTHER_ID>, CASE WHEN json_array_length(?) = (SELECT count(*) FROM <対象>) AND NOT EXISTS (SELECT 1 FROM <対象> WHERE id NOT IN (SELECT value FROM json_each(?))) THEN 'その他' ELSE NULL END, …) ON CONFLICT DO NOTHING`。対象の集合が渡されたIDの集合と違えば(件数が同じで対象を全て含めば等しく、重複を含む配列は件数の一致で除かれる。集約関数の順序に依存しない)全体を取り消し、一致すれば標準カテゴリの行との一意の衝突で何も書かない。対象はカテゴリの全件、またはそのカテゴリの全記事(下書きを含む)。
 - 2つの確認の文の意図をコードのコメントで説明し、Workers統合テストで結果(全体の取り消しと、何も書かないこと)を固定する。
 - 本specは旧ハンドルを論理削除しない(削除時と他の記事への解放時に物理削除する)。`deletedAt`の列は`previousHandleColumns`が持つため記述に含め、常に空のままにする。
 

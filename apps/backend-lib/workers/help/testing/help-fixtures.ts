@@ -10,6 +10,8 @@ import { helpCategories } from '../../../../db/schema/help/help-categories.ts';
 
 type HelpArticleRow = typeof helpArticles.$inferInsert;
 
+type HelpCategoryRow = typeof helpCategories.$inferInsert;
+
 export const T0 = new Date('2026-11-01T00:00:00.000Z');
 
 export const db = createDatabase(env.DB);
@@ -37,6 +39,42 @@ export async function insertHelpArticle(
     createdAt: T0,
     updatedAt: T0,
     ...columns,
+  });
+}
+
+export function helpCategoryIdOf(index: number): string {
+  return `01JD0HCAT${String(index).padStart(17, '0')}`;
+}
+
+// 初期データの標準カテゴリ(並び順1)の後ろに並ぶ
+export async function insertHelpCategory(
+  index: number,
+  columns: Partial<HelpCategoryRow> = {},
+): Promise<void> {
+  await db.insert(helpCategories).values({
+    id: helpCategoryIdOf(index),
+    name: `カテゴリ${String(index)}`,
+    sortOrder: index + 1,
+    createdAt: T0,
+    updatedAt: T0,
+    ...columns,
+  });
+}
+
+export function helpPreviousHandleIdOf(articleIndex: number): string {
+  return `01JD0HPRV${String(articleIndex).padStart(17, '0')}`;
+}
+
+export async function insertHelpArticlePreviousHandle(
+  articleIndex: number,
+  handle: string,
+): Promise<void> {
+  await db.insert(helpArticlePreviousHandles).values({
+    id: helpPreviousHandleIdOf(articleIndex),
+    ownerId: helpArticleIdOf(articleIndex),
+    handle,
+    createdAt: T0,
+    updatedAt: T0,
   });
 }
 
