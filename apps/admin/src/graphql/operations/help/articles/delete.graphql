@@ -1,0 +1,5 @@
+mutation AdminDeleteHelpArticle($id: ID!, $reason: String) {
+  deleteHelpArticle(id: $id, reason: $reason) {
+    id
+  }
+}

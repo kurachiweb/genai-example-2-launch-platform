@@ -14,6 +14,9 @@ import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-
  * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
  */
 type Documents = {
+    "fragment AdminHelpArticleRow on AdminHelpArticleRow {\n  id\n  handle\n  title\n  categoryId\n  categoryName\n  status\n  pinned\n  sortOrder\n  creatorAdminId\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  createdAt\n  updatedAt\n}": typeof types.AdminHelpArticleRowFragmentDoc,
+    "fragment AdminHelpArticle on AdminHelpArticle {\n  id\n  handle\n  previousHandle\n  title\n  subtitle\n  body\n  categoryId\n  categoryName\n  status\n  pinned\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  revision\n  createdAt\n  updatedAt\n}": typeof types.AdminHelpArticleFragmentDoc,
+    "fragment HelpCategory on HelpCategory {\n  id\n  name\n  systemDefault\n  sortOrder\n  articleCount\n}": typeof types.HelpCategoryFragmentDoc,
     "query AdminAccounts {\n  adminAccounts {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": typeof types.AdminAccountsDocument,
     "mutation AdminChangeRole($id: ID!, $role: AdminRole!, $reason: String) {\n  changeAdminRole(id: $id, role: $role, reason: $reason) {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": typeof types.AdminChangeRoleDocument,
     "mutation AdminDelete($id: ID!, $reason: String) {\n  deleteAdmin(id: $id, reason: $reason)\n}": typeof types.AdminDeleteDocument,
@@ -45,6 +48,18 @@ type Documents = {
     "mutation AdminRequestEmailChange($newEmail: String!, $reAuthentication: AdminReAuthenticationInput!) {\n  requestAdminEmailChange(\n    newEmail: $newEmail\n    reAuthentication: $reAuthentication\n  )\n}": typeof types.AdminRequestEmailChangeDocument,
     "mutation AdminStartTotpReset($reAuthentication: AdminReAuthenticationInput!) {\n  startAdminTotpReset(reAuthentication: $reAuthentication) {\n    otpauthUri\n    secret\n    expiresAt\n  }\n}": typeof types.AdminStartTotpResetDocument,
     "query AdminViewer {\n  adminViewer {\n    id\n    nickname\n    title\n    email\n    role\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    remainingRecoveryCodes\n  }\n}": typeof types.AdminViewerDocument,
+    "query AdminHelpArticle($id: ID!) {\n  adminHelpArticle(id: $id) {\n    ...AdminHelpArticle\n  }\n}": typeof types.AdminHelpArticleDocument,
+    "query AdminHelpArticles {\n  adminHelpArticles {\n    ...AdminHelpArticleRow\n  }\n}": typeof types.AdminHelpArticlesDocument,
+    "mutation AdminCreateHelpArticle($input: CreateHelpArticleInput!) {\n  createHelpArticle(input: $input) {\n    ...AdminHelpArticle\n  }\n}": typeof types.AdminCreateHelpArticleDocument,
+    "mutation AdminDeleteHelpArticle($id: ID!, $reason: String) {\n  deleteHelpArticle(id: $id, reason: $reason) {\n    id\n  }\n}": typeof types.AdminDeleteHelpArticleDocument,
+    "query AdminHelpArticleHandleAvailability($handle: String!, $articleId: ID) {\n  helpArticleHandleAvailability(handle: $handle, articleId: $articleId)\n}": typeof types.AdminHelpArticleHandleAvailabilityDocument,
+    "mutation AdminReorderHelpArticles($categoryId: ID!, $orderedIds: [ID!]!) {\n  reorderHelpArticles(categoryId: $categoryId, orderedIds: $orderedIds) {\n    ...AdminHelpArticleRow\n  }\n}": typeof types.AdminReorderHelpArticlesDocument,
+    "mutation AdminUpdateHelpArticle($input: UpdateHelpArticleInput!) {\n  updateHelpArticle(input: $input) {\n    ...AdminHelpArticle\n  }\n}": typeof types.AdminUpdateHelpArticleDocument,
+    "query AdminHelpCategories {\n  adminHelpCategories {\n    ...HelpCategory\n  }\n}": typeof types.AdminHelpCategoriesDocument,
+    "mutation AdminCreateHelpCategory($name: String!) {\n  createHelpCategory(name: $name) {\n    ...HelpCategory\n  }\n}": typeof types.AdminCreateHelpCategoryDocument,
+    "mutation AdminDeleteHelpCategory($id: ID!) {\n  deleteHelpCategory(id: $id) {\n    id\n    reassignedCount\n  }\n}": typeof types.AdminDeleteHelpCategoryDocument,
+    "mutation AdminRenameHelpCategory($id: ID!, $name: String!) {\n  renameHelpCategory(id: $id, name: $name) {\n    ...HelpCategory\n  }\n}": typeof types.AdminRenameHelpCategoryDocument,
+    "mutation AdminReorderHelpCategories($orderedIds: [ID!]!) {\n  reorderHelpCategories(orderedIds: $orderedIds) {\n    ...HelpCategory\n  }\n}": typeof types.AdminReorderHelpCategoriesDocument,
     "mutation AdminDiscardLegalDocumentDraft($input: DiscardLegalDocumentDraftInput!) {\n  discardLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminDiscardLegalDocumentDraftDocument,
     "query AdminLegalDocumentVersion($kind: LegalDocumentKind!, $versionNumber: Int!) {\n  adminLegalDocumentVersion(kind: $kind, versionNumber: $versionNumber) {\n    kind\n    versionNumber\n    publishedAt\n    changeSummary\n    body\n    isLatest\n    publishedBy {\n      id\n      nickname\n    }\n  }\n}": typeof types.AdminLegalDocumentVersionDocument,
     "query AdminLegalDocument($kind: LegalDocumentKind!) {\n  adminLegalDocument(kind: $kind) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminLegalDocumentDocument,
@@ -60,6 +75,9 @@ type Documents = {
     "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": typeof types.AdminUpdateUltrasPromotionSettingDocument,
 };
 const documents: Documents = {
+    "fragment AdminHelpArticleRow on AdminHelpArticleRow {\n  id\n  handle\n  title\n  categoryId\n  categoryName\n  status\n  pinned\n  sortOrder\n  creatorAdminId\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  createdAt\n  updatedAt\n}": types.AdminHelpArticleRowFragmentDoc,
+    "fragment AdminHelpArticle on AdminHelpArticle {\n  id\n  handle\n  previousHandle\n  title\n  subtitle\n  body\n  categoryId\n  categoryName\n  status\n  pinned\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  revision\n  createdAt\n  updatedAt\n}": types.AdminHelpArticleFragmentDoc,
+    "fragment HelpCategory on HelpCategory {\n  id\n  name\n  systemDefault\n  sortOrder\n  articleCount\n}": types.HelpCategoryFragmentDoc,
     "query AdminAccounts {\n  adminAccounts {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": types.AdminAccountsDocument,
     "mutation AdminChangeRole($id: ID!, $role: AdminRole!, $reason: String) {\n  changeAdminRole(id: $id, role: $role, reason: $reason) {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": types.AdminChangeRoleDocument,
     "mutation AdminDelete($id: ID!, $reason: String) {\n  deleteAdmin(id: $id, reason: $reason)\n}": types.AdminDeleteDocument,
@@ -91,6 +109,18 @@ const documents: Documents = {
     "mutation AdminRequestEmailChange($newEmail: String!, $reAuthentication: AdminReAuthenticationInput!) {\n  requestAdminEmailChange(\n    newEmail: $newEmail\n    reAuthentication: $reAuthentication\n  )\n}": types.AdminRequestEmailChangeDocument,
     "mutation AdminStartTotpReset($reAuthentication: AdminReAuthenticationInput!) {\n  startAdminTotpReset(reAuthentication: $reAuthentication) {\n    otpauthUri\n    secret\n    expiresAt\n  }\n}": types.AdminStartTotpResetDocument,
     "query AdminViewer {\n  adminViewer {\n    id\n    nickname\n    title\n    email\n    role\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    remainingRecoveryCodes\n  }\n}": types.AdminViewerDocument,
+    "query AdminHelpArticle($id: ID!) {\n  adminHelpArticle(id: $id) {\n    ...AdminHelpArticle\n  }\n}": types.AdminHelpArticleDocument,
+    "query AdminHelpArticles {\n  adminHelpArticles {\n    ...AdminHelpArticleRow\n  }\n}": types.AdminHelpArticlesDocument,
+    "mutation AdminCreateHelpArticle($input: CreateHelpArticleInput!) {\n  createHelpArticle(input: $input) {\n    ...AdminHelpArticle\n  }\n}": types.AdminCreateHelpArticleDocument,
+    "mutation AdminDeleteHelpArticle($id: ID!, $reason: String) {\n  deleteHelpArticle(id: $id, reason: $reason) {\n    id\n  }\n}": types.AdminDeleteHelpArticleDocument,
+    "query AdminHelpArticleHandleAvailability($handle: String!, $articleId: ID) {\n  helpArticleHandleAvailability(handle: $handle, articleId: $articleId)\n}": types.AdminHelpArticleHandleAvailabilityDocument,
+    "mutation AdminReorderHelpArticles($categoryId: ID!, $orderedIds: [ID!]!) {\n  reorderHelpArticles(categoryId: $categoryId, orderedIds: $orderedIds) {\n    ...AdminHelpArticleRow\n  }\n}": types.AdminReorderHelpArticlesDocument,
+    "mutation AdminUpdateHelpArticle($input: UpdateHelpArticleInput!) {\n  updateHelpArticle(input: $input) {\n    ...AdminHelpArticle\n  }\n}": types.AdminUpdateHelpArticleDocument,
+    "query AdminHelpCategories {\n  adminHelpCategories {\n    ...HelpCategory\n  }\n}": types.AdminHelpCategoriesDocument,
+    "mutation AdminCreateHelpCategory($name: String!) {\n  createHelpCategory(name: $name) {\n    ...HelpCategory\n  }\n}": types.AdminCreateHelpCategoryDocument,
+    "mutation AdminDeleteHelpCategory($id: ID!) {\n  deleteHelpCategory(id: $id) {\n    id\n    reassignedCount\n  }\n}": types.AdminDeleteHelpCategoryDocument,
+    "mutation AdminRenameHelpCategory($id: ID!, $name: String!) {\n  renameHelpCategory(id: $id, name: $name) {\n    ...HelpCategory\n  }\n}": types.AdminRenameHelpCategoryDocument,
+    "mutation AdminReorderHelpCategories($orderedIds: [ID!]!) {\n  reorderHelpCategories(orderedIds: $orderedIds) {\n    ...HelpCategory\n  }\n}": types.AdminReorderHelpCategoriesDocument,
     "mutation AdminDiscardLegalDocumentDraft($input: DiscardLegalDocumentDraftInput!) {\n  discardLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": types.AdminDiscardLegalDocumentDraftDocument,
     "query AdminLegalDocumentVersion($kind: LegalDocumentKind!, $versionNumber: Int!) {\n  adminLegalDocumentVersion(kind: $kind, versionNumber: $versionNumber) {\n    kind\n    versionNumber\n    publishedAt\n    changeSummary\n    body\n    isLatest\n    publishedBy {\n      id\n      nickname\n    }\n  }\n}": types.AdminLegalDocumentVersionDocument,
     "query AdminLegalDocument($kind: LegalDocumentKind!) {\n  adminLegalDocument(kind: $kind) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": types.AdminLegalDocumentDocument,
@@ -120,6 +150,18 @@ const documents: Documents = {
  */
 export function graphql(source: string): unknown;
 
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment AdminHelpArticleRow on AdminHelpArticleRow {\n  id\n  handle\n  title\n  categoryId\n  categoryName\n  status\n  pinned\n  sortOrder\n  creatorAdminId\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  createdAt\n  updatedAt\n}"): (typeof documents)["fragment AdminHelpArticleRow on AdminHelpArticleRow {\n  id\n  handle\n  title\n  categoryId\n  categoryName\n  status\n  pinned\n  sortOrder\n  creatorAdminId\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  createdAt\n  updatedAt\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment AdminHelpArticle on AdminHelpArticle {\n  id\n  handle\n  previousHandle\n  title\n  subtitle\n  body\n  categoryId\n  categoryName\n  status\n  pinned\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  revision\n  createdAt\n  updatedAt\n}"): (typeof documents)["fragment AdminHelpArticle on AdminHelpArticle {\n  id\n  handle\n  previousHandle\n  title\n  subtitle\n  body\n  categoryId\n  categoryName\n  status\n  pinned\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  revision\n  createdAt\n  updatedAt\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment HelpCategory on HelpCategory {\n  id\n  name\n  systemDefault\n  sortOrder\n  articleCount\n}"): (typeof documents)["fragment HelpCategory on HelpCategory {\n  id\n  name\n  systemDefault\n  sortOrder\n  articleCount\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -244,6 +286,54 @@ export function graphql(source: "mutation AdminStartTotpReset($reAuthentication:
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "query AdminViewer {\n  adminViewer {\n    id\n    nickname\n    title\n    email\n    role\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    remainingRecoveryCodes\n  }\n}"): (typeof documents)["query AdminViewer {\n  adminViewer {\n    id\n    nickname\n    title\n    email\n    role\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    remainingRecoveryCodes\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminHelpArticle($id: ID!) {\n  adminHelpArticle(id: $id) {\n    ...AdminHelpArticle\n  }\n}"): (typeof documents)["query AdminHelpArticle($id: ID!) {\n  adminHelpArticle(id: $id) {\n    ...AdminHelpArticle\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminHelpArticles {\n  adminHelpArticles {\n    ...AdminHelpArticleRow\n  }\n}"): (typeof documents)["query AdminHelpArticles {\n  adminHelpArticles {\n    ...AdminHelpArticleRow\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminCreateHelpArticle($input: CreateHelpArticleInput!) {\n  createHelpArticle(input: $input) {\n    ...AdminHelpArticle\n  }\n}"): (typeof documents)["mutation AdminCreateHelpArticle($input: CreateHelpArticleInput!) {\n  createHelpArticle(input: $input) {\n    ...AdminHelpArticle\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminDeleteHelpArticle($id: ID!, $reason: String) {\n  deleteHelpArticle(id: $id, reason: $reason) {\n    id\n  }\n}"): (typeof documents)["mutation AdminDeleteHelpArticle($id: ID!, $reason: String) {\n  deleteHelpArticle(id: $id, reason: $reason) {\n    id\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminHelpArticleHandleAvailability($handle: String!, $articleId: ID) {\n  helpArticleHandleAvailability(handle: $handle, articleId: $articleId)\n}"): (typeof documents)["query AdminHelpArticleHandleAvailability($handle: String!, $articleId: ID) {\n  helpArticleHandleAvailability(handle: $handle, articleId: $articleId)\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminReorderHelpArticles($categoryId: ID!, $orderedIds: [ID!]!) {\n  reorderHelpArticles(categoryId: $categoryId, orderedIds: $orderedIds) {\n    ...AdminHelpArticleRow\n  }\n}"): (typeof documents)["mutation AdminReorderHelpArticles($categoryId: ID!, $orderedIds: [ID!]!) {\n  reorderHelpArticles(categoryId: $categoryId, orderedIds: $orderedIds) {\n    ...AdminHelpArticleRow\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminUpdateHelpArticle($input: UpdateHelpArticleInput!) {\n  updateHelpArticle(input: $input) {\n    ...AdminHelpArticle\n  }\n}"): (typeof documents)["mutation AdminUpdateHelpArticle($input: UpdateHelpArticleInput!) {\n  updateHelpArticle(input: $input) {\n    ...AdminHelpArticle\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminHelpCategories {\n  adminHelpCategories {\n    ...HelpCategory\n  }\n}"): (typeof documents)["query AdminHelpCategories {\n  adminHelpCategories {\n    ...HelpCategory\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminCreateHelpCategory($name: String!) {\n  createHelpCategory(name: $name) {\n    ...HelpCategory\n  }\n}"): (typeof documents)["mutation AdminCreateHelpCategory($name: String!) {\n  createHelpCategory(name: $name) {\n    ...HelpCategory\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminDeleteHelpCategory($id: ID!) {\n  deleteHelpCategory(id: $id) {\n    id\n    reassignedCount\n  }\n}"): (typeof documents)["mutation AdminDeleteHelpCategory($id: ID!) {\n  deleteHelpCategory(id: $id) {\n    id\n    reassignedCount\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminRenameHelpCategory($id: ID!, $name: String!) {\n  renameHelpCategory(id: $id, name: $name) {\n    ...HelpCategory\n  }\n}"): (typeof documents)["mutation AdminRenameHelpCategory($id: ID!, $name: String!) {\n  renameHelpCategory(id: $id, name: $name) {\n    ...HelpCategory\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminReorderHelpCategories($orderedIds: [ID!]!) {\n  reorderHelpCategories(orderedIds: $orderedIds) {\n    ...HelpCategory\n  }\n}"): (typeof documents)["mutation AdminReorderHelpCategories($orderedIds: [ID!]!) {\n  reorderHelpCategories(orderedIds: $orderedIds) {\n    ...HelpCategory\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

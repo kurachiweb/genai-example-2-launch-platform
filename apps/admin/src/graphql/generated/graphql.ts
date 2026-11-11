@@ -51,11 +51,37 @@ export type AuditLogFilterInput = {
   targetId?: string | null | undefined;
 };
 
+export type CreateHelpArticleInput = {
+  fields: HelpArticleFields;
+  reason?: string | null | undefined;
+};
+
 /** 下書きの破棄 */
 export type DiscardLegalDocumentDraftInput = {
   expectedStateVersion: number;
   kind: LegalDocumentKind;
 };
+
+export type HelpArticleFields = {
+  body: string;
+  categoryId: string | number;
+  handle: string;
+  pinned: boolean;
+  status: HelpArticleStatus;
+  subtitle: string;
+  title: string;
+};
+
+export type HelpArticleHandleAvailability =
+  | 'AVAILABLE'
+  /** 他の記事の旧ハンドルと一致する。保存するとその記事の旧URLの転送が無くなる */
+  | 'AVAILABLE_RELEASES_PREVIOUS'
+  | 'INVALID'
+  | 'UNAVAILABLE';
+
+export type HelpArticleStatus =
+  | 'DRAFT'
+  | 'PUBLISHED';
 
 /** 問い合わせの種別 */
 export type InquiryKind =
@@ -108,6 +134,13 @@ export type SaveLegalDocumentDraftInput = {
   kind: LegalDocumentKind;
 };
 
+export type UpdateHelpArticleInput = {
+  expectedRevision: number;
+  fields: HelpArticleFields;
+  id: string | number;
+  reason?: string | null | undefined;
+};
+
 /** 機能フラグの変更の入力 */
 export type UpdateUltrasPromotionSettingInput = {
   enabled: boolean;
@@ -116,6 +149,12 @@ export type UpdateUltrasPromotionSettingInput = {
   /** 監査ログに残す理由(任意) */
   reason?: string | null | undefined;
 };
+
+export type AdminHelpArticleRowFragment = { id: string, handle: string, title: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, sortOrder: number, creatorAdminId: string, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
+
+export type AdminHelpArticleFragment = { id: string, handle: string, previousHandle: string | null, title: string, subtitle: string, body: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, revision: number, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
+
+export type HelpCategoryFragment = { id: string, name: string, systemDefault: boolean, sortOrder: number, articleCount: number };
 
 export type AdminAccountsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -345,6 +384,90 @@ export type AdminViewerQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type AdminViewerQuery = { adminViewer: { id: string, nickname: string, title: string | null, email: string, role: AdminRole, remainingRecoveryCodes: number, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
 
+export type AdminHelpArticleQueryVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type AdminHelpArticleQuery = { adminHelpArticle: { id: string, handle: string, previousHandle: string | null, title: string, subtitle: string, body: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, revision: number, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } | null };
+
+export type AdminHelpArticlesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminHelpArticlesQuery = { adminHelpArticles: Array<{ id: string, handle: string, title: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, sortOrder: number, creatorAdminId: string, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> };
+
+export type AdminCreateHelpArticleMutationVariables = Exact<{
+  input: CreateHelpArticleInput;
+}>;
+
+
+export type AdminCreateHelpArticleMutation = { createHelpArticle: { id: string, handle: string, previousHandle: string | null, title: string, subtitle: string, body: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, revision: number, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } };
+
+export type AdminDeleteHelpArticleMutationVariables = Exact<{
+  id: string | number;
+  reason?: string | null | undefined;
+}>;
+
+
+export type AdminDeleteHelpArticleMutation = { deleteHelpArticle: { id: string } };
+
+export type AdminHelpArticleHandleAvailabilityQueryVariables = Exact<{
+  handle: string;
+  articleId?: string | number | null | undefined;
+}>;
+
+
+export type AdminHelpArticleHandleAvailabilityQuery = { helpArticleHandleAvailability: HelpArticleHandleAvailability };
+
+export type AdminReorderHelpArticlesMutationVariables = Exact<{
+  categoryId: string | number;
+  orderedIds: Array<string | number> | string | number;
+}>;
+
+
+export type AdminReorderHelpArticlesMutation = { reorderHelpArticles: Array<{ id: string, handle: string, title: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, sortOrder: number, creatorAdminId: string, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> };
+
+export type AdminUpdateHelpArticleMutationVariables = Exact<{
+  input: UpdateHelpArticleInput;
+}>;
+
+
+export type AdminUpdateHelpArticleMutation = { updateHelpArticle: { id: string, handle: string, previousHandle: string | null, title: string, subtitle: string, body: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, revision: number, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } };
+
+export type AdminHelpCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminHelpCategoriesQuery = { adminHelpCategories: Array<{ id: string, name: string, systemDefault: boolean, sortOrder: number, articleCount: number }> };
+
+export type AdminCreateHelpCategoryMutationVariables = Exact<{
+  name: string;
+}>;
+
+
+export type AdminCreateHelpCategoryMutation = { createHelpCategory: { id: string, name: string, systemDefault: boolean, sortOrder: number, articleCount: number } };
+
+export type AdminDeleteHelpCategoryMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type AdminDeleteHelpCategoryMutation = { deleteHelpCategory: { id: string, reassignedCount: number } };
+
+export type AdminRenameHelpCategoryMutationVariables = Exact<{
+  id: string | number;
+  name: string;
+}>;
+
+
+export type AdminRenameHelpCategoryMutation = { renameHelpCategory: { id: string, name: string, systemDefault: boolean, sortOrder: number, articleCount: number } };
+
+export type AdminReorderHelpCategoriesMutationVariables = Exact<{
+  orderedIds: Array<string | number> | string | number;
+}>;
+
+
+export type AdminReorderHelpCategoriesMutation = { reorderHelpCategories: Array<{ id: string, name: string, systemDefault: boolean, sortOrder: number, articleCount: number }> };
+
 export type AdminDiscardLegalDocumentDraftMutationVariables = Exact<{
   input: DiscardLegalDocumentDraftInput;
 }>;
@@ -430,7 +553,9 @@ export type AdminUpdateUltrasPromotionSettingMutationVariables = Exact<{
 
 export type AdminUpdateUltrasPromotionSettingMutation = { updateUltrasPromotionSetting: { enabled: boolean, updatedAt: string | null, updatedByNickname: string | null, version: number } };
 
-
+export const AdminHelpArticleRowFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminHelpArticleRow"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminHelpArticleRow"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"categoryName"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"pinned"}},{"kind":"Field","name":{"kind":"Name","value":"sortOrder"}},{"kind":"Field","name":{"kind":"Name","value":"creatorAdminId"}},{"kind":"Field","name":{"kind":"Name","value":"creator"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<AdminHelpArticleRowFragment, unknown>;
+export const AdminHelpArticleFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminHelpArticle"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminHelpArticle"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"previousHandle"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"subtitle"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"categoryName"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"pinned"}},{"kind":"Field","name":{"kind":"Name","value":"creator"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"revision"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<AdminHelpArticleFragment, unknown>;
+export const HelpCategoryFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"HelpCategory"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"HelpCategory"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"systemDefault"}},{"kind":"Field","name":{"kind":"Name","value":"sortOrder"}},{"kind":"Field","name":{"kind":"Name","value":"articleCount"}}]}}]} as unknown as DocumentNode<HelpCategoryFragment, unknown>;
 export const AdminAccountsDocument = {"__meta__":{"hash":"sha256:00f33554081a88503d14f773be600ba93677eb9075e14f59cc2ed39a06cbc377"}} as unknown as DocumentNode<AdminAccountsQuery, AdminAccountsQueryVariables>;
 export const AdminChangeRoleDocument = {"__meta__":{"hash":"sha256:f1f88bf3b8b20cf0bc4c9098f0f1c85d00b64194ca28a5b18014c203a7517871"}} as unknown as DocumentNode<AdminChangeRoleMutation, AdminChangeRoleMutationVariables>;
 export const AdminDeleteDocument = {"__meta__":{"hash":"sha256:29852b285441f9a321526e46f4d625ef1052e2f0b438cacdd40f7d4ca70daaaa"}} as unknown as DocumentNode<AdminDeleteMutation, AdminDeleteMutationVariables>;
@@ -462,6 +587,18 @@ export const AdminRegenerateRecoveryCodesDocument = {"__meta__":{"hash":"sha256:
 export const AdminRequestEmailChangeDocument = {"__meta__":{"hash":"sha256:001d16267154b69081040699d102aa02a3daeb4b080daccf3fb4375ff43da5a7"}} as unknown as DocumentNode<AdminRequestEmailChangeMutation, AdminRequestEmailChangeMutationVariables>;
 export const AdminStartTotpResetDocument = {"__meta__":{"hash":"sha256:1b3ca75cae779b59323f5f62c21ed237e938f4ff28d99a975406ee2d754b21ff"}} as unknown as DocumentNode<AdminStartTotpResetMutation, AdminStartTotpResetMutationVariables>;
 export const AdminViewerDocument = {"__meta__":{"hash":"sha256:1ac496453595a8382b39f19b1b1f5772167f686970c6f4d851c2939d063f20bc"}} as unknown as DocumentNode<AdminViewerQuery, AdminViewerQueryVariables>;
+export const AdminHelpArticleDocument = {"__meta__":{"hash":"sha256:17e1f66462d29a5db66e46056f430dcf92ed9b141e0d38c638345e2062741853"}} as unknown as DocumentNode<AdminHelpArticleQuery, AdminHelpArticleQueryVariables>;
+export const AdminHelpArticlesDocument = {"__meta__":{"hash":"sha256:5e0c9f0e344b4ea887ea4747fc84b218ccfae74f9868b929f046b448edbf420c"}} as unknown as DocumentNode<AdminHelpArticlesQuery, AdminHelpArticlesQueryVariables>;
+export const AdminCreateHelpArticleDocument = {"__meta__":{"hash":"sha256:a30cc1e04293ac7c0ff17f2982d7a828917419996351da6ebca755792bc152d4"}} as unknown as DocumentNode<AdminCreateHelpArticleMutation, AdminCreateHelpArticleMutationVariables>;
+export const AdminDeleteHelpArticleDocument = {"__meta__":{"hash":"sha256:3e701c63ea41ad56a81c2df72284b8f965c003896cd97b5358c51028b18334b0"}} as unknown as DocumentNode<AdminDeleteHelpArticleMutation, AdminDeleteHelpArticleMutationVariables>;
+export const AdminHelpArticleHandleAvailabilityDocument = {"__meta__":{"hash":"sha256:212e727808d4b3a04e50325acf3f1225336c293ad102c4cf4a8064a8c5272e6d"}} as unknown as DocumentNode<AdminHelpArticleHandleAvailabilityQuery, AdminHelpArticleHandleAvailabilityQueryVariables>;
+export const AdminReorderHelpArticlesDocument = {"__meta__":{"hash":"sha256:5b86256e52b86bed503da58bfc4afbc1da27d1abd387f33d16e4184bfcb2941a"}} as unknown as DocumentNode<AdminReorderHelpArticlesMutation, AdminReorderHelpArticlesMutationVariables>;
+export const AdminUpdateHelpArticleDocument = {"__meta__":{"hash":"sha256:b514b57fb3c78edd6354c5e3cecc25ec9604f4209df4b5e44810d9a68b7af8e9"}} as unknown as DocumentNode<AdminUpdateHelpArticleMutation, AdminUpdateHelpArticleMutationVariables>;
+export const AdminHelpCategoriesDocument = {"__meta__":{"hash":"sha256:42a6810d6265ef58f65c2c90a222c3c9f8691021ebd197f803ef21fb98378024"}} as unknown as DocumentNode<AdminHelpCategoriesQuery, AdminHelpCategoriesQueryVariables>;
+export const AdminCreateHelpCategoryDocument = {"__meta__":{"hash":"sha256:c6750424174d4eb134db72d41d21c41f44aac0cc53b3edb7858a62362a698dad"}} as unknown as DocumentNode<AdminCreateHelpCategoryMutation, AdminCreateHelpCategoryMutationVariables>;
+export const AdminDeleteHelpCategoryDocument = {"__meta__":{"hash":"sha256:7b7c923c68ec88fcfeda47e496533d2c0ccbc751a78e62f6b80f1b742489fdf9"}} as unknown as DocumentNode<AdminDeleteHelpCategoryMutation, AdminDeleteHelpCategoryMutationVariables>;
+export const AdminRenameHelpCategoryDocument = {"__meta__":{"hash":"sha256:fb1aca59949159ce35be582766a6e3407c0fbc5da15d633aa08693a04c6ec199"}} as unknown as DocumentNode<AdminRenameHelpCategoryMutation, AdminRenameHelpCategoryMutationVariables>;
+export const AdminReorderHelpCategoriesDocument = {"__meta__":{"hash":"sha256:528771d24f2e37f4979e24e96876bba2ea14575f202f09d181098373a80c4c53"}} as unknown as DocumentNode<AdminReorderHelpCategoriesMutation, AdminReorderHelpCategoriesMutationVariables>;
 export const AdminDiscardLegalDocumentDraftDocument = {"__meta__":{"hash":"sha256:f620615f9b881fde219c19329207558d9e0a5c1ee9b956440dad46537119d0b5"}} as unknown as DocumentNode<AdminDiscardLegalDocumentDraftMutation, AdminDiscardLegalDocumentDraftMutationVariables>;
 export const AdminLegalDocumentVersionDocument = {"__meta__":{"hash":"sha256:3395f8b8763a894c9a0a44dea76d6e4e1defe78d667b1304ac8abebe1d02eef3"}} as unknown as DocumentNode<AdminLegalDocumentVersionQuery, AdminLegalDocumentVersionQueryVariables>;
 export const AdminLegalDocumentDocument = {"__meta__":{"hash":"sha256:42121f09a2acd07655238015d1e097883b34ca6d9a603b7fc22271d462f77ee5"}} as unknown as DocumentNode<AdminLegalDocumentQuery, AdminLegalDocumentQueryVariables>;

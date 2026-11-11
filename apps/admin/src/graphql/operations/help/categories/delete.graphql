@@ -1,0 +1,6 @@
+mutation AdminDeleteHelpCategory($id: ID!) {
+  deleteHelpCategory(id: $id) {
+    id
+    reassignedCount
+  }
+}

@@ -1,0 +1,5 @@
+mutation AdminRenameHelpCategory($id: ID!, $name: String!) {
+  renameHelpCategory(id: $id, name: $name) {
+    ...HelpCategory
+  }
+}
