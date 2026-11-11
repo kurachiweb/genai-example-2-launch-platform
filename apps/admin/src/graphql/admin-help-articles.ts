@@ -8,6 +8,7 @@ import {
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import type { MediaImageView } from '../../lib/utilities/media/picture-sources.ts';
+import { adminHelpCategoriesQueryOptions } from './admin-help-categories.ts';
 import {
   AdminHelpArticleDocument,
   type AdminHelpArticleFragment,
@@ -226,4 +227,20 @@ export async function invalidateHelpArticleQueries(
       queryClient.invalidateQueries({ queryKey: [documentId] }),
     ),
   );
+}
+
+// 一覧は全件を読んで画面で絞り込むため、条件で取得し直さない。失敗は例外にせずキャッシュに残し、一覧の位置に再試行とともに示す
+export async function loadAdminHelpArticlesPage({
+  context: { queryClient },
+}: {
+  readonly context: { readonly queryClient: QueryClient };
+}): Promise<void> {
+  await Promise.all([
+    queryClient
+      .query({ ...adminHelpArticlesQueryOptions(), staleTime: 'static' })
+      .catch(() => undefined),
+    queryClient
+      .query({ ...adminHelpCategoriesQueryOptions(), staleTime: 'static' })
+      .catch(() => undefined),
+  ]);
 }

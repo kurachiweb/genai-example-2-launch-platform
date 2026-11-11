@@ -18,6 +18,10 @@ import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedAccountsIndexRouteImport } from './routes/_authenticated/accounts/index'
 import { Route as AuthenticatedAuditLogsIndexRouteImport } from './routes/_authenticated/audit-logs/index'
 import { Route as AuthenticatedCategoriesIndexRouteImport } from './routes/_authenticated/categories/index'
+import { Route as AuthenticatedHelpArticlesIndexRouteImport } from './routes/_authenticated/help-articles/index'
+import { Route as AuthenticatedHelpArticlesArticleIdRouteImport } from './routes/_authenticated/help-articles/$articleId'
+import { Route as AuthenticatedHelpArticlesNewRouteImport } from './routes/_authenticated/help-articles/new'
+import { Route as AuthenticatedHelpArticlesOrderRouteImport } from './routes/_authenticated/help-articles/order'
 import { Route as AuthenticatedInquiriesIndexRouteImport } from './routes/_authenticated/inquiries/index'
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedLegalDocumentsIndexRouteImport } from './routes/_authenticated/legal-documents/index'
@@ -74,6 +78,30 @@ const AuthenticatedCategoriesIndexRoute =
   AuthenticatedCategoriesIndexRouteImport.update({
     id: '/categories/',
     path: '/categories/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHelpArticlesIndexRoute =
+  AuthenticatedHelpArticlesIndexRouteImport.update({
+    id: '/help-articles/',
+    path: '/help-articles/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHelpArticlesArticleIdRoute =
+  AuthenticatedHelpArticlesArticleIdRouteImport.update({
+    id: '/help-articles/$articleId',
+    path: '/help-articles/$articleId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHelpArticlesNewRoute =
+  AuthenticatedHelpArticlesNewRouteImport.update({
+    id: '/help-articles/new',
+    path: '/help-articles/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHelpArticlesOrderRoute =
+  AuthenticatedHelpArticlesOrderRouteImport.update({
+    id: '/help-articles/order',
+    path: '/help-articles/order',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedInquiriesIndexRoute =
@@ -134,6 +162,9 @@ export interface FileRoutesByFullPath {
   '/auth/invitation': typeof AuthInvitationRoute
   '/auth/login': typeof AuthLoginRoute
   '/system/status': typeof SystemStatusRoute
+  '/help-articles/$articleId': typeof AuthenticatedHelpArticlesArticleIdRoute
+  '/help-articles/new': typeof AuthenticatedHelpArticlesNewRoute
+  '/help-articles/order': typeof AuthenticatedHelpArticlesOrderRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
@@ -141,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/audit-logs/': typeof AuthenticatedAuditLogsIndexRoute
   '/categories/': typeof AuthenticatedCategoriesIndexRoute
+  '/help-articles/': typeof AuthenticatedHelpArticlesIndexRoute
   '/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -153,6 +185,9 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/system/status': typeof SystemStatusRoute
   '/': typeof AuthenticatedIndexRoute
+  '/help-articles/$articleId': typeof AuthenticatedHelpArticlesArticleIdRoute
+  '/help-articles/new': typeof AuthenticatedHelpArticlesNewRoute
+  '/help-articles/order': typeof AuthenticatedHelpArticlesOrderRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
@@ -160,6 +195,7 @@ export interface FileRoutesByTo {
   '/accounts': typeof AuthenticatedAccountsIndexRoute
   '/audit-logs': typeof AuthenticatedAuditLogsIndexRoute
   '/categories': typeof AuthenticatedCategoriesIndexRoute
+  '/help-articles': typeof AuthenticatedHelpArticlesIndexRoute
   '/inquiries': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents': typeof AuthenticatedLegalDocumentsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
@@ -174,6 +210,9 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/system/status': typeof SystemStatusRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/help-articles/$articleId': typeof AuthenticatedHelpArticlesArticleIdRoute
+  '/_authenticated/help-articles/new': typeof AuthenticatedHelpArticlesNewRoute
+  '/_authenticated/help-articles/order': typeof AuthenticatedHelpArticlesOrderRoute
   '/_authenticated/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
@@ -181,6 +220,7 @@ export interface FileRoutesById {
   '/_authenticated/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/_authenticated/audit-logs/': typeof AuthenticatedAuditLogsIndexRoute
   '/_authenticated/categories/': typeof AuthenticatedCategoriesIndexRoute
+  '/_authenticated/help-articles/': typeof AuthenticatedHelpArticlesIndexRoute
   '/_authenticated/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/_authenticated/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -195,6 +235,9 @@ export interface FileRouteTypes {
     | '/auth/invitation'
     | '/auth/login'
     | '/system/status'
+    | '/help-articles/$articleId'
+    | '/help-articles/new'
+    | '/help-articles/order'
     | '/inquiries/$inquiryId'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
@@ -202,6 +245,7 @@ export interface FileRouteTypes {
     | '/accounts/'
     | '/audit-logs/'
     | '/categories/'
+    | '/help-articles/'
     | '/inquiries/'
     | '/legal-documents/'
     | '/settings/'
@@ -214,6 +258,9 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/system/status'
     | '/'
+    | '/help-articles/$articleId'
+    | '/help-articles/new'
+    | '/help-articles/order'
     | '/inquiries/$inquiryId'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
@@ -221,6 +268,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/audit-logs'
     | '/categories'
+    | '/help-articles'
     | '/inquiries'
     | '/legal-documents'
     | '/settings'
@@ -234,6 +282,9 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/system/status'
     | '/_authenticated/'
+    | '/_authenticated/help-articles/$articleId'
+    | '/_authenticated/help-articles/new'
+    | '/_authenticated/help-articles/order'
     | '/_authenticated/inquiries/$inquiryId'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
@@ -241,6 +292,7 @@ export interface FileRouteTypes {
     | '/_authenticated/accounts/'
     | '/_authenticated/audit-logs/'
     | '/_authenticated/categories/'
+    | '/_authenticated/help-articles/'
     | '/_authenticated/inquiries/'
     | '/_authenticated/legal-documents/'
     | '/_authenticated/settings/'
@@ -324,6 +376,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCategoriesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/help-articles/': {
+      id: '/_authenticated/help-articles/'
+      path: '/help-articles'
+      fullPath: '/help-articles/'
+      preLoaderRoute: typeof AuthenticatedHelpArticlesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/help-articles/$articleId': {
+      id: '/_authenticated/help-articles/$articleId'
+      path: '/help-articles/$articleId'
+      fullPath: '/help-articles/$articleId'
+      preLoaderRoute: typeof AuthenticatedHelpArticlesArticleIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/help-articles/new': {
+      id: '/_authenticated/help-articles/new'
+      path: '/help-articles/new'
+      fullPath: '/help-articles/new'
+      preLoaderRoute: typeof AuthenticatedHelpArticlesNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/help-articles/order': {
+      id: '/_authenticated/help-articles/order'
+      path: '/help-articles/order'
+      fullPath: '/help-articles/order'
+      preLoaderRoute: typeof AuthenticatedHelpArticlesOrderRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/inquiries/': {
       id: '/_authenticated/inquiries/'
       path: '/inquiries'
@@ -392,11 +472,15 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedHelpArticlesArticleIdRoute: typeof AuthenticatedHelpArticlesArticleIdRoute
+  AuthenticatedHelpArticlesNewRoute: typeof AuthenticatedHelpArticlesNewRoute
+  AuthenticatedHelpArticlesOrderRoute: typeof AuthenticatedHelpArticlesOrderRoute
   AuthenticatedInquiriesInquiryIdRoute: typeof AuthenticatedInquiriesInquiryIdRoute
   AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
   AuthenticatedAccountsIndexRoute: typeof AuthenticatedAccountsIndexRoute
   AuthenticatedAuditLogsIndexRoute: typeof AuthenticatedAuditLogsIndexRoute
   AuthenticatedCategoriesIndexRoute: typeof AuthenticatedCategoriesIndexRoute
+  AuthenticatedHelpArticlesIndexRoute: typeof AuthenticatedHelpArticlesIndexRoute
   AuthenticatedInquiriesIndexRoute: typeof AuthenticatedInquiriesIndexRoute
   AuthenticatedLegalDocumentsIndexRoute: typeof AuthenticatedLegalDocumentsIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
@@ -406,11 +490,16 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedHelpArticlesArticleIdRoute:
+    AuthenticatedHelpArticlesArticleIdRoute,
+  AuthenticatedHelpArticlesNewRoute: AuthenticatedHelpArticlesNewRoute,
+  AuthenticatedHelpArticlesOrderRoute: AuthenticatedHelpArticlesOrderRoute,
   AuthenticatedInquiriesInquiryIdRoute: AuthenticatedInquiriesInquiryIdRoute,
   AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
   AuthenticatedAccountsIndexRoute: AuthenticatedAccountsIndexRoute,
   AuthenticatedAuditLogsIndexRoute: AuthenticatedAuditLogsIndexRoute,
   AuthenticatedCategoriesIndexRoute: AuthenticatedCategoriesIndexRoute,
+  AuthenticatedHelpArticlesIndexRoute: AuthenticatedHelpArticlesIndexRoute,
   AuthenticatedInquiriesIndexRoute: AuthenticatedInquiriesIndexRoute,
   AuthenticatedLegalDocumentsIndexRoute: AuthenticatedLegalDocumentsIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,

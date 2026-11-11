@@ -118,6 +118,7 @@ describe('AdminNavigation', () => {
       expect(linkLabels(navigation().element())).toStrictEqual([
         'ダッシュボード',
         '問い合わせ',
+        'ヘルプ記事',
         'カテゴリ',
         '法務文書',
         '設定',
@@ -202,6 +203,7 @@ describe('AdminNavigation', () => {
       expect(linkLabels(sheetNavigation.element())).toStrictEqual([
         'ダッシュボード',
         '問い合わせ',
+        'ヘルプ記事',
         'カテゴリ',
         '法務文書',
         '設定',

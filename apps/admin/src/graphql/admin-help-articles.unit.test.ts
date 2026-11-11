@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, mock, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
@@ -8,6 +8,7 @@ import {
   adminHelpArticlesQueryOptions,
   helpArticleHandleAvailabilityQueryOptions,
   invalidateHelpArticleQueries,
+  loadAdminHelpArticlesPage,
   toAdminHelpArticle,
   toAdminHelpArticleDetail,
   toAdminHelpArticleRows,
@@ -15,6 +16,7 @@ import {
   toHelpArticleHandleAvailability,
   toHelpArticleOrderGroups,
 } from './admin-help-articles.ts';
+import { adminHelpCategoriesQueryOptions } from './admin-help-categories.ts';
 import {
   type AdminHelpArticleFragment,
   AdminHelpArticleDocument,
@@ -294,5 +296,55 @@ describe('invalidateHelpArticleQueries', () => {
       expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true);
     }
     expect(queryClient.getQueryState(viewerKey)?.isInvalidated).toBe(false);
+  });
+});
+
+describe('loadAdminHelpArticlesPage', () => {
+  test('記事の全件とカテゴリの一覧を同時に、鮮度を問わずキャッシュから読んで待つ', async () => {
+    const pending: (() => void)[] = [];
+    const query = mock(
+      () =>
+        new Promise<void>((resolve) => {
+          pending.push(resolve);
+        }),
+    );
+    let settled = false;
+
+    const loading = loadAdminHelpArticlesPage({
+      context: { queryClient: { query } as unknown as QueryClient },
+    }).then(() => {
+      settled = true;
+    });
+
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: adminHelpArticlesQueryOptions().queryKey,
+        staleTime: 'static',
+      }),
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: adminHelpCategoriesQueryOptions().queryKey,
+        staleTime: 'static',
+      }),
+    );
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    for (const resolve of pending) {
+      resolve();
+    }
+    await loading;
+    expect(settled).toBe(true);
+  });
+
+  test('取得の失敗は例外にせず、一覧の位置に示すためキャッシュに残す', async () => {
+    const query = mock(() => Promise.reject(new Error('取得の失敗')));
+
+    await loadAdminHelpArticlesPage({
+      context: { queryClient: { query } as unknown as QueryClient },
+    });
+
+    expect(query).toHaveBeenCalledTimes(2);
   });
 });

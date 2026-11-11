@@ -38,6 +38,7 @@ const NAVIGATION_NAME = '管理メニュー';
 const MENU_ITEMS = [
   'ダッシュボード',
   '問い合わせ',
+  'ヘルプ記事',
   'カテゴリ',
   '法務文書',
   '設定',
