@@ -162,7 +162,7 @@ graph TB
 | Backend   | Hono・Inversify・GraphQL Yoga(上流)                                  | スキーマモジュール・読み取りのユースケース・処理 | 既存                                             |
 | Data      | Cloudflare D1(Drizzle・SQLite FTS5・窓関数)                          | 2テーブル・全文検索の索引・一覧の問い合わせ      | 新規のマイグレーションとカスタムマイグレーション |
 | Messaging | Cloudflare Queues(上流)                                              | `search-index.refresh`(content-processing)の要求 | 新しいメッセージ種別なし                         |
-| External  | Google Cloud Natural Language(content-processing経由)                | 説明文のキーワード抽出                           | 本specは直接呼ばない                             |
+| External  | Google Cloud Natural Language(content-processing経由)                | タグライン・説明文のキーワード抽出               | 本specは直接呼ばない                             |
 
 ## File Structure Plan
 
@@ -629,7 +629,7 @@ export declare const PRODUCT_SEARCH_TARGET: SearchTargetDefinition<
   'name' | 'tagline' | 'description'
 >;
 // name 'product'
-// fields: name・tagline { format: 'plain', textColumn: true, extract: false }、description { format: 'markdown', textColumn: false, extract: true }
+// fields: name { format: 'plain', textColumn: true, extract: false }、tagline { format: 'plain', textColumn: true, extract: true }、description { format: 'markdown', textColumn: false, extract: true }
 // read(db, id): new D1ProductDirectory(db)のfindSummaries([id], 'visible')がlistedのときだけ、findDetailの説明文と合わせて返す。versionは読み取りの時刻(ミリ秒)
 // isIndexable(id): SELECT 1 FROM products JOIN users ON users.id = products.user_id WHERE products.id = ? AND visibleProducts() AND wonLaunchExists()
 ```
@@ -1243,7 +1243,8 @@ export declare const PRODUCT_OWNER_ACTIONS: readonly ProductOwnerAction[]; // �
 
 - `routes/p/index.tsx`: `validateSearch`は`normalizeDirectoryQuery`(3.7)、`loaderDeps`は正規化した条件、`loader`で`directory`と`directoryCategories`を`queryClient.query({ ...graphqlQueryOptions(...), staleTime: 'static' })`で待つ(サーバーで描画、7.2。`ensureQueryData`は非推奨のため使わない、006の「取得の補助とloader」)。`head`は`buildSitePageHead({ title: 'ディレクトリ', description, canonicalUrl: '/p' })`(オリジンの無いパス、8.8)。サーバーが返した`applied`が正規化の結果と違えば(存在しないカテゴリなど)、`navigate({ replace: true })`でURLを合わせる。
 - `DirectoryPage`: 見出し・`SearchForm`・`FilterToolbar`(768px以上)または「絞り込み・並び順」と`FilterSheet`(768px未満、3.9・3.10)・`ResultCount`・一覧と`DirectoryPagination`・`LaunchCta`(7.1・7.8)。`DIRECTORY_PAGE_SECTIONS`を置き場所ごとに`RecoverableSlot`で包んで描き(7.10)、何も描かない区画の枠と間隔を残さない(013の「区画の登録とページの構成」の目印と`display: contents`)。`DIRECTORY_LIST_INSERTS`を`every`件ごとに(割り切れるときは最後の項目の後にも)`RecoverableSlot`で包んで差し込み、部品へ何番目かの位置(1から)を渡す。`useQuery`の`placeholderData: keepPreviousData`で、条件の変更の読み込み中は直前の一覧を`aria-busy`と薄い表示で残し、上端に進捗のバーを出し、件数欄を「読み込み中…」にする(7.4)。初回はスケルトン(7.3)、失敗は`ErrorState`(7.5)、0件は`DirectoryEmptyState`(7.6・7.7)、範囲外は「このページにはプロダクトがありません。」と全ページ数と「1ページ目へ」(6.6)。演出は使わない(7.9)。
-- `SearchForm`: `role="search"`、ラベル付きの入力欄、消去のボタン、40書記素を超えたら`aria-live="polite"`の「45/50」、50を超えたらフォーカスアウトと送信でエラー(`aria-invalid`・`aria-describedby`)にして送らない。Enterと検索のボタンでだけ`withConditions`で遷移する(4.3〜4.5)。
+- `FilterSheet`: 「絞り込み・並び順」で開く下部のシート。開いた時はシートの題名へフォーカスを移し、閉じた時は開いたボタンへ戻す。開いたまま768px以上へ広がったら、frontend-libの`useCloseOnWideScreen`でシートを閉じ、フォーカスを横並びの`FilterToolbar`の押せる最初の選択欄へ移す(カテゴリの読み込み中は最初の選択欄が無効のため)(3.9・3.10)。
+- `SearchForm`: `role="search"`、ラベル付きの入力欄、消去のボタン、40書記素を超えたら「45/50」の文字数を表示し(数の変化は読み上げない)、上限の超過と上限以内への戻りの時だけ別の視覚的に隠した`aria-live="polite"`の領域で「文字数が上限の50文字を超えています。」「文字数が上限以内に戻りました。」を読み上げる(マークダウンの入力欄と同じ文言)、50を超えたらフォーカスアウトと送信でエラー(`aria-invalid`・`aria-describedby`)にして送らない。Enterと検索のボタンでだけ`withConditions`で遷移する(4.3〜4.5)。
 - `CategoryPicker`: ポップオーバーの中の入力欄で絞り込むリストボックス(`role="combobox"`・`aria-activedescendant`、上下キーとEnter)。選択肢は`directoryCategories`の順に「全て」を先頭に足す(3.1)。読み込み中は無効(7.3)。
 - `PeriodFilter`・`PeriodRangeForm`: プリセットの選択と「期間を指定…」のポップオーバー(768px未満はシート内)の2つの日付入力(`type="date"`、`max`は`businessToday`)。`validateCustomRange`の結果で文言と適用のボタンの無効化(3.3〜3.5)。プリセットの範囲は`presetRange(preset, businessToday)`、表示は`periodKeyOf`と`formatPeriodLabel`(3.4)。
 - `SortSelect`: 4つの選択肢。検索語が無ければ「関連度」を`aria-disabled`にし「検索キーワードを入力すると選べます」を併記する(5.1・5.3)。
