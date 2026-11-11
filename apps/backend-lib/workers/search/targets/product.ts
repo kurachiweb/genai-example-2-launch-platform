@@ -15,7 +15,7 @@ export const PRODUCT_SEARCH_TARGET = defineSearchTarget({
   name: 'product',
   fields: {
     name: { format: 'plain', textColumn: true, extract: false },
-    tagline: { format: 'plain', textColumn: true, extract: false },
+    tagline: { format: 'plain', textColumn: true, extract: true },
     description: { format: 'markdown', textColumn: false, extract: true },
   },
   index: PRODUCT_SEARCH_INDEX,

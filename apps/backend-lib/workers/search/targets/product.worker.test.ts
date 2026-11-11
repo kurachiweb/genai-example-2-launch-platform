@@ -111,10 +111,10 @@ describe('PRODUCT_SEARCH_TARGET', () => {
     expect(registry.definition('product')).toBe(PRODUCT_SEARCH_TARGET);
   });
 
-  test('名称・タグラインは元テキストの列に保存して抽出に使わず、説明文はマークダウンとして抽出だけに使う', () => {
+  test('名称は元テキストの列に保存して抽出に使わず、タグラインは元テキストの列に保存して抽出にも使い、説明文はマークダウンとして抽出だけに使う', () => {
     expect(PRODUCT_SEARCH_TARGET.fields).toEqual({
       name: { format: 'plain', textColumn: true, extract: false },
-      tagline: { format: 'plain', textColumn: true, extract: false },
+      tagline: { format: 'plain', textColumn: true, extract: true },
       description: { format: 'markdown', textColumn: false, extract: true },
     });
   });

@@ -203,7 +203,7 @@ describe('プロダクトの検索対象の索引の更新', () => {
     expect(await search(DESCRIPTION_MARKER)).toEqual([]);
   });
 
-  test('索引文書には名称・タグライン・キーワードだけを入れ、外部APIへは説明文のテキストだけを送る', async () => {
+  test('索引文書には名称・タグライン・キーワードだけを入れ、外部APIへはタグラインと説明文のテキストだけを送り、名称・ハンドル・メールアドレス・URLは送らない', async () => {
     const requests = stubExtractor();
 
     await dispatchRefresh(productIdOf(LISTED));
@@ -224,16 +224,21 @@ describe('プロダクトの検索対象の索引の更新', () => {
     );
     const stored = JSON.stringify(document);
     const sent = JSON.stringify(requests);
-    expect(sent).toContain(`An ${DESCRIPTION_MARKER} launch pad`);
-    for (const excluded of [NAME, TAGLINE]) {
-      expect(sent).not.toContain(excluded);
-    }
+    expect(requests).toMatchObject([
+      {
+        document: {
+          content: `${TAGLINE}\n\nAn ${DESCRIPTION_MARKER} launch pad`,
+        },
+      },
+    ]);
+    expect(sent).not.toContain(NAME);
     expect(stored).not.toContain(DESCRIPTION_MARKER);
     for (const excluded of [OWNER_HANDLE, emailOf(1), WEBSITE_URL]) {
       expect(stored).not.toContain(excluded);
       expect(sent).not.toContain(excluded);
     }
     expect(JSON.stringify(consoleCalls)).not.toContain(DESCRIPTION_MARKER);
+    expect(JSON.stringify(consoleCalls)).not.toContain(TAGLINE);
   });
 
   test('掲載中でないプロダクトは外部APIを呼ばずに索引文書を消す', async () => {

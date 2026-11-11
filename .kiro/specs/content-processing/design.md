@@ -425,7 +425,7 @@ docs/
 - `docs/GUIDES/service/design/002-page-layouts.md` — 「コメント」の投稿欄の記述に、書く側が書式を適用した見た目で編集すること、ツールバーの項目に表を含めることを加える。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に「検索索引(索引文書)」(元データの削除と同時に物理削除、FR-FTS-009)の行を加える。「データの保存場所(DR-012)」に委託先Google Cloudの項として、キーワード抽出の対象のテキストをNatural Language APIへ一時送信し、Google側では保存されないこと、処理する場所はGoogleが保証しないこと、その移転の根拠はプライバシーポリシーの大枠の国外移転の記載事項(Google Cloudの項)を正とすることを加える(16.9、N-1)。Cloudflareの資源の保存先の表と記述(infra-delivery)とAWSの項(media-pipeline)は書き換えない。
 - `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 「国外移転の記載事項」に委託先Google Cloud(Natural Language API)の項を加える(16.9、N-1)。項の形は、Cloudflareの項(infra-delivery)・AWSの項(media-pipeline)と同じ「移転先・移転の根拠・委託先が講じる措置」の3つにする。
-  - 移転先: 送る情報は、検索対象が登録したキーワード抽出の対象の項目の公開用のテキスト(プロダクト名・タグライン・説明文、ヘルプ記事の本文)だけで、利用者の識別子などを送らない(15.3)。APIは処理のリージョンを指定しないグローバルのエンドポイント(`ANALYZE_ENTITIES_ENDPOINT`)で呼ぶため、Googleは処理する場所を保証せず、委託先の所在国である米国以外の国でも処理され得る旨を記す。
+  - 移転先: 送る情報は、検索対象が登録したキーワード抽出の対象の項目の公開用のテキスト(プロダクトのタグライン・説明文、ヘルプ記事の本文)だけで、利用者の識別子などを送らない(15.3)。APIは処理のリージョンを指定しないグローバルのエンドポイント(`ANALYZE_ENTITIES_ENDPOINT`)で呼ぶため、Googleは処理する場所を保証せず、委託先の所在国である米国以外の国でも処理され得る旨を記す。
   - 移転の根拠: EU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合は、Google CloudのDPA(Cloud Data Processing Addendum)に含まれる標準契約条項(SCC)に拠る。
   - 委託先が講じる措置: 既存の共通の記述(データ処理条項・暗号化通信と保存・アクセス制御)を参照し、送ったテキストはメモリ上で処理されて保存されず、サービスの提供以外(学習を含む)に使われないこと(GoogleのData Usage FAQ。要求の時刻・大きさなどのメタデータだけが一時的に記録される)と、Natural Language APIだけに制限した専用のAPIキーを加える。
   - 共通の「移転先の国」の行は、Google Cloudの記述だけをこの項への参照に改める。Cloudflareの項(infra-delivery)・AWSの項(media-pipeline)、他の委託先の記述、全委託先に共通の記載(当該国の制度・本人の求めへの対応)は書き換えない。
