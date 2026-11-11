@@ -23,9 +23,15 @@ import { HELP_TYPES } from '../application/help/help-types.ts';
 import type {
   HelpArticleStore,
   HelpCategoryStore,
+  PublicHelpStore,
 } from '../application/help/ports.ts';
+import {
+  type PublicHelpReader,
+  StorePublicHelpReader,
+} from '../application/help/public-help-reader.ts';
 import { D1HelpArticleStore } from '../infrastructure/help/d1-help-article-store.ts';
 import { D1HelpCategoryStore } from '../infrastructure/help/d1-help-category-store.ts';
+import { D1PublicHelpStore } from '../infrastructure/help/d1-public-help-store.ts';
 
 // 管理者の照会口・監査ログの記録(ADMIN_PLATFORM_MODULE)と索引の更新の要求・索引の文(API_SEARCH_PLATFORM_MODULE)は各基盤のモジュールの束縛を使う
 export const HELP_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
@@ -46,6 +52,10 @@ export const HELP_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<HelpCategoryService>(HELP_TYPES.HelpCategoryService).to(
       StoreHelpCategoryService,
+    );
+    bind<PublicHelpStore>(HELP_TYPES.PublicHelpStore).to(D1PublicHelpStore);
+    bind<PublicHelpReader>(HELP_TYPES.PublicHelpReader).to(
+      StorePublicHelpReader,
     );
   }),
 };

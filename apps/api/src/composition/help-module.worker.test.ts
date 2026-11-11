@@ -29,6 +29,7 @@ import {
   StoreHelpCategoryService,
 } from '../application/help/help-category-service.ts';
 import { HELP_TYPES } from '../application/help/help-types.ts';
+import { StorePublicHelpReader } from '../application/help/public-help-reader.ts';
 import {
   adminIdOf,
   clearAdminTables,
@@ -36,6 +37,7 @@ import {
 } from '../infrastructure/admin/testing/admin-store-fixtures.ts';
 import { D1HelpArticleStore } from '../infrastructure/help/d1-help-article-store.ts';
 import { D1HelpCategoryStore } from '../infrastructure/help/d1-help-category-store.ts';
+import { D1PublicHelpStore } from '../infrastructure/help/d1-public-help-store.ts';
 import { MODULES } from './modules.ts';
 
 const MODERATOR = 1;
@@ -71,6 +73,7 @@ describe('APIサーバーのヘルプの束縛', () => {
   test.each([
     ['HelpArticleStore', HELP_TYPES.HelpArticleStore, D1HelpArticleStore],
     ['HelpCategoryStore', HELP_TYPES.HelpCategoryStore, D1HelpCategoryStore],
+    ['PublicHelpStore', HELP_TYPES.PublicHelpStore, D1PublicHelpStore],
     [
       'HelpAuthorLookup',
       HELP_TYPES.HelpAuthorLookup,
@@ -87,6 +90,7 @@ describe('APIサーバーのヘルプの束縛', () => {
       HELP_TYPES.HelpCategoryService,
       StoreHelpCategoryService,
     ],
+    ['PublicHelpReader', HELP_TYPES.PublicHelpReader, StorePublicHelpReader],
   ] as const)(
     '処理単位のコンテナから%sを解決する',
     (_name, identifier, implementation) => {
