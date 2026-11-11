@@ -22,7 +22,9 @@ import {
   insertHelpCategory,
   T0,
 } from '../../../lib/workers/help/testing/help-fixtures.ts';
+import { HELP_ARTICLE_SEARCH_TARGET } from '../../../lib/workers/search/targets/help-articles.ts';
 import { createBatchRecordingD1 } from '../../../test/support/batch-recording-d1.ts';
+import { HELP_ARTICLE_SEARCH_TARGET_NAME } from '../../application/help/ports.ts';
 import { buildAuditLogStatements } from '../admin/audit-log-statements.ts';
 import {
   AUDIT_LOG_ID,
@@ -50,6 +52,12 @@ beforeEach(async () => {
 });
 
 describe('D1HelpArticleStore', () => {
+  test('ユースケースが索引の更新を依頼する検索対象の名前は、ストアが更新待ちにする検索対象の名前と一致する', () => {
+    expect(HELP_ARTICLE_SEARCH_TARGET_NAME).toBe(
+      HELP_ARTICLE_SEARCH_TARGET.name,
+    );
+  });
+
   describe('isHandleOccupied', () => {
     test('下書きを含む他の記事の現在のハンドルだけを大文字小文字を区別せずに数え、旧ハンドルは数えない', async () => {
       await insertHelpArticle(1, { handle: 'Guide', status: 'draft' });

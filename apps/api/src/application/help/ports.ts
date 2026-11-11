@@ -2,6 +2,9 @@ import type { HelpArticleStatus } from '../../../common-lib/help/help-article-st
 import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import type { HelpHandleChange } from '../../domain/help/help-handle-change.ts';
 
+// application層は検索対象の定義(lib/workers)を読み込めないため名前だけを持つ。定義の名前との一致はD1HelpArticleStoreのWorkers統合テストで確かめる
+export const HELP_ARTICLE_SEARCH_TARGET_NAME = 'help-article';
+
 export interface HelpArticleWrite {
   readonly handle: string;
   // 前後の空白を除いた値
