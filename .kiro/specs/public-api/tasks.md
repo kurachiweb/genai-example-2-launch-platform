@@ -161,6 +161,7 @@
 - [ ] 5.6 (P) 自分のプロダクトの一覧と説明文の更新の経路を作る
   - 説明文の更新は自分のプロダクトを解決し(旧ハンドルは現在のハンドルで読み直す)、非公開化中ならproduct-launchの仮12と同じ文言(「このプロダクトは公開が停止されているため、説明文を更新できません。」)の`product_hidden`(409)にしてから説明文の保存を呼び、読み直した結果を返す。説明文の保存が投げる`product_hidden`・`product_not_found`・`account_unavailable`は変えずにそのまま返す
   - 先に、単体テストでユースケースの判定を、Workers統合テストで、未掲載を含む自分のプロダクトの20件ずつの一覧、他人・論理削除のプロダクトの404、非公開化の409と文言がproduct-launchの`product_hidden`と同じであること、事前の判定の後に非公開化・停止・論理削除された場合に説明文の保存のエラー(`product_hidden`・`account_unavailable`・`product_not_found`)がそのまま返ること、説明文の空・20,000書記素を超える値の400、更新でdirectory-discoveryの保存の登録口が掲載中のプロダクトの索引を更新待ちにすることを確かめる
+  - directory-discoveryの保存の登録(`directory-discovery.product-index-refresh`)の確認は、同じ一括の書き込みで索引文書が更新待ちになることに加え、確定の後に索引の更新の要求(`search-index.refresh`)が送られることと、勝利したプロダクトの記録が無いプロダクトでは更新待ちも要求も無いことを、この経路のWorkers統合テストで確かめる(directory-discoveryの5.4は経路が無いため`D1ProductStore.updateDescription`の段でしか確かめていない。先例は`apps/api/src/composition/directory-module.product-save.worker.test.ts`)
   - 完了状態: 単体テストとWorkers統合テストが成功する
   - ユースケースの束縛はこのタスクではapiの束縛のモジュールへ追記せず、テストではテスト用のコンテナで組み立てる(束縛は5.7で追記する)
   - 2経路は対象を自分のデータとして定義する
