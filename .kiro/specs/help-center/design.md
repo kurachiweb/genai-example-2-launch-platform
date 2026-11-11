@@ -1400,7 +1400,7 @@ export interface ReorderableListProps<T> {
 
 ### Monitoring
 
-- `getAppLogger(['api', <層>, 'help'])(`infra/004`の`[<アプリ名>, <層>, <モジュール>]`)`で、記事・カテゴリのID・結果の種類・件数だけを記録する(12.7)。記事のタイトル・本文・検索語・ハンドルの入力値・管理者のニックネームは記録しない。
+- `getAppLogger(['api', <層>, 'help'])`(`infra/004`の`[<アプリ名>, <層>, <モジュール>]`)で、記事・カテゴリのID・結果の種類・件数だけを記録する(12.7)。記事のタイトル・本文・検索語・ハンドルの入力値・管理者のニックネームは記録しない。
 - Sentry: 想定外の例外だけ。`AppError`は送らない。索引の更新の失敗の通知はcontent-processingの既定に従う。
 
 ## Testing Strategy
