@@ -1,7 +1,7 @@
 import { RelativeTime } from '../../../lib/components/datetime/relative-time.tsx';
 import { useDisplayPreferences } from '../../../lib/components/datetime/use-display-preferences.ts';
 import { toDateTimeValue } from '../../../lib/utilities/datetime/date-time-value.ts';
-import { yearInTimeZone } from './launch-date-format.ts';
+import { yearInTimeZone } from './year-in-time-zone.ts';
 import { useCurrentYear } from './use-current-year.ts';
 
 export interface RemainingDateTimeProps {

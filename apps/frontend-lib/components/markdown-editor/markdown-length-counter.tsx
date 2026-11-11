@@ -6,7 +6,7 @@ import {
   formatCount,
   LENGTH_WITHIN_LIMIT_ANNOUNCEMENT,
   lengthOverLimitAnnouncement,
-} from '../../utilities/messages/markdown-messages.ts';
+} from '../../utilities/messages/length-limit-messages.ts';
 
 export interface MarkdownLengthCounterProps {
   readonly value: string;

@@ -14,8 +14,3 @@ export const SEARCH_SUBMIT_LABEL = '検索';
 export const SEARCH_COUNTER_PREFIX = '文字数';
 
 export const SEARCH_TOO_LONG_MESSAGE = `検索キーワードは${String(DIRECTORY_SEARCH_MAX_GRAPHEMES)}文字以内で入力してください。`;
-
-export const SEARCH_OVER_LIMIT_ANNOUNCEMENT = `文字数が上限の${String(DIRECTORY_SEARCH_MAX_GRAPHEMES)}文字を超えています。`;
-
-export const SEARCH_WITHIN_LIMIT_ANNOUNCEMENT =
-  '文字数が上限以内に戻りました。';

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { yearInTimeZone } from './launch-date-format.ts';
+import { yearInTimeZone } from './year-in-time-zone.ts';
 
 describe('yearInTimeZone', () => {
   test('時点の年を指定のタイムゾーンの暦で求める', () => {

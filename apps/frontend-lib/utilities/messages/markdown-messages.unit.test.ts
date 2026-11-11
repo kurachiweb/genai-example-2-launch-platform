@@ -19,8 +19,6 @@ import {
   LINK_DIALOG_TITLE,
   LINK_REMOVE_LABEL,
   LINK_URL_FORMAT_ERROR,
-  LENGTH_WITHIN_LIMIT_ANNOUNCEMENT,
-  lengthOverLimitAnnouncement,
   LINK_URL_LABEL,
   ORDERED_LIST_ACTION_LABEL,
   PREVIEW_EMPTY_MESSAGE,
@@ -131,18 +129,6 @@ describe('マークダウンの表示の文言', () => {
     expect(PREVIEW_EMPTY_MESSAGE).toBe('プレビューする内容がありません。');
   });
 
-  test('文字数の超過の読み上げは上限を3桁区切りで示し、戻りの読み上げは上限の値を含まない', () => {
-    expect(lengthOverLimitAnnouncement(2000)).toBe(
-      '文字数が上限の2,000文字を超えています。',
-    );
-    expect(lengthOverLimitAnnouncement(300)).toBe(
-      '文字数が上限の300文字を超えています。',
-    );
-    expect(LENGTH_WITHIN_LIMIT_ANNOUNCEMENT).toBe(
-      '文字数が上限以内に戻りました。',
-    );
-  });
-
   test('リストの階層の変更と表のセルの移動のキー操作の説明は、両方のキーとmacOSの修飾キーを示す', () => {
     expect(EDITOR_KEYBOARD_HINT).toBe(
       'リストの項目の階層を下げる操作と表の次のセルへの移動はCtrl+]、階層を上げる操作と表の前のセルへの移動はCtrl+[で行います(macOSではCtrlの代わりにCommand)。',
@@ -171,8 +157,6 @@ describe('マークダウンの表示の文言', () => {
       LINK_URL_FORMAT_ERROR,
       EDITOR_LOAD_FAILED_MESSAGE,
       PREVIEW_EMPTY_MESSAGE,
-      lengthOverLimitAnnouncement(2000),
-      LENGTH_WITHIN_LIMIT_ANNOUNCEMENT,
     ]) {
       expect(sentence).toMatch(/。$/u);
     }

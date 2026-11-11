@@ -12,15 +12,17 @@ import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { Input } from '../../../lib/components/ui/input/input.tsx';
 import { cn } from '../../../lib/utilities/class-names.ts';
 import {
+  LENGTH_WITHIN_LIMIT_ANNOUNCEMENT,
+  lengthOverLimitAnnouncement,
+} from '../../../lib/utilities/messages/length-limit-messages.ts';
+import {
   SEARCH_CLEAR_LABEL,
   SEARCH_COUNTER_PREFIX,
   SEARCH_FORM_LABEL,
   SEARCH_INPUT_LABEL,
   SEARCH_INPUT_PLACEHOLDER,
-  SEARCH_OVER_LIMIT_ANNOUNCEMENT,
   SEARCH_SUBMIT_LABEL,
   SEARCH_TOO_LONG_MESSAGE,
-  SEARCH_WITHIN_LIMIT_ANNOUNCEMENT,
 } from './search-form-messages.ts';
 
 export interface SearchFormProps {
@@ -57,8 +59,8 @@ export function SearchForm({ value, onSearch }: SearchFormProps) {
     setAnnouncedTooLong(tooLong);
     setAnnouncement(
       tooLong
-        ? SEARCH_OVER_LIMIT_ANNOUNCEMENT
-        : SEARCH_WITHIN_LIMIT_ANNOUNCEMENT,
+        ? lengthOverLimitAnnouncement(DIRECTORY_SEARCH_MAX_GRAPHEMES)
+        : LENGTH_WITHIN_LIMIT_ANNOUNCEMENT,
     );
   }
   const describedBy = [showsCounter && counterId, showsError && errorId]

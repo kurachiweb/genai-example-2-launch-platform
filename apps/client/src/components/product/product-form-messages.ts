@@ -10,7 +10,7 @@ import type { DisplayPreferences } from '../../../lib/utilities/datetime/display
 import { formatRemaining } from '../../../lib/utilities/datetime/relative-time.ts';
 import { formatFileSize } from '../../../lib/utilities/media/file-size-label.ts';
 import { PROFILE_FORM_MESSAGES } from '../profile/profile-form-messages.ts';
-import { yearInTimeZone } from './launch-date-format.ts';
+import { yearInTimeZone } from './year-in-time-zone.ts';
 
 // APIサーバーの入力の検証(apps/apiのsrc/presentation/graphql/modules/product/errors.tsのINPUT_MESSAGES)と保存の拒否(src/application/product/product-errors.tsのhandle_unavailable)と同じ文言にする。一致はルートのconfig/contract-copies.unit.test.tsが確かめる
 export const PRODUCT_FORM_MESSAGES = Object.freeze({

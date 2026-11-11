@@ -311,6 +311,7 @@ apps/
 │   ├── graphql/my-products.ts                            # 自分のプロダクトの取得の設定・変換・無効化(単体テスト付き)
 │   ├── graphql/launch-history.ts                         # ローンチ履歴・受賞の取得の設定と変換(単体テスト付き)
 │   ├── graphql/product-launch.ts                         # 2つの取得の設定が共有するローンチ・受賞の変換(単体テスト付き)
+│   ├── components/time/use-boundary-refresh.ts           # 表示中の業務時刻の境界のタイマーによる取り直し(9.5・9.7・他の機能も使う)
 │   ├── components/product/                               # 1ファイル1コンポーネント(browser testを併置)
 │   │   ├── bot-actions.ts                                # PRODUCT_BOT_ACTIONSの写し(config/contract-copies.unit.test.tsで一致を確かめる)
 │   │   ├── product-section-order.ts                      # 区画と注意書きの登録の`order`順の並べ替え(単体テスト付き)
@@ -322,11 +323,10 @@ apps/
 │   │   ├── my-product-section-slots.tsx                  # 登録された区画を個別のエラー境界で描く(一覧と9.7の編集画面で共用)
 │   │   ├── my-product-messages.ts                        # 自分のプロダクトのページの文言(テストなし)
 │   │   ├── my-products-suspended-notice.tsx              # 停止中の利用者の案内と問い合わせへの導線(一覧と登録画面で共用)
-│   │   ├── use-boundary-refresh.ts                       # 表示中の業務時刻の境界のタイマーによる取り直し(9.5・9.7も使う)
 │   │   ├── launch-status-text.tsx                        # ローンチの状態の文言とキックオフの日時
 │   │   ├── launch-plan-notice.tsx                        # 次回の予約・固定・非公開化の案内
 │   │   ├── launch-messages.ts                            # ローンチの状態と予約の案内の文言(テストなし)
-│   │   ├── launch-date-format.ts                         # 業務日付の月日の表記(今年は年を省く)と利用者のタイムゾーンの年(単体テスト付き)
+│   │   ├── year-in-time-zone.ts                          # 利用者のタイムゾーンの年(単体テスト付き)
 │   │   ├── use-current-year.ts                           # 利用者のタイムゾーンの今年
 │   │   ├── launch-date-text.tsx                          # 業務日付のローンチ日の<time>(日をずらさない)
 │   │   ├── remaining-date-time.tsx                       # 先の日時の<time>と残りの相対表現(今年は年を省く)
@@ -2206,7 +2206,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 - `ProductHandleField`: `/p/`の接頭辞付きの入力欄。フォーカスアウトで形式→`productHandleAvailability`(編集中は`productHandle`を渡す)、`UNAVAILABLE`で「このハンドルは既に使われています。別の文字列を入力してください。」(2.6)。形式はフォームのスキーマの`fields.handle`の規則(`PRODUCT_HANDLE_RULE`・`PRODUCT_HANDLE_MESSAGES`)を`trigger`で確かめ、編集で読み込んだ時点のハンドル(`currentHandle`)のままなら問い合わせない。保持中の旧ハンドルがあれば「以前のハンドル◯◯は、次にハンドルを変更するか他のプロダクトが同じハンドルを設定するまで、新しいURLへ転送されます。」(2.10)。
 - `CategorySelect`: `productCategories`の順(追加の順・「その他」が末尾)のセレクト(欄の名前は`fields.categoryId`)。固定の期間は`FormField`の`disabled`で無効にし(入力要素の`disabled`の属性だけでは無効にしない)、理由(`disabledReason`、呼び出し側が固定の文言を渡す)を`FormField`の説明として`aria-describedby`で示す(6.3)。一覧を開くとフォーカスが一覧へ移るため、開いている間のフォーカスアウトでは検証しない。無効の間の値は`onSubmit`へ渡す値から外れ、`ProductForm`の`onSubmit`が読み込んだカテゴリを足す。
 - `LaunchDateField`: 登録は`newProductLaunchWindow`、編集は`plan.window`を描く。`Calendar`に、`earliest`〜`latest`の外と`unavailable`の範囲を`aria-disabled`の日として渡し(選べないがフォーカスでき、ツールチップと`aria-label`で「ペアリングの締め切りを過ぎています」「敗北後の間隔のため選べません」「選べる期間の外です」を示す)、選択でキックオフの日時(利用者のタイムゾーン、`<time datetime>`)と相対表現を表示する(4.8・4.9)。敗北後の間隔が効いていてUltrasの特典を受けていなければ、`UltrasPromotionGate`の中に「Ultrasなら敗北後2日で再ローンチできます。」と料金ページへのリンクを置く(4.10)。編集では計画が`reschedule`なら現在の日を選択済みで変更でき、`new`なら「次回のローンチを予約」(選ばなければ予約しない)、`blocked`・`unknown`・固定ならカレンダーを出さず`LaunchPlanNotice`を出し、ローンチ日を含まないスキーマのフォームにする(`onSubmit`が`launchDate: null`を足す、5.1〜5.4・6.3)。ローンチ日(業務日付の文字列)は`DateTime`の表示部品へ渡さず(利用者のタイムゾーンで日がずれる)、frontend/012で定める業務日付の整形で表示する。境界の時刻の取り直しは下の「表示中の境界の取り直し」に従う。
-- 表示中の境界の取り直し: 表示中の画面が業務時刻の境界を越えたら、その時刻にタイマーで該当する取得を`invalidateQueries`で無効にして取り直す。frontend/010の定期の取り直し(`refetchInterval`)は自動更新の切り替えを要するため使わない。タイマーは`components/product/use-boundary-refresh.ts`の`useBoundaryRefresh(境界の日時の並び, 取り直し)`で掛け、閲覧者とサーバーの時計のずれのため境界の1秒後(`BOUNDARY_REFRESH_DELAY_MS`)に取り直す。境界は次の3つ。
+- 表示中の境界の取り直し: 表示中の画面が業務時刻の境界を越えたら、その時刻にタイマーで該当する取得を`invalidateQueries`で無効にして取り直す。frontend/010の定期の取り直し(`refetchInterval`)は自動更新の切り替えを要するため使わない。タイマーは`components/time/use-boundary-refresh.ts`の`useBoundaryRefresh(境界の日時の並び, 取り直し)`で掛け、閲覧者とサーバーの時計のずれのため境界の1秒後(`BOUNDARY_REFRESH_DELAY_MS`)に取り直す。境界は次の3つ。
   - 23:40: 選べる日(`newProductLaunchWindow`・`plan.window`)。
   - 23:45: 編集画面の固定(カテゴリと削除の無効化)と`LaunchPlanNotice`。
   - 0:00: `LaunchStatusText`の`in_progress`への切り替え(一覧と編集画面)。一覧は予定・ペアリング済みの直近のローンチの`kickoffAt`を境界にする。

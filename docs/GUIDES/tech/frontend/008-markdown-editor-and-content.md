@@ -20,17 +20,18 @@
 | 読み込み関数             | 遅延読み込みのモジュールを動的`import()`する唯一の関数(`components/markdown-editor/load-crepe-editor.ts`の`loadCrepeEditor`)                     |
 | 制御器                   | 編集領域が外枠へ渡す操作の窓口`EditorController`(`components/markdown-editor/editor-controller.ts`)                                              |
 
-| 部品                                                                                                    | 置き場所                                            | 役割                                                       |
-| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------- |
-| `renderMarkdown`・`RenderedMarkdown`・`MarkdownHeading`                                                 | 共用部品の`markdown/render-markdown.ts`             | 表示用のHTML・見出しの一覧・プレーンテキストの描画         |
-| `MarkdownRenderOptions`・`LinkRelToken`・`MarkdownOptionsError`                                         | 共用部品の`markdown/markdown-options.ts`            | 描画の指定とその検証                                       |
-| `markdownTextSchema`・`MarkdownTextRule`                                                                | 共用部品の`validation/markdown-text-schema.ts`      | フロントエンドとAPIサーバーで共用する検証規則              |
-| `countGraphemes`                                                                                        | 共用部品の`text/graphemes.ts`                       | 書記素(利用者が1文字と認識する単位)の数                    |
-| `MarkdownContent`・`CollapsibleMarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`            | 共通部品の`components/markdown/`                    | 本文の表示・折りたたみ・描画のメモ化・描画の指定の補完     |
-| `MarkdownEditor`・`MarkdownToolbar`・`MarkdownLinkDialog`・`MarkdownLengthCounter`・`EditorPlaceholder` | 共通部品の`components/markdown-editor/`             | 入力欄の外枠と、その中の部品                               |
-| `HighlightedText`                                                                                       | 共通部品の`components/search/highlighted-text.tsx`  | 検索語に一致した箇所の強調                                 |
-| 文言(`READ_MORE_LABEL`・`EDITOR_KEYBOARD_HINT`など)                                                     | 共通部品の`utilities/messages/markdown-messages.ts` | 表示部品と入力欄の文言                                     |
-| 本文の文字組み                                                                                          | 共通部品の`styles/markdown.css`                     | 表の枠・タスクリスト・脚注・コードブロックの補助のスタイル |
+| 部品                                                                                                               | 置き場所                                                | 役割                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `renderMarkdown`・`RenderedMarkdown`・`MarkdownHeading`                                                            | 共用部品の`markdown/render-markdown.ts`                 | 表示用のHTML・見出しの一覧・プレーンテキストの描画                                                 |
+| `MarkdownRenderOptions`・`LinkRelToken`・`MarkdownOptionsError`                                                    | 共用部品の`markdown/markdown-options.ts`                | 描画の指定とその検証                                                                               |
+| `markdownTextSchema`・`MarkdownTextRule`                                                                           | 共用部品の`validation/markdown-text-schema.ts`          | フロントエンドとAPIサーバーで共用する検証規則                                                      |
+| `countGraphemes`                                                                                                   | 共用部品の`text/graphemes.ts`                           | 書記素(利用者が1文字と認識する単位)の数                                                            |
+| `MarkdownContent`・`CollapsibleMarkdownContent`・`useRenderedMarkdown`・`useMarkdownOptions`                       | 共通部品の`components/markdown/`                        | 本文の表示・折りたたみ・描画のメモ化・描画の指定の補完                                             |
+| `MarkdownEditor`・`MarkdownToolbar`・`MarkdownLinkDialog`・`MarkdownLengthCounter`・`EditorPlaceholder`            | 共通部品の`components/markdown-editor/`                 | 入力欄の外枠と、その中の部品                                                                       |
+| `HighlightedText`                                                                                                  | 共通部品の`components/search/highlighted-text.tsx`      | 検索語に一致した箇所の強調                                                                         |
+| 文言(`READ_MORE_LABEL`・`EDITOR_KEYBOARD_HINT`など)                                                                | 共通部品の`utilities/messages/markdown-messages.ts`     | 表示部品と入力欄の文言                                                                             |
+| 文字数の上限の文言(`lengthOverLimitAnnouncement`・`LENGTH_WITHIN_LIMIT_ANNOUNCEMENT`)と文字数の書式(`formatCount`) | 共通部品の`utilities/messages/length-limit-messages.ts` | 文字数の上限の超過と戻りの読み上げとカウンターの数。マークダウンに限らず文字数の上限を持つ欄が使う |
+| 本文の文字組み                                                                                                     | 共通部品の`styles/markdown.css`                         | 表の枠・タスクリスト・脚注・コードブロックの補助のスタイル                                         |
 
 ## 表示部品
 

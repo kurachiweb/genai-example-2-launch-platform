@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 import { useDisplayPreferences } from '../../../lib/components/datetime/use-display-preferences.ts';
-import { yearInTimeZone } from './launch-date-format.ts';
+import { yearInTimeZone } from './year-in-time-zone.ts';
 
 const subscribeNothing = (): (() => void) => () => undefined;
 
