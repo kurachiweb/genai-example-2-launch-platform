@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 共有の規則・テーブル・文言
+- [x] 1. 基盤: 共有の規則・テーブル・文言
 - [x] 1.1 URLのクエリの規則と期間のプリセットを、4アプリが読み込める共有の定義として作る
   - 前提: dev-tooling〜match-engineの18specの全タスクが完了していること(product-launchの`core/product`の契約と識別子(`ProductDirectory`・`ProductCategoryDirectory`・`PRODUCT_PLATFORM_TYPES`)・`visibleProducts()`・`wonLaunchExists()`・ライフサイクルの登録口・`LAUNCH_SUMMARY_SOURCES`・`productOwnerStatus`と、仮11の`productInCategory()`・`PRODUCT_SAVE_HOOKS`とinfrastructure層の`ProductSaveHook`の契約・`launch-summary.ts`の`fallbackLaunchSummary`・`groupAwards`、match-engineの`MatchDirectory`・`SupporterDirectory`・`qualifierWins()`・`MATCH_EVENT_HANDLERS`・`loadMatchView`・`MatchCard`・`useUpvote`・`UpvoteBotProtection`・`useServerCountdown`、content-processingの検索の基盤、identity-authとuser-profile-socialの部品、E2Eの`e2e/support/mailpit.ts`・`e2e/support/local-d1.ts`、backend-platformの改訂2の`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、不正なクエリの既定化(実在しない日付・開始日が終了日より後・検索語が無いときの関連度・既定と同じ並び順・`page`の0・1・小数・文字列)、50書記素への切り詰め(結合文字を含む絵文字)、並び順の値が4つで少ない順が無いこと、条件の変更で`page`が外れること、既定から変えている項目の数、基準時刻の今日からの各プリセットの範囲(月曜日・日曜日・月末・年末)、プリセットと一致しない範囲の判定、未来と逆順の検証、期間の表示の文言(今年は年を省く)を確かめる
@@ -35,7 +35,7 @@
   - _Boundary: `apps/frontend-lib/components/ui/card/`、`docs/GUIDES/tech/frontend/005-shared-components.md`_
   - _Requirements: 11.1_
 
-- [ ] 2. 共有部品
+- [x] 2. 共有部品
 - [x] 2.1 プロダクトの検索対象を作り、検索対象の集約点に加える
   - 先に、ローカルD1のWorkers統合テストで、掲載中のプロダクトだけを読み(名称・タグライン・説明文、版は読み取りの時刻)、未掲載・非公開化・投稿者の停止・論理削除で読み取りが空になり索引の対象の条件が偽になること、content-processingの索引の更新の処理(キーワードの抽出は固定の結果の偽物)で索引文書が作られ、名称の前方一致と説明文のキーワードで検索できること、索引に名称・タグライン・キーワード以外を含めないことを確かめる
   - 索引の対象の条件(`isIndexable`)は`EXISTS`の中身(`SELECT 1 …`)だけを返す(包むのはcontent-processingの書き込みの側)。help-centerが未実装のため、検索対象と索引の定義の集約点への最初の登録になる。登録の形はテスト用の検索対象`workers/search/testing/fixture-search-target.ts`を先例にする
@@ -70,7 +70,7 @@
   - 完了状態: Workers統合テストと、3経路(api・eventの`fetch`・eventの`queue`)のDIの解決の検査が成功する
   - _Requirements: 12.4, 12.5, 12.7, 13.5_
 
-- [ ] 3. APIサーバーの読み取り
+- [x] 3. APIサーバーの読み取り
 - [x] 3.1 (P) 詳細ページの公開範囲と基準勝利の種類の純粋な規則を作る
   - 先に、単体テストで、公開範囲(不在・可視でない(非公開・停止・退会)・未掲載の他者と本人・旧ハンドルの転送と転送しない場合・現在のハンドル)、基準勝利の種類(勝利・対戦相手なし・開始時点の相手の該当・早期の相手の該当)を確かめる
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
@@ -106,7 +106,7 @@
   - _Depends: 3.1, 3.2, 3.3_
   - _Requirements: 8.2, 8.3, 8.5, 8.6, 8.7, 9.4, 9.5, 9.6, 10.1, 10.8, 10.9, 10.10, 13.4_
 
-- [ ] 4. APIサーバーのGraphQL
+- [x] 4. APIサーバーのGraphQL
 - [x] 4.1 ディレクトリの一覧とカテゴリの選択肢の操作をスキーマモジュールに作る
   - 先に、Workers統合テストで、入力の全項目を文字列で受けて不正な値をエラーにせず正規化した条件(`applied`)を返すこと、項目のロゴ・カテゴリ・投稿者(表示できなければnull)・受賞・勝利・項目の値、検証の済まない外部WebサイトURLを空にすること、`category`による絞り込みと`applied`、カテゴリの選択肢の掲載数の多い順(同数は名称順・「その他」を末尾)、`client`以外の呼び出しの拒否を確かめる
   - apiの束縛のモジュール(ユースケース・供給元の読み取り)を作り、スキーマモジュールとともにapiの一覧へ加える(5.1・5.4は追記する)。利用者側の許可リストの再生成は6.1で行う
@@ -120,7 +120,7 @@
   - _Depends: 3.5, 4.1_
   - _Requirements: 8.1, 8.2, 8.3, 8.5, 8.6, 9.6, 10.2, 10.9, 10.10_
 
-- [ ] 5. 索引の更新の処理
+- [x] 5. 索引の更新の処理
 - [x] 5.1 退会・停止と論理削除・非公開化の確定と同じ書き込みで索引を消す同期の処理を作り、登録する
   - 先に、Workers統合テストで、product-launchの非公開化・削除の確定で索引文書が同じ一括の書き込みで消え、確定が失敗すれば削除も取り消されること、identity-authの退会・停止の確定で投稿者の全ての索引文書が消えることを確かめる
   - ユーザーとプロダクトの同期の処理の登録箇所へ追記する(読み取りをせず、集合の削除の文だけを返す。削除の文はbackend/007・012の「集合に対する更新・挿入・削除」の規約に従う)。利用者の削除の文は`event.userId`で作り、契約の戻り値に合わせて配列で返す
@@ -155,7 +155,7 @@
   - _Depends: 2.5, 4.1_
   - _Requirements: 12.3, 12.8_
 
-- [ ] 6. 利用者側の画面: ディレクトリ
+- [x] 6. 利用者側の画面: ディレクトリ
 - [x] 6.1 ディレクトリの操作の定義と区画の登録口を作り、許可リストを再生成する
   - GraphQLの操作(一覧・カテゴリの選択肢)の定義と型の生成、区画・一覧の差し込み・項目の値の登録の型と、初版は空の3つの登録の一覧を作る
   - 操作はclientの`src/graphql/operations/directory/`に1ファイル1操作の`.graphql`(操作名は`ClientDirectory`・`ClientDirectoryCategories`)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して`src/graphql/generated/`を更新し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する。部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
@@ -225,7 +225,7 @@
   - 完了状態: ブラウザテストが成功し、ローカルの`/p`がサーバーで描画される
   - _Requirements: 3.7, 7.2_
 
-- [ ] 7. 利用者側の画面: プロダクト詳細ページ
+- [x] 7. 利用者側の画面: プロダクト詳細ページ
 - [x] 7.1 詳細ページの操作の定義と区画の登録口を作り、許可リストを再生成する
   - GraphQLの操作(詳細ページ・開催中のマッチ・サポーターの一覧・フォロー中の照会・予約の可否の照会)の定義と型の生成、区画・ローンチの区画・投稿者本人向けの操作の登録の型と文脈(詳細ページの区画の文脈に自動更新の切り替えの状態`autoRefresh`と申告`reportAutoUpdating`を含む)、置き場所ごとの並べ替え、登録の一覧(本specの4件は7.8で加え、ローンチの区画と投稿者本人向けの操作は空)を作る
   - 操作はclientの`src/graphql/operations/directory/`に1ファイル1操作の`.graphql`(操作名は`ClientProductPage`・`ClientProductLiveMatch`・`ClientMatchSupporters`・`ClientOwnerFollowStatus`・`ClientProductOwnerStatus`)で書き、6.1と同じ手順で生成物と許可リストを更新する。`ClientProductLiveMatch`はmatch-engineのフラグメント`Match`を使い、`ClientOwnerFollowStatus`は`publicProfile`のunionを`... on PublicProfile { viewerRelation }`で読む
@@ -288,7 +288,7 @@
   - _Depends: 7.2, 7.3, 7.5, 7.6, 7.7_
   - _Requirements: 8.1, 8.4, 8.7, 8.8, 8.9, 8.10, 9.1, 9.2, 9.9, 9.10, 9.11_
 
-- [ ] 8. 文書
+- [x] 8. 文書
 - [x] 8.1 (P) 技術ドキュメントを書き、CLAUDE.mdから参照する
   - `db/007-latest-row-per-group-listing.md`・`frontend/014-url-state-listing.md`を設計のDirectoryTechDocsの内容で、本プロジェクト固有の値を含めずに書き、`db`・`frontend`のREADMEの文書一覧に行を加える
   - CLAUDE.mdの「技術規則の参照先」に「グループごとの最新の行で並べる一覧を作る前に: `db/007`」を、作った見出しへのリンクで加える
@@ -303,7 +303,7 @@
   - _Boundary: `docs/onboardings/project-values.md`_
   - _Requirements: 13.1, 14.5_
 
-- [ ] 9. 検証
+- [x] 9. 検証
 - [x] 9.1 E2Eテストの補助を作る
   - `e2e/support/directory-fixtures.ts`: admin-foundationの`executeLocalD1`(文字列は`sqlStringLiteral`)と、足りる部分はmatch-engineの`e2e/client/match-steps.ts`の手順(`moveLaunchesToDate`・`startQualifiers`など。`e2e/support/match-fixtures.ts`は無い)で、指定した2つのローンチのマッチ中の予選(開始を記録済み、終了の日時を過去、一方の側にサポーターのUpvote)をローカルD1に作る補助を作る。確定のジョブは、backend-platformの改訂2の共有の補助`e2e/support/scheduled-trigger.ts`の`triggerScheduled({ worker: 'api', businessDate: <当日の業務日付>, businessTime: '23:40' })`で動かし、独自の定期実行の起動の補助を作らない。これにより確定のイベント・予選の結果の記録・本specの掲載と索引の処理が実際の経路で動く
   - 一覧とページの移動のための掲載中のプロダクト21件は、可視の投稿者の利用者の行・プロダクト・確定したマッチとローンチの結果を直接作る補助で作る(索引は持たず、検索の確認には使わない)
