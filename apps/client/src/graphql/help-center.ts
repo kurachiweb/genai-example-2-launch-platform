@@ -4,10 +4,19 @@ import type { HelpTopQuery } from '../../common-lib/help/help-query-rules.ts';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
 import {
   ClientHelpArticleDocument,
+  type ClientHelpArticleQuery,
   ClientHelpArticleSearchDocument,
   ClientHelpCenterDocument,
   ClientPinnedHelpArticlesDocument,
 } from './generated/graphql.ts';
+
+export type HelpArticleView = Extract<
+  NonNullable<ClientHelpArticleQuery['helpArticle']>,
+  { readonly __typename: 'HelpArticle' }
+>;
+
+// nullは削除済みの管理者
+export type HelpArticleAuthorView = HelpArticleView['author'];
 
 export const helpCenterQueryOptions = () =>
   graphqlQueryOptions(ClientHelpCenterDocument, {});

@@ -29,3 +29,16 @@ export const HELP_ALL_ARTICLES_LABEL = 'すべてのヘルプ記事を見る';
 export const HELP_SEARCH_COUNT_LOADING = '読み込み中…';
 
 export const HELP_TABLE_OF_CONTENTS_LABEL = '目次';
+
+export const HELP_BACK_TO_TOP_LABEL = 'ヘルプトップへ戻る';
+
+export const HELP_ARTICLE_AUTHOR_LABEL = '作成者';
+
+export const HELP_ARTICLE_UPDATED_AT_LABEL = '更新日時';
+
+export const HELP_DELETED_AUTHOR_LABEL = '削除済みの管理者';
+
+export const relatedHelpArticlesHeading = (categoryName: string): string =>
+  `${categoryName}の他の記事`;
+
+export const HELP_ARTICLE_LOADING_LABEL = 'ヘルプ記事を読み込み中';
