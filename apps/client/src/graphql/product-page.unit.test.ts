@@ -15,6 +15,8 @@ import {
   type ClientOwnerFollowStatusQuery,
   ClientProductLiveMatchDocument,
   type ClientProductLiveMatchQuery,
+  ClientProductOwnerStatusDocument,
+  type ClientProductOwnerStatusQuery,
   ClientProductPageDocument,
   type ClientProductPageQuery,
 } from './generated/graphql.ts';
@@ -25,9 +27,11 @@ import {
   ownerFollowingOf,
   ownerFollowStatusQueryOptions,
   productLiveMatchQueryOptions,
+  productOwnerStatusQueryOptions,
   productPageQueryOptions,
   type ProductPageView,
   toMatchSupporters,
+  toOwnerLaunchPlan,
   toProductPageView,
   withOwnerFollowing,
   withUpdatedLiveMatch,
@@ -370,6 +374,75 @@ describe('withOwnerFollowing', () => {
     expect(withOwnerFollowing(OWNER_REDIRECT, true)).toBe(OWNER_REDIRECT);
     expect(withOwnerFollowing(OWNER_MISSING, true)).toBe(OWNER_MISSING);
     expect(withOwnerFollowing(undefined, true)).toBeUndefined();
+  });
+});
+
+describe('productOwnerStatusQueryOptions', () => {
+  test('投稿者本人向けの照会の操作とプロダクトのハンドルの後に、閲覧者のIDか未ログインの印をキーへ加える', () => {
+    expect([
+      ...productOwnerStatusQueryOptions(VIEWER, 'Pitch-Notes').queryKey,
+    ]).toStrictEqual([
+      ...graphqlQueryKey(ClientProductOwnerStatusDocument, {
+        productHandle: 'Pitch-Notes',
+      }),
+      VIEWER.id,
+    ]);
+    expect(
+      productOwnerStatusQueryOptions(null, 'Pitch-Notes').queryKey.at(-1),
+    ).toBe('guest');
+  });
+});
+
+const QUALIFIER_BLOCK_MESSAGE =
+  'このプロダクトは予選マッチに参加中のため再ローンチできません。';
+
+const QUALIFIER_LOCK_MESSAGE =
+  'マッチ直前・マッチ中のため、ローンチ日・カテゴリの変更と削除はできません。';
+
+describe('toOwnerLaunchPlan', () => {
+  test('次回のローンチの予約の状態を自分のプロダクトの画面と同じ形にする', () => {
+    const status: ClientProductOwnerStatusQuery = {
+      productOwnerStatus: {
+        latestLaunch: null,
+        plan: {
+          mode: 'BLOCKED',
+          currentLaunchDate: null,
+          window: null,
+          blocks: [
+            {
+              code: 'qualifier_in_progress',
+              message: QUALIFIER_BLOCK_MESSAGE,
+              releaseAt: null,
+            },
+          ],
+          locked: true,
+          locks: [{ code: 'qualifier_match', message: QUALIFIER_LOCK_MESSAGE }],
+          lockUnknown: false,
+          ultrasEntitled: false,
+        },
+      },
+    };
+
+    expect(toOwnerLaunchPlan(status)).toStrictEqual({
+      mode: 'blocked',
+      currentLaunchDate: null,
+      window: null,
+      blocks: [
+        {
+          code: 'qualifier_in_progress',
+          message: QUALIFIER_BLOCK_MESSAGE,
+          releaseAt: null,
+        },
+      ],
+      locked: true,
+      locks: [{ code: 'qualifier_match', message: QUALIFIER_LOCK_MESSAGE }],
+      lockUnknown: false,
+      ultrasEntitled: false,
+    });
+  });
+
+  test('現在のハンドルで本人のプロダクトが見つからなければundefinedを返す', () => {
+    expect(toOwnerLaunchPlan({ productOwnerStatus: null })).toBeUndefined();
   });
 });
 

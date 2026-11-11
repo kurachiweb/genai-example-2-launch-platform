@@ -20,10 +20,13 @@ import {
   type ClientOwnerFollowStatusQuery,
   ClientProductLiveMatchDocument,
   type ClientProductLiveMatchQuery,
+  ClientProductOwnerStatusDocument,
+  type ClientProductOwnerStatusQuery,
   ClientProductPageDocument,
   type ClientProductPageQuery,
   type MatchFragment,
 } from './generated/graphql.ts';
+import { type LaunchPlanView, toLaunchPlanView } from './my-products.ts';
 import type { ClientViewer } from './viewer.ts';
 
 export type ProductPageView = Extract<
@@ -271,3 +274,31 @@ export const toMatchSupporters = ({
   pages,
 }: MatchSupportersData): readonly MatchSupporterView[] =>
   pages.flatMap(({ matchSupporters }) => matchSupporters?.nodes ?? []);
+
+// 本人のプロダクトの次回のローンチの予約の状態で、ログイン中の利用者ごとに変わるため、共通の取得の補助のキーの後に閲覧者のIDを加える
+export const productOwnerStatusQueryOptions = (
+  viewer: ClientViewer | null,
+  productHandle: string,
+) =>
+  queryOptions({
+    queryKey: [
+      ...graphqlQueryKey(ClientProductOwnerStatusDocument, { productHandle }),
+      viewerScopeOf(viewer),
+    ],
+    queryFn: async ({ signal }) =>
+      requireData(
+        await executeGraphQL(
+          ClientProductOwnerStatusDocument,
+          { productHandle },
+          { signal },
+        ),
+      ),
+  });
+
+// 照会と詳細ページの間にハンドルが変わった・本人のプロダクトでなくなったならundefined
+export const toOwnerLaunchPlan = ({
+  productOwnerStatus,
+}: ClientProductOwnerStatusQuery): LaunchPlanView | undefined =>
+  productOwnerStatus === null
+    ? undefined
+    : toLaunchPlanView(productOwnerStatus.plan);
