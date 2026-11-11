@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react';
 
+import { HELP_CATEGORIES_TITLE } from '../components/help/help-messages.ts';
+import { HelpCategorySection } from '../components/help/help-category-section.tsx';
 import { InquiryCategorySection } from '../components/inquiry/inquiry-category-section.tsx';
 import { INQUIRY_CATEGORIES_TITLE } from '../components/inquiry/inquiry-category-messages.ts';
 import { PRODUCT_CATEGORIES_TITLE } from '../components/product/product-category-messages.ts';
@@ -23,6 +25,12 @@ export const CATEGORY_SECTIONS: readonly CategorySection[] = Object.freeze([
     order: 10,
     title: PRODUCT_CATEGORIES_TITLE,
     component: ProductCategorySection,
+  },
+  {
+    id: 'help-center.help-categories',
+    order: 20,
+    title: HELP_CATEGORIES_TITLE,
+    component: HelpCategorySection,
   },
   {
     id: 'inquiry-chat.inquiry-categories',

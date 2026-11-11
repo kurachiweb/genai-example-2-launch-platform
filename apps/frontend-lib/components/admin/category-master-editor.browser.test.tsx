@@ -217,6 +217,39 @@ describe('CategoryMasterEditor', () => {
       .toBeVisible();
   });
 
+  test('権限が無いときの表示を非表示に指定すると、追加のボタンと操作の列と権限が無い旨を描かず、一覧だけを渡した順で示す', async () => {
+    await renderEditor({ canEdit: false, readOnlyDisplay: 'hidden' });
+
+    await expect.element(table()).toBeVisible();
+    const headers = table()
+      .getByRole('columnheader')
+      .elements()
+      .map((element) => element.textContent);
+    expect(headers).toStrictEqual(['カテゴリ名', 'ハンドル']);
+    const rows = table().getByRole('row').elements().slice(1);
+    expect(
+      rows.map((row) => row.querySelector('td')?.textContent),
+    ).toStrictEqual(['開発ツール', 'デザイン', 'その他システム標準']);
+    expect(addButton().query()).toBeNull();
+    expect(rowButton('開発ツール', '編集').query()).toBeNull();
+    expect(rowButton('開発ツール', '削除').query()).toBeNull();
+    expect(page.getByRole('button').elements()).toHaveLength(0);
+    expect(
+      page
+        .getByText('カテゴリを追加・編集・削除する権限がありません。')
+        .query(),
+    ).toBeNull();
+    expect(await runAxe(document.body)).toStrictEqual([]);
+  });
+
+  test('権限があるときは、非表示を指定しても追加・編集・削除の操作を描く', async () => {
+    await renderEditor({ readOnlyDisplay: 'hidden' });
+
+    await expect.element(addButton()).toBeEnabled();
+    await expect.element(rowButton('開発ツール', '編集')).toBeEnabled();
+    await expect.element(rowButton('開発ツール', '削除')).toBeEnabled();
+  });
+
   test('権限があるときは、権限が無い旨を示さない', async () => {
     await renderEditor();
 
@@ -225,6 +258,20 @@ describe('CategoryMasterEditor', () => {
         .getByText('カテゴリを追加・編集・削除する権限がありません。')
         .elements(),
     ).toHaveLength(0);
+  });
+
+  test('区画に固有の操作を渡すと、一覧の表の後ろに区画の中へ置く', async () => {
+    await renderEditor({
+      children: <button type="button">並び順を変更</button>,
+    });
+
+    const section = page.getByRole('region', { name: TITLE });
+    const extra = section.getByRole('button', { name: '並び順を変更' });
+    await expect.element(extra).toBeVisible();
+    expect(
+      table().element().compareDocumentPosition(extra.element()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   test('追加では、名前とハンドルを入力して保存すると呼び出す側へ渡して閉じる', async () => {

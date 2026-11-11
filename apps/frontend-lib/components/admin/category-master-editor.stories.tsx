@@ -58,6 +58,10 @@ export const ReadOnly: Story = {
   args: { canEdit: false },
 };
 
+export const ReadOnlyHidden: Story = {
+  args: { canEdit: false, readOnlyDisplay: 'hidden' },
+};
+
 export const Loading: Story = {
   args: { categories: undefined },
 };

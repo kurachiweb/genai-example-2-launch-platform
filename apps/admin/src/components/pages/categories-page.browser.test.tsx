@@ -24,6 +24,7 @@ import { CATEGORY_SECTIONS } from '../../composition/category-sections.ts';
 import {
   AdminCreateInquiryCategoryDocument,
   AdminDeleteInquiryCategoryDocument,
+  AdminHelpCategoriesDocument,
   AdminInquiryCategoriesDocument,
   type AdminInquiryCategoriesQuery,
   AdminProductCategoriesDocument,
@@ -32,6 +33,7 @@ import {
 } from '../../graphql/generated/graphql.ts';
 import { Route as AuthenticatedRoute } from '../../routes/_authenticated/route.tsx';
 import { Route as CategoriesRoute } from '../../routes/_authenticated/categories/index.tsx';
+import { HelpCategorySection } from '../help/help-category-section.tsx';
 import { InquiryCategorySection } from '../inquiry/inquiry-category-section.tsx';
 import { ProductCategorySection } from '../product/product-category-section.tsx';
 
@@ -83,6 +85,14 @@ const PRODUCT_OTHER_CATEGORY = Object.freeze({
   systemDefault: true,
 });
 
+const HELP_OTHER_CATEGORY = Object.freeze({
+  id: '01JC0000000000000000000001',
+  name: 'その他',
+  systemDefault: true,
+  sortOrder: 1,
+  articleCount: 0,
+});
+
 const INTERNAL_ERROR = Object.freeze({
   code: 'internal_error',
   message: 'サーバーで問題が発生しました。時間をおいて再度お試しください。',
@@ -119,6 +129,10 @@ const respondCategories = (
         AdminProductCategoriesDocument,
         () =>
           success({ adminProductCategories: [{ ...PRODUCT_OTHER_CATEGORY }] }),
+      ],
+      [
+        AdminHelpCategoriesDocument,
+        () => success({ adminHelpCategories: [{ ...HELP_OTHER_CATEGORY }] }),
       ],
     ]),
   });
@@ -193,13 +207,19 @@ afterEach(() => {
 });
 
 describe('カテゴリの区画の登録口', () => {
-  test('プロダクトカテゴリの区画をorder 10、問い合わせカテゴリの区画をorder 30で登録し、凍結されている', () => {
+  test('プロダクトカテゴリの区画をorder 10、ヘルプ記事カテゴリの区画をorder 20、問い合わせカテゴリの区画をorder 30で登録し、凍結されている', () => {
     expect(CATEGORY_SECTIONS).toStrictEqual([
       {
         id: 'product-launch.product-categories',
         order: 10,
         title: 'プロダクトカテゴリ',
         component: ProductCategorySection,
+      },
+      {
+        id: 'help-center.help-categories',
+        order: 20,
+        title: 'ヘルプ記事カテゴリ',
+        component: HelpCategorySection,
       },
       {
         id: 'inquiry-chat.inquiry-categories',

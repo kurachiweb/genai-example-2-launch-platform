@@ -40,12 +40,16 @@ export interface CategoryMasterItem {
   readonly systemDefault: boolean;
 }
 
+// 権限が無い管理者への操作の示し方。disabledは無効のまま見せて権限が無い旨を添え、hiddenは操作を描かずに一覧だけを見せる
+export type CategoryReadOnlyDisplay = 'disabled' | 'hidden';
+
 export interface CategoryMasterEditorProps {
   readonly title: string;
   // undefinedは読み込み中。渡した順で並べる
   readonly categories: readonly CategoryMasterItem[] | undefined;
   readonly withHandle: boolean;
   readonly canEdit: boolean;
+  readonly readOnlyDisplay?: CategoryReadOnlyDisplay | undefined;
   readonly validateHandle?: CategoryHandleValidator | undefined;
   readonly onCreate: (input: CategoryFormValues) => Promise<void>;
   readonly onUpdate: (id: string, input: CategoryFormValues) => Promise<void>;
@@ -56,6 +60,8 @@ export interface CategoryMasterEditorProps {
     ((category: CategoryMasterItem) => string) | undefined;
   readonly deleteAudited?: boolean | undefined;
   readonly serverFieldPrefix?: string | undefined;
+  // 一覧の表の後ろに置く、区画に固有の表示と操作
+  readonly children?: ReactNode;
 }
 
 interface DialogState {
@@ -108,6 +114,7 @@ export function CategoryMasterEditor({
   categories,
   withHandle,
   canEdit,
+  readOnlyDisplay = 'disabled',
   validateHandle,
   onCreate,
   onUpdate,
@@ -116,6 +123,7 @@ export function CategoryMasterEditor({
   deleteDescriptionOf,
   deleteAudited = false,
   serverFieldPrefix,
+  children,
 }: CategoryMasterEditorProps) {
   const headingId = useId();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -125,6 +133,7 @@ export function CategoryMasterEditor({
   const [deletion, setDeletion] = useState<DialogState>(CLOSED);
   const editing = form.category;
   const deleting = deletion.category;
+  const showsActions = canEdit || readOnlyDisplay === 'disabled';
   const hasSystemDefault =
     categories?.some((category) => category.systemDefault) ?? false;
 
@@ -151,6 +160,32 @@ export function CategoryMasterEditor({
     }
     await onDelete(deleting.id);
     deletedReturnFocusRef.current = headingRef.current;
+  };
+
+  const actionsColumn: AdminDataTableColumn<CategoryMasterItem> = {
+    key: 'actions',
+    header: CATEGORY_ACTIONS_LABEL,
+    className: 'text-end',
+    cell: (category) => (
+      <span className="flex flex-wrap justify-end gap-2">
+        <RowAction
+          category={category}
+          label={CATEGORY_EDIT_LABEL}
+          icon={<PencilIcon aria-hidden="true" />}
+          disabled={!canEdit}
+          onPress={openForm}
+        />
+        {category.systemDefault ? null : (
+          <RowAction
+            category={category}
+            label={CATEGORY_DELETE_LABEL}
+            icon={<Trash2Icon aria-hidden="true" />}
+            disabled={!canEdit}
+            onPress={openDeletion}
+          />
+        )}
+      </span>
+    ),
   };
 
   const columns: readonly AdminDataTableColumn<CategoryMasterItem>[] = [
@@ -182,31 +217,7 @@ export function CategoryMasterEditor({
           },
         ]
       : []),
-    {
-      key: 'actions',
-      header: CATEGORY_ACTIONS_LABEL,
-      className: 'text-end',
-      cell: (category) => (
-        <span className="flex flex-wrap justify-end gap-2">
-          <RowAction
-            category={category}
-            label={CATEGORY_EDIT_LABEL}
-            icon={<PencilIcon aria-hidden="true" />}
-            disabled={!canEdit}
-            onPress={openForm}
-          />
-          {category.systemDefault ? null : (
-            <RowAction
-              category={category}
-              label={CATEGORY_DELETE_LABEL}
-              icon={<Trash2Icon aria-hidden="true" />}
-              disabled={!canEdit}
-              onPress={openDeletion}
-            />
-          )}
-        </span>
-      ),
-    },
+    ...(showsActions ? [actionsColumn] : []),
   ];
 
   return (
@@ -221,18 +232,20 @@ export function CategoryMasterEditor({
         >
           {title}
         </h2>
-        <Button
-          type="button"
-          disabled={!canEdit}
-          onClick={() => {
-            openForm(undefined);
-          }}
-        >
-          <PlusIcon aria-hidden="true" />
-          {CATEGORY_CREATE_LABEL}
-        </Button>
+        {showsActions ? (
+          <Button
+            type="button"
+            disabled={!canEdit}
+            onClick={() => {
+              openForm(undefined);
+            }}
+          >
+            <PlusIcon aria-hidden="true" />
+            {CATEGORY_CREATE_LABEL}
+          </Button>
+        ) : null}
       </div>
-      {canEdit ? null : (
+      {canEdit || !showsActions ? null : (
         <p className="text-sm text-muted-foreground">
           {CATEGORY_READ_ONLY_NOTICE}
         </p>
@@ -249,6 +262,7 @@ export function CategoryMasterEditor({
         rowKey={(category) => category.id}
         emptyMessage={CATEGORY_EMPTY_MESSAGE}
       />
+      {children}
       <CategoryFormDialog
         key={`form-${String(form.session)}`}
         open={form.open}

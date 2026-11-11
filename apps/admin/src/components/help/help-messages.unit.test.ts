@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  helpCategoryDeleteDescription,
   helpItemMovedAnnouncement,
   moveDownName,
   moveUpName,
@@ -15,6 +16,17 @@ describe('並べ替えの文言', () => {
   test('移動の読み上げは、対象の名前と移動した後の一覧の中の位置を示す', () => {
     expect(helpItemMovedAnnouncement('ログインできない', 3)).toBe(
       'ログインできないを3番目に移動しました。',
+    );
+  });
+});
+
+describe('カテゴリの削除の確認の文言', () => {
+  test('付け替わる記事の件数を3桁区切りで示し、「その他」の末尾に並ぶ旨を添える', () => {
+    expect(helpCategoryDeleteDescription(1234)).toBe(
+      '付け替わる記事は1,234件です。付け替えた記事は「その他」の末尾に並びます。',
+    );
+    expect(helpCategoryDeleteDescription(0)).toBe(
+      '付け替わる記事は0件です。付け替えた記事は「その他」の末尾に並びます。',
     );
   });
 });
