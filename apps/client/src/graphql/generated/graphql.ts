@@ -415,6 +415,33 @@ export type ClientProductPageQuery = { productPage:
     | { __typename: 'ProductPageRedirect', handle: string }
    | null };
 
+export type ClientHelpArticleSearchQueryVariables = Exact<{
+  query: string;
+}>;
+
+
+export type ClientHelpArticleSearchQuery = { helpArticleSearch: Array<{ handle: string, title: string, subtitle: string, categoryName: string }> };
+
+export type ClientHelpArticleQueryVariables = Exact<{
+  handle: string;
+}>;
+
+
+export type ClientHelpArticleQuery = { helpArticle:
+    | { __typename: 'HelpArticle', handle: string, title: string, subtitle: string, body: string, categoryName: string, updatedAt: string, author: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null, relatedArticles: Array<{ handle: string, title: string, subtitle: string, pinned: boolean }> }
+    | { __typename: 'HelpArticleRedirect', handle: string }
+   | null };
+
+export type ClientHelpCenterQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientHelpCenterQuery = { helpCenter: Array<{ name: string, articles: Array<{ handle: string, title: string, subtitle: string, pinned: boolean }> }> };
+
+export type ClientPinnedHelpArticlesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientPinnedHelpArticlesQuery = { pinnedHelpArticles: Array<{ handle: string, title: string }> };
+
 export type ClientCompleteSecondFactorLoginMutationVariables = Exact<{
   input: CompleteSecondFactorLoginInput;
 }>;
@@ -840,6 +867,10 @@ export const ClientOwnerFollowStatusDocument = {"__meta__":{"hash":"sha256:03009
 export const ClientProductLiveMatchDocument = {"__meta__":{"hash":"sha256:92342f5c738115984b0046edc048dac373e356d45cb24476b78fb16205607640"}} as unknown as DocumentNode<ClientProductLiveMatchQuery, ClientProductLiveMatchQueryVariables>;
 export const ClientProductOwnerStatusDocument = {"__meta__":{"hash":"sha256:9421f04de8a663379f0729e296406d84ab07ad3a1e9829bdd9bd994914f1aea6"}} as unknown as DocumentNode<ClientProductOwnerStatusQuery, ClientProductOwnerStatusQueryVariables>;
 export const ClientProductPageDocument = {"__meta__":{"hash":"sha256:64811745ada8f0c5f555bda41d5b916026763167c37fe22f27ce84723b3ff351"}} as unknown as DocumentNode<ClientProductPageQuery, ClientProductPageQueryVariables>;
+export const ClientHelpArticleSearchDocument = {"__meta__":{"hash":"sha256:18bc6acd31f0e63f195cbc824ca531b586b43a7331473c55cb9e48bd037a30db"}} as unknown as DocumentNode<ClientHelpArticleSearchQuery, ClientHelpArticleSearchQueryVariables>;
+export const ClientHelpArticleDocument = {"__meta__":{"hash":"sha256:e1738bce2edec858e8d8c31d1f3f33e88ce73c7ea2b4cada18ecbecb2debdfd6"}} as unknown as DocumentNode<ClientHelpArticleQuery, ClientHelpArticleQueryVariables>;
+export const ClientHelpCenterDocument = {"__meta__":{"hash":"sha256:5e029413c0c816e81ed4fc20bce7bdd6bdf39f9e20d9aa3b0e4847eb13a0dd93"}} as unknown as DocumentNode<ClientHelpCenterQuery, ClientHelpCenterQueryVariables>;
+export const ClientPinnedHelpArticlesDocument = {"__meta__":{"hash":"sha256:1e32c64cf80427ce3cca426c6d3443bf876b0c0a5c2ef407dda52f6fadb87f26"}} as unknown as DocumentNode<ClientPinnedHelpArticlesQuery, ClientPinnedHelpArticlesQueryVariables>;
 export const ClientCompleteSecondFactorLoginDocument = {"__meta__":{"hash":"sha256:2a5e67f3c1b64838df2c0c323fab25ed80f89e0c56f58fd2bcc6ae3e76583218"}} as unknown as DocumentNode<ClientCompleteSecondFactorLoginMutation, ClientCompleteSecondFactorLoginMutationVariables>;
 export const ClientConfirmEmailChangeDocument = {"__meta__":{"hash":"sha256:c512d6387b1888f3b40034cad109c27d09c805940a226412e3082c1939225461"}} as unknown as DocumentNode<ClientConfirmEmailChangeMutation, ClientConfirmEmailChangeMutationVariables>;
 export const ClientConfirmPasswordChangeDocument = {"__meta__":{"hash":"sha256:2c986aa7e78feaf09e6115e21264cc394141eb5a2aa3595af8198871db50c326"}} as unknown as DocumentNode<ClientConfirmPasswordChangeMutation, ClientConfirmPasswordChangeMutationVariables>;

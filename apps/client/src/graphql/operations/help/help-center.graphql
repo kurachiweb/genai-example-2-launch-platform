@@ -1,0 +1,11 @@
+query ClientHelpCenter {
+  helpCenter {
+    name
+    articles {
+      handle
+      title
+      subtitle
+      pinned
+    }
+  }
+}

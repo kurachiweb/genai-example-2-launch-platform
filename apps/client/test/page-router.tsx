@@ -25,7 +25,11 @@ import { SiteLayout } from '../src/components/layout/site-layout.tsx';
 import { ErrorPage } from '../src/components/pages/error-page.tsx';
 import { NotFoundPage } from '../src/components/pages/not-found-page.tsx';
 import { SITE_LAYOUT_SLOTS } from '../src/composition/layout-slots.ts';
-import type { ClientViewerQuery } from '../src/graphql/generated/graphql.ts';
+import type {
+  ClientPinnedHelpArticlesQuery,
+  ClientViewerQuery,
+} from '../src/graphql/generated/graphql.ts';
+import { pinnedHelpArticlesQueryOptions } from '../src/graphql/help-center.ts';
 import {
   loadRootAuthContext,
   viewerQueryOptions,
@@ -36,17 +40,22 @@ export interface PageRouterOptions {
   readonly createRoutes: (rootRoute: PageRootRoute) => readonly AnyRoute[];
   readonly context?: RouterContext;
   readonly cachedViewer?: ClientViewerQuery | null;
+  readonly cachedPinnedHelpArticles?: ClientPinnedHelpArticlesQuery | null;
 }
 
 export interface RouterRenderOptions {
   readonly path?: string;
   readonly context?: RouterContext;
   readonly cachedViewer?: ClientViewerQuery | null;
+  readonly cachedPinnedHelpArticles?: ClientPinnedHelpArticlesQuery | null;
 }
 
 export const GUEST_VIEWER_QUERY: ClientViewerQuery = Object.freeze({
   viewer: null,
 });
+
+export const NO_PINNED_HELP_ARTICLES_QUERY: ClientPinnedHelpArticlesQuery =
+  Object.freeze({ pinnedHelpArticles: [] });
 
 const PAGE_ROUTER_DISPLAY: DisplayPreferences = Object.freeze({
   timeZone: 'Asia/Tokyo',
@@ -114,6 +123,19 @@ function PageShell({ children }: { readonly children: ReactNode }) {
   );
 }
 
+// 共通レイアウトのフッターのピン留め記事は全ページで取得されるため、各ページのテストがその取得を差し替えずに済むよう先にキャッシュへ入れる。nullならキャッシュを空のままにし、部品に取得させる
+function cachePinnedHelpArticles(
+  context: RouterContext,
+  cached: ClientPinnedHelpArticlesQuery | null,
+): void {
+  if (cached !== null) {
+    context.queryClient.setQueryData(
+      pinnedHelpArticlesQueryOptions().queryKey,
+      cached,
+    );
+  }
+}
+
 // 本物の経路の設定を子に付けられるよう、beforeLoadとloaderを含めてアプリのルートと同じ型にする
 const createPageRootRoute = () =>
   createRootRouteWithContext<RouterContext>()({
@@ -131,8 +153,10 @@ export function createPageRouter({
   createRoutes,
   context = createPageRouterContext('local'),
   cachedViewer = GUEST_VIEWER_QUERY,
+  cachedPinnedHelpArticles = NO_PINNED_HELP_ARTICLES_QUERY,
 }: PageRouterOptions) {
   cacheViewer(context, cachedViewer);
+  cachePinnedHelpArticles(context, cachedPinnedHelpArticles);
   const rootRoute = createPageRootRoute();
   return createRouter({
     routeTree: rootRoute.addChildren([...createRoutes(rootRoute)]),
@@ -155,9 +179,11 @@ export async function renderInRouter(
     path = '/',
     context = createPageRouterContext('local'),
     cachedViewer = GUEST_VIEWER_QUERY,
+    cachedPinnedHelpArticles = NO_PINNED_HELP_ARTICLES_QUERY,
   }: RouterRenderOptions = {},
 ) {
   cacheViewer(context, cachedViewer);
+  cachePinnedHelpArticles(context, cachedPinnedHelpArticles);
   const rootRoute = createRootRouteWithContext<RouterContext>()({
     component: () => element,
   });

@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 
+import { PinnedHelpLinks } from '../components/help/pinned-help-links.tsx';
 import { AccountMenu } from '../components/layout/account-menu.tsx';
 import { LaunchAction } from '../components/layout/launch-action.tsx';
 import { VerifyEmailBanner } from '../components/layout/verify-email-banner.tsx';
@@ -20,5 +21,5 @@ export const SITE_LAYOUT_SLOTS: SiteLayoutSlots = Object.freeze({
   headerLaunchAction: LaunchAction,
   belowHeader: Object.freeze([VerifyEmailBanner]),
   beforeFooter: Object.freeze([]),
-  footerHelpLinks: Object.freeze([]),
+  footerHelpLinks: Object.freeze([PinnedHelpLinks]),
 });

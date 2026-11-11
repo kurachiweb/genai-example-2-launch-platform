@@ -38,6 +38,7 @@ import {
   signedInViewerQuery,
   VIEWER_NICKNAME,
 } from '../../../test/viewer-fixtures.ts';
+import { PinnedHelpLinks } from '../help/pinned-help-links.tsx';
 import { AccountMenu } from './account-menu.tsx';
 import { LaunchAction } from './launch-action.tsx';
 import { SiteLayout } from './site-layout.tsx';
@@ -573,12 +574,14 @@ describe('SiteLayout', () => {
       expect(await runAxe(footer().element())).toStrictEqual([]);
     });
 
-    test('登録箇所は、ヘッダーにアカウントの表示とローンチの導線、帯にメールアドレス未確認の帯を置き、フッターの直前・ヘルプのリンクの区画を空にする', () => {
+    test('登録箇所は、ヘッダーにアカウントの表示とローンチの導線、帯にメールアドレス未確認の帯、ヘルプのリンクの区画にピン留め記事を置き、フッターの直前を空にする', () => {
       expect(SITE_LAYOUT_SLOTS.headerAccount).toBe(AccountMenu);
       expect(SITE_LAYOUT_SLOTS.headerLaunchAction).toBe(LaunchAction);
       expect(SITE_LAYOUT_SLOTS.belowHeader).toStrictEqual([VerifyEmailBanner]);
       expect(SITE_LAYOUT_SLOTS.beforeFooter).toStrictEqual([]);
-      expect(SITE_LAYOUT_SLOTS.footerHelpLinks).toStrictEqual([]);
+      expect(SITE_LAYOUT_SLOTS.footerHelpLinks).toStrictEqual([
+        PinnedHelpLinks,
+      ]);
       expect(Object.isFrozen(SITE_LAYOUT_SLOTS)).toBe(true);
       expect(Object.isFrozen(SITE_LAYOUT_SLOTS.belowHeader)).toBe(true);
     });
