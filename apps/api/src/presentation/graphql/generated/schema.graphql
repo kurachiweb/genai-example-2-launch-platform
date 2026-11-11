@@ -373,6 +373,13 @@ type ConfirmationResult {
 """UTCのRFC 3339形式の日時"""
 scalar DateTime
 
+type DeleteHelpCategoryPayload {
+  id: ID!
+
+  """標準カテゴリへ付け替えた記事の件数"""
+  reassignedCount: Int!
+}
+
 """サーバーが正規化した条件。既定の値の項目はnull"""
 type DirectoryAppliedQuery {
   """解決したカテゴリのハンドル"""
@@ -513,6 +520,15 @@ enum HandleAvailability {
   AVAILABLE
   INVALID
   UNAVAILABLE
+}
+
+type HelpCategory {
+  """下書き・公開を問わない記事の件数"""
+  articleCount: Int!
+  id: ID!
+  name: String!
+  sortOrder: Int!
+  systemDefault: Boolean!
 }
 
 """問い合わせのカテゴリ"""
@@ -972,6 +988,7 @@ type Mutation {
 
   """パスワード変更の確定"""
   confirmPasswordChange(token: String!): ConfirmationResult!
+  createHelpCategory(name: String!): HelpCategory!
 
   """カテゴリの追加。モデレーター以上"""
   createInquiryCategory(name: String!, reason: String): InquiryCategory!
@@ -986,6 +1003,7 @@ type Mutation {
 
   """管理者の削除"""
   deleteAdmin(id: ID!, reason: String): Boolean!
+  deleteHelpCategory(id: ID!): DeleteHelpCategoryPayload!
 
   """カテゴリの削除。紐付く問い合わせを標準カテゴリへ付け替える。モデレーター以上"""
   deleteInquiryCategory(id: ID!, reason: String): Boolean!
@@ -1037,9 +1055,13 @@ type Mutation {
 
   """利用者の登録"""
   registerUser(input: RegisterUserInput!): Viewer!
+  renameHelpCategory(id: ID!, name: String!): HelpCategory!
 
   """カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上"""
   renameInquiryCategory(id: ID!, name: String!, reason: String): InquiryCategory!
+
+  """全カテゴリのIDを並べたい順で渡す"""
+  reorderHelpCategories(orderedIds: [ID!]!): [HelpCategory!]!
 
   """ログインの問い合わせへの管理者の返信。対応ステータスを変えない。モデレーター以上"""
   replyToInquiry(body: String!, inquiryId: ID!, reason: String): InquiryReplyResult!
@@ -1608,6 +1630,9 @@ enum QualifierOutcome {
 type Query {
   """招待中を含む全管理者を登録の新しい順に返す"""
   adminAccounts: [AdminAccount!]!
+
+  """管理者が指定した並び順"""
+  adminHelpCategories: [HelpCategory!]!
 
   """管理画面のログインと未ログインの問い合わせの一覧(50件ずつ、受付日時の新しい順)。閲覧のみ以上"""
   adminInquiries(after: String, filter: AdminInquiryFilterInput): AdminInquiryPage!

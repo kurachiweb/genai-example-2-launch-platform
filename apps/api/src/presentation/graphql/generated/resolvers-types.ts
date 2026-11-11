@@ -384,6 +384,13 @@ export type ConfirmationResult = {
   viewer?: Maybe<Viewer>;
 };
 
+export type DeleteHelpCategoryPayload = {
+  __typename?: 'DeleteHelpCategoryPayload';
+  id: Scalars['ID']['output'];
+  /** 標準カテゴリへ付け替えた記事の件数 */
+  reassignedCount: Scalars['Int']['output'];
+};
+
 /** サーバーが正規化した条件。既定の値の項目はnull */
 export type DirectoryAppliedQuery = {
   __typename?: 'DirectoryAppliedQuery';
@@ -516,6 +523,16 @@ export type HandleAvailability =
   | 'AVAILABLE'
   | 'INVALID'
   | 'UNAVAILABLE';
+
+export type HelpCategory = {
+  __typename?: 'HelpCategory';
+  /** 下書き・公開を問わない記事の件数 */
+  articleCount: Scalars['Int']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  sortOrder: Scalars['Int']['output'];
+  systemDefault: Scalars['Boolean']['output'];
+};
 
 /** 問い合わせのカテゴリ */
 export type InquiryCategory = {
@@ -928,6 +945,7 @@ export type Mutation = {
   confirmEmailChange: ConfirmationResult;
   /** パスワード変更の確定 */
   confirmPasswordChange: ConfirmationResult;
+  createHelpCategory: HelpCategory;
   /** カテゴリの追加。モデレーター以上 */
   createInquiryCategory: InquiryCategory;
   /** モデレーター以上の管理者がプロダクトカテゴリを追加する */
@@ -936,6 +954,7 @@ export type Mutation = {
   createUltrasPortalSession: UltrasPortalSession;
   /** 管理者の削除 */
   deleteAdmin: Scalars['Boolean']['output'];
+  deleteHelpCategory: DeleteHelpCategoryPayload;
   /** カテゴリの削除。紐付く問い合わせを標準カテゴリへ付け替える。モデレーター以上 */
   deleteInquiryCategory: Scalars['Boolean']['output'];
   /** 停止していない利用者が自分のプロダクトを論理削除する。bot判定の操作名はproduct_delete */
@@ -970,8 +989,11 @@ export type Mutation = {
   registerProduct: MyProduct;
   /** 利用者の登録 */
   registerUser: Viewer;
+  renameHelpCategory: HelpCategory;
   /** カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上 */
   renameInquiryCategory: InquiryCategory;
+  /** 全カテゴリのIDを並べたい順で渡す */
+  reorderHelpCategories: Array<HelpCategory>;
   /** ログインの問い合わせへの管理者の返信。対応ステータスを変えない。モデレーター以上 */
   replyToInquiry: InquiryReplyResult;
   /** メールアドレス変更の要求。重複の有無を問わず同じ結果を返す */
@@ -1106,6 +1128,11 @@ export type MutationConfirmPasswordChangeArgs = {
 };
 
 
+export type MutationCreateHelpCategoryArgs = {
+  name: Scalars['String']['input'];
+};
+
+
 export type MutationCreateInquiryCategoryArgs = {
   name: Scalars['String']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
@@ -1121,6 +1148,11 @@ export type MutationCreateProductCategoryArgs = {
 export type MutationDeleteAdminArgs = {
   id: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeleteHelpCategoryArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -1209,10 +1241,21 @@ export type MutationRegisterUserArgs = {
 };
 
 
+export type MutationRenameHelpCategoryArgs = {
+  id: Scalars['ID']['input'];
+  name: Scalars['String']['input'];
+};
+
+
 export type MutationRenameInquiryCategoryArgs = {
   id: Scalars['ID']['input'];
   name: Scalars['String']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationReorderHelpCategoriesArgs = {
+  orderedIds: Array<Scalars['ID']['input']>;
 };
 
 
@@ -1779,6 +1822,8 @@ export type Query = {
   __typename?: 'Query';
   /** 招待中を含む全管理者を登録の新しい順に返す */
   adminAccounts: Array<AdminAccount>;
+  /** 管理者が指定した並び順 */
+  adminHelpCategories: Array<HelpCategory>;
   /** 管理画面のログインと未ログインの問い合わせの一覧(50件ずつ、受付日時の新しい順)。閲覧のみ以上 */
   adminInquiries: AdminInquiryPage;
   /** 管理画面の問い合わせの詳細。退会済みも返し、見つからなければnull。閲覧のみ以上 */
@@ -2431,6 +2476,7 @@ export type ResolversTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
+  DeleteHelpCategoryPayload: ResolverTypeWrapper<DeleteHelpCategoryPayload>;
   DirectoryAppliedQuery: ResolverTypeWrapper<DirectoryAppliedQuery>;
   DirectoryInput: DirectoryInput;
   DirectoryItem: ResolverTypeWrapper<DirectoryItemModel>;
@@ -2445,6 +2491,7 @@ export type ResolversTypes = {
   FollowState: ResolverTypeWrapper<FollowState>;
   GuestInquiryInput: GuestInquiryInput;
   HandleAvailability: HandleAvailability;
+  HelpCategory: ResolverTypeWrapper<HelpCategory>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
   InquiryCategory: ResolverTypeWrapper<InquiryCategory>;
   InquiryComposer: ResolverTypeWrapper<InquiryComposerModel>;
@@ -2604,6 +2651,7 @@ export type ResolversParentTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
   DateTime: Scalars['DateTime']['output'];
+  DeleteHelpCategoryPayload: DeleteHelpCategoryPayload;
   DirectoryAppliedQuery: DirectoryAppliedQuery;
   DirectoryInput: DirectoryInput;
   DirectoryItem: DirectoryItemModel;
@@ -2615,6 +2663,7 @@ export type ResolversParentTypes = {
   FollowEntryConnection: Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['FollowEntry']> };
   FollowState: FollowState;
   GuestInquiryInput: GuestInquiryInput;
+  HelpCategory: HelpCategory;
   ID: Scalars['ID']['output'];
   InquiryCategory: InquiryCategory;
   InquiryComposer: InquiryComposerModel;
@@ -2910,6 +2959,11 @@ export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversT
   name: 'DateTime';
 }
 
+export type DeleteHelpCategoryPayloadResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DeleteHelpCategoryPayload'] = ResolversParentTypes['DeleteHelpCategoryPayload']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  reassignedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type DirectoryAppliedQueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DirectoryAppliedQuery'] = ResolversParentTypes['DirectoryAppliedQuery']> = {
   category?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   from?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -2968,6 +3022,14 @@ export type FollowStateResolvers<ContextType = GraphQLContext, ParentType extend
   followerCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   following?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type HelpCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['HelpCategory'] = ResolversParentTypes['HelpCategory']> = {
+  articleCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  sortOrder?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  systemDefault?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type InquiryCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryCategory'] = ResolversParentTypes['InquiryCategory']> = {
@@ -3178,10 +3240,12 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   confirmCheckoutReturn?: Resolver<ResolversTypes['CheckoutReturnResult'], ParentType, ContextType, RequireFields<MutationConfirmCheckoutReturnArgs, 'sessionId'>>;
   confirmEmailChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmEmailChangeArgs, 'token'>>;
   confirmPasswordChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmPasswordChangeArgs, 'token'>>;
+  createHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationCreateHelpCategoryArgs, 'name'>>;
   createInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationCreateInquiryCategoryArgs, 'name'>>;
   createProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationCreateProductCategoryArgs, 'input'>>;
   createUltrasPortalSession?: Resolver<ResolversTypes['UltrasPortalSession'], ParentType, ContextType>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
+  deleteHelpCategory?: Resolver<ResolversTypes['DeleteHelpCategoryPayload'], ParentType, ContextType, RequireFields<MutationDeleteHelpCategoryArgs, 'id'>>;
   deleteInquiryCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteInquiryCategoryArgs, 'id'>>;
   deleteProduct?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductArgs, 'expectedVersion' | 'productHandle'>>;
   deleteProductCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductCategoryArgs, 'id'>>;
@@ -3199,7 +3263,9 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
   registerProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationRegisterProductArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
+  renameHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationRenameHelpCategoryArgs, 'id' | 'name'>>;
   renameInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationRenameInquiryCategoryArgs, 'id' | 'name'>>;
+  reorderHelpCategories?: Resolver<Array<ResolversTypes['HelpCategory']>, ParentType, ContextType, RequireFields<MutationReorderHelpCategoriesArgs, 'orderedIds'>>;
   replyToInquiry?: Resolver<ResolversTypes['InquiryReplyResult'], ParentType, ContextType, RequireFields<MutationReplyToInquiryArgs, 'body' | 'inquiryId'>>;
   requestAdminEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminEmailChangeArgs, 'newEmail' | 'reAuthentication'>>;
   requestAdminPasswordReset?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminPasswordResetArgs, 'email'>>;
@@ -3474,6 +3540,7 @@ export type QualifierBoardResolvers<ContextType = GraphQLContext, ParentType ext
 
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
+  adminHelpCategories?: Resolver<Array<ResolversTypes['HelpCategory']>, ParentType, ContextType>;
   adminInquiries?: Resolver<ResolversTypes['AdminInquiryPage'], ParentType, ContextType, Partial<QueryAdminInquiriesArgs>>;
   adminInquiry?: Resolver<Maybe<ResolversTypes['AdminInquiry']>, ParentType, ContextType, RequireFields<QueryAdminInquiryArgs, 'id'>>;
   adminInquiryCategories?: Resolver<Array<ResolversTypes['AdminInquiryCategory']>, ParentType, ContextType>;
@@ -3661,6 +3728,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   CheckoutSummary?: CheckoutSummaryResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
+  DeleteHelpCategoryPayload?: DeleteHelpCategoryPayloadResolvers<ContextType>;
   DirectoryAppliedQuery?: DirectoryAppliedQueryResolvers<ContextType>;
   DirectoryItem?: DirectoryItemResolvers<ContextType>;
   DirectoryItemMetric?: DirectoryItemMetricResolvers<ContextType>;
@@ -3669,6 +3737,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   FollowEntry?: FollowEntryResolvers<ContextType>;
   FollowEntryConnection?: FollowEntryConnectionResolvers<ContextType>;
   FollowState?: FollowStateResolvers<ContextType>;
+  HelpCategory?: HelpCategoryResolvers<ContextType>;
   InquiryCategory?: InquiryCategoryResolvers<ContextType>;
   InquiryComposer?: InquiryComposerResolvers<ContextType>;
   InquiryMessage?: InquiryMessageResolvers<ContextType>;
