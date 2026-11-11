@@ -13,6 +13,10 @@ import { SearchForm } from './search-form.tsx';
 
 const TOO_LONG_MESSAGE = '検索キーワードは50文字以内で入力してください。';
 
+const OVER_LIMIT_ANNOUNCEMENT = '文字数が上限の50文字を超えています。';
+
+const WITHIN_LIMIT_ANNOUNCEMENT = '文字数が上限以内に戻りました。';
+
 // 家族の絵文字は複数のコードポイントをZWJで結合した1書記素
 const FAMILY = '👨‍👩‍👧‍👦';
 
@@ -107,17 +111,45 @@ describe('SearchForm', () => {
       .toHaveAccessibleDescription('文字数 41/50');
   });
 
-  test('文字数のカウンターは最初から置いた丁寧な通知の領域の中に示す', async () => {
+  test('文字数は入力のたびには読み上げず、上限を超えた時と上限以内に戻った時だけ読み上げる', async () => {
     const { container } = await render(
       <SearchForm value={undefined} onSearch={() => undefined} />,
     );
     const liveRegion = container.querySelector('[aria-live="polite"]');
     expect(liveRegion).not.toBeNull();
 
-    await userEvent.fill(searchInput(), 'あ'.repeat(45));
+    for (const length of [41, 45, 50]) {
+      await userEvent.fill(searchInput(), 'あ'.repeat(length));
+      await expect.element(counter()).toHaveTextContent(`${String(length)}/50`);
+      expect(liveRegion?.textContent).toBe('');
+    }
 
+    await userEvent.fill(searchInput(), 'あ'.repeat(51));
+    await expect.element(counter()).toHaveTextContent('51/50');
+    expect(liveRegion?.textContent).toBe(OVER_LIMIT_ANNOUNCEMENT);
+
+    await userEvent.fill(searchInput(), 'あ'.repeat(55));
+    await expect.element(counter()).toHaveTextContent('55/50');
+    expect(liveRegion?.textContent).toBe(OVER_LIMIT_ANNOUNCEMENT);
+
+    await userEvent.fill(searchInput(), 'あ'.repeat(50));
+    await expect.element(counter()).toHaveTextContent('50/50');
+    expect(liveRegion?.textContent).toBe(WITHIN_LIMIT_ANNOUNCEMENT);
+
+    await userEvent.fill(searchInput(), 'あ'.repeat(45));
     await expect.element(counter()).toHaveTextContent('45/50');
-    expect(liveRegion?.textContent).toBe('文字数45/50');
+    expect(liveRegion?.textContent).toBe(WITHIN_LIMIT_ANNOUNCEMENT);
+  });
+
+  test('URLの検索語が最初から上限を超えていても、表示した時点では読み上げない', async () => {
+    const { container } = await render(
+      <SearchForm value={'あ'.repeat(51)} onSearch={() => undefined} />,
+    );
+
+    await expect.element(counter()).toHaveTextContent('51/50');
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe(
+      '',
+    );
   });
 
   test('50文字までは誤りを示さず、50文字を超えるとフォーカスアウトで誤りを示し、以降は入力のたびに判定し直す', async () => {

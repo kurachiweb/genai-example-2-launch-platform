@@ -1,3 +1,5 @@
+import { useRef } from 'react';
+
 import type { BusinessDateString } from '../../../common-lib/directory/directory-period.ts';
 import type { DirectoryQuery } from '../../../common-lib/directory/directory-query-rules.ts';
 import type { DirectoryCategoryOption } from './category-listbox.tsx';
@@ -27,9 +29,14 @@ export function FilterToolbar({
   businessToday,
   onChange,
 }: FilterToolbarProps) {
+  const toolbarRef = useRef<HTMLDivElement>(null);
+
   return (
     <>
-      <div className="hidden flex-wrap items-center gap-2 md:flex">
+      <div
+        ref={toolbarRef}
+        className="hidden flex-wrap items-center gap-2 md:flex"
+      >
         <CategoryPicker
           categories={categories}
           loading={categoriesLoading}
@@ -61,6 +68,12 @@ export function FilterToolbar({
           categoriesLoading={categoriesLoading}
           businessToday={businessToday}
           onChange={onChange}
+          // カテゴリの読み込み中は最初の選択欄が無効のため、押せる最初の選択欄へ移す
+          onWideScreenClose={() => {
+            toolbarRef.current
+              ?.querySelector<HTMLButtonElement>('button:enabled')
+              ?.focus();
+          }}
         />
       </div>
     </>

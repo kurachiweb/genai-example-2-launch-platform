@@ -1,5 +1,5 @@
 import { SlidersHorizontalIcon } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 import {
   type BusinessDateString,
@@ -24,6 +24,10 @@ import { SheetFooter } from '../../../lib/components/ui/sheet/sheet-footer.tsx';
 import { SheetHeader } from '../../../lib/components/ui/sheet/sheet-header.tsx';
 import { SheetTitle } from '../../../lib/components/ui/sheet/sheet-title.tsx';
 import { SheetTrigger } from '../../../lib/components/ui/sheet/sheet-trigger.tsx';
+import {
+  MEDIUM_SCREEN_QUERY,
+  useCloseOnWideScreen,
+} from '../../../lib/components/ui/sheet/use-close-on-wide-screen.ts';
 import {
   CategoryListbox,
   type DirectoryCategoryOption,
@@ -67,6 +71,8 @@ export interface FilterSheetProps {
   readonly businessToday: BusinessDateString;
   // 「適用」の時だけ、カテゴリ・期間の両端・並び順の4つの項目を必ず持たせて知らせる
   readonly onChange: (patch: DirectoryFilterPatch) => void;
+  // 開いたまま画面幅が768px以上になって閉じた後に、同じ条件を選べる見えている要素へフォーカスを移す。起動のボタンがCSSで隠れて戻り先にならないため
+  readonly onWideScreenClose: () => void;
 }
 
 const PERIOD_KEYS: readonly (PeriodPreset | 'custom')[] = [
@@ -96,9 +102,11 @@ export function FilterSheet({
   categoriesLoading,
   businessToday,
   onChange,
+  onWideScreenClose,
 }: FilterSheetProps) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const [draft, setDraft] = useState(() =>
     filterSheetDraftOf(query, businessToday),
   );
@@ -114,6 +122,15 @@ export function FilterSheet({
       onChange(patch);
     }
   };
+
+  const onCloseAutoFocus = useCloseOnWideScreen({
+    open,
+    query: MEDIUM_SCREEN_QUERY,
+    onClose: () => {
+      setOpen(false);
+    },
+    onWideScreenFocus: onWideScreenClose,
+  });
 
   return (
     <Sheet
@@ -142,9 +159,20 @@ export function FilterSheet({
           ) : null}
         </Button>
       </SheetTrigger>
-      <SheetContent side="bottom" className="max-h-[88dvh] gap-0 rounded-t-2xl">
+      <SheetContent
+        side="bottom"
+        className="max-h-[88dvh] gap-0 rounded-t-2xl"
+        // 最初の操作はカテゴリの絞り込みの文字入力の欄で、フォーカスするとソフトウェアキーボードが下から出るシートを覆うため、題名へ移す
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          titleRef.current?.focus();
+        }}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <SheetHeader className="border-b border-border pr-12">
-          <SheetTitle>{FILTER_SHEET_LABEL}</SheetTitle>
+          <SheetTitle ref={titleRef} tabIndex={-1} className="rounded-sm">
+            {FILTER_SHEET_LABEL}
+          </SheetTitle>
           <SheetDescription className="sr-only">
             {FILTER_SHEET_DESCRIPTION}
           </SheetDescription>

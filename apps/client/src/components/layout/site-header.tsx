@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import { type ComponentType, useRef } from 'react';
 
 import { ThemeToggle } from '../../../lib/components/theme/theme-toggle.tsx';
 import {
@@ -18,6 +18,8 @@ export function SiteHeader({
   launchAction: LaunchAction,
   account: Account,
 }: SiteHeaderProps) {
+  const navigationRef = useRef<HTMLElement>(null);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur supports-backdrop-filter:bg-background/70">
       <div className="mx-auto flex min-h-14 w-full max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
@@ -29,6 +31,7 @@ export function SiteHeader({
           {SITE_NAME}
         </a>
         <nav
+          ref={navigationRef}
           aria-label={MAIN_NAVIGATION_LABEL}
           className="ml-4 hidden items-center gap-1 md:flex"
         >
@@ -48,7 +51,13 @@ export function SiteHeader({
             <LaunchAction />
             <Account />
           </div>
-          <SiteMobileMenu launchAction={LaunchAction} account={Account} />
+          <SiteMobileMenu
+            launchAction={LaunchAction}
+            account={Account}
+            onWideScreenClose={() => {
+              navigationRef.current?.querySelector('a')?.focus();
+            }}
+          />
         </div>
       </div>
     </header>

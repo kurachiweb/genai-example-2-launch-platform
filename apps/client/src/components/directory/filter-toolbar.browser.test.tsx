@@ -184,6 +184,63 @@ describe('FilterToolbar', () => {
     });
   });
 
+  describe('シートを開いたまま画面幅が変わるとき', () => {
+    test('768px以上へ広げると、下書きを捨ててシートを閉じ、フォーカスを横並びの最初の選択欄へ移す', async () => {
+      await page.viewport(MOBILE.width, MOBILE.height);
+      const onChange = vi.fn();
+      await renderToolbar({}, onChange);
+      await userEvent.click(sheetButton());
+      await userEvent.click(
+        sheet().getByRole('option', { name: 'AI', exact: true }),
+      );
+
+      await page.viewport(DESKTOP.width, DESKTOP.height);
+
+      await expect.element(sheet()).not.toBeInTheDocument();
+      await expect.element(categoryTrigger()).toHaveFocus();
+      expect(onChange).not.toHaveBeenCalled();
+      await expect
+        .element(categoryTrigger())
+        .toHaveAccessibleName('カテゴリ 全て');
+    });
+
+    test('狭いまま閉じると、フォーカスを「絞り込み・並び順」のボタンへ戻す', async () => {
+      await page.viewport(MOBILE.width, MOBILE.height);
+      await renderToolbar({});
+      await userEvent.click(sheetButton());
+      await expect.element(sheet()).toBeInTheDocument();
+
+      await page.viewport(MOBILE.width + 100, MOBILE.height);
+      await userEvent.click(sheet().getByRole('button', { name: '閉じる' }));
+
+      await expect.element(sheet()).not.toBeInTheDocument();
+      await expect.element(sheetButton()).toHaveFocus();
+    });
+
+    test('カテゴリの読み込み中に768px以上へ広げると、無効のカテゴリの選択欄を飛ばして期間の選択欄へフォーカスを移す', async () => {
+      await page.viewport(MOBILE.width, MOBILE.height);
+      await render(
+        <div className="bg-background p-4 text-foreground">
+          <FilterToolbar
+            query={{}}
+            categories={[]}
+            categoriesLoading
+            businessToday={TODAY}
+            onChange={() => undefined}
+          />
+        </div>,
+      );
+      await userEvent.click(sheetButton());
+      await expect.element(sheet()).toBeInTheDocument();
+
+      await page.viewport(DESKTOP.width, DESKTOP.height);
+
+      await expect.element(sheet()).not.toBeInTheDocument();
+      await expect.element(categoryTrigger()).toBeDisabled();
+      await expect.element(periodTrigger()).toHaveFocus();
+    });
+  });
+
   describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
     test.each([
       ['768px以上', DESKTOP],

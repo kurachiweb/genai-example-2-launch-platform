@@ -52,6 +52,7 @@ async function renderSheet({
         categoriesLoading={loading}
         businessToday={TODAY}
         onChange={onChange}
+        onWideScreenClose={() => undefined}
       />
     </div>,
   );
@@ -216,6 +217,7 @@ describe('FilterSheet', () => {
           categoriesLoading={false}
           businessToday={TODAY}
           onChange={() => undefined}
+          onWideScreenClose={() => undefined}
         />
       </div>,
     );
@@ -276,6 +278,24 @@ describe('FilterSheet', () => {
       .element(sheet().getByText('読み込み中…', { exact: true }))
       .toBeVisible();
     await expect.element(sheet().getByRole('combobox')).not.toBeInTheDocument();
+  });
+
+  test('開くとソフトウェアキーボードを出さないようフォーカスをシートの見出しへ移し、Tabで最初の操作(カテゴリの絞り込みの欄)へ進む', async () => {
+    await renderSheet();
+
+    await openSheet();
+
+    await expect
+      .element(
+        sheet().getByRole('heading', { name: '絞り込み・並び順', level: 2 }),
+      )
+      .toHaveFocus();
+
+    await userEvent.tab();
+
+    await expect
+      .element(sheet().getByRole('combobox', { name: 'カテゴリを絞り込む' }))
+      .toHaveFocus();
   });
 
   test('Escapeで閉じるとボタンへフォーカスを戻す', async () => {

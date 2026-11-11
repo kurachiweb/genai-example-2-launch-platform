@@ -28,6 +28,8 @@ vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
 const WIDE_VIEWPORT = { width: 1280, height: 800 } as const;
 const MENU_BREAKPOINT_WIDTH = 768;
 const NARROWEST_VIEWPORT_WIDTH = 320;
+const MOBILE_VIEWPORT_WIDTH = 375;
+const WIDENED_VIEWPORT_WIDTH = 1024;
 const VIEWPORT_HEIGHT = 800;
 
 const NAVIGATION_NAME = '管理メニュー';
@@ -217,6 +219,37 @@ describe('AdminNavigation', () => {
 
       await expect.poll(() => router.state.location.pathname).toBe('/account');
       await expect.element(dialog).not.toBeInTheDocument();
+    });
+
+    test('シートを開いたまま768px以上へ広げると、シートを閉じ、フォーカスを本文の左の列の一覧の最初の項目へ移す', async () => {
+      await page.viewport(MOBILE_VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+      await renderNavigation({ path: '/accounts' });
+      await userEvent.click(menuButton());
+      const dialog = page.getByRole('dialog', { name: MENU_BUTTON_NAME });
+      await expect.element(dialog).toBeInTheDocument();
+
+      await page.viewport(WIDENED_VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+
+      await expect.element(dialog).not.toBeInTheDocument();
+      await expect
+        .element(navigation().getByRole('link', { name: 'ダッシュボード' }))
+        .toHaveFocus();
+      expect(await runAxe(document.body)).toStrictEqual([]);
+    });
+
+    test('768px未満のまま幅が変わってもシートを開いたままにし、閉じると開閉のボタンへフォーカスを戻す', async () => {
+      await page.viewport(MOBILE_VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
+      await renderNavigation();
+      await userEvent.click(menuButton());
+      const dialog = page.getByRole('dialog', { name: MENU_BUTTON_NAME });
+      await expect.element(dialog).toBeInTheDocument();
+
+      await page.viewport(MOBILE_VIEWPORT_WIDTH + 100, VIEWPORT_HEIGHT);
+      await expect.element(dialog).toBeVisible();
+      await userEvent.keyboard('{Escape}');
+
+      await expect.element(dialog).not.toBeInTheDocument();
+      await expect.element(menuButton()).toHaveFocus();
     });
 
     test('幅320pxで、横スクロールが出ない', async () => {

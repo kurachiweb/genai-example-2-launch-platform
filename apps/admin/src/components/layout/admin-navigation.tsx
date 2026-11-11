@@ -1,6 +1,6 @@
 import type { ActiveOptions } from '@tanstack/react-router';
 import { MenuIcon } from 'lucide-react';
-import { type MouseEvent, useState } from 'react';
+import { type MouseEvent, type Ref, useRef, useState } from 'react';
 
 import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
@@ -9,6 +9,10 @@ import { SheetContent } from '../../../lib/components/ui/sheet/sheet-content.tsx
 import { SheetHeader } from '../../../lib/components/ui/sheet/sheet-header.tsx';
 import { SheetTitle } from '../../../lib/components/ui/sheet/sheet-title.tsx';
 import { SheetTrigger } from '../../../lib/components/ui/sheet/sheet-trigger.tsx';
+import {
+  MEDIUM_SCREEN_QUERY,
+  useCloseOnWideScreen,
+} from '../../../lib/components/ui/sheet/use-close-on-wide-screen.ts';
 import {
   ADMIN_NAV_ITEMS,
   type AdminNavItem,
@@ -39,12 +43,13 @@ const SECTION_ACTIVE_OPTIONS: ActiveOptions = Object.freeze({
 interface NavigationListProps {
   readonly items: readonly AdminNavItem[];
   readonly className?: string;
+  readonly ref?: Ref<HTMLElement>;
 }
 
 // 項目は他のspecが登録する経路を指し型で指定できないため、パスで遷移させる。現在の項目はリンクがaria-current="page"を付けて示す
-function NavigationList({ items, className }: NavigationListProps) {
+function NavigationList({ items, className, ref }: NavigationListProps) {
   return (
-    <nav aria-label={ADMIN_NAVIGATION_LABEL} className={className}>
+    <nav ref={ref} aria-label={ADMIN_NAVIGATION_LABEL} className={className}>
       <ul className="flex flex-col gap-1">
         {items.map((item) => (
           <li key={item.to}>
@@ -72,6 +77,18 @@ export function AdminNavigation({
 }: AdminNavigationProps) {
   const viewer = useAdminViewer();
   const [open, setOpen] = useState(false);
+  const sideNavigationRef = useRef<HTMLElement>(null);
+  // 開いたまま幅768px以上になって閉じた後は、開閉のボタンがCSSで隠れて戻り先にならないため、本文の左の列の一覧の最初の項目へ移す
+  const onCloseAutoFocus = useCloseOnWideScreen({
+    open,
+    query: MEDIUM_SCREEN_QUERY,
+    onClose: () => {
+      setOpen(false);
+    },
+    onWideScreenFocus: () => {
+      sideNavigationRef.current?.querySelector('a')?.focus();
+    },
+  });
 
   if (viewer === null) {
     return null;
@@ -100,6 +117,7 @@ export function AdminNavigation({
             side="left"
             aria-describedby={undefined}
             onClick={closeOnLinkClick}
+            onCloseAutoFocus={onCloseAutoFocus}
           >
             <SheetHeader>
               <SheetTitle>{ADMIN_MENU_LABEL}</SheetTitle>
@@ -109,6 +127,7 @@ export function AdminNavigation({
         </Sheet>
       </div>
       <NavigationList
+        ref={sideNavigationRef}
         items={orderedItems}
         className="hidden shrink-0 border-r border-border p-4 md:block md:w-56"
       />

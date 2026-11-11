@@ -17,8 +17,10 @@ import {
   SEARCH_FORM_LABEL,
   SEARCH_INPUT_LABEL,
   SEARCH_INPUT_PLACEHOLDER,
+  SEARCH_OVER_LIMIT_ANNOUNCEMENT,
   SEARCH_SUBMIT_LABEL,
   SEARCH_TOO_LONG_MESSAGE,
+  SEARCH_WITHIN_LIMIT_ANNOUNCEMENT,
 } from './search-form-messages.ts';
 
 export interface SearchFormProps {
@@ -48,6 +50,17 @@ export function SearchForm({ value, onSearch }: SearchFormProps) {
   const tooLong = length > DIRECTORY_SEARCH_MAX_GRAPHEMES;
   const showsCounter = length > DIRECTORY_SEARCH_COUNTER_FROM;
   const showsError = tooLong && touched;
+  const [announcedTooLong, setAnnouncedTooLong] = useState(tooLong);
+  const [announcement, setAnnouncement] = useState('');
+  // 入力のたびに読み上げないよう、上限を超えた時と上限以内に戻った時だけ読み上げの文言を変える
+  if (tooLong !== announcedTooLong) {
+    setAnnouncedTooLong(tooLong);
+    setAnnouncement(
+      tooLong
+        ? SEARCH_OVER_LIMIT_ANNOUNCEMENT
+        : SEARCH_WITHIN_LIMIT_ANNOUNCEMENT,
+    );
+  }
   const describedBy = [showsCounter && counterId, showsError && errorId]
     .filter((id) => id !== false)
     .join(' ');
@@ -108,7 +121,6 @@ export function SearchForm({ value, onSearch }: SearchFormProps) {
           <div className="absolute inset-y-0 right-2 flex items-center gap-1">
             <span
               id={counterId}
-              aria-live="polite"
               className={cn(
                 'text-xs tabular-nums',
                 tooLong
@@ -143,6 +155,9 @@ export function SearchForm({ value, onSearch }: SearchFormProps) {
       {showsError ? (
         <FormMessage id={errorId}>{SEARCH_TOO_LONG_MESSAGE}</FormMessage>
       ) : null}
+      <p className="sr-only" aria-live="polite">
+        {announcement}
+      </p>
     </div>
   );
 }
