@@ -311,7 +311,7 @@ const visible = await db
 種類が決まっていて利用者の操作では増えない行(版を持つデータの集約の行など)のように、アプリが常にあることを前提に読む行は、マイグレーションで初期データとして入れる。
 
 1. テーブルを作るマイグレーションを`drizzle-kit generate --name=<名前>`で生成する。
-2. 続けて`drizzle-kit generate --custom --name=<名前>_seed`で別のカスタムマイグレーションを作り、初期データの`INSERT`を書く。マイグレーションは名前の日時の順に適用されるため、初期データはテーブルの作成の直後に適用される。
+2. 続けて`drizzle-kit generate --custom --name=<名前>_seed`で別のカスタムマイグレーションを作り、初期データの`INSERT`を書く。マイグレーションは名前の日時の順に適用されるため、初期データはテーブルの作成の直後に適用される。続けて作った複数のマイグレーションの名前が同じ秒の日時になり、名前の順が作成の順と食い違う場合は、ディレクトリ名の日時を作成の順に1秒ずつずらす(スナップショットの`prevIds`の連鎖は作成の順のままで整合する)。
 
 ```sql
 INSERT INTO `pages` (`id`, `slug`, `state_version`, `latest_version_number`, `draft_body`, `draft_saved_at`, `draft_saved_by`, `created_at`, `updated_at`) VALUES

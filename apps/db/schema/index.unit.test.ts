@@ -68,6 +68,10 @@ describe('スキーマの集約点', () => {
     'qualifier_pairings',
     'product_search_documents',
     'directory_entries',
+    'help_categories',
+    'help_articles',
+    'help_article_previous_handles',
+    'help_article_search_documents',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

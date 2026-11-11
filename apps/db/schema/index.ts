@@ -5,6 +5,7 @@ export * from './email/email-cleanup-cursors.ts';
 export * from './email/email-send-records.ts';
 export * from './email/email-suppressions.ts';
 export * from './follow/index.ts';
+export * from './help/index.ts';
 export * from './identity/index.ts';
 export * from './inquiry/index.ts';
 export * from './legal/index.ts';

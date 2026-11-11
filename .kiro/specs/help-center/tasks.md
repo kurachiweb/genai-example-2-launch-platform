@@ -9,7 +9,7 @@
   - 完了状態: 単体テストが成功し、client・admin・api・eventの型検査で配置先から読み込め、監査ログの操作種別の一覧の作成で名前の重複の例外が出ない
   - _Requirements: 2.3, 2.9, 3.6, 6.1, 6.2, 7.1, 7.2, 7.5, 11.3, 12.5, 12.6_
 
-- [ ] 1.2 カテゴリ・記事・記事の旧ハンドル・索引文書の4テーブルと索引の定義を作り、マイグレーションを用意する
+- [x] 1.2 カテゴリ・記事・記事の旧ハンドル・索引文書の4テーブルと索引の定義を作り、マイグレーションを用意する
   - 先に、記事のハンドルとカテゴリ名の照合規則、ピン留め・ステータス・並び順・版のCHECK、カテゴリと記事の並び順の列と索引、作成者の列に外部キーが無いこと、旧ハンドルが記事1件に1行で外部キーの`ON DELETE`を指定しないこと、索引文書の共通の列とタイトル・サブタイトルの列、索引の定義が検証を通ることを確かめる単体テストを書く
   - スキーマの集約点と索引の定義の集約点へ加え、mainの最新を取り込んでからマイグレーションを生成し、標準カテゴリ「その他」(並び順1)の初期データと、全文検索の索引とトリガー(出力スクリプトの結果)を2つのカスタムマイグレーションで加える
   - 続けて、マイグレーションを適用したローカルD1のWorkers統合テストで、大文字小文字だけが違うカテゴリ名・記事のハンドルの2行目の拒否、ピン留め・ステータス・並び順・版のCHECKの違反の拒否、初期データの「その他」と並び順の存在を確かめる
@@ -214,3 +214,4 @@
 ## Implementation Notes
 
 - 1.1: 規則は`apps/common-lib/help/`(`help-input-rules.ts`・`help-query-rules.ts`・`help-article-status.ts`・`help-category-constants.ts`)、操作種別は`admin/audit-actions/help-center.ts`。設計に無い`HELP_BODY_RULE`(`MarkdownTextRule`、本文・100,000・必須)を`PRODUCT_DESCRIPTION_RULE`・`LEGAL_BODY_RULE`の先例に倣って加えたので、3.x・5.x・7.xは本文の規則にこれを使う。入力の検証の文言は設計どおりcommon-libに置かずapiの`errors.ts`・adminの`help-messages.ts`に置く。`normalizeHelpSearchText`はdirectory-discoveryの非公開の`normalizeSearchText`と同じ規則の再実装(約20行の重複、共通化は任意としてレビューで残した)。`checkHelpSearchQuery`は前後の空白を除いてから数える。`help-category.reorder`は対象無しだが`defineAuditAction`の制約で`maxTargets: 1`。1.2の初期データは`HELP_CATEGORY_OTHER_ID`(`01JC0000000000000000000001`)・「その他」・並び順1。100,000文字の本文の描画は約132ms
+- 1.2: テーブルは`apps/db/schema/help/`、索引の定義`HELP_ARTICLE_SEARCH_INDEX`は設計の`help-article-search-documents.ts`ではなく先例(directory-discovery)に倣い`help-article-search-index.ts`に分け、`schema/index.ts`から再エクスポートせず`search/search-indexes.ts`が直接読む(2.1の検索対象もここから読む)。公開の条件`publishedHelpArticle`は設計どおり`SQL`の定数(`visibleProducts()`のような関数ではない)。マイグレーションは`20261111061811_help_center`(生成)・`…061812_help_center_seed`・`…061813_help_center_fts`で、drizzle-kitが3件を同じ秒で作り名前の順が崩れたためディレクトリ名の日時を1秒ずつずらした(`db/003`の初期データの節に手順を追記)。既定値は`revision`=1、`pinned`・`system_default`=false、`status`・`sort_order`は既定なし(書き込み側が必ず渡す)。dbはcommon-libを読めないためステータスの値と初期データのID・名前を写し、`config/help-contract-copies.unit.test.ts`(`check:contract-copies`に追加)で照合する。旧ハンドルを残したまま記事を消すと外部キーで拒否されるため、3.3の削除は旧ハンドルを先に消す

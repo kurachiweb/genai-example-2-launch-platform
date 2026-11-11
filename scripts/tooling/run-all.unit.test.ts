@@ -637,7 +637,7 @@ describe('ルートのpackage.json', () => {
     expect(readPackageScripts(REPO_ROOT)).toMatchObject({
       check: 'bun ./scripts/tooling/run-all.ts check',
       'check:contract-copies':
-        'bun test ./config/contract-copies.unit.test.ts ./config/launch-time-contract-copies.unit.test.ts ./config/product-contract-copies.unit.test.ts ./config/match-contract-copies.unit.test.ts',
+        'bun test ./config/contract-copies.unit.test.ts ./config/launch-time-contract-copies.unit.test.ts ./config/product-contract-copies.unit.test.ts ./config/match-contract-copies.unit.test.ts ./config/help-contract-copies.unit.test.ts',
       'check:test-names': 'bun ./scripts/tooling/check-test-names.ts',
       'test:all:unit': 'bun ./scripts/tooling/run-all.ts test:unit',
       'test:all:browser': 'bun ./scripts/tooling/run-all.ts test:browser',
