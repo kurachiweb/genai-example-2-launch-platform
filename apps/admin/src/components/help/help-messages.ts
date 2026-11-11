@@ -176,3 +176,26 @@ export const HELP_ARTICLE_FORM_CREATE_LABEL = 'ヘルプ記事の作成';
 export const HELP_ARTICLE_FORM_EDIT_LABEL = 'ヘルプ記事の編集';
 
 export const HELP_ARTICLES_LINK_LABEL = 'ヘルプ記事の一覧へ';
+
+export const HELP_ARTICLE_CREATED_MESSAGE = 'ヘルプ記事を作成しました。';
+
+export const HELP_ARTICLE_SAVED_MESSAGE = 'ヘルプ記事を保存しました。';
+
+export const HELP_ARTICLE_DELETED_MESSAGE = 'ヘルプ記事を削除しました。';
+
+export const HELP_ARTICLE_NOT_FOUND_MESSAGE =
+  'このヘルプ記事は削除されています。';
+
+export const HELP_ARTICLE_OPEN_PUBLIC_LABEL = '公開ページを開く';
+
+export const NEW_TAB_NOTICE = '(新しいタブで開きます)';
+
+export const HELP_ARTICLE_DELETE_LABEL = '削除';
+
+export const helpArticleDeleteTitle = (title: string): string =>
+  `ヘルプ記事『${title}』を削除しますか?`;
+
+export const HELP_ARTICLE_DELETE_DESCRIPTION =
+  '記事と以前のURLの転送は削除され、元に戻せません。';
+
+export const HELP_ARTICLE_DELETE_CONFIRM_LABEL = '削除';

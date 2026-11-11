@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { notFound } from '@tanstack/react-router';
 
 import type { HelpArticleStatus } from '../../common-lib/help/help-article-status.ts';
 import {
@@ -6,6 +7,7 @@ import {
   splitPinnedGroups,
 } from '../../common-lib/help/help-ordering.ts';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
+import { GraphQLClientError } from '../../lib/utilities/graphql/graphql-result.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import type { MediaImageView } from '../../lib/utilities/media/picture-sources.ts';
 import { adminHelpCategoriesQueryOptions } from './admin-help-categories.ts';
@@ -255,5 +257,82 @@ export async function loadAdminHelpArticlesPage({
     queryClient
       .query({ ...adminHelpCategoriesQueryOptions(), staleTime: 'static' })
       .catch(() => undefined),
+  ]);
+}
+
+// 作成の画面はカテゴリの選択肢が無ければフォームを描けないため、取得の失敗はルートのエラーの画面に任せる
+export async function loadAdminHelpArticleNewPage({
+  context: { queryClient },
+}: {
+  readonly context: { readonly queryClient: QueryClient };
+}): Promise<void> {
+  await queryClient.query({
+    ...adminHelpCategoriesQueryOptions(),
+    staleTime: 'static',
+  });
+}
+
+const VALIDATION_ERROR = 'validation_error';
+
+const ARTICLE_ID_FIELD = 'id';
+
+// APIサーバーはIDの上限を超える形式の違反をnullではなく入力の検証の失敗で返すため、存在しないページとして扱う
+const isMalformedArticleId = (error: unknown): boolean =>
+  error instanceof GraphQLClientError &&
+  error.code === VALIDATION_ERROR &&
+  (error.details ?? []).some(({ field }) => field === ARTICLE_ID_FIELD);
+
+// 編集は開いた時点の版を基準に競合を判定し、削除した後に戻る操作で開き直した記事も削除済みと示すため、記事はキャッシュの鮮度によらず毎回取得する。
+// 削除済み(null)は画面に案内と一覧への導線を出すため例外にしない
+export async function loadAdminHelpArticlePage({
+  context: { queryClient },
+  params,
+}: {
+  readonly context: { readonly queryClient: QueryClient };
+  readonly params: { readonly articleId: string };
+}): Promise<void> {
+  await Promise.all([
+    queryClient
+      .query({
+        ...adminHelpArticleQueryOptions(params.articleId),
+        staleTime: 0,
+      })
+      .catch((error: unknown) => {
+        if (isMalformedArticleId(error)) {
+          throw notFound();
+        }
+        throw error;
+      }),
+    queryClient.query({
+      ...adminHelpCategoriesQueryOptions(),
+      staleTime: 'static',
+    }),
+  ]);
+}
+
+// 削除の後、一覧へ移る前に待つ。移った先の一覧に削除した記事を一瞬も出さないよう、表示していない一覧とカテゴリの一覧(記事の件数)も取得し直す。
+// 表示中の編集画面の記事を取り直すと一覧へ移る前に削除済みの案内が見えるため、記事の1件は古い印だけを付け、次に開いた時に取得させる
+export async function refreshHelpArticleQueriesAfterDelete(
+  queryClient: QueryClient,
+): Promise<void> {
+  await Promise.all([
+    ...[
+      documentIdOf(AdminHelpArticlesDocument),
+      documentIdOf(AdminHelpCategoriesDocument),
+    ].map((documentId) =>
+      queryClient.invalidateQueries({
+        queryKey: [documentId],
+        refetchType: 'all',
+      }),
+    ),
+    ...[
+      documentIdOf(AdminHelpArticleDocument),
+      documentIdOf(AdminHelpArticleHandleAvailabilityDocument),
+    ].map((documentId) =>
+      queryClient.invalidateQueries({
+        queryKey: [documentId],
+        refetchType: 'none',
+      }),
+    ),
   ]);
 }

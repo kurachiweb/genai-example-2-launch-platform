@@ -15,7 +15,7 @@ import { LegalDraftStatus } from '../legal/legal-draft-status.tsx';
 import { legalEditorErrorMessageOf } from '../legal/legal-editor-errors.ts';
 import { LegalRevisionTable } from '../legal/legal-revision-table.tsx';
 import { PublishLegalDocumentDialog } from '../legal/publish-legal-document-dialog.tsx';
-import { useClientSiteHref } from '../legal/use-client-site-href.ts';
+import { useClientSiteHref } from '../layout/use-client-site-href.ts';
 import {
   type LegalEditorFailure,
   useLegalDocumentEditor,

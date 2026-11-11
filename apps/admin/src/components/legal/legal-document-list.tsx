@@ -25,7 +25,7 @@ import {
   openPublicPageName,
   UNPUBLISHED_LABEL,
 } from './legal-documents-messages.ts';
-import { useClientSiteHref } from './use-client-site-href.ts';
+import { useClientSiteHref } from '../layout/use-client-site-href.ts';
 
 export interface LegalDocumentListProps {
   // undefinedは読み込み中

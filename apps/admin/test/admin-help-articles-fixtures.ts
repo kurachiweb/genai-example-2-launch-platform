@@ -4,17 +4,29 @@ import type { Mock } from 'vitest';
 import { HELP_CATEGORY_OTHER_ID } from '../common-lib/help/help-category-constants.ts';
 import { parseHelpArticleFilter } from '../src/components/help/help-article-filter.ts';
 import { parseHelpArticleOrderSearch } from '../src/components/help/help-article-order-search.ts';
-import { loadAdminHelpArticlesPage } from '../src/graphql/admin-help-articles.ts';
+import { requireHelpArticleEditor } from '../src/components/help/require-help-article-editor.ts';
 import {
+  loadAdminHelpArticleNewPage,
+  loadAdminHelpArticlePage,
+  loadAdminHelpArticlesPage,
+} from '../src/graphql/admin-help-articles.ts';
+import {
+  AdminCreateHelpArticleDocument,
+  AdminDeleteHelpArticleDocument,
+  AdminHelpArticleDocument,
+  AdminHelpArticleHandleAvailabilityDocument,
   AdminHelpArticlesDocument,
   type AdminHelpArticlesQuery,
   AdminHelpCategoriesDocument,
   type AdminHelpCategoriesQuery,
   AdminReorderHelpArticlesDocument,
   type AdminRole,
+  AdminUpdateHelpArticleDocument,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
+import { Route as HelpArticleEditRoute } from '../src/routes/_authenticated/help-articles/$articleId.tsx';
 import { Route as HelpArticlesRoute } from '../src/routes/_authenticated/help-articles/index.tsx';
+import { Route as HelpArticleNewRoute } from '../src/routes/_authenticated/help-articles/new.tsx';
 import { Route as HelpArticleOrderRoute } from '../src/routes/_authenticated/help-articles/order.tsx';
 import {
   type GraphQLHandler,
@@ -27,6 +39,11 @@ import { type PageRootRoute, renderPageRouter } from './page-router.tsx';
 export const HELP_ARTICLES_PATH = '/help-articles';
 
 export const HELP_ARTICLE_ORDER_PATH = '/help-articles/order';
+
+export const HELP_ARTICLE_NEW_PATH = '/help-articles/new';
+
+export const helpArticlePathOf = (id: string): string =>
+  `${HELP_ARTICLES_PATH}/${id}`;
 
 export type AdminHelpArticleRowFields =
   AdminHelpArticlesQuery['adminHelpArticles'][number];
@@ -244,19 +261,35 @@ export const ORDER_ARTICLES = helpArticlesQueryOf([
   ORDER_OTHER_E,
 ]);
 
-// 記事の全件・カテゴリの一覧・記事の並べ替え・ログイン中の管理者の取得に応答し、記事とカテゴリと並べ替えはテストが渡した応答にする
+const unexpectedOperation =
+  (name: string): GraphQLHandler =>
+  () =>
+    Promise.reject(new Error(`想定していない${name}が実行されました。`));
+
+// 記事の全件と1件・カテゴリの一覧・ハンドルの使用可否・記事の作成・編集・削除・並べ替え・ログイン中の管理者の取得に応答し、ログイン中の管理者以外はテストが渡した応答にする。
+// 既定では全件とカテゴリの一覧を返し、ハンドルを使えるとし、記事の1件と変更の操作は失敗させる
 export function respondAdminHelpArticlesGraphQL(
   executeGraphQL: Mock,
   {
     role,
     articles = () => success(ALL_ARTICLES),
     categories = () => success(HELP_CATEGORIES),
-    reorder = () =>
-      Promise.reject(new Error('想定していない並べ替えが実行されました。')),
+    article = unexpectedOperation('記事の取得'),
+    availability = () =>
+      success({ helpArticleHandleAvailability: 'AVAILABLE' }),
+    create = unexpectedOperation('作成'),
+    update = unexpectedOperation('編集'),
+    remove = unexpectedOperation('削除'),
+    reorder = unexpectedOperation('並べ替え'),
   }: {
     readonly role: AdminRole;
     readonly articles?: GraphQLHandler;
     readonly categories?: GraphQLHandler;
+    readonly article?: GraphQLHandler;
+    readonly availability?: GraphQLHandler;
+    readonly create?: GraphQLHandler;
+    readonly update?: GraphQLHandler;
+    readonly remove?: GraphQLHandler;
     readonly reorder?: GraphQLHandler;
   },
 ): void {
@@ -265,12 +298,17 @@ export function respondAdminHelpArticlesGraphQL(
     handlers: new Map<unknown, GraphQLHandler>([
       [AdminHelpArticlesDocument, articles],
       [AdminHelpCategoriesDocument, categories],
+      [AdminHelpArticleDocument, article],
+      [AdminHelpArticleHandleAvailabilityDocument, availability],
+      [AdminCreateHelpArticleDocument, create],
+      [AdminUpdateHelpArticleDocument, update],
+      [AdminDeleteHelpArticleDocument, remove],
       [AdminReorderHelpArticlesDocument, reorder],
     ]),
   });
 }
 
-// アプリの経路の設定を、画面のテスト用のルーターの同じ位置(同じ経路のID)の経路へ写す。経路の設定の検索パラメータの検証とloaderは型がアプリの経路の木に結び付き写せないため、同じ関数を渡す(同じ関数であることは画面のテストが確かめる)
+// アプリの経路の設定を、画面のテスト用のルーターの同じ位置(同じ経路のID)の経路へ写す。経路の設定の検索パラメータの検証・beforeLoad・loaderは型がアプリの経路の木に結び付き写せないため、同じ関数を渡す(同じ関数であることは画面のテストが確かめる)
 const createRoutes = (rootRoute: PageRootRoute) => {
   const authenticatedRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -298,6 +336,19 @@ const createRoutes = (rootRoute: PageRootRoute) => {
           validateSearch: parseHelpArticleOrderSearch,
           loader: loadAdminHelpArticlesPage,
           component: HelpArticleOrderRoute.options.component,
+        }),
+        createRoute({
+          getParentRoute: () => helpArticlesRoute,
+          path: 'new',
+          beforeLoad: requireHelpArticleEditor,
+          loader: loadAdminHelpArticleNewPage,
+          component: HelpArticleNewRoute.options.component,
+        }),
+        createRoute({
+          getParentRoute: () => helpArticlesRoute,
+          path: '$articleId',
+          loader: loadAdminHelpArticlePage,
+          component: HelpArticleEditRoute.options.component,
         }),
       ]),
     ]),

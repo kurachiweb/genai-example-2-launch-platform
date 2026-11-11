@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { ScrollTextIcon } from 'lucide-react';
 import { useId, useRef, useState } from 'react';
@@ -42,6 +42,7 @@ import { AUDITED_ACTION_NOTICE } from '../../../lib/utilities/messages/admin-con
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
 import {
   type AdminHelpArticleView,
+  refreshHelpArticleQueriesAfterDelete,
   toAdminHelpArticle,
   toGraphQLHelpArticleStatus,
 } from '../../graphql/admin-help-articles.ts';
@@ -316,6 +317,7 @@ export function HelpArticleForm({
     graphqlMutationOptions(AdminUpdateHelpArticleDocument),
   );
   const [failure, setFailure] = useState<SubmitFailure>();
+  const queryClient = useQueryClient();
 
   const save = async (
     values: HelpArticleFormOutput,
@@ -356,12 +358,17 @@ export function HelpArticleForm({
         onSaved(await save(values));
       }}
       onSubmitError={(error) => {
+        const deleted =
+          error instanceof GraphQLClientError &&
+          error.code === HELP_ARTICLE_NOT_FOUND_CODE;
         setFailure({
           message: errorMessageOf(error, ADMIN_PROFILE.contactAvailable),
-          deleted:
-            error instanceof GraphQLClientError &&
-            error.code === HELP_ARTICLE_NOT_FOUND_CODE,
+          deleted,
         });
+        // 一覧への導線の先で削除済みの記事を古いキャッシュのまま示さないため
+        if (deleted) {
+          void refreshHelpArticleQueriesAfterDelete(queryClient);
+        }
       }}
       className="flex flex-col gap-6"
     >

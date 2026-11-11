@@ -23,7 +23,7 @@ import {
   VIEW_ON_PUBLIC_PAGE_LABEL,
   viewVersionOnPublicPageName,
 } from './legal-revision-messages.ts';
-import { useClientSiteHref } from './use-client-site-href.ts';
+import { useClientSiteHref } from '../layout/use-client-site-href.ts';
 
 export interface LegalRevisionTableProps {
   readonly kind: LegalDocumentKind;

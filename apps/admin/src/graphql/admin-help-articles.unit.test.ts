@@ -1,6 +1,8 @@
 import { describe, expect, mock, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
+import { isNotFound } from '@tanstack/react-router';
 
+import { GraphQLClientError } from '../../lib/utilities/graphql/graphql-result.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import {
   type AdminHelpArticleRowView,
@@ -8,8 +10,11 @@ import {
   adminHelpArticlesQueryOptions,
   helpArticleHandleAvailabilityQueryOptions,
   invalidateHelpArticleQueries,
+  loadAdminHelpArticleNewPage,
+  loadAdminHelpArticlePage,
   loadAdminHelpArticlesPage,
   mergeReorderedHelpArticles,
+  refreshHelpArticleQueriesAfterDelete,
   toAdminHelpArticle,
   toAdminHelpArticleDetail,
   toAdminHelpArticleRows,
@@ -371,5 +376,183 @@ describe('loadAdminHelpArticlesPage', () => {
     });
 
     expect(query).toHaveBeenCalledTimes(2);
+  });
+});
+
+const ARTICLE_QUERY_KEY = adminHelpArticleQueryOptions(ARTICLE.id).queryKey;
+
+const CATEGORIES_QUERY_KEY = adminHelpCategoriesQueryOptions().queryKey;
+
+const isArticleQuery = (options: unknown): boolean =>
+  JSON.stringify((options as { readonly queryKey: unknown }).queryKey) ===
+  JSON.stringify(ARTICLE_QUERY_KEY);
+
+const malformedIdError = () =>
+  new GraphQLClientError({
+    code: 'validation_error',
+    message: '入力内容に誤りがあります。',
+    status: 400,
+    details: [
+      {
+        field: 'id',
+        code: 'too_big',
+        message: 'このヘルプ記事は削除されています。',
+      },
+    ],
+  });
+
+describe('loadAdminHelpArticleNewPage', () => {
+  test('カテゴリの一覧を鮮度を問わずキャッシュから読んで待ち、失敗はエラーの画面に任せる', async () => {
+    const failure = new Error('取得の失敗');
+    const query = mock(() => Promise.reject(failure));
+
+    const error: unknown = await loadAdminHelpArticleNewPage({
+      context: { queryClient: { query } as unknown as QueryClient },
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBe(failure);
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: CATEGORIES_QUERY_KEY,
+        staleTime: 'static',
+      }),
+    );
+  });
+});
+
+describe('loadAdminHelpArticlePage', () => {
+  test('記事は開くたびに最新を取得し、カテゴリの一覧はキャッシュから読み、両方を同時に待つ', async () => {
+    const pending: (() => void)[] = [];
+    const query = mock(
+      () =>
+        new Promise<unknown>((resolve) => {
+          pending.push(() => {
+            resolve({ adminHelpArticle: ARTICLE });
+          });
+        }),
+    );
+    let settled = false;
+
+    const loading = loadAdminHelpArticlePage({
+      context: { queryClient: { query } as unknown as QueryClient },
+      params: { articleId: ARTICLE.id },
+    }).then(() => {
+      settled = true;
+    });
+
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: ARTICLE_QUERY_KEY, staleTime: 0 }),
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: CATEGORIES_QUERY_KEY,
+        staleTime: 'static',
+      }),
+    );
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    for (const resolve of pending) {
+      resolve();
+    }
+    await loading;
+    expect(settled).toBe(true);
+  });
+
+  test('削除された記事(null)は例外にせず、画面に削除の案内を出させる', async () => {
+    const query = mock((options: unknown) =>
+      Promise.resolve(
+        isArticleQuery(options) ? { adminHelpArticle: null } : {},
+      ),
+    );
+
+    await loadAdminHelpArticlePage({
+      context: { queryClient: { query } as unknown as QueryClient },
+      params: { articleId: ARTICLE.id },
+    });
+
+    expect(query).toHaveBeenCalledTimes(2);
+  });
+
+  test('IDの形式の違反は存在しないページにし、それ以外の失敗はエラーの画面に任せる', async () => {
+    const failure = new GraphQLClientError({
+      code: 'internal_error',
+      message: '処理中に問題が発生しました。',
+      status: 500,
+    });
+    const cases = [
+      { rejection: malformedIdError(), expectNotFound: true },
+      { rejection: failure, expectNotFound: false },
+    ];
+
+    for (const { rejection, expectNotFound } of cases) {
+      const query = mock((options: unknown) =>
+        isArticleQuery(options)
+          ? Promise.reject(rejection)
+          : Promise.resolve({}),
+      );
+      const error: unknown = await loadAdminHelpArticlePage({
+        context: { queryClient: { query } as unknown as QueryClient },
+        params: { articleId: ARTICLE.id },
+      }).catch((caught: unknown) => caught);
+      if (expectNotFound) {
+        expect(isNotFound(error)).toBe(true);
+      } else {
+        expect(error).toBe(failure);
+      }
+    }
+  });
+});
+
+describe('refreshHelpArticleQueriesAfterDelete', () => {
+  test('表示していない記事の一覧とカテゴリの一覧も取得し直して待ち、記事の1件とハンドルの使用可否は取得し直さず古いものとする', async () => {
+    const queryClient = new QueryClient();
+    const listKey = adminHelpArticlesQueryOptions().queryKey;
+    const availabilityKey =
+      helpArticleHandleAvailabilityQueryOptions('guide').queryKey;
+    const viewerKey = [documentIdOf(AdminViewerDocument), {}];
+    const fetched: unknown[] = [];
+    queryClient.setQueryDefaults([documentIdOf(AdminHelpArticlesDocument)], {
+      queryFn: () => {
+        fetched.push('articles');
+        return Promise.resolve({ adminHelpArticles: [] });
+      },
+    });
+    queryClient.setQueryDefaults([documentIdOf(AdminHelpCategoriesDocument)], {
+      queryFn: () => {
+        fetched.push('categories');
+        return Promise.resolve({ adminHelpCategories: [] });
+      },
+    });
+    queryClient.setQueryDefaults([documentIdOf(AdminHelpArticleDocument)], {
+      queryFn: () => {
+        fetched.push('article');
+        return Promise.resolve({ adminHelpArticle: null });
+      },
+    });
+    for (const key of [
+      listKey,
+      CATEGORIES_QUERY_KEY,
+      ARTICLE_QUERY_KEY,
+      availabilityKey,
+      viewerKey,
+    ]) {
+      queryClient.setQueryData(key, {});
+    }
+
+    await refreshHelpArticleQueriesAfterDelete(queryClient);
+
+    expect(fetched.toSorted()).toStrictEqual(['articles', 'categories']);
+    expect(queryClient.getQueryData(listKey)).toStrictEqual({
+      adminHelpArticles: [],
+    });
+    expect(queryClient.getQueryState(ARTICLE_QUERY_KEY)?.isInvalidated).toBe(
+      true,
+    );
+    expect(queryClient.getQueryState(availabilityKey)?.isInvalidated).toBe(
+      true,
+    );
+    expect(queryClient.getQueryState(viewerKey)?.isInvalidated).toBe(false);
   });
 });

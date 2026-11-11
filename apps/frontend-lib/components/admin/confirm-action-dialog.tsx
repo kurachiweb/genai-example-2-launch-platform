@@ -1,5 +1,5 @@
 import { ScrollTextIcon } from 'lucide-react';
-import { type RefObject, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useRef, useState } from 'react';
 
 import {
   AUDITED_ACTION_NOTICE,
@@ -37,6 +37,8 @@ export interface ConfirmActionDialogProps {
   // 失敗は例外で知らせる
   readonly onConfirm: (input: ConfirmActionInput) => Promise<void>;
   readonly failureMessageOf: (error: unknown) => string;
+  // 失敗の文言の後に示す続きの操作(一覧への導線など)。nullなら何も示さない
+  readonly failureActionOf?: (error: unknown) => ReactNode;
   // 確定で開いた元の要素が消える操作(削除など)で、閉じた後のフォーカスの移り先
   readonly returnFocusRef?: RefObject<HTMLElement | null>;
 }
@@ -71,7 +73,13 @@ interface ConfirmActionFormProps {
   readonly pending: boolean;
   readonly onSubmit: (input: ConfirmActionInput) => Promise<void>;
   readonly failureMessageOf: (error: unknown) => string;
+  readonly failureActionOf: ((error: unknown) => ReactNode) | undefined;
   readonly onCancel: () => void;
+}
+
+interface ConfirmActionFailure {
+  readonly message: string;
+  readonly action: ReactNode;
 }
 
 // ダイアログを閉じると中身が取り除かれるため、開くたびに理由の入力と失敗の表示を始め直す
@@ -82,12 +90,13 @@ function ConfirmActionForm({
   pending,
   onSubmit,
   failureMessageOf,
+  failureActionOf,
   onCancel,
 }: ConfirmActionFormProps) {
   const form = useAppForm(FORM_SCHEMAS[reason], {
     defaultValues: { ...DEFAULT_VALUES[reason] },
   });
-  const [failure, setFailure] = useState<string>();
+  const [failure, setFailure] = useState<ConfirmActionFailure>();
 
   return (
     <AppForm
@@ -97,13 +106,17 @@ function ConfirmActionForm({
         await onSubmit({ reason: values.reason });
       }}
       onSubmitError={(error) => {
-        setFailure(failureMessageOf(error));
+        setFailure({
+          message: failureMessageOf(error),
+          action: failureActionOf?.(error) ?? null,
+        });
       }}
       className="flex flex-col gap-4"
     >
       {failure === undefined ? null : (
-        <FormMessage role="alert">{failure}</FormMessage>
+        <FormMessage role="alert">{failure.message}</FormMessage>
       )}
+      {failure?.action ?? null}
       {reason === 'none' ? null : (
         <ReasonField
           control={form.control}
@@ -145,6 +158,7 @@ export function ConfirmActionDialog({
   audited,
   onConfirm,
   failureMessageOf,
+  failureActionOf,
   returnFocusRef,
 }: ConfirmActionDialogProps) {
   const [pending, setPending] = useState(false);
@@ -219,6 +233,7 @@ export function ConfirmActionDialog({
           pending={pending}
           onSubmit={confirm}
           failureMessageOf={failureMessageOf}
+          failureActionOf={failureActionOf}
           onCancel={requestClose}
         />
       </DialogContent>

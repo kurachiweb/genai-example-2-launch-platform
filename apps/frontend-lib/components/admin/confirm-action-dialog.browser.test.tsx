@@ -29,6 +29,8 @@ const FAILURE_MESSAGE = 'この操作を行う権限がありません。';
 
 const AFTER_ACTION = '一覧へ戻る';
 
+const FAILURE_ACTION = '一覧を開く';
+
 type OnConfirm = ConfirmActionDialogProps['onConfirm'];
 
 interface HarnessProps {
@@ -36,6 +38,7 @@ interface HarnessProps {
   readonly audited?: boolean;
   readonly onConfirm: Mock<OnConfirm>;
   readonly failureMessageOf?: Mock<(error: unknown) => string>;
+  readonly failureActionOf?: ConfirmActionDialogProps['failureActionOf'];
   readonly withReturnFocus?: boolean;
 }
 
@@ -44,6 +47,7 @@ function Harness({
   audited = true,
   onConfirm,
   failureMessageOf = vi.fn(() => FAILURE_MESSAGE),
+  failureActionOf,
   withReturnFocus = false,
 }: HarnessProps) {
   const [open, setOpen] = useState(false);
@@ -73,6 +77,7 @@ function Harness({
         audited={audited}
         onConfirm={onConfirm}
         failureMessageOf={failureMessageOf}
+        {...(failureActionOf === undefined ? {} : { failureActionOf })}
         returnFocusRef={returnFocusRef}
       />
     </div>
@@ -259,6 +264,51 @@ describe('ConfirmActionDialog', () => {
       .toHaveValue('重複した管理者のため');
     await expect.element(confirmButton()).toBeEnabled();
     await expect.element(confirmButton()).toHaveFocus();
+  });
+
+  test('呼び出す側が失敗に続きの操作を返すと失敗の文言の後に示し、返さない失敗では示さない', async () => {
+    const gone = new GraphQLClientError({
+      code: 'not_found',
+      message: 'not_found',
+      status: 404,
+    });
+    const onConfirm = vi
+      .fn<OnConfirm>()
+      .mockRejectedValueOnce(new Error('network'))
+      .mockRejectedValueOnce(gone);
+    const failureActionOf = vi.fn((error: unknown) =>
+      error === gone ? <a href="/items">{FAILURE_ACTION}</a> : null,
+    );
+    await render(
+      <Harness
+        reason="optional"
+        onConfirm={onConfirm}
+        failureActionOf={failureActionOf}
+      />,
+    );
+    await openDialog();
+
+    await confirmButton().click();
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent(FAILURE_MESSAGE);
+    expect(dialog().getByRole('link').query()).toBeNull();
+
+    await confirmButton().click();
+    const link = dialog().getByRole('link', {
+      name: FAILURE_ACTION,
+      exact: true,
+    });
+    await expect.element(link).toHaveAttribute('href', '/items');
+    expect(
+      dialog()
+        .getByRole('alert')
+        .element()
+        .compareDocumentPosition(link.element()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+    expect(failureActionOf).toHaveBeenLastCalledWith(gone);
+    await expect.element(dialog()).toBeVisible();
   });
 
   test('サーバーが理由の欄の違反を返すと、ダイアログを開いたまま欄のエラーとして示す', async () => {
