@@ -39,7 +39,7 @@
 
 - ハンドルの規則の部品・旧ハンドルのテーブルの共通の列・他の対象が保持する旧ハンドルを解放する文(user-profile-social)。本specは対象の記述を作って部品を呼ぶだけである。
 - マークダウンの入力欄・描画・サニタイズ・見出しの一覧、検索語の正規化と検索式・強調表示、索引の更新のメッセージ・処理・キーワード抽出・日次の再抽出(content-processing)。本specは検索対象と索引の定義を登録し、ドメインの一括の書き込みに`markPending`・`deleteSources`を入れ、`requestRefresh`を呼ぶだけである。
-- 管理者のアカウント・権限ロール・`requireAdmin`・監査ログの記録の仕組みと閲覧画面・管理画面のシェルとメニュー・共通部品(`CategoryMasterEditor`を含む)・E2Eの管理者ログインの補助(admin-foundation)。本specは`CategoryMasterEditor`の形を変えず、並べ替えは本specの部品で区画に並べて置く。
+- 管理者のアカウント・権限ロール・`requireAdmin`・監査ログの記録の仕組みと閲覧画面・管理画面のシェルとメニュー・共通部品(`CategoryMasterEditor`を含む)・E2Eの管理者ログインの補助(admin-foundation)。本specは`CategoryMasterEditor`と`ConfirmActionDialog`に省略できるpropを足すだけで(「上流への影響」)、並べ替えは本specの部品を`CategoryMasterEditor`の`children`として区画の中に置く。
 - 管理画面のカテゴリのページ`/categories`の枠と区画の並び・エラーの分離(inquiry-chat)。
 - 利用者側の共通フッターの枠・ヘルプトップへの固定のリンク・404と状態表示の部品・CSP(frontend-platform)。
 - 画像の配信と隔離(media-pipeline)。本specは作成者の画像のIDを`MediaImage`へ変換するだけである。
@@ -66,7 +66,8 @@
 
 - user-profile-socialのハンドル基盤の形(`HandleNamespace`・`resolveHandle`・`isHandleOccupied`・`handleOccupiedCondition`・`previousHandleUpsert`・`previousHandleRelease`・`previousHandleDelete`・`previousHandleColumns`)と、使用中の判定と解放の意味(他の対象の現在のハンドルだけを使用中とする、現在のハンドルの書き込みの後に解放の文を置く)。本specの仮4はこれに従う。
 - content-processingの`SearchTargetDefinition`・`SearchIndexStatements`・`ftsRankedSources`の形、索引の更新の再試行と日次の再抽出の条件、`buildFtsMatchExpression`の照合規則、`renderMarkdown`の性能(本specは100,000文字の本文を描画する)。
-- admin-foundationの`AdminDirectory`の形と削除済みの扱い、`buildAuditLogStatements`の形、`ADMIN_NAV_ITEMS`の`order`(admin-foundationの仮6)、`CategoryMasterEditor`のprops(渡した順で表示すること)。
+- admin-foundationの`AdminDirectory`の形と削除済みの扱い、`buildAuditLogStatements`の形、`ADMIN_NAV_ITEMS`の`order`(admin-foundationの仮6)、`CategoryMasterEditor`のprops(渡した順で表示すること、本specが足した省略できる`children`を表の後ろ・区画の中に描くこと、`readOnlyDisplay`の既定が`'disabled'`で`'hidden'`なら閲覧のみの管理者に追加・編集・削除の操作と操作の列・権限が無い旨を描かないこと)、`ConfirmActionDialog`の本specが足した省略できる`failureActionOf`(失敗の文言の後に続きの操作を示すこと)。
+- client内の共用の`KeywordSearchForm`(`components/search/keyword-search-form.tsx`)のprops(`value`・`onSearch`・`formLabel`・`placeholder`・`maxGraphemes`・`counterFrom`)と振る舞い(送信でだけ検索する、文字数の表示と上限の超過の表示、消去、URLの検索語との同期)。directory-discoveryの`SearchForm`と本specの`HelpSearchForm`が包むため、変えるときは両方の画面を再検証する。
 - inquiry-chatの`CategorySection`の形と`order`(help-center 20)。
 - frontend-platformの`SiteLayoutSlots.footerHelpLinks`の形と描画の位置(`<ul>`の中の`<li>`)。
 - 本specのGraphQLの公開の操作(`helpCenter`・`helpArticle`・`helpArticleSearch`・`pinnedHelpArticles`)の形(launch-readinessのE2E回帰)と、本文の上限100,000文字(launch-readinessの性能のデータ規模)。
@@ -74,13 +75,15 @@
 
 ### 上流への影響
 
-| 上流spec            | 変更                                                                                                                                                                                                                                           | 影響と再検証                                                                                                                  |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| content-processing  | `apps/db/search/search-indexes.ts`の`SEARCH_INDEXES`と`apps/backend-lib/workers/search/targets/index.ts`の`SEARCH_TARGETS`に追記、`docs/GUIDES/tech/frontend/008-markdown-editor-and-content.md`の「目次の作り方」に目次の配置の規約を追記(G2) | 契約どおり。`targets/index.worker.test.ts`と`search-index-migrations.unit.test.ts`が新しい定義でも成功することを確かめる      |
-| admin-foundation    | `apps/common-lib/admin/audit-actions/index.ts`に`help-center.ts`を連結、`apps/admin/src/composition/admin-navigation.ts`に`/help-articles`(100)                                                                                                | 契約どおり                                                                                                                    |
-| inquiry-chat        | `apps/admin/src/composition/category-sections.ts`に`help-center.help-categories`(20)                                                                                                                                                           | 契約どおり。カテゴリのページのテストが区画の追加後も成功することを確かめる                                                    |
-| frontend-platform   | `apps/client/src/composition/layout-slots.ts`の`footerHelpLinks`に`PinnedHelpLinks`                                                                                                                                                            | 契約どおり。フッターのテストが部品の追加後も成功することを確かめる                                                            |
-| user-profile-social | ファイルの変更は無い。`previousHandleRelease`と、他の対象の現在のハンドルだけを使用中とする`isHandleOccupied`・`handleOccupiedCondition`を使う。`docs/GUIDES/tech/backend/011-handle-namespaces.md`に節を追記                                  | user-profile-socialの設計(仮2の確定)の契約どおり。部品が実装されていなければ、タスク1.1の前提の確認で保留して開発者へ報告する |
+| 上流spec            | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | 影響と再検証                                                                                                                                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| content-processing  | `apps/db/search/search-indexes.ts`の`SEARCH_INDEXES`と`apps/backend-lib/workers/search/targets/index.ts`の`SEARCH_TARGETS`に追記、`docs/GUIDES/tech/frontend/008-markdown-editor-and-content.md`の「目次の作り方」に目次の配置の規約を追記(G2)                                                                                                                                                                                                                                                                               | 契約どおり。`targets/index.worker.test.ts`と`search-index-migrations.unit.test.ts`が新しい定義でも成功することを確かめる                                                                            |
+| admin-foundation    | `apps/common-lib/admin/audit-actions/index.ts`に`help-center.ts`を連結、`apps/admin/src/composition/admin-navigation.ts`に`/help-articles`(100)。frontend-libの`CategoryMasterEditor`に省略できる`children`(表の後ろ・区画の中に描く)と`readOnlyDisplay?: 'disabled' \| 'hidden'`(既定`'disabled'`)、`ConfirmActionDialog`に省略できる`failureActionOf`を足す(`frontend/005`に追記)。adminの`components/admins/change-role-dialog.tsx`で`FormField`の子の値を展開せずに受け、ラジオの組の名前(`labelId`)が落ちないように直す | 既定の値では既存の表示が変わらない(プロダクト・問い合わせの区画は無効の表示のまま)。`CategoryMasterEditor`・`ConfirmActionDialog`・ロールの変更のダイアログのブラウザテストが成功することを確かめる |
+| directory-discovery | clientの`components/directory/search-form.tsx`を、共用の`components/search/keyword-search-form.tsx`(`KeywordSearchForm`、文言は`keyword-search-form-messages.ts`)を包む形にする。本specの`HelpSearchForm`も同じ部品を包む                                                                                                                                                                                                                                                                                                    | 振る舞いと文言は変わらない。ディレクトリの検索欄のテストが成功することを確かめる                                                                                                                    |
+| legal-pages         | adminの`use-client-site-href.ts`を`components/legal/`から`components/layout/`へ移し、法務文書の部品の読み込み先を変える(本specの記事の編集画面も使う)                                                                                                                                                                                                                                                                                                                                                                        | 振る舞いは変わらない。法務文書の画面のテストが成功することを確かめる                                                                                                                                |
+| inquiry-chat        | `apps/admin/src/composition/category-sections.ts`に`help-center.help-categories`(20)                                                                                                                                                                                                                                                                                                                                                                                                                                         | 契約どおり。カテゴリのページのテストが区画の追加後も成功することを確かめる                                                                                                                          |
+| frontend-platform   | `apps/client/src/composition/layout-slots.ts`の`footerHelpLinks`に`PinnedHelpLinks`                                                                                                                                                                                                                                                                                                                                                                                                                                          | 契約どおり。フッターのテストが部品の追加後も成功することを確かめる                                                                                                                                  |
+| user-profile-social | ファイルの変更は無い。`previousHandleRelease`と、他の対象の現在のハンドルだけを使用中とする`isHandleOccupied`・`handleOccupiedCondition`を使う。`docs/GUIDES/tech/backend/011-handle-namespaces.md`に節を追記                                                                                                                                                                                                                                                                                                                | user-profile-socialの設計(仮2の確定)の契約どおり。部品が実装されていなければ、タスク1.1の前提の確認で保留して開発者へ報告する                                                                       |
 
 - 上流specの設計文書の変更は無い。roadmapの帯の割り当ての表の本specの「使用中の値」は「—」のままである(本specはroadmapを編集しない)。
 
@@ -262,6 +265,9 @@ apps/
 │   │   ├── related-help-articles.tsx                    # 同カテゴリの記事
 │   │   ├── help-article-skeleton.tsx
 │   │   └── pinned-help-links.tsx                        # フッターのピン留め記事
+│   ├── components/search/                               # ディレクトリとヘルプの検索欄が包む共用の部品
+│   │   ├── keyword-search-form.tsx                      # KeywordSearchForm(送信でだけ検索・文字数の表示・消去・URLとの同期)
+│   │   └── keyword-search-form-messages.ts              # 共用の検索欄の文言
 │   └── graphql/operations/help/                         # 1ファイル1操作の*.graphql(操作名はClientで始める)
 │       └── help-center.graphql · help-article.graphql · help-article-search.graphql · pinned-help-articles.graphql
 ├── admin/src/
@@ -306,6 +312,12 @@ e2e/admin/help-center-steps.ts                           # ヘルプの画面の
 - `apps/client/src/head/page-heads.ts` — `/help`・`/help/$handle`の`head`の組み立て(`buildSitePageHead`)を加える。
 - `apps/admin/src/composition/admin-navigation.ts`(admin-foundation) — `{ to: '/help-articles', label: 'ヘルプ記事', order: 100 }`。
 - `apps/admin/src/composition/category-sections.ts`(inquiry-chat) — `{ id: 'help-center.help-categories', order: 20, title: 'ヘルプ記事カテゴリ', component: HelpCategorySection }`。
+- `apps/frontend-lib/components/admin/category-master-editor.tsx`(admin-foundation) — 省略できる`children`と`readOnlyDisplay`を加える。
+- `apps/frontend-lib/components/admin/confirm-action-dialog.tsx`(admin-foundation) — 省略できる`failureActionOf`を加える。
+- `apps/admin/src/components/admins/change-role-dialog.tsx`(admin-foundation) — ラジオの組の名前(`labelId`)が落ちないように`FormField`の子の値を受ける。
+- `apps/client/src/components/directory/search-form.tsx`(directory-discovery) — 共用の`components/search/keyword-search-form.tsx`(`KeywordSearchForm`)を包む形にする。
+- `apps/admin/src/components/layout/use-client-site-href.ts`(legal-pages) — `components/legal/`から移し、法務文書の部品の読み込み先を変える。
+- `docs/GUIDES/tech/frontend/005-shared-components.md`(admin-foundation) — `CategoryMasterEditor`の`children`・`readOnlyDisplay`と`ConfirmActionDialog`の`failureActionOf`を追記する。
 - `docs/GUIDES/tech/backend/011-handle-namespaces.md`(user-profile-social) — 「公開状態を持つ対象と、対象の削除での旧ハンドル」の節。
 - `docs/GUIDES/tech/frontend/008-markdown-editor-and-content.md`(content-processing) — 「目次の作り方」に、PCの固定の配置・モバイルの`<details>`の折りたたみ・`scroll-margin-top`による固定ヘッダーの回避・見出しが無い場合に描かないこと・ランドマークの名前を追記する(G2)。
 - `docs/GUIDES/tech/frontend/README.md` — `008`の行の説明を追記の内容に合わせる。
@@ -339,8 +351,9 @@ sequenceDiagram
     E-->>F: AdminHelpArticle
 ```
 
-- 作成の一括の書き込み: (1)記事の挿入。`category_id`を`CASE WHEN <カテゴリが存在> AND NOT <handleOccupiedCondition> THEN ? ELSE NULL END`にし、`sort_order`を`(SELECT COALESCE(MAX(sort_order), 0) + 1 FROM help_articles WHERE category_id = ?)`にする(カテゴリの末尾、6.12)。(2)`previousHandleRelease(db, HELP_ARTICLE_HANDLE_NAMESPACE, { handle, exceptOwnerId: <新しい記事のID> })`(他の記事が保持する同じ旧ハンドルの行の物理削除、仮4)。(3)公開なら`markPending('help-article', id, now)`。(4)`buildAuditLogStatements`。
-- 更新の一括の書き込み: (1)記事の存在と版の確認の文(`helpArticleExistsGuard`)。(2)記事の更新(同じ`CASE`式、`revision = revision + 1`、`updated_at = now`、カテゴリが変わるときだけ`sort_order`を移動先のカテゴリの末尾の値にする。`created_by_admin_id`・ピン留めの切り替えでの`sort_order`は変えない)。(3)`handleChange.kind`が`changed`のときだけ`previousHandleRelease`(`exceptOwnerId`は記事自身)。(4)`changed`のときだけ`previousHandleUpsert`(変更前のハンドルは記事自身の現在のハンドルだったため、他の記事の旧ハンドルとは重ならない)。(5)公開なら`markPending`、下書きなら`deleteSources`。(6)`buildAuditLogStatements`。
+- 記事・カテゴリの変更と並べ替えの一括の書き込みは、`backend/008`の「記録の規約」どおり`buildAuditLogStatements`を先頭に置き、操作の文を続ける。後続の文のどれかが失敗すれば監査ログも含めて全体が取り消される。
+- 作成の一括の書き込み: (1)`buildAuditLogStatements`。(2)記事の挿入。`category_id`を`CASE WHEN <カテゴリが存在> AND NOT <handleOccupiedCondition> THEN ? ELSE NULL END`にし、`sort_order`を`(SELECT COALESCE(MAX(sort_order), 0) + 1 FROM help_articles WHERE category_id = ?)`にする(カテゴリの末尾、6.12)。(3)`previousHandleRelease(db, HELP_ARTICLE_HANDLE_NAMESPACE, { handle, exceptOwnerId: <新しい記事のID> })`(他の記事が保持する同じ旧ハンドルの行の物理削除、仮4)。(4)公開なら`markPending('help-article', id, now)`、下書きなら`deleteSources`。
+- 更新の一括の書き込み: (1)`buildAuditLogStatements`。(2)記事の存在と版の確認の文(`helpArticleExistsGuard`)。(3)記事の更新(同じ`CASE`式、`revision = revision + 1`、`updated_at = now`、カテゴリが変わるときだけ`sort_order`を移動先のカテゴリの末尾の値にする。`created_by_admin_id`・ピン留めの切り替えでの`sort_order`は変えない)。(4)`handleChange.kind`が`changed`のときだけ`previousHandleRelease`(`exceptOwnerId`は記事自身)。(5)`changed`のときだけ`previousHandleUpsert`(変更前のハンドルは記事自身の現在のハンドルだったため、他の記事の旧ハンドルとは重ならない)。(6)公開なら`markPending`、下書きなら`deleteSources`。
 - `handleOccupiedCondition`・`isHandleOccupied`は他の記事の現在のハンドルだけを使用中とし、他の記事の旧ハンドルは使用中としない(user-profile-socialの仮2の確定によるハンドル基盤の共通の規則。`includePrevious`は使わない)。解放の文は現在のハンドルの書き込みの後に置き(ハンドル基盤の解放の規約)、同じトランザクションで確定するため、同時の保存でも、ある記事の現在のハンドルと同じ文字列が他の記事の旧ハンドルとして残らない。同じ旧ハンドルを2つの保存が同時に取りにいく場合は、現在のハンドルの一意索引により一方だけが確定し、もう一方は`handle-unavailable`になる。
 - 失敗の分類は取り消しの後の読み直しで行う(記事が無い→`not-found`、版が違う→`conflict`、カテゴリが無い→`category-missing`、それ以外→`handle-unavailable`)。取り消された場合は解放の文も取り消され、元の記事の旧ハンドルは残る。
 - `requestRefresh`の送信の失敗は例外にならず(content-processing)、索引文書は`pending`のまま残り、日次の再抽出が1時間後以降に再処理する(要件10.4)。例外になるのは呼び出し側の誤りだけで、未登録の検索対象は`SearchTargetRegistryError`、契約に合わない本文などの送信前の検証の失敗は`MessagePublishError`を投げる。
@@ -354,7 +367,7 @@ sequenceDiagram
     participant C as HelpCategoryService
     participant S as D1 stores
     R->>E: deleteHelpArticle
-    E->>S: delete 存在の確認 索引の削除 旧ハンドルの削除 記事の削除 監査ログ
+    E->>S: delete 監査ログ 存在の確認 索引の削除 旧ハンドルの削除 記事の削除
     S-->>E: deleted または not found
     R->>C: deleteHelpCategory
     C->>S: countArticles と findById
@@ -362,8 +375,8 @@ sequenceDiagram
     S-->>C: deleted または not found
 ```
 
-- 記事の削除の一括の書き込み: (1)`helpArticleExistsGuard`(版を問わない)→(2)`deleteSources('help-article', [id])`→(3)`previousHandleDelete`→(4)`DELETE FROM help_articles WHERE id = ?`→(5)`buildAuditLogStatements`。外部キーの`ON DELETE`を指定しないため、旧ハンドルを記事より先に消す。
-- カテゴリの削除の一括の書き込み: (1)`buildAuditLogStatements`(詳細`reassignedCount`)→(2)`UPDATE help_articles SET sort_order = sort_order + (SELECT COALESCE(MAX(sort_order), 0) FROM help_articles WHERE category_id = <その他>) WHERE category_id = ?`(副問い合わせは更新しない「その他」の行だけを読むため、全ての行で同じ値を足し、元の相対的な順を保って末尾へ置く、11.4)→(3)`UPDATE help_articles SET category_id = <その他> WHERE category_id = ?`(`updated_at`・`revision`は変えない、11.6)→(4)`DELETE FROM help_categories WHERE id = ? AND system_default = 0`。件数は確認と監査ログの表示用で、付け替えは条件付きの`UPDATE`で行う(inquiry-chatと同じ)。
+- 記事の削除の一括の書き込み: (1)`buildAuditLogStatements`→(2)`helpArticleExistsGuard`(版を問わない)→(3)`deleteSources('help-article', [id])`→(4)`previousHandleDelete`→(5)`DELETE FROM help_articles WHERE id = ?`。外部キーの`ON DELETE`を指定しないため、旧ハンドルを記事より先に消す。
+- カテゴリの削除の一括の書き込み: (1)`buildAuditLogStatements`(詳細`reassignedCount`。第3引数に`{ kind: 'condition', condition: EXISTS (SELECT 1 FROM help_categories WHERE id = ? AND system_default = 0) }`を渡し、書き込みの時点でカテゴリが無ければ全体を取り消して`not-found`にする)→(2)`UPDATE help_articles SET sort_order = sort_order + (SELECT COALESCE(MAX(sort_order), 0) FROM help_articles WHERE category_id = <その他>) WHERE category_id = ?`(副問い合わせは更新しない「その他」の行だけを読むため、全ての行で同じ値を足し、元の相対的な順を保って末尾へ置く、11.4)→(3)`UPDATE help_articles SET category_id = <その他> WHERE category_id = ?`(`updated_at`・`revision`は変えない、11.6)→(4)`DELETE FROM help_categories WHERE id = ? AND system_default = 0`。件数は確認と監査ログの表示用で、付け替えは条件付きの`UPDATE`で行う(inquiry-chatと同じ)。
 
 ### 並べ替え
 
@@ -384,8 +397,8 @@ sequenceDiagram
     U-->>O: 並べ替えた後の一覧
 ```
 
-- 一括の書き込み: (1)並び順の対象の集合の確認の文(`helpOrderGuard`)。渡されたIDのJSON配列について、件数が対象(カテゴリの全件、またはそのカテゴリの全記事)の件数と同じで、対象のIDが全て`json_each`に含まれる(集合が等しい)という条件を満たさなければ、標準カテゴリの行への`INSERT … ON CONFLICT DO NOTHING`の`name`をNULLにしてNOT NULL制約の違反で全体を取り消す。一致すれば一意の衝突で何も書かない。(2)`UPDATE <テーブル> SET sort_order = (SELECT CAST(key AS INTEGER) + 1 FROM json_each(?) WHERE value = <テーブル>.id) WHERE <対象の条件>`(順序のJSON配列をバインド変数1つで渡し、件数によらず1文で更新する。`updated_at`・`revision`は変えない、9.9)。(3)`buildAuditLogStatements`。
-- 取り消された場合は`outdated`として`help_order_outdated`を返す(9.10・11.11)。
+- 一括の書き込み: (1)`buildAuditLogStatements`。記事の並べ替えでは第3引数に`{ kind: 'condition', condition: EXISTS (SELECT 1 FROM help_categories WHERE id = ?) }`を渡し、並べ替えの画面を開いた後にカテゴリが削除されていれば全体を取り消す。(2)並び順の対象の集合の確認の文(`helpOrderGuard`)。渡されたIDのJSON配列について、件数が対象(カテゴリの全件、またはそのカテゴリの全記事)の件数と同じで、対象のIDが全て`json_each`に含まれる(集合が等しい)という条件を満たさなければ、標準カテゴリの行への`INSERT … ON CONFLICT DO NOTHING`の`name`をNULLにしてNOT NULL制約の違反で全体を取り消す。一致すれば一意の衝突で何も書かない。(3)`UPDATE <テーブル> SET sort_order = (SELECT CAST(key AS INTEGER) + 1 FROM json_each(?) WHERE value = <テーブル>.id) WHERE <対象の条件>`(対象の条件は、カテゴリでは`id IN (SELECT value FROM json_each(?))`、記事では`category_id = ? AND id IN (SELECT value FROM json_each(?))`。順序のJSON配列を同じ値のバインド変数で渡し、件数によらず1文で更新する。`updated_at`・`revision`は変えない、9.9)。
+- 取り消された場合(集合の確認の文、または記事の並べ替えの監査ログの条件)は`outdated`として`help_order_outdated`を返す(9.10・11.11)。
 - 記事の並べ替えの画面は、ピン留めの群に続けてそれ以外の群の順でIDを送る。ピン留めの切り替えでは`sort_order`を変えないため、切り替えた記事は新しい群の中で同じ値の位置に表示される(9.11)。
 
 ### 公開の記事の解決
@@ -1027,7 +1040,7 @@ export declare function helpOrderGuard(
 **Contracts**: State [x]
 
 - `D1HelpArticleStore`: 一括の書き込みの並びは「System Flows」のとおり。カテゴリの存在は`EXISTS (SELECT 1 FROM help_categories WHERE id = ?)`、使用中は`handleOccupiedCondition(HELP_ARTICLE_HANDLE_NAMESPACE, handle, { exceptOwnerId })`(作成は`exceptOwnerId`なし、更新は記事自身、`handleChange.kind`が`changed`のときだけ含める)、旧ハンドルの解放は`previousHandleRelease`。索引の文は`SearchIndexStatements`(`createSearchIndexStatements`)から得る。`findById`は記事・カテゴリ名・旧ハンドルを1回の`db.batch()`で読む。`findPreviousHandleHolder`は旧ハンドルのテーブルを大文字小文字を区別せずに引く。`reorder`は「並べ替え」の流れのとおり(`json_each`による1文の更新)。
-- `D1HelpCategoryStore`: `create`・`rename`は監査ログと同じ一括の書き込みで、`name`の一意索引の違反を`name-taken`にする。`create`の`sort_order`は`(SELECT COALESCE(MAX(sort_order), 0) + 1 FROM help_categories)`。`rename`は`WHERE id = ? AND system_default = 0`。`deleteAndReassign`と`reorder`は「System Flows」のとおり。`list`は`help_articles`を`category_id`で数える左外部結合を1回で読む。
+- `D1HelpCategoryStore`: `create`・`rename`は監査ログと同じ一括の書き込みで、`name`の一意索引の違反を`name-taken`にする。`create`の`sort_order`は`(SELECT COALESCE(MAX(sort_order), 0) + 1 FROM help_categories)`。`rename`は`WHERE id = ? AND system_default = 0`で、同じ条件の`EXISTS`を監査ログの`condition`に渡し、書き込みの時点でカテゴリが無ければ全体を取り消して`not-found`にする。`deleteAndReassign`と`reorder`は「System Flows」のとおり。`list`は`help_articles`を`category_id`で数える左外部結合を1回で読む。
 - `D1PublicHelpStore`: `listPublished`は全カテゴリと公開の記事(`publishedHelpArticle`)を、並び順の列を含めて1回の`db.batch()`で読む。`findPublishedDetail`は記事・カテゴリ名と同カテゴリの公開の記事を1回の`db.batch()`で読む。`search`は`ftsRankedSources(HELP_ARTICLE_SEARCH_INDEX, expr)`の副問い合わせを`help_articles`(`publishedHelpArticle`)・`help_categories`と結合し、`ORDER BY rank, help_articles.id LIMIT ?`で読む。検索式は必ずバインド変数で渡す。
 
 ### api/presentation
@@ -1218,7 +1231,7 @@ type Mutation {
 #### HelpTopRoute・HelpSearchForm・HelpCategoryList・HelpArticleLinkItem・HelpSearchResults・HelpTopSkeleton
 
 - ルート`/help`(`routes/help/index.tsx`、ログイン不要): `validateSearch`は`normalizeHelpTopQuery`(空白だけ・未指定は`undefined`、50書記素を超える語は黙って切り詰める、2.9)。`loaderDeps`は`q`。`loader`は`q`が`undefined`なら`helpCenter`、それ以外は`helpArticleSearch`を`queryClient.query({ staleTime: 'static' })`で読む(1.1・2.1・2.6・2.7・2.9)。`loader`の関数は`loadHelpTopPage`。`head`は`buildHelpTopHead`(`buildSitePageHead({ title: 'ヘルプ', canonicalUrl: '/help' })`)。`pendingComponent`は`HelpTopSkeleton`、`errorComponent`は`ErrorState`(「ヘルプを読み込めませんでした。…」・再試行・問い合わせへの導線、1.7)。同じページ内の遷移(`cause === 'stay'`)では待たず、`frontend/014`の再読み込みの間の表示に従う(取得を始めて失敗だけを捨て、部品が`useQuery`で読み、見出しと検索欄を残したまま一覧の位置に読み込み中・直前の結果・失敗を示す)。
-- `HelpSearchForm({ value })`: `frontend/014`の「送信でだけ検索する入力欄」に従う。名前を付けた`<form role="search">`に、ラベル付きの入力欄・消去のボタン・検索のボタンを置く。入力のたびには検索せず、Enterキーと検索のボタンでだけ送信する。送信前に`checkHelpSearchQuery`で検証し、超過なら欄の近くに「検索キーワードは50文字以内で入力してください。」(ディレクトリの検索欄と共用)を`aria-describedby`で関連付けて出し、入力欄へフォーカスを戻して移動しない。前後の空白を除いた語が`HELP_SEARCH_COUNTER_FROM`(40)書記素を超えたら「<n>/50」を示して入力欄に関連付け、上限を超えた時と上限以内に戻った時だけ`length-limit-messages.ts`の文言を読み上げる。消去のボタンは入力欄を空にしてフォーカスを戻し、適用中の検索語があるときだけ検索語を外す。URLの`q`が外から変わったら(戻る・進む)、描画中に入力欄をその値へ戻す。送信で`/help?q=<語>`へ`router.navigate`(`resetScroll: false`)で移動する(記事詳細ページからも同じ部品、2.3・2.7・2.8)。振る舞いはdirectory-discoveryの`SearchForm`と同じで、文言は`help-messages.ts`に置く。
+- `HelpSearchForm({ value })`: `frontend/014`の「送信でだけ検索する入力欄」に従う。名前を付けた`<form role="search">`に、ラベル付きの入力欄・消去のボタン・検索のボタンを置く。入力のたびには検索せず、Enterキーと検索のボタンでだけ送信する。送信前に`checkHelpSearchQuery`で検証し、超過なら欄の近くに「検索キーワードは50文字以内で入力してください。」(ディレクトリの検索欄と共用)を`aria-describedby`で関連付けて出し、入力欄へフォーカスを戻して移動しない。前後の空白を除いた語が`HELP_SEARCH_COUNTER_FROM`(40)書記素を超えたら「<n>/50」を示して入力欄に関連付け、上限を超えた時と上限以内に戻った時だけ`length-limit-messages.ts`の文言を読み上げる。消去のボタンは入力欄を空にしてフォーカスを戻し、適用中の検索語があるときだけ検索語を外す。URLの`q`が外から変わったら(戻る・進む)、描画中に入力欄をその値へ戻す。送信で`/help?q=<語>`へ`router.navigate`(`resetScroll: false`)で移動する(記事詳細ページからも同じ部品、2.3・2.7・2.8)。振る舞いはdirectory-discoveryの`SearchForm`と共用のclientの`KeywordSearchForm`(`components/search/keyword-search-form.tsx`)が持ち、`HelpSearchForm`は検索の領域の名前・プレースホルダー・上限・文字数の表示の開始を渡して包む。ヘルプに固有の文言は`help-messages.ts`に置く。
 - `HelpCategoryList({ categories })`: APIが返した順のまま、カテゴリごとに`<section>`と見出し(`h2`)、`HelpArticleLinkItem`の一覧(1.1〜1.4)。0件は`EmptyState`(「ヘルプ記事はまだありません。」と問い合わせへの導線、1.6)。
 - `HelpArticleLinkItem({ article, terms? })`: タイトルとサブタイトル、項目全体を`/help/<ハンドル>`へのリンク。ピン留めは視覚的な印と読み上げ用の「ピン留め」。`terms`があればタイトル・サブタイトルを`HighlightedText`で描く(1.4・2.4)。
 - `HelpSearchResults({ query, hits })`: 「「<語>」の検索結果」と件数、各項目に`HelpArticleLinkItem`(`terms`は`normalizeSearchTerms(query)`)とカテゴリ名(2.4)。0件は「「<語>」に一致するヘルプ記事はありません。」と「すべてのヘルプ記事を見る」(`/help`、2.5)。
@@ -1331,7 +1344,7 @@ export interface ReorderableListProps<T> {
 #### HelpCategorySection
 
 - `CATEGORY_SECTIONS`に`{ id: 'help-center.help-categories', order: 20, title: 'ヘルプ記事カテゴリ', component: HelpCategorySection }`を加える(11.8)。
-- `HelpCategorySection`: `adminHelpCategories`(管理者が指定した並び順)を読み、`CategoryMasterEditor`(`withHandle: false`、`canEdit`は`useAdminRole`がモデレーター以上、`systemDefault`は「その他」、`categories`はAPIの順のまま、11.7)と、その下に`HelpCategoryOrderEditor`(閲覧のみは並びの表示だけ)を置く。削除では`articleCount`を使い「付け替わる記事は<件数>件です。付け替えた記事は「その他」の末尾に並びます。」を確認に示す(inquiry-chatの`InquiryCategorySection`と同じ方法、11.5)。拒否・失敗は`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言、11.1〜11.3)。追加・名前の変更・削除・並べ替えの成功の後は`adminHelpCategories`を取得し直す。
+- `HelpCategorySection`: `adminHelpCategories`(管理者が指定した並び順)を読み、`CategoryMasterEditor`(`withHandle: false`、`canEdit`は`useAdminRole`がモデレーター以上、`systemDefault`は「その他」、`categories`はAPIの順のまま、11.7)を置き、`HelpCategoryOrderEditor`(閲覧のみは並びの表示だけ)を`CategoryMasterEditor`の`children`として表の後ろ・区画の中に置く。`readOnlyDisplay`は`'hidden'`にし、閲覧のみの管理者には追加・編集・削除の操作と操作の列・権限が無い旨を描かない(12.2)。削除では`articleCount`を使い「付け替わる記事は<件数>件です。付け替えた記事は「その他」の末尾に並びます。」を確認に示す(inquiry-chatの`InquiryCategorySection`と同じ方法、11.5)。拒否・失敗は`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言、11.1〜11.3)。追加・名前の変更・削除・並べ替えの成功の後は`adminHelpCategories`を取得し直す。
 
 ### e2e・docs
 
@@ -1384,17 +1397,17 @@ export interface ReorderableListProps<T> {
 
 ### Error Categories and Responses
 
-| コード                            | 種類(状態コード) | 場面                                           | 文言(文言規則に追加・既存)                                                                                    |
-| --------------------------------- | ---------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `help_article_handle_unavailable` | conflict(409)    | 他の記事の現在のハンドル・同時の保存(7.3・7.6) | 既存「このハンドルは既に使われています。別の文字列を入力してください。」(詳細`fields.handle`)                 |
-| `help_article_conflict`           | conflict(409)    | 開いた後の別の保存(6.8)                        | 「このヘルプ記事は別の画面で変更されました。最新の内容を読み込んでから保存してください。」                    |
-| `help_article_not_found`          | not_found(404)   | 開いた後の削除(6.9・8.4)                       | 「このヘルプ記事は削除されています。」                                                                        |
-| `help_order_outdated`             | conflict(409)    | 並べ替えの対象の追加・削除・移動(9.10・11.11)  | 「並び順が別の画面で変更されました。最新の並びを読み込んでから並べ替えてください。」                          |
-| `help_category_name_taken`        | conflict(409)    | カテゴリ名の重複(11.2)                         | 「同じ名前のカテゴリが既にあります。」                                                                        |
-| `help_category_protected`         | conflict(409)    | 「その他」の名前の変更・削除(11.3)             | 「標準カテゴリ「その他」は変更・削除できません。」                                                            |
-| `help_category_not_found`         | not_found(404)   | 削除済みのカテゴリの変更・削除                 | 「このカテゴリは削除されています。」                                                                          |
-| `validation_error`                | bad_request(400) | 入力                                           | 欄ごとの文言。カテゴリの不在は「カテゴリを選択してください。」、本文は`markdownTextSchema`の文言(100,000文字) |
-| `unauthenticated`・`forbidden`    | 既存             | 既存                                           | 既存の文言                                                                                                    |
+| コード                            | 種類(状態コード) | 場面                                           | 文言(文言規則に追加・既存)                                                                                                                                                      |
+| --------------------------------- | ---------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `help_article_handle_unavailable` | conflict(409)    | 他の記事の現在のハンドル・同時の保存(7.3・7.6) | 既存「このハンドルは既に使われています。別の文字列を入力してください。」(詳細の経路`input.fields.handle`。フォームは`serverFieldPrefix="input"`で欄`fields.handle`に対応付ける) |
+| `help_article_conflict`           | conflict(409)    | 開いた後の別の保存(6.8)                        | 「このヘルプ記事は別の画面で変更されました。最新の内容を読み込んでから保存してください。」                                                                                      |
+| `help_article_not_found`          | not_found(404)   | 開いた後の削除(6.9・8.4)                       | 「このヘルプ記事は削除されています。」                                                                                                                                          |
+| `help_order_outdated`             | conflict(409)    | 並べ替えの対象の追加・削除・移動(9.10・11.11)  | 「並び順が別の画面で変更されました。最新の並びを読み込んでから並べ替えてください。」                                                                                            |
+| `help_category_name_taken`        | conflict(409)    | カテゴリ名の重複(11.2)                         | 「同じ名前のカテゴリが既にあります。」                                                                                                                                          |
+| `help_category_protected`         | conflict(409)    | 「その他」の名前の変更・削除(11.3)             | 「標準カテゴリ「その他」は変更・削除できません。」                                                                                                                              |
+| `help_category_not_found`         | not_found(404)   | 削除済みのカテゴリの変更・削除                 | 「このカテゴリは削除されています。」                                                                                                                                            |
+| `validation_error`                | bad_request(400) | 入力                                           | 欄ごとの文言。カテゴリの不在は「カテゴリを選択してください。」、本文は`markdownTextSchema`の文言(100,000文字)                                                                   |
+| `unauthenticated`・`forbidden`    | 既存             | 既存                                           | 既存の文言                                                                                                                                                                      |
 
 - 状態・トーストの文言(文言規則に追加): 「ヘルプ記事を作成しました。」「ヘルプ記事を保存しました。」「ヘルプ記事を削除しました。」「並び順を保存しました。」、ヘルプトップの0件「ヘルプ記事はまだありません。」、検索の0件「「◯◯」に一致するヘルプ記事はありません。」「すべてのヘルプ記事を見る」、取得エラー「ヘルプを読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。」・記事詳細の取得エラー「ヘルプ記事を読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。」、管理者側の0件「ヘルプ記事はまだありません。」「条件に一致するヘルプ記事はありません。」、作成者の削除済み「削除済みの管理者」、旧ハンドルの案内と他の記事の旧ハンドルの解放の案内(HelpArticleHandleField)、カテゴリの変更で末尾に置かれる旨、削除の確認(HelpArticleDeleteButton)、カテゴリの削除の確認の件数と末尾への配置、並べ替えのボタンの名前と移動の読み上げ(ReorderableList)、目次「目次」、同カテゴリ「<カテゴリ名>の他の記事」。
 
@@ -1439,7 +1452,7 @@ export interface ReorderableListProps<T> {
 - ヘルプトップ・フッターは公開のカテゴリと記事を1回の`db.batch()`で読む。記事の件数は運営が書く分に限られ、並べ替えはメモリ上で行う。
 - 詳細は解決(索引で1〜2回)・`db.batch()`の読み取り1回・作成者の照会1回・画像の一括の読み込みで返す(NFR-PERF-007・008)。本文は最大100,000文字で、描画は1,500ms以内の予算で計測する(HelpBodyRenderBenchmark)。
 - 検索は全文検索の索引を使い、結果は上位100件までにする。
-- 管理者側の一覧は全件を1回で読む(作成者の照会は1回)。並べ替えは`json_each`による1文の更新で、件数によらずバインド変数は2つである。
+- 管理者側の一覧は全件を1回で読む(作成者の照会は1回)。並べ替えは`json_each`による1文の更新で、件数によらずバインド変数はカテゴリでは2つ(`json_each`の2つ)、記事では3つ(`json_each`の2つとカテゴリID)である。
 
 ## Migration Strategy
 
