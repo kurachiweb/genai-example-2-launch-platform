@@ -1,5 +1,7 @@
 import type { ConsoleFormatter, LogRecord } from '@logtape/logtape';
 
+import { redactQueryParams } from './redaction.ts';
+
 export interface LogObject {
   readonly time: string;
   readonly level: 'trace' | 'debug' | 'info' | 'warning' | 'error' | 'fatal';
@@ -60,16 +62,33 @@ function serializeCause(
   return undefined;
 }
 
+// 値の形式による伏せ字はstackの中の値とフレームの境目が分からず末尾まで伏せるため、stackの中のmessageの位置で値だけを伏せ、フレームを残す
+function redactStackQueryParams(
+  stack: string,
+  message: string,
+  redactedMessage: string,
+): string {
+  const start = stack.indexOf(message);
+  return message === redactedMessage || start === -1
+    ? stack
+    : `${stack.slice(0, start)}${redactedMessage}${stack.slice(start + message.length)}`;
+}
+
 // ErrorはJSONにすると空のオブジェクトになり、伏せ字の値のパターンも組み込みのオブジェクトの中を走査しないため、通常のオブジェクトにする。独自のプロパティはフィールド名による伏せ字を通らないため含めない
 function serializeError(
   error: Error,
   visited: ReadonlySet<Error> = new Set(),
 ): SerializedError {
   const cause = serializeCause(error.cause, new Set([...visited, error]));
+  const message = redactQueryParams(error.message);
   return {
     name: error.name,
-    message: error.message,
-    ...(typeof error.stack === 'string' ? { stack: error.stack } : {}),
+    message,
+    ...(typeof error.stack === 'string'
+      ? {
+          stack: redactStackQueryParams(error.stack, error.message, message),
+        }
+      : {}),
     ...(cause === undefined ? {} : { cause }),
   };
 }

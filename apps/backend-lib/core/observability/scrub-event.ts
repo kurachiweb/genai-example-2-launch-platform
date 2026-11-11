@@ -10,7 +10,7 @@ import type {
 } from '@sentry/core';
 
 import { AppError } from '../errors/app-error.ts';
-import { REDACTION_PATTERNS } from '../logging/redaction.ts';
+import { REDACTION_PATTERNS, redactQueryParams } from '../logging/redaction.ts';
 
 type LogEntry = NonNullable<Event['logentry']>;
 
@@ -158,8 +158,15 @@ function scrubUserAndRequest(event: Event): Pick<Event, 'user' | 'request'> {
   };
 }
 
+// 例外の値は例外のmessageそのものでフレームを含まないため、値の形式による伏せ字が伏せ字済みと見なす形も含めて、クエリの失敗の値を先に伏せる
 function scrubException(exception: Exception): Exception {
-  return redactTextFields(exception, ['type', 'value']);
+  const { value } = exception;
+  return redactTextFields(
+    typeof value === 'string'
+      ? { ...exception, value: redactQueryParams(value) }
+      : exception,
+    ['type', 'value'],
+  );
 }
 
 function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {

@@ -18,6 +18,42 @@ function createRecord(overrides: Partial<LogRecord> = {}): LogRecord {
   };
 }
 
+const QUERY = 'select "id" from "articles" where "title" like ? limit ?';
+const QUERY_PARAMS = ['%検索語%', '本文の1行目\n本文の2行目', 20];
+const REDACTED_QUERY_MESSAGE = `Failed query: ${QUERY}\nparams: [REDACTED]`;
+
+// Drizzleは単文のクエリの失敗をこの名前と文言の形の例外で包む
+class DrizzleQueryError extends Error {
+  constructor(query: string, params?: readonly unknown[]) {
+    super(
+      params
+        ? `Failed query: ${query}\nparams: ${params.join(',')}`
+        : `Failed query: ${query}`,
+    );
+    this.name = 'DrizzleQueryError';
+  }
+}
+
+function createQueryError(
+  query: string,
+  params?: readonly unknown[],
+): DrizzleQueryError {
+  return new DrizzleQueryError(query, params);
+}
+
+function expectedRedactedStack(error: Error): string {
+  const stack = error.stack ?? '';
+  const start = stack.indexOf(error.message);
+  expect(start).toBeGreaterThanOrEqual(0);
+  return `${stack.slice(0, start)}${REDACTED_QUERY_MESSAGE}${stack.slice(start + error.message.length)}`;
+}
+
+function expectNoQueryParams(logObject: unknown): void {
+  const output = JSON.stringify(logObject);
+  expect(output).not.toContain('検索語');
+  expect(output).not.toContain('本文');
+}
+
 function templateStrings(...parts: string[]): TemplateStringsArray {
   return Object.assign([...parts], { raw: [...parts] });
 }
@@ -187,6 +223,103 @@ describe('toLogObject', () => {
       message: '外側',
       stack: error.stack,
       cause: { name: 'Error', message: '内側', stack: inner.stack },
+    });
+  });
+
+  describe('データベースのクエリの失敗の例外', () => {
+    test('messageとstackのバインドした値を伏せ、SQL文とスタックトレースのフレームは残す', () => {
+      const error = createQueryError(QUERY, QUERY_PARAMS);
+
+      const logObject = toLogObject(createRecord({ properties: { error } }));
+
+      expect(logObject.error).toEqual({
+        name: 'DrizzleQueryError',
+        message: REDACTED_QUERY_MESSAGE,
+        stack: expectedRedactedStack(error),
+      });
+      expectNoQueryParams(logObject);
+    });
+
+    test('原因の連鎖の中の例外のバインドした値も伏せる', () => {
+      const queryError = createQueryError(QUERY, QUERY_PARAMS);
+      const error = new Error('操作の実行に失敗しました', {
+        cause: queryError,
+      });
+
+      const logObject = toLogObject(createRecord({ properties: { error } }));
+
+      expect(logObject.error).toEqual({
+        name: 'Error',
+        message: '操作の実行に失敗しました',
+        stack: error.stack,
+        cause: {
+          name: 'DrizzleQueryError',
+          message: REDACTED_QUERY_MESSAGE,
+          stack: expectedRedactedStack(queryError),
+        },
+      });
+      expectNoQueryParams(logObject);
+    });
+
+    test('文言を写して包んだ別の名前の例外のバインドした値も伏せる', () => {
+      const queryError = createQueryError(QUERY, QUERY_PARAMS);
+      const error = Object.assign(
+        new Error(queryError.message, { cause: queryError }),
+        { name: 'GraphQLError' },
+      );
+
+      const logObject = toLogObject(createRecord({ properties: { error } }));
+
+      expect(logObject.error).toMatchObject({
+        name: 'GraphQLError',
+        message: REDACTED_QUERY_MESSAGE,
+        cause: { message: REDACTED_QUERY_MESSAGE },
+      });
+      expectNoQueryParams(logObject);
+    });
+
+    test('値の後にフレームの形の行が続いても、値の部分を残さない', () => {
+      const error = createQueryError(QUERY, [
+        '本文の1行目\n    at 本文に書いたフレームの形の行',
+      ]);
+
+      const logObject = toLogObject(createRecord({ properties: { error } }));
+
+      expect(logObject.error).toMatchObject({
+        message: REDACTED_QUERY_MESSAGE,
+        stack: expectedRedactedStack(error),
+      });
+      expect(JSON.stringify(logObject)).not.toContain('本文');
+    });
+
+    test('バインドした値が無い文言は変えない', () => {
+      const error = createQueryError(QUERY);
+
+      const logObject = toLogObject(createRecord({ properties: { error } }));
+
+      expect(logObject.error).toEqual({
+        name: 'DrizzleQueryError',
+        message: `Failed query: ${QUERY}`,
+        stack: error.stack,
+      });
+    });
+
+    test.each([
+      ['params:を含む他の例外', '検索に失敗しました\nparams: 値'],
+      [
+        'クエリの失敗の文言で始まらない例外',
+        `前置き Failed query: x\nparams: 値`,
+      ],
+    ])('%sの文言は変えない', (_name, message) => {
+      const error = new Error(message);
+
+      const logObject = toLogObject(createRecord({ properties: { error } }));
+
+      expect(logObject.error).toEqual({
+        name: 'Error',
+        message,
+        stack: error.stack,
+      });
     });
   });
 

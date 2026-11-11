@@ -33,18 +33,53 @@ describe('REDACTED', () => {
 });
 
 describe('REDACTION_PATTERNS', () => {
-  test('全てのパターンがgフラグ付きで、先頭が公開APIのキーのパターンである', () => {
+  test('全てのパターンがgフラグ付きで、先頭がクエリの失敗の値、次が公開APIのキーのパターンである', () => {
     for (const { pattern } of REDACTION_PATTERNS) {
       expect(pattern.global).toBe(true);
     }
-    expect(REDACTION_PATTERNS[0]?.pattern.source).toContain('lsk_');
+    expect(REDACTION_PATTERNS[0]?.pattern.source).toContain('Failed query: ');
+    expect(REDACTION_PATTERNS[1]?.pattern.source).toContain('lsk_');
   });
 
-  test('公開APIのキーのパターンを先頭から動かすと、キーの断片が残る', () => {
-    const [apiKeyPattern, ...others] = REDACTION_PATTERNS;
+  describe('データベースのクエリの失敗の文言', () => {
+    const failedQuery =
+      'Failed query: select "id" from "articles" where "title" like ?';
+    const redactedQuery = `${failedQuery}\nparams: ${REDACTED}`;
+    const frame = '    at search (article-search.ts:34:5)';
+
+    test.each([
+      ['改行を含む値', `${failedQuery}\nparams: 本文の1行目\n本文の2行目,20`],
+      [
+        'メールアドレスで始まりフレームの形の行が続く値',
+        `${failedQuery}\nparams: user@mail.example\n    at 秘密の続き`,
+      ],
+      [
+        '公開APIのキーで始まりフレームの形の行が続く値',
+        `${failedQuery}\nparams: ${API_KEY}\n    at 秘密の続き`,
+      ],
+    ])('%sを伏せ、SQL文は残す', (_name, text) => {
+      expect(redactText(text)).toBe(redactedQuery);
+    });
+
+    test.each([
+      ['バインドした値が無い文言', failedQuery],
+      ['伏せ字にした後の文言', `${redactedQuery}\n${frame}`],
+      ['クエリの失敗の文言を含まないparams:', '検索に失敗しました\nparams: 値'],
+    ])('%sは変えない', (_name, text) => {
+      expect(redactText(text)).toBe(text);
+    });
+  });
+
+  test('公開APIのキーのパターンを他のパターンより後へ動かすと、キーの断片が残る', () => {
+    const apiKeyPattern = REDACTION_PATTERNS.find(({ pattern }) =>
+      pattern.source.startsWith('lsk_'),
+    );
     if (apiKeyPattern === undefined) {
-      throw new Error('パターンが空である');
+      throw new Error('公開APIのキーのパターンがありません');
     }
+    const others = REDACTION_PATTERNS.filter(
+      (pattern) => pattern !== apiKeyPattern,
+    );
     const reordered = [...others, apiKeyPattern];
     const redacted = reordered.reduce(
       (current, { pattern, replacement }) =>

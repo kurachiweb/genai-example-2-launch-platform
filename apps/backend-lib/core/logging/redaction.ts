@@ -112,8 +112,24 @@ const CREDIT_CARD_PATTERN: RedactionPattern = {
   },
 };
 
-// redactByPatternは配列の順に置き換えるため、キーの一部が他のパターンに先に当たって形が崩れないよう、公開APIのキーを先頭に置く
+const QUERY_FAILURE_PREFIX = 'Failed query: ';
+
+// 値は改行を含み得て、どこまでが値か分からないため、区切りから末尾までを伏せる。
+// 例外のstackを先に伏せた形(区切りの後が伏せ字とフレームの行だけ)は、フレームを残すためにそのままにする。
+// 区切りまでの間に次のクエリの失敗の文言を含めないのは、区切りの無い文言が繰り返されたときに探す時間が長さの2乗で増えないためである
+const QUERY_PARAMS_PATTERN: RedactionPattern = {
+  pattern: new RegExp(
+    String.raw`(${QUERY_FAILURE_PREFIX}(?:(?!${QUERY_FAILURE_PREFIX})[\s\S])*?\nparams: )(?!\[REDACTED\](?:\n[ \t]+at [^\n]*)*$)[\s\S]*`,
+    'g',
+  ),
+  replacement: (_match: string, prefix: unknown) =>
+    `${String(prefix)}${REDACTED}`,
+};
+
+// redactByPatternは配列の順に置き換える。クエリの失敗の値は、他のパターンが値の先頭を先に伏せると伏せ字済みの形に見えて残るため、最初に末尾まで伏せる。
+// 次に、キーの一部が他のパターンに先に当たって形が崩れないよう、公開APIのキーを他のパターンより先に伏せる
 export const REDACTION_PATTERNS: RedactionPatterns = Object.freeze([
+  QUERY_PARAMS_PATTERN,
   API_KEY_PATTERN,
   BEARER_TOKEN_PATTERN,
   { pattern: JWT_PATTERN.pattern, replacement: REDACTED },
@@ -122,3 +138,16 @@ export const REDACTION_PATTERNS: RedactionPatterns = Object.freeze([
   IPV4_PATTERN,
   IPV6_PATTERN,
 ]);
+
+const QUERY_PARAMS_SEPARATOR = '\nparams: ';
+
+// SQL文は値をプレースホルダーで持つため残し、利用者の入力を含み得るバインドした値だけを伏せる
+export function redactQueryParams(message: string): string {
+  if (!message.startsWith(QUERY_FAILURE_PREFIX)) {
+    return message;
+  }
+  const separatorIndex = message.indexOf(QUERY_PARAMS_SEPARATOR);
+  return separatorIndex === -1
+    ? message
+    : `${message.slice(0, separatorIndex)}${QUERY_PARAMS_SEPARATOR}${REDACTED}`;
+}

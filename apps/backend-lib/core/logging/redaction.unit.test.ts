@@ -171,11 +171,11 @@ describe('REDACTED_FIELD_PATTERNS', () => {
 });
 
 describe('REDACTION_PATTERNS', () => {
-  test('全てのパターンがgフラグ付きで、先頭が公開APIのキーのパターンである', () => {
+  test('全てのパターンがgフラグ付きで、公開APIのキーのパターンがクエリの失敗の値のパターンの次にある', () => {
     for (const { pattern } of REDACTION_PATTERNS) {
       expect(pattern.global).toBe(true);
     }
-    expect(REDACTION_PATTERNS[0]?.pattern.source).toContain('lsk_');
+    expect(REDACTION_PATTERNS[1]?.pattern.source).toContain('lsk_');
   });
 
   test.each([
@@ -399,11 +399,129 @@ describe('REDACTION_PATTERNS', () => {
     expect(logObject.detail).toBe(REDACTED);
   });
 
-  test('公開APIのキーのパターンを先頭から動かすと、カード番号の形を含むキーの断片が残る', () => {
-    const [apiKeyPattern, ...otherPatterns] = REDACTION_PATTERNS;
+  describe('データベースのクエリの失敗の文言', () => {
+    const query = 'select "id" from "articles" where "title" like ? limit ?';
+    const failedQuery = `Failed query: ${query}`;
+    const redactedQuery = `${failedQuery}\nparams: ${REDACTED}`;
+    const params = '%検索語%,本文の1行目\n本文の2行目,20';
+    const frames = [
+      '    at D1PreparedQuery.queryWithCache (session.js:12:3)',
+      '    at async ArticleSearch.search (article-search.ts:34:5)',
+    ].join('\n');
+
+    test.each([
+      [
+        '例外を差し込んだメッセージ',
+        `検索に失敗: DrizzleQueryError: ${failedQuery}\nparams: ${params}`,
+        `検索に失敗: DrizzleQueryError: ${redactedQuery}`,
+      ],
+      [
+        'フレームの形の行で終わる値',
+        `${failedQuery}\nparams: 本文\n    at 本文のフレームの形の行`,
+        redactedQuery,
+      ],
+      [
+        'メールアドレスで始まりフレームの形の行が続く値',
+        `${failedQuery}\nparams: user@mail.example\n    at 秘密の続き`,
+        redactedQuery,
+      ],
+      [
+        'IPアドレスで始まりタブのフレームの形の行が続く値',
+        `${failedQuery}\nparams: 203.0.113.7\n\tat 秘密の続き`,
+        redactedQuery,
+      ],
+      [
+        '公開APIのキーで始まりフレームの形の行が続く値',
+        `${failedQuery}\nparams: ${API_KEY}\n    at 秘密の続き`,
+        redactedQuery,
+      ],
+    ])('%sのバインドした値を伏せ、SQL文は残す', (_name, text, expected) => {
+      expect(redactMessage(text)).toBe(expected);
+    });
+
+    test('クエリの失敗の値のパターンは、他のパターンが値の一部を先に伏せないよう先頭にある', () => {
+      expect(REDACTION_PATTERNS[0]?.pattern.source).toContain('Failed query: ');
+    });
+
+    test('属性の例外の値が文字どおりの伏せ字で始まりフレームの形の行が続いても、値を残さない', () => {
+      const queryError = Object.assign(
+        new Error(`${failedQuery}\nparams: ${REDACTED}\n    at 秘密の続き`),
+        { name: 'DrizzleQueryError' },
+      );
+
+      const logObject = emit(createRecord({ properties: { queryError } }));
+
+      expect(logObject.queryError).toMatchObject({ message: redactedQuery });
+      expect(JSON.stringify(logObject)).not.toContain('秘密');
+    });
+
+    test('区切りの無いクエリの失敗の文言が繰り返されても、伏せ字の時間が文字列の長さの2乗で増えない', () => {
+      const text = 'Failed query: '.repeat(20_000);
+      const startedAt = performance.now();
+
+      expect(redactMessage(text)).toBe(text);
+      expect(performance.now() - startedAt).toBeLessThan(1000);
+    });
+
+    test('属性の文字列のスタックトレースは、値とフレームの境目が分からないため、バインドした値から末尾までを伏せる', () => {
+      const logObject = emit(
+        createRecord({
+          properties: {
+            detail: `DrizzleQueryError: ${failedQuery}\nparams: ${params}\n${frames}`,
+          },
+        }),
+      );
+
+      expect(logObject.detail).toBe(`DrizzleQueryError: ${redactedQuery}`);
+    });
+
+    test('属性の例外と原因の例外のmessageとstackにバインドした値を残さない', () => {
+      const queryError = Object.assign(
+        new Error(`${failedQuery}\nparams: ${params}`),
+        { name: 'DrizzleQueryError' },
+      );
+      const failure = new Error('操作の実行に失敗しました', {
+        cause: queryError,
+      });
+
+      const logObject = emit(
+        createRecord({ properties: { failure, queryError } }),
+      );
+      const output = JSON.stringify(logObject);
+
+      const serializedQueryError = logObject.queryError as {
+        readonly message: string;
+        readonly stack: string;
+      };
+      expect(serializedQueryError.message).toBe(redactedQuery);
+      expect(serializedQueryError.stack).toContain(`${redactedQuery}\n    at `);
+      expect(logObject.failure).toMatchObject({
+        cause: { message: redactedQuery },
+      });
+      expect(output).not.toContain('検索語');
+      expect(output).not.toContain('本文');
+    });
+
+    test.each([
+      ['バインドした値が無い文言', failedQuery],
+      ['伏せ字にした後の文言', `${redactedQuery}\n${frames}`],
+      ['クエリの失敗の文言を含まないparams:', '検索に失敗しました\nparams: 値'],
+      ['params:の前に改行の無い文言', `${failedQuery} params: 値`],
+    ])('%sは変えない', (_name, text) => {
+      expect(redactMessage(text)).toBe(text);
+    });
+  });
+
+  test('公開APIのキーのパターンを他のパターンより後へ動かすと、カード番号の形を含むキーの断片が残る', () => {
+    const apiKeyPattern = REDACTION_PATTERNS.find(({ pattern }) =>
+      pattern.source.startsWith('lsk_'),
+    );
     if (apiKeyPattern === undefined) {
       throw new Error('公開APIのキーのパターンがありません');
     }
+    const otherPatterns = REDACTION_PATTERNS.filter(
+      (pattern) => pattern !== apiKeyPattern,
+    );
     const text = `キー ${API_KEY_WITH_CARD_NUMBER} を拒否`;
 
     const logObject = emitWith(

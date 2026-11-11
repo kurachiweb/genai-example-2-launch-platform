@@ -345,6 +345,130 @@ describe('scrubEvent', () => {
       expect(scrubbed.message).toBe(`キー ${REDACTED} を拒否`);
     });
 
+    describe('データベースのクエリの失敗の文言', () => {
+      const query = 'select "id" from "articles" where "title" like ? limit ?';
+      const failedQuery = `Failed query: ${query}`;
+      const queryFailure = `${failedQuery}\nparams: %検索語%,本文の1行目\n本文の2行目,20`;
+      const redactedQuery = `${failedQuery}\nparams: ${REDACTED}`;
+
+      test('原因の例外を含む全ての例外の値のバインドした値を伏せ、SQL文と種類は残す', () => {
+        const scrubbed = scrubOrFail(
+          createErrorEvent({
+            exception: {
+              values: [
+                { type: 'Error', value: 'D1_ERROR: UNIQUE constraint failed' },
+                { type: 'DrizzleQueryError', value: queryFailure },
+                { type: 'GraphQLError', value: queryFailure },
+              ],
+            },
+          }),
+        );
+
+        expect(scrubbed.exception?.values).toStrictEqual([
+          { type: 'Error', value: 'D1_ERROR: UNIQUE constraint failed' },
+          { type: 'DrizzleQueryError', value: redactedQuery },
+          { type: 'GraphQLError', value: redactedQuery },
+        ]);
+      });
+
+      test('メッセージ・logentry・パンくずのバインドした値を伏せる', () => {
+        const logentry = {
+          message: queryFailure,
+          formatted: `失敗: ${queryFailure}`,
+          params: [queryFailure],
+        };
+        const expectedLogentry = {
+          message: redactedQuery,
+          formatted: `失敗: ${redactedQuery}`,
+          params: [redactedQuery],
+        };
+
+        const scrubbed = scrubOrFail(
+          createErrorEvent({
+            message: `DrizzleQueryError: ${queryFailure}`,
+            logentry,
+            breadcrumbs: [
+              {
+                category: 'console',
+                message: `DrizzleQueryError: ${queryFailure}`,
+                data: { arguments: [queryFailure] },
+              },
+            ],
+          }),
+        );
+
+        expect(scrubbed.message).toBe(`DrizzleQueryError: ${redactedQuery}`);
+        expect(scrubbed.logentry).toStrictEqual(expectedLogentry);
+        expect(scrubbed.breadcrumbs).toStrictEqual([
+          {
+            category: 'console',
+            message: `DrizzleQueryError: ${redactedQuery}`,
+            data: { arguments: [redactedQuery] },
+          },
+        ]);
+        expect(JSON.stringify(scrubbed)).not.toContain('検索語');
+        expect(JSON.stringify(scrubbed)).not.toContain('本文');
+      });
+
+      test.each([
+        [
+          'メールアドレス',
+          `${failedQuery}\nparams: user@mail.example\n    at 秘密の続き`,
+        ],
+        [
+          '文字どおりの伏せ字',
+          `${failedQuery}\nparams: ${REDACTED}\n    at 秘密の続き`,
+        ],
+      ])(
+        '例外の値が%sで始まりフレームの形の行が続いても、バインドした値を残さない',
+        (_name, value) => {
+          const scrubbed = scrubOrFail(
+            createErrorEvent({
+              exception: { values: [{ type: 'DrizzleQueryError', value }] },
+            }),
+          );
+
+          expect(scrubbed.exception?.values).toStrictEqual([
+            { type: 'DrizzleQueryError', value: redactedQuery },
+          ]);
+        },
+      );
+
+      test.each([
+        ['メールアドレス', 'user@mail.example'],
+        ['公開APIのキー', API_KEY],
+      ])(
+        '%sで始まりフレームの形の行が続く値を、メッセージ・logentry・パンくずに残さない',
+        (_name, leadingValue) => {
+          const failure = `DrizzleQueryError: ${failedQuery}\nparams: ${leadingValue}\n    at 秘密の続き`;
+          const logentry = { message: failure, params: [failure] };
+
+          const scrubbed = scrubOrFail(
+            createErrorEvent({
+              message: failure,
+              logentry,
+              breadcrumbs: [
+                { message: failure, data: { arguments: [failure] } },
+              ],
+            }),
+          );
+
+          expect(scrubbed.message).toBe(`DrizzleQueryError: ${redactedQuery}`);
+          expect(JSON.stringify(scrubbed)).not.toContain('秘密');
+        },
+      );
+
+      test('バインドした値が無いクエリの失敗の文言は変えない', () => {
+        const event = createErrorEvent({
+          exception: {
+            values: [{ type: 'DrizzleQueryError', value: failedQuery }],
+          },
+        });
+
+        expect(scrubOrFail(event)).toStrictEqual(event);
+      });
+    });
+
     test('パターンに当たらない通常のメッセージとクラス名は変えない', () => {
       const event = createErrorEvent({
         message: '投票の集計に失敗しました',

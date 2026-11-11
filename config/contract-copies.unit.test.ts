@@ -470,37 +470,33 @@ describe('セキュリティヘッダーの写し(security-headers.ts・security
   });
 });
 
+// 写しに宣言を足しても照合から漏れないよう、写しの範囲(REDACTEDからREDACTION_PATTERNSまで)の最上位の変数と関数の宣言の名前を写し側から取り出す。範囲の端が宣言として見つからないか逆順なら、0件で黙って通らないよう、宣言として存在しない名前を返して照合を失敗させる
+const copiedRedactionDeclarationNames = (): readonly string[] => {
+  const names = parseSource(FRONTEND_REDACTION_PATTERNS).statements.flatMap(
+    (statement) =>
+      ts.isVariableStatement(statement)
+        ? statement.declarationList.declarations.map(({ name }) =>
+            name.getText(),
+          )
+        : ts.isFunctionDeclaration(statement) && statement.name
+          ? [statement.name.text]
+          : [],
+  );
+  const start = names.indexOf('REDACTED');
+  const end = names.indexOf('REDACTION_PATTERNS');
+  return start === -1 || end < start
+    ? ['REDACTEDからREDACTION_PATTERNSまでの範囲']
+    : names.slice(start, end + 1);
+};
+
 describe('伏せ字の写し(logging.ts・redaction-patterns.ts)', () => {
   test('属性名による伏せ字の並びがbackend-libのREDACTED_FIELD_PATTERNSと一致する', () => {
-    expect(
-      printInitializerWithoutUnicodeFlags(
-        FRONTEND_LOGGING,
-        'REDACTED_FIELD_PATTERNS',
-      ),
-    ).toBe(
-      printInitializerWithoutUnicodeFlags(
-        BACKEND_REDACTION,
-        'REDACTED_FIELD_PATTERNS',
-      ),
-    );
+    const print = (path: string): string =>
+      printInitializerWithoutUnicodeFlags(path, 'REDACTED_FIELD_PATTERNS');
+    expect(print(FRONTEND_LOGGING)).toBe(print(BACKEND_REDACTION));
   });
 
-  test.each([
-    'REDACTED',
-    'REDACTION_PATTERNS',
-    'API_KEY_PATTERN',
-    'BEARER_TOKEN_PATTERN',
-    'IPV4_OCTET',
-    'IPV4_PATTERN',
-    'H',
-    'IPV6_PATTERN',
-    'LIBRARY_CREDIT_CARD_NUMBER_REPLACEMENT',
-    'libraryCreditCardReplacement',
-    'UUID_PATTERN',
-    'isInsideUuid',
-    'isMatchInsideUuid',
-    'CREDIT_CARD_PATTERN',
-  ])(
+  test.each(copiedRedactionDeclarationNames())(
     '値の形式による伏せ字の%sが、uフラグを除いてbackend-libの同名の宣言と一致する',
     (name) => {
       expect(
