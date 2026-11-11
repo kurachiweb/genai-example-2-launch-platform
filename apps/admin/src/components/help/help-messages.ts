@@ -1,4 +1,12 @@
+import type { HandleFormatCheck } from '../../../common-lib/handles/handle-rules.ts';
 import { HELP_CATEGORY_OTHER_NAME } from '../../../common-lib/help/help-category-constants.ts';
+import {
+  HELP_ARTICLE_HANDLE_RULE,
+  HELP_BODY_RULE,
+  HELP_SUBTITLE_MAX,
+  HELP_TITLE_MAX,
+  type HelpTextCheck,
+} from '../../../common-lib/help/help-input-rules.ts';
 
 export const MOVE_UP_LABEL = '上へ移動';
 
@@ -96,3 +104,75 @@ export const HELP_OTHER_ARTICLES_LABEL = 'その他の記事';
 export const HELP_ARTICLE_ORDER_EMPTY_MESSAGE = '該当する記事はありません。';
 
 export const HELP_ORDER_UNDO_LABEL = '元に戻す';
+
+const helpTextMessagesOf = (
+  label: string,
+  max: number,
+): Readonly<Record<HelpTextCheck, string>> =>
+  Object.freeze({
+    'forbidden-characters': `${label}に使用できない文字が含まれています。`,
+    empty: `${label}を入力してください。`,
+    'too-long': `${label}は${String(max)}文字以内で入力してください。`,
+  });
+
+export const HELP_TITLE_MESSAGES = helpTextMessagesOf(
+  'タイトル',
+  HELP_TITLE_MAX,
+);
+
+export const HELP_SUBTITLE_MESSAGES = helpTextMessagesOf(
+  'サブタイトル',
+  HELP_SUBTITLE_MAX,
+);
+
+export const HELP_HANDLE_MESSAGES: Readonly<
+  Record<HandleFormatCheck, string | undefined>
+> = Object.freeze({
+  ok: undefined,
+  empty: 'ハンドルを入力してください。',
+  'too-long': `ハンドルは${String(HELP_ARTICLE_HANDLE_RULE.maxLength)}文字以内で入力してください。`,
+  'invalid-characters':
+    'ハンドルは英数字で始め、英数字・ハイフン・アンダースコアのみで入力してください。',
+});
+
+export const HELP_HANDLE_UNAVAILABLE_MESSAGE =
+  'このハンドルは既に使われています。別の文字列を入力してください。';
+
+export const HELP_HANDLE_RELEASES_PREVIOUS_MESSAGE =
+  'このハンドルは別の記事の以前のハンドルです。保存すると、その記事の以前のURLは転送されなくなります。';
+
+export const helpPreviousHandleGuidance = (previousHandle: string): string =>
+  `以前のハンドル${previousHandle}のURLは、次にハンドルを変更するか、記事を削除するか、他の記事が同じハンドルを設定するまで新しいURLへ転送されます。`;
+
+export const HELP_CATEGORY_REQUIRED_MESSAGE = 'カテゴリを選択してください。';
+
+export const HELP_ARTICLE_FORM_LABELS = Object.freeze({
+  title: 'タイトル(必須)',
+  subtitle: 'サブタイトル(必須)',
+  handle: 'ハンドル(必須)',
+  categoryId: 'カテゴリ(必須)',
+  pinned: 'ピン留め',
+  status: 'ステータス',
+  body: `${HELP_BODY_RULE.label}(必須)`,
+});
+
+export const HELP_ARTICLE_HANDLE_PREFIX = '/help/';
+
+export const HELP_CATEGORY_PLACEHOLDER = '選択してください';
+
+export const HELP_CATEGORY_MOVE_NOTICE =
+  'カテゴリを変えて保存すると、変更先のカテゴリの末尾に並びます。';
+
+export const HELP_PINNED_CHECKBOX_LABEL = 'ピン留めする';
+
+export const HELP_BODY_PLACEHOLDER = '本文をマークダウンで入力してください';
+
+export const HELP_ARTICLE_CREATE_SUBMIT_LABEL = '作成する';
+
+export const HELP_ARTICLE_SAVE_SUBMIT_LABEL = '保存する';
+
+export const HELP_ARTICLE_FORM_CREATE_LABEL = 'ヘルプ記事の作成';
+
+export const HELP_ARTICLE_FORM_EDIT_LABEL = 'ヘルプ記事の編集';
+
+export const HELP_ARTICLES_LINK_LABEL = 'ヘルプ記事の一覧へ';

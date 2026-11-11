@@ -134,3 +134,73 @@ describe('標準カテゴリの写し(apps/db/migrations/*_help_center_seed)', (
     expect(seedMigrationSql()).toContain(`('${id}', '${name}', 1, 1,`);
   });
 });
+
+const API_HELP_INPUT_MESSAGES =
+  'apps/api/src/presentation/graphql/modules/help/errors.ts';
+const API_HELP_ERRORS = 'apps/api/src/application/help/help-errors.ts';
+const ADMIN_HELP_MESSAGES = 'apps/admin/src/components/help/help-messages.ts';
+
+const FORM_MESSAGES_INPUT_VARIABLE = 'HELP_CONTRACT_COPIES_FORM_MESSAGES_INPUT';
+
+// 文言は上限の定数から組み立てるため、ソースの構文解析ではなく子プロセスのbunで評価した値を比べる。ルートの型検査の対象に入らない文字列にしている
+const FORM_MESSAGES_SCRIPT = `
+const modules = JSON.parse(process.env.${FORM_MESSAGES_INPUT_VARIABLE});
+const [input, errors, form] = await Promise.all([
+  import(modules.input),
+  import(modules.errors),
+  import(modules.form),
+]);
+console.log(JSON.stringify({
+  api: {
+    title: input.INPUT_MESSAGES.title,
+    subtitle: input.INPUT_MESSAGES.subtitle,
+    handle: input.INPUT_MESSAGES.handle,
+    categoryMissing: input.INPUT_MESSAGES.categoryMissing,
+    handleUnavailable: errors.HELP_ERRORS.help_article_handle_unavailable.message,
+  },
+  form: {
+    title: form.HELP_TITLE_MESSAGES,
+    subtitle: form.HELP_SUBTITLE_MESSAGES,
+    handle: form.HELP_HANDLE_MESSAGES,
+    categoryMissing: form.HELP_CATEGORY_REQUIRED_MESSAGE,
+    handleUnavailable: form.HELP_HANDLE_UNAVAILABLE_MESSAGE,
+  },
+}));
+`;
+
+interface HelpFormMessagesComparison {
+  readonly api: Readonly<Record<string, unknown>>;
+  readonly form: Readonly<Record<string, unknown>>;
+}
+
+const runFormMessagesComparison = (): HelpFormMessagesComparison => {
+  const result = Bun.spawnSync(
+    [process.execPath, '--eval', FORM_MESSAGES_SCRIPT],
+    {
+      cwd: REPO_ROOT,
+      env: {
+        ...process.env,
+        [FORM_MESSAGES_INPUT_VARIABLE]: JSON.stringify({
+          input: join(REPO_ROOT, API_HELP_INPUT_MESSAGES),
+          errors: join(REPO_ROOT, API_HELP_ERRORS),
+          form: join(REPO_ROOT, ADMIN_HELP_MESSAGES),
+        }),
+      },
+    },
+  );
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `ヘルプ記事の文言の比較が終了コード${String(result.exitCode)}で失敗しました: ${result.stderr.toString()}`,
+    );
+  }
+  return JSON.parse(result.stdout.toString()) as HelpFormMessagesComparison;
+};
+
+describe('ヘルプ記事の入力の違反の文言の写し(apps/admin/src/components/help/help-messages.ts)', () => {
+  test('管理画面のタイトル・サブタイトル・ハンドル・カテゴリの検証とハンドルの使用中の文言が、APIサーバーの文言と項目ごとに一致する', () => {
+    const { api, form } = runFormMessagesComparison();
+
+    expect(Object.values(form)).not.toContain(undefined);
+    expect(form).toEqual(api);
+  });
+});

@@ -201,6 +201,14 @@ describe('ロールの変更', () => {
     await expect
       .element(dialog)
       .toHaveTextContent('現在のロール: モデレーター');
+    await expect
+      .element(
+        dialog.getByRole('radiogroup', {
+          name: '変更後のロール(必須)',
+          exact: true,
+        }),
+      )
+      .toBeVisible();
     await expect.element(roleRadio('モデレーター')).toBeDisabled();
     await expect.element(dialog.getByText(AUDITED_NOTICE)).toBeVisible();
     await expect

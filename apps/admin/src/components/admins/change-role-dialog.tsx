@@ -110,14 +110,14 @@ function ChangeRoleForm({ account, onChanged }: ChangeRoleFormProps) {
         {currentRoleText(ADMIN_ROLE_LABELS[account.role])}
       </p>
       <FormField control={form.control} name="role" label={NEW_ROLE_LABEL}>
-        {({ value, onChange, onBlur, ref, disabled, ...control }) => (
+        {(control) => (
           <RadioGroup
             id={control.id}
-            ref={ref}
-            value={value}
-            onValueChange={onChange}
-            onBlur={onBlur}
-            disabled={disabled}
+            ref={control.ref}
+            value={control.value}
+            onValueChange={control.onChange}
+            onBlur={control.onBlur}
+            disabled={control.disabled}
             aria-labelledby={control.labelId}
             aria-describedby={control['aria-describedby']}
             aria-invalid={control['aria-invalid']}
