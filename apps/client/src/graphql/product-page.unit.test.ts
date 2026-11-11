@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from 'bun:test';
-import type { QueryClient } from '@tanstack/react-query';
+import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 import { isNotFound, isRedirect } from '@tanstack/react-router';
 
 import { GraphQLClientError } from '../../lib/utilities/graphql/graphql-result.ts';
@@ -9,6 +9,8 @@ import {
 } from '../../lib/utilities/graphql/persisted-document.ts';
 import { entryOf, matchOf } from '../components/match/match-fixtures.ts';
 import {
+  ClientMatchSupportersDocument,
+  type ClientMatchSupportersQuery,
   ClientOwnerFollowStatusDocument,
   type ClientOwnerFollowStatusQuery,
   ClientProductLiveMatchDocument,
@@ -18,11 +20,14 @@ import {
 } from './generated/graphql.ts';
 import {
   loadProductPage,
+  MATCH_SUPPORTERS_PAGE_SIZE,
+  matchSupportersQueryOptions,
   ownerFollowingOf,
   ownerFollowStatusQueryOptions,
   productLiveMatchQueryOptions,
   productPageQueryOptions,
   type ProductPageView,
+  toMatchSupporters,
   toProductPageView,
   withOwnerFollowing,
   withUpdatedLiveMatch,
@@ -365,5 +370,110 @@ describe('withOwnerFollowing', () => {
     expect(withOwnerFollowing(OWNER_REDIRECT, true)).toBe(OWNER_REDIRECT);
     expect(withOwnerFollowing(OWNER_MISSING, true)).toBe(OWNER_MISSING);
     expect(withOwnerFollowing(undefined, true)).toBeUndefined();
+  });
+});
+
+const SUPPORTERS_TARGET = {
+  productHandle: 'Pitch-Notes',
+  matchId: '01JD0MATCH0000000000000001',
+  entryId: '01JD0ENTRY0000000000000001',
+} as const;
+
+const supporterOf = (handle: string) => ({
+  handle,
+  nickname: `${handle}さん`,
+  avatar: null,
+});
+
+const supportersPageOf = (
+  handles: readonly string[],
+  pageInfo: {
+    readonly hasNextPage: boolean;
+    readonly endCursor: string | null;
+  },
+): ClientMatchSupportersQuery => ({
+  matchSupporters: {
+    nodes: handles.map(supporterOf),
+    pageInfo: { ...pageInfo },
+  },
+});
+
+const supportersDataOf = (
+  ...pages: ClientMatchSupportersQuery[]
+): InfiniteData<ClientMatchSupportersQuery, string | null> => ({
+  pages,
+  pageParams: pages.map((_page, index) =>
+    index === 0 ? null : `cursor-${String(index)}`,
+  ),
+});
+
+const nextSupportersPageParamOf = (page: ClientMatchSupportersQuery) =>
+  matchSupportersQueryOptions(VIEWER, SUPPORTERS_TARGET).getNextPageParam(
+    page,
+    [page],
+    null,
+    [null],
+  );
+
+describe('matchSupportersQueryOptions', () => {
+  test('サポーターの一覧の操作とプロダクト・マッチ・出場と1ページの件数の後に、閲覧者のIDか未ログインの印をキーへ加える', () => {
+    expect([
+      ...matchSupportersQueryOptions(VIEWER, SUPPORTERS_TARGET).queryKey,
+    ]).toStrictEqual([
+      ...graphqlQueryKey(ClientMatchSupportersDocument, {
+        ...SUPPORTERS_TARGET,
+        first: MATCH_SUPPORTERS_PAGE_SIZE,
+      }),
+      VIEWER.id,
+    ]);
+    expect(
+      matchSupportersQueryOptions(null, SUPPORTERS_TARGET).queryKey.at(-1),
+    ).toBe('guest');
+  });
+
+  test('1ページは20件で、最初のページはカーソルを持たない', () => {
+    expect(MATCH_SUPPORTERS_PAGE_SIZE).toBe(20);
+    expect(
+      matchSupportersQueryOptions(VIEWER, SUPPORTERS_TARGET).initialPageParam,
+    ).toBeNull();
+  });
+
+  test('続きがあれば最後の項目のカーソルを次のページの位置にする', () => {
+    expect(
+      nextSupportersPageParamOf(
+        supportersPageOf(['a'], { hasNextPage: true, endCursor: 'cursor-1' }),
+      ),
+    ).toBe('cursor-1');
+  });
+
+  test.each([
+    [
+      '続きが無い',
+      supportersPageOf(['a'], { hasNextPage: false, endCursor: 'cursor-1' }),
+    ],
+    [
+      'カーソルが無い',
+      supportersPageOf([], { hasNextPage: true, endCursor: null }),
+    ],
+    ['マッチを表示できない', { matchSupporters: null }],
+  ])('%sなら次のページを持たない', (_case, page) => {
+    expect(nextSupportersPageParamOf(page)).toBeUndefined();
+  });
+});
+
+describe('toMatchSupporters', () => {
+  test('読み込んだページのサポーターを順に1つの並びにし、表示できなくなったページ(null)は加えない', () => {
+    expect(
+      toMatchSupporters(
+        supportersDataOf(
+          supportersPageOf(['a', 'b'], {
+            hasNextPage: true,
+            endCursor: 'cursor-1',
+          }),
+          { matchSupporters: null },
+          supportersPageOf(['c'], { hasNextPage: false, endCursor: null }),
+        ),
+      ),
+    ).toStrictEqual([supporterOf('a'), supporterOf('b'), supporterOf('c')]);
   });
 });

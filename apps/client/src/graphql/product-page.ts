@@ -1,4 +1,9 @@
-import { type QueryClient, queryOptions } from '@tanstack/react-query';
+import {
+  type InfiniteData,
+  infiniteQueryOptions,
+  type QueryClient,
+  queryOptions,
+} from '@tanstack/react-query';
 import { notFound, redirect } from '@tanstack/react-router';
 
 import { executeGraphQL } from '../../lib/start/graphql/execute-graphql.ts';
@@ -8,6 +13,9 @@ import { checkHandleFormat } from '../../common-lib/handles/handle-rules.ts';
 import { PRODUCT_HANDLE_RULE } from '../../common-lib/product/product-input-rules.ts';
 import { productDetailHref } from '../components/layout/site-links.ts';
 import {
+  ClientMatchSupportersDocument,
+  type ClientMatchSupportersQuery,
+  type ClientMatchSupportersQueryVariables,
   ClientOwnerFollowStatusDocument,
   type ClientOwnerFollowStatusQuery,
   ClientProductLiveMatchDocument,
@@ -202,3 +210,64 @@ export function withOwnerFollowing(
     },
   };
 }
+
+export const MATCH_SUPPORTERS_PAGE_SIZE = 20;
+
+export interface MatchSupportersTarget {
+  readonly productHandle: string;
+  readonly matchId: string;
+  // 一覧を示すプロダクトの側の出場
+  readonly entryId: string;
+}
+
+export type MatchSupporterView = NonNullable<
+  ClientMatchSupportersQuery['matchSupporters']
+>['nodes'][number];
+
+export type MatchSupportersData = InfiniteData<
+  ClientMatchSupportersQuery,
+  string | null
+>;
+
+// 未掲載のプロダクトのマッチは投稿者本人にだけ返すため、同じタブでログイン・ログアウトした後に前の閲覧者の応答を使わないよう、共通の取得の補助のキーの後に閲覧者のIDを加える。続きのページは最後の項目のカーソルから読む
+export const matchSupportersQueryOptions = (
+  viewer: ClientViewer | null,
+  target: MatchSupportersTarget,
+) => {
+  const firstPageVariables: ClientMatchSupportersQueryVariables = {
+    productHandle: target.productHandle,
+    matchId: target.matchId,
+    entryId: target.entryId,
+    first: MATCH_SUPPORTERS_PAGE_SIZE,
+  };
+  return infiniteQueryOptions({
+    queryKey: [
+      ...graphqlQueryKey(ClientMatchSupportersDocument, firstPageVariables),
+      viewerScopeOf(viewer),
+    ],
+    queryFn: async ({ pageParam, signal }) =>
+      requireData(
+        await executeGraphQL(
+          ClientMatchSupportersDocument,
+          pageParam === null
+            ? firstPageVariables
+            : { ...firstPageVariables, after: pageParam },
+          { signal },
+        ),
+      ),
+    initialPageParam: null as string | null,
+    getNextPageParam: ({
+      matchSupporters,
+    }: ClientMatchSupportersQuery): string | undefined =>
+      matchSupporters?.pageInfo.hasNextPage === true &&
+      matchSupporters.pageInfo.endCursor !== null
+        ? matchSupporters.pageInfo.endCursor
+        : undefined,
+  });
+};
+
+// 続きのページの取得の間にマッチを表示できなくなったページ(null)は加えない
+export const toMatchSupporters = ({
+  pages,
+}: MatchSupportersData): readonly MatchSupporterView[] =>
+  pages.flatMap(({ matchSupporters }) => matchSupporters?.nodes ?? []);
