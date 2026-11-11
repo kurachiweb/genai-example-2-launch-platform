@@ -5,17 +5,22 @@ import {
   HELP_ARTICLE_CREATE_ACTION,
   HELP_ARTICLE_DELETE_ACTION,
 } from '../../../common-lib/admin/audit-actions/help-center.ts';
-import { HELP_CATEGORY_OTHER_NAME } from '../../../common-lib/help/help-category-constants.ts';
+import {
+  HELP_CATEGORY_OTHER_ID,
+  HELP_CATEGORY_OTHER_NAME,
+} from '../../../common-lib/help/help-category-constants.ts';
 import { createDatabase } from '../../../db/client.ts';
 import { resolveHandle } from '../../../lib/workers/handles/handle-queries.ts';
 import { HELP_ARTICLE_HANDLE_NAMESPACE } from '../../../lib/workers/help/help-article-handle-namespace.ts';
 import {
   db,
+  HELP_AUTHOR_ADMIN_ID,
   helpArticleIdOf,
   helpCategoryIdOf,
   insertHelpArticle,
   insertHelpArticlePreviousHandle,
   insertHelpCategory,
+  T0,
 } from '../../../lib/workers/help/testing/help-fixtures.ts';
 import { createBatchRecordingD1 } from '../../../test/support/batch-recording-d1.ts';
 import { buildAuditLogStatements } from '../admin/audit-log-statements.ts';
@@ -56,6 +61,134 @@ describe('D1HelpArticleStore', () => {
         store.isHandleOccupied('GUIDE', helpArticleIdOf(1)),
       ).resolves.toBe(false);
       await expect(store.isHandleOccupied('old-guide')).resolves.toBe(false);
+    });
+  });
+
+  describe('findById', () => {
+    test('記事・カテゴリ名・旧ハンドルを1回の一括の読み取りで返す', async () => {
+      await insertHelpCategory(1, { name: '使い方' });
+      await insertHelpArticle(1, {
+        handle: 'Guide',
+        categoryId: helpCategoryIdOf(1),
+        pinned: true,
+        status: 'draft',
+        sortOrder: 3,
+        revision: 2,
+        createdAt: T0,
+        updatedAt: NOW,
+      });
+      await insertHelpArticlePreviousHandle(1, 'old-guide');
+      const recording = createBatchRecordingD1(env.DB);
+      const store = createArticleStore(createDatabase(recording.d1));
+
+      const record = await store.findById(helpArticleIdOf(1));
+
+      expect(record).toEqual({
+        id: helpArticleIdOf(1),
+        handle: 'Guide',
+        previousHandle: 'old-guide',
+        title: 'タイトル1',
+        subtitle: 'サブタイトル1',
+        bodyMarkdown: '本文1',
+        categoryId: helpCategoryIdOf(1),
+        categoryName: '使い方',
+        pinned: true,
+        status: 'draft',
+        createdByAdminId: HELP_AUTHOR_ADMIN_ID,
+        sortOrder: 3,
+        revision: 2,
+        createdAt: T0,
+        updatedAt: NOW,
+      });
+      expect(recording.batches).toHaveLength(1);
+      expect(recording.statementsOutsideBatches()).toEqual([]);
+    });
+
+    test('旧ハンドルが無ければ空を、記事が無ければundefinedを返す', async () => {
+      await insertHelpArticle(1);
+      const store = createArticleStore();
+
+      await expect(store.findById(helpArticleIdOf(1))).resolves.toMatchObject({
+        previousHandle: null,
+        categoryName: HELP_CATEGORY_OTHER_NAME,
+      });
+      await expect(store.findById(helpArticleIdOf(9))).resolves.toBeUndefined();
+    });
+  });
+
+  describe('listAll', () => {
+    test('下書きを含む全記事を、カテゴリ名・並び順・ピン留め・作成日時とともに本文・サブタイトル・旧ハンドルを除いて返す', async () => {
+      await insertHelpCategory(1, { name: '使い方' });
+      await insertHelpArticle(1, {
+        categoryId: helpCategoryIdOf(1),
+        pinned: true,
+        status: 'draft',
+        sortOrder: 2,
+        updatedAt: NOW,
+      });
+      await insertHelpArticle(2, { sortOrder: 1, revision: 3, createdAt: NOW });
+      await insertHelpArticlePreviousHandle(2, 'old-article');
+
+      const records = await createArticleStore().listAll();
+
+      expect(records).toEqual([
+        {
+          id: helpArticleIdOf(1),
+          handle: 'article1',
+          title: 'タイトル1',
+          categoryId: helpCategoryIdOf(1),
+          categoryName: '使い方',
+          pinned: true,
+          status: 'draft',
+          createdByAdminId: HELP_AUTHOR_ADMIN_ID,
+          sortOrder: 2,
+          revision: 1,
+          createdAt: T0,
+          updatedAt: NOW,
+        },
+        {
+          id: helpArticleIdOf(2),
+          handle: 'article2',
+          title: 'タイトル2',
+          categoryId: HELP_CATEGORY_OTHER_ID,
+          categoryName: HELP_CATEGORY_OTHER_NAME,
+          pinned: false,
+          status: 'published',
+          createdByAdminId: HELP_AUTHOR_ADMIN_ID,
+          sortOrder: 1,
+          revision: 3,
+          createdAt: NOW,
+          updatedAt: T0,
+        },
+      ]);
+    });
+
+    test('記事が無ければ空の配列を返す', async () => {
+      await expect(createArticleStore().listAll()).resolves.toEqual([]);
+    });
+  });
+
+  describe('findPreviousHandleHolder', () => {
+    test('同じ旧ハンドルを保持する他の記事のIDを大文字小文字を区別せずに返し、記事自身と現在のハンドルは除く', async () => {
+      await insertHelpArticle(1, { handle: 'current-guide' });
+      await insertHelpArticlePreviousHandle(1, 'Old-Guide');
+      const store = createArticleStore();
+
+      await expect(store.findPreviousHandleHolder('old-guide')).resolves.toBe(
+        helpArticleIdOf(1),
+      );
+      await expect(
+        store.findPreviousHandleHolder('OLD-GUIDE', helpArticleIdOf(2)),
+      ).resolves.toBe(helpArticleIdOf(1));
+      await expect(
+        store.findPreviousHandleHolder('old-guide', helpArticleIdOf(1)),
+      ).resolves.toBeUndefined();
+      await expect(
+        store.findPreviousHandleHolder('current-guide'),
+      ).resolves.toBeUndefined();
+      await expect(
+        store.findPreviousHandleHolder('unknown'),
+      ).resolves.toBeUndefined();
     });
   });
 

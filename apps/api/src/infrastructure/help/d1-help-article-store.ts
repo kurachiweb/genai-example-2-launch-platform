@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, isNull, ne, sql, type SQL } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import { inject, injectable } from 'inversify';
 import { ulid } from 'ulid';
@@ -24,17 +24,25 @@ import type { SearchIndexStatements } from '../../../lib/workers/search/search-i
 import { HELP_ARTICLE_SEARCH_TARGET } from '../../../lib/workers/search/targets/help-articles.ts';
 import type {
   HelpArticleCreateInput,
+  HelpArticleListRecord,
   HelpArticleRecord,
   HelpArticleSaveResult,
   HelpArticleStore,
   HelpArticleUpdateInput,
   HelpArticleWrite,
+  HelpReorderResult,
 } from '../../application/help/ports.ts';
-import { buildAuditLogStatements } from '../admin/audit-log-statements.ts';
+import {
+  buildAuditLogStatements,
+  isAuditGuardRejection,
+} from '../admin/audit-log-statements.ts';
 import {
   helpArticleExistsGuard,
+  helpOrderGuard,
   isHelpArticleGuardRejection,
+  isHelpOrderGuardRejection,
 } from './help-guards.ts';
+import { keepUpdatedAt } from './keep-updated-at.ts';
 
 type HelpArticleSaveRejection = Exclude<
   HelpArticleSaveResult,
@@ -55,12 +63,10 @@ function isSaveAbort(error: unknown): boolean {
   return false;
 }
 
-const RECORD_COLUMNS = {
+const LIST_COLUMNS = {
   id: helpArticles.id,
   handle: helpArticles.handle,
   title: helpArticles.title,
-  subtitle: helpArticles.subtitle,
-  bodyMarkdown: helpArticles.bodyMarkdown,
   categoryId: helpArticles.categoryId,
   categoryName: helpCategories.name,
   pinned: helpArticles.pinned,
@@ -70,6 +76,12 @@ const RECORD_COLUMNS = {
   revision: helpArticles.revision,
   createdAt: helpArticles.createdAt,
   updatedAt: helpArticles.updatedAt,
+};
+
+const RECORD_COLUMNS = {
+  ...LIST_COLUMNS,
+  subtitle: helpArticles.subtitle,
+  bodyMarkdown: helpArticles.bodyMarkdown,
 };
 
 const categoryExists = (categoryId: string): SQL =>
@@ -100,15 +112,45 @@ const tailSortOrder = (categoryId: string): SQL =>
   sql`(SELECT COALESCE(MAX(${helpArticles.sortOrder}), 0) + 1 FROM ${helpArticles} WHERE ${eq(helpArticles.categoryId, categoryId)})`;
 
 @injectable()
-export class D1HelpArticleStore implements Pick<
-  HelpArticleStore,
-  'isHandleOccupied' | 'create' | 'update' | 'delete'
-> {
+export class D1HelpArticleStore implements HelpArticleStore {
   constructor(
     @inject(PLATFORM_TYPES.Database) private readonly db: Database,
     @inject(SEARCH_TYPES.IndexStatements)
     private readonly indexStatements: SearchIndexStatements,
   ) {}
+
+  findById(id: string): Promise<HelpArticleRecord | undefined> {
+    return this.#readRecord(id);
+  }
+
+  async listAll(): Promise<readonly HelpArticleListRecord[]> {
+    return this.db
+      .select(LIST_COLUMNS)
+      .from(helpArticles)
+      .innerJoin(helpCategories, eq(helpCategories.id, helpArticles.categoryId))
+      .orderBy(asc(helpArticles.id));
+  }
+
+  // 旧ハンドルの列はNOCASEで照合するため、大文字小文字の違いを同じ文字列として引く
+  async findPreviousHandleHolder(
+    handle: string,
+    exceptArticleId?: string,
+  ): Promise<string | undefined> {
+    const [row] = await this.db
+      .select({ ownerId: helpArticlePreviousHandles.ownerId })
+      .from(helpArticlePreviousHandles)
+      .where(
+        and(
+          eq(helpArticlePreviousHandles.handle, handle),
+          exceptArticleId === undefined
+            ? undefined
+            : ne(helpArticlePreviousHandles.ownerId, exceptArticleId),
+          isNull(helpArticlePreviousHandles.deletedAt),
+        ),
+      )
+      .limit(1);
+    return row?.ownerId;
+  }
 
   isHandleOccupied(handle: string, exceptArticleId?: string): Promise<boolean> {
     return isHandleOccupied(
@@ -212,6 +254,45 @@ export class D1HelpArticleStore implements Pick<
     } catch (error) {
       if (isHelpArticleGuardRejection(error)) {
         return 'not-found';
+      }
+      throw error;
+    }
+  }
+
+  // 並べ替えの画面を開いた後にカテゴリが消えていれば監査ログの条件で、記事の集合が変わっていれば確認の文で全体を取り消す。
+  // 並び順の変更は公開の内容を変えないため、索引の版にも使う版と更新日時を変えない
+  async reorder(input: {
+    readonly categoryId: string;
+    readonly orderedIds: readonly string[];
+    readonly audit: PreparedAuditEntry;
+  }): Promise<HelpReorderResult> {
+    const { categoryId, orderedIds } = input;
+    const ids = JSON.stringify(orderedIds);
+    try {
+      await this.db.batch([
+        ...buildAuditLogStatements(this.db, input.audit, {
+          kind: 'condition',
+          condition: categoryExists(categoryId),
+        }),
+        helpOrderGuard(this.db, { kind: 'articles', categoryId, orderedIds }),
+        // 順序をJSONの配列1つで渡し、件数によらず1文で並び順を配列の位置に揃える
+        this.db
+          .update(helpArticles)
+          .set({
+            sortOrder: sql`(SELECT CAST(key AS INTEGER) + 1 FROM json_each(${ids}) WHERE value = ${helpArticles.id})`,
+            updatedAt: keepUpdatedAt,
+          })
+          .where(
+            and(
+              eq(helpArticles.categoryId, categoryId),
+              sql`${helpArticles.id} IN (SELECT value FROM json_each(${ids}))`,
+            ),
+          ),
+      ]);
+      return 'reordered';
+    } catch (error) {
+      if (isHelpOrderGuardRejection(error) || isAuditGuardRejection(error)) {
+        return 'outdated';
       }
       throw error;
     }

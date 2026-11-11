@@ -4,6 +4,7 @@ import { expect } from 'vitest';
 import {
   HELP_ARTICLE_CREATE_ACTION,
   HELP_ARTICLE_DELETE_ACTION,
+  HELP_ARTICLE_REORDER_ACTION,
   HELP_ARTICLE_UPDATE_ACTION,
 } from '../../../../common-lib/admin/audit-actions/help-center.ts';
 import { HELP_CATEGORY_OTHER_ID } from '../../../../common-lib/help/help-category-constants.ts';
@@ -150,6 +151,35 @@ export function deleteInputOf(articleIndex: number): {
       articleIndex,
       AUDIT_LOG_ID,
     ),
+  };
+}
+
+// 監査ログの対象は並べ替えたカテゴリで、詳細は並べ替えた件数
+export function reorderInputOf(
+  categoryId: string,
+  orderedIds: readonly string[],
+): {
+  readonly categoryId: string;
+  readonly orderedIds: readonly string[];
+  readonly audit: PreparedAuditEntry;
+} {
+  const targetIds: readonly string[] = [categoryId];
+  const detail: Readonly<Record<string, string>> = {
+    count: String(orderedIds.length),
+  };
+  return {
+    categoryId,
+    orderedIds,
+    audit: {
+      id: AUDIT_LOG_ID,
+      operatorAdminId: EDITOR_ADMIN_ID,
+      action: HELP_ARTICLE_REORDER_ACTION.name,
+      targetKind: 'category',
+      targetIds,
+      reason: null,
+      detail,
+      occurredAt: NOW,
+    } as PreparedAuditEntry,
   };
 }
 

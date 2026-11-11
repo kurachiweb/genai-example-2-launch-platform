@@ -17,6 +17,7 @@ import {
   isAuditGuardRejection,
 } from '../admin/audit-log-statements.ts';
 import { helpOrderGuard, isHelpOrderGuardRejection } from './help-guards.ts';
+import { keepUpdatedAt } from './keep-updated-at.ts';
 
 const NAME_COLUMN = 'help_categories.name';
 
@@ -39,9 +40,6 @@ const editableCategory = (id: string): SQL | undefined =>
 // 監査ログの条件は書き込みの時点で評価され、偽なら名前の変更・付け替え・削除も含めて取り消される
 const editableCategoryExists = (id: string): SQL =>
   sql`EXISTS (SELECT 1 FROM ${helpCategories} WHERE ${editableCategory(id)})`;
-
-// 更新日時の列は更新の文で自動的に現在時刻になるため、並び順と所属だけを変える文では元の値を明示して保つ
-const keepUpdatedAt = sql`${sql.identifier('updated_at')}`;
 
 @injectable()
 export class D1HelpCategoryStore implements HelpCategoryStore {
