@@ -5,7 +5,7 @@ export interface SectionHeadingProps {
   readonly id: string;
   readonly icon: ReactNode;
   readonly title: string;
-  // 見出しの右に添える試合数や時刻などの補足
+  // 見出しの右に添える件数や時刻などの補足
   readonly meta?: ReactNode;
 }
 

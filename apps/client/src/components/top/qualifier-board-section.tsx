@@ -17,6 +17,7 @@ import {
   withUpdatedMatch,
 } from '../../graphql/qualifier-board.ts';
 import { useViewer } from '../auth/use-viewer.ts';
+import { FOLLOW_UP_EXHAUSTED_MESSAGE } from '../match/follow-up-refetch-messages.ts';
 import { updateCountOf } from '../match/follow-up-refetch.ts';
 import { useBoundaryRefresh } from '../time/use-boundary-refresh.ts';
 import {
@@ -25,7 +26,6 @@ import {
   orderMatchesBy,
   qualifierRefetchIntervalOf,
 } from './qualifier-refresh.ts';
-import { FOLLOW_UP_EXHAUSTED_MESSAGE } from './qualifier-section-messages.ts';
 import { QualifierSection } from './qualifier-section.tsx';
 import type {
   QualifierListInsert,

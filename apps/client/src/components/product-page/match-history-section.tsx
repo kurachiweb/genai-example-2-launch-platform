@@ -3,7 +3,7 @@ import type { ComponentType } from 'react';
 
 import { useDisplayPreferences } from '../../../lib/components/datetime/use-display-preferences.ts';
 import { formatNumber } from '../../../lib/utilities/number/number-format.ts';
-import { SectionHeading } from '../top/section-heading.tsx';
+import { SectionHeading } from '../layout/section-heading.tsx';
 import { LaunchBlock } from './launch-block.tsx';
 import { matchCountOf } from './match-history-model.ts';
 import {

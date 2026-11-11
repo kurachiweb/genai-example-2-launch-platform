@@ -10,6 +10,7 @@ import type {
   ClientQualifierBoardQuery,
   MatchFragment,
 } from '../../graphql/generated/graphql.ts';
+import { SectionHeading } from '../layout/section-heading.tsx';
 import { CONTACT_HREF } from '../layout/site-links.ts';
 import { ByeList } from '../match/bye-list.tsx';
 import { MatchCard } from '../match/match-card.tsx';
@@ -21,7 +22,6 @@ import {
   NEXT_KICKOFF_LABEL,
   QUALIFIER_SECTION_TITLE,
 } from './qualifier-section-messages.ts';
-import { SectionHeading } from './section-heading.tsx';
 import { layoutQualifierList } from './top-page-section-order.ts';
 import type { QualifierListInsert } from './top-page-section-types.ts';
 

@@ -1,4 +1,5 @@
 import { PRODUCT_CATEGORY_OTHER_NAME } from '../../../common-lib/product/product-category-constants.ts';
+import { formatBusinessDateLabel } from '../../../common-lib/time/business-date-label.ts';
 import {
   AppError,
   type AppErrorKind,
@@ -121,23 +122,16 @@ const LAUNCH_DATE_FIELD = 'launchDate';
 
 const yearOf = (date: BusinessDate): number => Number(date.slice(0, 4));
 
-// 文言規則の日付の示し方: 今年なら月日だけ、今年でなければ年を付ける
-const formatLaunchDate = (date: BusinessDate, currentYear: number): string => {
-  const [year, month, day] = date.split('-').map(Number);
-  const monthDay = `${String(month)}月${String(day)}日`;
-  return year === currentYear ? monthDay : `${String(year)}年${monthDay}`;
-};
-
 export const launchDateUnavailableError = (
   rejection: LaunchDateRejection,
   now: Date,
 ): AppError => {
   const currentYear = yearOf(toBusinessDateTime(now).date);
-  const earliest = formatLaunchDate(rejection.earliest, currentYear);
+  const earliest = formatBusinessDateLabel(rejection.earliest, currentYear);
   const message =
     rejection.reason === 'relaunch_interval'
       ? `このプロダクトは${earliest}以降のローンチ日を選べます。`
-      : `ローンチ日は${earliest}〜${formatLaunchDate(rejection.latest, currentYear)}の間で選んでください。`;
+      : `ローンチ日は${earliest}〜${formatBusinessDateLabel(rejection.latest, currentYear)}の間で選んでください。`;
   return new AppError({
     kind: 'unprocessable',
     code: 'launch_date_unavailable',

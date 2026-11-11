@@ -1,3 +1,5 @@
+import { formatBusinessDateLabel } from '../time/business-date-label.ts';
+
 export type BusinessDateString = string;
 
 export const PERIOD_PRESETS = Object.freeze([
@@ -165,11 +167,10 @@ export const validateCustomRange = (input: {
   };
 };
 
-// 文言規則の日付の示し方: 今年なら月日だけ、今年でなければ年を付ける
+// 共通の書式は形だけを確かめるため、2月30日のような存在しない暦日はここでRangeErrorにする
 const formatDateLabel = (value: string, currentYear: number): string => {
-  const { year, month, day } = requireParts(value);
-  const monthDay = `${String(month)}月${String(day)}日`;
-  return year === currentYear ? monthDay : `${String(year)}年${monthDay}`;
+  requireParts(value);
+  return formatBusinessDateLabel(value, currentYear);
 };
 
 export const formatPeriodLabel = (

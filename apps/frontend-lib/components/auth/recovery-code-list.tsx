@@ -2,6 +2,7 @@ import { CopyIcon, TriangleAlertIcon } from 'lucide-react';
 import { useState } from 'react';
 
 import { cn } from '../../utilities/class-names.ts';
+import { writeToClipboard } from '../../utilities/clipboard/write-to-clipboard.ts';
 import {
   COPY_ALL_RECOVERY_CODES_LABEL,
   RECOVERY_CODES_COPIED,
@@ -19,20 +20,6 @@ export interface RecoveryCodeListProps {
 type CopyResult = 'copied' | 'failed' | undefined;
 
 const codesKeyOf = (codes: readonly string[]): string => JSON.stringify(codes);
-
-// 安全でない文脈や権限の拒否ではクリップボードのAPIが無いか書き込みが拒まれるため、どちらも失敗として扱う
-const writeToClipboard = async (text: string): Promise<boolean> => {
-  const clipboard = navigator.clipboard as Clipboard | undefined;
-  if (clipboard === undefined) {
-    return false;
-  }
-  try {
-    await clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-};
 
 export function RecoveryCodeList({ codes, className }: RecoveryCodeListProps) {
   const codesKey = codesKeyOf(codes);

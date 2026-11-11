@@ -1,4 +1,4 @@
-import { formatLaunchDate } from './launch-date-format.ts';
+import { formatBusinessDateLabel } from '../../../common-lib/time/business-date-label.ts';
 import { useCurrentYear } from './use-current-year.ts';
 
 export interface LaunchDateTextProps {
@@ -8,5 +8,7 @@ export interface LaunchDateTextProps {
 
 export function LaunchDateText({ date }: LaunchDateTextProps) {
   const currentYear = useCurrentYear();
-  return <time dateTime={date}>{formatLaunchDate(date, currentYear)}</time>;
+  return (
+    <time dateTime={date}>{formatBusinessDateLabel(date, currentYear)}</time>
+  );
 }

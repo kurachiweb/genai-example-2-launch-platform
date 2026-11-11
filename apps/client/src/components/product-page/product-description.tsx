@@ -3,7 +3,7 @@ import { FileTextIcon } from 'lucide-react';
 import { CollapsibleMarkdownContent } from '../../../lib/components/markdown/collapsible-markdown-content.tsx';
 import { useMarkdownOptions } from '../../../lib/components/markdown/use-markdown-options.ts';
 import { useRenderedMarkdown } from '../../../lib/components/markdown/use-rendered-markdown.ts';
-import { SectionHeading } from '../top/section-heading.tsx';
+import { SectionHeading } from '../layout/section-heading.tsx';
 import { DESCRIPTION_HEADING } from './product-description-messages.ts';
 
 export interface ProductDescriptionProps {

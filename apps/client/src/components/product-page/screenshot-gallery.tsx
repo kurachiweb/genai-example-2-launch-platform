@@ -5,7 +5,7 @@ import { MediaPicture } from '../../../lib/components/media/media-picture.tsx';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { cn } from '../../../lib/utilities/class-names.ts';
 import type { ProductPageView } from '../../graphql/product-page.ts';
-import { SectionHeading } from '../top/section-heading.tsx';
+import { SectionHeading } from '../layout/section-heading.tsx';
 import {
   enlargeScreenshotLabel,
   SCREENSHOT_LIST_LABEL,

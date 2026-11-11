@@ -7,6 +7,7 @@ import { Tooltip } from '../../../lib/components/ui/tooltip/tooltip.tsx';
 import { TooltipContent } from '../../../lib/components/ui/tooltip/tooltip-content.tsx';
 import { TooltipTrigger } from '../../../lib/components/ui/tooltip/tooltip-trigger.tsx';
 import { appRuntimeOf } from '../../../lib/start/router-context.ts';
+import { writeToClipboard } from '../../../lib/utilities/clipboard/write-to-clipboard.ts';
 import {
   COPY_LINK_LABEL,
   LINK_COPIED,
@@ -20,20 +21,6 @@ export interface CopyLinkButtonProps {
   readonly label?: string;
   readonly className?: string;
 }
-
-// 安全でない文脈や権限の拒否ではクリップボードのAPIが無いか書き込みが拒まれるため、どちらも失敗として扱う
-const writeToClipboard = async (text: string): Promise<boolean> => {
-  const clipboard = navigator.clipboard as Clipboard | undefined;
-  if (clipboard === undefined) {
-    return false;
-  }
-  try {
-    await clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-};
 
 // 共有されるリンクに表示中のURLのクエリや旧ハンドルを含めないよう、利用者側のオリジンとパスから正規のURLを作って写す
 export function CopyLinkButton({

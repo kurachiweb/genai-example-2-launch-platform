@@ -9,14 +9,14 @@ import {
   withUpdatedLiveMatch,
 } from '../../graphql/product-page.ts';
 import { useViewer } from '../auth/use-viewer.ts';
+import { SectionHeading } from '../layout/section-heading.tsx';
+import { FOLLOW_UP_EXHAUSTED_MESSAGE } from '../match/follow-up-refetch-messages.ts';
 import { updateCountOf } from '../match/follow-up-refetch.ts';
 import { FullTimeCountdown } from '../match/full-time-countdown.tsx';
 import { MatchCard } from '../match/match-card.tsx';
 import { matchStageLabel } from '../match/match-labels.ts';
 import { useUpvote } from '../match/use-upvote.ts';
 import { useBoundaryRefresh } from '../time/use-boundary-refresh.ts';
-import { FOLLOW_UP_EXHAUSTED_MESSAGE } from '../top/qualifier-section-messages.ts';
-import { SectionHeading } from '../top/section-heading.tsx';
 import {
   canLiveMatchChange,
   hasLiveMatchAutoUpdates,
