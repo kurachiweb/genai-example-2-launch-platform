@@ -23,6 +23,9 @@ export const CONTACT_HREF = '/contact';
 
 export const HELP_TOP_HREF = '/help';
 
+export const helpArticleHref = (articleHandle: string): string =>
+  `${HELP_TOP_HREF}/${articleHandle}`;
+
 export const PRICING_HREF = '/pricing';
 
 export const TERMS_HREF = LEGAL_DOCUMENT_PATHS.terms;

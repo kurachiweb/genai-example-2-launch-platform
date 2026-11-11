@@ -1,9 +1,11 @@
 import { describe, expect, mock, test } from 'bun:test';
 import type { QueryClient } from '@tanstack/react-query';
+import { isNotFound, isRedirect } from '@tanstack/react-router';
 
 import { graphqlQueryKey } from '../../lib/utilities/graphql/persisted-document.ts';
 import {
   ClientHelpArticleDocument,
+  type ClientHelpArticleQuery,
   ClientHelpArticleSearchDocument,
   ClientHelpCenterDocument,
   ClientPinnedHelpArticlesDocument,
@@ -11,9 +13,12 @@ import {
 import {
   helpArticleQueryOptions,
   helpArticleSearchQueryOptions,
+  type HelpArticleView,
   helpCenterQueryOptions,
+  loadHelpArticlePage,
   loadHelpTopPage,
   pinnedHelpArticlesQueryOptions,
+  toHelpArticleView,
 } from './help-center.ts';
 
 describe('helpCenterQueryOptions', () => {
@@ -158,5 +163,136 @@ describe('loadHelpTopPage', () => {
 
     expect(await load.then(() => 'resolved')).toBe('resolved');
     await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+});
+
+const ARTICLE: HelpArticleView = {
+  __typename: 'HelpArticle',
+  handle: 'Upvote-Rules',
+  title: 'Upvoteのルール',
+  subtitle: '1日に何回Upvoteできるか',
+  body: '## はじめに',
+  categoryName: '使い方',
+  author: null,
+  updatedAt: '2026-11-10T09:30:00.000Z',
+  relatedArticles: [],
+};
+
+const FOUND: ClientHelpArticleQuery = { helpArticle: ARTICLE };
+
+const MISSING: ClientHelpArticleQuery = { helpArticle: null };
+
+const MOVED: ClientHelpArticleQuery = {
+  helpArticle: { __typename: 'HelpArticleRedirect', handle: 'Upvote-Rules' },
+};
+
+const NO_SEARCH = { search: {} };
+
+const caught = async (promise: Promise<unknown>): Promise<unknown> =>
+  promise.then(
+    () => undefined,
+    (error: unknown) => error,
+  );
+
+describe('toHelpArticleView', () => {
+  test('記事の結果だけを返し、転送とnullは返さない', () => {
+    expect(toHelpArticleView(FOUND)).toBe(ARTICLE);
+    expect(toHelpArticleView(MOVED)).toBeUndefined();
+    expect(toHelpArticleView(MISSING)).toBeUndefined();
+  });
+});
+
+describe('loadHelpArticlePage', () => {
+  test('URLのハンドルの記事を鮮度を問わずキャッシュから読み、タイトルと現在のハンドルの表記を返す', async () => {
+    const { query, queryClient } = queryClientWith(FOUND);
+
+    const data = await loadHelpArticlePage({
+      context: { queryClient },
+      params: { handle: 'upvote-rules' },
+      location: NO_SEARCH,
+    });
+
+    expect(data).toStrictEqual({
+      handle: 'Upvote-Rules',
+      title: 'Upvoteのルール',
+    });
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: helpArticleQueryOptions('upvote-rules').queryKey,
+        staleTime: 'static',
+      }),
+    );
+  });
+
+  test.each(['', 'a b', 'ヘルプ', 'a.b', '-leading', 'a'.repeat(51)])(
+    'ハンドルの形式違反(%p)は照会せずに存在しないページにする',
+    async (handle) => {
+      const { query, queryClient } = queryClientWith(FOUND);
+
+      const error = await caught(
+        loadHelpArticlePage({
+          context: { queryClient },
+          params: { handle },
+          location: NO_SEARCH,
+        }),
+      );
+
+      expect(isNotFound(error)).toBe(true);
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
+
+  test('照会の結果がnull(存在しない・下書き)なら存在しないページにする', async () => {
+    const { queryClient } = queryClientWith(MISSING);
+
+    const error = await caught(
+      loadHelpArticlePage({
+        context: { queryClient },
+        params: { handle: 'draft-article' },
+        location: NO_SEARCH,
+      }),
+    );
+
+    expect(isNotFound(error)).toBe(true);
+  });
+
+  test('旧ハンドルは現在のハンドルの記事の経路へ、状態コード302と検索パラメーターを引き継いで転送する', async () => {
+    const { queryClient } = queryClientWith(MOVED);
+
+    const error = await caught(
+      loadHelpArticlePage({
+        context: { queryClient },
+        params: { handle: 'old-rules' },
+        location: { search: { utm_source: 'share', ref: 'mail' } },
+      }),
+    );
+
+    expect(isRedirect(error)).toBe(true);
+    if (!isRedirect(error)) {
+      throw new Error('転送が投げられていない');
+    }
+    expect(error.status).toBe(302);
+    expect(error.options).toMatchObject({
+      to: '/help/$handle',
+      params: { handle: 'Upvote-Rules' },
+      search: { utm_source: 'share', ref: 'mail' },
+      statusCode: 302,
+    });
+  });
+
+  test('取得の失敗はエラーの画面にするため、そのまま投げる', async () => {
+    const failure = new Error('取得の失敗');
+    const { queryClient } = queryClientWith(failure);
+
+    const error = await caught(
+      loadHelpArticlePage({
+        context: { queryClient },
+        params: { handle: 'upvote-rules' },
+        location: NO_SEARCH,
+      }),
+    );
+
+    expect(error).toBe(failure);
   });
 });

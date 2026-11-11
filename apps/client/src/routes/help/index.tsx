@@ -1,8 +1,9 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 
 import { normalizeHelpTopQuery } from '../../../common-lib/help/help-query-rules.ts';
+import { HelpLoadError } from '../../components/help/help-load-error.tsx';
+import { HELP_TOP_ERROR_MESSAGE } from '../../components/help/help-messages.ts';
 import { HelpTopContent } from '../../components/help/help-top-content.tsx';
-import { HelpTopError } from '../../components/help/help-top-error.tsx';
 import { HelpTopFrame } from '../../components/help/help-top-frame.tsx';
 import { HelpTopSkeleton } from '../../components/help/help-top-skeleton.tsx';
 import { loadHelpTopPage } from '../../graphql/help-center.ts';
@@ -43,7 +44,10 @@ function HelpTopFailure() {
   const router = useRouter();
   return (
     <HelpTopFrame query={q}>
-      <HelpTopError onRetry={() => router.invalidate()} />
+      <HelpLoadError
+        message={HELP_TOP_ERROR_MESSAGE}
+        onRetry={() => router.invalidate()}
+      />
     </HelpTopFrame>
   );
 }

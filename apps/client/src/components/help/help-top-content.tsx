@@ -6,8 +6,9 @@ import {
   helpCenterQueryOptions,
 } from '../../graphql/help-center.ts';
 import { HelpCategoryList } from './help-category-list.tsx';
+import { HelpLoadError } from './help-load-error.tsx';
+import { HELP_TOP_ERROR_MESSAGE } from './help-messages.ts';
 import { HelpSearchResults } from './help-search-results.tsx';
-import { HelpTopError } from './help-top-error.tsx';
 import { HelpTopSkeleton } from './help-top-skeleton.tsx';
 
 export interface HelpTopContentProps {
@@ -20,7 +21,12 @@ function HelpCenterContent() {
   // 取得し直している間は前の失敗を示さず読み込み中にする。描画中の失敗はブラウザへ渡った後に取得し直した結果で表示を選び直すためでもある
   const error = helpCenter.isFetching ? null : helpCenter.error;
   if (error !== null) {
-    return <HelpTopError onRetry={() => helpCenter.refetch()} />;
+    return (
+      <HelpLoadError
+        message={HELP_TOP_ERROR_MESSAGE}
+        onRetry={() => helpCenter.refetch()}
+      />
+    );
   }
   if (helpCenter.data === undefined) {
     return <HelpTopSkeleton />;
@@ -44,7 +50,12 @@ function HelpSearchContent({ query }: { readonly query: string }) {
   }
   const error = search.isFetching ? null : search.error;
   if (error !== null) {
-    return <HelpTopError onRetry={() => search.refetch()} />;
+    return (
+      <HelpLoadError
+        message={HELP_TOP_ERROR_MESSAGE}
+        onRetry={() => search.refetch()}
+      />
+    );
   }
   if (search.data === undefined) {
     return <HelpTopSkeleton />;

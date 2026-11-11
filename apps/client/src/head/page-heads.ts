@@ -23,6 +23,7 @@ import {
   CONTACT_HREF,
   DIRECTORY_HREF,
   HELP_TOP_HREF,
+  helpArticleHref,
   productDetailHref,
   profileHref,
   SITE_NAME,
@@ -36,6 +37,7 @@ import type {
   LegalDocumentLoaderData,
   LegalVersionLoaderData,
 } from '../graphql/legal-documents.ts';
+import type { HelpArticleLoaderData } from '../graphql/help-center.ts';
 import type { ProductPageLoaderData } from '../graphql/product-page.ts';
 import type { PublicProfileLoaderData } from '../graphql/public-profile.ts';
 
@@ -119,6 +121,17 @@ export const buildDirectoryHead = () =>
 // 検索結果は同じヘルプトップの中の表示のため、正規のURLは検索語を含まないヘルプトップにする
 export const buildHelpTopHead = () =>
   buildSitePageHead({ title: HELP_TOP_TITLE, canonicalUrl: HELP_TOP_HREF });
+
+// 大文字小文字の違うURLは転送せずに表示するため、現在のハンドルの表記のパスを正規のURLにして、表記の違うURLや旧ハンドルのURLを同じページとして索引へ載せる。取得前や失敗ではタイトルを決められないため、サイト名だけにして正規のURLも付けない
+export const buildHelpArticleHead = (
+  loaderData: HelpArticleLoaderData | undefined,
+) =>
+  loaderData === undefined
+    ? buildSitePageHead({ title: '' })
+    : buildSitePageHead({
+        title: loaderData.title,
+        canonicalUrl: helpArticleHref(loaderData.handle),
+      });
 
 // 本人だけが読むページのため、検索の索引の対象外にする
 export const buildInquiryChatHead = () =>

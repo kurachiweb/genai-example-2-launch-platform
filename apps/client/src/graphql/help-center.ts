@@ -1,5 +1,8 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { notFound, redirect } from '@tanstack/react-router';
 
+import { checkHandleFormat } from '../../common-lib/handles/handle-rules.ts';
+import { HELP_ARTICLE_HANDLE_RULE } from '../../common-lib/help/help-input-rules.ts';
 import type { HelpTopQuery } from '../../common-lib/help/help-query-rules.ts';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
 import {
@@ -56,4 +59,50 @@ export async function loadHelpTopPage({
     return;
   }
   await loading;
+}
+
+export interface HelpArticleLoaderData {
+  // 現在のハンドルの表記
+  readonly handle: string;
+  readonly title: string;
+}
+
+export interface HelpArticleLoaderArgs {
+  readonly context: { readonly queryClient: QueryClient };
+  readonly params: { readonly handle: string };
+  // 経路に検索パラメーターの検証が無いため、URLのクエリを解析したままの値
+  readonly location: { readonly search: Readonly<Record<string, unknown>> };
+}
+
+export const toHelpArticleView = ({
+  helpArticle,
+}: ClientHelpArticleQuery): HelpArticleView | undefined =>
+  helpArticle?.__typename === 'HelpArticle' ? helpArticle : undefined;
+
+// 形式に合わないハンドルは存在し得ないため照会しない。存在しない・下書きの記事は同じ404にし、旧ハンドルは現在のハンドルへ302で転送する。
+// 取得の失敗はエラーの画面にするため、そのまま投げる
+export async function loadHelpArticlePage({
+  context: { queryClient },
+  params: { handle },
+  location,
+}: HelpArticleLoaderArgs): Promise<HelpArticleLoaderData> {
+  if (checkHandleFormat(handle, HELP_ARTICLE_HANDLE_RULE) !== 'ok') {
+    throw notFound();
+  }
+  const { helpArticle } = await queryClient.query({
+    ...helpArticleQueryOptions(handle),
+    staleTime: 'static',
+  });
+  if (helpArticle === null) {
+    throw notFound();
+  }
+  if (helpArticle.__typename === 'HelpArticleRedirect') {
+    throw redirect({
+      to: '/help/$handle',
+      params: { handle: helpArticle.handle },
+      search: location.search,
+      statusCode: 302,
+    });
+  }
+  return { handle: helpArticle.handle, title: helpArticle.title };
 }

@@ -42,3 +42,8 @@ export const relatedHelpArticlesHeading = (categoryName: string): string =>
   `${categoryName}の他の記事`;
 
 export const HELP_ARTICLE_LOADING_LABEL = 'ヘルプ記事を読み込み中';
+
+export const HELP_ARTICLE_ERROR_MESSAGE =
+  `ヘルプ記事を読み込めませんでした。${RETRY_GUIDANCE}` as const;
+
+export const HELP_ARTICLE_ERROR_HEADING = 'ヘルプ記事詳細';

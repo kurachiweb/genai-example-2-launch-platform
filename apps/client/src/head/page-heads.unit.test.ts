@@ -6,6 +6,7 @@ import {
   buildCheckoutReturnHead,
   buildContactHead,
   buildDirectoryHead,
+  buildHelpArticleHead,
   buildHelpTopHead,
   buildInquiryChatHead,
   buildLegalDocumentHead,
@@ -300,6 +301,24 @@ describe('buildProductPageHead', () => {
 
   test('取得前や失敗でloaderの値が無いときは、サイト名だけのタイトルにして正規のURLを付けない', () => {
     expect(buildProductPageHead(undefined)).toStrictEqual({
+      meta: [{ title: 'Launch Stadium' }],
+      links: [],
+    });
+  });
+});
+
+describe('buildHelpArticleHead', () => {
+  test('タイトルに記事のタイトル、正規のURLに現在のハンドルの表記のパスを出す', () => {
+    expect(
+      buildHelpArticleHead({ handle: 'Upvote-Rules', title: 'Upvoteのルール' }),
+    ).toStrictEqual({
+      meta: [{ title: 'Upvoteのルール | Launch Stadium' }],
+      links: [{ rel: 'canonical', href: '/help/Upvote-Rules' }],
+    });
+  });
+
+  test('取得の前や失敗ではサイト名だけにし、正規のURLを付けない', () => {
+    expect(buildHelpArticleHead(undefined)).toStrictEqual({
       meta: [{ title: 'Launch Stadium' }],
       links: [],
     });

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   directoryCategoryHref,
+  helpArticleHref,
   myProductEditHref,
   productDetailHref,
   profileHref,
@@ -40,5 +41,11 @@ describe('userMenuLabel', () => {
     expect(userMenuLabel('ピッチの作り手')).toBe(
       'ピッチの作り手のユーザーメニュー',
     );
+  });
+});
+
+describe('helpArticleHref', () => {
+  test('ヘルプトップのパスの下に記事のハンドルを置いたヘルプ記事詳細のパスにする', () => {
+    expect(helpArticleHref('Upvote-Rules')).toBe('/help/Upvote-Rules');
   });
 });
