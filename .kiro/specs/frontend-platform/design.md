@@ -2154,6 +2154,7 @@ export declare function resetTurnstileScriptFailure(): void; // テストとカ�
 ##### State Management
 
 ```typescript
+import type { QueryClient } from '@tanstack/react-query';
 import type { ComponentType, ReactNode } from 'react';
 
 // 登録箇所の値はすべてObject.freezeで凍結し、test/config/composition.unit.test.tsが値・凍結・mergeSecurityPolicySources(BASE_SECURITY_POLICY_SOURCES, <アプリの許可先>)の成功を確かめる
@@ -2166,6 +2167,15 @@ export interface SiteLayoutSlots {
   readonly footerHelpLinks: readonly ComponentType[]; // 例: ピン留めヘルプ記事
 }
 export declare const SITE_LAYOUT_SLOTS: SiteLayoutSlots;
+
+// apps/client/src/composition/layout-loaders.ts
+// 区画の部品が読む取得を始めて待つ。失敗は例外にしない。ルートのloaderが全件を同時に待ってサーバーの描画に含める
+export type SiteLayoutLoader = (queryClient: QueryClient) => Promise<void>;
+export declare const SITE_LAYOUT_LOADERS: readonly SiteLayoutLoader[]; // 例: ピン留めヘルプ記事の取得
+export declare function loadSiteLayout(
+  queryClient: QueryClient,
+  loaders?: readonly SiteLayoutLoader[],
+): Promise<void>;
 
 // apps/admin/src/composition/layout-slots.ts
 export interface AdminLayoutSlots {
@@ -2195,6 +2205,7 @@ export interface AdminLayoutProps {
 - 利用者側の構成(11.1・11.2): ヘッダー→`belowHeader`→`<main id={MAIN_CONTENT_ID}>`(`flex-1`だけ)→`beforeFooter`→フッター。リンクと名前は`src/components/layout/site-links.ts`の定数で、行き先の経路がまだ無く`Link`の型検査が通らないため素の`<a href>`にする(画面内の遷移が全ページの読み込みになり、現在地の表示も無い。全経路がそろう段階で`Link`へ移す)。経路がそろったフッターの法務文書の3つのリンク(legal-pages)は型付きの`Link`で、ページを読み込み直さずに遷移し、その文書と過去版のページでは`aria-current="page"`を付ける。配列の区画の`key`は`slot-key.ts`の部品ごとの固定値で、同じ配列に同じ部品を2回登録しない。
 - 利用者側のヘッダー(11.1): ロゴ(「Launch Stadium」、`/`へ)・ナビゲーション「メイン」(ディレクトリ`/p`・ヘルプ`/help`)・`headerLaunchAction`・`ThemeToggle`・`headerAccount`。768px未満ではナビゲーションと`headerLaunchAction`・`headerAccount`を`Sheet`のメニューの中だけに出す。Sheetを開いている間、ヘッダーの区画の部品はヘッダーとSheetの2か所にマウントされるため、固定の`id`を持たない。既定の`SITE_LAYOUT_SLOTS`は未ログインの導線(ログイン`/auth/login`・登録`/auth/register`)と「ローンチする」(`/auth/login`)。幅が足りない時、切替ボタンと`headerLaunchAction`・`headerAccount`を次の行の右端へ折り返す。
 - 利用者側のフッター(11.2): ナビゲーション「ヘルプ」(ヘルプトップ`/help`と`footerHelpLinks`)、ナビゲーション「規約・問い合わせ」(利用規約`/terms`・プライバシーポリシー`/privacy`・法的通知`/legal`・料金`/pricing`・お問い合わせ`/contact`)。`footerHelpLinks`の部品はフッターの`<ul>`の直下に置かれ、包む要素を持たない0個以上の`<li>`を描く。
+- 共通レイアウトの区画の取得: 区画の部品が取得を持つ場合、その取得を始めて待つ関数を`SITE_LAYOUT_LOADERS`へ加える。clientの`__root.tsx`の`loader`は`loadSiteLayout(context.queryClient)`で全件を同時に待ってから`context.runtime.get()`を返し、取得をサーバーの描画に含めてハイドレーションの後に中継へ取得し直させない。部品はエラーと404の画面にも描かれるため、同じ設定の`useQuery`でキャッシュから読む(「データ取得」の「共通レイアウトの区画の取得」)。
 - 管理者側(11.4): ヘッダー(「⚽️ Launch Stadium管理」のトップへのリンク(絵文字は`aria-hidden`、名前は`admin-site.ts`)・`ThemeToggle`・`headerAccount`)→`navigation`の区画(包む要素無し、768px以上で左の列・未満で本文の上)→`<main id={MAIN_CONTENT_ID}>`。フッターは持たない。`ADMIN_LAYOUT_SLOTS`は`navigation`・`headerAccount`とも`null`(凍結)で、`null`の区画は入れ物ごと描画しない。`navigation`の部品は自身で名前付きの`nav`を描き、768px未満の開閉ボタンはヘッダーと本文の間に出る(ヘッダーに置くなら`AdminLayoutSlots`に区画を加える契約の変更になる)。幅が足りない時、切替ボタンと`headerAccount`は次の行の右端へ折り返す。
 - ランドマーク: 利用者側(10.4)は`header`・`nav`(名前付き、ヘッダーとフッター)・`main id="main"`・`footer`。管理者側(10.8)は`header`・`main id="main"`を必ず持ち、`footer`を持たない。ナビゲーションのランドマークは、admin-foundationが`navigation`の区画に入れる部品が描く名前付きの`nav`で満たし、区画が`null`の間は持たない。
 

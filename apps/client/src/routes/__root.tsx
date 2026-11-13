@@ -6,6 +6,7 @@ import type { RouterContext } from '../../lib/start/router-context.ts';
 import { SiteLayout } from '../components/layout/site-layout.tsx';
 import { ErrorPage } from '../components/pages/error-page.tsx';
 import { NotFoundPage } from '../components/pages/not-found-page.tsx';
+import { loadSiteLayout } from '../composition/layout-loaders.ts';
 import { SITE_LAYOUT_SLOTS } from '../composition/layout-slots.ts';
 import { loadRootAuthContext } from '../graphql/viewer.ts';
 import { buildRootHead } from '../head/page-heads.ts';
@@ -27,7 +28,10 @@ function ClientDocument({ children }: ClientDocumentProps) {
 export const Route = createRootRouteWithContext<RouterContext>()({
   // ログイン必須の領域の判定は子のルートのloaderより前に要るため、例外としてbeforeLoadで取得のキャッシュを通して取得する
   beforeLoad: loadRootAuthContext,
-  loader: ({ context }) => context.runtime.get(),
+  loader: async ({ context }) => {
+    await loadSiteLayout(context.queryClient);
+    return context.runtime.get();
+  },
   head: ({ loaderData }) =>
     buildRootHead({
       stylesheetHref,

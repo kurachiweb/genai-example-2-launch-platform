@@ -33,6 +33,17 @@ export const helpArticleSearchQueryOptions = (query: string) =>
 export const pinnedHelpArticlesQueryOptions = () =>
   graphqlQueryOptions(ClientPinnedHelpArticlesDocument, {});
 
+// フッターは全ページに描かれるため、サーバーの描画に含めてハイドレーションの後に取得し直さない。
+// 失敗してもフッターにヘルプトップへのリンクだけを残してページを描くため、例外にしない。
+// 変更の反映は新しいページの読み込みでよく、画面内の遷移では取得し直さない
+export async function loadPinnedHelpArticles(
+  queryClient: QueryClient,
+): Promise<void> {
+  await queryClient
+    .query({ ...pinnedHelpArticlesQueryOptions(), staleTime: 'static' })
+    .catch(() => undefined);
+}
+
 export interface HelpTopLoaderArgs {
   readonly context: { readonly queryClient: QueryClient };
   readonly deps: HelpTopQuery;

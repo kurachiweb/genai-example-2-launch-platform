@@ -1,6 +1,6 @@
 # データ取得
 
-Cloudflare Workersで動かすTanStack Startの画面が、APIサーバーのGraphQLからデータを取得・変更する規約を定める。操作の置き場所、取得の補助とルートの`loader`(登録口に登録された区画が自身で行う取得を含む)、TanStack Queryの既定値と再試行、エラーの型と画面の分岐、セッションのCookieの指示が反映される範囲、要求ごとのストア、サーバーのデータと画面の状態の使い分け、取得の遅い区画のストリーミング、1ページの描画あたりの呼び出し回数の目安を扱う。
+Cloudflare Workersで動かすTanStack Startの画面が、APIサーバーのGraphQLからデータを取得・変更する規約を定める。操作の置き場所、取得の補助とルートの`loader`(登録口に登録された区画が自身で行う取得と、共通レイアウトの区画の取得を含む)、TanStack Queryの既定値と再試行、エラーの型と画面の分岐、セッションのCookieの指示が反映される範囲、要求ごとのストア、サーバーのデータと画面の状態の使い分け、取得の遅い区画のストリーミング、1ページの描画あたりの呼び出し回数の目安を扱う。
 
 ## 前提と用語
 
@@ -128,7 +128,7 @@ function ProductRoute() {
 
 ### 登録口に登録された区画の取得
 
-ページが登録口(各機能が部品を1件ずつ追記する一覧)の部品を並べるだけで、どの部品がどの取得を持つかを知らない場合は、ページの`loader`で取得を始められない。この区画・カードの部品は、例外として部品自身が`useQuery`で取得する。
+ページが登録口(各機能が部品を1件ずつ追記する一覧)の部品を並べるだけで、どの部品がどの取得を持つかを知らない場合は、ページの`loader`で取得を始められない。この区画・カードの部品は、例外として部品自身が`useQuery`で取得する。全ページの共通レイアウトの登録口に置く区画は、この例外を使わず「[共通レイアウトの区画の取得](#共通レイアウトの区画の取得)」に従う。
 
 ```tsx
 export function TagSection() {
@@ -146,6 +146,42 @@ export function TagSection() {
 - エラーの境界は、区画の内容の代わりに`ErrorState`で失敗と再試行を描く。区画の内容が丸ごと描けない失敗であり、区画の題名とともに区画の位置を占める表示にするためである。ページの本文の中に挟まる一部の表示の失敗に使う`PartialErrorState`(「[取得の遅い区画のストリーミング](#取得の遅い区画のストリーミング)」)とは使い分ける。
 - `loader`で始めないため、ページの最初の描画では区画は読み込み中の表示になり、ブラウザで取得してから描く。読み込み中の表示には、表示が後になっても配置がずれない大きさのスケルトンを使い、`RecoverableSlot`の`fallback`で渡す(区画の内側に別の`Suspense`を置かない。「[状態表示](005-shared-components.md#状態表示)」)。
 - 再試行の後のフォーカスは「[処理の後のフォーカス](004-accessibility-rules.md#処理の後のフォーカス)」に従う。管理画面の登録口の区画とカードは「[管理画面のシェルと区画](009-admin-console-shell.md)」に従う。
+
+### 共通レイアウトの区画の取得
+
+ヘッダー・フッターなど、全ページの共通レイアウトの登録口に置く区画が取得を持つ場合は、前の節の例外を使わず、取得をサーバーの描画に含める。全ページの最初の表示の後にブラウザの取得が1回ずつ増え、取得の結果が出るまで区画の表示が遅れるためである。
+
+```tsx
+// composition/layout-loaders.ts
+export type SiteLayoutLoader = (queryClient: QueryClient) => Promise<void>;
+
+export const SITE_LAYOUT_LOADERS: readonly SiteLayoutLoader[] = Object.freeze([
+  async (queryClient) => {
+    await queryClient
+      .query({ ...linksQueryOptions(), staleTime: 'static' })
+      .catch(() => undefined);
+  },
+]);
+
+export async function loadSiteLayout(queryClient: QueryClient): Promise<void> {
+  await Promise.all(SITE_LAYOUT_LOADERS.map((load) => load(queryClient)));
+}
+
+// routes/__root.tsx
+export const Route = createRootRouteWithContext<RouterContext>()({
+  loader: async ({ context }) => {
+    await loadSiteLayout(context.queryClient);
+    return context.runtime.get();
+  },
+});
+```
+
+- 例の取得の設定は、置き換えて読む。
+- 区画の部品を登録する機能は、取得を始めて待つ関数も、共通レイアウトの取得の登録口(`SITE_LAYOUT_LOADERS`)に1件ずつ加える。ルートの`loader`は登録口の取得をすべて同時に始めて待つ。ルートの`loader`は子のルートの`loader`と並行に実行されるため、待ち時間はページの取得と重なる。
+- 登録する関数は失敗を例外にしない。ルートの`loader`の失敗はエラーの画面になり、ページ全体を表示できなくなるためである。失敗した取得は、ハイドレーションの後に区画の部品の`useQuery`が取得し直す(`retryOnMount`の既定値)。
+- 区画の部品は、エラーと404の画面(ルートの`shellComponent`の中)にも描かれ、ルートの`loader`の結果を読めない場合があるため、同じ設定の`useQuery`でキャッシュから読む。取得前と失敗では、区画の他の部分の表示を妨げない形(何も描かないなど)にする。
+- 画面内の遷移でも共通レイアウトは描き直されないため、`staleTime: 'static'`で画面内の遷移では取得し直さず、新しいページの読み込みで最新の値を取得する。遷移ごとに最新の値が要る区画は、この形にしない。
+- 登録口の取得は、ページの最初の描画ごとの呼び出し回数(「[1ページの描画あたりの呼び出し回数の目安](#1ページの描画あたりの呼び出し回数の目安)」)に1件ずつ数える。
 
 ### 認証の判定に要る取得
 

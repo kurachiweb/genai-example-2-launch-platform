@@ -136,11 +136,12 @@ function cachePinnedHelpArticles(
   }
 }
 
-// 本物の経路の設定を子に付けられるよう、beforeLoadとloaderを含めてアプリのルートと同じ型にする
+// 本物の経路の設定を子に付けられるよう、beforeLoadとloaderを含めてアプリのルートと同じ型にする。
+// 共通レイアウトの区画の取得は各テストが先にキャッシュへ入れるか部品に取得させるため、loaderでは取得しない
 const createPageRootRoute = () =>
   createRootRouteWithContext<RouterContext>()({
     beforeLoad: PAGE_ROUTER_ROOT_BEFORE_LOAD,
-    loader: ({ context }) => context.runtime.get(),
+    loader: ({ context }) => Promise.resolve(context.runtime.get()),
     shellComponent: PageShell,
     ...PAGE_ROUTER_ROOT_COMPONENTS,
   });

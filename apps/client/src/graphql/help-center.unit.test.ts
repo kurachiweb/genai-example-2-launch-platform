@@ -17,9 +17,12 @@ import {
   helpCenterQueryOptions,
   loadHelpArticlePage,
   loadHelpTopPage,
+  loadPinnedHelpArticles,
   pinnedHelpArticlesQueryOptions,
   toHelpArticleView,
 } from './help-center.ts';
+
+const NO_PINNED_HELP_ARTICLES_QUERY = { pinnedHelpArticles: [] };
 
 describe('helpCenterQueryOptions', () => {
   test('ヘルプトップの操作と空の変数をキーにする', () => {
@@ -76,6 +79,32 @@ const queryClientWith = (result: unknown) => {
   );
   return { query, queryClient: { query } as unknown as QueryClient };
 };
+
+describe('loadPinnedHelpArticles', () => {
+  test('フッターのピン留め記事を鮮度を問わずキャッシュから読んで待つ', async () => {
+    const { query, queryClient } = queryClientWith(
+      NO_PINNED_HELP_ARTICLES_QUERY,
+    );
+
+    await loadPinnedHelpArticles(queryClient);
+
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: pinnedHelpArticlesQueryOptions().queryKey,
+        staleTime: 'static',
+      }),
+    );
+  });
+
+  test('取得に失敗しても例外にせず、ページの描画を続けさせる', async () => {
+    const { query, queryClient } = queryClientWith(new Error('取得に失敗した'));
+
+    await loadPinnedHelpArticles(queryClient);
+
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('loadHelpTopPage', () => {
   test('検索語が無ければ、カテゴリ別の一覧を鮮度を問わずキャッシュから読んで待つ', async () => {
