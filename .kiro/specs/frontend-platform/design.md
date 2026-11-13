@@ -2157,7 +2157,8 @@ export declare function resetTurnstileScriptFailure(): void; // テストとカ�
 import type { QueryClient } from '@tanstack/react-query';
 import type { ComponentType, ReactNode } from 'react';
 
-// 登録箇所の値はすべてObject.freezeで凍結し、test/config/composition.unit.test.tsが値・凍結・mergeSecurityPolicySources(BASE_SECURITY_POLICY_SOURCES, <アプリの許可先>)の成功を確かめる
+// 登録箇所の値はすべてObject.freezeで凍結する。中継の経路・CSPの許可先は、test/config/composition.unit.test.tsが値・凍結・mergeSecurityPolicySources(BASE_SECURITY_POLICY_SOURCES, <アプリの許可先>)の成功を確かめる。
+// レイアウトの区画は値がReactの部品のため、区画を描くsite-layout.browser.test.tsx・admin-layout.browser.test.tsxが値と凍結を確かめ、区画の取得はlayout-loaders.unit.test.tsが確かめる
 // apps/client/src/composition/layout-slots.ts
 export interface SiteLayoutSlots {
   readonly headerAccount: ComponentType; // 初版はGuestAccountLinks(ログイン・登録)。identity-authが差し替える

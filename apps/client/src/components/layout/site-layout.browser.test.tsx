@@ -584,6 +584,8 @@ describe('SiteLayout', () => {
       ]);
       expect(Object.isFrozen(SITE_LAYOUT_SLOTS)).toBe(true);
       expect(Object.isFrozen(SITE_LAYOUT_SLOTS.belowHeader)).toBe(true);
+      expect(Object.isFrozen(SITE_LAYOUT_SLOTS.beforeFooter)).toBe(true);
+      expect(Object.isFrozen(SITE_LAYOUT_SLOTS.footerHelpLinks)).toBe(true);
     });
   });
 

@@ -611,7 +611,7 @@ Infisicalの機械の主体とOIDCの縛りは次のとおりである。audienc
 | レイアウトの区画                              | 未ログインの導線(ログイン・登録)と「ローンチする」                       | なし(`navigation`・`headerAccount`とも`null`)                            | `layout-slots.ts`の`SITE_LAYOUT_SLOTS`・`ADMIN_LAYOUT_SLOTS`            |
 | レイアウトの区画の取得                        | フッターのピン留めヘルプ記事(`loadPinnedHelpArticles`)                   | なし(登録口を持たない)                                                   | `layout-loaders.ts`の`SITE_LAYOUT_LOADERS`                              |
 
-- 登録した値と凍結されていることは、各アプリの`test/config/composition.unit.test.ts`が確かめる。
+- 登録した値と凍結されていることは、プロファイル・CSPの許可先・中継の経路は各アプリの`test/config/composition.unit.test.ts`、レイアウトの区画は区画の部品を描くレイアウトのブラウザテスト(利用者側は`src/components/layout/site-layout.browser.test.tsx`、管理者側は`src/components/layout/admin-layout.browser.test.tsx`)、レイアウトの区画の取得は`src/composition/layout-loaders.unit.test.ts`が確かめる。
 
 ### CSPの許可先
 
