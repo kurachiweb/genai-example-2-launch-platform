@@ -271,11 +271,27 @@ async function fillTestBillingAddress(page: Page): Promise<void> {
     .fill(TEST_BILLING_ADDRESS.postalCode);
 }
 
-// 入力の直後はStripeの枠が大きさを変え続けてページのスクロールの位置が動くため、押す直前に同意の欄が動いて押し損ねることがある。同意の状態が変わるまで押し直す
+// Stripeの入力欄の枠に出る、支払い情報をLinkに保存する欄。チェックが入ると電話番号の入力が必須になり、支払いを確定できない
+const LINK_OPT_IN_SELECTOR = 'input[name="linkOptIn"]';
+
+// 入力の後もStripeの枠が大きさを変え続けてページのスクロールの位置が動き、ポインターで押すと押す直前に要素が動いて別の要素(Stripeの枠の中の欄など)を押すことがあるため、
+// 同意の欄と支払いの確定のボタンは、位置に依らないキーボードで操作する
 async function checkConsent(page: Page): Promise<void> {
-  await expect(async () => {
-    await consentCheckbox(page).check({ timeout: REACTION_TIMEOUT_MS });
-  }).toPass({ timeout: STRIPE_ELEMENT_TIMEOUT_MS });
+  await consentCheckbox(page).press('Space');
+  await expect(consentCheckbox(page)).toBeChecked();
+}
+
+// Linkに保存する欄は、Stripeの判断で入力の途中に現れ、チェックが入った状態で出ることがあるため、現れていてチェックが入っていれば外す
+async function declineLinkSignup(page: Page): Promise<void> {
+  for (const frame of page.frames()) {
+    if (!frame.url().startsWith(`${STRIPE_JS_ORIGIN}/`)) {
+      continue;
+    }
+    const optIn = frame.locator(LINK_OPT_IN_SELECTOR);
+    if ((await optIn.count()) > 0 && (await optIn.isChecked())) {
+      await optIn.press('Space');
+    }
+  }
 }
 
 // 同意の無い間は支払いを確定できないことを確かめてから、テストカードと請求先住所を入力して同意する
@@ -291,14 +307,17 @@ export async function preparePaymentWithTestCard(page: Page): Promise<void> {
   await expect(payButton(page)).toBeDisabled();
 
   await checkConsent(page);
-  await expect(payButton(page)).toBeEnabled({
-    timeout: STRIPE_ELEMENT_TIMEOUT_MS,
-  });
+  await expect(async () => {
+    await declineLinkSignup(page);
+    await expect(payButton(page)).toBeEnabled({
+      timeout: REACTION_TIMEOUT_MS,
+    });
+  }).toPass({ timeout: STRIPE_ELEMENT_TIMEOUT_MS });
 }
 
 // 支払いを確定すると、Stripeが決済後のランディングへ移す
 export async function confirmPayment(page: Page): Promise<void> {
-  await payButton(page).click();
+  await payButton(page).press('Enter');
   await expect(page).toHaveURL((url) => url.pathname === CHECKOUT_RETURN_PATH, {
     timeout: STRIPE_REDIRECT_TIMEOUT_MS,
   });
