@@ -40,6 +40,7 @@ import {
   businessDateOf,
   triggerScheduled,
 } from '../support/scheduled-trigger.ts';
+import { waitForToastDismissed } from '../support/toast.ts';
 import { profilePath } from './profile-steps.ts';
 
 export type MatchProductNames = readonly [string, string];
@@ -187,7 +188,9 @@ async function pressUntilNotified(
   message: string,
 ): Promise<void> {
   const toast = page.getByText(message, { exact: true });
-  await expect(toast).toHaveCount(0, { timeout: TOAST_DISMISS_TIMEOUT_MS });
+  await waitForToastDismissed(page, toast, {
+    timeout: TOAST_DISMISS_TIMEOUT_MS,
+  });
   await expect(async () => {
     if (!(await toast.isVisible()) && (await button.isVisible())) {
       await button.click({ timeout: REACTION_TIMEOUT_MS });

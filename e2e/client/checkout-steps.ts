@@ -41,6 +41,7 @@ import {
 import { PURCHASE_KIND_LABELS } from '../../apps/common-lib/payments/purchase-kinds.ts';
 import { GRAPHQL_RELAY_PATH } from '../../apps/frontend-lib/server/relay/relay-contract.ts';
 import { documentIdOf } from '../../apps/frontend-lib/utilities/graphql/persisted-document.ts';
+import { REACTION_TIMEOUT_MS } from '../support/hydration-retry.ts';
 import { paymentHistoryList, STRIPE_JS_ORIGIN } from './billing-steps.ts';
 
 export const SMOKE_CHECKOUT_SKIP_REASON =
@@ -270,6 +271,13 @@ async function fillTestBillingAddress(page: Page): Promise<void> {
     .fill(TEST_BILLING_ADDRESS.postalCode);
 }
 
+// 入力の直後はStripeの枠が大きさを変え続けてページのスクロールの位置が動くため、押す直前に同意の欄が動いて押し損ねることがある。同意の状態が変わるまで押し直す
+async function checkConsent(page: Page): Promise<void> {
+  await expect(async () => {
+    await consentCheckbox(page).check({ timeout: REACTION_TIMEOUT_MS });
+  }).toPass({ timeout: STRIPE_ELEMENT_TIMEOUT_MS });
+}
+
 // 同意の無い間は支払いを確定できないことを確かめてから、テストカードと請求先住所を入力して同意する
 export async function preparePaymentWithTestCard(page: Page): Promise<void> {
   await expect(payButton(page)).toBeVisible({
@@ -282,7 +290,7 @@ export async function preparePaymentWithTestCard(page: Page): Promise<void> {
   await fillTestBillingAddress(page);
   await expect(payButton(page)).toBeDisabled();
 
-  await consentCheckbox(page).check();
+  await checkConsent(page);
   await expect(payButton(page)).toBeEnabled({
     timeout: STRIPE_ELEMENT_TIMEOUT_MS,
   });

@@ -41,6 +41,7 @@ import {
 } from '../../apps/client/src/components/product/product-form-messages.ts';
 import { waitForBotToken } from '../support/bot-verification.ts';
 import { uploadCroppedImage } from '../support/image-upload.ts';
+import { waitForToastDismissed } from '../support/toast.ts';
 import { MAIL_FLOW_TIMEOUT_MS } from './auth/account-steps.ts';
 import {
   expectMarkdownLink,
@@ -279,7 +280,7 @@ export async function saveProductChanges(
   form: Locator,
 ): Promise<void> {
   const savedToast = page.getByText(PRODUCT_SAVED_MESSAGE);
-  await expect(savedToast).toHaveCount(0);
+  await waitForToastDismissed(page, savedToast);
   await form
     .getByRole('button', { name: EDIT_SUBMIT_LABEL, exact: true })
     .click();
