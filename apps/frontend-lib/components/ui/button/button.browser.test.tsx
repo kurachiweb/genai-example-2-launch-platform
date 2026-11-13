@@ -192,19 +192,24 @@ describe('Button', () => {
 
   test('子の要素として描画する指定では、リンクにボタンの見た目を付けてキーボードで移れる', async () => {
     await render(
-      <Button asChild>
-        <a href="#launch">ローンチする</a>
-      </Button>,
+      <div className="flex flex-col items-start gap-3 p-4">
+        <p>ボタンの外の領域</p>
+        <Button asChild>
+          <a href="#launch">ローンチする</a>
+        </Button>
+      </div>,
     );
     const link = page.getByRole('link', { name: 'ローンチする' });
+    // 前に実行したテストのポインターの位置が残り、リンクに重なるとホバーの背景色へ移り変わるため、ポインターを外へ移してから色を確かめる
+    await userEvent.hover(page.getByText('ボタンの外の領域'));
 
     await userEvent.tab();
 
     await expect.element(link).toHaveFocus();
     await expect.element(link).toHaveAttribute('data-slot', 'button');
-    expect(getComputedStyle(link.element()).backgroundColor).toBe(
-      tokenColorOf('primary'),
-    );
+    await expect
+      .poll(() => getComputedStyle(link.element()).backgroundColor)
+      .toBe(tokenColorOf('primary'));
   });
 
   describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
