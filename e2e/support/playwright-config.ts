@@ -172,7 +172,8 @@ export function createPlaywrightConfig(
       ['html', { outputFolder: HTML_REPORT_DIR, open: 'never' }],
       [ZERO_TESTS_REPORTER_PATH],
     ],
-    use: { launchOptions },
+    // CIの成果物から失敗の時の画面と操作を調べられるようにする。ローカルは再試行しないため記録せず、実行を重くしない
+    use: { launchOptions, trace: 'on-first-retry' },
     projects: [
       ...plans.flatMap((plan) => toProjects(plan, serialGroups)),
       ...serialGroups.flatMap((group) =>

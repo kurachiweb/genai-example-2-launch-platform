@@ -162,7 +162,7 @@ E2E_WORKERS=1 bun run test:e2e
 ```
 
 - `e2e/<対象名>/`に`*.e2e.test.ts`が1つも無い対象は、プロジェクトが作られず実行されない。
-- 成果物は`test-results`(失敗時のエラーの文脈を記した`error-context.md`など)とHTMLレポートの`playwright-report`に出力する。トレース・スクリーンショット・動画は、Playwright Testの既定では記録されず、`--trace`の指定や設定の`use`(`trace`・`screenshot`・`video`)で有効にしたときに`test-results`へ出る。どちらもルートの`.gitignore`でGit管理外にする。HTMLレポートは自動で開かない(`open: 'never'`)。失敗時にレポートの配信サーバーが待ち続け、コマンドが終わらなくなるのを避けるためである。
+- 成果物は`test-results`(失敗時のエラーの文脈を記した`error-context.md`など)とHTMLレポートの`playwright-report`に出力する。トレースは、設定の`use`の`trace: 'on-first-retry'`により、失敗したテストを再試行する1回目だけ記録して`test-results`へ出る。再試行しないローカルの実行では記録しない(記録するときは`--trace on`を付ける)。スクリーンショット・動画は、Playwright Testの既定では記録されず、`--trace`の指定や設定の`use`(`screenshot`・`video`)で有効にしたときに`test-results`へ出る。どちらもルートの`.gitignore`でGit管理外にする。HTMLレポートは自動で開かない(`open: 'never'`)。失敗時にレポートの配信サーバーが待ち続け、コマンドが終わらなくなるのを避けるためである。
 - `playwright test`は、実行ファイルのshebangにより`PATH`上の`node`で起動する。Nodeで実行する環境では、Node 22.5.0以上(20系では20.17.0以上)が要る。`playwright.config.ts`が`node:path`の`matchesGlob`と`import.meta.dirname`を使うためである。
 
 ### 開発サーバーとビルド後のプレビューの両方での実行
@@ -216,7 +216,7 @@ bun <配布のスクリプト>/cli.ts run-with-secrets --scope checks -- bun <�
 
 - メール受信箱の実行ファイルは、`e2e-stack`が環境変数`MAILPIT_BIN`のパスで起動する。未設定なら`PATH`上の`mailpit`を使う。CIでは導入した実行ファイルのパスを渡す。
 - APIサーバー・イベントサーバーは、devの共通のフォルダの値に、そのWorkerのフォルダの値を重ねて受け取る。Workerのフォルダの値はそのWorkerの子プロセスにだけ渡り、E2Eテストのコマンドには渡らない。共通のフォルダの値は、E2Eテストのコマンドと、それが起動する対象のアプリにも引き継がれる。
-- 失敗したときは、Playwright Testの成果物(`playwright-report`・`test-results`)と各サービスのログを、CIの成果物として保存する。
+- 失敗したときは、Playwright Testの成果物(`playwright-report`・`test-results`)と各サービスのログを、CIの成果物として保存する。CIは失敗したテストを1回再試行し、その再試行のトレース(`test-results/<テストの名前>-retry1/trace.zip`)も成果物に含まれる。`bunx playwright show-trace <trace.zipのパス>`で、失敗した時の画面と操作を確かめる。
 - ローカル専用の前提(メール受信箱の内容、ローカルのD1への直接の投入、`triggerScheduled`による定期実行の起動など)を持つE2Eテストも、CIでは実行される。デプロイ先に向けて実行するのは、`@smoke`タグを付けたテストだけである(「[デプロイ後のスモークテスト](#デプロイ後のスモークテスト)」)。
 
 ### 対象が0件のとき
