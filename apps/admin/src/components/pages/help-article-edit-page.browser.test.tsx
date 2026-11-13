@@ -6,6 +6,7 @@ import { render } from 'vitest-browser-react';
 import '../../styles.css';
 import { Toaster } from '../../../lib/components/feedback/toaster.tsx';
 import { runAxe } from '../../../lib/test/a11y.ts';
+import { dismissToasts } from '../../../lib/test/toast.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
@@ -211,6 +212,7 @@ describe('ヘルプ記事の編集の画面', () => {
     await expect.element(reasonInput()).toHaveValue('');
     await expect.element(heading()).toHaveFocus();
 
+    await dismissToasts();
     await userEvent.click(button('保存する'));
 
     await expect.poll(() => update.mock.calls.length).toBe(2);
@@ -241,6 +243,7 @@ describe('ヘルプ記事の編集の画面', () => {
     await expect
       .element(page.getByText('ヘルプ記事を保存しました。', { exact: true }))
       .toBeVisible();
+    await dismissToasts();
     await userEvent.fill(titleInput(), '編集の途中');
     await expect
       .poll(() => callsOf(executeGraphQL, AdminHelpArticleDocument).length)

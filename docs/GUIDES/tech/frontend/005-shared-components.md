@@ -200,6 +200,7 @@ notify.error(errorMessageOf(error, APP_PROFILE.contactAvailable));
 
 - `notify`は`success`・`info`・`warning`・`error`の4種で、文言だけを受け取る。失敗を知らせる時の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接渡さない。
 - トーストは操作の結果の通知に使い、利用者の対応が要る失敗は`ErrorState`・`PartialErrorState`かフォームの表示で示す(「[状態とエラーの伝え方](004-accessibility-rules.md#状態とエラーの伝え方)」)。
+- トーストはポインターが重なっている間は自動で閉じるまでの時間を止める。ブラウザテストで、押したボタンの位置に残ったポインターがトーストに重なると、トーストが後で押す要素を覆い続ける。トーストを出した後に別の要素を押すテストは、トーストの表示を確かめた後に`<共通部品の配置先>/test/toast.ts`の`dismissToasts()`で閉じて、文書から消えるまで待つ。
 
 ### 結果の文言
 

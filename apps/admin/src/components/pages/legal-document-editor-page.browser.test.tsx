@@ -6,6 +6,7 @@ import { render } from 'vitest-browser-react';
 import '../../styles.css';
 import { Toaster } from '../../../lib/components/feedback/toaster.tsx';
 import { runAxe } from '../../../lib/test/a11y.ts';
+import { dismissToasts } from '../../../lib/test/toast.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
@@ -322,6 +323,7 @@ describe('保存', () => {
       true,
     );
 
+    await dismissToasts();
     await replaceBody('もう一度改訂した本文');
     await userEvent.click(button('下書きを保存'));
 
