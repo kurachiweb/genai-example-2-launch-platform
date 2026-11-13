@@ -306,6 +306,7 @@ export function createLogCapture() {
     start(): void {
       records.length = 0;
       configureSync({
+        reset: true,
         sinks: { memory: (record) => records.push(record) },
         loggers: [
           { category: ['logtape', 'meta'], lowestLevel: 'warning', sinks: [] },

@@ -1,3 +1,4 @@
+import { resetSync } from '@logtape/logtape';
 import {
   CloudflareClient,
   type Event,
@@ -312,6 +313,7 @@ function fulfillmentWith(parts: {
 
 afterEach(() => {
   getCurrentScope().setClient(undefined);
+  resetSync();
 });
 
 describe('UltrasFulfillment', () => {

@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'bun:test';
+import { resetSync } from '@logtape/logtape';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import {
   ULTRAS_CANCELLATION_ACCEPTED_KIND,
@@ -236,6 +237,10 @@ function notifierWith(
 function serialized(logs: readonly LoggedObject[]): string {
   return JSON.stringify(logs);
 }
+
+afterEach(() => {
+  resetSync();
+});
 
 describe('EmailUltrasNotifier', () => {
   describe('send', () => {

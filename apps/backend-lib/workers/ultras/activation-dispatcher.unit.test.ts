@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'bun:test';
+import { resetSync } from '@logtape/logtape';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import type { MessageContract } from '../../core/messaging/message-contract.ts';
 import type { Clock } from '../../core/time/clock.ts';
@@ -120,6 +121,10 @@ function dispatcherWith(parts: {
     clock,
   });
 }
+
+afterEach(() => {
+  resetSync();
+});
 
 describe('QueueActivationDispatcher', () => {
   test('知らせの契約と加入のIDの本文で送り出し、成功したら現在時刻で送り出しの記録を残す', async () => {

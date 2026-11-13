@@ -1,3 +1,4 @@
+import { resetSync } from '@logtape/logtape';
 import {
   CloudflareClient,
   type Event,
@@ -249,6 +250,7 @@ function sinkWith(parts: {
 
 afterEach(() => {
   getCurrentScope().setClient(undefined);
+  resetSync();
 });
 
 describe('ULTRAS_PLAN_STATE_SINK_NAME', () => {

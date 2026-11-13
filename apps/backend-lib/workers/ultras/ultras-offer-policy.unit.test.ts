@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'bun:test';
+import { resetSync } from '@logtape/logtape';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { PAYMENTS_UNAVAILABLE_MESSAGE } from '../../../common-lib/payments/payments-unavailable-texts.ts';
 import { ultrasCheckoutNotesOf } from '../../../common-lib/ultras/checkout-notes.ts';
@@ -157,6 +158,10 @@ function policyWith(parts: {
   });
   return { policy, lookups, requested };
 }
+
+afterEach(() => {
+  resetSync();
+});
 
 describe('ULTRAS_OFFER_REJECTION_MESSAGES', () => {
   test('拒否のコードごとの文言は文言規則の「Ultrasの加入の開始」の3行と一致する', () => {
