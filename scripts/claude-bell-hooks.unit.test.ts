@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { accessSync, constants } from 'node:fs';
+import { join, relative } from 'node:path';
 import { BELL_SCRIPT_PATH, mergeBellHooks } from './claude-bell-hooks';
 
 const bellHooks = {
@@ -25,10 +26,27 @@ const rtkHook = {
   hooks: [{ type: 'command', command: 'rtk hook claude' }],
 };
 
+const CONTAINER_REPOSITORY_ROOT = '/workspace';
+const REPOSITORY_ROOT = join(import.meta.dirname, '..');
+const REPOSITORY_BELL_SCRIPT = join(
+  import.meta.dirname,
+  'claude-terminal-bell.sh',
+);
+
 describe('BELL_SCRIPT_PATH', () => {
+  it('開発コンテナに置いたリポジトリのベル音のスクリプトを指す', () => {
+    expect(BELL_SCRIPT_PATH).toBe(
+      join(
+        CONTAINER_REPOSITORY_ROOT,
+        relative(REPOSITORY_ROOT, REPOSITORY_BELL_SCRIPT),
+      ),
+    );
+  });
+
+  // CIではリポジトリが開発コンテナと別の場所に置かれるため、リポジトリ内の実物の実行権限を確かめる。
   it('フックのコマンドとして直接起動できるよう実行権限がある', () => {
     expect(() => {
-      accessSync(BELL_SCRIPT_PATH, constants.X_OK);
+      accessSync(REPOSITORY_BELL_SCRIPT, constants.X_OK);
     }).not.toThrow();
   });
 });
