@@ -4,6 +4,7 @@ import { resolveBrowserLaunchOptions } from './config/vitest/browser.ts';
 import {
   createPlaywrightConfig,
   type E2ESerialGroup,
+  resolveE2ERetries,
   resolveE2EWorkers,
 } from './e2e/support/playwright-config.ts';
 import {
@@ -32,5 +33,6 @@ export default defineConfig(
     resolveBrowserLaunchOptions(process.env),
     resolveE2EWorkers(process.env),
     SERIAL_GROUPS,
+    resolveE2ERetries(process.env),
   ),
 );

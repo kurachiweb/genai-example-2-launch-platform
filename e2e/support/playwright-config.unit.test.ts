@@ -7,6 +7,7 @@ import {
   createPlaywrightConfig,
   DEFAULT_E2E_WORKERS,
   type E2ESerialGroup,
+  resolveE2ERetries,
   resolveE2EWorkers,
 } from './playwright-config.ts';
 import type { E2EProjectPlan } from './targets.ts';
@@ -386,4 +387,27 @@ describe('resolveE2EWorkers', () => {
       );
     },
   );
+});
+
+describe('resolveE2ERetries', () => {
+  test('CIでは、失敗したテストを1回だけ再試行する', () => {
+    expect(resolveE2ERetries({ CI: 'true' })).toBe(1);
+  });
+
+  test.each([
+    ['未設定', {}],
+    ['空文字', { CI: '' }],
+  ])('CIが%sなら、再試行しない', (_label, env) => {
+    expect(resolveE2ERetries(env)).toBe(0);
+  });
+});
+
+describe('createPlaywrightConfig(再試行)', () => {
+  test('再試行の回数を省くと、再試行しない', () => {
+    expect(createPlaywrightConfig([], {}, WORKERS).retries).toBe(0);
+  });
+
+  test('受け取った回数だけ、失敗したテストを再試行する', () => {
+    expect(createPlaywrightConfig([], {}, WORKERS, [], 1).retries).toBe(1);
+  });
 });

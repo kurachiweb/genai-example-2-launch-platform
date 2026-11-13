@@ -33,6 +33,16 @@ export function resolveE2EWorkers(
   return Number.parseInt(value, 10);
 }
 
+// CIのランナーでは、同じローカルのDBを書くAPIサーバーとイベントサーバーの書き込みの競合など、テストの手順と関係の無い一時的な失敗が起き得る。
+// ローカルでは失敗をそのまま見せて原因を調べられるよう再試行しない
+const CI_E2E_RETRIES = 1;
+
+export function resolveE2ERetries(
+  env: Readonly<Record<string, string | undefined>>,
+): number {
+  return env.CI === undefined || env.CI === '' ? 0 : CI_E2E_RETRIES;
+}
+
 // 管理者側のテストは、有効な最上位管理者が1人だけの状態を前提にする確認のために他の管理者のロールを一時的に変えるため、同じ対象のテストを並行させない
 const PROJECT_WORKER_LIMITS: Readonly<Partial<Record<E2ETargetName, number>>> =
   Object.freeze({ admin: 1 });
@@ -149,11 +159,13 @@ export function createPlaywrightConfig(
   launchOptions: BrowserLaunchOptions,
   workers: number,
   serialGroups: readonly E2ESerialGroup[] = [],
+  retries = 0,
 ): PlaywrightTestConfig {
   const plansByTarget = new Map(plans.map((plan) => [plan.target.name, plan]));
   return {
     outputDir: OUTPUT_DIR,
     workers,
+    retries,
     // 開発コンテナからはホストのブラウザを開けず、失敗時にレポートの配信サーバーが待ち続けてコマンドが終わらないため、自動で開かない
     reporter: [
       ['list'],

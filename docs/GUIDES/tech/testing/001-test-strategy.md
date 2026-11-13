@@ -155,6 +155,7 @@ bun run test:e2e --project '<組の名前>-*'
 
 - ローカルとCIは環境変数`E2E_WORKERS`を設定せず、同じ上限で実行する。一時的に並列数を変えたいときだけ、`E2E_WORKERS`に1以上の整数を指定する。空文字は未設定と同じ扱いになる。1以上の整数でない値(`0`・負の数・小数・百分率など)を指定すると、設定の読み込みが`環境変数E2E_WORKERSには1以上の整数を指定してください: <値>`で失敗し、テストは実行されない。
 - コマンドの`--workers`の引数は、Playwright Testの規則どおり設定と`E2E_WORKERS`より優先される。
+- CI(環境変数`CI`が空でない)では、失敗したテストを1回だけ再試行する(`e2e/support/playwright-config.ts`の`resolveE2ERetries`)。CIのランナーでは、同じローカルのDBを書く複数のサーバーの書き込みの競合など、テストの手順と関係の無い一時的な失敗が起き得るためである。再試行で成功したテストは、Playwright Testの一覧で不安定(flaky)として示される。ローカルでは失敗をそのまま見せて原因を調べられるよう再試行しない。再試行は失敗の原因を隠すため、テストの手順の待ちの不足で起きる失敗は、再試行に頼らず手順を直す。
 
 ```sh
 E2E_WORKERS=1 bun run test:e2e
@@ -363,6 +364,7 @@ describe('fetchハンドラー', () => {
 - E2Eテストの設定はルートの`playwright.config.ts`だけが持ち、`e2e/support/`の関数で組み立てる。テストファイルを`e2e/<対象名>/`に追加するだけで実行対象になる。
 - E2Eの対象を加えるときは、`e2e/support/targets.ts`の対象の定義(`E2E_TARGET_DEFINITIONS`)に名前・既定のURL・URLを上書きする環境変数を加え、型`E2ETargetName`にも名前を加える。
 - 直列の組(「[E2Eテストの実行](#e2eテストの実行)」)は、ルートの`playwright.config.ts`で`createPlaywrightConfig`の4つ目の引数`serialGroups`(`E2ESerialGroup`の配列。省略できて既定は空)に`{ name: '<組の名前>', steps: [{ target: '<対象名>', testMatch: '<ファイル名>' }, …] }`の形で渡す。組の定義は共有の補助(`e2e/support/`)には置かない。手順のファイルは、他のE2Eテストと同じ命名で`e2e/<対象名>/`に置く。手順のプロジェクトは、対象の`testDir`・`use.baseURL`と`PROJECT_WORKER_LIMITS`の上限を引き継ぎ、対象の到達確認のプロジェクトと1つ前の有効な手順のプロジェクトに依存する(最初の手順は到達確認だけ)。`PROJECT_WORKER_LIMITS`に上限のある対象の手順は、その対象のテストのプロジェクトにも依存し、対象のテストの後に動く(上限の無い対象の手順は依存しない)。対象にE2Eテストのファイルが無いなどでプロジェクト構成に無い対象の手順はプロジェクトを作らず、順の番号は元の並びのまま、次の手順を1つ前の有効な手順に繋ぐ。有効な手順が1つも無い組はプロジェクトを作らない。組のプロジェクトは、対象ごとのプロジェクトの後に組の順で並ぶ。
+- 再試行の回数(「[E2Eテストの実行](#e2eテストの実行)」)は、ルートの`playwright.config.ts`で`createPlaywrightConfig`の5つ目の引数`retries`(省略できて既定は0)に`resolveE2ERetries(process.env)`を渡す。
 - テストでは、対象のURL(`use.baseURL`)からの相対パスでページを開く。
 
 ```typescript
