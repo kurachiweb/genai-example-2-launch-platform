@@ -506,6 +506,8 @@ describe('メールアドレスの確認が済んでいない利用者', () => {
       .element(main().getByRole('note', { name: 'メールアドレスの確認' }))
       .not.toBeInTheDocument();
     await expect.element(textbox('名称(必須)')).toBeEnabled();
+    // 全欄が無効の間は検証を通るため、有効に戻った直後は必須の欄が空のまま送信のボタンが一時的に有効に見える。入力してから送信できることを確かめる
+    await fillRegistration();
     await expect.element(registerButton()).toBeEnabled();
   });
 });
