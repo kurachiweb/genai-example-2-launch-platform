@@ -31,46 +31,11 @@ interface StartedService {
 }
 
 type StartOutcome =
-  | { readonly ok: true; readonly started: readonly StartedService[] }
-  | {
-      readonly ok: false;
-      readonly started: readonly StartedService[];
-      readonly error: StackStartError;
-    };
+  | { readonly ok: true }
+  | { readonly ok: false; readonly error: StackStartError };
 
 const nonEmpty = (value: string | undefined): string | undefined =>
   value === undefined || value === '' ? undefined : value;
-
-const startServices = (
-  services: readonly E2eStackService[],
-  { runner, repoRoot }: DeliveryDeps,
-): StartOutcome => {
-  const started: StartedService[] = [];
-  for (const service of services) {
-    try {
-      const running = runner.start({
-        command: service.command,
-        args: service.args,
-        cwd: join(repoRoot, service.dir),
-        output: 'inherit',
-        logFile: service.logFile,
-      });
-      started.push({ service, running });
-    } catch (error) {
-      return {
-        ok: false,
-        started,
-        error: {
-          service: service.name,
-          reason: messageOf(error),
-          logFile: service.logFile,
-          tail: '',
-        },
-      };
-    }
-  }
-  return { ok: true, started };
-};
 
 const tailOf = async (running: RunningProcess): Promise<string> => {
   try {
@@ -80,27 +45,65 @@ const tailOf = async (running: RunningProcess): Promise<string> => {
   }
 };
 
-const waitForServices = async (
-  started: readonly StartedService[],
+const startService = (
+  service: E2eStackService,
+  { runner, repoRoot }: DeliveryDeps,
+): RunningProcess | StackStartError => {
+  try {
+    return runner.start({
+      command: service.command,
+      args: service.args,
+      cwd: join(repoRoot, service.dir),
+      output: 'inherit',
+      logFile: service.logFile,
+    });
+  } catch (error) {
+    return {
+      service: service.name,
+      reason: messageOf(error),
+      logFile: service.logFile,
+      tail: '',
+    };
+  }
+};
+
+const waitForService = async (
+  { service, running }: StartedService,
   { probe }: DeliveryDeps,
-): Promise<readonly StackStartError[]> => {
-  const results = await Promise.all(
-    started.map(async ({ service, running }) => {
-      const { reached } = await probe.waitFor(service.wait.url, {
-        timeoutMs: E2E_STACK_WAIT_TIMEOUT_MS,
-        expectStatus: service.wait.expectStatus,
-      });
-      if (reached) return undefined;
-      const error: StackStartError = {
-        service: service.name,
-        reason: waitFailureReason(service.wait),
-        logFile: service.logFile,
-        tail: await tailOf(running),
-      };
-      return error;
-    }),
-  );
-  return results.filter((error) => error !== undefined);
+): Promise<StackStartError | undefined> => {
+  const { reached } = await probe.waitFor(service.wait.url, {
+    timeoutMs: E2E_STACK_WAIT_TIMEOUT_MS,
+    expectStatus: service.wait.expectStatus,
+  });
+  if (reached) return undefined;
+  return {
+    service: service.name,
+    reason: waitFailureReason(service.wait),
+    logFile: service.logFile,
+    tail: await tailOf(running),
+  };
+};
+
+// api・eventはローカル状態の保存先を共有し、同時に起動するとworkerdが保存先のSQLiteを同時に開いて「database is locked」で起動に失敗することがあるため、1つずつ起動して応答を待ってから次を起動する。
+// 待ちの途中で例外が出ても呼び出し側が起動済みのサービスを止められるよう、起動したサービスは呼び出し側の一覧へ足す
+const startServicesInOrder = async (
+  services: readonly E2eStackService[],
+  started: StartedService[],
+  deps: DeliveryDeps,
+): Promise<StartOutcome> => {
+  for (const service of services) {
+    const running = startService(service, deps);
+    if (!('stop' in running)) {
+      return { ok: false, error: running };
+    }
+    const current: StartedService = { service, running };
+    started.push(current);
+    const error = await waitForService(current, deps);
+    if (error !== undefined) {
+      return { ok: false, error };
+    }
+  }
+  return { ok: true };
 };
 
 const reportStartErrors = (
@@ -133,16 +136,16 @@ const stopServices = async (
 };
 
 const runWhileUp = async (
-  outcome: StartOutcome,
+  services: readonly E2eStackService[],
+  started: StartedService[],
   testCommand: readonly [string, ...string[]],
   deps: DeliveryDeps,
 ): Promise<number> => {
+  const outcome = await startServicesInOrder(services, started, deps);
   if (!outcome.ok) return reportStartErrors([outcome.error], deps);
-  const errors = await waitForServices(outcome.started, deps);
-  if (errors.length > 0) return reportStartErrors(errors, deps);
   const [command, ...args] = testCommand;
   deps.stdout.write(
-    `${NAME}: ${outcome.started.map(({ service }) => service.name).join('・')}が起動しました。実行します: ${testCommand.join(' ')}\n`,
+    `${NAME}: ${started.map(({ service }) => service.name).join('・')}が起動しました。実行します: ${testCommand.join(' ')}\n`,
   );
   const result = await deps.runner.run({
     command,
@@ -158,15 +161,15 @@ const runStack = async (
   testCommand: readonly [string, ...string[]],
   deps: DeliveryDeps,
 ): Promise<number> => {
-  const outcome = startServices(services, deps);
+  const started: StartedService[] = [];
   let code: number;
   try {
-    code = await runWhileUp(outcome, testCommand, deps);
+    code = await runWhileUp(services, started, testCommand, deps);
   } catch (error) {
-    await stopServices(outcome.started, deps);
+    await stopServices(started, deps);
     throw error;
   }
-  const stopped = await stopServices(outcome.started, deps);
+  const stopped = await stopServices(started, deps);
   return stopped ? code : EXIT_FAILURE;
 };
 

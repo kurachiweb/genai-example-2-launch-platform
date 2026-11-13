@@ -129,7 +129,7 @@ const createStack = ({
 const ARGS = ['--', ...TEST_COMMAND] as const;
 
 describe('e2e-stack', () => {
-  test('準備→Mailpit・api・eventの起動→待ち合わせ→テストのコマンド→停止の順に実行し、テストの終了コードを返す', async () => {
+  test('準備→Mailpit・api・eventを1つずつ起動して応答を待つ→テストのコマンド→停止の順に実行し、テストの終了コードを返す', async () => {
     const stack = createStack();
 
     const code = await command.run(ARGS, stack.deps);
@@ -138,10 +138,10 @@ describe('e2e-stack', () => {
     expect(stack.timeline()).toEqual([
       `run:${PREPARE_LINE}`,
       `start:${MAILPIT_LINE}`,
-      `start:${API_LINE}`,
-      `start:${EVENT_LINE}`,
       `wait:${MAILPIT_URL}`,
+      `start:${API_LINE}`,
       `wait:${API_URL}`,
+      `start:${EVENT_LINE}`,
       `wait:${EVENT_URL}`,
       `run:${TEST_LINE}`,
       `stop:${MAILPIT_LINE}`,
@@ -268,7 +268,7 @@ describe('e2e-stack', () => {
     ]);
   });
 
-  test('起動しないサービスがあれば、その名前とログの末尾50行を表示し、テストを実行せずにすべてのサービスを止めて失敗する', async () => {
+  test('起動しないサービスがあれば、その名前とログの末尾50行を表示し、後続を起動せずテストも実行せずに起動済みのサービスを止めて失敗する', async () => {
     const stack = createStack({
       reachable: (url) => url !== API_URL,
       tailOf: (line) => (line === API_LINE ? 'api-log-1\napi-log-2\n' : ''),
@@ -287,12 +287,27 @@ describe('e2e-stack', () => {
       ].join('\n'),
     );
     expect(stack.tailRequests()).toEqual([50]);
-    expect(stack.timeline()).not.toContain(`run:${TEST_LINE}`);
-    expect(stack.timeline().slice(-3)).toEqual([
+    expect(stack.timeline()).toEqual([
+      `run:${PREPARE_LINE}`,
+      `start:${MAILPIT_LINE}`,
+      `wait:${MAILPIT_URL}`,
+      `start:${API_LINE}`,
+      `wait:${API_URL}`,
       `stop:${MAILPIT_LINE}`,
       `stop:${API_LINE}`,
-      `stop:${EVENT_LINE}`,
     ]);
+  });
+
+  // api・eventはローカル状態の保存先を共有し、同時に起動するとworkerdが保存先のSQLiteを同時に開いて「database is locked」で起動に失敗することがある
+  test('eventはapiが応答してから起動する', async () => {
+    const stack = createStack();
+
+    await command.run(ARGS, stack.deps);
+
+    const timeline = stack.timeline();
+    expect(timeline.indexOf(`start:${EVENT_LINE}`)).toBeGreaterThan(
+      timeline.indexOf(`wait:${API_URL}`),
+    );
   });
 
   test('Mailpitが応答しない時は、応答を待った対象を表示する', async () => {
@@ -323,8 +338,26 @@ describe('e2e-stack', () => {
     expect(stack.timeline()).toEqual([
       `run:${PREPARE_LINE}`,
       `start:${MAILPIT_LINE}`,
+      `wait:${MAILPIT_URL}`,
       `start:${API_LINE}`,
       `stop:${MAILPIT_LINE}`,
+    ]);
+  });
+
+  test('応答の待ちが例外を投げても、起動済みのサービスを止めてから失敗する', async () => {
+    const stack = createStack({
+      reachable: (url) => {
+        if (url === API_URL) throw new Error('probe failed');
+        return true;
+      },
+    });
+
+    const message = await rejectionMessageOf(command.run(ARGS, stack.deps));
+
+    expect(message).toBe('probe failed');
+    expect(stack.timeline().slice(-2)).toEqual([
+      `stop:${MAILPIT_LINE}`,
+      `stop:${API_LINE}`,
     ]);
   });
 
