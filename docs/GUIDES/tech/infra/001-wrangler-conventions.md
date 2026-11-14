@@ -38,6 +38,7 @@ wrangler r2 object put <バケット名>/<オブジェクトキー> --file <フ�
 
 - `@cloudflare/vite-plugin`で起動するアプリも、同じ`<ローカル状態の保存先>`を使うよう設定する。設定方法は「[開発時とデプロイ前の起動](../frontend/002-tanstack-start-on-workers.md#開発時とデプロイ前の起動)」に従う。
 - 同じ`<ローカル状態の保存先>`を使う複数の`wrangler dev`を、スクリプトから同時に起動しない。起動の時に各workerdが保存先のSQLiteを同時に開くと、`database is locked`(`SQLITE_BUSY`)で起動に失敗することがある。1つを起動して応答を待ってから次を起動する。
+- 起動の後も、別々の`wrangler dev`のworkerdが同じD1のSQLiteへ同時に書き込むと`SQLITE_BUSY`になり、その要求が失敗するか、Wranglerが落ちて止まることがある。保存先を共有する複数の`wrangler dev`を長く動かすスクリプトは、止まったプロセスを起動し直す。
 
 ### 複数Worker間でのリソースIDの共有
 

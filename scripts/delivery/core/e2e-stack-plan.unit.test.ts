@@ -7,6 +7,7 @@ import {
   LOCAL_STATE_DIR,
   e2eLogDirOf,
   planE2eStack,
+  serviceExitReport,
   stackStartErrorReport,
 } from './e2e-stack-plan.ts';
 
@@ -125,6 +126,36 @@ describe('stackStartErrorReport', () => {
         '(ログは空です)',
         '',
       ].join('\n'),
+    );
+  });
+});
+
+describe('serviceExitReport', () => {
+  test('止まったサービスの名前・終了コード・ログの末尾を並べ、ログが空ならその旨を出す', () => {
+    expect(
+      serviceExitReport({
+        service: 'event',
+        code: 1,
+        logFile: '/runner-temp/e2e-logs/event.log',
+        tail: 'line-1\nline-2\n',
+      }),
+    ).toBe(
+      [
+        'eventが終了コード1で止まりました。ログ(/runner-temp/e2e-logs/event.log)の末尾50行:',
+        'line-1',
+        'line-2',
+        '',
+      ].join('\n'),
+    );
+    expect(
+      serviceExitReport({
+        service: 'api',
+        code: 134,
+        logFile: '/runner-temp/e2e-logs/api.log',
+        tail: '',
+      }),
+    ).toBe(
+      'apiが終了コード134で止まりました。ログ(/runner-temp/e2e-logs/api.log)の末尾50行:\n(ログは空です)\n',
     );
   });
 });

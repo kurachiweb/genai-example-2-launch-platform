@@ -28,6 +28,7 @@ export interface CommandResult {
 
 export interface RunningProcess {
   readonly name: string;
+  readonly exited: Promise<number>;
   stop(): Promise<void>;
   tail(lines: number): Promise<string>;
 }
@@ -226,6 +227,7 @@ export function createCommandRunner({
         });
         return {
           name: [spec.command, ...spec.args].join(' '),
+          exited: child.exited,
           stop: () => stopGroup(child),
           tail: async (lines) =>
             lastLinesOf(await readFile(spec.logFile, 'utf8'), lines),

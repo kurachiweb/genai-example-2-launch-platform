@@ -396,6 +396,36 @@ describe('createCommandRunner().start', () => {
     SPAWN_TIMEOUT_MS,
   );
 
+  test('子プロセスが自ら終了すると、終了の待ちがその終了コードで解決する', async () => {
+    const { runner } = createRunner();
+    const logFile = join(await createTempDir(), 'crashed.log');
+
+    const running = runner.start({
+      command: BUN,
+      args: script('setTimeout(() => process.exit(7), 100)'),
+      output: 'inherit',
+      logFile,
+    });
+
+    expect(await running.exited).toBe(7);
+    await running.stop();
+  });
+
+  test('停止で終了した子プロセスも、終了の待ちが解決する', async () => {
+    const { runner } = createRunner();
+    const logFile = join(await createTempDir(), 'stopped.log');
+
+    const running = runner.start({
+      command: BUN,
+      args: script('setInterval(() => {}, 1000)'),
+      output: 'inherit',
+      logFile,
+    });
+    await running.stop();
+
+    expect(await running.exited).toBe(143);
+  });
+
   test('ログのディレクトリが無ければ作ってから書く', async () => {
     const { runner } = createRunner();
     const logFile = join(await createTempDir(), 'nested', 'logs', 'svc.log');

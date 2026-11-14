@@ -39,6 +39,16 @@ const EVENT_URL = 'http://127.0.0.1:48043/health';
 
 type StartSpec = CommandSpec & { readonly logFile: string };
 
+const SIGTERM_EXIT_CODE = 143;
+const SETTLE_ATTEMPTS = 100;
+
+interface StackControls {
+  readonly crash: (line: string, code: number) => void;
+  readonly settleUntil: (
+    predicate: (timeline: readonly string[]) => boolean,
+  ) => Promise<void>;
+}
+
 interface StackOptions {
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly exitCodeOf?: (spec: CommandSpec) => number;
@@ -47,7 +57,11 @@ interface StackOptions {
   readonly stopError?: (line: string) => Error | undefined;
   readonly reachable?: (url: string) => boolean;
   readonly tailOf?: (line: string) => string | Error;
+  readonly duringTests?: (controls: StackControls) => Promise<void>;
 }
+
+const countOf = (timeline: readonly string[], entry: string): number =>
+  timeline.filter((item) => item === entry).length;
 
 const createStack = ({
   env = { RUNNER_TEMP, MAILPIT_BIN },
@@ -57,23 +71,36 @@ const createStack = ({
   stopError = () => undefined,
   reachable = () => true,
   tailOf = (line) => `tail of ${line}\n`,
+  duringTests = () => Promise.resolve(),
 }: StackOptions = {}) => {
   const timeline: string[] = [];
   const runs: CommandSpec[] = [];
   const starts: StartSpec[] = [];
   const waits: { url: string; timeoutMs: number; expectStatus: unknown }[] = [];
   const tailRequests: number[] = [];
+  const exitOf = new Map<string, (code: number) => void>();
+  const controls: StackControls = {
+    crash: (line, code) => {
+      timeline.push(`crash:${line}`);
+      exitOf.get(line)?.(code);
+    },
+    settleUntil: async (predicate) => {
+      for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
+        if (predicate(timeline)) return;
+        await Bun.sleep(0);
+      }
+      throw new Error(`想定の順序になりませんでした: ${timeline.join(' | ')}`);
+    },
+  };
   const runner: CommandRunner = {
-    run: (spec) => {
+    run: async (spec) => {
       runs.push(spec);
-      timeline.push(`run:${commandLineOf(spec)}`);
+      const line = commandLineOf(spec);
+      timeline.push(`run:${line}`);
       const error = runError(spec);
-      if (error !== undefined) return Promise.reject(error);
-      return Promise.resolve({
-        code: exitCodeOf(spec),
-        stdout: '',
-        stderr: '',
-      });
+      if (error !== undefined) throw error;
+      if (line === TEST_LINE) await duringTests(controls);
+      return { code: exitCodeOf(spec), stdout: '', stderr: '' };
     },
     start: (spec) => {
       const line = commandLineOf(spec);
@@ -81,11 +108,16 @@ const createStack = ({
       const error = startError(spec);
       if (error !== undefined) throw error;
       starts.push(spec);
+      const { promise: exited, resolve: exit } =
+        Promise.withResolvers<number>();
+      exitOf.set(line, exit);
       const running: RunningProcess = {
         name: line,
+        exited,
         stop: () => {
           timeline.push(`stop:${line}`);
           const failure = stopError(line);
+          exit(SIGTERM_EXIT_CODE);
           return failure === undefined
             ? Promise.resolve()
             : Promise.reject(failure);
@@ -447,6 +479,203 @@ describe('e2e-stack', () => {
     expect(message).toContain('`--`の後に');
     expect(separatorOnly).toContain('`--`の後に');
     expect(stack.timeline()).toEqual([]);
+  });
+
+  describe('テストの実行中に止まったサービスの再起動', () => {
+    const restartedTimes = (timeline: readonly string[]): number =>
+      countOf(timeline, `start:${EVENT_LINE}`) - 1;
+
+    test('止まったサービスは名前・終了コード・ログの末尾を表示し、残ったプロセスを止めてから起動し直して応答を待ち、テストの終了コードを返す', async () => {
+      const stack = createStack({
+        tailOf: (line) =>
+          line === EVENT_LINE ? 'event-log-1\nevent-log-2\n' : '',
+        duringTests: async ({ crash, settleUntil }) => {
+          crash(EVENT_LINE, 1);
+          await settleUntil(
+            (timeline) => countOf(timeline, `wait:${EVENT_URL}`) === 2,
+          );
+        },
+      });
+
+      const code = await command.run(ARGS, stack.deps);
+
+      expect(code).toBe(EXIT_SUCCESS);
+      expect(
+        stack.timeline().slice(stack.timeline().indexOf(`run:${TEST_LINE}`)),
+      ).toEqual([
+        `run:${TEST_LINE}`,
+        `crash:${EVENT_LINE}`,
+        `stop:${EVENT_LINE}`,
+        `start:${EVENT_LINE}`,
+        `wait:${EVENT_URL}`,
+        `stop:${MAILPIT_LINE}`,
+        `stop:${API_LINE}`,
+        `stop:${EVENT_LINE}`,
+      ]);
+      expect(stack.stderr.text()).toBe(
+        [
+          'e2e-stack: eventが終了コード1で止まりました。ログ(/runner-temp/e2e-logs/event.log)の末尾50行:',
+          'event-log-1',
+          'event-log-2',
+          'e2e-stack: eventを起動し直します(1/3回目)。',
+          'e2e-stack: eventを起動し直しました。',
+          '',
+        ].join('\n'),
+      );
+    });
+
+    test('起動し直す時も設計の作業ディレクトリとログで起動する', async () => {
+      const stack = createStack({
+        duringTests: async ({ crash, settleUntil }) => {
+          crash(API_LINE, 1);
+          await settleUntil(
+            (timeline) => countOf(timeline, `wait:${API_URL}`) === 2,
+          );
+        },
+      });
+
+      await command.run(ARGS, stack.deps);
+
+      const restarted = stack.starts().at(-1);
+      expect(restarted?.cwd).toBe('/repo/apps/api');
+      expect(restarted?.logFile).toBe('/runner-temp/e2e-logs/api.log');
+    });
+
+    test('終了の時に止めたサービスは起動し直さない', async () => {
+      const stack = createStack();
+
+      await command.run(ARGS, stack.deps);
+
+      expect(stack.starts()).toHaveLength(3);
+      expect(stack.stderr.text()).toBe('');
+    });
+
+    test('上限の3回まで起動し直し、それを超えて止まったら起動し直さずにテストの終了を待つ', async () => {
+      const stack = createStack({
+        exitCodeOf: (spec) => (commandLineOf(spec) === TEST_LINE ? 1 : 0),
+        duringTests: async ({ crash, settleUntil }) => {
+          for (let restart = 1; restart <= 3; restart += 1) {
+            crash(EVENT_LINE, 1);
+            await settleUntil(
+              (timeline) =>
+                countOf(timeline, `wait:${EVENT_URL}`) === restart + 1,
+            );
+          }
+          crash(EVENT_LINE, 1);
+          await settleUntil(() => stack.stderr.text().includes('上限'));
+        },
+      });
+
+      const code = await command.run(ARGS, stack.deps);
+
+      expect(code).toBe(1);
+      expect(restartedTimes(stack.timeline())).toBe(3);
+      expect(stack.stderr.text()).toContain(
+        'e2e-stack: eventは起動し直す上限(3回)に達したため、起動し直しません。\n',
+      );
+    });
+
+    test('起動し直したサービスが応答しなければ、その名前とログの末尾を表示し、それ以上は起動し直さない', async () => {
+      let restarted = false;
+      const stack = createStack({
+        reachable: (url) => url !== EVENT_URL || !restarted,
+        duringTests: async ({ crash, settleUntil }) => {
+          restarted = true;
+          crash(EVENT_LINE, 1);
+          await settleUntil(
+            (timeline) => countOf(timeline, `wait:${EVENT_URL}`) === 2,
+          );
+          await settleUntil(() =>
+            stack.stderr.text().includes('起動し直せませんでした'),
+          );
+          crash(EVENT_LINE, 1);
+        },
+      });
+
+      const code = await command.run(ARGS, stack.deps);
+
+      expect(code).toBe(EXIT_SUCCESS);
+      expect(restartedTimes(stack.timeline())).toBe(1);
+      expect(stack.stderr.text()).toContain(
+        [
+          'e2e-stack: eventを起動し直せませんでした。',
+          'eventが起動しませんでした(http://127.0.0.1:48043/healthが3分以内に200を返しませんでした)。ログ(/runner-temp/e2e-logs/event.log)の末尾50行:',
+        ].join('\n'),
+      );
+    });
+
+    test('止まったサービスの残ったプロセスを止められなくても、表示して起動し直す', async () => {
+      let crashed = false;
+      const stack = createStack({
+        stopError: (line) =>
+          line === EVENT_LINE && crashed ? new Error('kill failed') : undefined,
+        duringTests: async ({ crash, settleUntil }) => {
+          crashed = true;
+          crash(EVENT_LINE, 1);
+          await settleUntil(
+            (timeline) => countOf(timeline, `wait:${EVENT_URL}`) === 2,
+          );
+          crashed = false;
+        },
+      });
+
+      await command.run(ARGS, stack.deps);
+
+      expect(restartedTimes(stack.timeline())).toBe(1);
+      expect(stack.stderr.text()).toContain(
+        'e2e-stack: eventを止められませんでした: kill failed\n',
+      );
+    });
+
+    test('起動し直す途中で例外が出ても、その理由を表示してテストの終了を待ち、すべてのサービスを止める', async () => {
+      let restarted = false;
+      const stack = createStack({
+        reachable: (url) => {
+          if (url === EVENT_URL && restarted) throw new Error('probe failed');
+          return true;
+        },
+        duringTests: async ({ crash, settleUntil }) => {
+          restarted = true;
+          crash(EVENT_LINE, 1);
+          await settleUntil(() =>
+            stack.stderr.text().includes('起動し直せませんでした'),
+          );
+        },
+      });
+
+      const code = await command.run(ARGS, stack.deps);
+
+      expect(code).toBe(EXIT_SUCCESS);
+      expect(stack.stderr.text()).toContain(
+        'e2e-stack: eventを起動し直せませんでした: probe failed\n',
+      );
+      expect(stack.timeline().slice(-3)).toEqual([
+        `stop:${MAILPIT_LINE}`,
+        `stop:${API_LINE}`,
+        `stop:${EVENT_LINE}`,
+      ]);
+    });
+
+    test('起動し直している途中でテストが終わったら、起動し直し終えてからすべてのサービスを止める', async () => {
+      const stack = createStack({
+        duringTests: async ({ crash, settleUntil }) => {
+          crash(EVENT_LINE, 1);
+          await settleUntil((timeline) =>
+            timeline.includes(`stop:${EVENT_LINE}`),
+          );
+        },
+      });
+
+      await command.run(ARGS, stack.deps);
+
+      expect(stack.timeline().slice(-5)).toEqual([
+        `start:${EVENT_LINE}`,
+        `wait:${EVENT_URL}`,
+        `stop:${MAILPIT_LINE}`,
+        `stop:${API_LINE}`,
+        `stop:${EVENT_LINE}`,
+      ]);
+    });
   });
 
   test('オプションは受け取らない', async () => {

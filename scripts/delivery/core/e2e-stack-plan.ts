@@ -47,6 +47,7 @@ const ROOT_DIR = '.';
 export const LOCAL_STATE_DIR = '/workspace/.wrangler/state';
 export const E2E_STACK_WAIT_TIMEOUT_MS = 180_000;
 export const E2E_STACK_LOG_TAIL_LINES = 50;
+export const E2E_STACK_MAX_RESTARTS = 3;
 
 const E2E_LOG_DIR_NAME = 'e2e-logs';
 const SECRETS_SCOPE = 'checks';
@@ -146,13 +147,31 @@ export const waitFailureReason = ({
     ? `${url}が${WAIT_MINUTES}分以内に応答しませんでした`
     : `${url}が${WAIT_MINUTES}分以内に${String(expectStatus)}を返しませんでした`;
 
+const logTailBodyOf = (tail: string): string =>
+  tail === '' ? EMPTY_LOG : tail.replace(/\n$/u, '');
+
 export function stackStartErrorReport(
   errors: readonly StackStartError[],
 ): string {
   return errors
     .map(({ service, reason, logFile, tail }) => {
-      const body = tail === '' ? EMPTY_LOG : tail.replace(/\n$/u, '');
-      return `${service}が起動しませんでした(${reason})。ログ(${logFile})の末尾${String(E2E_STACK_LOG_TAIL_LINES)}行:\n${body}\n`;
+      return `${service}が起動しませんでした(${reason})。ログ(${logFile})の末尾${String(E2E_STACK_LOG_TAIL_LINES)}行:\n${logTailBodyOf(tail)}\n`;
     })
     .join('');
+}
+
+export interface ServiceExit {
+  readonly service: E2eStackServiceName;
+  readonly code: number;
+  readonly logFile: string;
+  readonly tail: string;
+}
+
+export function serviceExitReport({
+  service,
+  code,
+  logFile,
+  tail,
+}: ServiceExit): string {
+  return `${service}が終了コード${String(code)}で止まりました。ログ(${logFile})の末尾${String(E2E_STACK_LOG_TAIL_LINES)}行:\n${logTailBodyOf(tail)}\n`;
 }
