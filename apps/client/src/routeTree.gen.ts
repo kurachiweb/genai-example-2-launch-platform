@@ -14,6 +14,7 @@ import { Route as AtChar123handleChar125RouteImport } from './routes/@{$handle}'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
@@ -70,6 +71,11 @@ const ContactRoute = ContactRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsRouteRoute =
@@ -263,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/@{$handle}': typeof AtChar123handleChar125Route
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -302,6 +309,7 @@ export interface FileRoutesByTo {
   '/@{$handle}': typeof AtChar123handleChar125Route
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/@{$handle}': typeof AtChar123handleChar125Route
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -383,6 +392,7 @@ export interface FileRouteTypes {
     | '/@{$handle}'
     | '/contact'
     | '/pricing'
+    | '/unsubscribe'
     | '/settings'
     | '/auth/login'
     | '/auth/register'
@@ -422,6 +432,7 @@ export interface FileRouteTypes {
     | '/@{$handle}'
     | '/contact'
     | '/pricing'
+    | '/unsubscribe'
     | '/auth/login'
     | '/auth/register'
     | '/auth/verify-email'
@@ -461,6 +472,7 @@ export interface FileRouteTypes {
     | '/@{$handle}'
     | '/contact'
     | '/pricing'
+    | '/unsubscribe'
     | '/_authenticated/settings'
     | '/auth/login'
     | '/auth/register'
@@ -502,6 +514,7 @@ export interface RootRouteChildren {
   AtChar123handleChar125Route: typeof AtChar123handleChar125Route
   ContactRoute: typeof ContactRoute
   PricingRoute: typeof PricingRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
@@ -557,6 +570,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings': {
@@ -852,6 +872,7 @@ const rootRouteChildren: RootRouteChildren = {
   AtChar123handleChar125Route: AtChar123handleChar125Route,
   ContactRoute: ContactRoute,
   PricingRoute: PricingRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   AuthVerifyEmailRoute: AuthVerifyEmailRoute,
