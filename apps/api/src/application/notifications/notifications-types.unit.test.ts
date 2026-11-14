@@ -6,6 +6,8 @@ import { NOTIFICATIONS_TYPES } from './notifications-types.ts';
 const EXPECTED_NAMES = [
   'DeliveryStatusReader',
   'NotificationSettingsService',
+  'SenderInfoService',
+  'SenderInfoWriter',
   'UnsubscribeService',
 ] as const;
 

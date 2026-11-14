@@ -5,6 +5,8 @@ import { eq } from 'drizzle-orm';
 import type { Container } from 'inversify';
 import { afterAll, beforeEach, describe, expect, test } from 'vitest';
 
+import { NOTIFICATION_SENDER_UPDATE_ACTION } from '../../common-lib/admin/audit-actions/notifications.ts';
+import { adminAuditLogs } from '../../db/schema/admin/admin-audit-logs.ts';
 import { emailSuppressions } from '../../db/schema/email/email-suppressions.ts';
 import { notificationPreferences } from '../../db/schema/notifications/notification-preferences.ts';
 import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
@@ -23,6 +25,7 @@ import {
   db,
   insertRecipient,
   recipientIdOf,
+  restoreSenderInfoSeed,
   T0,
 } from '../../lib/workers/notifications/testing/notification-store-fixtures.ts';
 import {
@@ -32,9 +35,18 @@ import {
 import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
 import type { DeliveryStatusReader } from '../application/notifications/ports.ts';
 import {
+  type SenderInfoService,
+  StoreSenderInfoService,
+} from '../application/notifications/sender-info-service.ts';
+import {
   TokenUnsubscribeService,
   type UnsubscribeService,
 } from '../application/notifications/unsubscribe-service.ts';
+import {
+  adminIdOf,
+  clearAdminTables,
+} from '../infrastructure/admin/testing/admin-store-fixtures.ts';
+import { D1SenderInfoWriter } from '../infrastructure/notifications/d1-sender-info-writer.ts';
 import { SuppressionDeliveryStatusReader } from '../infrastructure/notifications/delivery-status-reader.ts';
 import { MODULES } from './modules.ts';
 
@@ -75,6 +87,8 @@ const currentUserOf = (index: number): CurrentUser => ({
 beforeEach(async () => {
   await db.delete(emailSuppressions);
   await clearNotificationTables();
+  await clearAdminTables();
+  await restoreSenderInfoSeed();
 });
 
 afterAll(() => {
@@ -106,6 +120,16 @@ describe('APIサーバーの通知の束縛', () => {
       'UnsubscribeService',
       NOTIFICATIONS_TYPES.UnsubscribeService,
       TokenUnsubscribeService,
+    ],
+    [
+      'SenderInfoService',
+      NOTIFICATIONS_TYPES.SenderInfoService,
+      StoreSenderInfoService,
+    ],
+    [
+      'SenderInfoWriter',
+      NOTIFICATIONS_TYPES.SenderInfoWriter,
+      D1SenderInfoWriter,
     ],
   ] as const)(
     '処理単位のコンテナから%sを解決する',
@@ -217,5 +241,58 @@ describe('APIサーバーの通知の束縛', () => {
       ]),
     );
     await expect(service.inspect(`${token}x`)).resolves.toBeNull();
+  });
+
+  test('束縛から取り出した送信者情報のユースケースが、シードの行へ保存して監査ログを残し、同じ版からの2回目の保存を版の競合で拒否する', async () => {
+    const service = createContainer().get<SenderInfoService>(
+      NOTIFICATIONS_TYPES.SenderInfoService,
+    );
+    const info = {
+      businessName: 'ローンチ運営事務局',
+      contactEmail: 'support@launch.example',
+      postalAddress: '東京都千代田区1-1-1',
+    };
+
+    await expect(
+      service.update({
+        adminId: adminIdOf(1),
+        info,
+        expectedVersion: 0,
+        reason: undefined,
+        now: NOW,
+      }),
+    ).resolves.toEqual({
+      kind: 'saved',
+      view: {
+        info,
+        version: 1,
+        updatedAt: NOW,
+        updatedByAdminId: adminIdOf(1),
+      },
+    });
+    await expect(
+      service.update({
+        adminId: adminIdOf(2),
+        info,
+        expectedVersion: 0,
+        reason: undefined,
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: 'version_conflict' });
+    await expect(
+      db
+        .select({
+          operatorAdminId: adminAuditLogs.operatorAdminId,
+          action: adminAuditLogs.action,
+          detail: adminAuditLogs.detail,
+        })
+        .from(adminAuditLogs),
+    ).resolves.toEqual([
+      {
+        operatorAdminId: adminIdOf(1),
+        action: NOTIFICATION_SENDER_UPDATE_ACTION.name,
+        detail: { fields: 'businessName,contactEmail,postalAddress' },
+      },
+    ]);
   });
 });

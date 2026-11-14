@@ -11,6 +11,7 @@ describe('notificationsError', () => {
   test.each([
     ['account_unavailable', 'forbidden', 403],
     ['invalid_link', 'unprocessable', 422],
+    ['version_conflict', 'conflict', 409],
   ] as const)('%sは%s(%i)のAppErrorになる', (code, kind, status) => {
     const error = notificationsError(code);
 
@@ -27,4 +28,10 @@ describe('notificationsError', () => {
       expect(NOTIFICATIONS_ERRORS[code]).toBe(IDENTITY_ERRORS[code]);
     },
   );
+
+  test('version_conflictは他の管理者の先の変更を伝え、最新の内容の読み直しを案内する', () => {
+    expect(notificationsError('version_conflict').message).toBe(
+      '他の管理者が設定を変更しました。最新の内容を読み込んでから操作してください。',
+    );
+  });
 });
