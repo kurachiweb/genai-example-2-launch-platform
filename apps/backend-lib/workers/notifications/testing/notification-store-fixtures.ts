@@ -125,14 +125,18 @@ export async function restoreSenderInfoSeed(): Promise<void> {
   await db.insert(notificationSenderSettings).values(SENDER_INFO_SEED_ROW);
 }
 
-// 送信者情報の初期行はマイグレーションが入れるため消さない
-export async function clearNotificationTables(): Promise<void> {
+// 送信者情報の初期行はマイグレーションが入れるため消さない。利用者を参照する他の機能の行を先に消すテストのため、利用者の表は残す
+export async function clearNotificationRows(): Promise<void> {
   await db.delete(notificationNotices);
   await db.delete(notificationSlotReadyMarks);
   await db.delete(notificationSlots);
   await db.delete(notificationEvents);
   await db.delete(notificationUnsubscribeTokens);
   await db.delete(notificationPreferences);
+}
+
+export async function clearNotificationTables(): Promise<void> {
+  await clearNotificationRows();
   await clearIdentityTables();
 }
 
@@ -163,4 +167,11 @@ export async function readNoticeRows() {
     .select()
     .from(notificationNotices)
     .orderBy(asc(notificationNotices.id));
+}
+
+export async function readEventRows() {
+  return db
+    .select()
+    .from(notificationEvents)
+    .orderBy(asc(notificationEvents.id));
 }
