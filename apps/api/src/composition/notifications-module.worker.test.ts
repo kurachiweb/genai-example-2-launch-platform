@@ -10,16 +10,26 @@ import { adminAuditLogs } from '../../db/schema/admin/admin-audit-logs.ts';
 import { emailSuppressions } from '../../db/schema/email/email-suppressions.ts';
 import { notificationPreferences } from '../../db/schema/notifications/notification-preferences.ts';
 import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
+import { LifecycleRegistrationError } from '../../lib/core/identity/user-lifecycle.ts';
 import { EMAIL_TYPES } from '../../lib/core/email/identifiers.ts';
 import type { SuppressionRecorder } from '../../lib/core/email/ports.ts';
 import type { CurrentUser } from '../../lib/core/identity/account-guard.ts';
+import { FLUSH_NOTIFICATION_SLOT_MESSAGE } from '../../lib/core/messaging/contracts/notifications.ts';
+import type { QueueEnvelope } from '../../lib/core/messaging/envelope.ts';
+import type {
+  EveningDispatchGate,
+  EveningSlotOpener,
+} from '../../lib/core/notifications/evening-dispatch.ts';
 import { NOTIFICATIONS_PLATFORM_TYPES } from '../../lib/core/notifications/identifiers.ts';
+import { eveningSlot } from '../../lib/core/notifications/notification-slots.ts';
 import { unsubscribeTokenKey } from '../../lib/core/notifications/notice-email.ts';
 import type {
   NotificationPreferenceStore,
   UnsubscribeTokenService,
 } from '../../lib/core/notifications/ports.ts';
+import { parseBusinessDate } from '../../lib/core/time/business-time.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { D1EveningDispatchGate } from '../../lib/workers/notifications/d1-evening-dispatch-gate.ts';
 import {
   clearNotificationTables,
   db,
@@ -50,16 +60,19 @@ import { AccountWithdrawalSyncHandler } from '../infrastructure/notifications/ac
 import { D1NotificationMaintenanceStore } from '../infrastructure/notifications/d1-notification-maintenance-store.ts';
 import { D1SenderInfoWriter } from '../infrastructure/notifications/d1-sender-info-writer.ts';
 import { SuppressionDeliveryStatusReader } from '../infrastructure/notifications/delivery-status-reader.ts';
+import { EVENING_DISPATCH_PARTICIPANTS } from './evening-dispatch-participants.ts';
 import { MODULES } from './modules.ts';
+import { createNotificationsModule } from './notifications-module.ts';
 
 const NOW = new Date('2026-11-20T03:00:00.000Z');
 
 function createContainer(
   kind: InvocationScopeInfo['kind'] = 'fetch',
+  jobsQueue: Queue = env.JOBS_QUEUE,
 ): Container {
   return createInvocationContainer(
     {
-      env,
+      env: { ...env, JOBS_QUEUE: jobsQueue },
       executionCtx: createExecutionContext(),
       info: { kind, correlationId: crypto.randomUUID(), clientIp: undefined },
     },
@@ -96,6 +109,24 @@ beforeEach(async () => {
 afterAll(() => {
   resetSync();
 });
+
+function createRecordingQueue(): {
+  readonly queue: Queue;
+  readonly sent: { body: unknown; options: QueueSendOptions | undefined }[];
+} {
+  const sent: { body: unknown; options: QueueSendOptions | undefined }[] = [];
+  const queue: Queue = {
+    metrics: () => Promise.reject(new Error('テストでは使わない')),
+    send: (body, options) => {
+      sent.push({ body, options });
+      return Promise.resolve({
+        metadata: { metrics: { backlogCount: sent.length, backlogBytes: 0 } },
+      });
+    },
+    sendBatch: () => Promise.reject(new Error('テストでは使わない')),
+  };
+  return { queue, sent };
+}
 
 describe('APIサーバーの通知の束縛', () => {
   test('モジュールの一覧に通知のモジュールを1つだけ持ち、通知の共通の束縛の後に置く', () => {
@@ -149,6 +180,79 @@ describe('APIサーバーの通知の束縛', () => {
       expect(createContainer().get(identifier)).toBeInstanceOf(implementation);
     },
   );
+
+  test.each(['fetch', 'scheduled'] as const)(
+    '%sの処理単位のコンテナから夜の枠の送り出しの入口と枠を開く部品と前提の一覧を解決する',
+    (kind) => {
+      const container = createContainer(kind);
+
+      expect(
+        container.get(NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate),
+      ).toBeInstanceOf(D1EveningDispatchGate);
+      expect(
+        container.get(NOTIFICATIONS_PLATFORM_TYPES.EveningSlotOpener),
+      ).toBeInstanceOf(D1EveningDispatchGate);
+      expect(
+        container.get(NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchParticipants),
+      ).toStrictEqual(EVENING_DISPATCH_PARTICIPANTS);
+    },
+  );
+
+  test('前提の登録の形式違反と重複は、モジュールを作る時点で拒否する', () => {
+    expect(() =>
+      createNotificationsModule(['tournament_week.evening-bracket']),
+    ).toThrow(LifecycleRegistrationError);
+    expect(() =>
+      createNotificationsModule([
+        'tournament-week.evening-bracket',
+        'tournament-week.evening-bracket',
+      ]),
+    ).toThrow(LifecycleRegistrationError);
+    expect(() =>
+      createNotificationsModule(['tournament-week.evening-bracket']),
+    ).not.toThrow();
+  });
+
+  test('束縛から取り出した部品が、前提の無い登録口で夜の枠を開くと期限と直ちの送り出しを処理単位のQueueへ送り、入口は登録の無い名前を拒否する', async () => {
+    const { queue, sent } = createRecordingQueue();
+    const container = createContainer('scheduled', queue);
+    const date = parseBusinessDate('2026-11-20');
+    const slot = eveningSlot(date);
+
+    await expect(
+      container
+        .get<EveningSlotOpener>(NOTIFICATIONS_PLATFORM_TYPES.EveningSlotOpener)
+        .open(date, slot.dueAt),
+    ).resolves.toEqual({ requested: true });
+    await expect(
+      container
+        .get<EveningDispatchGate>(
+          NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate,
+        )
+        .markReady({
+          participant: 'tournament-week.evening-bracket',
+          date,
+          at: slot.dueAt,
+        }),
+    ).rejects.toMatchObject({ reason: 'unknown-participant' });
+
+    expect(sent).toEqual([
+      {
+        body: expect.objectContaining({
+          type: FLUSH_NOTIFICATION_SLOT_MESSAGE.type,
+          body: { slotKey: slot.key },
+        }) as QueueEnvelope,
+        options: { delaySeconds: 600 },
+      },
+      {
+        body: expect.objectContaining({
+          type: FLUSH_NOTIFICATION_SLOT_MESSAGE.type,
+          body: { slotKey: slot.key },
+        }) as QueueEnvelope,
+        options: { delaySeconds: 0 },
+      },
+    ]);
+  });
 
   test('定期実行の処理単位のコンテナも通知の束縛を含めて組み立てられる', () => {
     expect(
