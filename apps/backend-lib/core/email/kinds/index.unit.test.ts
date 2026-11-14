@@ -6,6 +6,7 @@ import { EMAIL_DELIVERY_SMOKE_KIND } from './email-delivery-smoke.ts';
 import { IDENTITY_EMAIL_KINDS } from './identity.ts';
 import { EMAIL_KINDS } from './index.ts';
 import { INQUIRY_REPLY_NOTIFICATION_KIND } from './inquiry.ts';
+import { NOTIFICATION_EMAIL_KINDS } from './notifications.ts';
 import { PAYMENTS_EMAIL_KINDS } from './payments.ts';
 import { ULTRAS_EMAIL_KINDS } from './ultras.ts';
 
@@ -85,6 +86,28 @@ describe('EMAIL_KINDS', () => {
       'ultras.payment-failed',
       'ultras.cancellation-accepted',
     ]);
+  });
+
+  test.each(NOTIFICATION_EMAIL_KINDS.map((kind) => [kind.name, kind] as const))(
+    '通知メールの種別%sを通知メールとして名前で引ける',
+    (name, kind) => {
+      const registry = createEmailKindRegistry(EMAIL_KINDS);
+
+      expect(registry.get(name)).toBe(kind);
+      expect(registry.get(name)?.category).toBe('notification');
+    },
+  );
+
+  test('通知メールの種別は開始予告・勝敗結果・開催通知・受賞結果の4種で、すべて集約点に載る', () => {
+    expect(NOTIFICATION_EMAIL_KINDS.map((kind) => kind.name)).toEqual([
+      'notifications.match-preview',
+      'notifications.match-result',
+      'notifications.followed-user-matches',
+      'notifications.followed-user-award',
+    ]);
+    expect(
+      EMAIL_KINDS.filter((kind) => kind.category === 'notification'),
+    ).toEqual([...NOTIFICATION_EMAIL_KINDS]);
   });
 
   test('集約点は凍結されていて実行時に種別を追加できない', () => {

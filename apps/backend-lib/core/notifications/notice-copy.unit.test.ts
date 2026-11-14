@@ -9,10 +9,12 @@ import type {
   MatchStage,
 } from '../match/match-model.ts';
 import {
+  awardName,
   awardPeriodLabel,
   awardSubject,
   COMBINED_UNSUBSCRIBE_LABELS,
   followedMatchesSubject,
+  formatCount,
   matchLabel,
   matchPreviewSubject,
   matchResultSubject,
@@ -261,6 +263,29 @@ describe('件名', () => {
   ] as const)('開催通知の件名は%sと例外を投げる', (_, names, count) => {
     expect(() => followedMatchesSubject(names, count)).toThrow(RangeError);
   });
+});
+
+describe('formatCount', () => {
+  test('件数を表記規則の数値の例のとおり3桁ごとに区切る', () => {
+    expect(formatCount(1234)).toBe(NOTATION_TABLE.get('数値')?.[1] ?? '');
+    expect(formatCount(0)).toBe('0');
+    expect(formatCount(999)).toBe('999');
+    expect(formatCount(1_234_567)).toBe('1,234,567');
+  });
+});
+
+describe('awardName', () => {
+  test.each([
+    ['product_of_the_week', 'Product of the Week'],
+    ['product_of_the_year', 'Product of the Year'],
+  ] as const)(
+    '%sの賞の名前は英語の固有名詞の表記のまま%sと示す',
+    (award, expected) => {
+      expect(awardName(award)).toBe(expected);
+      expect(EMAIL_BODY_SECTION).toContain(expected);
+      expect(awardSubject('Pitch Notes', award)).toContain(expected);
+    },
+  );
 });
 
 describe('matchScore', () => {

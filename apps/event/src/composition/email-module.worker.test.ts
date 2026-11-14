@@ -28,6 +28,12 @@ import {
   SAMPLE_RECIPIENT,
 } from '../../lib/core/email/delivery-event.fixtures.ts';
 import { EMAIL_DELIVERY_SMOKE_KIND } from '../../lib/core/email/kinds/email-delivery-smoke.ts';
+import {
+  NOTIFICATION_FOLLOWED_USER_AWARD_KIND,
+  NOTIFICATION_FOLLOWED_USER_MATCHES_KIND,
+  NOTIFICATION_MATCH_PREVIEW_KIND,
+  NOTIFICATION_MATCH_RESULT_KIND,
+} from '../../lib/core/email/kinds/notifications.ts';
 import { EMAIL_SEND_MESSAGE } from '../../lib/core/email/send-message.ts';
 import type { QueueEnvelope } from '../../lib/core/messaging/envelope.ts';
 import { decideOnFailure } from '../../lib/core/messaging/retry-policy.ts';
@@ -302,6 +308,11 @@ describe('イベントサーバーのメールへの送信者情報の表示', (
     postalAddress: '大阪府大阪市北区2-2-2',
   } as const;
 
+  const NOTICE_LINKS = {
+    settingsUrl: 'https://client.example/settings/notifications',
+    unsubscribeUrl: 'https://client.example/unsubscribe#token=0123456789abcdef',
+  } as const;
+
   const SENDER_INFO_VALUES = [
     ...Object.values(SENDER_INFO),
     ...Object.values(UPDATED_SENDER_INFO),
@@ -325,6 +336,84 @@ describe('イベントサーバーのメールへの送信者情報の表示', (
           nickname: '山田',
           verifyUrl: 'https://client.example/verify-email#token=abc',
           expiresAt: REQUESTED_AT,
+        },
+      }),
+    },
+    {
+      label: 'マッチ開始予告の通知',
+      body: (to: string) => ({
+        kind: NOTIFICATION_MATCH_PREVIEW_KIND.name,
+        to,
+        input: {
+          ...NOTICE_LINKS,
+          nickname: '山田',
+          ownProductName: 'Pitch Notes',
+          opponentProductName: 'Tactics Board',
+          matchLabel: '予選',
+          startsAt: REQUESTED_AT,
+          endsAt: REQUESTED_AT,
+          topPageUrl: 'https://client.example/',
+        },
+      }),
+    },
+    {
+      label: '勝敗結果の通知',
+      body: (to: string) => ({
+        kind: NOTIFICATION_MATCH_RESULT_KIND.name,
+        to,
+        input: {
+          ...NOTICE_LINKS,
+          nickname: '山田',
+          ownProductName: 'Pitch Notes',
+          opponentProductName: 'Tactics Board',
+          matchLabel: '予選',
+          outcome: 'won',
+          decidedByLastUpvote: false,
+          ownVotes: 12,
+          opponentVotes: 9,
+          supplements: [],
+          action: {
+            label: '自分のプロダクトを見る',
+            url: 'https://client.example/my/products',
+          },
+          next: null,
+        },
+      }),
+    },
+    {
+      label: 'フォロー中の利用者のマッチの開催通知',
+      body: (to: string) => ({
+        kind: NOTIFICATION_FOLLOWED_USER_MATCHES_KIND.name,
+        to,
+        input: {
+          ...NOTICE_LINKS,
+          nickname: '山田',
+          items: [
+            {
+              productName: 'Pitch Notes',
+              makerNickname: '佐藤',
+              matchLabel: '予選',
+              opponentProductName: 'Tactics Board',
+            },
+          ],
+          omittedCount: 0,
+          topPageUrl: 'https://client.example/',
+        },
+      }),
+    },
+    {
+      label: 'フォロー中の利用者の受賞結果の通知',
+      body: (to: string) => ({
+        kind: NOTIFICATION_FOLLOWED_USER_AWARD_KIND.name,
+        to,
+        input: {
+          ...NOTICE_LINKS,
+          nickname: '山田',
+          productName: 'Pitch Notes',
+          makerNickname: '佐藤',
+          award: 'product_of_the_week',
+          periodLabel: '2026年第37週(9/7〜9/13)',
+          productUrl: 'https://client.example/p/pitch-notes',
         },
       }),
     },

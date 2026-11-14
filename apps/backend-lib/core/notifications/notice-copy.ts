@@ -75,7 +75,9 @@ const ISO_DATE_LENGTH = 10;
 
 const countFormat = new Intl.NumberFormat('ja-JP');
 
-const formatCount = (value: number): string => countFormat.format(value);
+export function formatCount(value: number): string {
+  return countFormat.format(value);
+}
 
 export function resultOutcomeOf(
   result: EntryResult,
@@ -175,8 +177,12 @@ export function followedMatchesSubject(
   return `${productName}${KICKOFF_CHEER}`;
 }
 
+export function awardName(award: AwardKind): string {
+  return AWARD_NAMES[award];
+}
+
 export function awardSubject(productName: string, award: AwardKind): string {
-  return `${productName}が${AWARD_NAMES[award]}を受賞`;
+  return `${productName}が${awardName(award)}を受賞`;
 }
 
 const monthDayOf = (date: string): string => {
