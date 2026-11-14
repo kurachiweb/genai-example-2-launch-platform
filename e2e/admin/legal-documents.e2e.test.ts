@@ -47,6 +47,7 @@ import {
   openFromAdminNavigation,
   signInAsNewAdmin,
 } from '../support/admin-bootstrap.ts';
+import { waitForToastDismissed } from '../support/toast.ts';
 import { expect, test } from './admin-test.ts';
 
 test.describe.configure({ timeout: ADMIN_FLOW_TIMEOUT_MS });
@@ -106,9 +107,12 @@ async function openTermsEditor(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
-// 入力欄は読み込みの後に編集できるようになり、値はフォーカスを外した時に確定するため、書式のツールが押せるようになってから入力し、保存のボタンの押下で確定させる
+// 入力欄は読み込みの後に編集できるようになり、値はフォーカスを外した時に確定するため、書式のツールが押せるようになってから入力し、保存のボタンの押下で確定させる。
+// 続けて保存する時に前の保存のトーストが残っていると同じ文言が2つ並ぶため、消えてから保存する
 async function saveDraft(page: Page, body: string): Promise<void> {
   const main = editorMain(page);
+  const savedToast = page.getByText(DRAFT_SAVED_MESSAGE);
+  await waitForToastDismissed(page, savedToast);
   const editable = main.getByRole('textbox', { name: LEGAL_BODY_LABEL });
   await expect(editable).toBeVisible();
   await expect(
@@ -125,10 +129,11 @@ async function saveDraft(page: Page, body: string): Promise<void> {
     .getByRole('button', { name: SAVE_DRAFT_LABEL, exact: true })
     .click();
 
-  await expect(page.getByText(DRAFT_SAVED_MESSAGE)).toBeVisible();
+  await expect(savedToast).toBeVisible();
   await expect(main.getByText(DRAFT_PRESENT_MESSAGE)).toBeVisible();
 }
 
+// 続けて公開する時に前の公開のトーストが残っていると同じ文言が2つ並ぶため、消えてから公開する
 async function publishDraft(
   page: Page,
   body: string,
@@ -136,6 +141,8 @@ async function publishDraft(
 ): Promise<PublishedRevision> {
   const main = editorMain(page);
   const changeSummary = uniqueText('E2Eで確かめる公開の変更概要');
+  const publishedToast = page.getByText(LEGAL_DOCUMENT_PUBLISHED_MESSAGE);
+  await waitForToastDismissed(page, publishedToast);
   await main.getByRole('button', { name: PUBLISH_LABEL, exact: true }).click();
   const dialog = page.getByRole('dialog', {
     name: publishLegalDocumentTitle(DOCUMENT_LABEL),
@@ -147,7 +154,7 @@ async function publishDraft(
     .getByRole('button', { name: PUBLISH_CONFIRM_LABEL, exact: true })
     .click();
 
-  await expect(page.getByText(LEGAL_DOCUMENT_PUBLISHED_MESSAGE)).toBeVisible();
+  await expect(publishedToast).toBeVisible();
   await expect(dialog).toHaveCount(0);
   await expect(main.getByText(NO_DRAFT_MESSAGE)).toBeVisible();
   const newestRow = revisionTable(page).getByRole('row').nth(1);
