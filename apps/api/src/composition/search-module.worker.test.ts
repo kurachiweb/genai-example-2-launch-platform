@@ -7,6 +7,8 @@ import {
 import { env } from 'cloudflare:workers';
 import { afterAll, afterEach, describe, expect, test, vi } from 'vitest';
 
+import { SEARCH_INDEX_REFRESH_MESSAGE } from '../../lib/core/messaging/contracts/search-index-refresh.ts';
+import type { QueueEnvelope } from '../../lib/core/messaging/envelope.ts';
 import { createCronRegistry } from '../../lib/core/scheduling/cron-registry.ts';
 import { SEARCH_TYPES } from '../../lib/core/search/identifiers.ts';
 import type { SearchTargetCatalog } from '../../lib/core/search/ports.ts';
@@ -59,6 +61,7 @@ const MATCH_JOB_NAMES = [
   'match-engine.event-redispatch',
   'match-engine.event-cleanup',
 ];
+const NOTIFICATIONS_JOB_NAMES = ['notifications.maintenance'];
 const REEXTRACTION_CATEGORY = 'api.search.reextraction';
 
 function createContainer() {
@@ -154,6 +157,7 @@ describe('APIサーバーの検索のモジュール', () => {
       'email-delivery.cleanup',
       ...PRODUCT_JOB_NAMES,
       ...MATCH_JOB_NAMES,
+      ...NOTIFICATIONS_JOB_NAMES,
       REEXTRACTION_JOB_NAME,
     ]);
   });
@@ -166,7 +170,12 @@ describe('定期実行からの日次の再抽出', () => {
 
     await runScheduled(DAILY_CRON, SCHEDULED_TIME);
 
-    expect(send).not.toHaveBeenCalled();
+    expect(
+      send.mock.calls.filter(
+        ([message]) =>
+          (message as QueueEnvelope).type === SEARCH_INDEX_REFRESH_MESSAGE.type,
+      ),
+    ).toEqual([]);
     expect(
       logs.filter(({ category }) => category === REEXTRACTION_CATEGORY),
     ).toEqual([
@@ -237,6 +246,10 @@ describe('定期実行からの日次の再抽出', () => {
         expect.objectContaining({ name: PRODUCT_JOB_NAMES[1] }),
         expect.objectContaining({ name: MATCH_JOB_NAMES[0] }),
         expect.objectContaining({ name: MATCH_JOB_NAMES[1] }),
+        expect.objectContaining({
+          name: NOTIFICATIONS_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
         expect.objectContaining({
           name: REEXTRACTION_JOB_NAME,
           result: 'succeeded',

@@ -93,16 +93,18 @@ describe('マッチの日次のジョブの定期実行の一覧への登録', (
     ]);
   });
 
-  test('23:45の起動(45 7 * * *)と0:00の起動(0 8 * * *)では、それぞれペアリングと開始のジョブが動く', () => {
+  test('23:45の起動(45 7 * * *)と0:00の起動(0 8 * * *)では、それぞれペアリングと開始のジョブが通知のジョブ(order 1300)より先に動く', () => {
     const registry = createCronRegistry(SCHEDULED_JOBS);
 
     expect(PAIRING_CRON).toBe('45 7 * * *');
     expect(KICKOFF_CRON).toBe('0 8 * * *');
     expect(registry.jobsFor(PAIRING_CRON).map(({ name }) => name)).toEqual([
       'match-engine.qualifier-pairing',
+      'notifications.evening-dispatch',
     ]);
     expect(registry.jobsFor(KICKOFF_CRON).map(({ name }) => name)).toEqual([
       'match-engine.match-kickoff',
+      'notifications.morning-dispatch',
     ]);
   });
 

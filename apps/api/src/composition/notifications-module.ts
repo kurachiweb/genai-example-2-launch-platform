@@ -8,6 +8,7 @@ import {
   type EveningSlotOpener,
 } from '../../lib/core/notifications/evening-dispatch.ts';
 import { NOTIFICATIONS_PLATFORM_TYPES } from '../../lib/core/notifications/identifiers.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { D1EveningDispatchGate } from '../../lib/workers/notifications/d1-evening-dispatch-gate.ts';
 import { createNotificationsPlatformModule } from '../../lib/workers/notifications/notifications-platform-module.ts';
@@ -15,6 +16,11 @@ import {
   type NotificationSettingsService,
   StoreNotificationSettingsService,
 } from '../application/notifications/notification-settings-service.ts';
+import {
+  EveningDispatchJob,
+  MorningDispatchJob,
+  NotificationMaintenanceJob,
+} from '../application/notifications/notification-jobs.ts';
 import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
 import type {
   DeliveryStatusReader,
@@ -81,6 +87,15 @@ export function createNotificationsModule(
       bind<NotificationMaintenanceStore>(
         NOTIFICATIONS_TYPES.NotificationMaintenanceStore,
       ).to(D1NotificationMaintenanceStore);
+      bind<ScheduledJobHandler>(NOTIFICATIONS_TYPES.EveningDispatchJob).to(
+        EveningDispatchJob,
+      );
+      bind<ScheduledJobHandler>(NOTIFICATIONS_TYPES.MorningDispatchJob).to(
+        MorningDispatchJob,
+      );
+      bind<ScheduledJobHandler>(
+        NOTIFICATIONS_TYPES.NotificationMaintenanceJob,
+      ).to(NotificationMaintenanceJob);
     }),
   };
 }

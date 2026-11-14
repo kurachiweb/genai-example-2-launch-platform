@@ -26,6 +26,18 @@ const NotificationMaintenanceStore: unique symbol = Symbol.for(
   'notifications.NotificationMaintenanceStore',
 );
 
+const EveningDispatchJob: unique symbol = Symbol.for(
+  'notifications.EveningDispatchJob',
+);
+
+const MorningDispatchJob: unique symbol = Symbol.for(
+  'notifications.MorningDispatchJob',
+);
+
+const NotificationMaintenanceJob: unique symbol = Symbol.for(
+  'notifications.NotificationMaintenanceJob',
+);
+
 export const NOTIFICATIONS_TYPES = Object.freeze({
   DeliveryStatusReader,
   NotificationSettingsService,
@@ -34,4 +46,7 @@ export const NOTIFICATIONS_TYPES = Object.freeze({
   SenderInfoWriter,
   AccountWithdrawalSyncHandler,
   NotificationMaintenanceStore,
+  EveningDispatchJob,
+  MorningDispatchJob,
+  NotificationMaintenanceJob,
 });

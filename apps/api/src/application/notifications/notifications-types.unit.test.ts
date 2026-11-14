@@ -6,6 +6,9 @@ import { NOTIFICATIONS_TYPES } from './notifications-types.ts';
 const EXPECTED_NAMES = [
   'AccountWithdrawalSyncHandler',
   'DeliveryStatusReader',
+  'EveningDispatchJob',
+  'MorningDispatchJob',
+  'NotificationMaintenanceJob',
   'NotificationMaintenanceStore',
   'NotificationSettingsService',
   'SenderInfoService',
@@ -14,7 +17,7 @@ const EXPECTED_NAMES = [
 ] as const;
 
 describe('NOTIFICATIONS_TYPES', () => {
-  test('apiの通知の照会とユースケースの識別子だけを持つ', () => {
+  test('apiの通知の照会・ユースケース・定期実行のジョブの識別子だけを持つ', () => {
     expect(Object.keys(NOTIFICATIONS_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );
