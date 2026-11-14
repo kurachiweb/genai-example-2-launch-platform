@@ -18,6 +18,7 @@ import {
 import { RUN_MATCH_EVENT_MESSAGE } from '../../lib/core/messaging/contracts/match.ts';
 import { RUN_PRODUCT_LIFECYCLE_MESSAGE } from '../../lib/core/messaging/contracts/product.ts';
 import {
+  EXPAND_NOTIFICATION_EVENT_MESSAGE,
   FLUSH_NOTIFICATION_SLOT_MESSAGE,
   NOTIFICATION_RETRY_POLICY,
 } from '../../lib/core/messaging/contracts/notifications.ts';
@@ -99,6 +100,11 @@ export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
     {
       contract: FLUSH_NOTIFICATION_SLOT_MESSAGE,
       handler: EVENT_NOTIFICATIONS_TYPES.FlushSlotHandler,
+      retry: NOTIFICATION_RETRY_POLICY,
+    },
+    {
+      contract: EXPAND_NOTIFICATION_EVENT_MESSAGE,
+      handler: EVENT_NOTIFICATIONS_TYPES.ExpandEventHandler,
       retry: NOTIFICATION_RETRY_POLICY,
     },
   ]);

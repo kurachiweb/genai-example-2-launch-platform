@@ -9,6 +9,7 @@ const EXPECTED_NAMES: readonly string[] = [
   'SupplementSource',
   'GroupDispatcher',
   'FlushSlotHandler',
+  'ExpandEventHandler',
 ];
 
 describe('EVENT_NOTIFICATIONS_TYPES', () => {

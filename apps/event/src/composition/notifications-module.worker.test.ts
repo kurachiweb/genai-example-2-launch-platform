@@ -28,6 +28,7 @@ import {
   SENDER_INFO_SEED_ROW,
 } from '../../lib/workers/notifications/testing/notification-store-fixtures.ts';
 import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-notifications-types.ts';
+import { ExpandEventHandler } from '../application/notifications/expand-event-handler.ts';
 import { FlushSlotHandler } from '../application/notifications/flush-slot-handler.ts';
 import type { SupplementSource } from '../application/notifications/ports.ts';
 import { D1SenderInfoProvider } from '../infrastructure/notifications/d1-sender-info-provider.ts';
@@ -60,6 +61,7 @@ const IMPLEMENTATIONS = [
   ['SupplementSource', RegisteredSupplementSource],
   ['GroupDispatcher', EmailGroupDispatcher],
   ['FlushSlotHandler', FlushSlotHandler],
+  ['ExpandEventHandler', ExpandEventHandler],
 ] as const;
 
 const FAKE_PROVIDER = Symbol.for('test.FakeResultNoticeSupplementProvider');

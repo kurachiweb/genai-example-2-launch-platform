@@ -14,6 +14,9 @@ const SupplementSource: unique symbol = Symbol.for(
 const FlushSlotHandler: unique symbol = Symbol.for(
   'notifications.event.FlushSlotHandler',
 );
+const ExpandEventHandler: unique symbol = Symbol.for(
+  'notifications.event.ExpandEventHandler',
+);
 
 export const EVENT_NOTIFICATIONS_TYPES = Object.freeze({
   EveningCollector,
@@ -21,4 +24,5 @@ export const EVENT_NOTIFICATIONS_TYPES = Object.freeze({
   SupplementSource,
   GroupDispatcher,
   FlushSlotHandler,
+  ExpandEventHandler,
 });

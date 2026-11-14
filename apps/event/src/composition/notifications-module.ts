@@ -31,11 +31,15 @@ import { PRODUCT_PLATFORM_TYPES } from '../../lib/core/product/identifiers.ts';
 import type { ProductDirectory } from '../../lib/core/product/ports.ts';
 import { PROFILE_PLATFORM_TYPES } from '../../lib/core/profile/identifiers.ts';
 import type { UserProfileDirectory } from '../../lib/core/profile/ports.ts';
-import type { FlushNotificationSlotBody } from '../../lib/core/messaging/contracts/notifications.ts';
+import type {
+  ExpandNotificationEventBody,
+  FlushNotificationSlotBody,
+} from '../../lib/core/messaging/contracts/notifications.ts';
 import type { MessageHandler } from '../../lib/core/messaging/message-contract.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { createNotificationsPlatformModule } from '../../lib/workers/notifications/notifications-platform-module.ts';
 import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-notifications-types.ts';
+import { ExpandEventHandler } from '../application/notifications/expand-event-handler.ts';
 import { FlushSlotHandler } from '../application/notifications/flush-slot-handler.ts';
 import type {
   GroupDispatcher,
@@ -97,7 +101,7 @@ export interface EventNotificationsModuleOptions {
   readonly resultNoticeSupplements: readonly ResultNoticeSupplementRegistration[];
 }
 
-// 受信設定と通知のストア(EVENT_NOTIFICATIONS_PLATFORM_MODULE)、マッチ・プロダクト・フォロワー・利用者の照会(各機能のプラットフォームのモジュール)、メールの送信と抑止(EMAIL_PLATFORM_MODULE)が束縛されている前提で、夜と朝の枠の収集・結果の追記の取得・まとめの送信・送信枠の送り出しの処理を束縛する。メールの送信者情報の取得口はemail-registrations.tsの登録をメールのモジュールが束縛する
+// 受信設定と通知のストア(EVENT_NOTIFICATIONS_PLATFORM_MODULE)、マッチ・プロダクト・フォロワー・利用者の照会(各機能のプラットフォームのモジュール)、メールの送信と抑止(EMAIL_PLATFORM_MODULE)が束縛されている前提で、夜と朝の枠の収集・結果の追記の取得・まとめの送信・送信枠の送り出しと受賞の展開の処理を束縛する。メールの送信者情報の取得口はemail-registrations.tsの登録をメールのモジュールが束縛する
 export function createEventNotificationsModule(
   options: EventNotificationsModuleOptions,
 ): EventAppModule {
@@ -128,6 +132,9 @@ export function createEventNotificationsModule(
       bind<MessageHandler<FlushNotificationSlotBody>>(
         EVENT_NOTIFICATIONS_TYPES.FlushSlotHandler,
       ).to(FlushSlotHandler);
+      bind<MessageHandler<ExpandNotificationEventBody>>(
+        EVENT_NOTIFICATIONS_TYPES.ExpandEventHandler,
+      ).to(ExpandEventHandler);
     }),
   };
 }
