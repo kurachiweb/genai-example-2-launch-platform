@@ -1,0 +1,20 @@
+query ClientPaymentHistory($first: Int, $after: String) {
+  paymentHistory(first: $first, after: $after) {
+    nodes {
+      id
+      kind
+      purpose
+      amount {
+        amount
+        currency
+      }
+      quantity
+      status
+      occurredAt
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

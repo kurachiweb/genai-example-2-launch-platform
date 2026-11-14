@@ -1,0 +1,15 @@
+query ClientMyInquiries($after: String) {
+  myInquiries(after: $after) {
+    items {
+      id
+      category {
+        id
+        name
+      }
+      status
+      createdAt
+      lastMessageAt
+    }
+    nextCursor
+  }
+}

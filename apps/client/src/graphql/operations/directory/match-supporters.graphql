@@ -1,0 +1,31 @@
+query ClientMatchSupporters(
+  $productHandle: String!
+  $matchId: ID!
+  $entryId: ID!
+  $first: Int!
+  $after: String
+) {
+  matchSupporters(
+    productHandle: $productHandle
+    matchId: $matchId
+    entryId: $entryId
+    first: $first
+    after: $after
+  ) {
+    nodes {
+      handle
+      nickname
+      avatar {
+        id
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

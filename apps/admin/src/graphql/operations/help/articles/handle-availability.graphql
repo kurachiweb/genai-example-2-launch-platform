@@ -1,0 +1,3 @@
+query AdminHelpArticleHandleAvailability($handle: String!, $articleId: ID) {
+  helpArticleHandleAvailability(handle: $handle, articleId: $articleId)
+}

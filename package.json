@@ -11,25 +11,30 @@
     "test:unit": "bun test --pass-with-no-tests --path-ignore-patterns='apps/**' --path-ignore-patterns='mockups/**' --path-ignore-patterns='.claude/**' --path-ignore-patterns='docs/ai-extensions/**' --path-ignore-patterns='.kiro/settings/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test",
     "check": "bun ./scripts/tooling/run-all.ts check",
     "check:test-names": "bun ./scripts/tooling/check-test-names.ts",
+    "check:contract-copies": "bun test ./config/contract-copies.unit.test.ts ./config/launch-time-contract-copies.unit.test.ts ./config/product-contract-copies.unit.test.ts ./config/match-contract-copies.unit.test.ts ./config/help-contract-copies.unit.test.ts",
     "test:all:unit": "bun ./scripts/tooling/run-all.ts test:unit",
     "test:all:browser": "bun ./scripts/tooling/run-all.ts test:browser",
     "test:all:worker": "bun ./scripts/tooling/run-all.ts test:worker",
     "test:e2e": "playwright test --pass-with-no-tests",
+    "test:e2e:dev-and-preview": "bun ./scripts/tooling/e2e-dev-and-preview.ts",
     "shared-dirs:verify": "bun ./scripts/tooling/shared-dirs.ts verify",
-    "shared-dirs:place": "bun ./scripts/tooling/shared-dirs.ts place"
+    "shared-dirs:place": "bun ./scripts/tooling/shared-dirs.ts place",
+    "delivery": "bun ./scripts/delivery/cli.ts",
+    "infra:check": "bun ./scripts/delivery/cli.ts infra-check",
+    "infra:fmt": "tofu fmt -recursive apps/infra"
   },
   "devDependencies": {
-    "@commitlint/cli": "21.2.3",
+    "@commitlint/cli": "21.2.4",
     "@commitlint/types": "21.2.3",
     "@eslint/js": "10.0.1",
-    "@playwright/test": "1.63.0",
-    "@types/bun": "1.4.2",
-    "eslint": "10.12.0",
+    "@playwright/test": "1.64.1",
+    "@types/bun": "1.4.4",
+    "eslint": "10.13.0",
     "eslint-config-prettier": "10.1.8",
     "husky": "9.1.7",
     "lint-staged": "17.6.0",
-    "prettier": "3.9.9",
+    "prettier": "3.9.10",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.71.0"
+    "typescript-eslint": "8.72.1"
   }
 }

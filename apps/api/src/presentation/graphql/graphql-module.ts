@@ -1,0 +1,215 @@
+import type { Context, Hono, MiddlewareHandler } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+
+import type { AppModule } from '../../../lib/core/di/app-module.ts';
+import { AppError } from '../../../lib/core/errors/app-error.ts';
+import type { PlatformEnv } from '../../../lib/workers/env/platform-env.ts';
+import type { PlatformHonoEnv } from '../../../lib/workers/http/hono-env.ts';
+import {
+  type AppEnvironment,
+  GATEWAY_HEADERS,
+} from '../gateway/gateway-headers.ts';
+import {
+  createNotFoundError,
+  warnOnMissingClientIp,
+} from '../gateway/internal-only.ts';
+import { readInternalCaller } from '../gateway/internal-request.ts';
+import {
+  createSessionAccess,
+  finishSessionResponse,
+} from '../gateway/session-access.ts';
+import {
+  type GatewayRequestScope,
+  getGatewayServer,
+  type GraphQLAccess,
+  isGraphiqlRequest,
+} from './gateway-server.ts';
+import { readDebugCaller } from './operation-allowlist.ts';
+import {
+  createOperationObservation,
+  logOperation,
+} from './operation-observability.ts';
+import type { GraphQLSchemaModule } from './schema-module.ts';
+
+export interface GraphQLModuleOptions {
+  readonly schemaModules: readonly GraphQLSchemaModule[];
+  // allowlist.jsonの内容。最初の要求でOperationAllowlistが検証する
+  readonly allowlist: unknown;
+}
+
+type GraphQLModuleEnv = PlatformEnv & {
+  readonly APP_ENVIRONMENT: AppEnvironment;
+};
+
+type GraphQLRouteContext<E extends GraphQLModuleEnv> = Context<
+  PlatformHonoEnv<E>
+>;
+
+export const GRAPHQL_MAX_BODY_BYTES = 1024 * 1024;
+
+export const USER_AGENT_MAX_LENGTH = 512;
+
+// GraphiQLの画面はunpkgから本体・スタイル・エディタのワーカーを読み込み、インラインのスクリプトで起動する
+export const GRAPHIQL_CONTENT_SECURITY_POLICY = [
+  "default-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+  "script-src 'self' 'unsafe-inline' https://unpkg.com",
+  "style-src 'self' 'unsafe-inline' https://unpkg.com",
+  "font-src 'self' data: https://unpkg.com",
+  "img-src 'self' data:",
+  "connect-src 'self' https://unpkg.com",
+  'worker-src blob:',
+].join('; ');
+
+const GRAPHQL_PATH = '/graphql';
+
+const GRAPHQL_METHODS = ['GET', 'POST'];
+
+const CONTENT_SECURITY_POLICY_HEADER = 'Content-Security-Policy';
+
+const USER_AGENT_HEADER = 'user-agent';
+
+function createPayloadTooLargeError(): AppError {
+  return new AppError({
+    kind: 'payload_too_large',
+    code: 'payload_too_large',
+    message: 'リクエストの本文が大きすぎます。',
+  });
+}
+
+// 長さのヘッダーがあれば本文を読まずに判定し、無ければ上限を超えた時点で読むのをやめる。既定の超過の扱いはHonoのHTTPException(想定外の例外)を投げるため、共通エラーを投げて基盤の例外の変換に応答させる
+function createBodyLimit<E extends GraphQLModuleEnv>(): MiddlewareHandler<
+  PlatformHonoEnv<E>
+> {
+  return bodyLimit({
+    maxSize: GRAPHQL_MAX_BODY_BYTES,
+    onError: () => {
+      throw createPayloadTooLargeError();
+    },
+  });
+}
+
+function resolveAccess(
+  request: Request,
+  environment: AppEnvironment,
+): GraphQLAccess | undefined {
+  const internalCaller = readInternalCaller(request);
+  if (internalCaller !== undefined) {
+    return { kind: 'internal', caller: internalCaller };
+  }
+  return isGraphiqlRequest(environment, request)
+    ? { kind: 'graphiql', caller: readDebugCaller(request) }
+    : undefined;
+}
+
+function readUserAgent(value: string | undefined): string | undefined {
+  return value === undefined || value === ''
+    ? undefined
+    : value.slice(0, USER_AGENT_MAX_LENGTH);
+}
+
+function createRequestScope<E extends GraphQLModuleEnv>(
+  c: GraphQLRouteContext<E>,
+  access: GraphQLAccess,
+): GatewayRequestScope {
+  const container = c.get('container');
+  return {
+    access,
+    container,
+    correlationId: c.get('correlationId'),
+    clientIp: c.get('clientIp'),
+    userAgent: readUserAgent(c.req.header(USER_AGENT_HEADER)),
+    session: createSessionAccess({
+      container,
+      caller: access.caller,
+      token: c.req.header(GATEWAY_HEADERS.sessionToken),
+    }),
+    botToken: c.req.header(GATEWAY_HEADERS.botToken),
+    observation: createOperationObservation(),
+  };
+}
+
+function isGraphiqlPage(access: GraphQLAccess, headers: Headers): boolean {
+  return (
+    access.kind === 'graphiql' &&
+    (headers.get('content-type') ?? '').includes('text/html')
+  );
+}
+
+function finishResponse<E extends GraphQLModuleEnv>(
+  c: GraphQLRouteContext<E>,
+  scope: GatewayRequestScope,
+): void {
+  finishSessionResponse(c, scope.session);
+  if (isGraphiqlPage(scope.access, c.res.headers)) {
+    c.res.headers.set(
+      CONTENT_SECURITY_POLICY_HEADER,
+      GRAPHIQL_CONTENT_SECURITY_POLICY,
+    );
+  }
+}
+
+// 受付経路の判定と後処理で作った範囲を、同じ要求の実行の段で使う
+const requestScopes = new WeakMap<object, GatewayRequestScope>();
+
+function scopeOf(c: object): GatewayRequestScope {
+  const scope = requestScopes.get(c);
+  if (scope === undefined) {
+    throw new Error('GraphQLの要求の範囲が組み立てられていません');
+  }
+  return scope;
+}
+
+function admitRequest<E extends GraphQLModuleEnv>(): MiddlewareHandler<
+  PlatformHonoEnv<E>
+> {
+  return async (c, next) => {
+    const startedAt = Date.now();
+    const access = resolveAccess(c.req.raw, c.env.APP_ENVIRONMENT);
+    if (access === undefined) {
+      throw createNotFoundError();
+    }
+    warnOnMissingClientIp(c.req.raw);
+    const scope = createRequestScope(c, access);
+    requestScopes.set(c, scope);
+    await next();
+    finishResponse(c, scope);
+    logOperation({
+      caller: access.caller,
+      observation: scope.observation,
+      durationMs: Date.now() - startedAt,
+      status: c.res.status,
+    });
+  };
+}
+
+// 長さのヘッダーが無い本文は上限の検査で読み切られ、c.req.rawが読み直せる要求へ差し替わるため、Yogaへは検査後の要求を渡す
+function executeRequest<E extends GraphQLModuleEnv>(
+  options: GraphQLModuleOptions,
+): (c: GraphQLRouteContext<E>) => Response | Promise<Response> {
+  return (c) =>
+    getGatewayServer({
+      environment: c.env.APP_ENVIRONMENT,
+      schemaModules: options.schemaModules,
+      allowlist: options.allowlist,
+    }).fetch(c.req.raw, { scope: scopeOf(c) });
+}
+
+export function createGraphQLModule<E extends GraphQLModuleEnv>(
+  options: GraphQLModuleOptions,
+): AppModule<Hono<PlatformHonoEnv<E>>> {
+  return {
+    name: 'graphql',
+    routes: (app) => {
+      app.on(
+        GRAPHQL_METHODS,
+        GRAPHQL_PATH,
+        admitRequest<E>(),
+        createBodyLimit<E>(),
+        executeRequest<E>(options),
+      );
+    },
+  };
+}

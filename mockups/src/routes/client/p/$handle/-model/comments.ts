@@ -180,7 +180,7 @@ const SUPPORTER_FIRST_NAMES = [
   'Thandiwe',
 ];
 
-// サポーター一覧(FR-DIR-004)の仮データ。Upvoteした日時が早い順
+// サポーター一覧(FR-DIR-005)の仮データ。Upvoteした日時が早い順
 export function supportersOf(matchId: string, count: number): User[] {
   return Array.from({ length: count }, (_, index) => {
     const name = SUPPORTER_FIRST_NAMES[index % SUPPORTER_FIRST_NAMES.length];

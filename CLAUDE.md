@@ -15,6 +15,7 @@
 - 機能追加や大規模改修で数十行以上のコードを変更する場合は、必ず[cc-sddフレームワーク](docs/ai-extensions/cc-sdd.md)に従って実装開始前に開発者が`/cc-sdd:kiro-discovery`または`/cc-sdd:kiro-spec-init`を実行し、生成されたspecに従ってClaudeが実装する。
 - 新規ビジネスロジックが無い軽微な変更であっても、影響範囲が広いものと考えて水平展開を行うこと。
 - 複数の選択肢があって判断に迷うタスクや、既存のドキュメントを調べても実施方法が不明なタスクを進める場合は、都度質問をすること。
+- 既存のドキュメントとコードに相違点があれば一旦コードの書き方に従い、最後の返答で見つけた相違点を全て挙げること。
 - アプリケーション実装中に新しいパッケージが必要と分かった時、workerd環境で動作しメンテナンスが継続的に行われているパッケージをいくつか候補として質問すること。そして回答に基づきインストールしたツールを[tech-stack.md](docs/onboardings/tech-stack.md)に記載すること。
 - コマンドでパスを指定する場合は、必ず絶対パスで表記すること。
 - 必ず実行すべきコマンドやファイル編集がClaude設定のdenyにより拒否されてしまった場合は、開発者が後ほど手動で実行できるように報告すること。
@@ -41,19 +42,80 @@
 - 設定ファイル(ESLint・Viteなど)を作る前に: [設定ファイルの記述形式](docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md#設定ファイルの記述形式)
 - JavaScript・TypeScriptのコードを書く前に: [新しい記法の選択](docs/GUIDES/tech/coding/001-javascript-typescript-conventions.md#新しい記法の選択)
 - HTML要素で日時を表示する前に: [日時の表示](docs/GUIDES/tech/frontend/001-markup-conventions.md#日時の表示)
+- `wrangler dev`などWranglerを起動する前に: [Wranglerを動かす実行環境](docs/GUIDES/tech/infra/001-wrangler-conventions.md#wranglerを動かす実行環境)
 - Wranglerのコマンドの実行やD1・R2のバインディングの定義の前に: [ローカル状態の永続化と共有](docs/GUIDES/tech/infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)
 - TanStack Startアプリを起動・ビルドする前に: [開発時とデプロイ前の起動](docs/GUIDES/tech/frontend/002-tanstack-start-on-workers.md#開発時とデプロイ前の起動)
+- 画面のルートや部品からサーバーだけで動かす処理を使う前に: [サーバー専用のファイルと同型の関数](docs/GUIDES/tech/frontend/002-tanstack-start-on-workers.md#サーバー専用のファイルと同型の関数)
+- 画面の部品を作る・共通部品へ移す前に: [共通化の対象](docs/GUIDES/tech/frontend/005-shared-components.md#共通化の対象)
+- 画面の部品やページを作る・改修する前に: [アクセシビリティ規則の前提と用語](docs/GUIDES/tech/frontend/004-accessibility-rules.md#前提と用語)
+- フロントエンドサーバーに中継の経路を追加する前に: [中継の経路の追加規約](docs/GUIDES/tech/frontend/003-frontend-server-security.md#中継の経路の追加規約)
+- 画面で外部のスクリプト・画像・接続先・埋め込みを使う前に: [許可先の登録](docs/GUIDES/tech/frontend/003-frontend-server-security.md#許可先の登録)
+- 画面でAPIサーバーのデータを取得・変更する処理を書く前に: [取得の補助とloader](docs/GUIDES/tech/frontend/006-data-fetching.md#取得の補助とloader)
+- 表示中の画面のデータを定期的に取り直す処理を書く前に: [表示中の画面の定期再取得の使う場面](docs/GUIDES/tech/frontend/010-live-refresh-queries.md#使う場面)
+- 業務日付をカレンダーで選ばせる画面や、表示中に業務時刻の境界で取り直す画面を作る前に: [業務日付のカレンダーの前提と用語](docs/GUIDES/tech/frontend/012-business-date-calendar.md#前提と用語)
+- 集計値や残り時間を表示し続ける画面や、区画を登録口から並べてページ全体で自動更新を切り替える画面を作る前に: [集計値と残り時間を表示し続ける画面の前提と用語](docs/GUIDES/tech/frontend/013-live-scoreboard.md#前提と用語)
+- 検索・絞り込み・並び順・ページ番号をURLのクエリで持つ一覧の画面を作る前に: [URLのクエリで条件を持つ一覧の前提と用語](docs/GUIDES/tech/frontend/014-url-state-listing.md#前提と用語)
+- フロントエンドのGraphQLの操作を追加・変更する前に: [操作の置き場所と名前](docs/GUIDES/tech/coding/004-graphql-communication.md#操作の置き場所と名前)
+- 利用者の入力の検証規則を画面のフォームやAPIサーバーに書く前に: [規則の置き場所](docs/GUIDES/tech/coding/005-input-validation.md#規則の置き場所)
+- フロントエンドで想定外の失敗をエラートラッキングへ送る処理を書く前に: [送信の入口](docs/GUIDES/tech/frontend/007-frontend-observability.md#送信の入口)
 - シークレット・環境変数を使うコマンドの実行や設定の前に: [シークレットの注入](docs/GUIDES/tech/security/001-secret-management.md#シークレットの注入)
 - Wrangler設定やコマンドでデプロイ先を指定する前に: [デプロイ先の環境種別](docs/GUIDES/tech/infra/002-environments.md#デプロイ先の環境種別)
 - Infisicalの環境を指定する前に: [シークレット管理の環境種別](docs/GUIDES/tech/infra/002-environments.md#シークレット管理の環境種別)
+- Workerのシークレットを宣言・追加・削除する前に: [シークレットの登録の規則](docs/GUIDES/tech/operations/001-deployment.md#シークレットの登録の規則)
+- IaC定義に資源を追加・変更する前に: [資源の追加手順](docs/GUIDES/tech/infra/006-iac-with-opentofu.md#資源の追加手順)
+- GitHub Actionsのワークフローや複合アクションを作成・変更する前に: [ワークフローの規則](docs/GUIDES/tech/infra/007-ci-cd-pipelines.md#ワークフローの規則)
+- CIでシークレットを取り出す処理やリポジトリ保護の設定を変更する前に: [CIのシークレットの供給経路](docs/GUIDES/tech/security/003-ci-secrets-and-repository-protection.md#ciのシークレットの供給経路)
 - Inversifyで注入するクラスを書く前に: [コンストラクタ引数の注入](docs/GUIDES/tech/backend/001-dependency-injection-on-workers.md#コンストラクタ引数の注入)
 - Wrangler設定を作成・変更する前に: [互換性日付](docs/GUIDES/tech/infra/001-wrangler-conventions.md#互換性日付)
 - テストファイルの作成やテストの実行の前に: [テストの種別と命名](docs/GUIDES/tech/testing/001-test-strategy.md#テストの種別と命名)
 - カバレッジの計測やCIのテストの設定の前に: [カバレッジ](docs/GUIDES/tech/testing/001-test-strategy.md#カバレッジ)
 - DBスキーマの変更やマイグレーションの作成・適用の前に: [マイグレーション・大文字小文字を区別しないカラム](docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md#マイグレーション大文字小文字を区別しないカラム)
 - テーブルを新しく定義する前に: [命名規則](docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md#命名規則)
+- ハンドル(URLの識別子)を持つテーブルを定義する前に: [新しい対象を足す手順](docs/GUIDES/tech/backend/011-handle-namespaces.md#新しい対象を足す手順)
 - D1へのクエリ・全文検索・バックアップを設計する前に: [D1の制約と対処](docs/GUIDES/tech/db/002-d1-constraints.md#d1の制約と対処)
 - Playwright・ブラウザ操作MCPサーバーの版を更新する前に: [同期すべき4箇所](docs/GUIDES/tech/testing/002-browser-tool-versions.md#同期すべき4箇所)
+- バックエンドに経路・ユースケース・リポジトリ・モジュールを追加する前に: [層構成と合成ルート](docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#層構成と合成ルート)
+- バックエンドのファイル間でimportを書く前に: [依存方向と静的解析](docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析)
+- GraphQLのスキーマモジュールを追加・変更する前に: [スキーマモジュールの規約](docs/GUIDES/tech/backend/004-graphql-server.md#スキーマモジュールの規約)
+- 公開REST APIの経路を追加する前に: [経路の登録](docs/GUIDES/tech/backend/005-public-rest-api.md#経路の登録)
+- 内部RESTの経路を追加する前に: [内部RESTの追加規約](docs/GUIDES/tech/backend/006-internal-gateway.md#内部restの追加規約)
+- バックエンドで想定内の失敗を返す処理やエラーコードを書く前に: [共通エラーと共通のエラー形式](docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#共通エラーと共通のエラー形式)
+- 経路にレート制限を掛ける前に: [制限の方式の選び方](docs/GUIDES/tech/backend/003-rate-limiting-and-bot-verification.md#制限の方式の選び方)
+- 経路やフォームの送信にbot判定を掛ける前に: [bot判定の検証](docs/GUIDES/tech/backend/003-rate-limiting-and-bot-verification.md#bot判定の検証)
+- ログインせずに送れる投稿を受け付ける経路を書く前に: [未ログインの投稿の保護の構成](docs/GUIDES/tech/security/008-anonymous-submission-protection.md#保護の構成)
+- テーブル定義のファイルを追加する前に: [テーブル定義の配置](docs/GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)
+- テーブルの主キーを定義する前に: [主キー](docs/GUIDES/tech/db/003-schema-conventions.md#主キー)
+- テーブルに作成日時・更新日時・論理削除のカラムを定義する前に: [共通カラム](docs/GUIDES/tech/db/003-schema-conventions.md#共通カラム)
+- 初期データをマイグレーションで入れる前に: [初期データ](docs/GUIDES/tech/db/003-schema-conventions.md#初期データ)
+- 全文検索の検索対象・索引文書のテーブル・検索のクエリを追加・変更する前に: [全文検索の索引の前提と用語](docs/GUIDES/tech/db/004-full-text-search.md#前提と用語)
+- 下書きと公開した版を持つデータを設計する前に: [下書きと公開した版の管理の前提と用語](docs/GUIDES/tech/db/005-draft-and-published-versions.md#前提と用語)
+- グループごとの最新の行で並べる一覧を作る前に: [グループごとの最新の行で並べる一覧の前提と用語](docs/GUIDES/tech/db/007-latest-row-per-group-listing.md#前提と用語)
+- キーワード抽出の外部APIへ送る項目や呼び出し方を変える前に: [キーワード抽出の送る情報の範囲](docs/GUIDES/tech/external/002-natural-language-keyword-extraction.md#送る情報の範囲)
+- マークダウンの入力欄・表示部品・検索語の強調を画面に置く前に: [マークダウンの入力欄と表示部品の前提と用語](docs/GUIDES/tech/frontend/008-markdown-editor-and-content.md#前提と用語)
+- マークダウンの描画・サニタイズの許可リスト・サニタイズの後の変換を変える前に: [マークダウンのサニタイズの処理の順序](docs/GUIDES/tech/security/004-markdown-sanitization.md#処理の順序)
+- アップロードを受け付ける処理やアップロードの用途を追加・変更する前に: [アップロードの安全対策の受付の順序](docs/GUIDES/tech/security/005-file-upload-security.md#受付の順序)
+- 画像を配信する処理や、画面で画像を表示する部品を作る・変える前に: [画像の変換配信とエッジキャッシュの前提と用語](docs/GUIDES/tech/infra/008-image-delivery.md#前提と用語)
+- 画像判定サービスを呼ぶ処理や判定の設定を変える前に: [画像判定サービスの前提と用語](docs/GUIDES/tech/external/003-image-moderation.md#前提と用語)
+- 共有ディレクトリから別の共有ディレクトリ(共用部品など)を読み込む前に: [別の共有ディレクトリの参照](docs/GUIDES/tech/coding/003-shared-directories.md#別の共有ディレクトリの参照)
+- 定期実行のジョブを追加する前に: [定期実行](docs/GUIDES/tech/infra/003-async-processing.md#定期実行)
+- 非同期メッセージを送る処理や受信する処理を書く前に: [非同期メッセージ](docs/GUIDES/tech/infra/003-async-processing.md#非同期メッセージ)
+- 定期実行のジョブやメッセージの処理で書き込みを行う前に: [重複配信と冪等性](docs/GUIDES/tech/infra/003-async-processing.md#重複配信と冪等性)
+- メールを送る処理やメール種別・テンプレートを書く前に: [メールを送る](docs/GUIDES/tech/external/001-email-sending.md#メールを送る)
+- バックエンドでログを出す前に: [ログの出力](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#ログの出力)
+- ログの属性やエラーレポートに利用者の入力・秘密情報が入り得る処理を書く前に: [伏せ字の規則](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#伏せ字の規則)
+- バックエンドで例外を投げる・エラートラッキングへ送る処理を書く前に: [エラートラッキング](docs/GUIDES/tech/infra/004-logging-and-error-tracking.md#エラートラッキング)
+- トークンなどの秘密情報やレート制限のキーを保存・照合する前に: [ハッシュ化の対象](docs/GUIDES/tech/security/002-keyed-hashing.md#ハッシュ化の対象)
+- メールのリンクで受け渡す認証系トークンを発行・照合する処理を書く前に: [認証系トークン](docs/GUIDES/tech/security/006-authentication.md#認証系トークン)
+- ログインを要する重要な操作に本人確認を求める処理や、セッションを発行し直す処理を書く前に: [本人確認とセッションの入れ替え](docs/GUIDES/tech/security/006-authentication.md#本人確認とセッションの入れ替え)
+- ユーザーの退会・停止・停止解除・物理削除に合わせて自分のデータを変える波及処理を書く前に: [ユーザーライフサイクルイベントの前提と用語](docs/GUIDES/tech/backend/007-user-lifecycle-events.md#前提と用語)
+- ユーザー以外の集約の状態の変化を他の機能へ伝える処理を作る前に: [集約のライフサイクルイベントの前提と用語](docs/GUIDES/tech/backend/012-aggregate-lifecycle-events.md#前提と用語)
+- 他の機能が判定の条件・表示の要約・保存の文を加える登録口を作る、またはその登録口に登録する前に: [判定の供給元と保存の処理の登録口の前提と用語](docs/GUIDES/tech/backend/013-pluggable-decision-sources.md#前提と用語)
+- 期間を限った投票を作る前に: [期間を限った投票の前提と用語](docs/GUIDES/tech/backend/014-time-boxed-voting.md#前提と用語)
+- 管理者側の操作に必要なロールを宣言する、または画面で操作をロールで出し分ける前に: [操作の認可](docs/GUIDES/tech/security/007-admin-authorization.md#操作の認可)
+- 管理者のロールの変更や管理者の削除の書き込みを書く前に: [最後の最上位管理者の保護](docs/GUIDES/tech/security/007-admin-authorization.md#最後の最上位管理者の保護)
+- 管理操作を監査ログに記録する処理を書く前に: [記録の規約](docs/GUIDES/tech/backend/008-audit-logging.md#記録の規約)
+- 監査ログの操作種別を追加・変更する前に: [操作種別の登録](docs/GUIDES/tech/backend/008-audit-logging.md#操作種別の登録)
+- 対象と操作種別から最新の監査ログの日時を照会する処理を書く前に: [最新の日時の照会](docs/GUIDES/tech/backend/008-audit-logging.md#最新の日時の照会)
 - 上記の文書のプレースホルダーを本プロジェクトの値に読み替える前に: [本プロジェクト固有の値](docs/onboardings/project-values.md)
 
 ### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について
@@ -90,31 +152,55 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 ```
 /
 ├── .claude/                    # Claude拡張設定 ... 詳細はClaude拡張ファイル解説(docs/onboardings/claude-extensions.md)を参照
-├── .github/                    # GitHub Actionsのワークフロー、CI/CD全般(ビルド・デプロイ・OpenTofu適用を含む)を担当
+├── .github/                    # GitHub ActionsによるCI/CD全般(検査・OpenTofu適用を含むデプロイ・リリースのプルリクエストの作成)を担当
+│   ├── workflows/              # 起動条件ごとのワークフロー(pull-request・delivery・release-pr)と、検査(checks)・デプロイ(deploy)の再利用ワークフロー
+│   ├── actions/                # 複合アクション ... 開発コンテナと同じ版のツールをジョブへ導入(setup-toolchain)
+│   ├── CODEOWNERS              # 全ファイルのコードオーナー ... prodへのマージに人間の承認を求める
+│   └── trufflehog-exclude-paths.txt # CIのシークレット検出(TruffleHog)の誤検知の除外 ... コミット前の検出の`.betterleaksignore`とは別に管理
 ├── .husky/                     # Huskyトリガー定義
 ├── .kiro/                      # cc-sddのプロジェクトメモリとspec状態
 ├── .wrangler/                  # WranglerのD1・R2ローカルモードの実データ(Git管理に含めない) ... `apps/api`や`apps/event`の`wrangler dev --persist-to /workspace/.wrangler/state`が生成
 ├── apps/                       # アプリケーション実装
 │   ├── infra/                  # インフラ構成定義 ... OpenTofuを使用、Cloudflareを主としてインフラを設計
+│   │   ├── environments/       # 環境(staging・prod)ごとの資源一覧 ... 資源の名前・管轄・ホスト名・stateの保管先・Infisicalの主体
+│   │   ├── backends/           # 環境ごとのstateの保管先(R2)の部分設定
+│   │   ├── live/               # ルートモジュール ... 資源一覧を読み、providerとstateの保管先・暗号化を設定して子モジュールを呼ぶ(両環境の結線のテストを含む)
+│   │   └── modules/            # 子モジュール(storage・messaging・edge-services・worker-routing)とそのテスト
 │   ├── db/                     # DBへの接続処理を含む
 │   │   ├── migrations/         # DBマイグレーション履歴
-│   │   └── schema/             # DBスキーマ定義
+│   │   ├── schema/             # DBスキーマ定義(旧ハンドルの列の共通の定義(`handles/`)、プロダクト(`product/`)、プロフィール(`profile/`)、フォロー(`follow/`)、マッチ(`match/`)、ヘルプ(`help/`)など)
+│   │   ├── search/             # 全文検索の索引の定義と検証・SQLのひな形・検索のSQL断片・索引の定義の集約点・マイグレーションとの突き合わせ
+│   │   └── scripts/            # 索引の定義からカスタムマイグレーションに貼る全文検索のSQLを出力するスクリプト
 │   ├── email/                  # ローカル開発時のメールボックス(Git管理に含めない) ... Mailpitを使用
 │   ├── backend-lib/            # バックエンド共通ファイル(node_modulesディレクトリは無し)
-│   │   └── utilities/          # ユーティリティ
+│   │   ├── core/               # 実行環境に依存しない部品
+│   │   └── workers/            # workerdのAPI・バインディング・Honoに依存する部品
+│   ├── common-lib/             # フロントエンドとバックエンドの共用部品
 │   ├── api/                    # APIサーバー ... Honoを利用、フロントエンド向け内部API(GraphQL)と公開API(REST・OpenAPI仕様書)を提供
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   ├── event/                  # イベントサーバー ... Honoを利用、Stripe Webhook・RFC 8058メール配信停止・Queuesのconsumer・画像配信ドメイン(SW-012)を担当
+│   │   ├── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   └── common-lib/         # 共用部品(`apps/common-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   ├── event/                  # イベントサーバー ... Honoを利用、Stripe Webhookの受信と決済の反映・返金の実行・RFC 8058メール配信停止・Queuesのconsumer・画像配信ドメイン(SW-012)での画像の変換配信とエッジキャッシュ・画像判定と隔離・全文検索の索引の更新とキーワード抽出を担当
+│   │   ├── scripts/            # 実際の外部API(キーワード抽出)への疎通確認のスクリプト
 │   │   ├── db/                 # DBスキーマ定義(`apps/db`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
-│   │   └── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   ├── lib/                # バックエンド共通ファイル(`apps/backend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   └── common-lib/         # 共用部品(`apps/common-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   ├── frontend-lib/           # フロントエンド共通ファイル
+│   │   ├── .storybook/         # Storybookの設定 ... Tailwind CSS・bot判定の偽物・配色の切替・固定の表示設定・アクセシビリティ検査の対象の絞り込み
 │   │   ├── components/         # コンポーネント定義 ... Storybookによるプレビュー付き
+│   │   ├── config/             # 画面を持つアプリが使う静的解析の規則とGraphQLのコード生成の検査、Viteのビルドのプラグイン(ビルドの出力からローカルのシークレットのファイルを除く)、設定ファイルとカタログの網羅性の検査、生のHTMLの例外の検査、エディタの事前バンドルの一覧とVueの機能フラグ
+│   │   ├── scripts/            # マークダウンの入力欄の編集領域がページの最初の読み込みとサーバー側の描画に含まれないことの検査(`check:editor-chunks`)
+│   │   ├── server/             # サーバーの部品 ... Workerの入口と処理の順序、環境の検証、CSRF・CSP・セキュリティヘッダー・IP制限、APIサーバーへの中継とセッションのCookie、ログとエラートラッキング
+│   │   ├── start/              # TanStack Startとの接続 ... グローバルのミドルウェア、サーバーからブラウザへの例外の受け渡し、ルーターの文脈、GraphQLの実行、ページのhead、ブラウザ側のエラートラッキングの初期化
+│   │   ├── styles/             # スタイル ... 配色のトークン、フォーカスの輪郭と視差効果を減らす設定での動きの抑制
+│   │   ├── test/               # テストの補助 ... アクセシビリティの自動検査、キーボード操作・表示設定・配色の再現、テストの偽物
 │   │   └── utilities/          # ユーティリティ
 │   ├── client/                 # Webサーバー兼フロントエンド(利用者側) ... TanStack Startを利用、公開API向けSwagger UIページも含む
-│   │   └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   ├── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│   │   └── common-lib/         # 共用部品(`apps/common-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 │   └── admin/                  # Webサーバー兼フロントエンド(管理者側) ... TanStack Startを利用
-│       └── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│       ├── lib/                # フロントエンド共通ファイル(`apps/frontend-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
+│       └── common-lib/         # 共用部品(`apps/common-lib`ディレクトリ)のバインド先、Dockerコンテナ内で利用可能
 ├── mockups/src/routes/         # 画面デザイン案 ... TanStack Start・Tailwind CSS・shadcn/uiを利用、フロントエンド共通ファイルは不使用
 │   ├── client/                 # 利用者側画面のモックアップ
 │   └── admin/                  # 管理者側画面のモックアップ
@@ -128,25 +214,26 @@ prod環境には、`main`ブランチから`prod`ブランチへのPRマージ(p
 │   ├── CODEMAPS/               # ecc:doc-updaterエージェントによる自動生成コードマップ
 │   └── GUIDES/                 # 要件定義書を元にした開発者ドキュメント、ecc:doc-updaterエージェントにより都度更新
 │       ├── tech/               # 本プロジェクトに限らず同じ技術選定のプロジェクトにコピーできる、技術的な資料
-│       │   ├── infra/          # インフラ・ネットワーク構成図、実行環境の設定規約と環境種別、ログ管理方針、非同期処理設計
-│       │   ├── external/       # 各種外部APIの仕様、料金、リクエスト制限、認証方式、エラーハンドリング及びリトライ戦略
-│       │   ├── db/             # データベース設計原則、テーブル・カラムの命名規則、マイグレーションの生成と適用の手順、データベース固有の制約と対処
-│       │   ├── backend/        # バックエンドのコーディングルール ... アーキテクチャ設計(依存性注入を含む)、API設計
-│       │   ├── frontend/       # フロントエンドのコーディングルール ... アクセシビリティ規則、マークアップ規約、コンポーネント共通化対象、開発時とデプロイ前の起動方法
+│       │   ├── infra/          # インフラ・ネットワーク構成図、IaC定義の構成と資源の追加方法、検査とデプロイのパイプライン、実行環境の設定規約と環境種別、ログ管理方針、非同期処理設計、画像の変換配信とエッジキャッシュ
+│       │   ├── external/       # 各種外部APIの仕様(自然言語APIによるキーワード抽出・画像判定を含む)、料金、リクエスト制限、認証方式、エラーハンドリング及びリトライ戦略
+│       │   ├── db/             # データベース設計原則、テーブル・カラムの命名規則、マイグレーションの生成と適用の手順、データベース固有の制約と対処、全文検索の索引の設計と同期・照合・再構築、下書きと公開した版の管理、利用者間の関係の保存と一覧、グループごとの最新の行で並べる一覧
+│       │   ├── backend/        # バックエンドのコーディングルール ... アーキテクチャ設計(依存性注入を含む)、API設計、ユーザーライフサイクルイベント、監査ログの記録、外部の通知の冪等な反映、定期課金の加入状態と特典の判定、ハンドル(URLの識別子)の名前空間、集約のライフサイクルイベント、判定の供給元と保存の処理の登録口、期間を限った投票
+│       │   ├── frontend/       # フロントエンドのコーディングルール ... アクセシビリティ規則、マークアップ規約、コンポーネント共通化対象、開発時とデプロイ前の起動方法、フロントエンドサーバーのセキュリティ、データ取得、フロントエンドの観測、マークダウンの入力欄と表示部品、管理画面のシェルと区画、表示中の画面の定期再取得、業務日付のカレンダー、集計値と残り時間を表示し続ける画面、URLのクエリで条件を持つ一覧
 │       │   ├── coding/         # バックエンド/フロントエンド共通のコーディングルール ... JavaScript・TypeScriptの記法、設定ファイルの記述規約と基底設定の継承、整形検査・静的解析・型検査のコマンド、依存パッケージの版管理、共有ディレクトリの配置方式、GraphQL通信、入力値バリデーション
-│       │   ├── testing/        # テスト方針(テストの種別と命名規約、実行コマンド)、カバレッジ設定、TDDの進め方、E2Eテストツールの版の更新手順
-│       │   ├── operations/     # 運用ガイド ... デプロイ手順、障害対応、ロールバック手順、決済データ操作
-│       │   └── security/       # 包括的なセキュリティガイド、認証認可設計、シークレット管理、システム監視及び対応方針
+│       │   ├── testing/        # テスト方針(テストの種別と命名規約、実行コマンド)、カバレッジ設定、IaC定義のテストとCIでのE2Eテストの実行方法、デプロイ後のスモークテスト、TDDの進め方、E2Eテストツールの版の更新手順
+│       │   ├── operations/     # 運用ガイド ... デプロイ手順(初回の準備・stagingへのデプロイ・prodへのリリース・hotfix)、障害対応、ロールバックと復旧、決済データ操作
+│       │   └── security/       # 包括的なセキュリティガイド、認証認可設計、シークレット管理、CIのシークレットの供給経路とリポジトリ保護、マークダウンのサニタイズ、アップロードの安全対策、未ログインの投稿の保護、システム監視及び対応方針
 │       └── service/            # 本プロジェクト特有の資料
 │           ├── overview/       # サービス概要、コンセプト、料金及びプラン体系
 │           ├── features/       # 国際化方針や決済実装方針など特筆すべき機能仕様
 │           ├── design/         # デザインガイドライン ... 文字やパーツ配置に関するサービス固有の規則
 │           └── legal/          # 法律及びコンプライアンス準拠方針、利用規約・プライバシーポリシーの大枠
-├── config/                     # ルートと全アプリが参照する設定データ ... アプリ一覧と共有ディレクトリの配置先、テストの命名パターンとカバレッジ閾値
-│   └── vitest/                 # ブラウザテスト・Workers統合テストのVitestプリセット
-├── e2e/                        # PlaywrightによるE2Eテスト(設定はルートの`playwright.config.ts`) ... 対象アプリ(`client`・`admin`)ごとのディレクトリにテストを置く
-│   └── support/                # 対象アプリのURL解決、Playwrightの設定値の組み立て、到達確認、対象0件の表示
-├── scripts/                    # 開発コンテナとツールのスクリプト ... コンテナ起動時の処理(Claude Codeの更新、ワークスペース信頼設定のマージ、Chromiumの導入、常駐プロセスの起動)
+├── config/                     # ルートと全アプリが参照する設定データ ... アプリ一覧と共有ディレクトリの配置先、テストの命名パターンとカバレッジ閾値、アプリ間で写した値とデバッガーの待ち受けポートの照合テスト
+│   ├── eslint/                 # バックエンドのアプリ(api・event)が共通で読み込む層の静的解析規則
+│   └── vitest/                 # ブラウザテスト・Workers統合テストのVitestプリセット、Workers統合テストへのD1マイグレーションの読み込み、単体テストで検査するソースのWorkers統合テストのカバレッジからの除外
+├── e2e/                        # PlaywrightによるE2Eテスト(設定はルートの`playwright.config.ts`) ... 対象アプリ(`client`・`admin`)ごとのディレクトリ(機能ごとのサブディレクトリを含む)にテストと、その機能の画面の操作の手順(`<手順の名前>-steps.ts`)を置く
+├── scripts/                    # 開発コンテナとツールのスクリプト
+│   ├── delivery/               # 検査・デプロイ・リリースの配布のスクリプト(`cli.ts`のサブコマンド)
 │   └── tooling/                # 品質ゲートのツールスクリプト ... Gitフックの導入、コミット時の検査対象の振り分け、一括検査・一括実行、共有ディレクトリの配置、テスト命名の検査
 ├── test-support/               # ルートの単体テストの補助 ... 共通フィクスチャ、型だけの読み込みの判定、Git管理外の判定
 ├── Dockerfile                  # AIエージェントによる自動作業を安全に進める開発コンテナ

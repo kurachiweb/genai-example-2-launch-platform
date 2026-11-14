@@ -1,0 +1,7 @@
+mutation AdminRegenerateRecoveryCodes(
+  $reAuthentication: AdminReAuthenticationInput!
+) {
+  regenerateAdminRecoveryCodes(reAuthentication: $reAuthentication) {
+    codes
+  }
+}

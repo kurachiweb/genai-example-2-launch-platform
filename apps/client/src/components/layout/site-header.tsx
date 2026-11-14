@@ -1,0 +1,65 @@
+import { type ComponentType, useRef } from 'react';
+
+import { ThemeToggle } from '../../../lib/components/theme/theme-toggle.tsx';
+import {
+  HOME_HREF,
+  MAIN_NAVIGATION_LABEL,
+  PRIMARY_NAVIGATION_LINKS,
+  SITE_NAME,
+} from './site-links.ts';
+import { SiteMobileMenu } from './site-mobile-menu.tsx';
+
+export interface SiteHeaderProps {
+  readonly launchAction: ComponentType;
+  readonly account: ComponentType;
+}
+
+export function SiteHeader({
+  launchAction: LaunchAction,
+  account: Account,
+}: SiteHeaderProps) {
+  const navigationRef = useRef<HTMLElement>(null);
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur supports-backdrop-filter:bg-background/70">
+      <div className="mx-auto flex min-h-14 w-full max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2">
+        <a
+          href={HOME_HREF}
+          className="flex shrink-0 items-center gap-1 text-lg font-extrabold tracking-tight text-foreground no-underline"
+        >
+          <span aria-hidden="true">⚽️</span>
+          {SITE_NAME}
+        </a>
+        <nav
+          ref={navigationRef}
+          aria-label={MAIN_NAVIGATION_LABEL}
+          className="ml-4 hidden items-center gap-1 md:flex"
+        >
+          {PRIMARY_NAVIGATION_LINKS.map(({ href, label }) => (
+            <a
+              key={href}
+              href={href}
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground no-underline hover:bg-accent hover:text-foreground"
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+          <ThemeToggle />
+          <div className="hidden min-w-0 flex-wrap items-center justify-end gap-2 md:flex">
+            <LaunchAction />
+            <Account />
+          </div>
+          <SiteMobileMenu
+            launchAction={LaunchAction}
+            account={Account}
+            onWideScreenClose={() => {
+              navigationRef.current?.querySelector('a')?.focus();
+            }}
+          />
+        </div>
+      </div>
+    </header>
+  );
+}

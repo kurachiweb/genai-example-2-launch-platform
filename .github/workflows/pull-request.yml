@@ -1,0 +1,21 @@
+name: pull-request
+
+on:
+  pull_request:
+    branches: [main, prod]
+  push:
+    branches: ['hotfix/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+    permissions:
+      contents: read
+      id-token: write

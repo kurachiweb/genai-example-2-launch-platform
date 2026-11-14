@@ -1,0 +1,23 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "jsx": "react-jsx",
+    "types": ["bun", "@cloudflare/vitest-pool-workers/types", "react"]
+  },
+  "include": [
+    "*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "db/**/*.ts",
+    "lib/**/*.ts",
+    "common-lib/**/*.ts"
+  ],
+  "exclude": [
+    "common-lib/*.config.ts",
+    "common-lib/**/*.test.ts",
+    "common-lib/config/**",
+    "common-lib/markdown/fixtures/**"
+  ]
+}

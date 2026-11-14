@@ -167,7 +167,7 @@ function draftsOf(state: ProfileState): Draft[] {
   return [...live, ...pastDrafts(MANY_COUNT - live.length, mixed)];
 }
 
-// 新しい順。FR-VOTE-011により非公開・削除されたプロダクトや退会・停止したユーザーのプロダクトは含めない
+// 新しい順。FR-VOTE-012により非公開・削除されたプロダクトや退会・停止したユーザーのプロダクトは含めない
 export function buildUpvotes(
   state: ProfileState,
   profileUser: User,

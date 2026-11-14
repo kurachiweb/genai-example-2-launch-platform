@@ -1,0 +1,25 @@
+# シークレット検出(Betterleaks)の設定。既定の規則をすべて使い、構造上の誤検知だけを規則・パス・行の形で絞って除外する
+
+[extend]
+useDefault = true
+
+# GraphQLのスキーマ(生成物を含む)では、パスワードの項目の型の注釈(項目名・コロン・型名だけの行)の型名を、generic-passwordが値として誤検知する。
+# 行番号のFingerprintでは型を足すたびに行がずれるため、.graphqlのファイルのその形の行に限って除外する
+[[allowlists]]
+description = "GraphQLのスキーマのパスワードの項目の型の注釈"
+targetRules = ["generic-password"]
+condition = "AND"
+paths = ['''\.graphql$''']
+regexTarget = "line"
+regexes = ['''^\s*\w*[Pp]assword\s*:\s*\[?\s*\w+\s*!?\s*\]?\s*!?\s*$''']
+
+# GraphQLの操作の文書と、それを写した許可リスト・持続化した文書の生成物では、パスワードの変数の宣言(`$password: String!`)の型名を、generic-passwordが値として誤検知する。
+# specの設計書に写したスキーマと操作も同じで、項目の型の注釈と、メールアドレスとパスワードの引数を1行に並べた項目の、パスワードの型名を誤検知する。
+# 設計書は編集のたびに行がずれ、行番号のFingerprintでは登録が壊れるため、値が型名`String!`そのものである一致に限って除外する
+[[allowlists]]
+description = "GraphQLの操作とspecの設計書のパスワードの型の宣言"
+targetRules = ["generic-password"]
+condition = "AND"
+paths = ['''\.graphql$''', '''graphql/generated/allowlist\.json$''', '''graphql/generated/persisted-documents\.json$''', '''(^|/)\.kiro/specs/[^/]+/design\.md$''']
+regexTarget = "match"
+regexes = ['''^\w*[Pp]assword\s*:\s*String!\)?,?$''']

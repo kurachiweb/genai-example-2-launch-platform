@@ -1,0 +1,10 @@
+mutation AdminUpdateUltrasPromotionSetting(
+  $input: UpdateUltrasPromotionSettingInput!
+) {
+  updateUltrasPromotionSetting(input: $input) {
+    enabled
+    updatedAt
+    updatedByNickname
+    version
+  }
+}

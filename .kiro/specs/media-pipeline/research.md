@@ -1,0 +1,623 @@
+# Research & Design Decisions
+
+## Summary
+
+- **Feature**: `media-pipeline`
+- **Discovery Scope**: New Feature(ファイル処理の実装は無い。上流のbackend-platform・api-gateway・frontend-platformは設計まで承認済み・実装前である。画像の名前付きバリアント・URL・パージ規則は[画像バリアント仕様](../../../docs/GUIDES/service/features/002-image-variants.md)で決定済み)
+- **Key Findings**:
+  - Images Bindingの`.output()`が受け付けるのは`format`・`quality`・`anim`だけで、メタデータの扱いを指定できない。Cloudflareの文書では、メタデータの指定はJPEG出力にだけ効き(既定は著作権情報以外を捨てる`copyright`)、WebP・PNG・AVIF出力は常に全メタデータを捨てる。開発者決定Q1により、配信時のJPEGのメタデータ除去は要件から外した。
+  - Workers Cacheはエントリポイントごとに有効・無効を切り替えられ(`exports.<名前>.cache`、Wrangler 4.107.0以上)、キャッシュキーはエントリポイント・パス・クエリ・`ctx.props`・Workerの版で決まり、ホスト名を含まない。パージは呼び出したエントリポイントのキャッシュにしか効かない。そのため、既定のエクスポートを関門(キャッシュ無効)とし、画像配信を名前付きエントリポイント(キャッシュ有効)に置いて`ctx.exports`で呼ぶ構成にした。パージも同じエントリポイントのRPCメソッドで行う。
+  - R2はWorkersの`put()`で`If-None-Match: *`などの条件付きヘッダーを受け付け、条件が満たされなければ`null`を返す。条件は書き込みと同時に評価され、同じキーへの同時の書き込みでも1つだけが成功する。上書きの拒否(NFR-SECUR-041)をこれで満たせる。
+  - R2の`us`管轄のバケットをWorkersから使うには、バインディングに`jurisdiction: "us"`が要る。管轄はバケットの作成後に変えられない。
+  - `ctx.exports`は互換性日付2025-11-17から既定で有効で、本プロジェクトの互換性日付2026-08-04では追加のフラグが要らない。
+  - wasm-image-optimization 2.0.11は`/workerd`の入口と`optimizeImage()`を持ち、`format: 'raw'`で32ビットRGBAの画素を返す。処理は1回の呼び出しの中で同期的に進むため、同じisolateで並行に呼ばれても復号の作業領域は重ならない。
+
+## 要件フェーズ前の確認事項(2026-10-18)
+
+開発者の判断を要する論点を、要件の作成前に一括で確認した。決定は`requirements.md`の「要件フェーズでの決定事項」にも記録する。
+
+| #   | 論点                                                       | 根拠                                                                                                                         | 回答(2026-10-18)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | Images BindingでJPEG出力のメタデータ除去を指定できない問題 | roadmapの実現性チェック・briefのConstraints・FR-FILEU-017・DR-009・画像バリアント仕様の出力フォーマット表                    | 開発者の回答。「JPEGのメタデータ除去はしないよう仕様変更」(提示した3案のいずれでもない)。JPEG出力は残し、配信時のJPEGのメタデータ除去を要件から外して変換基盤の既定の動作に任せる。Q2でブラウザが画像を作り直すため、通常の経路ではアップロード時点でExifが消える。ブラウザを通さず直接送られたJPEGにはメタデータが残り得る(Risksに記録)。要件定義書のFR-FILEU-017・DR-009の改訂が必要である。画像バリアント仕様とプライバシーポリシーの大枠の記述と整合させる                                                                                                                                                                                  |
+| Q2  | 編集ダイアログの結果の送り方とサイズ上限の判定対象         | FR-FILEU-003・006、UI-007、FR-UPROF-002・FR-PRDCT-005〜006・FR-ADMAC-010、roadmapの実現性チェック、文言規則・ページ配置      | 推奨案。切り取りと用途ごとの最大寸法への縮小をブラウザで行い、JPEG原本はJPEG、それ以外はPNGで作り直して送る。サイズ上限は送るファイルで判定する。サーバーは直接送られた画像への防御として画素数の上限(目安1,600万画素、Workers統合テストとstagingで実測して確定)を検査する                                                                                                                                                                                                                                                                                                                                                                      |
+| Q3  | Rekognitionの判定で隔離するカテゴリと信頼度                | FR-FILEU-013・SW-017・FR-FILEU-015、Rekognitionの既定の信頼度の下限(50%)                                                     | 推奨案ではなく「厳格」を採用。Rekognitionの全カテゴリを信頼度60%以上で隔離する。カテゴリと閾値は設定値にして、運用開始後に調整できるようにする                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Q4  | 許可リスト外の内容を含むSVGの扱い                          | roadmapの実現性チェック(fast-xml-parserの脆弱性)・FR-FILEU-010・014・018                                                     | 推奨案。DOCTYPE・ENTITYはアップロード時に拒否して書き出し直しを案内する。許可リスト外(script・foreignObject・イベント属性・外部参照など)は判定時に隔離して管理者の確認へ回す。Inkscape・Illustrator・RDFなど編集ツールの名前空間の要素・属性は許可する                                                                                                                                                                                                                                                                                                                                                                                          |
+| Q5  | 業務データに紐付かないファイルの扱い                       | 4.25の前文・DR-001・briefの範囲外(紐付け方)・api-gatewayの決定(GraphQLでのアップロードは無効)                                | 推奨案。紐付かないまま24時間を過ぎたファイルを日次バッチで物理削除する。対象は画像用・ファイル用・隔離の3バケットで、エッジキャッシュも無効化する                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Q6  | 問い合わせの添付で実体検証を用意する形式の範囲             | FR-FILEU-007・009、FR-INQRY-007・019・020、briefのApproach、inquiry-chatのbrief                                              | 推奨案。画像5形式・PDF・プレーンテキストとする。テキストはUTF-8として読めてNUL文字を含まないことで検証する。判定には自前のシグネチャ表を使い、新規パッケージは無い。添付画像には編集ダイアログを出さず、選んだファイルのまま保存する                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Q7  | アップロード時に幅・高さを読み取る手段                     | FR-FILEU-022・roadmapの実現性チェック・CLAUDE.md(新規パッケージ)・tech-stack.md・backend-platformの設計(APIにImagesが無い)   | 推奨案。`image-size` 2.0.4を採用する。依存の無い純粋なJSで、`Uint8Array`からJPEG・PNG・GIF・WebP・SVGの寸法をヘッダーだけで読む。JPEGの向き情報による幅と高さの入れ替えは自前で行う                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Q8  | Rekognitionを呼ぶAWSのリージョンとIAMの資格情報            | SW-017・DR-012・プライバシーポリシーの大枠(委託先)・infra-deliveryのbrief(OpenTofuはAWSを含まない)・tech-stack.md(aws4fetch) | 推奨案ではなく「米国東部で手作業」を採用。us-east-1を使い、`rekognition:DetectModerationLabels`だけを許すIAMユーザーとポリシーを開発者が手作業で作り、手順をtechドキュメントに書く。アクセスキーはInfisicalのstaging・prodに登録する(stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する。prodの値はlaunch-readinessがリリース時に登録する)。infra-deliveryのQ3でD1・R2も米国管轄に決まったため、データの保存先と処理先が米国にそろう。EU利用者の画像を米国へ送る根拠(データプライバシーフレームワーク等)をプライバシーポリシーの大枠・準拠方針で扱う必要がある(根拠の種類と分担は、横断レビュー2回目のN-1で確定した) |
+
+- 他specの回答のうち本specに影響するもの: infra-deliveryのQ3(D1・R2を`jurisdiction = "us"`で作る)により、3つのバケットのバインディングに管轄の指定が要る(指定はinfra-deliveryの要件2.3が行う)。content-processingのQ1(共有ディレクトリ`apps/common-lib`の新設)は、本specの仮決定2で利用する。identity-authのQ5(波及処理を同期と非同期の2段階で行う)は、隔離理由の記録を同期で、バケット間の移動を非同期で行う本specの設計と整合する(ユーザーの退会・停止・停止解除の波及処理はuser-profile-socialが登録する。spec横断レビューの反映のI-1)。infra-deliveryのQ5・Q6により、prodのシークレットの登録はlaunch-readinessがリリース時に行う。
+
+### 提示した選択肢(記録)
+
+- Q1: JPEG出力の廃止 / 判定時の再エンコード版を保存 / アップロード時にメタデータ領域を除去 / 開発者の自由回答「JPEGのメタデータ除去はしないよう仕様変更」(採用)
+- Q2: ブラウザで作り直して送る(採用) / 切り取りだけで縮小しない / 原本と切り取り範囲を送る
+- Q3: 中程度(信頼度80%以上で6カテゴリ) / 厳格(全カテゴリを信頼度60%以上、採用) / 最小限(3カテゴリを信頼度90%以上)
+- Q4: 隔離し、編集ツールのメタデータは許可(採用) / 編集ツールのメタデータも隔離 / 許可リスト外もアップロード時に拒否
+- Q5: 一定時間後に削除(採用) / 削除と未使用分の上限 / 削除しない
+- Q6: 画像・PDF・テキスト(採用) / 画像とPDFのみ / Office文書・ZIP・動画も含める(`file-type` 22系)
+- Q7: `image-size` 2.0.4(採用) / 自前でヘッダーを解析 / APIにもImages Bindingを追加して`.info()`で読む
+- Q8: 東京で手作業 / 東京でOpenTofu管理 / 米国東部で手作業(採用)
+
+### 確認済みのため質問しない事項
+
+- 専用Workerへの分離: 不要とした。要件2.5でWorkerのサイズ上限は非圧縮64MiBで、wasm-image-optimization(2.0.11、`/workerd`の入口あり)の本体約7.4MBは収まる。メモリはQ2の画素数の上限と、backend-platformの「バッチ内のメッセージは1件ずつ処理」で抑える。FR-FILEU-013は「イベントサーバー内で」と定めているため、実測で収まらない場合に限り、roadmapどおり改めて開発者に確認する。
+- SVGのPNG化: wasm-image-optimizationはSkia(SkSVGDOM)でSVGを描画でき、GIF・WebP・BMPの入力にも対応する。FR-FILEU-013の「PNGへ変換」はSVGを含めて成り立つ。
+- fast-xml-parserの版と設定: roadmapの指摘どおり5.11.2(2026-09-29公開)に固定し、`processEntities: false`にする。
+- 判定できなかった画像の扱い: 4.25の前文(即時配信の優先)・NFR-AVAIL-002・backend-platformのQ7(デッドレターは通知して破棄し、再実行は各ドメインの冪等な処理に任せる)により、一時的な失敗は公開したまま「未判定」を記録して日次バッチで依頼し直し、画像として復号できない恒久的な失敗は自動判定の理由で隔離する。
+- ugc-moderationとの責任分担: roadmapのShared seams「media-pipelineがデータモデルと移動処理を、ugc-moderationが管理操作を所有する」に従う。本specのドメイン操作は、隔離理由の追加・解除と「全理由が解消したら復元する」不変条件(FR-ADMUG-050)を持つ。ugc-moderationは管理画面・監査ログ・投稿者への通知・FR-ADMUG-018の経路の認可を持つ。ugc-moderationのbriefの「複数の隔離理由の判定」は、本specの操作を呼ぶ管理操作と読む。
+- SVG検査による隔離の承認: FR-FILEU-015・FR-ADMUG-017の文言どおり自動判定による隔離として扱い、管理者の公開承認を可能にする。承認後もFR-FILEU-018のヘッダーで防御する。
+- 画像配信ドメインのIP制限の除外: backend-platformのQ1で決定済み。
+- CSP: SVG応答でのCSPの上書きはapi-gatewayのQ6・要件12.3で決定済み(応答が自らCSPを持てば既定のCSPで置き換えない)。フロントのimg-srcへの画像配信オリジン(`IMAGES_ORIGIN`)と、プレビュー用の`blob:`・`data:`はfrontend-platformで決定済み。
+- 中継経路: アップロードとダウンロードの中継は、frontend-platformの`RelayRoute`(`/_bff/`)とapi-gatewayの内部REST(`/internal`・サブアプリが渡す`c.var.session`。api-gatewayの改訂3)で決定済み。GraphQLでのアップロードはapi-gatewayで無効と決定済み。CSRFの検証はGET・HEAD・OPTIONS以外の全要求に適用済み。
+- リソース: R2の3バケット(`IMAGES_BUCKET`・`FILES_BUCKET`・`QUARANTINE_BUCKET`)、eventの`IMAGES`バインディング、`JOBS_QUEUE`とデッドレターキュー、再試行の規則、メッセージ種別の命名`<ドメイン>.<動詞句>`はbackend-platformで決定済み。
+- 変換配信の仕様: 画像バリアント仕様で決定済み(バリアント・URL・`Cache-Control`・パージ・404の`no-store`・「GIFは最初のフレームのみ」)。Q1の結果だけを反映する。
+- HW-001のカメラ: モバイルでは、ネイティブのファイル選択(`<input type="file">`)がカメラ撮影を選択肢に出す。`getUserMedia`は使わず、Permissions-Policyの`camera=()`も変えない。iOSは、`accept`にHEICが無ければJPEGへ変換して渡す。
+- Rekognitionの呼び出し方式: FR-FILEU-013のとおり、640px以下のPNG・JPEGをバイト列で同期API(DetectModerationLabels)に送る。ローカルとCIでは、tech-stack.mdどおり決定論的スタブを使う。
+- aws4fetch・react-easy-crop: どちらもtech-stack.mdで採用済み。aws4fetchは1.0.20(2024-08)以降リリースが無いが、依存が無くSigV4の仕様も安定しているので変えない。react-easy-cropは6.2.4(2026-10-06公開)に固定する。設計時は公開から2週間に満たないため6.2.3(2026-07-24公開)としたが、2026-11-01のギャップ分析で2週間以上経ったことを確かめ、開発者の決定(G-9)で上げた。依存(`normalize-wheel` ^1.0.1)と相手依存(React・ReactDOM 16.4以上)は6.2.3と同じである。
+- Requirement Ambiguities: roadmapの表に、担当がmedia-pipelineの行は無い。
+
+### 仮決定(2026-10-18に開発者が承認)
+
+生成中に見つかった、開発者の判断を要する論点である。回答と上流specに最も整合する案を選び、`requirements.md`・`design.md`はその案で書いた。2026-10-18に3件とも「選んだ案」のとおり承認され、確定した(仮1はQ&Aで個別に承認、仮2・仮3は他specの仮決定とともに一括で承認)。
+
+| #   | 論点                                                                             | 選んだ案                                                                                                                                                                                                                                                                                                       | 他の選択肢                                                                                                                                                                                       |
+| --- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 仮1 | 利用者が削除した画像(論理削除)を、物理削除までの13日間配信し続けるか             | 配信を続ける。画像配信はデータベースを参照せずバケットの有無だけで応答する(読み取り系の可用性と速さを優先)。業務データからの参照は消えるためページには表示されない。FR-FILEU-024が「画像用非公開バケット及び隔離バケット内の当該画像」を削除対象としており、論理削除中も画像用非公開バケットに残る前提と読める | 論理削除の時点で隔離バケットへ移し、エッジキャッシュを無効化して配信を止める(隔離理由とは別の「削除済み」を保存先の判定に加える)。プライバシー上はこちらが強いが、移動の処理が削除のたびに増える |
+| 仮2 | 前後で共有する定義(バリアント表・形式の一覧・エラーコード・中継の経路)の置き場所 | content-processingが新設する`apps/common-lib`の`media/`に置き、client・admin・api・eventで共有する。本specの実装は、content-processingの`apps/common-lib`新設のタスクの完了を前提とする                                                                                                                        | `apps/frontend-lib`と`apps/backend-lib`に同じ定義を別々に置き、値の一致を画像バリアント仕様で管理する(spec間の実装順の制約は生じないが、定義が2重になる)                                         |
+| 仮3 | 不透明な非JPEG画像(WebP写真など)をPNGで作り直すとサイズ上限を超える場合          | 決定Q2の文言どおりPNGで作り直し、上限を超えたら切り取る範囲を狭めるか別の画像を選ぶよう案内する。各ドメインspecが最大寸法を上限に見合う値にする                                                                                                                                                                | 透過の無い画像に限り、上限を超えたときJPEGで作り直す / 上限に収まるまで寸法を段階的に下げる                                                                                                      |
+
+### spec横断レビューの反映(2026-10-18)
+
+Wave 1の横断レビュー(kiro-spec-batch Step 4)の指摘と、開発者の決定を反映した。2回目の横断レビューの指摘(N-1〜N-7)と開発者の決定は、「(2回目)」を付けた行に記録する。3回目の横断レビューの指摘のうち本specが担当するもの(R3-1・R3-3・R3-5・R3-8)と、関係する決定(R3-6の型)は、「(3回目)」を付けた行に記録する(2026-10-19)。
+
+| 指摘 | 決定・対応                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C-1  | `apps/common-lib`の新設はcontent-processingに残し、roadmapの順をinfra-delivery→content-processing→media-pipeline→identity-authにした。本specが前提にするのは、content-processingのタスク1.1・1.2・4.1・4.2と、frontend-libの`server/**`からcommon-libを読み込む許可である(tasks.md 1.1、design.mdのAllowed Dependencies)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| I-1  | ユーザーの退会に伴う物理削除(`purge_due`)と、停止・停止解除に伴う隔離理由`user_suspended`の付け外しは、user-profile-socialがidentity-authのユーザーライフサイクルイベントの波及処理として登録する。identity-authは登録口を提供するだけである。本specは、そのための保有者単位の操作として、既存の`eraseOwnedBy`に加えて`addReasonForOwner`・`removeReasonForOwner`を契約に加えた(要件9.10)。3つとも1回の処理件数に上限(1,000件)を設け、残りの有無(`hasMore`)を返す(要件13.9)。identity-authの非同期の波及処理は、1回の呼び出しで終わらない場合に`continue`を返し、進み具合を波及処理が自分のデータで判断する契約のため、`hasMore`をそのまま`continue`へ対応付けられる                                                                                                                                                                                                                                                                        |
+| I-3  | stagingの値は、そのキーを必須にする変更をmainへマージする前に開発者が登録する(`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`。任意の`MEDIA_SMOKE_TOKEN`も同じマージの前に登録する)。prodの値はlaunch-readinessがリリース時に登録する。Infisicalの表と`OPTIONAL_WORKER_SECRETS`(event)への記載はinfra-deliveryで追記済みで、本specは確かめるだけである(無かった場合の扱いはN-2の行で改めた)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| I-4  | 技術ドキュメントの番号を`external/003`・`infra/008`・`security/005`に固定し、「実装時点の最大の番号の次」の規則を削除した                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| M-2  | content-processingが、frontend-libの`server/**`から`common-lib/media`などを読み込む許可を加える(`common-lib/validation/**`は不可)。本specの`server/media`は`common-lib/media`だけを読み込む                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| M-4  | 日次タイムラインのジョブの名前と順序の表はcontent-processingが作り、本specはタスク9.2で810〜830の行を加える(表が無い場合の扱いはN-3の行で改めた)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| M-6  | マイグレーションの生成(タスク1.2)は、mainの最新を取り込んでから行い、番号の衝突があれば生成し直す                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| M-8  | プライバシーポリシーの大枠と準拠方針は、infra-deliveryがCloudflareの資源の保存場所(D1・R2・Queuesは米国、Durable Objectsは保証しない)を、本specがRekognition(us-east-1)への送信とその移転の根拠(国外移転の記載事項)を書き、互いの記述を上書きしない(分担の単位はN-1の行で委託先単位に改めた)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| M-9  | ジョブ名を`<spec名>.<名詞句>`の規約に合わせ、`media-pipeline.expired-file-erasure`・`media-pipeline.moderation-requeue`・`media-pipeline.location-reconciliation`に改めた。メッセージ種別(`<ドメイン>.<動詞句>`の`media.*`)は変えない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| M-10 | frontend-platformの中継の415の挙動は変えずに合わせる。中継は全用途の許可形式の範囲(`ATTACHMENT_MEDIA_TYPES`)で判定して415`unsupported_media_type`を返し得るため、アップロード部品は`Content-Type`に引数を付けずに送り、`parseUploadResponse`は`unsupported_media_type`をAPIの`unsupported_file_type`と同じ文言に対応付ける。用途ごとの判定はAPI(引数を除いて照合)が行う                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| N-1  | (2回目)プライバシーポリシーの大枠と準拠方針の国外移転の記載事項・データの保存場所は、節単位ではなく委託先単位で分担する。infra-deliveryがCloudflareの項(D1・R2・Queuesの米国での保存、所在を限定しない処理の扱い、移転の根拠)を、本specがAWS(Rekognition、us-east-1)の項を書き、互いの項を書き換えない。項の形はCloudflareの項と同じ「移転先・移転の根拠・委託先が講じる措置」とし、共通の「移転先の国」の行はAWSの記述だけを項への参照に改める。根拠はEU-USデータプライバシーフレームワーク(DPF)を主とし、DPFが無効になった場合はAWSのデータ処理補遺(DPA)に含まれる標準契約条項(SCC)に拠る。法務文書の本文は開発者が用意し、本specは記載事項として扱う(要件16のObjective・16.4、design.mdのOut of Boundary・Modified Files、tasks.md 9.2)。M-8の行の節単位の分担は、この行で改めた                                                                                                                                                         |
+| N-2  | (2回目)タスク1.3が前提にするinfra-deliveryのコード(Infisicalの表と`OPTIONAL_WORKER_SECRETS`のeventへの追記)は、「無ければ止める」から「確かめて、無ければ開発者へ報告する(止めない)」に改めた。infra-deliveryはroadmapの依存に加えない。未実装でもCIのデプロイが無いだけで、本specの実装は進められるためである(identity-authのタスク13.1と同じ扱い)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| N-3  | (2回目)前提にするcontent-processingの最小の区切りに、6.1(frontend-libの`server/**`からcommon-libを読み込む許可と`validation/**`の禁止の静的解析の規則)、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインの表の作成を加えた(tasks.md 1.1、design.mdのAllowed Dependencies)。許可は6.1の単体テストの成功と`coding/003`の記述で確かめる。日次タイムラインの表は最初に4:21のジョブを足すspecが作り、後のspecは行を足す。本specも、表が無ければ同じ形で作り(email-deliveryの900を含める)、表が無いことを理由に止めない(tasks.md 9.2)。M-4の行の「表が無ければ止める」は、この行で改めた                                                                                                                                                                                                                                                                                                                             |
+| N-4  | (2回目)ジョブ名の規約(ジョブ・波及処理は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`)の置き場所は、roadmapのShared seams(親エージェントが追記)と、content-processingのタスク11.5が追記するbackend-platformの`infra/003-async-processing.md`である。本specのジョブ名とメッセージ種別は規約に合っており、変更は名前の一覧への参照の追記だけである                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| N-5  | (2回目)シークレットのキーの一覧の正は、`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節(infra-deliveryのタスク8.5が作る)とする。本specはキーを宣言する変更(タスク1.3)と同じ変更で行を足し、既に行があれば食い違いを確かめるだけにする。節が無ければ開発者へ報告して進める。技術ドキュメント(タスク9.1)にはキーの名前を列挙しない                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| N-6  | (2回目)本specの変更は無い。運営者による代理の退会の操作口はidentity-auth、導線はugc-moderationが持つ。退会者のファイルの物理削除は、従来どおりuser-profile-socialの波及処理が`eraseOwnedBy`を呼ぶ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| N-7  | (2回目)停止中の利用者は既存のセッションでアップロードできたため、利用者のアップロードの受付に差し込み口`UploaderEligibility`(DIの識別子`UPLOAD_ACCESS_TYPES.UploaderEligibility`、束縛の置き場所`apps/api/src/composition/uploader-eligibility.ts`)を設けた。既定の実装`AllowAllUploaderEligibility`は全て許可する。判定は利用者側の経路だけで、主体の種類の確認の後、本文の検証と保存の前に行う。拒否は403と、判定が示す`account_unavailable`・`email_not_verified`で応答する。エラーコードはidentity-authの`AccountGuard`と同じ名前にし、文言は文言規則の既存の「停止中アカウント」「メール未確認」を使う(要件1.8・1.9、tasks.md 2.1・5.1・5.6・8.2)。identity-authは、本specのタスク5.1・5.6の後に、この束縛を`AccountGuard`の判定で差し替える(停止中は拒否、メールアドレス未確認の扱いは要件定義書の未確認時の制限に従う)。既定の全許可は、identity-authの実装前にはログインが成立せず利用者のアップロードが401になるため、穴にならない |
+| R3-1 | (3回目)`UploaderEligibility.check`の入力`session`が、application層からpresentation層の`SessionAccess`を型だけで読み込んでおり、backend-platformの層の規則(`no-restricted-imports`)に違反していた。開発者の決定により、application層のセッションの読み取り専用の型`SessionView`(`apps/api/src/application/session/session-view.ts`、メンバーは`principal(): Promise<Principal>`だけ。セッションのIDは`AuthenticatedPrincipal.sessionId`で読む)を受け取る形に改めた。`SessionView`はapi-gatewayの契約への追記で、追加と`SessionAccess`をその拡張に改める作業はidentity-authのタスク2.3が行う。roadmapの順では本specのタスク5.1が先に実装されるため、5.1の時点で無ければ5.1が同じ形・同じ場所で置き、`SessionAccess`は変えない(構造的部分型で代入できる)。2.3は、既にあれば一致を確かめるだけにする(design.mdの「UploaderEligibility・既定の実装」・Allowed Dependencies・Revalidation Triggers・File Structure、tasks.md 5.1)                 |
+| R3-3 | (3回目)identity-authのタスク8.5が束縛を差し替えることと、そのテストへの影響を本specにも書いた。タスク5.1のWorkers統合テストは、差し込み口をテストのコンテナへ明示的に束縛し(全許可の実装、または拒否する偽物)、`composition/uploader-eligibility.ts`の束縛に頼らないため、差し替えの影響を受けない。タスク5.6の登録箇所の既定値の単体テスト(全許可)は、8.5が差し替えるまでの既定値であり、8.5がその期待値を直す(design.mdのRevalidation Triggers・Testing Strategy、tasks.md 5.1・5.6)                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| R3-5 | (3回目)プライバシーポリシーの大枠と準拠方針の国外移転の記載事項のうち、Google Cloud(Natural Language API)の項はcontent-processingが本specのAWSの項と同じ形と根拠の種類で書くことを、他specへの期待と再検証の契機に加えた。本specはその項を書き換えない(requirements.mdの決定事項・Out of scope・Adjacent expectations・要件16のObjective・16.4、design.mdのOut of Boundary・Revalidation Triggers・Modified Files、tasks.md 9.2)。あわせて、Cloudflareの項の所在を限定しない処理の列挙を、infra-deliveryのR3-4の修正(メール送信・Turnstile・Web Analytics)にそろえた                                                                                                                                                                                                                                                                                                                                                                        |
+| R3-6 | (3回目)本specの担当ではないが、infra-deliveryのタスク8.5が示す国外移転の記載の型に合わせた。骨子は共通の行の後に見出し`### AWS(Rekognition)`を置き、「移転先」「移転の根拠」「委託先が講じる措置」の3項目を書く。準拠方針の「データの保存場所」の表(Cloudflareの資源の一覧)には行を足さず、表の下に`- **AWS(Rekognition)**: …。移転の根拠は骨子のAWSの項を正とする。`の箇条を足す。全委託先に共通の「移転の法的根拠」の行はinfra-deliveryが改めるため、本specは書き換えない(要件16.4、design.mdのModified Files、tasks.md 9.2)                                                                                                                                                                                                                                                                                                                                                                                                              |
+| R3-8 | (3回目)主体の種類が対象外の文言「この操作はできません。」(`upload_forbidden`)は文言規則に無かったため、タスク9.2の文言規則への追加の対象に加えた。identity-authの`forbidden`も同じ文言を使い、roadmapの順で先に実装される本specが加える。identity-authのタスク12.2は、既にあれば確かめるだけにする(design.mdのModified Files、tasks.md 9.2)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+
+- I-1で検討した別案: identity-authが本specに依存して自ら波及処理を登録する案(横断レビューの案B)は、identity-authの依存が増えるため採らなかった(開発者の決定)。保有者単位の隔離の操作を設けず、user-profile-socialがファイルの識別子を集めて`addReason`を呼ぶ案は、ドメインが参照を持たない未紐付け・論理削除中の画像(仮1により配信が続く)を取りこぼすため採らなかった。
+- M-5(4:21の1回の起動に全ジョブが直列で載り、時間の予算が無い)は、backend-platformと開発者の判断を待つため本specでは変えていない。
+
+### spec横断レビューの反映(2026-10-23)
+
+共通ドメイン5spec(admin-foundation・legal-pages・inquiry-chat・payments・ultras-subscription)の作成後の横断レビューで、要件定義書の`kB`・`MB`の基数が未決定だった。開発者の決定(2026-10-23)により、ファイルサイズの上限は1,024を基数とする(1kB = 1,024バイト、1MB = 1,048,576バイト)。規則は文言規則の「容量の単位」に置く。
+
+| 項目                    | 決定・対応                                                                                                                                                                                                                                                                                                                  |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MAX_UPLOAD_BYTES`      | 20,000,000から20,971,520(20MB)へ改めた(design.mdのMediaTypes、tasks.md 2.1・3.1)                                                                                                                                                                                                                                            |
+| 画像用の用途の上限      | Images Bindingの`.input()`の上限は「20MB」で基数の明記が無いため、外部の上限として安全側の20,000,000バイトを`IMAGE_STORAGE_MAX_BYTES`とし、`defineUploadPurpose`が`storage: 'images'`の用途の`maxBytes`をこの値以下に制限する。現在の画像の用途(500kB・5MB)はいずれも下回る(design.mdのUploadPurposeRegistry、tasks.md 3.1) |
+| 判定用画像の上限        | `MODERATION_IMAGE_LIMITS.maxBytes`を5,000,000から5,242,880へ改めた。RekognitionのAPI参照の`Image.Bytes`の最大長が5,242,880であり、外部の上限の値そのものである(design.mdのModerateImageHandler、tasks.md 6.2)                                                                                                               |
+| 動作確認用の用途        | `MEDIA_SMOKE_PURPOSE`の5MiBは5,242,880バイトで既に同じ値のため、表記だけを「5,242,880バイト(5MB)」にそろえた                                                                                                                                                                                                                |
+| Workersの要求本文の上限 | 最大の上限20,971,520バイトは、Workersの要求本文の上限(Free・Paidで100MB)を下回るため、受け付けの方式は変えない                                                                                                                                                                                                              |
+| ドメインspecの上限      | 各ドメインspecが登録する`maxBytes`(プロフィール画像・ロゴの500kB = 512,000バイト、スクリーンショットの5MB = 5,242,880バイト、問い合わせの添付の合計20MB = 20,971,520バイトなど)も同じ換算にする。admin-foundationの`admin-avatar`(512,000バイト、仮2)は既にこの換算である                                                   |
+
+## Research Log
+
+### Images Bindingの変換とメタデータ
+
+- **Context**: briefの実現性チェック(Images BindingではExifを除去できない)、決定Q1、画像バリアント仕様の出力フォーマット表。
+- **Sources Consulted**: Cloudflare Docs「[Images binding](https://developers.cloudflare.com/images/optimization/binding/)」「[Features](https://developers.cloudflare.com/images/optimization/features/)」「[Limits](https://developers.cloudflare.com/images/get-started/limits/)」。
+- **Findings**:
+  - `.input(stream)`は20MBまでの画像を受け付ける(「Accepts image bytes up to 20 MB」。基数の明記は無い)。`.transform()`は`width`・`height`・`fit`など、`.output()`は`format`・`quality`・`anim`を受け付け、`format`は必須。`.response({ headers })`で`Cache-Control`を付けられ、`Content-Type`は出力形式から決まる。
+  - `metadata`の指定はJPEG出力にだけ効き、既定は著作権情報以外を捨てる`copyright`。WebP・PNG・AVIF出力は常に全メタデータを捨てる。向き情報と色のプロファイルは、メタデータを捨てても画像に適用される。
+  - 呼び出しは一意な変換(元画像と変換の引数の組)ごとに月1回だけ課金され、`.info()`は無料。無料枠は月5,000件で、超えるとImages Paidが要る。
+  - Images Bindingの応答は自動ではキャッシュされず、Workers Cacheの有効化が推奨されている。
+  - ローカルとWorkers統合テストでは簡易版が動き、width・height・rotate・formatだけに対応する(`fit`・`quality`は効かない)。
+- **Implications**: 配信は`.input().transform({ width, height, fit }).output({ format, quality: 80, anim: false })`で行う。JPEG出力のメタデータは変換基盤の既定に任せる(決定Q1)。`fit`・`quality`・メタデータの扱いはstagingの動作確認の経路で確かめる手順を技術ドキュメントに書く。stagingとprodが同じアカウントなら無料枠を共有するため、費用の判断をlaunch-readinessへ回す。
+
+### Workers Cacheのエントリポイント単位の有効化とパージ
+
+- **Context**: SW-010・画像バリアント仕様の「キャッシュとパージ」、backend-platformの`cache.enabled: false`。
+- **Sources Consulted**: Cloudflare Docs「[Workers Cache](https://developers.cloudflare.com/workers/cache/)」「[Configuration](https://developers.cloudflare.com/workers/cache/configuration/)」「[Cache keys](https://developers.cloudflare.com/workers/cache/cache-keys/)」「[Purge](https://developers.cloudflare.com/workers/cache/purge/)」「[Examples](https://developers.cloudflare.com/workers/cache/examples/)」「[Limitations](https://developers.cloudflare.com/workers/cache/limitations/)」。
+- **Findings**:
+  - `exports`の各エントリポイントに`{ "type": "worker", "cache": { "enabled": <真偽> } }`を書くと、Worker全体の`cache.enabled`を上書きする(Wrangler 4.107.0以上。本プロジェクトは4.124.0)。キャッシュは`fetch()`の呼び出しにだけ効き、独自のRPCメソッドの呼び出しは常にキャッシュを通らない。
+  - キャッシュは既定のエクスポートを含む全エントリポイントの前段にあり、`ctx.exports`による同じWorker内の`fetch()`呼び出しの前段にもある。推奨される「関門」の構成は、関門のエントリポイントのキャッシュを無効にし、キャッシュする内側のエントリポイントを`ctx.exports`で呼ぶものである。
+  - キャッシュキーは、対象のエントリポイント・パスとクエリ・`ctx.props`・(既定で)Workerの版から作られ、ホスト名を含まない。既定ではデプロイのたびに空のキャッシュから始まる(`cache.cross_version_cache`で版をまたげる)。
+  - `GET`と`HEAD`だけがキャッシュされ、同じURLのエントリを共有する。`Authorization`・`Set-Cookie`を伴う要求・応答は自動でキャッシュを迂回する。
+  - `ctx.cache.purge()`は`tags`・`pathPrefixes`・`purgeEverything`を受け付ける。`pathPrefixes`はスキームとホストを含まないパスである。パージは呼び出したエントリポイントのキャッシュにだけ効き、他のエントリポイントのキャッシュへは届かない。回数はゾーンのパージと同じ仕組みで、プランによらずFreeプランの上限が適用される。拒否されると`success: false`が返る。
+  - ローカル(`wrangler dev`・Vitest)でのWorkers Cacheとパージの扱いは文書に記載が無い。
+- **Implications**: eventの既定のエクスポートは関門としてキャッシュを無効のままにし、画像配信を名前付きエントリポイント`ImageDelivery`(キャッシュ有効)に置く。関門はクエリ文字列と要求ヘッダーを落とした`GET`/`HEAD`の要求を`ctx.exports.ImageDelivery.fetch()`へ渡す。パージは`ImageDelivery`のRPCメソッド`purgeObjectKeys()`の中で`this.ctx.cache.purge()`を呼ぶ。`ctx.cache`が無い環境(ローカル・テスト)では何もせず成功として扱う。版をまたぐキャッシュは使わない(Design Decisions参照)。
+
+### R2の条件付き書き込みと管轄
+
+- **Sources Consulted**: Cloudflare Docs「[Workers API reference](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/)」「[Consistency](https://developers.cloudflare.com/r2/reference/consistency/)」「[Data location](https://developers.cloudflare.com/r2/reference/data-location/)」「[New us jurisdiction for R2](https://developers.cloudflare.com/changelog/post/2026-08-17-r2-us-jurisdiction/)」。
+- **Findings**:
+  - `put()`の`onlyIf`は`R2Conditional`または条件付きヘッダーの`Headers`(`If-Range`以外)を受け付ける。条件が満たされなければ`null`を返し、保存しない。条件は書き込みの確定と同時に評価され、`If-None-Match: *`の同時の書き込みは1つだけが成功する。
+  - `delete()`は1回で1,000キーまで消せる。R2のWorkers APIにはバケット間のコピーが無く、読み出して書き込む必要がある。
+  - `ReadableStream`を`put()`に渡すには長さが分かっている必要がある(`FixedLengthStream`で包む)。
+  - 管轄付きのバケットをWorkersから使うには、バインディングに`jurisdiction`を指定する。管轄は作成後に変えられない。S3 APIのエンドポイントは`https://<ACCOUNT_ID>.us.r2.cloudflarestorage.com`、Data Access Logsは使えない(共通指示)。
+- **Implications**: 保存は`onlyIf: new Headers({ 'If-None-Match': '*' })`で行い、`null`なら上書きしようとしたとして扱う。本文は検証済みの先頭部分と残りをつないだ流れを`FixedLengthStream(Content-Length)`へ通して書き込み、長さが食い違えば書き込みが失敗する。staging・prodのapi・eventのR2バインディング3つへの`jurisdiction: "us"`の指定は、infra-deliveryの要件2.3が実行環境設定へ反映する(ローカルは管轄を持たない)。本specはそれを前提にし、backend-platformのWrangler設定への影響として報告する。
+
+### `ctx.exports`
+
+- **Sources Consulted**: Cloudflare Docs「[Context](https://developers.cloudflare.com/workers/runtime-apis/context/)」「[Compatibility flags](https://developers.cloudflare.com/workers/configuration/compatibility-flags/)」。
+- **Findings**: `ctx.exports`は`WorkerEntrypoint`を継承した各トップレベルのエクスポートへのループバックのService Bindingを自動で持つ。互換性フラグ`enable_ctx_exports`は2025-11-17から既定で有効である。
+- **Implications**: 互換性日付2026-08-04のまま使える。`queue`ハンドラーからも`ctx.exports.ImageDelivery.purgeObjectKeys()`を呼べる(実装時にWorkers統合テストで確かめ、テスト環境で使えない場合はパージの呼び出し口を注入して偽物に差し替える)。
+
+### Amazon Rekognition DetectModerationLabels
+
+- **Sources Consulted**: AWS「[DetectModerationLabels](https://docs.aws.amazon.com/rekognition/latest/APIReference/API_DetectModerationLabels.html)」、questionsの調査記録(入力の上限・カテゴリ)。
+- **Findings**:
+  - JSONの`Image.Bytes`(base64)と`MinConfidence`(0〜100、既定50)を送る。入力はJPEG・PNGだけで、バイト列は5MBまで(API参照「[Image](https://docs.aws.amazon.com/rekognition/latest/APIReference/API_Image.html)」の`Bytes`の最大長は5,242,880)、各辺80px以上10,000px以下。
+  - 応答の`ModerationLabels`は`Confidence`・`Name`・`ParentName`・`TaxonomyLevel`を持つ。最上位のカテゴリはExplicit、Non-Explicit Nudity of Intimate parts and Kissing、Swimwear or Underwear、Violence、Visually Disturbing、Drugs & Tobacco、Alcohol、Rude Gestures、Gambling、Hate Symbolsの10種である。
+  - エラーは`ThrottlingException`(500)・`InternalServerError`(500)・`ProvisionedThroughputExceededException`(400)・`ImageTooLargeException`(400)・`InvalidImageFormatException`(400)・`InvalidParameterException`(400)・`AccessDeniedException`(400)など。
+- **Implications**: 一時的な失敗は`ThrottlingException`・`InternalServerError`・`ProvisionedThroughputExceededException`・その他の5xx・通信の失敗・10秒の時間切れとする。画像として受け付けられない失敗(`ImageTooLargeException`・`InvalidImageFormatException`・`InvalidParameterException`)は恒久的な失敗として隔離する。資格情報や署名の誤り(`AccessDeniedException`・`UnrecognizedClientException`・`InvalidSignatureException`)は設定の誤りとして一時的な失敗と同じく再試行し、Sentryへエラーとして送る。判定は`MinConfidence`に閾値を渡し、返ったラベルを`ParentName`でたどった最上位のカテゴリが設定のカテゴリに含まれれば不適切とする。
+
+### wasm-image-optimization 2.0.11
+
+- **Sources Consulted**: npmの配布物(`dist/workerd.d.ts`・`core.js`・README)をscratchpadへ展開して確認した(実行はしていない)。
+- **Findings**:
+  - `exports`の`workerd`条件と`./workerd`の入口があり、`.wasm`をimportして`WebAssembly.Module`として使う。`optimizeImage({ image, width, height, fit: 'contain'|'cover'|'fill', format: 'png'|'jpeg'|'webp'|'avif'|'raw'|..., quality, animation })`はモジュールを1回だけ初期化して再利用する。
+  - `format: 'raw'`は32ビットRGBAの画素を返す。`animation: false`(既定)ではアニメーションの最初のフレームだけを扱う。SVGはSkia(SkSVGDOM)で描画する。
+  - 1回の呼び出しの中で、読み込み・縮小・符号化は同期的に進む。依存の`commander`はCLI用で、Workerのバンドルには入らない。
+  - 公開は2026-09-13で、公開から2週間以上経っている。
+- **Implications**: 判定用の画像は、縮小だけなら`optimizeImage()`の`png`・`jpeg`で作る。余白が要る場合は`raw`で縮小した画素を受け取り、余白を足してPNGに符号化する(PNGの符号化は`CompressionStream('deflate')`を使う数十行の自前の部品にする)。Workers統合テストでwasmが読めない場合は、描画の部品を注入できる形にして、実物の確認をローカルの`wrangler dev`の動作確認へ回す。
+
+### image-size 2.0.4・fast-xml-parser 5.11.2・fast-xml-validator 1.4.2・aws4fetch 1.0.20・react-easy-crop 6.2.4
+
+- **Sources Consulted**: 各パッケージの配布物の`package.json`と型定義。
+- **Findings**:
+  - `image-size`: 依存無し。`imageSize(input: Uint8Array)`が`{ width, height, orientation?, type? }`を返し、`disableTypes()`で判定する形式を絞れる。`fromFile`の入口だけがNode.jsのファイルAPIを使う。
+  - `fast-xml-parser`: ESMの入口`src/fxp.js`。`XMLParser`(`preserveOrder`・`ignoreAttributes`・`processEntities`・`maxNestedTags`など)を持つ。依存は`@nodable/entities`・`strnum`など純粋なJSである。`XMLValidator`と`XMLParser.parse`の検証の引数は5.11.2で非推奨になり、型定義が`fast-xml-validator`を後継に名指しする(開発者の決定(2026-11-01)で構文の検査を`fast-xml-validator`へ移した。下の節)。
+  - `fast-xml-validator`: 同じ作者のパッケージ。ESMの入口`src/fxv.js`が`SyntaxValidator`と`BusinessRulesValidator`を公開する。依存は`detailed-xml-validator`・`path-expression-matcher`・`xml-naming`の純粋なJSである。
+  - `aws4fetch`: 依存無し。`worker`条件の入口があり、`AwsClient`の`fetch`でSigV4に署名する。
+  - `react-easy-crop`: 相手依存はReact・ReactDOM 16.4以上、依存は`normalize-wheel`。`onCropComplete`が切り取り範囲の画素座標(`croppedAreaPixels`)を返し、`keyboardStep`でキーボード操作の移動量を指定できる。
+- **Implications**: `image-size`と`fast-xml-parser`・`fast-xml-validator`はapi・eventの両方(共有の`backend-lib`から使う)、`wasm-image-optimization`と`aws4fetch`はeventだけ、`react-easy-crop`はclient・admin・frontend-libに版を固定して宣言する。`image-size`の`fromFile`は使わない。
+
+### 参照したスキル
+
+- `cc-sdd:kiro-spec-requirements`・`kiro-spec-design`・`kiro-spec-tasks`: テンプレート・EARS・各フェーズのレビューゲート。
+- `ecc:api-design`: 状態コードの使い分け(400と422、401と403、503の`Retry-After`)、作成の応答は`201 Created`と`Location`、成功の応答は`{ "data": ... }`、エラーは`{ "error": { "code", "message" } }`。アップロードの応答に`Location`(非公開ファイルの配信のパス)を付ける。
+- `ecc:security-review`: ファイルのアップロードは大きさ・形式を許可リストで制限する。本specは申告の形式と拡張子ではなく内容(マジックバイト・構文)で判定し、拡張子は判定に使わない(拡張子は利用者の申告で、内容を保証しないため)。
+- `cross-border-transfers-skills:eu-us-dpf-assessment`: EUから米国への移転は、移転先がEU-U.S. Data Privacy Frameworkに自己認証していれば十分性認定に基づけ、自己認証していない場合は標準契約条項などが要る。プライバシーポリシーの大枠には、委託先ごとの移転の根拠を記す。
+
+## Architecture Pattern Evaluation
+
+| Option                                        | Description                                                                                        | Strengths                                        | Risks / Limitations                                                            | Notes  |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------ | ------ |
+| 用途を登録する汎用パイプライン+ドメインの操作 | 受付・検証・保存・判定・配信を用途に依存させず、ドメインspecは用途の登録と操作の呼び出しだけを行う | 検証の抜けが起きない。ドメインspecの実装が小さい | 用途の登録値(上限・形式)の誤りは各specの責任になる                             | 採用   |
+| 用途ごとの経路とハンドラー                    | 各ドメインspecがアップロードの経路を持つ                                                           | 用途ごとの自由度が高い                           | briefの問題(検証の抜け)そのもの                                                | 不採用 |
+| 画像処理専用のWorker                          | 判定と変換を別Workerに置く                                                                         | メモリ・CPUの分離                                | FR-FILEU-013の「イベントサーバー内で」と異なり、Worker・設定・デプロイが増える | 不採用 |
+
+- 層は、純粋な規則(`apps/common-lib/media`・`backend-lib/core/media`、イベントサーバーの`application/media`)と、実行環境に依存する部品(`backend-lib/workers/media`・各アプリの`infrastructure`・`presentation`)に分ける。前者はBunの単体テスト、後者はWorkers統合テストで検査する(backend-platformの規約)。
+
+## Design Decisions
+
+### Decision: 用途の登録制と、ドメインの操作のポート
+
+- **Context**: 要件1・5・9・12・13。用途の値はドメインspecが決め(briefのApproach)、業務データとの紐付け方は範囲外である。
+- **Selected Approach**: APIサーバーの登録箇所(`composition/upload-purposes.ts`)へ用途の定義(名前・保存先・主体の種類・許可形式・上限)を追記する。業務データからは、紐付け・論理削除・即時削除・保有者単位の削除・一括取得・内容の読み出しを持つ`MediaFiles`と、隔離理由の追加・解除(ファイル単位と保有者単位)と一覧を持つ`MediaQuarantine`を、DIの識別子で呼ぶ。非公開ファイルの閲覧の可否は用途ごとの`FileReadPolicy`を、管理者の画像の確認は`AdminMediaReviewPolicy`(既定は拒否)を登録する。
+- **Generalization**: 画像用・ファイル用の両方を、保存先と許可形式が異なる「用途」の特殊形として1つの経路で扱う。動作確認の経路も同じ受付処理を固定の用途で呼ぶ。
+- **Trade-offs**: 業務データ側でのファイルIDの保持はドメインspecが行うため、紐付け忘れのファイルは24時間で消える(決定Q5の副作用として許容する)。
+
+### Decision: 記録を先に作り、保存の完了を後から記録する
+
+- **Context**: 要件4.10・5.5。保存とデータベースの書き込みは原子的でない。
+- **Alternatives Considered**:
+  1. 保存の後に記録を作る — 記録の作成に失敗するとバケットに参照の無いオブジェクトが残り、誰も消せない。
+  2. 記録を先に作り(保存未完了)、保存の成功後に完了を記録する — 失敗しても記録が残るため、未使用ファイルとして日次バッチが消せる。
+- **Selected Approach**: 2。紐付けと非公開ファイルの配信は保存完了の記録があるものに限る。失敗時はその場で記録とオブジェクトの削除を試み、失敗しても日次バッチが消す。
+
+### Decision: 実体の検証は先頭部分の読み取りと、流しながらの検証で行う
+
+- **Context**: 要件1.3・2.5・3。SW-009はストリーミングでのアップロードを求め、メモリは128MBである。
+- **Selected Approach**:
+  - SVG以外の画像・PDFは、先頭の最大1MiB(本文がそれより短ければ全体)を読んでマジックバイトと寸法を判定し、読んだ部分と残りをつないだ流れを保存する。
+  - SVGは全体を読んで検査する(用途の上限で大きさが抑えられる)。
+  - プレーンテキストは、UTF-8の復号とNUL文字の検査を流しながら行い、違反を見つけた時点で流れを失敗させて保存を中止する。
+  - 長さは`FixedLengthStream`で`Content-Length`と照合する。
+- **Trade-offs**: JPEGの寸法の情報(SOF)が先頭1MiBより後ろにある画像は寸法を読めずに拒否する。通常の経路ではブラウザが作り直すため起きない。
+
+### Decision: 画像配信は関門と名前付きエントリポイントに分け、パージはRPCで行う
+
+- **Context**: 要件10・11、申し送り(Workers Cacheの有効・無効、パージの範囲)。
+- **Selected Approach**: eventの既定のエクスポートはキャッシュを無効にしたまま、Honoの経路として画像配信の関門を持つ(IP制限の除外・アクセスログ・Sentryは既存の仕組みに乗る)。関門は画像配信ドメインかつ画像のURLの形式の要求を、クエリ文字列と要求ヘッダーを落として`ctx.exports.ImageDelivery.fetch()`へ渡す。`ImageDelivery`だけキャッシュを有効にする。パージはQueueの処理から`ctx.exports.ImageDelivery.purgeObjectKeys()`(RPCはキャッシュを通らない)を呼び、その中で`this.ctx.cache.purge({ pathPrefixes })`を実行する。
+- **Rationale**: キャッシュキーにホスト名が入らないため、画像以外の経路を持つ既定のエクスポートのキャッシュを有効にすると、Webhookなどの応答と画像の応答が同じ仕組みの上に乗る。関門を分ければ、キャッシュの対象を画像の応答に限れる。
+- **Trade-offs**: キャッシュにヒットしても関門は毎回動く(Workerの要求として課金される)。関門は軽い処理だけにする。
+
+### Decision: キャッシュは版ごとのまま(`cross_version_cache`を使わない)
+
+- **Context**: 申し送り(キャッシュキーにWorkerの版が入る)。
+- **Alternatives Considered**: 版をまたいで共有する — デプロイ後の変換の再実行を省けるが、配信の不具合を直したデプロイの後も古い応答が最長14日残り、全体のパージの手順が要る。
+- **Selected Approach**: 既定のまま版ごとにする。変換は一意な変換ごとに月1回の課金のため、同じ月の再変換は費用が増えない。prodのデプロイはリリース単位で少ない。
+
+### Decision: 隔離・復元は「目的の保存先へそろえる」非同期の処理にする
+
+- **Context**: 要件9・11.4。バケット間の移動はコピーと削除で原子的でなく、パージはイベントサーバーのエントリポイントでしか実行できない。
+- **Selected Approach**:
+  - 隔離理由の追加・解除はデータベースだけを同期で更新し、`media.relocate-files`(ファイルの識別子を最大25件)を送る。
+  - イベントサーバーの`FileRelocator`は、隔離理由から目的の保存先(理由があれば隔離バケット、無ければ画像用非公開バケット)を求め、実際の保存先と違えば「目的の保存先へ書き込み(既にあれば省く)→元の保存先から削除→(画像用から出た場合)パージの依頼を送る→保存先の記録を更新」の順に進める。
+  - パージの依頼を記録の更新より前に送ることで、依頼の送信に失敗して再試行しても、元の保存先に画像が無い状態から同じ手順をやり直せる。
+  - 自動判定の処理は、判定の後に同じ`FileRelocator`を直接呼ぶ。
+  - 日次バッチは、隔離理由と保存先の記録が食い違うファイルを探して依頼し直す。
+- **Trade-offs**: 隔離理由の記録から配信の停止まで、Queueの処理の分(通常数秒)だけ遅れる。
+
+### Decision: 判定の冪等性は、状態の条件付きの更新と隔離理由の追加を1つの一括実行にまとめる
+
+- **Context**: 要件8.6・8.7。Queuesは少なくとも1回の配送で、重複があり得る。
+- **Selected Approach**: 判定の状態が「判定待ち」「未判定」のときだけ判定する。結果は「状態の更新(条件付き)」と「自動判定の隔離理由の追加(状態が判定待ち・未判定の場合だけ)」を`db.batch()`で1つにまとめて書く。判定済みの画像への依頼は、判定せずに保存先をそろえるだけにする。管理者が自動判定の理由を外した画像は「隔離された」状態のまま理由が無いため、重複の依頼で再び隔離されない。
+
+### Decision: 画像判定専用のQueueを設けない
+
+- **Context**: 申し送り(画像処理の同時実行を抑える手段の要否)。
+- **Alternatives Considered**:
+  1. 専用のQueueと`max_concurrency`・`max_batch_size: 1` — 同時実行とCPU時間を確実に抑えられるが、backend-platformの受信部(本体・デッドレターの2つのQueue名だけを振り分ける)の拡張と、infra-deliveryの資源の追加が要る。
+  2. 共通の`JOBS_QUEUE`で処理する — 受信部はバッチ内のメッセージを1件ずつ処理し、wasmの処理は1回の呼び出しの中で同期的に進むため、同じisolateで並行に呼ばれても復号の作業領域は重ならない。
+- **Selected Approach**: 2。判定の処理時間とメモリはstagingで実測し、1バッチ(最大10件)のCPU時間が既定の上限(30秒)に近い場合は、eventの`limits.cpu_ms`の引き上げ、または1の専用Queueへの切り替えを開発者に確認する。
+- **Follow-up**: 実測の手順を技術ドキュメントに書き、stagingの確認で記録する。
+
+### Decision: 判定用の画像の作り方
+
+- **Context**: 要件6.2〜6.4、Rekognitionの入力の制約。
+- **Selected Approach**: 原本の形式・寸法・大きさから3つの方法を選ぶ。
+  1. JPEG・PNGで、長辺640px以下・短辺80px以上・5MB以下なら原本をそのまま送る。
+  2. 縮小または形式の変換だけで済むなら、`optimizeImage()`で長辺を640px以下に縮小し、JPEG原本はJPEG、それ以外はPNGで出力する。
+  3. 縮小後にいずれかの辺が80px未満なら、`raw`で縮小した画素に白い余白を足して80px以上にし、自前の部品でPNGに符号化する。
+- **Rationale**: FR-FILEU-013の「JPEG・PNG以外はPNGへ変換、長辺640pxへ縮小」を字義どおり保ち、下限は余白で満たす(申し送り)。
+
+### Decision: 判定できない場合は最後の試行で未判定にし、デッドレターへ送らない
+
+- **Context**: 要件8.1〜8.3、backend-platformのQ7(デッドレターは通知して破棄)。
+- **Selected Approach**: 判定の再試行の方針を最大5回・60秒起点・上限1,800秒(60・120・240・480秒、合計約15分)に上書きする。一時的な失敗のとき、試行回数が上限に達していれば未判定を記録してSentryへ警告を送り、メッセージを完了にする。上限未満なら例外で再試行させる。日次バッチが未判定と1時間以上判定待ちの画像の判定を依頼し直す。
+- **Rationale**: デッドレターへ移ると本文が捨てられ、判定の依頼が失われる。状態をデータベースに残せば日次バッチで回復できる。
+
+### Decision: 非公開ファイルの認可と、管理者の画像の確認
+
+- **Context**: 要件12、FR-ADMUG-018。
+- **Selected Approach**: ファイル用の用途は、用途ごとに登録された`FileReadPolicy`で判定し、登録が無ければアップロードした主体だけを許す。画像用の用途のファイル(隔離中を含む)は、管理者側からの要求に限り`AdminMediaReviewPolicy`で判定する(既定は全拒否で、ugc-moderationが管理者の権限に基づく実装へ差し替える)。利用者側からの画像の要求は常に404とする(利用者は画像配信の経路を使う)。拒否と不存在は区別せず404にする。
+
+### Decision: 動作確認の経路をイベントサーバーにトークン付きで置く
+
+- **Context**: 要件11.6・17.2・17.3、申し送り(Images Bindingの`fit`・`quality`・メタデータ、Rekognitionの疎通をstagingで確かめる手順)。本specの時点ではログインが無く(identity-authは並行で作成中)、通常の経路ではアップロードできない。
+- **Selected Approach**: email-deliveryの疎通確認の経路と同じく、シークレット`MEDIA_SMOKE_TOKEN`がある環境だけで有効になる経路をイベントサーバーに置く(画像のアップロード・状態の取得・隔離・削除)。トークンはSHA-256の値を時間一定で比較する。アップロードは固定の用途`media-smoke`と保有者「システム」で同じ受付処理を通し、紐付けないため48時間以内に自動で消える。prodにはトークンを登録しない。
+- **Trade-offs**: 本物のログインを伴うE2Eは、最初にアップロードを使うドメインspecへ委ねる。
+
+### Decision: GraphQLの共通の型を本specが定める
+
+- **Context**: 下流の各ドメインspecが、画像と添付をGraphQLで返す。型がspecごとにばらつくと、画像の表示部品を共有できない。
+- **Selected Approach**: スキーマモジュール`media`に、`MediaImage`(識別子・オブジェクトキー(隔離中・削除待ちはnull)・フォールバックの形式・幅・高さ)と`MediaAttachment`(識別子・元のファイル名・MIMEタイプ・バイト数・ダウンロードのパス)の型と、`MediaFileView`から値を作る変換関数・DataLoaderを置く。クエリは持たない。
+
+### Generalization・Build vs Adopt・Simplification
+
+- **Generalization**:
+  - 隔離・復元・削除後のパージ・日次の食い違いの修復を、「目的の保存先へそろえる」1つの処理で表す。
+  - 未使用・論理削除の期限切れ・削除待ちの3種の物理削除を、1つの`MediaEraser`で行う。
+- **Build vs Adopt**:
+  - 採用: Images Binding・Workers Cache・R2の条件付き書き込み(プラットフォーム機能)、`image-size`(寸法)、`fast-xml-parser`(SVGの構造)、`fast-xml-validator`(SVGの構文)、`wasm-image-optimization`(判定用画像)、`aws4fetch`(SigV4)、`react-easy-crop`(切り取りのUI)。
+  - 自作: マジックバイトの表(5形式とPDFで数行、Q6)、SVGの許可リスト(製品ごとに要る値の表)、元のファイル名の整形と`Content-Disposition`の組み立て(RFC 6266・5987の小さな関数)、余白付きの判定用画像のPNG符号化(`CompressionStream`で数十行。新規パッケージを避ける)。
+  - 不採用: `file-type`(決定Q6)、DOMPurifyなどによるSVGの書き換え(原本を変えない方針。判定と隔離で扱う)。
+- **Simplification**:
+  - 画像判定専用のQueue・画像処理専用のWorkerを作らない。
+  - 画像配信はデータベースを参照しない(バケットの有無だけで判定する)。
+  - アップロードの進捗表示(XHR)は作らない。送信中の状態だけを表示する。
+  - 版をまたぐキャッシュ、論理削除の取り消しの操作は作らない(必要になったspecが追加する)。
+
+## 要件定義書の改訂が必要な箇所
+
+**2026-10-25に要件定義書(`docs/requirements/README.md`)へ適用済み。** 以下は適用前に記録した改訂の内容である。
+
+| 要件ID       | 現在の文言の要点                                                    | 本specの決定                                                                                                                 |
+| ------------ | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| FR-FILEU-017 | 配信時に`metadata: "none"`指定によりExif情報を除去する              | 決定Q1。配信時のJPEGのメタデータの除去は要件から外し、変換基盤の既定に任せる。WebP・AVIF・PNGへの変換では常に除かれる        |
+| DR-009       | SW-012の配信経路における画像の配信時にExif情報を除去する            | 決定Q1・Q2。通常の経路(編集ダイアログ)ではアップロード前にブラウザが作り直してメタデータを除く。直接送られたJPEGでは残り得る |
+| FR-FILEU-003 | 非SVG画像のアップロード時に編集ダイアログでリサイズ・切り取りできる | 決定Q6の前提。問い合わせの添付(ファイル用の用途)は画像形式でも編集ダイアログを出さない                                       |
+
+## Risks & Mitigations
+
+- 直接送られたJPEGのメタデータ(決定Q1の残存リスク) — 編集ダイアログを経ない送信(開発者ツールや自作のクライアント)では、撮影位置などのExifを含むJPEGが画像用非公開バケットに保存され、配信の`jpg`出力にも残り得る。WebP・AVIF・PNGの出力には残らず、`<picture>`は対応ブラウザでAVIF・WebPを選ぶため、`jpg`を受け取るのは非対応のブラウザに限られる。プライバシーポリシーの大枠に、編集ダイアログを経ない画像にメタデータが残り得ることを記載する。要件定義書の改訂(FR-FILEU-017・DR-009)を報告する。
+- 判定用画像の作成のメモリとCPU — 画素数の上限(初期値1,600万画素)と1件ずつの処理で抑える。stagingで最大の画像を判定させ、Workers Logsのメモリ・CPU時間を記録する。超える場合は上限を下げるか、専用Queue・`limits.cpu_ms`を開発者に確認する。
+- Workers統合テストでwasm・Images Binding・Workers Cacheが本番と同じに動かない — 描画・変換・パージを注入できる部品にし、統合テストでは確かめられる範囲(簡易版のImages Binding、`ctx.cache`の不在)を確かめる。`fit`・`quality`・メタデータ・キャッシュのヒットとパージはstagingの動作確認の手順で確かめる。
+- パージの回数の上限(毎分5回・バースト25、stagingとprodで共有) — 1回に最大100件のキーをまとめ、拒否は間隔を伸ばして再試行し、上限を超えたらデッドレターとSentryで検知する。
+- 中継が応答のヘッダー(`Content-Disposition`など)を落とす — frontend-platformの`toBrowserResponse`は指示の項目と`Set-Cookie`だけを除く設計である。ダウンロードの中継で`Content-Type`・`Content-Disposition`・`Content-Length`が届くことを単体テストで確かめ、届かない場合は互換を保って修正する(Revalidation Triggers)。
+- `apps/common-lib`の新設がcontent-processingの実装に依存する(仮2) — roadmapの順をcontent-processing→media-pipelineとし(C-1)、前提にするcontent-processingの最小の区切り(1.1・1.2・4.1・4.2・6.1、11.3のうち`coding/003`への`server/**`の許可の記述、11.4のうち日次タイムラインの表の作成。N-3)を明記した。本specの実装の最初のタスクで前提を確かめ、未完了なら止めて報告する。日次タイムラインの表が無いことだけは止める理由にせず、タスク9.2で作る。
+- 停止中の利用者の既存のセッションからのアップロード(N-7) — 停止では既存のセッションが消えない。利用者のアップロードは受付の前に`UploaderEligibility`で判定し、identity-authの束縛で拒否する。既定の全許可の間は、ログインが成立しないため停止中の利用者がアップロードできる経路は無い。ログイン・停止・束縛はどれもidentity-authが実装するため、束縛の作業は本specのタスク5.1・5.6への依存として、identity-authのタスク8.5に明記されている。
+- 国外移転の根拠の変化(N-1) — EU-USデータプライバシーフレームワークが無効になった場合は、AWSのデータ処理補遺に含まれる標準契約条項に拠ることを骨子に書いておく。無効化の際は、開発者がプライバシーポリシーの本文を改訂する。
+- SVGの許可リストの漏れ・過剰 — Inkscape・Illustrator・Figmaの書き出しの標本と、既知の攻撃の標本で単体テストを持つ。すり抜けてもFR-FILEU-018のCSP(`sandbox`・`default-src 'none'`)が実行と外部の読み込みを防ぐ。
+- 判定サービスの資格情報の漏えい — `rekognition:DetectModerationLabels`だけを許す専用のIAMユーザーにし、ログ・Sentryに出さない。漏えい時はアクセスキーを無効化して作り直す手順を技術ドキュメントに書く。
+- 画像変換の無料枠の超過 — 月5,000件の一意な変換を超えるとImages Paidが要る。費用の判断をlaunch-readinessへ回す。
+
+## References
+
+- [Images binding](https://developers.cloudflare.com/images/optimization/binding/) — `.input()`・`.transform()`・`.output()`・`.response()`と課金
+- [Images features](https://developers.cloudflare.com/images/optimization/features/) — `metadata`・`anim`・`fit`
+- [Workers Cache](https://developers.cloudflare.com/workers/cache/) — エントリポイント単位の有効化・キャッシュキー・パージの範囲
+- [Purge and invalidate the cache](https://developers.cloudflare.com/workers/cache/purge/) — `pathPrefixes`と回数の上限
+- [R2 Workers API reference](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/) — 条件付きの`put()`と`delete()`の上限
+- [R2 Consistency](https://developers.cloudflare.com/r2/reference/consistency/) — 条件付き書き込みの原子性
+- [R2 Data location](https://developers.cloudflare.com/r2/reference/data-location/) — 管轄とバインディングの`jurisdiction`
+- [Context(ctx.exports)](https://developers.cloudflare.com/workers/runtime-apis/context/) — ループバックのService Binding
+- [DetectModerationLabels](https://docs.aws.amazon.com/rekognition/latest/APIReference/API_DetectModerationLabels.html) — 要求・応答・エラー
+- [画像バリアント仕様](../../../docs/GUIDES/service/features/002-image-variants.md) — バリアント・URL・キャッシュとパージ
+
+## user-profile-socialの依頼による承認後の改訂(改訂1、2026-10-24)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、2026-10-24に開発者が確定したuser-profile-social仮1による。本specの生成中の仮決定(仮1〜仮3)とは別の項目で、`requirements.md`の「承認後の改訂」の表に改訂1として記録した。開発者の判断を待つ論点は残っていない。`spec.json`のタスクの承認は変更部分のタスクのレビューの結果を表す。
+- **Context**: user-profile-socialの仮1(2026-10-24に開発者がCに確定)により、apiの4:21のジョブ`user-profile-social.orphaned-file-sweep`(`order` 600)が、保有者の利用者が存在しないファイルを物理削除する。`media_files`の保有者は利用者のテーブルへの外部キーを持たないため、退会の波及処理の導入より前に物理削除された利用者のファイルなどは、保有者の識別子が分からないと見つけられない。user-profile-socialのdesign.mdが、そのための`MediaFiles`への操作の追加を本specへ依頼していた。
+- **改訂の内容**: `MediaFiles`に`listOwnerIds(input: { readonly kind: UploaderKind; readonly after: string | undefined; readonly limit: number }): Promise<{ readonly ownerIds: readonly string[]; readonly next: string | undefined }>`を加える。`owner_kind`が`kind`の`media_files`の`owner_id`を重複を除いて昇順に最大`limit`(1〜500。`OWNER_ID_LIST_MAX_LIMIT`)件返し、`after`はその値を含まない続きの位置とし、続きがあれば`ownerIds`の最後の識別子を`next`に入れる。ファイルの状態(保存の完了・紐付け・論理削除・削除待ち・隔離中)と用途によらず列挙し、索引`(owner_kind, owner_id)`を使う。範囲外の`limit`は`AppError(bad_request)`にする。リポジトリには`findOwnerIds`を加え、`limit`+1件まで読んで続きの有無を決める。user-profile-socialのdesign.mdの依頼の型と規則に一致させた。
+- **Alternatives Considered**:
+  1. 保有者の識別子を重複無しで列挙する読み取りの操作を加える(採用。削除の判断はuser-profile-socialに残り、本specは利用者のテーブルを参照しない)
+  2. 保有者の識別子と存在を確かめる関数を受け取り、本specが削除まで行う操作(存在の判定という業務の知識が本specへ入り、1回の上限件数と失敗の扱いが2つのspecにまたがる)
+  3. 利用者のテーブルとの結合で保有者の居ないファイルを照会する(identity-authのテーブルに依存しないという本specの境界に反する)
+- **Rationale**: 既存の索引`(owner_kind, owner_id)`で重複の除去と並べ替えができ、表の追加やマイグレーションが要らない。読み取りだけで状態を変えないため、冪等性と既存の保有者単位の操作(`eraseOwnedBy`)の規則を変えない。
+- **要件**: ドメインspecへ提供する手段の追加で、既存の要件13(ファイルの削除とライフサイクル)の目的に当たるため、受け入れ基準13.10を加えた。
+- **変えた箇所**: 要件の「承認後の改訂」の表・In scope・Adjacent expectations・13.10。設計のRevalidation Triggers・File Structure Planの`media-files-service.ts`の注記・追跡表(13.10)・コンポーネントの表(`MediaFile(型と隔離の規則)・MediaMessages`・`D1MediaFileStore・R2MediaObjectStore`・`MediaEraser・MediaFilesService・MediaQuarantineService`)・`MediaFile・MediaMessages・ports`の要件の欄(13.10)・`MediaFiles`の契約(`OWNER_ID_LIST_MAX_LIMIT`・`listOwnerIds`)と規則・`MediaFileStore`の`findOwnerIds`と照会の説明・`MediaFilesService`の責務・論理データモデルの保有者の注記・Testing StrategyのWorkers統合テスト。タスク3.5・4.1・4.4の詳細と要件(13.10を追加)。番号の変更と、新しいタスク・依存の変更は無い。
+- **後続への影響**: user-profile-socialのタスク6.3(4:21のジョブ)は、本specのタスク4.4の完了まで保留される(user-profile-socialの設計のとおり)。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って2回行った。どちらも新しいサブエージェントによる独立した確認(independent)である。
+  - 1回目はNEEDS_FIXES(必須1件・軽微2件)だった。必須の指摘は、契約を置く`MediaFile・MediaMessages・ports`の要件の欄とコンポーネントの表の行に13.10が無く、13.10を対応付けたタスク3.5の境界と食い違ったこと(両方に13.10を加えた)。軽微の指摘(要件のIn scopeへの列挙の追加、`spec.json`の`updated_at`の更新)も直した。
+  - 2回目はPASSだった。軽微の指摘2件(File Structure Planの`media-files-service.ts`の注記への列挙の追加、`system`の行の`owner_id`を「空」ではなく「NULL」と書くこと)に従って直した。タスクの承認(`approvals.tasks.approved: true`)を保った。
+
+## タスク6.6の開発者の決定による承認後の改訂(改訂2、2026-11-01)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、2026-11-01にタスク6.6の実装中に開発者が決定した。本specの生成中の仮決定(仮1〜仮3)とは別の項目で、`requirements.md`の「承認後の改訂」の表に改訂2として記録した。4回目のレビューで、申告の形式と中身の違うdata URI(`data:image/png`と申告したWebPなど)は許可リストを通ることが分かり、開発者はこれを既知の制限として進めると決めた(「実装中の開発者の決定(2026-11-01、タスク6.6): SVGの描画器の切り替えと寸法の解釈」の既知の制限)。開発者の判断を待つ論点は残っていない。
+- **Context**: 判定用画像のSVGの描画器を`@cf-wasm/resvg`(`@resvg/resvg-wasm` 2.6.2)へ替えたところ、resvgは`<image>`のWebPのdata URIを描かず(`imagesToResolve()`にも挙がらない)、ブラウザの`<img>`にだけ見える画像で判定をすり抜けられることが、差分の比較で分かった。
+- **改訂の内容**: SVGに埋め込まれた画像として許可するdata URIの形式からWebPを外し、JPEG・PNG・GIFに限る(7.5)。`svg-allowlist-table.ts`の`dataUriImageTypes`から`webp`を除き、`image/webp`のdata URIを`disallowed-data-uri`の違反にする。
+- **Alternatives Considered**:
+  1. WebPを許可の形式から外す(採用。許可リストの値を1つ減らすだけで済む)
+  2. WebPのdata URIを判定の前にPNGへ変換してから描画器へ渡す(文書の属性値の書き換えになり、文字参照・空白を含むdata URIの扱いと、埋め込まれた大きな画像の復号の負荷を抱える)
+  3. 要件を変えず既知の制限にする(ブラウザにだけ見える画像を判定できないまま残る)
+- **Rationale**: 編集ソフトの書き出しの標本にWebPの埋め込みは無く、利用者への影響が小さい。
+- **要件**: 既存の要件7(SVGの安全性の検査)の受け入れ基準7.5を「JPEG・PNG・GIF」に改めた。
+- **変えた箇所**: 要件の「承認後の改訂」の表・7.5。設計のSvgAllowlistの項の参照の記述・「SVGの許可リスト(初版)」の表の`image`。`svg-allowlist-table.ts`・`svg-allowlist.unit.test.ts`・`svg-allowlist-document.unit.test.ts`・`svg-allowlist-rendering.unit.test.ts`。
+- **後続への影響**: 9.1の技術ドキュメント(`security/005`)の許可するdata URIの形式の一覧を、JPEG・PNG・GIFで書く。
+
+## 最終報告への開発者の回答による承認後の改訂(改訂3、2026-11-02)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、2026-11-02に全タスクの最終報告の「判断が必要な点」へ開発者が回答して決定した。`requirements.md`の「承認後の改訂」の表に改訂3として記録した。
+- **Context(SVGの文書型宣言)**: 受付は文書型宣言(DOCTYPE)を持つSVGをすべて`svg_declaration_not_allowed`で拒否していた。Affinity Designerと旧IllustratorのSVG 1.1の書き出しは`<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">`を含み、書き出し直しても受け付けられなかった。
+- **改訂の内容(SVGの文書型宣言)**: ルート名が`svg`で、外部識別子がW3Cの定めるSVG 1.0・1.1・1.1 Basic・1.1 Tinyの公開識別子とシステム識別子の組の`PUBLIC`だけから成り、内部サブセットを持たない宣言を、ルートの前(XML宣言・処理命令・コメント・空白の後)に1つだけ許す(3.3)。空白の揺れと引用符の種類(`"`・`'`)は許し、識別子の文字列は完全に一致させる。外部のDTDは読まない。受付の構文の検査・ルートの読み取り・判定の許可リストは、許した宣言を同じ長さの空白とみなして、宣言を拒否する検査と解析器へ渡す。描画器(resvg)は宣言を含む文書をそのまま描ける。
+- **Alternatives Considered(SVGの文書型宣言)**:
+  1. 標準の組だけを許す(採用。外部のDTDも内部サブセットも読まないため、要素・属性の既定値と実体が加わらない)
+  2. 内部サブセットの無い任意のDOCTYPEを許す(他の公開識別子で、ブラウザが組み込みの実体の一覧を読む文書型(XHTMLなど)を通し得る)
+  3. 受付で宣言を取り除いた本文を保存する(原本を書き換えることになり、保存した内容と利用者が送った内容が食い違う)
+- **SVG 1.1 Basic・Tinyを含めた理由**: Illustratorの書き出しのプロファイルにSVG Basic 1.1・SVG Tiny 1.1があり、宣言の形と危険はSVG 1.1と同じである。SVG 1.0の勧告候補の公開識別子(`-//W3C//DTD SVG 20010904//EN`)などの旧い識別子は含めない。
+- **Context(ファイル名)**: ファイル名の正規化は制御文字だけを除き、U+202E(RIGHT-TO-LEFT OVERRIDE)などの書式文字を残していたため、表示上の拡張子を偽装できた。
+- **改訂の内容(ファイル名)**: 双方向の制御文字U+061C・U+200E・U+200F・U+202A〜U+202E・U+2066〜U+2069を除く(4.5)。絵文字の結合に使うU+200D(ZWJ)・U+FE0F(異体字セレクタ)などの他の書式文字は残す。除いた結果が空、または先頭のドットを除いて拡張子の文字だけになる場合の扱いは、制御文字を除いた場合と同じ(4.6の既定名・先頭のドットの除去)にする。
+- **要件**: 既存の要件3(ファイルの実体の検証)の受け入れ基準3.3と、要件4(ファイルの保存と応答)の受け入れ基準4.5を改めた。
+- **変えた箇所**: 要件の「承認後の改訂」の表・3.3・4.5。設計のFile Structure Plan(`svg-prolog.ts`)・要件の対応表の3.3・SvgSyntaxとファイル名の項・SvgAllowlistの宣言の扱い・エラーの表・Testing Strategy・Security Considerations。`svg-prolog.ts`・`svg-syntax.ts`・`svg-root.ts`・`file-name.ts`・`svg-allowlist.ts`とそれぞれのテスト。技術ドキュメント`security/005`と文言規則(`service/design/003`)。
+
+## 画像配信の専用ホストのヘルスチェックの例外(改訂4、2026-11-02)
+
+- **状態**: 改訂3と同じ最終報告への回答で、2026-11-02に開発者が決定した。`requirements.md`の「承認後の改訂」の表に改訂4として記録した。
+- **Context**: backend-platformの`createWorkerApp`はヘルスチェック(`GET`・`HEAD /health`)をモジュールの経路より前に登録するため、画像配信の専用ホストでも`/health`は200(`{"status":"ok"}`・`no-store`・セキュリティヘッダー付き)を返し、要件10.12(形式外は404)に厳密には反していた。
+- **Alternatives Considered**:
+  1. 既知の例外として要件・設計・技術ドキュメントに記録する(採用。応答は固定で画像や内部の情報を返さず、影響は軽微。上流の共通部品を変えない)
+  2. eventの入口で、専用ホストへの`/health`をアプリへ渡す前に404にする(入口の処理が増え、上流の規約から外れる)
+- **変えた箇所**: 要件の「承認後の改訂」の表・10.12。設計のURLと配信ドメインの項。`infra/008`の「専用のホストのヘルスチェック」は実装時から例外として記載済み。
+
+## SVGの配信の文字の符号化(改訂5、2026-11-02)
+
+- **状態**: 改訂3の後のレビューで見つかった食い違いへの開発者の回答で、2026-11-02に決定した。`requirements.md`の「承認後の改訂」の表に改訂5として記録した。
+- **Context**: 受付の構文の検査はUTF-8として正しくない本文を拒否し、判定の許可リストと描画も本文をUTF-8として読む。一方、SVG原本の配信の`Content-Type`は`charset`を持たず、画像のURLを直接開いた場合、ブラウザはXML宣言の`encoding`(`Shift_JIS`など)で読むため、UTF-8としても正しいバイト列で、判定と表示の解釈が食い違い得た。レビューの確認(Chromium)では、`<img>`で読み込んだ場合は`charset`の有無に関わらずUTF-8で読まれ、食い違いは直接開いた場合に限られた(他のブラウザは未確認)。
+- **Alternatives Considered**:
+  1. 配信の`Content-Type`に`charset=utf-8`を付ける(採用。HTTPの`charset`はXML宣言より優先され、保存済みの文書にも効く。本文を書き換えない)
+  2. 1に加えて、UTF-8以外の`encoding`を宣言した文書を受付で拒否する(利用者の書き出しの手間が増える。開発者は1だけを選んだ)
+  3. 受付でXML宣言の`encoding`だけを取り除いて保存する(保存する本文と大きさが送信と変わり、宣言を書き換える処理が新しい食い違いの元になり得る)
+- **既知の制限**: UTF-8以外の宣言を持ち、UTF-8としても正しい本文の文書は、作者の意図と違う文字で表示され得る(判定と表示は一致する)。
+- **変えた箇所**: 要件の「承認後の改訂」の表・10.5。設計の配信の経路の表。`apps/event/src/application/media/image-delivery.ts`の`SVG_HEADERS`とそのテスト。`security/005`の「配信のヘッダー」、`infra/008`のSVG原本の項。
+
+## 上流(api-gateway)の改訂3の反映(2026-10-27)
+
+- api-gatewayの実装後の改訂3で、backend-platformの`AppErrorKind`に`payload_too_large`(413)と`unsupported_media_type`(415)が加わった。design.mdの「アップロード」の説明にあった「411・413・415は`AppError`の種類に無い」は事実と合わなくなったため、413・415は`AppError`で表せ、411だけが種類に無いと改めた。受付の経路が共通のエラー形式の組み立て部品で応答を作る設計は変えていない(413・415も同じ部品で作ってよい)。要件・タスクは変えていない。
+- 同じ改訂3で、api-gatewayの内部RESTに共通の後処理が加わった。サブアプリが要求ごとに`SessionAccess`を作って`c.var.session`で経路へ渡し、経路の後(共通エラー・想定外の例外の応答を含む)に`Cache-Control: no-store`とセッションの指示を付ける。経路が付けた`Cache-Control`は`no-store`で上書きされる(開発者の決定)。design.mdの依存の一覧・内部RESTの前提・経路の説明・`session`の型の説明・ダウンロードの応答のヘッダーと、tasks.mdの5.3の応答の確認を、`c.var.session`と`no-store`に改めた。R2のオブジェクトのメタデータの`private, no-store`(要件の該当箇所)は応答ではないため変えていない。
+
+## frontend-platformの確定した契約の反映(2026-10-28)
+
+- **状態**: frontend-platformのタスク10.4として、frontend-platformが実装で確定した契約(frontend-platformのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に本specの設計とタスクを合わせた。2026-10-28に開発者が下流specの設計の改訂を決めた(frontend-platformの判断11)。受け入れ基準は変えていない。
+- **中継の経路の形**: 中継の経路は`defineRelayRoute`で定義して凍結し、素のオブジェクトは各アプリの`composition.unit.test.ts`の検査を通らない契約になった。上流の5xxで`Content-Type`がJSONでない応答は、実行基盤が返した失敗とみなされて503`upstream_unavailable`に置き換わる(frontend-platformの要件2.10の例外)。`UPLOAD_RELAY_ROUTE`・`FILE_DOWNLOAD_RELAY_ROUTE`を`defineRelayRoute`で定義し、末尾`/*`の経路として`RELAY_ROUTES`の完全一致の経路の後に置き、ファイルを返す経路も5xxは共通のエラー形式(JSON)で返すことと、アップロードの部品が中継の503を再試行できる失敗として扱うことを書いた。
+- **管理者側の画面**: 本specが管理者側のルートに加えるのは`routes/__root.tsx`の`ImagesOriginProvider`の配置と`relay-routes.ts`への経路の追加だけで、ルートに失敗の表示(`ErrorState`・`UnexpectedErrorView`)を置かないことを確かめ、Modified Filesに明記した。エラーの画面と`contactHref`の扱いはfrontend-platformのままである。一方、共通部品の`ImageUploadField`・`AttachmentUploadField`は管理者側(admin-foundationの管理者のプロフィール画像`admin-avatar`)にも置かれ、想定外の応答と`upload_purpose_not_found`で問い合わせを促す`UNEXPECTED_ERROR_MESSAGE`を出していた。管理者側では問い合わせを促さない契約(frontend-platformの判断9とその追加)に合わせ、2つの入力欄に必須の`contactAvailable: boolean`を加え、`useFileUpload`・`parseUploadResponse`へ渡し、想定外の応答の文言をfrontend-platformの`errorMessageOf(error, contactAvailable)`で選ぶ(真なら`UNEXPECTED_ERROR_MESSAGE`、偽なら`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`)。利用者側の画面は`CLIENT_PROFILE.contactAvailable`、管理者側の画面は`ADMIN_PROFILE.contactAvailable`を渡す。必須にしたのは、渡し忘れを型検査で見つけるためである。`account_unavailable`の文言は問い合わせを促すが、利用者側の呼び出しだけに返るため変えない。
+- **変えた箇所**: design.mdのAllowed Dependencies・Existing Architecture Analysis・File Structure Planの注記・Modified Files(`__root.tsx`・`relay-routes.ts`)・MediaRelayRoutes・アップロードの部品群(2つの入力欄のprops・`useFileUpload`・`parseUploadResponse`・`contactAvailable`の規約)・エラーの表(`upload_purpose_not_found`・`account_unavailable`)・Testing Strategy(`utilities/media`の単体テスト・`ImageUploadField`のブラウザテスト)、tasks.mdの8.1・8.2・8.5。admin-foundationが`ADMIN_PROFILE.contactAvailable`を渡す記述は、admin-foundationの改訂で加える。
+
+## 実装済みの上流との食い違いの水平展開(2026-10-30、開発者の指示)
+
+- **ブラウザテストの事前バンドル**: frontend-platformの`vitest.browser.config.ts`は、テストの実行中に依存の事前バンドルをやり直すとページが再読み込みされReactが2つ読み込まれるため、画面部品の依存を`PREBUNDLED_DEPENDENCIES`に列挙している(content-processingの差分の分析のG-3)。本specが加える`react-easy-crop`を、client・admin・frontend-libの一覧へ加える手順をdesign.mdのModified Filesとtasks.mdの導入のタスクに加えた。
+- 要件と受け入れ基準は変えていない。
+
+---
+
+## 実装前のギャップ分析(2026-11-01、kiro-validate-gap)
+
+### 分析の前提
+
+- 要件・設計・タスクは承認済みで、`spec.json`の`ready_for_implementation`は`false`である。本節は新しい設計の選択肢を探すのではなく、設計の前提にした上流の契約と、実装済みのコードとの食い違いを洗い出す。
+- 上流の実装状況: backend-platform(57/57)・api-gateway(52/52)・frontend-platform(97/97)・content-processing(55/55)・email-delivery(34/34)・dev-tooling(47/47)はすべて完了している。infra-deliveryは9と9.2だけが未完了で、9.2は開発者によるstagingの初回の準備を待っている。本specの前提にはならない。
+- content-processingの前提の区切り(1.1・1.2・4.1・4.2・6.1・11.3・11.4)は完了している。`apps/common-lib`は4アプリへ配置され、frontend-libの`server/**`からの読み込みも許可されている([frontend-lint.ts](../../../apps/frontend-lib/config/frontend-lint.ts))。日次タイムラインの表(900・2300)もある。タスク1.1の前提の確認は通る見込みである。
+- steeringは`roadmap.md`だけで、`product.md`・`tech.md`・`structure.md`は無い。本プロジェクトの規則とtechドキュメントで代わりにした。
+- 調査はバックエンド・フロントエンド・インフラと依存パッケージと文書の3観点で並列に行い、主な相違は設計の該当行で確かめた。
+
+### 要件と資産の対応表
+
+凡例: **既存**=上流が用意済みで使うだけ、**Missing**=本specが作る(設計どおり)、**Constraint**=設計の修正か実装時の手当てが要る、**Unknown**=実装時に確かめる。
+
+| 要件                                | 既存の資産                                                                                                                                           | ギャップ                                                                                                                                                                        |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 用途と受付の条件                  | 内部RESTの登録口`createInternalRoutesModule`・空の`INTERNAL_ROUTES`、`c.var.session`(`SessionAccess.principal()`)、既定の`AnonymousSessionVerifier`  | Missing: 用途の登録表・`UploaderEligibility`・`SessionView`(`application/session/session-view.ts`は未作成。5.1が置く)                                                           |
+| 2 事前検証                          | `AppErrorKind`の`payload_too_large`・`unsupported_media_type`                                                                                        | **Constraint G-1**: 411を表す種類も、任意の状態コードで共通のエラー形式を組む公開の部品も無い                                                                                   |
+| 3 実体の検証                        | `apps/common-lib`の配置の仕組み                                                                                                                      | Missing: シグネチャ表・SVGの検査・寸法の読み取り。依存パッケージ4つは未導入                                                                                                     |
+| 4 保存と応答                        | R2の3バケット(api・event、staging・prodは`jurisdiction: "us"`)、本文はバッファせずストリームのまま中継・内部REST                                     | Missing: 記録・オブジェクトストア・受付処理。Unknown U-1(workerd上の`Content-Length`)                                                                                           |
+| 5 紐付けと未使用の削除              | `ScheduledJobDefinition`・4:21の`cron`(追加不要)・順序810〜830は衝突しない                                                                           | Constraint G-11(4:21の時間の予算)                                                                                                                                               |
+| 6〜8 自動判定・SVG・冪等性          | `defineMessageContract`(例に`media.purge-image-cache`)・`RetryPolicy`(最大6回)・デッドレターの通知、eventの`IMAGES`                                  | Missing: 判定の処理一式。Rekognitionのシークレットは未宣言。Constraint G-12(処理の戻り値の型)                                                                                   |
+| 9 隔離理由                          | `ulidPrimaryKey`・`timestamps`・`softDelete`、`snakeCase.table`                                                                                      | Missing: 2テーブル。Constraint G-13(初めての外部キー)                                                                                                                           |
+| 10・11 変換配信・キャッシュ         | 画像配信ホスト名のeventへの割り当て(IaC済み)、Wrangler 4.124.0(`exports.<名前>.cache`を受け付ける)、`RateLimitExclusion.excludeHostname`             | Missing: 関門・`ImageDelivery`・パージ。Unknown U-2(miniflareのImages Binding)。Constraint G-3(eventの設定テスト)                                                               |
+| 12 非公開ファイルの配信             | `defineRelayRoute`・`toBrowserResponse`(`Content-Type`・`Content-Disposition`・`Content-Length`を残す)・CSRF・`no-store`の後処理                     | Constraint G-7(`RELAY_ROUTES`の期待値)。Unknown U-1                                                                                                                             |
+| 13 削除とライフサイクル             | 同上の定期実行・`PLATFORM_TYPES`                                                                                                                     | Missing(設計どおり)                                                                                                                                                             |
+| 14 アップロード部品・編集ダイアログ | `ui/dialog`・`ui/button`・`form-field`・`errorMessageOf(error, contactAvailable)`・`*_PROFILE.contactAvailable`・`runAxe`・`pressKeyUntilFocusMoves` | Missing: ファイル選択・ドロップ・スライダーの部品(`ui/slider`は無い)。Constraint G-8(Storybookのカタログ)・G-9(react-easy-cropの版)。アップロードと切り取りのモックアップは無い |
+| 15 画像の表示部品                   | CSPの`img-src`に`IMAGES_ORIGIN`が登録済み、`IMAGES_ORIGIN`の検証済みの変数、プレースホルダーのモックアップ                                           | **Constraint G-5**(オリジンの配り方)・**G-6**(GraphQLの列挙値の大文字と小文字)・G-14(プレースホルダーの形)                                                                      |
+| 16 外部サービスとデータの所在       | プライバシーポリシーの大枠と準拠方針の委託先ごとの型(Cloudflare・Google Cloudの項)                                                                   | Missing: AWSの項                                                                                                                                                                |
+| 17 動作確認・テスト・文書           | 任意のシークレット`MEDIA_SMOKE_TOKEN`は登録済み(`worker-secrets.ts`)、`002-image-variants.md`はある                                                  | **Constraint G-2**(ローカルにトークンが届かない)。Missing: techドキュメント3つ                                                                                                  |
+
+### 設計と実装済みの上流との相違
+
+#### 設計かタスクの改訂が要るもの
+
+- **G-1 411の応答の組み立て部品が無い**: design.mdのエラー処理の節は「411は`AppError`の種類に無いため、受付の経路が共通のエラー形式の組み立て部品で直接応答を作る」とする。しかし[error-envelope.ts](../../../apps/backend-lib/core/errors/error-envelope.ts)で公開されているのは`toErrorResponse(error: AppError)`・`ErrorEnvelope`型・2つの定数だけで、`ErrorResponseParts.status`は`AppErrorStatus | 500`である。任意の状態コードを受ける`createEnvelope`は公開されていない。
+  - 選択肢A: presentation層で`ErrorEnvelope`型に合わせて411の本文を自前で組む(上流は変えない。形のずれは型検査で防げる)
+  - 選択肢B: backend-platformに、状態コードを引数に取る組み立て関数を公開させる(上流の変更。後続specでも使える)
+  - 選択肢C: `AppErrorKind`に`length_required`(411)を加える(上流の種類の追加。`AppErrorStatus`・GraphQLの対応表・文書へ波及する)
+- **G-2 ローカルで`MEDIA_SMOKE_TOKEN`が届かない**: [secret-management](../../../docs/GUIDES/tech/security/001-secret-management.md)のとおり、`secrets`を宣言したWorkerでは`wrangler dev`も`secrets.required`のキーしか読まない。design.mdのeventの設定の表は、ローカルの`secrets.required`の追加を「なし」、`MEDIA_SMOKE_TOKEN`を「Infisicalのdevに登録した場合だけ有効」としているため、ローカルの動作確認(タスク10.1)ができない。メールの疎通確認は`EMAIL_SMOKE_TOKEN`をトップレベルの`secrets.required`へ入れて回避している([event/wrangler.jsonc](../../../apps/event/wrangler.jsonc))。`project-values.md`のdevにも行が無い。
+  - 選択肢A: メールと同じく、トップレベル(ローカル)の`secrets.required`へ入れ、Infisicalのdevに登録してdevの行を足す(先例どおり。ローカルではトークンが必須になる)
+  - 選択肢B: ローカルだけは固定のトークンを変数で渡す(シークレットの規則から外れる)
+  - 選択肢C: ローカルの動作確認を統合テストで代え、ローカルの経路は404のままにする(タスク10.1の範囲が狭まる)
+- **G-3 eventのWrangler設定の既存テストが壊れる**: backend-platformの[wrangler-config.unit.test.ts](../../../apps/api/test/config/wrangler-config.unit.test.ts)は、eventの変数とシークレットを`toStrictEqual`で比べる。メディアの変数・シークレットを足すと失敗する。先例のメールと全文検索は、[test/support/wrangler-config.ts](../../../apps/api/test/support/wrangler-config.ts)の除外パターン(`EMAIL_CONFIG_KEY_PATTERN`・`SEARCH_CONFIG_KEY_PATTERN`)で受け持ちを分けている。タスク1.3に`MEDIA_CONFIG_KEY_PATTERN`(`IMAGE_DELIVERY_`・`MODERATION_`・`REKOGNITION_`・`MEDIA_`)の追加が無い。また1.3の「eventのキャッシュの期待値を合わせる」とあるが、既存テストが期待値を持つのはapiのキャッシュだけで、eventの期待値は新しく足すことになる。
+- **G-5 画像配信のオリジンの配り方が既存の流儀と合わない**: design.mdは`ImagesOriginProvider`を両アプリの`routes/__root.tsx`に置くとする。frontend-libの既存の部品は、Providerを使わず`appRuntimeOf(useRouter().options.context).publicConfig`から設定を直接読む(`turnstile-widget.tsx`・`use-markdown-options.ts`)。文脈を配るProviderは`AppDocument`にまとめられ、`__root.tsx`は`shellComponent`で包むだけである。一方`IMAGES_ORIGIN`は、検証済みの変数・CSPの`img-src`・両アプリのWrangler設定にすでにある。足りないのは`PublicRuntimeConfig.imagesOrigin`と`toPublicRuntimeConfig`への追加と、`PublicRuntimeConfig`を直接書いているテスト用データ・Storybookの約10箇所の更新である(先例はcontent-processingの`CLIENT_SITE_ORIGIN`の追加)。
+  - 選択肢A: `useImagesOrigin`が`appRuntimeOf`から読み、Providerと`__root.tsx`の変更をやめる(既存の流儀どおり。ルートの変更が無くなる)
+  - 選択肢B: Providerを`AppDocument`に置く(テストでオリジンを差し替えやすい。カタログの除外の登録が要る)
+  - 選択肢C: 設計どおり`__root.tsx`に置く(既存の流儀と食い違う)
+- **G-6 GraphQLの列挙値の大文字と小文字をつなぐ規則が無い**: スキーマの`MediaImageFallbackFormat`は`JPG`・`PNG`・`SVG`で、codegenは`enumsAsTypes: true`なので`'JPG' | 'PNG' | 'SVG'`になる。表示部品が受け取る`MediaImageView.fallbackFormat`は`FallbackFormat = 'jpg' | 'png' | 'svg'`で、変換がどこにも定義されていない。
+  - 選択肢A: frontend-libの`utilities/media`に変換関数を置き、ドメインspecが画面のデータを作るときに使う
+  - 選択肢B: `MediaPicture`の受け取る型をGraphQLの生成型に合わせて大文字にする(`common-lib/media`の`FallbackFormat`と2種類の表記が並ぶ)
+  - 選択肢C: スキーマにfallbackの拡張子を文字列で返す項目を足す(列挙の型の安全性が下がる)
+- **G-9 react-easy-cropを6.2.3に固定した理由が古い**: research.mdの「6.2.4は公開から2週間に満たない」は、2026-11-01時点で当てはまらない(6.2.4は2026-10-06公開)。上げるか据え置くかを決め、tech-stack.mdと設計の版を合わせる。他の4パッケージ(fast-xml-parser 5.11.2・image-size 2.0.4・aws4fetch 1.0.20・wasm-image-optimization 2.0.11)は据え置きでよい。wasm-image-optimizationの最新2.0.13は2026-10-22公開で2週間未満であり、5.11.2より後のfast-xml-parserの勧告は無い。
+
+#### 文書の記述だけが古いもの(実装には影響しない)
+
+- **G-4 R2の管轄は設定済み**: design.mdの依存の一覧とeventの設定の表は「infra-deliveryが設定する」と書くが、api・eventのstaging・prodのR2バインディングに`jurisdiction: "us"`がすでにあり、テストもある。画像配信のホスト名の割り当て(IaC)も済んでいる。
+- **G-10 時制の古い記述**: Revalidation Triggersの「frontend-platform: `PublicRuntimeConfig`への画像配信のオリジンの追加」は、CSPと変数の検証がすでに済み、公開の設定への追加だけが残っている(G-5)。
+
+#### 実装時の手当てで足りるもの
+
+- **G-7 中継の経路の構成テストの期待値**: client・adminの`composition.unit.test.ts`は`RELAY_ROUTES`を`[GRAPHQL_RELAY_ROUTE]`と完全一致で比べる。8.1で期待値を改める。「末尾`/*`の経路は完全一致の経路の後に置く」はコメントだけで検査が無いため、検査を足すかを8.1で決める。
+- **G-8 Storybookのカタログ**: `storybook-catalog.unit.test.ts`は、`components/**/*.tsx`にストーリーがあるか、除外か内部部品の一覧に載っていることを求める。親の中でだけ描く部品(サムネイルなど)を`INTERNAL_COMPONENTS`に載せる。Storybookの事前バンドル(`.storybook/main.ts`)にreact-easy-cropが要るかは、8.xで確かめる。
+- **G-11 4:21の時間の予算**: backend-platformは`SCHEDULED_RUN_BUDGETS`(4:21の合計300,000ms)と、1ジョブ30秒の目安を持つ([003-async-processing.md](../../../docs/GUIDES/tech/infra/003-async-processing.md))。design.mdの3つのジョブ(1回最大1,000件の物理削除・R2の削除・パージの要求)は、この目安に触れていない。目安を超えるならメッセージの処理へ移す規則がある。
+- **G-12 メッセージの処理の戻り値**: 処理の型は`handle(body, meta): Promise<{ kind: 'done' } | { kind: 'defer'; delaySeconds }>`で、`meta.attempts`を受け取れる。最後の試行で未判定にする設計(`meta.attempts`による判定)と合うが、design.mdは戻り値の型を明記していない。
+- **G-13 初めての外部キー**: 既存のスキーマに外部キーは無く、`media_file_quarantine_reasons`の連鎖削除が最初の例になる。D1は外部キーの制約を既定で有効にする。drizzle-kitの生成と、統合テストでの連鎖削除を1.2・4.1で確かめる。
+- **G-14 プレースホルダーの形**: モックアップの`initial-placeholder.tsx`は`shape: 'rounded' | 'circle'`を持つ。設計の`placeholder: { label, seed }`には形の指定が無く、`className`で代えるかを8.xで決める。
+- **G-15 エディタと同じ画面でのドロップ**: content-processingのエディタは、ファイルのドロップと貼り付けを握りつぶす(`file-transfer-guard.ts`)。同じ画面にアップロードの入力欄を置いても、互いのドロップの処理がぶつからないことを確かめる。
+
+### 実装の進め方の選択肢
+
+- **選択肢A 実装の前に設計とタスクを改訂する**: G-1・G-2・G-3・G-5・G-6・G-9を開発者の決定に基づいてdesign.md・tasks.mdへ反映し、タスクの承認を取り直してから`ready_for_implementation`を`true`にする。
+  - ✅ 実装中に設計と食い違うのを防げる。G-2(10.1が止まる)とG-3(1.3で既存テストが壊れる)を前もって解消できる。
+  - ❌ 実装の開始が改訂とレビューの分だけ遅れる。
+- **選択肢B 設計のまま実装し、食い違いを各タスクで直す**: 各タスクで見つかった時点で直し、最後に設計へ反映する(content-processingの進め方)。
+  - ✅ すぐに始められる。
+  - ❌ G-5・G-6はコンポーネントの契約(`MediaPictureProps`・Providerの有無)を変えるため、8.xの途中で決め直すとテストの書き直しが出る。G-1は2.x・3.1・5.1の境界にまたがる。
+- **選択肢C 混合**: 契約を変えるG-1・G-2・G-5・G-6・G-9だけを先に決めてdesign.mdへ反映する。G-3・G-4・G-7・G-8・G-10〜G-15は該当タスクの実装時に手当てし、最後のタスクで設計へ反映する。
+  - ✅ 改訂の範囲が小さく、契約の食い違いは前もって解消できる。
+  - ❌ 実装時の手当ての記録を漏らさないよう、tasks.mdのImplementation Notesへの記録が要る。
+
+### 工数とリスク
+
+- **工数: XL(2週間超)** — 実装の量は設計どおりで、変わらない。17の要件、api・event・frontend-lib・common-lib・dbにまたがる約40のサブタスク、外部サービス(Rekognition)・wasm・Images Binding・Workers Cacheとの結合がある。本節の相違による追加は、改訂の数日に収まる。
+- **リスク: Medium** — 上流の契約がそろい、資源もバインディングも用意済みのため、未知の上流の変更による手戻りは小さい。残るのは、workerd・miniflareでしか分からない挙動(U-1〜U-3)と、判定用画像の作成のメモリとCPU(research.mdのRisks)である。
+
+### Research Needed(実装時に確かめる)
+
+- **U-1**: workerd上で、ストリームの本文の中継とR2から流すダウンロードの応答で`Content-Length`が保たれるか(Bunの単体テストでしか確かめられていない)。5.3・8.1の統合テストで確かめる。
+- **U-2**: miniflare(`@cloudflare/vitest-pool-workers`)で`IMAGES`バインディングがどこまで使えるか。7.3の「簡易版」の前提である。
+- **U-3**: `exports.default`のキャッシュ無効の設定がデプロイ時に受け付けられるか(`unstable_readConfig`では読めることを確かめた)。stagingの最初のデプロイで確かめる。
+- **U-4**: 1,000件の物理削除のジョブが、4:21の1ジョブ30秒の目安に収まるか(G-11)。stagingの合成データで要約のログから実測する。
+
+### 設計フェーズへの推奨
+
+- 推奨は選択肢C。契約を変える相違(G-1・G-5・G-6)と、実装を止める相違(G-2・G-3)だけを先に決めて設計とタスクへ反映する。
+- 開発者の判断が要るのは、G-1(411の組み立て)、G-2(ローカルのトークン)、G-5(オリジンの配り方)、G-6(列挙値の変換)、G-9(react-easy-cropの版)の5件である。G-3は先例どおり除外パターンを足すだけで、判断は要らない。
+
+### 開発者の決定と反映(2026-11-01)
+
+ギャップ分析の相違を、1件ずつ開発者に確認した。いずれも推奨の選択肢に決まり、design.md・tasks.mdへ反映した。要件と受け入れ基準は変えていない。
+
+| #   | 論点                         | 決定                                                                                                                                                                                                                                                                                                | 反映した箇所                                                                                                                                                                                          |
+| --- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G-1 | 411の応答の作り方            | backend-platformの`AppErrorKind`に`length_required`(411)を加え、拒否はすべて`AppError`で投げる。任意の状態コードを受ける組み立て部品は作らない                                                                                                                                                      | 設計のAllowed Dependencies・Revalidation Triggers・Modified Files・`UploadRejection`(状態コードを`kind`に改めた)・拒否の表し方・Error Strategy。タスク1.4を新設し、3.1(`_Depends: 1.4_`)・5.1を改めた |
+| G-2 | ローカルの動作確認のトークン | メールの先例どおり、eventのルート(ローカル)の`secrets.required`へ`MEDIA_SMOKE_TOKEN`を入れ、Infisicalの`dev`に登録する。未登録なら警告して起動し、経路は404になる                                                                                                                                   | 設計のRevalidation Triggers・Modified Files・環境ごとの設定値の表・シークレットの登録・Testing Strategy。タスク1.3                                                                                    |
+| G-3 | eventの設定テストの手当て    | `apps/api/test/support/wrangler-config.ts`に`MEDIA_CONFIG_KEY_PATTERN`を加え、backend-platformの設定の検査はメディアのキーを除いて比べる。eventのキャッシュの期待値は本specのテストで新しく足す                                                                                                     | 設計のRevalidation Triggers・Modified Files・Testing Strategy。タスク1.3                                                                                                                              |
+| G-5 | 画像配信のオリジンの配り方   | `useImagesOrigin`が`appRuntimeOf(useRouter().options.context).publicConfig.imagesOrigin`から読む。`ImagesOriginProvider`を作らず、client・adminの`__root.tsx`を変えない                                                                                                                             | 設計のAllowed Dependencies・Revalidation Triggers・File Structure Plan・Modified Files・追跡表(15.1〜15.4)・`MediaPicture`の説明。タスク8.1・8.6                                                      |
+| G-6 | 列挙値の大文字と小文字       | 表示部品の`MediaImageView.fallbackFormat`をGraphQLの生成型と同じ`'JPG' \| 'PNG' \| 'SVG'`(`MediaImageFallbackFormat`)にし、拡張子への変換は`buildPictureSources`の中で行う。列挙値の一致は、下流のspecがGraphQLの結果を表示部品へそのまま渡す箇所の型検査に任せる(タスクのレビューの後の追加の決定) | 設計の`MediaImageView`の型と列挙値の受け取りの説明。タスク8.2・8.6                                                                                                                                    |
+| G-9 | react-easy-cropの版          | 6.2.4に上げる                                                                                                                                                                                                                                                                                       | 設計のTechnology Stack。research.mdのResearch Log。タスク1.1                                                                                                                                          |
+
+- **G-1の検討の記録**: 任意の状態コードを受ける共通のエラー形式の組み立て部品(`createEnvelope`の公開など)は、次の理由で作らないことにした。
+  - backend-platformの共通エラーは「`AppError`の種類から状態コードが決まる」(`STATUS_BY_KIND`)ことで、全経路の失敗の応答・アクセスログ・GraphQLの`extensions`の対応付けをそろえている。任意の状態コードを受ける部品は、この不変条件に抜け道を作り、後続の経路が`AppError`を経ずに応答を作れるようになる。
+  - 411を使うのは本specのアップロードの受付だけで、他のspecの設計にも411や`AppError`の種類に無い状態コードの需要は無い(2026-11-01に全specのdesign.mdとコードで確かめた)。
+  - 経路で本文を自前で組む案は変更が最小だが、`docs/GUIDES/tech/backend/002`の「想定内の失敗は`AppError`で投げる」「応答の組み立ては`toErrorResponse`などで行う」の例外になり、例外を文書に書き足す必要がある。
+  - `AppErrorKind`への追加は、api-gatewayの改訂3(コミット`693a9381`、413・415)と同じ手順で、変更の範囲(`app-error.ts`・単体テスト・公開RESTの状態コードの一覧と説明・文書の種類の表)も分かっている。
+- **文書の記述だけが古い相違(G-4・G-10)**: コードを正として直した。R2バインディングの管轄と画像配信ドメインの割り当ては設定済み、`OPTIONAL_WORKER_SECRETS`のeventの`MEDIA_SMOKE_TOKEN`とstagingの行は記載済み、`IMAGES_ORIGIN`の検証とCSPの`img-src`への登録は実装済み、上流は実装済みと改めた(設計のOut of Boundary・Revalidation Triggers・Existing Architecture Analysis・Modified Files・環境ごとの設定値の表・Migration Strategy、タスク1.3)。
+- **実装時の手当て(G-7・G-8)**: client・adminの`composition.unit.test.ts`の`RELAY_ROUTES`の期待値の改訂をタスク8.1に、Storybookのカタログの内部部品の登録をタスク8.3に、Storybookの事前バンドルの確認をタスク8.4に加えた。G-11〜G-15とU-1〜U-4は、該当タスクの実装時に確かめる。
+- 「frontend-platformの確定した契約の反映(2026-10-28)」の節の`__root.tsx`への`ImagesOriginProvider`の配置は、G-5の決定で取りやめた。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントで行った(independent)。
+  - 1回目はNEEDS_FIXES(必須3件・軽微4件)だった。
+  - 必須の1件目: 8.6の「生成された`MediaImage`の型が`MediaImageView`へ代入できることの型だけの検査」は作れない。client-presetは操作の結果の型だけを生成し、本specには`MediaImage`を返す操作が無いためである。開発者に確認し、専用の検査を置かず、下流のspecがGraphQLの結果を表示部品へそのまま渡す箇所の型検査に任せることにした。設計とG-6の行を改めた。
+  - 必須の2件目: 8.6の5.4への依存の欠落。専用の検査をやめたため依存は要らなくなり、変えていない。
+  - 必須の3件目: 大文字から拡張子への変換と`MediaImageView`の定義の受け持ちを、`PictureSources`を持つ8.2へ移した。
+  - 軽微の4件は次のように直した。1.4の更新する文書に`backend/005-public-rest-api.md`の状態コードの列挙を加えた。8.4に`optimizeDeps.include`のエディタ専用の一覧とは別の項目へ加えることと、完了の確かめ方を加えた。10.2の古い前提を直した。1.3で改める2つのテスト名を挙げた。
+  - 2回目はPASSだった。軽微の指摘5件に従って直した。設計のImpactの管轄の古い記述を改め、ファイル構成の`picture-sources.ts`の注記に`MediaImageView`・`MediaImageFallbackFormat`を加えた。8.5・8.6の完了状態にStorybookのカタログの検査を加え、10.2のマージ前の手作業にInfisical(dev)への動作確認のトークンの登録を加え、1.4の完了状態に上流specへの改訂の記録を加えた。タスクの承認(`approvals.tasks.approved: true`)を保ち、`ready_for_implementation`を`true`にした。
+
+## 実装中の開発者の決定(2026-11-01、タスク1.1)
+
+- **論点**: `fast-xml-parser` 5.11.2の`XMLValidator`は型定義で`@deprecated Use fast-xml-validator instead`とされ、基底の静的解析の規則`@typescript-eslint/no-deprecated`(`error`)に報告される。`XMLParser.parse`の第2引数での検証も同じく非推奨である。
+- **開発者の決定(2026-11-01)**: SVGの構文の検査を`fast-xml-validator` 1.4.2(`SyntaxValidator`)へ移し、api・eventに版を固定して加える。構造の検査は引き続き`fast-xml-parser`の`XMLParser`(`processEntities: false`)で行う。採らなかった案は、`XMLValidator`を静的解析の抑止付きで使い続ける案(次のメジャー版で消えるおそれ)と、構文の検査をやめて`XMLParser`に頼る案(`XMLParser`は寛容で要件7の守りが弱まる)である。
+- **配布物の型定義と実装で確かめた振る舞い**(タスク3.3の前提。`apps/api/test/packages/media-packages.unit.test.ts`(Bun)と`apps/event/src/infrastructure/media/media-packages.worker.test.ts`(workerd)で確かめた):
+  - `SyntaxValidator.validate(xml: string, options?)`は、整形式なら`true`を返し、不正なら`Error`の派生(`name`が`ValidationError`、`code`・`line`・`col`を持つ)を投げる。型定義は戻り値を`true`だけとし、`ValidationError`型を`{ err: { code, msg, line, col } }`と書くが、実装はその形を返さない。派生クラスは公開されないため、`instanceof`ではなく例外の捕捉で判定する。
+  - `multipleRoots`は型定義の注記では既定`false`だが、実装の既定値は`true`である。最上位の要素を1つに限るには`multipleRoots: false`を明示する。
+  - `allowBooleanAttributes`の既定は`false`で、値の無い属性を拒否する。
+  - DOCTYPEと内部サブセットのENTITYの宣言は構文として受け入れ、件数と大きさの上限(`docType.maxEntityCount`・`maxEntitySize`)の既定は無制限である。そのため、設計どおり検証の前に`<!DOCTYPE`・`<!ENTITY`を大文字小文字を問わず探して`svg_declaration_not_allowed`で拒否する。
+  - 最上位の要素の名前は検査しない。最上位が`svg`かは`XMLParser`の結果で確かめる。
+  - 入力は文字列だけを受ける。先頭のBOMは読み飛ばす。要素が1つも無ければ`Start tag expected.`で失敗する。
+- **反映した箇所**: design.mdのTechnology Stack・Modified Files・コンポーネントの依存の表・SVGの検査の記述、本書のResearch Log、`docs/onboardings/tech-stack.md`、`docs/GUIDES/tech/coding/002-dependency-versions.md`。
+
+## 実装中の開発者の決定(2026-11-01、タスク6.6): SVGの描画器の切り替えと寸法の解釈
+
+- **論点**: `wasm-image-optimization`の描画器(Skia)は、`<use href>`(SVG2)・`<symbol>`・グラデーションの`href`・`<style>`要素の規則・`<switch>`・子の`visibility="visible"`・CSSの`transform`・ルートの`transform`などをブラウザの`<img>`と違う形で描く。ブラウザに見える内容が判定用画像に写らず、ルートの幅・高さ・`viewBox`を書き換えても判定のすり抜けを塞げない(デバッグで、描画器の出力とChromiumの`<img>`の描画を画素で比べて確かめた)。
+- **開発者の決定(2026-11-01)**:
+  1. SVGの描画器を`@cf-wasm/resvg` 0.4.0(依存の`@resvg/resvg-wasm` 2.6.2)へ替える。ラスター画像(JPEG・PNG・GIF・WebP)は`wasm-image-optimization`のまま。resvg自身が解釈した寸法・`viewBox`で描き、自前の寸法の書き換えはresvgとブラウザの解釈が分かれる範囲に減らす。余白は従来どおり`padRgba`・`encodePng`。
+  2. 寸法・`viewBox`は可能な限りブラウザと同じ文法で解釈する(閉じる側に倒しすぎない)。区切りは空白・カンマ、数値は`[+-]?(\d+(\.\d+)?|\.\d+)([eE][+-]?\d+)?`、属性値はXML 1.0の3.3.3どおり文字参照・定義済み実体を戻す。区切りの無い連結(`-0-0 100 100`)などブラウザで有効な値も受ける。解釈できない値は要件3.9のとおり寸法を未設定にする(拒否しない)。
+  3. 単位はCSSの換算(`px`・`in`・`cm`・`mm`・`q`・`pt`・`pc`=16px)とし、`image-size`の表を写さない。`em`・`ex`などの扱いは差分で確かめて決める。
+  4. 読み込み以外の描画の例外は既知の制限のまま(再試行→デッドレター)。
+- **配布物で確かめたこと**(`node_modules`の型定義・実装と、Bun・workerdでの実行):
+  - `@cf-wasm/resvg/workerd`は読み込み時に同梱の`.wasm`を`initResvg`へ渡すため、呼び出し側でwasmを読み込む処理は要らない。eventのWorkers統合テストは読み込みの規則を加えずに読める。`Resvg.async(svg, options)`で初期化を待ってから作る(`new Resvg`は初期化前に例外)。gzip後の大きさは約0.95MB(`wasm-image-optimization`は約2.3MB)。
+  - 入力は文字列または`Uint8Array`。大きさの上限の設定は無く、文書の節点の数の上限(`<use>`の展開を含む)を超えると`SVG data parsing failed cause nodes limit reached`で失敗する。10万個の要素はworkerdで描ける(Bunで30万個が約0.5秒)。`fitTo`(`width`・`height`・`zoom`)で描く画素数を決め、宣言の寸法が20000×20000でも確保するのは`fitTo`の大きさだけ。`width`・`height`の値は`fitTo`を指定しても元の寸法を返す。描画の結果の`pixels`は透明度を乗算済み。
+  - 例外は文言だけで区別できる`Error`: `SVG data parsing failed cause …`(XMLの構文・節点の数の上限)、`SVG has an invalid size`、`provided data has not an UTF-8 encoding`、`provided data has a malformed GZip content`。wasmの実行時の失敗は別の例外になる。インスタンスと描画の結果は`free()`で解放する。
+  - wasm版は書体を持たず(`loadSystemFonts`は効かない)、`fontBuffers`で書体のバイト列を渡さない限り`<text>`は描かれない。`font.defaultFontSize`の既定は12pxで、`em`・`ex`はこの大きさ(`ex`はその半分)で解釈される。
+  - `<image>`のデータURIはPNG・JPEG・GIFを描き、WebPは描かない(`imagesToResolve()`にも挙がらない)。
+- **差分で確かめたこと**(resvgの経路とChromiumの`<img>`の描画を、右下の4分の1の緑の画素の割合で比べた。`cases.mjs`〜`cases4.mjs`と追加の標本、計181件):
+  - `em`: Chromiumはルートの文字の大きさ(既定16px、ルートの`font-size`で変わる)で、resvgも`defaultFontSize`を16pxにすると同じ値になる。寸法は16pxで換算し、resvgには16pxを渡す。`rem`はSVGを画像として表示する場合ルート自身の文字の大きさが基準でresvgは解釈しないため、描画では`em`に書き換える。
+  - `ex`・`ch`: Chromiumは書体により`ex`≒0.459em(7.34px)・`ch`=0.5em(8px)、resvgは`ex`=0.5emで`ch`を解釈しない。書体で変わるため寸法は未設定にする。
+  - resvgは大文字の単位(`PX`)・`q`・`rem`・百分率のルートの幅を正しく解釈せず、末尾の`.`(`100.`)・余分なカンマ・5つの数値の`viewBox`を有効とする(ブラウザは無効)。前者は縦横比、後者は描く範囲がブラウザより狭くなり、判定をすり抜けられる。ルートでは`readSvgRoot`のブラウザの解釈で書き直して塞いだ。
+  - ブラウザの`<img>`はルートの`display:none`(属性・style・スタイルシート)を無視し、ルートの`transform`は中心を原点とするCSSの変形として適用する。resvgはどちらも別の形で適用するため、取り除いてブラウザより多くの内容を描く側にそろえた。
+  - 幅・高さ・`viewBox`の無いSVGは、ブラウザは表示する箱(既定300×150)の範囲を、resvgは原点から内容の右下の端までを描く。resvgの方が広いため隔離しない(以前の「描く範囲を決められないSVGは隔離」をやめた)。
+- **resvgの経路で残った食い違い**(判定用画像に見えず、ブラウザで見える書き方):
+  - `<text>`(書体が無いため描かれない)。
+  - `<style>`の`@media`(`prefers-color-scheme: dark`・`screen`)・`@supports`・`@layer`の中の規則(resvgは読み飛ばし、ダーク表示の閲覧者にだけ別の内容を見せられる)、`!important`、`var()`・`calc()`・`env()`。
+  - CSSの`transform`の、単位付きの値(`translate(10000px,0)`・`rotate(90deg)`)・`translateX()`・単位の無い`rotate(180)`・`-webkit-transform`。resvgは`matrix()`と単位の無い値だけを解釈し、Chromiumは単位の無い`rotate()`などを無効とするため、どちらの書き方も食い違う(`matrix()`・`scale()`だけが一致する)。
+  - CSSの`clip-path`の図形関数(`inset()`など)、`mask`・`mask-image`・`-webkit-mask-image`のグラデーション、CSSの幾何のプロパティ(`width:0`など)、`display:contents`。
+  - CSS Color 4の色(`rgb(0 0 255 / 0)`・`hsl(… / α)`。resvgは無効とみなし黒で塗る)、`oklch()`・`color-mix()`・`light-dark()`。
+  - 入れ子の`<svg>`・`<symbol>`などの、ブラウザが無効とする`viewBox`(`100.`など。ルート以外は書き直さない)。
+  - `<image>`のWebPのデータURI(要件7.5で許可していた)。
+  - `<switch>`の`systemLanguage`はresvgが英語(`en`)で選び、閲覧者のブラウザの言語と食い違う(日本語の閲覧者にだけ別の子を見せられる)。
+  - 表示する箱の縦横比が画像の縦横比と違うページ(`object-fit`の無い固定の大きさの`<img>`)では、`viewBox`の外の帯がブラウザにだけ見える。画面側で縦横比を保って表示することを前提にする。
+- **開発者の決定(2026-11-01、残った食い違いへの対処)**: 「書体を同梱して他は違反」。
+  - `<text>`は、ラテン文字だけの小さな再配布可能な書体を同梱してresvgへ渡して描く。開発者の決定(2026-11-01)で、書体はLiberation Sans 2.1.5のRegular(SIL Open Font License 1.1)とした。GitHubの`liberationfonts/liberation-fonts`の2.1.5のリリースの`liberation-fonts-ttf-2.1.5.tar.gz`(SHA-256 `7191c669bf38899f73a2094ed00f7b800553364f90e2637010a69c0e268f25d0`)の`LiberationSans-Regular.ttf`(410,712バイト、SHA-256 `76d04c18ea243f426b7de1f3ad208e927008f961dc5945e5aad352d0dfde8ee8`)を、同じアーカイブの`LICENSE`と一緒に`apps/event/src/infrastructure/media/fonts/`へ置いた(開発コンテナのDebianのパッケージの同じ名前のファイルは別のビルドでハッシュが違うため使わない。リリースはハッシュを公開していないため、ハッシュは取得したファイルから求めた値)。eventのWrangler設定の`rules`で`.ttf`をDataのモジュールとして読み、`fontBuffers`で渡す(`wrangler types`が`*.ttf`の型を生成する。Workers統合テストもWrangler設定の`rules`で読める)。書体を1つだけ渡すと、`font-family`の指定(Arial・serif・存在しない名前)に関わらずこの書体で描かれる。書体に無い文字(日本語など)は代替の四角形で描かれ、文字の形は判定されない既知の制限とする。gzip後の大きさは約0.2MBで、Workerの大きさに加わる。
+  - 他は6.3の許可リスト(`inspectSvg`)の違反にする。違反にするのは差分の比較で分かった既知の差分で、網羅は保証しない(下の既知の制限)。CSSは`svg-unsupported-css.ts`の`hasUnsupportedCss`で`unsupported-css`とし、`@import`以外のat規則・`!important`・描画器がブラウザと同じに解釈する関数(`url`・カンマ区切りの`rgb`・`rgba`・`hsl`・`hsla`・`matrix`・`scale`・フィルターの関数)以外の関数・空白区切りや`/`の透明度の色・幾何のプロパティ・`-webkit-`の接頭辞のプロパティ・`display:contents`を、`style`要素と`style`属性で検出する(表示属性の値は関数と色だけ)。関数を許可の一覧で絞るため、関数の擬似クラス(`:not()`など)と、文字列の中の関数のような書き方も保守側に違反になる。WebPのデータURIは許可の形式から外した(要件7.5もrequirements.mdの改訂2として改めた)。
+  - 実装者の判断(重さを見て決めた): 入れ子の要素のブラウザが無効とする`viewBox`は、内容の全体を隠せる手軽な書き方で、編集ソフトの書き出しには現れないため`invalid-view-box`の違反にする(ルートは描画の前に書き直すため対象外)。`systemLanguage`は、閲覧者の言語に合わせて日本語の閲覧者だけに別の内容を見せられ、`languages`の設定では全ての閲覧者に合わせられないため、許可リストから外して`disallowed-attribute`の違反にする。
+  - Workerの大きさ: wasmのgzip後の合計は約3.2MB(resvg約0.95MB・`wasm-image-optimization`約2.3MB)で、Workers Free(3MB)を超え、Workers Paid(10MB)を前提とする。7.6で描画の部品を登録した後に、開発者が`wrangler deploy --dry-run`で確かめる(書体を同梱する場合はその大きさも加わる)。追記(2026-11-02): Cloudflareは2026-09-04に圧縮後の上限(Free 3MB・Paid 10MB)を廃止し、上限はどのプランでも非圧縮の64MiBだけになった。開発者の予行で`Total Upload`は14,278.13KiB(gzip後4,357.46KiB)で上限内。大きさを理由にWorkers Paidを前提とする必要は無い(起動時間の上限1秒はstagingで確かめる)。
+- **既知の制限(4回目のレビュー、開発者の決定(2026-11-01))**: 独立のレビュアーの新しい標本73件のうち28件が、許可リストを通り、判定用画像に写らずブラウザで見えた。開発者は「既知の制限として進める」と決め、許可リストはこれ以上強めない。
+  - resvgが適用しブラウザが適用しないもの: `media="print"`・`media="not all"`の`style`要素、存在しない要素を指す`filter="url(#nope)"`、`clipPath`以外の要素を指す`clip-path`、`font:`の一括指定。
+  - resvgが対応しないCSSのセレクター: `~`・`:last-child`・`:root`・`:empty`・`:only-of-type`、無効なセレクターを含むセレクターの一覧、CSSのエスケープ、属性セレクターの`i`、CDATAの中のCDO・CDC(`<!--`・`-->`)。
+  - 値の大文字小文字の扱い(`display="None"`など)、`href`と`xlink:href`を併用した場合の優先順位。
+  - data URIの申告の形式と中身の不一致(`data:image/png`と申告したWebPなど)。許可リストは申告の形式だけを見るため、要件7.5の改訂2(WebPを外す)は実質的に効かない。
+  - resvgが対応しないプロパティ: `transform-origin`・`transform-box`・`vector-effect`。
+  - 影響: SVGは`<img>`で表示し、配信のCSPでスクリプトも動かないため、影響は不適切な画像の判定のすり抜けに限る(スクリプトの実行や閲覧者の情報の外部送信には及ばない)。
+  - 根本的な対策の候補: 判定に使った形へ正規化したSVGを配信する(判定とブラウザの表示を同じ文書にする)、要素・属性・CSSのプロパティと値を厳密な許可リストで限る、判定用画像をブラウザで描く。
+- **採らなかった案**: 寸法の書き換えを続けてSkiaで描く案(描画器そのものの解釈の違いを塞げない)。CSSを自前で書き換えて単位付きの`transform`などをresvgに読ませる案(文字参照・CDATA・コメントを含むCSSの書き換えになり、範囲が広い)。
+- **反映した箇所**: design.mdのTechnology Stack・File Structure Plan・Modified Files・依存の表・ImageDimensionsの寸法・`WasmModerationImageRenderer`・SvgAllowlistの項・「SVGの許可リスト(初版)」の表、`docs/onboardings/tech-stack.md`、`docs/GUIDES/tech/coding/002-dependency-versions.md`。

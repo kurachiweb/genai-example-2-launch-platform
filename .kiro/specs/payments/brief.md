@@ -14,10 +14,10 @@
 ## Desired Outcome
 
 - ユーザーごとのStripe Customerがあり、退会時に削除される(ユーザーライフサイクルイベントへのハンドラ登録)。
-- Checkout Sessions(`ui_mode: 'elements'`)とPayment Elementによる決済画面と最終確認画面がある。即時に確定する決済手段のみ、金額は日数×単価、Stripe Taxによる税込、USDである(FR-PYMNT-001〜004、I18N-003)。
+- Checkout Sessions(`ui_mode: 'elements'`)とPayment Elementによる決済画面と最終確認画面がある。即時に確定する決済手段のみ、金額は日数×単価、Stripe Taxによる税込、USDである(FR-PYMNT-001・003〜005、I18N-003)。
 - 購入種別(トーナメント参加・広告・サブスクリプション)と、購入が確定した時のフルフィルメントのポートがあり、後続specが実装する。
-- eventのWebhookが、署名検証・冪等性・状態の巻き戻り防止(DR-010・011)を満たしつつ、決済・返金・チャージバックを決済履歴へ反映する。権利の自動変更はしない。`return_url`でも同じ反映処理を呼ぶ。
-- 返金処理(Queues経由の自動返金を含む)と、決済期限から組み合わせ決定までの突合(Cron)の共通部品があり、トーナメントのspecが使える(FR-PYMNT-005〜012)。
+- eventのWebhookが、署名検証・冪等性・状態の巻き戻り防止(DR-015・016)を満たしつつ、決済・返金・チャージバックを決済履歴へ反映する。権利の自動変更はしない。`return_url`でも同じ反映処理を呼ぶ。
+- 返金処理(Queues経由の自動返金を含む)と、決済期限から組み合わせ決定までの突合(Cron)の共通部品があり、トーナメントのspecが使える(FR-PYMNT-006〜010・012〜014)。
 - 設定ページに決済履歴があり、決済画面から特定商取引法の表記(法的通知)へ到達できる(LR-007〜009)。
 - `docs/GUIDES/tech/external`(Stripe)と`operations`(決済データ操作)に記載があり、`docs/GUIDES/service/features`に決済実装方針を作成済みである。
 
@@ -28,8 +28,8 @@ Stripeとの通信と決済状態の管理をこのspecに集約し、「何を�
 ## Scope
 
 - **In**:
-  - 4.26(FR-PYMNT-001〜012)
-  - SW-016、LR-007〜009、DR-010・011
+  - 4.26(FR-PYMNT-001〜018)
+  - SW-016、LR-007〜009、DR-015・016
   - Stripe Customerの管理と退会時の削除
   - 決済画面・最終確認画面・決済履歴
   - Webhookの受付(event)、返金と突合の共通部品
@@ -72,4 +72,4 @@ Stripeとの通信と決済状態の管理をこのspecに集約し、「何を�
   - `ui_mode: 'elements'`はAPI版`2026-03-25.dahlia`以降でのみ使える
   - フロント側でも`CheckoutProvider`が`CheckoutElementsProvider`に、`initCheckout`が`initCheckoutElementsSdk`に改名された
   - 対策として、SDKのメジャー版と`apiVersion`を明示的に固定し、Webhook endpointの`api_version`もそれに合わせる
-- FR-RLMIT-008(全WorkerのIP単位制限)がWebhookに及ぶ点は、backend-platformの論点の結論に従う
+- FR-RLMIT-009(全WorkerのIP単位制限)がWebhookに及ぶ点は、backend-platformの論点の結論に従う

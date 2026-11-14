@@ -14,7 +14,7 @@ type Props = {
   total: number;
 };
 
-// FR-DIR-004: 20件ずつの無限スクロール
+// FR-DIR-005: 20件ずつの無限スクロール
 const PAGE_SIZE = 20;
 const MOCK_LATENCY_MS = 600;
 

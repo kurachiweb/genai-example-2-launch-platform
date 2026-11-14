@@ -124,7 +124,7 @@ export const OPTION_LABELS = {
     },
   },
   upvotes: {
-    title: '件数(FR-VOTE-010)',
+    title: '件数(FR-VOTE-011)',
     values: { many: '多数(200件)', few: '少数(3件)', zero: '0件' },
   },
   targets: {

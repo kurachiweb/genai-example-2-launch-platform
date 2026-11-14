@@ -1,0 +1,15 @@
+query ClientMySessions {
+  mySessions {
+    id
+    browserName
+    osName
+    createdAt
+    lastUsedAt
+    current
+  }
+  viewer {
+    id
+    totpEnabled
+    remainingRecoveryCodes
+  }
+}

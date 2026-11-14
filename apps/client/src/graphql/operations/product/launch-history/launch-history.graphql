@@ -1,0 +1,49 @@
+query ClientLaunchHistory($userHandle: String!, $first: Int!, $after: String) {
+  launchHistory(userHandle: $userHandle, first: $first, after: $after) {
+    viewerIsOwner
+    ownerSuspended
+    totalCount
+    nodes {
+      product {
+        handle
+        name
+        tagline
+        category {
+          id
+          name
+          handle
+        }
+        websiteUrl
+        logo {
+          id
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+        listed
+      }
+      launches {
+        id
+        number
+        launchDate
+        kickoffAt
+        status
+        outcome
+        summary {
+          label
+          inMatch
+        }
+      }
+      awards {
+        kind
+        count
+        labels
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

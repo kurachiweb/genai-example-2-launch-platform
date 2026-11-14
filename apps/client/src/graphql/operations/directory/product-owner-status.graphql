@@ -1,0 +1,42 @@
+query ClientProductOwnerStatus($productHandle: String!) {
+  productOwnerStatus(productHandle: $productHandle) {
+    latestLaunch {
+      id
+      number
+      launchDate
+      kickoffAt
+      status
+      outcome
+      summary {
+        label
+        inMatch
+      }
+    }
+    plan {
+      mode
+      currentLaunchDate
+      window {
+        earliest
+        latest
+        unavailable {
+          from
+          to
+          reason
+        }
+        relaunchIntervalDays
+      }
+      blocks {
+        code
+        message
+        releaseAt
+      }
+      locked
+      locks {
+        code
+        message
+      }
+      lockUnknown
+      ultrasEntitled
+    }
+  }
+}

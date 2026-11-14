@@ -1,0 +1,5 @@
+mutation AdminReorderHelpArticles($categoryId: ID!, $orderedIds: [ID!]!) {
+  reorderHelpArticles(categoryId: $categoryId, orderedIds: $orderedIds) {
+    ...AdminHelpArticleRow
+  }
+}

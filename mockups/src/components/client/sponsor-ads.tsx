@@ -23,7 +23,7 @@ function shuffle<T>(items: T[]): T[] {
   return copy;
 }
 
-// 同一ティア内は表示毎にランダムな並びにする(FR-SPONS-007)。SSRと初回描画の一致のため並び替えはマウント後に行う
+// 同一ティア内は表示毎にランダムな並びにする(FR-SPONS-010)。SSRと初回描画の一致のため並び替えはマウント後に行う
 export function useShuffledAds(ads: SponsorAd[]) {
   const [ordered, setOrdered] = useState(ads);
   useEffect(() => {

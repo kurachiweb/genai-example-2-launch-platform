@@ -80,10 +80,12 @@ const AGGREGATE_COMMANDS: readonly AggregateCommand[] = [
 
 const ROOT_ONLY: readonly TargetDir[] = [{ target: 'root', dir: '.' }];
 
-const ROOT_AND_APPS: readonly TargetDir[] = [
-  ...ROOT_ONLY,
-  ...APPS.map(({ name, dir }) => ({ target: name, dir })),
-];
+const APPS_ONLY: readonly TargetDir[] = APPS.map(({ name, dir }) => ({
+  target: name,
+  dir,
+}));
+
+const ROOT_AND_APPS: readonly TargetDir[] = [...ROOT_ONLY, ...APPS_ONLY];
 
 // 配置の不備は後段の静的解析・型検査で依存の解決エラーとして現れるため、最初に確認して原因を先に表示する
 const CHECK_STEPS: readonly PlannedStep[] = [
@@ -91,7 +93,13 @@ const CHECK_STEPS: readonly PlannedStep[] = [
   { script: 'check:test-names', targets: ROOT_ONLY, args: [] },
   { script: 'format:check', targets: ROOT_ONLY, args: [] },
   { script: 'lint', targets: ROOT_AND_APPS, args: [] },
+  // 設定を変えて型を生成し直し忘れると型検査のエラーとして現れるため、型検査の前に確認して原因を先に表示する。Wranglerで型を生成するのはアプリだけのため、ルートは対象にしない
+  { script: 'cf-typegen:check', targets: APPS_ONLY, args: [] },
+  // 生成し直し忘れたGraphQLのスキーマファイルやリゾルバの型も型検査のエラーとして現れるため、同じ理由で型検査の前に置く。生成物を持つのはアプリだけのため、ルートは対象にしない
+  { script: 'graphql:check', targets: APPS_ONLY, args: [] },
   { script: 'typecheck', targets: ROOT_AND_APPS, args: [] },
+  // 他の段階の結果に依らないが、静的な検査と違いテストを実行するため、静的な検査をすべて終えた後に置く。照合のテストはルートに置くため、アプリは対象にしない
+  { script: 'check:contract-copies', targets: ROOT_ONLY, args: [] },
 ];
 
 const STEP_LABELS: ReadonlyMap<string, string> = new Map([
@@ -99,7 +107,10 @@ const STEP_LABELS: ReadonlyMap<string, string> = new Map([
   ['check:test-names', 'テスト命名の検査'],
   ['format:check', '整形検査'],
   ['lint', '静的解析'],
+  ['cf-typegen:check', '型生成の検査'],
+  ['graphql:check', 'GraphQLの生成物の検査'],
   ['typecheck', '型検査'],
+  ['check:contract-copies', '写しの照合'],
   ['test:unit', '単体テスト'],
   ['test:browser', 'ブラウザテスト'],
   ['test:worker', 'Workers統合テスト'],
@@ -117,7 +128,7 @@ const FAILURE_REASON_LABELS: Readonly<Record<FailureReason, string>> = {
 
 const USAGE = [
   `使い方: bun scripts/tooling/run-all.ts <${AGGREGATE_COMMANDS.join('|')}> [引数...]`,
-  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型検査を、失敗しても止めずにすべて実行する(引数は受け取らない)',
+  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型生成の検査・GraphQLの生成物の検査・型検査・写しの照合を、失敗しても止めずにすべて実行する(引数は受け取らない)',
   '  それ以外: ルートと各アプリの同名スクリプトを、残りの引数付きで実行する',
   '',
 ].join('\n');
@@ -321,20 +332,59 @@ export const readPackageScripts: PackageScriptsReader = (dir) => {
   return scripts;
 };
 
+export interface SpawnRunnerOptions {
+  // 中断を知らせる。実行中のコマンドへSIGTERMを送り、猶予の後も終了しなければSIGKILLを送る。中断の後はコマンドを起動しない
+  readonly signal?: AbortSignal;
+  readonly killGraceMs?: number;
+}
+
+const DEFAULT_KILL_GRACE_MS = 10_000;
+
+const terminateOnAbort = (
+  child: Bun.Subprocess,
+  signal: AbortSignal | undefined,
+  killGraceMs: number,
+): (() => void) => {
+  let killTimer: Timer | undefined;
+  const onAbort = () => {
+    child.kill('SIGTERM');
+    killTimer = setTimeout(() => {
+      child.kill('SIGKILL');
+    }, killGraceMs);
+  };
+  signal?.addEventListener('abort', onAbort);
+  return () => {
+    signal?.removeEventListener('abort', onAbort);
+    clearTimeout(killTimer);
+  };
+};
+
 export function createSpawnRunner(
   repoRoot: string,
   output: TextOutput,
+  { signal, killGraceMs = DEFAULT_KILL_GRACE_MS }: SpawnRunnerOptions = {},
 ): CommandRunner {
   return {
-    run: (command, cwd) => {
+    run: async (command, cwd) => {
+      if (signal?.aborted) {
+        throw new Error(
+          `中断したため、\`${command.join(' ')}\`を実行しませんでした`,
+        );
+      }
       output.write(
         `\n▶ ${relative(repoRoot, cwd) || 'ルート'}: ${command.join(' ')}\n`,
       );
       // 違反の内容や進捗を端末へそのまま流すため、子プロセスに標準入出力を引き継ぐ
-      return Bun.spawn([...command], {
+      const child = Bun.spawn([...command], {
         cwd,
         stdio: ['inherit', 'inherit', 'inherit'],
-      }).exited;
+      });
+      const release = terminateOnAbort(child, signal, killGraceMs);
+      try {
+        return await child.exited;
+      } finally {
+        release();
+      }
     },
   };
 }

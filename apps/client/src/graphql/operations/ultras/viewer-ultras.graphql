@@ -1,0 +1,13 @@
+query ClientViewerUltras {
+  viewerUltras {
+    entitled
+    canOpenPortal
+    plan {
+      status
+      startedAt
+      currentPeriodEndsAt
+      canceledAt
+      benefitEndsAt
+    }
+  }
+}

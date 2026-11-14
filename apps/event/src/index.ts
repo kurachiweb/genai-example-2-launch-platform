@@ -1,0 +1,44 @@
+import { createWorkerHandler } from '../lib/workers/handler/create-worker-handler.ts';
+import { createWorkerApp } from '../lib/workers/http/create-worker-app.ts';
+import { withSecurityHeaders } from '../lib/workers/http/security-headers.ts';
+import { createQueueDispatcher } from '../lib/workers/messaging/queue-consumer.ts';
+import {
+  buildSentryOptions,
+  readSentryRuntimeOptions,
+  type SentryOptionsFactory,
+} from '../lib/workers/observability/sentry.ts';
+import { type EventEnv, eventEnvSchema } from './composition/env-schema.ts';
+import { createImageDeliveryDeps } from './composition/image-delivery-deps.ts';
+import { MESSAGE_HANDLERS } from './composition/message-handlers.ts';
+import { MODULES } from './composition/modules.ts';
+import { RAW_QUEUE_HANDLERS } from './composition/raw-queue-handlers.ts';
+import { RATE_LIMIT_EXCLUSIONS } from './composition/rate-limit-exclusions.ts';
+import { createImageDeliveryEntrypointClass } from './presentation/media/image-delivery-entrypoint.ts';
+
+const sentry: SentryOptionsFactory<EventEnv> = (env) =>
+  buildSentryOptions(readSentryRuntimeOptions(env));
+
+const app = createWorkerApp<EventEnv>({
+  appName: 'event',
+  envSchema: eventEnvSchema,
+  modules: MODULES,
+  rateLimitExclusions: RATE_LIMIT_EXCLUSIONS,
+  sentry,
+});
+
+export default withSecurityHeaders(
+  createWorkerHandler<EventEnv>({
+    appName: 'event',
+    app,
+    envSchema: eventEnvSchema,
+    sentry,
+    queue: createQueueDispatcher<EventEnv>(MESSAGE_HANDLERS, MODULES, {
+      rawQueues: RAW_QUEUE_HANDLERS,
+    }),
+  }),
+);
+
+// 前段のWorkers Cacheを有効にした名前付きエントリポイント。既定のエクスポートから`ctx.exports`で呼ぶ
+export class ImageDelivery extends createImageDeliveryEntrypointClass<EventEnv>(
+  createImageDeliveryDeps,
+) {}

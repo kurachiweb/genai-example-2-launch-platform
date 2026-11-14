@@ -1,0 +1,61 @@
+query ClientDirectory($input: DirectoryInput!) {
+  directory(input: $input) {
+    applied {
+      q
+      category
+      from
+      to
+      sort
+      page
+    }
+    businessToday
+    page
+    pageCount
+    totalCount
+    searchTerms
+    items {
+      handle
+      name
+      tagline
+      websiteUrl
+      isViewerOwn
+      category {
+        id
+        name
+        handle
+      }
+      logo {
+        id
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+      owner {
+        handle
+        nickname
+        avatar {
+          id
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+      }
+      win {
+        kind
+        launchDate
+        upvoteCount
+      }
+      awards {
+        kind
+        count
+        labels
+      }
+      metrics {
+        key
+        value
+      }
+    }
+  }
+}

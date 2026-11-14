@@ -1,0 +1,33 @@
+query ClientHelpArticle($handle: String!) {
+  helpArticle(handle: $handle) {
+    __typename
+    ... on HelpArticle {
+      handle
+      title
+      subtitle
+      body
+      categoryName
+      author {
+        nickname
+        title
+        avatar {
+          id
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+      }
+      updatedAt
+      relatedArticles {
+        handle
+        title
+        subtitle
+        pinned
+      }
+    }
+    ... on HelpArticleRedirect {
+      handle
+    }
+  }
+}

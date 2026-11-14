@@ -1,0 +1,7 @@
+mutation AdminStartTotpReset($reAuthentication: AdminReAuthenticationInput!) {
+  startAdminTotpReset(reAuthentication: $reAuthentication) {
+    otpauthUri
+    secret
+    expiresAt
+  }
+}

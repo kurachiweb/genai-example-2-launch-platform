@@ -1,0 +1,5 @@
+mutation ClientCreateUltrasPortalSession {
+  createUltrasPortalSession {
+    url
+  }
+}

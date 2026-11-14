@@ -1,0 +1,5 @@
+mutation AdminCompleteTotpReset($totpCode: String!) {
+  completeAdminTotpReset(totpCode: $totpCode) {
+    codes
+  }
+}

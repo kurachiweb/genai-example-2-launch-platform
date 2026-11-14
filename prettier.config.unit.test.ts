@@ -10,6 +10,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 
 import { getFileInfo, resolveConfig } from 'prettier';
 
@@ -160,8 +161,9 @@ const runPrettier = (
 ): Promise<ScriptResult> =>
   runCommand(cwd, [process.execPath, '--bun', PRETTIER_BIN, ...args]);
 
+// CI環境では整形ツールが警告の見出しを色付けするため、色の制御文字を除いてから読む。
 const reportedFilesOf = (output: string): readonly string[] =>
-  output
+  stripVTControlCharacters(output)
     .split('\n')
     .flatMap((line) => /^\[warn\] (.+)$/.exec(line)?.[1] ?? [])
     .filter((path) => !path.startsWith('Code style issues'))

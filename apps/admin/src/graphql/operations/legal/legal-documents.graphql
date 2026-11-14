@@ -1,0 +1,8 @@
+query AdminLegalDocuments {
+  adminLegalDocuments {
+    kind
+    latestVersionNumber
+    latestPublishedAt
+    hasDraft
+  }
+}

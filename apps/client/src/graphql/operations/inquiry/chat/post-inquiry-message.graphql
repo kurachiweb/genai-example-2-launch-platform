@@ -1,0 +1,8 @@
+mutation ClientPostInquiryMessage(
+  $inquiryId: ID!
+  $input: InquiryMessageInput!
+) {
+  postInquiryMessage(inquiryId: $inquiryId, input: $input) {
+    id
+  }
+}

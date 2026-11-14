@@ -117,8 +117,8 @@ export function validateSearch(
   return result;
 }
 
-// absent: 対戦相手が元々いない不戦勝(FR-TOURW-017等)
-// early: 対戦相手の退会・停止・非公開化でマッチが早期終了した不戦勝(FR-GAME-013・FR-TOURW-014・FR-TOURY-014)
+// absent: 対戦相手が元々いない不戦勝(FR-TOURW-023等)
+// early: 対戦相手の退会・停止・非公開化でマッチが早期終了した不戦勝(FR-GAME-015・FR-TOURW-019・FR-TOURY-022)
 export type ByeEntry = {
   id: string;
   kind: MatchKind;
@@ -162,7 +162,7 @@ export function parseVotes(votes: TopSearch['votes']): [number, number] {
   return [left, right];
 }
 
-// 同カテゴリ優先のペアリング(FR-GAME-001)を模し、余りはカテゴリ横断でペアにする(FR-GAME-002)
+// 同カテゴリ優先のペアリング(FR-GAME-001)を模し、余りはカテゴリ横断でペアにする(FR-GAME-003)
 function pairProducts(offset: number, count: number): [Product, Product][] {
   const pool = Array.from(
     { length: count * 2 + 6 },
@@ -185,7 +185,7 @@ function pairProducts(offset: number, count: number): [Product, Product][] {
   return pairs;
 }
 
-// 予選の対戦中プロダクトは未掲載が基本だが、再ローンチで過去に予選勝利済みなら掲載済みとして詳細ページへ遷移できる(FR-GAME-007)
+// 予選の対戦中プロダクトは未掲載が基本だが、再ローンチで過去に予選勝利済みなら掲載済みとして詳細ページへ遷移できる(FR-GAME-008)
 function isListedBefore(product: Product): boolean {
   return Number(product.id.slice(-3)) % 3 === 0;
 }

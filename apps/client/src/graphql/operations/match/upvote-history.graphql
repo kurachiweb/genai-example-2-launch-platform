@@ -1,0 +1,44 @@
+query ClientUpvoteHistory($userHandle: String!, $first: Int!, $after: String) {
+  upvoteHistory(userHandle: $userHandle, first: $first, after: $after) {
+    totalCount
+    dateTotals {
+      date
+      count
+    }
+    nodes {
+      id
+      date
+      kind
+      round
+      stage
+      live
+      product {
+        handle
+        name
+        listed
+        logo {
+          id
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+      }
+      owner {
+        handle
+        nickname
+        avatar {
+          id
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

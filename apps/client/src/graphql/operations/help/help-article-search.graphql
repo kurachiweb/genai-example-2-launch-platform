@@ -1,0 +1,8 @@
+query ClientHelpArticleSearch($query: String!) {
+  helpArticleSearch(query: $query) {
+    handle
+    title
+    subtitle
+    categoryName
+  }
+}

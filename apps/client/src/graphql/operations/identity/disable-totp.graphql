@@ -1,0 +1,3 @@
+mutation ClientDisableTotp($input: ReAuthenticationInput!) {
+  disableTotp(input: $input)
+}

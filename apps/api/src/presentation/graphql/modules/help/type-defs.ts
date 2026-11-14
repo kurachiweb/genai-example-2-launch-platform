@@ -1,0 +1,181 @@
+export const HELP_TYPE_DEFS = /* GraphQL */ `
+  enum HelpArticleStatus {
+    DRAFT
+    PUBLISHED
+  }
+
+  enum HelpArticleHandleAvailability {
+    AVAILABLE
+    "他の記事の旧ハンドルと一致する。保存するとその記事の旧URLの転送が無くなる"
+    AVAILABLE_RELEASES_PREVIOUS
+    UNAVAILABLE
+    INVALID
+  }
+
+  type HelpArticleAuthor {
+    nickname: String!
+    title: String
+    avatar: MediaImage
+  }
+
+  type HelpArticleSummary {
+    handle: String!
+    title: String!
+    subtitle: String!
+    pinned: Boolean!
+  }
+
+  type HelpCenterCategory {
+    name: String!
+    "ピン留めの群に続けてそれ以外の群を、それぞれ管理者が指定した並び順で並べる"
+    articles: [HelpArticleSummary!]!
+  }
+
+  type HelpArticle {
+    "現在のハンドルの表記"
+    handle: String!
+    title: String!
+    subtitle: String!
+    "マークダウン"
+    body: String!
+    categoryName: String!
+    "nullは削除済みの管理者"
+    author: HelpArticleAuthor
+    updatedAt: DateTime!
+    "同じカテゴリの他の公開の記事をヘルプトップと同じ順で並べる"
+    relatedArticles: [HelpArticleSummary!]!
+  }
+
+  "公開の記事の旧ハンドルで要求された時の転送先"
+  type HelpArticleRedirect {
+    "現在のハンドルの表記"
+    handle: String!
+  }
+
+  union HelpArticleResult = HelpArticle | HelpArticleRedirect
+
+  type HelpArticleLink {
+    handle: String!
+    title: String!
+  }
+
+  type HelpSearchHit {
+    handle: String!
+    title: String!
+    subtitle: String!
+    categoryName: String!
+  }
+
+  type HelpCategory {
+    id: ID!
+    name: String!
+    systemDefault: Boolean!
+    sortOrder: Int!
+    "下書き・公開を問わない記事の件数"
+    articleCount: Int!
+  }
+
+  type DeleteHelpCategoryPayload {
+    id: ID!
+    "標準カテゴリへ付け替えた記事の件数"
+    reassignedCount: Int!
+  }
+
+  type AdminHelpArticleRow {
+    id: ID!
+    handle: String!
+    title: String!
+    categoryId: ID!
+    categoryName: String!
+    status: HelpArticleStatus!
+    pinned: Boolean!
+    sortOrder: Int!
+    creatorAdminId: ID!
+    "nullは削除済みの管理者"
+    creator: HelpArticleAuthor
+    createdAt: DateTime!
+    updatedAt: DateTime!
+  }
+
+  type AdminHelpArticle {
+    id: ID!
+    handle: String!
+    previousHandle: String
+    title: String!
+    subtitle: String!
+    body: String!
+    categoryId: ID!
+    categoryName: String!
+    status: HelpArticleStatus!
+    pinned: Boolean!
+    "nullは削除済みの管理者"
+    creator: HelpArticleAuthor
+    revision: Int!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+  }
+
+  input HelpArticleFields {
+    handle: String!
+    title: String!
+    subtitle: String!
+    body: String!
+    categoryId: ID!
+    pinned: Boolean!
+    status: HelpArticleStatus!
+  }
+
+  input CreateHelpArticleInput {
+    fields: HelpArticleFields!
+    reason: String
+  }
+
+  input UpdateHelpArticleInput {
+    id: ID!
+    expectedRevision: Int!
+    fields: HelpArticleFields!
+    reason: String
+  }
+
+  type DeleteHelpArticlePayload {
+    id: ID!
+  }
+
+  type Query {
+    "公開の記事を持つカテゴリを管理者が指定した並び順で返す"
+    helpCenter: [HelpCenterCategory!]!
+    "見つからない・下書き・形式違反のハンドルではnull(404)"
+    helpArticle(handle: String!): HelpArticleResult
+    "前後の空白を除き50文字に切り詰めた検索語で、公開の記事を関連度の高い順に返す"
+    helpArticleSearch(query: String!): [HelpSearchHit!]!
+    "公開のピン留めの記事をヘルプトップと同じ順で返す"
+    pinnedHelpArticles: [HelpArticleLink!]!
+    "下書きを含む全件を更新日時の新しい順で返す"
+    adminHelpArticles: [AdminHelpArticleRow!]!
+    "見つからなければnull"
+    adminHelpArticle(id: ID!): AdminHelpArticle
+    "articleIdは編集中の記事のIDで、作成では省く"
+    helpArticleHandleAvailability(
+      handle: String!
+      articleId: ID
+    ): HelpArticleHandleAvailability!
+    "管理者が指定した並び順"
+    adminHelpCategories: [HelpCategory!]!
+  }
+
+  type Mutation {
+    createHelpArticle(input: CreateHelpArticleInput!): AdminHelpArticle!
+    updateHelpArticle(input: UpdateHelpArticleInput!): AdminHelpArticle!
+    deleteHelpArticle(id: ID!, reason: String): DeleteHelpArticlePayload!
+    "ピン留めの群に続けてそれ以外の群の順でカテゴリの全記事のIDを渡す"
+    reorderHelpArticles(
+      categoryId: ID!
+      orderedIds: [ID!]!
+    ): [AdminHelpArticleRow!]!
+    createHelpCategory(name: String!): HelpCategory!
+    renameHelpCategory(id: ID!, name: String!): HelpCategory!
+    deleteHelpCategory(id: ID!): DeleteHelpCategoryPayload!
+    "全カテゴリのIDを並べたい順で渡す"
+    reorderHelpCategories(orderedIds: [ID!]!): [HelpCategory!]!
+  }
+`;

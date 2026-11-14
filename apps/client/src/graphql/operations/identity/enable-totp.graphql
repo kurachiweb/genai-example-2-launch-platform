@@ -1,0 +1,5 @@
+mutation ClientEnableTotp($totpCode: String!) {
+  enableTotp(totpCode: $totpCode) {
+    codes
+  }
+}

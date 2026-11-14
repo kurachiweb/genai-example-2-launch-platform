@@ -1,0 +1,5 @@
+mutation AdminCreateProductCategory($input: ProductCategoryInput!) {
+  createProductCategory(input: $input) {
+    id
+  }
+}

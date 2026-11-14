@@ -1,0 +1,368 @@
+import { createRoute } from '@tanstack/react-router';
+import type { Mock } from 'vitest';
+
+import { HELP_CATEGORY_OTHER_ID } from '../common-lib/help/help-category-constants.ts';
+import { parseHelpArticleFilter } from '../src/components/help/help-article-filter.ts';
+import { parseHelpArticleOrderSearch } from '../src/components/help/help-article-order-search.ts';
+import { requireHelpArticleEditor } from '../src/components/help/require-help-article-editor.ts';
+import {
+  loadAdminHelpArticleNewPage,
+  loadAdminHelpArticlePage,
+  loadAdminHelpArticlesPage,
+} from '../src/graphql/admin-help-articles.ts';
+import {
+  AdminCreateHelpArticleDocument,
+  AdminDeleteHelpArticleDocument,
+  AdminHelpArticleDocument,
+  AdminHelpArticleHandleAvailabilityDocument,
+  AdminHelpArticlesDocument,
+  type AdminHelpArticlesQuery,
+  AdminHelpCategoriesDocument,
+  type AdminHelpCategoriesQuery,
+  AdminReorderHelpArticlesDocument,
+  type AdminRole,
+  AdminUpdateHelpArticleDocument,
+} from '../src/graphql/generated/graphql.ts';
+import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
+import { Route as HelpArticleEditRoute } from '../src/routes/_authenticated/help-articles/$articleId.tsx';
+import { Route as HelpArticlesRoute } from '../src/routes/_authenticated/help-articles/index.tsx';
+import { Route as HelpArticleNewRoute } from '../src/routes/_authenticated/help-articles/new.tsx';
+import { Route as HelpArticleOrderRoute } from '../src/routes/_authenticated/help-articles/order.tsx';
+import {
+  type GraphQLHandler,
+  respondAdminGraphQL,
+  success,
+} from './admin-accounts-fixtures.ts';
+import { adminWithRole } from './admin-viewer-fixtures.ts';
+import { type PageRootRoute, renderPageRouter } from './page-router.tsx';
+
+export const HELP_ARTICLES_PATH = '/help-articles';
+
+export const HELP_ARTICLE_ORDER_PATH = '/help-articles/order';
+
+export const HELP_ARTICLE_NEW_PATH = '/help-articles/new';
+
+export const helpArticlePathOf = (id: string): string =>
+  `${HELP_ARTICLES_PATH}/${id}`;
+
+export type AdminHelpArticleRowFields =
+  AdminHelpArticlesQuery['adminHelpArticles'][number];
+
+export type AdminHelpCategoryFields =
+  AdminHelpCategoriesQuery['adminHelpCategories'][number];
+
+export const PRICING_CATEGORY: AdminHelpCategoryFields = Object.freeze({
+  id: '01JD0HCAT00000000000000002',
+  name: '料金',
+  systemDefault: false,
+  sortOrder: 1,
+  articleCount: 1,
+});
+
+export const USAGE_CATEGORY: AdminHelpCategoryFields = Object.freeze({
+  id: '01JD0HCAT00000000000000001',
+  name: '使い方',
+  systemDefault: false,
+  sortOrder: 2,
+  articleCount: 2,
+});
+
+export const OTHER_CATEGORY: AdminHelpCategoryFields = Object.freeze({
+  id: HELP_CATEGORY_OTHER_ID,
+  name: 'その他',
+  systemDefault: true,
+  sortOrder: 3,
+  articleCount: 1,
+});
+
+// 名前の順やIDの順と異なる、管理者が指定した並び順
+export const HELP_CATEGORIES: AdminHelpCategoriesQuery = {
+  adminHelpCategories: [
+    { ...PRICING_CATEGORY },
+    { ...USAGE_CATEGORY },
+    { ...OTHER_CATEGORY },
+  ],
+};
+
+export const SUPPORT_AUTHOR_ID = '01JD0ADMIN0000000000000001';
+
+export const EDITOR_AUTHOR_ID = '01JD0ADMIN0000000000000002';
+
+export const DELETED_AUTHOR_ID = '01JD0ADMIN0000000000000003';
+
+export const OTHER_DELETED_AUTHOR_ID = '01JD0ADMIN0000000000000004';
+
+export const SUPPORT_AUTHOR = Object.freeze({
+  nickname: '山田サポート',
+  title: 'サポート',
+  avatar: {
+    id: '01JD0MEDIA0000000000000001',
+    objectKey: 'fedcba9876543210'.repeat(2),
+    fallbackFormat: 'PNG',
+    width: 256,
+    height: 256,
+  },
+} as const);
+
+export const EDITOR_AUTHOR = Object.freeze({
+  nickname: '伊藤編集',
+  title: null,
+  avatar: null,
+});
+
+// 更新日時の新しい順(APIが返す順)
+export const PUBLISHED_ARTICLE: AdminHelpArticleRowFields = Object.freeze({
+  id: '01JD0HART00000000000000001',
+  handle: 'how-upvote-works',
+  title: 'Upvoteの仕組み',
+  categoryId: USAGE_CATEGORY.id,
+  categoryName: USAGE_CATEGORY.name,
+  status: 'PUBLISHED',
+  pinned: true,
+  sortOrder: 1,
+  creatorAdminId: SUPPORT_AUTHOR_ID,
+  creator: SUPPORT_AUTHOR,
+  createdAt: '2026-11-01T01:00:00.000Z',
+  updatedAt: '2026-11-10T05:30:00.000Z',
+});
+
+export const DRAFT_ARTICLE: AdminHelpArticleRowFields = Object.freeze({
+  id: '01JD0HART00000000000000002',
+  handle: 'Pricing-Plans',
+  title: '料金プランの違い',
+  categoryId: PRICING_CATEGORY.id,
+  categoryName: PRICING_CATEGORY.name,
+  status: 'DRAFT',
+  pinned: false,
+  sortOrder: 1,
+  creatorAdminId: EDITOR_AUTHOR_ID,
+  creator: EDITOR_AUTHOR,
+  createdAt: '2026-11-02T01:00:00.000Z',
+  updatedAt: '2026-11-09T03:00:00.000Z',
+});
+
+export const DELETED_AUTHOR_ARTICLE: AdminHelpArticleRowFields = Object.freeze({
+  id: '01JD0HART00000000000000003',
+  handle: 'account-deletion',
+  title: 'アカウントの削除',
+  categoryId: USAGE_CATEGORY.id,
+  categoryName: USAGE_CATEGORY.name,
+  status: 'DRAFT',
+  pinned: false,
+  sortOrder: 2,
+  creatorAdminId: DELETED_AUTHOR_ID,
+  creator: null,
+  createdAt: '2026-11-03T01:00:00.000Z',
+  updatedAt: '2026-11-08T00:00:00.000Z',
+});
+
+export const OTHER_DELETED_AUTHOR_ARTICLE: AdminHelpArticleRowFields =
+  Object.freeze({
+    id: '01JD0HART00000000000000004',
+    handle: 'contact',
+    title: '問い合わせの方法',
+    categoryId: OTHER_CATEGORY.id,
+    categoryName: OTHER_CATEGORY.name,
+    status: 'PUBLISHED',
+    pinned: false,
+    sortOrder: 1,
+    creatorAdminId: OTHER_DELETED_AUTHOR_ID,
+    creator: null,
+    createdAt: '2026-11-04T01:00:00.000Z',
+    updatedAt: '2026-11-07T00:00:00.000Z',
+  });
+
+export const helpArticlesQueryOf = (
+  rows: readonly AdminHelpArticleRowFields[],
+): AdminHelpArticlesQuery => ({
+  adminHelpArticles: rows.map((row) => ({ ...row })),
+});
+
+export const ALL_ARTICLES = helpArticlesQueryOf([
+  PUBLISHED_ARTICLE,
+  DRAFT_ARTICLE,
+  DELETED_AUTHOR_ARTICLE,
+  OTHER_DELETED_AUTHOR_ARTICLE,
+]);
+
+const orderRowOf = (
+  fields: Pick<
+    AdminHelpArticleRowFields,
+    'id' | 'handle' | 'title' | 'status' | 'pinned' | 'sortOrder' | 'updatedAt'
+  >,
+): AdminHelpArticleRowFields =>
+  Object.freeze({
+    categoryId: USAGE_CATEGORY.id,
+    categoryName: USAGE_CATEGORY.name,
+    creatorAdminId: SUPPORT_AUTHOR_ID,
+    creator: SUPPORT_AUTHOR,
+    createdAt: '2026-11-01T00:00:00.000Z',
+    ...fields,
+  });
+
+// 並べ替えの画面の「使い方」の記事。並び順の値の順は、ピン留めの群がB・A、その他の群がC・D・E
+export const ORDER_PINNED_A = orderRowOf({
+  id: '01JD0HART00000000000000011',
+  handle: 'getting-started',
+  title: 'はじめに',
+  status: 'PUBLISHED',
+  pinned: true,
+  sortOrder: 3,
+  updatedAt: '2026-11-10T00:00:00.000Z',
+});
+
+export const ORDER_PINNED_B = orderRowOf({
+  id: '01JD0HART00000000000000012',
+  handle: 'cannot-sign-in',
+  title: 'ログインできない',
+  status: 'DRAFT',
+  pinned: true,
+  sortOrder: 1,
+  updatedAt: '2026-11-08T00:00:00.000Z',
+});
+
+export const ORDER_OTHER_C = orderRowOf({
+  id: '01JD0HART00000000000000013',
+  handle: 'edit-profile',
+  title: 'プロフィールの編集',
+  status: 'PUBLISHED',
+  pinned: false,
+  sortOrder: 2,
+  updatedAt: '2026-11-07T00:00:00.000Z',
+});
+
+export const ORDER_OTHER_D = orderRowOf({
+  id: '01JD0HART00000000000000014',
+  handle: 'delete-account',
+  title: 'アカウントの削除',
+  status: 'DRAFT',
+  pinned: false,
+  sortOrder: 4,
+  updatedAt: '2026-11-09T00:00:00.000Z',
+});
+
+export const ORDER_OTHER_E = orderRowOf({
+  id: '01JD0HART00000000000000015',
+  handle: 'notification-settings',
+  title: 'お知らせの設定',
+  status: 'PUBLISHED',
+  pinned: false,
+  sortOrder: 5,
+  updatedAt: '2026-11-06T00:00:00.000Z',
+});
+
+// APIが返す更新日時の新しい順。「料金」には下書きの記事が1件、「その他」には記事が無い
+export const ORDER_ARTICLES = helpArticlesQueryOf([
+  ORDER_PINNED_A,
+  DRAFT_ARTICLE,
+  ORDER_OTHER_D,
+  ORDER_PINNED_B,
+  ORDER_OTHER_C,
+  ORDER_OTHER_E,
+]);
+
+const unexpectedOperation =
+  (name: string): GraphQLHandler =>
+  () =>
+    Promise.reject(new Error(`想定していない${name}が実行されました。`));
+
+// 記事の全件と1件・カテゴリの一覧・ハンドルの使用可否・記事の作成・編集・削除・並べ替え・ログイン中の管理者の取得に応答し、ログイン中の管理者以外はテストが渡した応答にする。
+// 既定では全件とカテゴリの一覧を返し、ハンドルを使えるとし、記事の1件と変更の操作は失敗させる
+export function respondAdminHelpArticlesGraphQL(
+  executeGraphQL: Mock,
+  {
+    role,
+    articles = () => success(ALL_ARTICLES),
+    categories = () => success(HELP_CATEGORIES),
+    article = unexpectedOperation('記事の取得'),
+    availability = () =>
+      success({ helpArticleHandleAvailability: 'AVAILABLE' }),
+    create = unexpectedOperation('作成'),
+    update = unexpectedOperation('編集'),
+    remove = unexpectedOperation('削除'),
+    reorder = unexpectedOperation('並べ替え'),
+  }: {
+    readonly role: AdminRole;
+    readonly articles?: GraphQLHandler;
+    readonly categories?: GraphQLHandler;
+    readonly article?: GraphQLHandler;
+    readonly availability?: GraphQLHandler;
+    readonly create?: GraphQLHandler;
+    readonly update?: GraphQLHandler;
+    readonly remove?: GraphQLHandler;
+    readonly reorder?: GraphQLHandler;
+  },
+): void {
+  respondAdminGraphQL(executeGraphQL, {
+    role,
+    handlers: new Map<unknown, GraphQLHandler>([
+      [AdminHelpArticlesDocument, articles],
+      [AdminHelpCategoriesDocument, categories],
+      [AdminHelpArticleDocument, article],
+      [AdminHelpArticleHandleAvailabilityDocument, availability],
+      [AdminCreateHelpArticleDocument, create],
+      [AdminUpdateHelpArticleDocument, update],
+      [AdminDeleteHelpArticleDocument, remove],
+      [AdminReorderHelpArticlesDocument, reorder],
+    ]),
+  });
+}
+
+// アプリの経路の設定を、画面のテスト用のルーターの同じ位置(同じ経路のID)の経路へ写す。経路の設定の検索パラメータの検証・beforeLoad・loaderは型がアプリの経路の木に結び付き写せないため、同じ関数を渡す(同じ関数であることは画面のテストが確かめる)
+const createRoutes = (rootRoute: PageRootRoute) => {
+  const authenticatedRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_authenticated',
+    beforeLoad: AuthenticatedRoute.options.beforeLoad,
+    component: AuthenticatedRoute.options.component,
+  });
+  const helpArticlesRoute = createRoute({
+    getParentRoute: () => authenticatedRoute,
+    path: 'help-articles',
+  });
+  return [
+    authenticatedRoute.addChildren([
+      helpArticlesRoute.addChildren([
+        createRoute({
+          getParentRoute: () => helpArticlesRoute,
+          path: '/',
+          validateSearch: parseHelpArticleFilter,
+          loader: loadAdminHelpArticlesPage,
+          component: HelpArticlesRoute.options.component,
+        }),
+        createRoute({
+          getParentRoute: () => helpArticlesRoute,
+          path: 'order',
+          validateSearch: parseHelpArticleOrderSearch,
+          loader: loadAdminHelpArticlesPage,
+          component: HelpArticleOrderRoute.options.component,
+        }),
+        createRoute({
+          getParentRoute: () => helpArticlesRoute,
+          path: 'new',
+          beforeLoad: requireHelpArticleEditor,
+          loader: loadAdminHelpArticleNewPage,
+          component: HelpArticleNewRoute.options.component,
+        }),
+        createRoute({
+          getParentRoute: () => helpArticlesRoute,
+          path: '$articleId',
+          loader: loadAdminHelpArticlePage,
+          component: HelpArticleEditRoute.options.component,
+        }),
+      ]),
+    ]),
+  ];
+};
+
+export const renderHelpArticlesPage = (
+  role: AdminRole,
+  path: string = HELP_ARTICLES_PATH,
+) =>
+  renderPageRouter({ path, createRoutes, cachedViewer: adminWithRole(role) });
+
+export const renderHelpArticleOrderPage = (
+  role: AdminRole,
+  path: string = HELP_ARTICLE_ORDER_PATH,
+) =>
+  renderPageRouter({ path, createRoutes, cachedViewer: adminWithRole(role) });

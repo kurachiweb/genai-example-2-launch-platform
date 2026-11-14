@@ -29,7 +29,7 @@ type Props = {
   onClose: () => void;
 };
 
-// 通報カテゴリのマスタ(FR-ADMCF-015)の仮データ
+// 通報カテゴリのマスタ(FR-ADMCF-019)の仮データ
 const CATEGORIES = [
   { value: 'spam', label: 'スパム・宣伝目的' },
   { value: 'inappropriate', label: '不適切なコンテンツ' },

@@ -1,0 +1,5 @@
+mutation AdminCreateHelpCategory($name: String!) {
+  createHelpCategory(name: $name) {
+    ...HelpCategory
+  }
+}

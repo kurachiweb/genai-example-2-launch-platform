@@ -1,0 +1,7 @@
+mutation ClientConfirmEmailChange($token: String!) {
+  confirmEmailChange(token: $token) {
+    viewer {
+      id
+    }
+  }
+}

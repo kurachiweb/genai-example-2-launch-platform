@@ -1,0 +1,5 @@
+mutation AdminUpdateHelpArticle($input: UpdateHelpArticleInput!) {
+  updateHelpArticle(input: $input) {
+    ...AdminHelpArticle
+  }
+}

@@ -18,6 +18,7 @@
 ### 依存性注入(DI)
 
 - Inversify
+  - `reflect-metadata` ... Inversifyの相手依存(peer dependency)、版を固定するためアプリで明示的に宣言する
 
 ### バックエンド側スキーマ
 
@@ -27,6 +28,7 @@
 - DataLoader(GraphQLのN+1問題対策)
 - GraphQL Armor(クエリ深度・複雑度・エイリアス数の上限設定によるDoS対策)
 - `@graphql-yoga/plugin-persisted-operations`(永続化クエリによる許可リスト方式のDoS対策)
+- GraphQL Code Generator(`@graphql-codegen/typescript`・`@graphql-codegen/typescript-resolvers`によりスキーマからリゾルバの型を生成)
 
 ### OpenAPI仕様
 
@@ -39,8 +41,9 @@
 
 ### 認証・認可
 
-- OTPAuth(TOTP多要素認証)
-- uqr ... TOTP登録用のotpauth URIをQRコードのSVGへ変換
+- OTPAuth 9.6.0(TOTP多要素認証の秘密鍵の生成・`otpauth://`のURIの生成・コードの照合、APIサーバーだけで使用)
+- uqr 0.1.3(TOTP登録用の`otpauth://`のURIのQRコードのセルの行列への変換とSVG要素での描画、画面の共通部品・利用者側・管理者側で使用)
+- bowser 2.14.1(セッションの一覧に表示するブラウザ名・OS名のUser-Agentからの取得、APIサーバーだけで使用)
 
 ### ID採番
 
@@ -61,12 +64,16 @@
 
 ### 自然言語分析
 
-- [Google Cloud Natural Language AI](https://cloud.google.com/natural-language/docs) ... 多言語対応のキーワード抽出、APIキーで認証
+- [Google Cloud Natural Language API](https://cloud.google.com/natural-language/docs) ... 多言語対応のキーワード抽出、APIキーで認証
 
 ### 画像処理
 
-- wasm-image-optimization(画像のデコード・フォーマット変換・リサイズ)
-- fast-xml-parser(SVGの構文チェック・自前検索ルールによるスクリプトの検出)
+- image-size(アップロードされたラスター画像(JPEG・PNG・GIF・WebP)の先頭部分からの幅・高さの読み取り、APIサーバーとイベントサーバーで使用。SVGの寸法はルートの開始タグをブラウザと同じ文法で読む自前の部品で求める)
+- wasm-image-optimization(判定用の画像のうちラスター画像(JPEG・PNG・GIF・WebP)のデコード・PNGへの変換・縮小・RGBAの画素の取り出し、`wasm-image-optimization/workerd`の入口をイベントサーバーだけで使用)
+- @cf-wasm/resvg(判定用の画像のうちSVGの描画。Rust製のresvgのwasm版`@resvg/resvg-wasm`をWorkers向けに包んだもので、`@cf-wasm/resvg/workerd`の入口をイベントサーバーだけで使用。書体は持たず、下のLiberation Sansを渡して文字を描く)
+- Liberation Sans 2.1.5 Regular(判定用の画像のSVGの文字を描く書体。SIL Open Font License 1.1。[liberationfonts/liberation-fonts](https://github.com/liberationfonts/liberation-fonts)の2.1.5のリリースのTTFをライセンスの文と一緒にイベントサーバーへ同梱。ラテン文字だけを持ち、書体に無い文字(日本語など)は代替の四角形で描かれ、文字の形は判定されない)
+- fast-xml-validator(SVGの構文の検査(`SyntaxValidator`)、APIサーバーとイベントサーバーで使用)
+- fast-xml-parser(実体参照を展開しない解析(`XMLParser`の`processEntities: false`)による最上位の要素と要素・属性の許可リストの検査、APIサーバーとイベントサーバーで使用)
 
 ### アーカイブ生成
 
@@ -80,22 +87,27 @@
   - remark-cjk-friendly-gfm-strikethrough
   - remark-rehype ... AST(mdast)からAST(hast)への変換
 - rehype-sanitize ... AST(hast)上でのアローリスト方式HTMLサニタイズ、Raw HTMLの無効化に対応
-- rehype-slug ... 見出しへのアンカーID付与(CJK見出しのURLエンコード仕様のみ独自実装で補う)
 - rehype-stringify ... AST(hast)からHTML文字列への変換
-- hast-util-to-text ... サニタイズ済みAST(hast)からのプレーンテキスト抽出、全文検索インデックスの正規化に使用
+- hast-util-to-text ... サニタイズ済みAST(hast)からのプレーンテキスト抽出、全文検索インデックスの正規化と見出しのアンカーIDの元になる文字列の取得に使用(アンカーIDの変換と連番は独自実装)
 
 ## フロントエンド
 
 ### フロントエンド側フレームワーク
 
 - TanStack Start(ルーティングはTanStack Router)
+- Vite ... 開発サーバー・ビルド・ビルド後のプレビュー(`vite dev`・`vite build`・`vite preview`)
 - @cloudflare/vite-plugin
+- `@vitejs/plugin-react` ... ViteでのReactのJSX変換と開発時の差し替え(Fast Refresh)
 - React
+  - `react-dom` ... ブラウザでの描画とハイドレーション、サーバーでのHTMLの描画
+  - `@types/react`・`@types/react-dom` ... `tsc`による型検査でReactとReact DOMの型を解決
 - TypeScript ... typescript-eslintと組み合わせるためv6を使用
 
 ### フロントエンド側スキーマ
 
-- GraphQL Code Generator(client-presetによりクエリからTypedDocumentNodeと型を生成)
+- GraphQL Code Generator(`@graphql-codegen/cli`・`@graphql-codegen/client-preset`により`.graphql`ファイルの操作から型と操作の本文を持たない文書(TypedDocumentNode)と操作の一覧を生成)
+  - `@graphql-typed-document-node/core` ... 生成した操作の型(`TypedDocumentNode`)の定義、共通部品が操作の結果と変数の型を受け取るために使用
+  - GraphQL(`graphql`) ... `TypedDocumentNode`が継承する`DocumentNode`の型の提供元、バックエンド側と同じ版を宣言する
 
 ### 状態管理・データフェッチング
 
@@ -106,56 +118,97 @@
 ### UI・スタイリング
 
 - Tailwind CSS
+  - `@tailwindcss/vite` ... ViteでTailwind CSSのスタイルシートを処理するプラグイン
+  - `@tailwindcss/typography` ... マークダウンを描画した本文の文字組み(`prose`のクラス)
+  - `tw-animate-css` ... shadcn/uiの部品が使う出入りのアニメーションのクラス
 - shadcn/ui
+  - `radix-ui` ... shadcn/uiの部品が土台にするアクセシブルな部品群(全部品を1つにまとめたパッケージ)
+  - `class-variance-authority` ... 部品の見た目の種類(variants)ごとのクラス名の定義
+  - `clsx` ... 条件付きのクラス名の連結
+  - `tailwind-merge` ... 衝突するTailwind CSSのクラス名の解消
+  - `lucide-react` ... アイコン
+  - `sonner` ... トースト通知
+  - react-day-picker ... shadcn/uiのカレンダー部品の実体
+
+### グラフ描画
+
+- Recharts
 
 ### マークダウンエディタ
 
-- `@milkdown/crepe` ... ProseMirrorベースのマークダウン向けWYSIWYGエディタ
+- `@milkdown/crepe` ... ProseMirrorベースのマークダウン向けWYSIWYGエディタ、builder(`@milkdown/crepe/builder`)で使う機能だけを組み立て、別チャンクに分けて遅延読み込みする
+- `@milkdown/kit` ... Crepeが土台にするMilkdownの部品群(コア・ProseMirror・プラグイン)、入力規則やコマンド、remarkのプラグインの登録で直接読み込むため、Crepeが固定する版と同じ版を明示して宣言する
 - `@milkdown/react` ... Reactコンポーネント、SSRでは描画せずクライアント側でのみマウント
 
 ### 画像編集UI
 
-- react-easy-crop
+- react-easy-crop(アップロード前の編集ダイアログでの画像の切り取りと拡大縮小)
 
 ### フォーム・バリデーション
 
 - React Hook Form
+  - `@hookform/resolvers` ... ZodのスキーマをReact Hook Formの検証に接続
 - Zod
 
 ## 決済サービス
 
 - Stripe(決済処理基盤、[ドキュメント](https://docs.stripe.com))
-  - Stripe Node.js SDK(APIサーバー及びイベントサーバーで使用、`createFetchHttpClient()`によるfetchベースの通信)
+  - Stripe Node.js SDK(`stripe`。APIサーバー及びイベントサーバーで使用、`createFetchHttpClient()`によるfetchベースの通信と`createSubtleCryptoProvider()`によるWebhookの署名の検証)
   - Stripe Checkout Sessions API(決済セッションの管理)
+  - Stripe Billing(Ultrasの月額の定期課金と支払いの再試行。sandboxのtest clockで更新・再試行・終了を検証)
   - Stripe Webhooks(都度支払いや定期課金イベントの受信)
-  - React Stripe.js SDK及びPayment Element(決済ページの埋め込み)
-  - Stripe Refunds API(自動返金)
-  - Stripe Customer Portal(Ultrasの支払い方法の更新)
+  - Stripe.js(`@stripe/stripe-js`)・React Stripe.js SDK(`@stripe/react-stripe-js`)及びPayment Element(利用者側の決済ページの埋め込み。決済ページと決済後のランディングだけで動的に読み込む。Stripe.jsは読み込んだ時点でスクリプトを挿入しない`@stripe/stripe-js/pure`の入口から、公開キーごとに1回だけ読み込む)
+  - 3つのパッケージはStripeのAPI版と結び付くため版を完全に固定する。版は[依存パッケージの版管理](../GUIDES/tech/coding/002-dependency-versions.md#主要パッケージの一覧)を正とする
+  - Stripe Refunds API(自動返金。ダッシュボードの手動の返金も同じ通知で決済履歴へ反映)
+  - Stripe Customer Portal(Ultrasの支払い方法の更新・解約・解約の取り消し)
+  - Stripe Tax(決済セッションの`automatic_tax`による請求先住所からの税込価格の税の計算)
+  - Link(カード・Apple Pay・Google Payと並ぶ決済手段。決済セッションの決済手段の種類は`card`・`link`に絞る)
+  - Stripe CLI(`@stripe/cli`。開発コンテナに導入し、`stripe listen`によるローカルのイベントサーバーへのWebhookの転送、sandboxの対象の確認(`stripe get`)、Stripeの文書の参照(`stripe docs`)に使用。アプリの依存には加えない)
+  - Stripeとの通信の規約は[決済サービス(Stripe)](../GUIDES/tech/external/007-stripe-payments.md)、通知の冪等な反映は[外部の通知の冪等な反映](../GUIDES/tech/backend/009-idempotent-event-reflection.md)、環境ごとの設定と運用は[決済の環境とデータの運用](../GUIDES/tech/operations/004-payment-data-operations.md)を参照
 
 ## CI/CD
 
-main/prodブランチへのプルリクエストをトリガーにして、GitHub Actionsにより検査フェーズを実行する。
+main/prodブランチへのプルリクエストと、hotfixブランチ(`hotfix/**`)へのプッシュをトリガーにして、GitHub Actionsにより検査フェーズを実行する。
 main/prodブランチへのプッシュをトリガーにして、GitHub Actionsにより検査フェーズ及びデプロイフェーズを実行する。
 
+- フェーズの構成 ... 検査フェーズは再利用ワークフロー`checks.yml`、デプロイフェーズは再利用ワークフロー`deploy.yml`にまとめ、起動条件ごとのワークフローから呼び出す
+  - `pull-request.yml` ... main/prodへのプルリクエストとhotfixブランチへのプッシュで、検査フェーズだけを実行する
+  - `delivery.yml` ... main/prodへのプッシュで、検査フェーズの成功後にデプロイフェーズを実行する(mainはstaging環境、prodはprod環境)。同じブランチの実行は到着順に直列化する
+  - `release-pr.yml` ... 開発者が手動で起動し、mainまたはhotfixブランチからprodへのリリースのプルリクエストを作る。prodへのマージには開発者の承認を必須とする
+  - 検査フェーズはシークレット検出 → 品質検査 → テスト・E2E・デプロイの予行(並行)の順に進み、総合結果`checks / ci-gate`をブランチ保護の必須チェックにする
 - 検査フェーズ ... 各段階のいずれかが失敗すれば後続タスクを実行せずに中止
-  - TruffleHogによるシークレット検出
+  - TruffleHogによるシークレット検出(検証済みと未確定の検出で失敗させ、無効と確かめた値では失敗させない)
   - Bunによるパッケージインストール及び既知の脆弱性確認
   - フォーマット検証
   - Lintチェック
   - tscによる型チェック
-  - Infisical(staging環境)の環境変数を注入
-    - 単体テスト、Cloudflare Workers統合テスト、E2Eテスト、及びカバレッジ閾値チェックを実行(テスト成功かつカバレッジ目標達成なら続行)
-- デプロイフェーズ
-  - OpenTofuによるインフラ構成変更(Wranglerの担当範囲を除く)
-  - Infisical(pushされたブランチが`main`ならstaging環境、`prod`ならprod環境)の環境変数を注入
+  - Infisical(dev環境)の環境変数を注入 ... ローカル環境と同じ値を使い、staging・prod環境の値は使わない
+    - 単体テスト、ブラウザテスト、Cloudflare Workers統合テスト、及びカバレッジ閾値チェックを実行(テスト成功かつカバレッジ目標達成なら続行)
+    - CIの実行環境の中で全アプリと開発用のメール受信箱(Mailpit)をローカル環境の設定で起動し、E2Eテストを実行
+- デプロイフェーズ ... 段階のいずれかが失敗すれば後続の段階を実行せずに中止(自動では戻さない)
+  - 資源一覧の仮の値と実行中のブランチの事前確認(シークレットを使わないため、Infisicalへのログインより前に行う)
+  - Infisical(pushされたブランチが`main`ならstaging環境、`prod`ならprod環境)へOIDCでログインし、以降の段階が必要な値を取り出して注入
+    - OpenTofuによるインフラ構成変更の1段目(データの資源・bot判定・アクセス解析・送信ドメイン。Wranglerの担当範囲を除く)と、作成した資源の識別子とWrangler設定の照合
     - WranglerによるDBマイグレーション
     - Wranglerによる各Workerのビルド・デプロイ(`--secrets-file`で環境シークレットを同時反映)
+    - OpenTofuによるインフラ構成変更の2段目(Workerへのホスト名の割り当て)と、メールの配信不能イベントの購読の確認(無ければ作成)
+  - staging環境へのデプロイの後、staging環境のURLに対してスモークテスト(`@smoke`タグのE2E)を実行し、prod環境ではヘルスチェックと利用者側のページの応答を確認
+- ツールの導入 ... 複合アクション`.github/actions/setup-toolchain`が、開発コンテナの`Dockerfile`と同じ版でジョブに必要なツールだけを導入する。公式のアクションは公開から2週間以上経った版のコミットSHAで固定する
+  - Bun ... `oven-sh/setup-bun` v2.2.0で導入
+  - Node.js 26.12.1 ... `actions/setup-node` v7.1.0で導入、ブラウザテスト・E2E・デプロイでWranglerやViteを動かす
+  - OpenTofu ... `opentofu/setup-opentofu` v2.0.2でラッパー無しに導入
+  - Infisical CLI ... GitHubのリリースの配布物を、同じリリースの`checksums.txt`によるSHA-256検証付きで導入
+  - Wrangler 4.152.0 ... メールの購読の操作用に`bun add -g`で導入(各アプリのデプロイはアプリが固定する版を使う)
+  - Mailpit 1.32.0 ... 公式のチェックサムが無いため、開発コンテナと同じく検証せずにGitHubのリリースの配布物を導入
+- シークレット検出 ... TruffleHog 3.99.2を公式のアクション`trufflesecurity/trufflehog` v3.99.2で実行し、本体も同じ版のコンテナイメージに固定する。誤検知の除外は`.github/trufflehog-exclude-paths.txt`に書き、コミット前の検出(Betterleaks)の`.betterleaksignore`とは別に管理する
+- その他の公式アクション ... `actions/checkout` v7.0.1(認証情報を残さない`persist-credentials: false`で使う)、`actions/upload-artifact` v7.0.2(カバレッジの合算結果とE2Eの失敗時の報告の保存)
 
 ## デプロイ先のインフラ構成
 
 ### アプリケーション実行環境
 
 - Cloudflare Workers
+  - Wrangler ... Workersのローカル実行(`wrangler dev`)・D1のマイグレーション・デプロイ。`@cloudflare/vite-plugin`でビルドするアプリも同じ版を宣言する
 
 ### 定期実行基盤
 
@@ -177,7 +230,7 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### 画像配信
 
-- Cloudflare WorkersのImages Binding ... R2に保存した画像をWorker内でフォーマット変換・リサイズ・Exif削除
+- Cloudflare WorkersのImages Binding ... R2に保存した画像をWorker内でフォーマット変換・リサイズ。WebP・AVIF・PNGの出力ではExif等のメタデータを常に除き、JPEGの出力は変換基盤の既定(著作権情報以外を除く)に任せる。編集ダイアログを経た画像は、ブラウザが作り直すためアップロードの前にメタデータが除かれる
 - Cloudflare Workers Cache ... 変換済み画像をWorker前段でエッジキャッシュ
 
 ### 実行環境のセキュリティ
@@ -192,13 +245,16 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### bot対策・不正防止
 
 - Cloudflare Turnstile(ウィジェット埋め込み及びAPIサーバー側でのsiteverify検証)
+  - `@marsidev/react-turnstile` ... フロントエンドでのウィジェットの埋め込みとトークンの受け取り
 
 ### メール
 
 - メール送信
   - ローカル環境 ... MailpitのHTTP送信API
   - デプロイ先 ... Cloudflare Email ServiceのEmail Sending
-- JSX email(HTMLメールコード生成、[ドキュメント](https://jsx.email/docs/introduction))
+- React Email(HTMLメールとテキストパートの生成、イベントサーバーだけで使用、[ドキュメント](https://react.email/docs/introduction))
+  - `@react-email/components` ... メールの共通レイアウトの部品
+  - `@react-email/render` ... 同じ要素からHTMLとテキストを生成、Workers向けの出力(`workerd`条件)を使用
 
 ### 画像モデレーション
 
@@ -209,11 +265,13 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 ### ロギング
 
 - LogTape(構造化ログ出力)
+  - `@logtape/redaction` ... ログに含まれる個人情報や秘密情報の伏せ字
 - Cloudflare Workers Logs(出力されたログの保持・閲覧)
 
 ### モニタリング
 
 - Sentry(レスポンスタイム計測やエラートラッキング、`@sentry/tanstackstart-react`、`@sentry/hono`及び`@sentry/cloudflare`を使用)
+  - `@sentry/cli` ... ViteとWranglerのビルド出力へのデバッグIDの埋め込みとソースマップのアップロード、デプロイの仕組みでのみ使用
 - Cloudflare Web Analytics(ユーザーの傾向・利用状況分析ダッシュボード)
 - FlareWarden(外部ステータスページ・死活監視)
 
@@ -227,6 +285,10 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 - Bun
 
+### 開発ツールの実行環境(開発コンテナのみ)
+
+- Node.js v26 ... WranglerやViteなど`#!/usr/bin/env node`で始まるCLIを動かす。Bun上ではWranglerの`wrangler dev`がHTTPに応答しないため、開発コンテナに実行ファイルだけを導入している(npmは導入しない)
+
 ### AIエージェント向けトークン節約プロキシ
 
 - RTK ... Claude Codeが発行する特定のBashコマンドを`rtk`経由に書き換えてコマンド出力のトークン量を削減する
@@ -236,6 +298,13 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 - ESLint + Prettier(`eslint-config-prettier`を使い`eslint-plugin-prettier`は使わない)
   - `@eslint/js` ... ESLint公式の推奨規則、静的解析の基底設定が使用
   - typescript-eslint ... TypeScriptの構文解析と型情報付きの規則(`strictTypeChecked`、`no-deprecated`による非推奨記法の検出)
+  - `@eslint-react/eslint-plugin` ... フロントエンドのReactの部品の規則(生のHTMLの挿入の禁止を含む)
+  - `eslint-plugin-react-hooks` ... フロントエンドのフックの使い方とReact Compilerの前提の規則
+  - `eslint-plugin-jsx-a11y-x` ... フロントエンドのJSXのアクセシビリティの規則(ESLint v10に対応した`eslint-plugin-jsx-a11y`のフォーク)
+  - `@tanstack/eslint-plugin-query` ... フロントエンドのTanStack Queryの使い方の規則
+  - `@tanstack/eslint-plugin-router` ... フロントエンドのTanStack Routerの使い方の規則
+  - `eslint-plugin-storybook` ... Storybookのストーリーの書き方の規則
+  - `prettier-plugin-tailwindcss` ... フロントエンドのTailwind CSSのクラス名の整列
 - `@types/bun` ... `tsc`による型検査でBunのAPIと`bun:test`の型を解決(ルートと各アプリの`tsconfig.json`の`types`に`bun`を指定)
 - Husky + lint-staged(`pre-commit`フック)
 - Commitlint(コミットメッセージ規約)
@@ -256,10 +325,12 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 - Vitest + Vitest Browser Mode(DOM・コンポーネントテスト、フロントエンド)
   - `@vitest/browser-playwright` ... Vitest Browser ModeのブラウザプロバイダとしてPlaywrightを使い、共有Chromiumでテストを実行
   - `@vitest/coverage-v8` ... ブラウザテストのカバレッジ計測(V8)
+  - `axe-core` ... ブラウザテストで描画した要素のアクセシビリティを自動検査(WCAG 2.2 AAの規則に絞って実行)
 - vitest-browser-react(フロントエンド、Vitest Browser Mode上で使用)
 - @cloudflare/vitest-pool-workers(Cloudflare Workers統合テスト、D1・R2・DOバインディングを含む)
   - `@vitest/coverage-istanbul` ... Workers統合テストのカバレッジ計測(workerdではV8のカバレッジ計測を使えないためIstanbulを使用)
 - Playwright(複数アプリの横断E2E)
+- k6 ... 負荷試験、単体の実行ファイルを開発コンテナとCIへ導入し、アプリの依存には加えない
 
 ### ブラウザ動作確認
 
@@ -272,11 +343,14 @@ main/prodブランチへのプッシュをトリガーにして、GitHub Actions
 
 ### IaC(Infrastructure as Code)
 
-- OpenTofu
-  - `infisical`プロバイダ
+- OpenTofu ... 1.13.2に完全固定
+  - Cloudflareプロバイダ(`cloudflare/cloudflare`) ... 5.27.0に完全固定
+  - `infisical`プロバイダ(`infisical/infisical`) ... 0.19.38に完全固定、Cloudflareプロバイダの資格情報を一時的なリソース(`ephemeral`)で取得
+  - 状態の保管先 ... 環境ごとのCloudflare R2のバケット(S3互換のbackend、ロックファイルによる排他)、状態と計画はOpenTofuの暗号化(PBKDF2の鍵とAES-GCM)で暗号化
 
 ### ドキュメント
 
 - Storybook(コンポーネントカタログ、`@storybook/tanstack-react`を使用)
+  - `@storybook/addon-a11y` ... カタログの各ストーリーのアクセシビリティを`axe-core`で検査して結果をパネルに表示(ブラウザテストと同じWCAG 2.2 AAのタグに絞って実行するが、検査には自身が依存する`axe-core`を使うため、ブラウザテストの`axe-core`と版が異なることがある)
 - GraphiQL(GraphQLスキーマ探索・クエリ試行、GraphQL Yogaに内蔵、デプロイ先環境では`graphiql: false`)
-- Swagger UI(APIサーバーが配信するOpenAPI仕様を閲覧)
+- Swagger UI(APIサーバーが配信するOpenAPI仕様を閲覧、`swagger-ui-dist`をclientが同一オリジンで配信)

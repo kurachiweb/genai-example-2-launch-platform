@@ -37,7 +37,7 @@ const CONSTRAINTS: StateConstraint<OptionKey, ProfileState>[] = [
     keys: ['status', 'progress'],
     test: (s) => s.status !== 'suspended' || s.progress === 'settled',
     reason:
-      '停止すると未開始のローンチ予定は取り消され、マッチ中のマッチは対戦相手の勝利で終わります(FR-ADMUG-008・FR-GAME-013)。',
+      '停止すると未開始のローンチ予定は取り消され、マッチ中のマッチは対戦相手の勝利で終わります(FR-ADMUG-010・FR-GAME-015)。',
   },
   {
     keys: ['status', 'targets'],
@@ -48,7 +48,7 @@ const CONSTRAINTS: StateConstraint<OptionKey, ProfileState>[] = [
     keys: ['status', 'images'],
     test: (s) => s.status !== 'suspended' || s.images === 'broken',
     reason:
-      '停止するとプロフィール画像とプロダクトのロゴは隔離されます(FR-ADMUG-026)。',
+      '停止するとプロフィール画像とプロダクトのロゴは隔離されます(FR-ADMUG-048)。',
   },
   {
     keys: ['upvotes', 'targets'],

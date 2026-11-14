@@ -13,18 +13,18 @@
 
 ## Desired Outcome
 
-- プロダクト機能(FR-PRDCT-001〜021)が動作する。
+- プロダクト機能(FR-PRDCT-001〜027)が動作する。
   - ロゴ・名称・タグライン・カテゴリ・ハンドル・外部URL・マークダウンの説明文(20,000文字)・スクリーンショットの登録と編集
   - 23:40を境にしたローンチ日の選択(カレンダーUI)
   - マッチ直前・マッチ中の変更と削除の禁止
   - 論理削除から14日以内の物理削除(マッチ記録は紐付けだけを解除する)
   - 公開プロフィールへのローンチ履歴の表示
-- 再ローンチ制限(FR-RELCH-001〜005)が動作する。
+- 再ローンチ制限(FR-RELCH-001〜006)が動作する。
   - 敗北後の禁止期間(無料7日・Ultras 2日)
   - 予選が進行中なら予約不可
   - 勝者はトーナメント結果の確定まで予約不可
 - 再ローンチ可否ポリシーに拡張点があり、tournament-week・tournament-yearが「トーナメント結果確定待ち」の条件を供給できる。
-- プロダクトカテゴリのマスタ管理(FR-ADMCF-006〜008)が動作する。
+- プロダクトカテゴリのマスタ管理(FR-ADMCF-008・010・011)が動作する。
   - モデレーター以上による追加・編集・削除
   - カテゴリ名は30文字以内、ディレクトリ絞り込み用のハンドルは一意
   - 標準カテゴリ「その他」は削除不可、プロダクトが紐付くカテゴリの削除は拒否
@@ -38,8 +38,8 @@
 ## Scope
 
 - **In**:
-  - 4.5(FR-PRDCT-001〜021)、4.8(FR-RELCH-001〜005)
-  - FR-ADMCF-006〜008
+  - 4.5(FR-PRDCT-001〜027)、4.8(FR-RELCH-001〜006)
+  - FR-ADMCF-008・010・011
   - プロダクトライフサイクルイベントと可視プロダクトの判定条件
   - 利用者側の自分のプロダクト管理画面、管理画面のカテゴリマスタ
   - ユーザーライフサイクルイベントへのハンドラ登録
@@ -69,10 +69,18 @@
 
 ## Existing Spec Touchpoints
 
-- **Extends**: なし
-- **Adjacent**: match-engine(マッチ状態による変更禁止)、tournament-week(再ローンチ条件)
+- **Extends**: inquiry-chat(管理画面のカテゴリのページ`/categories`の区画の登録口`CATEGORY_SECTIONS`へ、プロダクトカテゴリの区画を`order` 10で加える)。カテゴリ`/categories`(admin-foundationの`ADMIN_NAV_ITEMS`の`order` 110)のメニュー項目はinquiry-chatが登録済みで、本specはメニューを足さない
+- **Adjacent**: match-engine(マッチ状態による変更禁止)、tournament-week(再ローンチ条件)、ultras-subscription(`UltrasEntitlements`・`UltrasPromotionGate`)、media-pipeline(アップロードの用途の登録)
 
 ## Constraints
 
 - 業務時刻はUTC-08:00固定で、23:40・23:45などの境界は[日次タイムライン](../../../docs/GUIDES/service/overview/007-daily-timeline.md)を正とする
 - 要件の論点(要件フェーズで開発者に確認する): FR-RELCH-004により、Week優勝作はYearの結果が確定するまで最長でほぼ1年再ローンチできないが、これが意図どおりか。トーナメントで敗退した後に禁止期間(7日・2日)が掛かるかも未定義
+- プロダクトカテゴリの管理画面は、inquiry-chatが作る`/categories`のページに区画として載せる(`CategorySection`の`{ id: 'product-launch.product-categories', order: 10, title, component }`)。区画の中身はadmin-foundationの`CategoryMasterEditor`を`withHandle: true`(ディレクトリ絞り込み用のハンドルを持つのはプロダクトカテゴリだけ)、`canEdit`はモデレーター以上(`useAdminRole`)で使う。管理操作はadmin-foundationの`AuditLogRecorder`で記録し、操作種別を`apps/common-lib/admin/audit-actions/`へ登録する
+- 管理画面のURLはadmin-foundationの仮6(ページ配置)に従う。本specの管理画面はカテゴリ`/categories`(110)の区画だけで、プロダクトの管理画面`/products`(30)はugc-moderationが持つ
+- ファイルサイズの上限は1,024を基数とする(文言規則の「容量の単位」): ロゴは500kB = 512,000バイト、スクリーンショットは1画像5MB = 5,242,880バイト・プロダクトあたり合計10MB = 10,485,760バイト。admin-foundationの`admin-avatar`(512,000バイト、仮2)と同じ解釈で、画像用の用途の上限はmedia-pipelineの`IMAGE_STORAGE_MAX_BYTES`(20,000,000バイト)以下にする
+- 再ローンチの間隔(敗北後7日、Ultrasは2日)のUltrasの判定は、ultras-subscriptionの`UltrasEntitlements.isEntitledAt(userId, 判定の時点)`を使い、Ultrasのテーブルを直接読まない。未加入者へのUltrasの導線は`UltrasPromotionGate`で表示の可否を決める(機能フラグの初期値はオフ、ultras-subscription仮2)
+- 未加入者へのUltrasの導線など、機能フラグの値で表示が変わる画面をE2Eで確かめる場合は、フラグの行を書き換えるultras-subscriptionのE2Eのプロジェクトの依存に加えるか、フラグの値で結果が変わる部分を確かめない(roadmapのShared seams「プラン判定」)
+- 4:21のジョブとユーザーライフサイクルの波及処理の`order`は、roadmapの帯の割り当ての表で本specに割り当てた1000番台(1000〜1099)を使う。波及処理の各ドメインの範囲は0〜9999で、10000以上はidentity-auth専用である。帯の値は同じ時刻・同じ種類の中で上流のspecの後に動くため、上流の値より前に動く必要がある処理があれば設計時に開発者へ確認する
+- メールを送る場合の宛先は、identity-authの`UserContactDirectory`(`IDENTITY_PLATFORM_TYPES.UserContactDirectory`)で引き、`users`を直接読まない
+- 管理画面のE2Eの管理者ログインは、admin-foundationの`e2e/support/admin-bootstrap.ts`を使う

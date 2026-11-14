@@ -1,0 +1,7 @@
+mutation ClientFollowUser($handle: String!) {
+  followUser(handle: $handle) {
+    handle
+    following
+    followerCount
+  }
+}

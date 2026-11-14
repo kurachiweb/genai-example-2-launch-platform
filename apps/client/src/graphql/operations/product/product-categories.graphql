@@ -1,0 +1,8 @@
+query ClientProductCategories {
+  productCategories {
+    id
+    name
+    handle
+    systemDefault
+  }
+}

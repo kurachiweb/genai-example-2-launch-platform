@@ -1,0 +1,3 @@
+mutation ClientSubmitGuestInquiry($input: GuestInquiryInput!) {
+  submitGuestInquiry(input: $input)
+}

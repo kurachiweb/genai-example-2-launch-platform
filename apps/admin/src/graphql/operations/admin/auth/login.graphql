@@ -1,0 +1,6 @@
+mutation AdminLogin($email: String!, $password: String!) {
+  adminLogin(email: $email, password: $password) {
+    challenge
+    expiresAt
+  }
+}

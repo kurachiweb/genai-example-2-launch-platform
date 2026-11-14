@@ -173,16 +173,18 @@
 - **目的**: 要件8.1・8.2・8.4〜8.7。共有ディレクトリのコードが利用側アプリの依存パッケージを読み込む最小構成で、開発コンテナとCI相当環境の解決結果が一致することを確かめた(2026-10-05、`7bb71bc`時点、Bun 1.4.2)。
 - **最小構成**(どちらの環境でも同じファイル。開発コンテナでは確認後に削除した)
   - 利用側`apps/api`
-    - `package.json`: AppScriptContractの`lint`・`typecheck`・`test:unit`を持つ。主要パッケージ一覧の版の品質ツール6種と`@types/bun` 1.4.2を導入する。共有ディレクトリのコードが使う`hono` 4.13.13・`drizzle-orm` 1.0.0-rc.4を宣言する。バンドル用に`esbuild` 0.28.1(`wrangler` 4.124.0が固定する版)を導入する。
+    - `package.json`: AppScriptContractの`lint`・`typecheck`・`test:unit`を持つ。主要パッケージ一覧の版の品質ツール6種と`@types/bun` 1.4.2を導入する。共有ディレクトリのコードが使う`hono` 4.13.13・`drizzle-orm` 1.0.0-rc.5を宣言する。バンドル用に`esbuild` 0.28.1(`wrangler` 4.124.0が固定する版)を導入する。
     - `tsconfig.json`: 基底設定を継承し、差分は`types: ["bun"]`・`experimentalDecorators: true`、`include`への`db/**`・`lib/**`の追加。
     - `eslint.config.ts`: タスク5.4の検証用アプリと同一。
     - `src/app.ts`: 利用側の`eq`に共有側のテーブルの列を渡し、利用側の`Hono`に共有側の`Hono`を`route`で結合する。
   - 共有ディレクトリ
     - `apps/db/schema/products.ts`: `drizzle-orm/sqlite-core`の`sqliteTable`を使う。
+      - 現在の規約ではテーブルを`snakeCase.table`で定義する(backend-platform、`db/001`の命名規則)。`snakeCase.table`も`sqliteTable`と同じ`SQLiteTable`のインスタンスを返すため(drizzle-orm 1.0.0-rc.5で確認)、本検証の解決結果は定義の関数に依存しない。
     - `apps/backend-lib/di/inject.ts`: パラメータデコレータを定義する。
     - `apps/backend-lib/http/greeting-route.ts`: `hono`をbare importし、コンストラクタ引数にパラメータデコレータを持つ。
     - `apps/backend-lib/probe/resolve-from-shared-dir.ts`: 共有ディレクトリの位置から`import.meta.resolve`を呼ぶ。
   - 単体テスト: 共有側と利用側で`Hono`・`SQLiteTable`の`instanceof`が成り立つことを確かめる。共有ディレクトリの位置からの`import.meta.resolve`が利用側の位置からと一致することも確かめ、解決先の版と実体パスを出力する。
+    - drizzle-orm 1.0.0-rc.5以降は、`SQLiteTable`などの`instanceof`がクラスの種別の印で判定され、二重実体でも成り立つ(2026-10-23にscratchpadで複製した2実体を比べて確認)。rc.5以降で再検証する場合、二重実体の検出には`import.meta.resolve`の解決先の一致と`Hono`の`instanceof`を使う。
   - バンドル: wrangler 4.124.0の`bundleWorker`がesbuildへ渡す既定値を再現し、esbuildのAPIで`src/index.ts`を組み立ててmetafileを集計した。既定値は`format: esm`・`target: es2024`・`conditions: workerd,worker,browser`・`keepNames`で、`tsconfig`は指定しない。Wranglerでのバンドル(`wrangler deploy --dry-run`)はClaude設定で拒否されるため使っていない。
 - **手順**
   - CI相当環境
@@ -210,7 +212,7 @@
 | パッケージ  | 版         | 実行時(共有ディレクトリから)                 | 型検査の読み込み元                      | バンドルの入力                          |
 | ----------- | ---------- | -------------------------------------------- | --------------------------------------- | --------------------------------------- |
 | hono        | 4.13.13    | `apps/api/node_modules/hono/dist/index.js`   | `apps/api/node_modules/hono`のみ        | `apps/api/node_modules/hono`のみ(1実体) |
-| drizzle-orm | 1.0.0-rc.4 | `apps/api/node_modules/drizzle-orm/index.js` | `apps/api/node_modules/drizzle-orm`のみ | `apps/api/node_modules/drizzle-orm`のみ |
+| drizzle-orm | 1.0.0-rc.5 | `apps/api/node_modules/drizzle-orm/index.js` | `apps/api/node_modules/drizzle-orm`のみ | `apps/api/node_modules/drizzle-orm`のみ |
 
 - **一致の確かめ方**
   - 実行時の解決先と`realpath`、型検査の読み込み元、バンドルの入力104ファイルとmetafileの集計を両環境で比べ、いずれもdiffが無かった。`bun pm ls --all`と`bun.lock`のハッシュも一致した。
@@ -229,6 +231,59 @@
   - 利用側で解決する方式(M2)では、開発コンテナ(bind mount)とCI相当環境(`shared-dirs:place`のコピー)で、各コマンドの成否と、解決されるパッケージの版・実体パスが一致した(8.1・8.2・8.4・8.6)。
   - 配置の不備は一括検査の最初の段階で先に示された(8.5)。
   - Bunのデコレータの扱いは配置方式とは別の課題であり、基底設定で対処した。
+
+## spec横断レビュー(3回目)の指摘の反映(2026-10-23)
+
+- (軽微)本specは実装済みだが、ultras-subscriptionのタスク10.1が`createPlaywrightConfig`に、指定したE2Eのファイルを対象ごとのプロジェクトから外して別のプロジェクトに分け、`dependencies`で直列にする組み立てを加える。設計のRevalidation Triggersにその旨の行を加えた。E2EConfigの契約は、ultras-subscriptionのタスク10.1が新しい形に合わせて直す。`spec.json`の承認の状態は変えていない。
+
+## api-gatewayの実装による一括検査の段階の追加(2026-10-27、開発者の決定)
+
+- api-gatewayの承認後の改訂2(タスク6.4)で、一括検査の`check`の型生成の検査と型検査の間に、アプリだけを対象とする段階「GraphQLの生成物の検査」(`graphql:check`)が加わった(`scripts/tooling/run-all.ts`・`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`・`test-support/run-all-fixtures.ts`、スクリプト契約の文書`coding/001`)。開発者の決定で、design.mdの「`check`の段階」の一覧へ、backend-platformの`cf-typegen:check`と同じ書き方で追記した。`spec.json`の承認の状態は変えていない。
+
+## email-deliveryの実装の反映(2026-10-27、開発者の決定)
+
+- `config/vitest/*.ts`の値の読み込み: email-deliveryの6.1で、apiの`readNestedD1Migrations`をeventのWorkers統合テストと共有するため`config/vitest/read-nested-d1-migrations.ts`へ移した。ファイルを読むために`node:fs/promises`・`node:path`を値として読み込むため、`config/vitest/*.ts`の規則を「npmパッケージは型としてだけ参照し、値として読み込めるのは`node:`で始まる組み込みモジュールと`config/`配下のモジュールだけ」に緩めた(`config/vitest/test-kind-preset.unit.test.ts`が検査する)。組み込みモジュールは`node_modules`から解決されず、どのアプリから読み込んでも同じ実行環境のものが使われるため、「アプリから読み込まれたときにルート側のパッケージを実行時に解決しない」という規則の理由は保たれる。`eslint.config.base.ts`・`prettier.config.ts`の規則は変えていない。
+- 利用側アプリの単体テストの設定: email-deliveryの8.2で、eventの単体テストが読み込む`lib/core`のファイルがBunのカバレッジの分母に入り閾値を割った。Bun 1.4.4では`--path-ignore-patterns`がテストファイルの選択にだけ効き、分母から外せるのはbunfigの`coveragePathIgnorePatterns`だけである。開発者の決定で、ルートの`bunfig.toml`を書き写して`coveragePathIgnorePatterns`に`lib/**`・`db/**`を加えた`apps/event/bunfig.unit.toml`を置き、eventの`test:unit`が`--config`で指す。`coveragePathIgnorePatterns`以外がルートと同じであることと配置先の除外は、`scripts/tooling/check-test-names.unit.test.ts`が検査する(client・adminも単体テストを持つと同じ設定が要る)。要件6.5(アプリ内でも共通のテスト設定)は、ルートの設定の書き写しとその同期の検査で満たす。
+- 変えた箇所: design.mdのAllowed Dependencies・Dependency Direction・File Structure Plan(`config/vitest/read-nested-d1-migrations.ts`)・VitestPresets・AppScriptContract(`test:unit`の行と、検査担当でない利用側アプリの外し方)・追跡表の6.5・Testing Strategyの`check-test-names.unit.test.ts`。要件・タスクと`spec.json`の承認の状態は変えていない。本書の「Design Decisions」の「簡素化」の「Vitestプリセットは値のimportを持たない定数にし」は、当時の決定の記録として残した。
+
+## frontend-platformの最終検証による承認後の改訂(改訂1、2026-10-28)
+
+- **状態**: 2026-10-28に開発者が決定した改訂で、確定している。frontend-platformの最終検証の後に開発者が決めた判断のうちの1件(判断29)である。実装は追加タスク9.1で行う。
+- **Context**: frontend-platformは、frontend-libがapi・backend-libから写した値(中継の契約・エラーコード・セキュリティヘッダー・伏せ字・レート制限のキーのハッシュ化)を元と照合するルートの単体テスト`config/contract-copies.unit.test.ts`を置いた(frontend-platformの11.4)。このテストはルートの`bun run test:unit`と`bun run test:all:unit`で実行されるが、一括検査(`bun run check`)はテストを実行しないため、一括検査だけを実行した開発者は写しの食い違いに気付かない。
+- **決定**: 一括検査の段階に「写しの照合」を加える。ルートの`package.json`に`check:contract-copies`(`bun test ./config/contract-copies.unit.test.ts`)を加え、`run-all.ts`の`CHECK_STEPS`の末尾(`typecheck`の後)にルートだけを対象とする段階として置く。他の段階と同じく`bun run <スクリプト>`で実行し、スクリプトが無ければ飛ばす。照合のテストはルートの`test:unit`にも残す。
+- **理由**: 写しの照合は構文解析と子プロセスの実行で他の段階の結果に依らないが、配置確認から型検査までの静的な検査と違いテストを実行するため、最後の段階に置く。`bun test`は`./`で始まらない引数をファイル名の部分一致として扱うため、パスとして渡す。
+- **持ち主**: `run-all.ts`・そのテスト(`run-all.unit.test.ts`・`run-all.step-errors.unit.test.ts`)・補助(`test-support/run-all-fixtures.ts`)・ルートの`package.json`・`coding/001`は本specの成果物のため、変更は本specのタスク9.1で行う。照合のテストと`testing/001`の「アプリ間で写した値の照合」の節はfrontend-platformの持ち物で、frontend-platformの11.9が9.1に依存して文書と検証を行う(backend-platformの11.1とfrontend-platformの10.1と同じ分担)。
+- **要件**: 5.10を加えた。一括検査を使う開発者から見える振る舞いを変えるため、`requirements.md`に「承認後の改訂」の表を設けて改訂1の行を置いた。
+- **変えた箇所**: 設計のRevalidation Triggers・AggregateRunnerのBatch / Job Contract(`check`の段階と写しの照合のスクリプト)・追跡表の5.10・Testing Strategyの`run-all.unit.test.ts`、タスク9・9.1。`spec.json`の承認の状態は変えていない。
+
+## frontend-platformの第4回の判断による承認後の改訂(改訂2、2026-10-29)
+
+- **状態**: 2026-10-29に開発者が決定した改訂で、確定している。frontend-platformの最終報告の確認事項に対する第4回の判断のうちの1件(判断47)である。実装は追加タスク10.1で行う。
+- **Context**: frontend-platformの要件1.1は、画面を持つアプリが開発サーバーとビルド後のプレビューの両方で動くことを求めるが、ルートの`test:e2e`は起動済みの対象に対して1回実行するだけで、両方の起動での確認は手作業だった。CIの検査のE2E(infra-delivery)もビルド後のプレビューだけを起動する設計だった。
+- **決定**: ルートに、E2Eの対象のアプリを開発サーバーで起動してE2Eを実行し、止めてからビルド後のプレビューで起動して同じE2Eを実行するコマンド`test:e2e:dev-and-preview`(`scripts/tooling/e2e-dev-and-preview.ts`)を置き、手順書とテストの方針に書く。CIの検査のE2Eはこのコマンドを呼ぶ(infra-deliveryの承認後の改訂3)。
+- **持ち主**: ルートの`package.json`と`scripts/tooling/`、`testing/001`は本specの成果物のため、コマンド・その単体テスト・文書は本specのタスク10.1で作る。frontend-platformの12.13が10.1に依存し、両方の起動でE2Eが成功することを確かめる。
+- **要件**: 6.12を加えた。ルートのコマンドを使う開発者から見える振る舞いが増えるため、「承認後の改訂」の表に改訂2の行を置いた。
+- **変えた箇所**: 設計のRevalidation Triggers・File Structure Plan・追跡表の6.12・Components and Interfacesの表とE2EDualModeRunner・Testing Strategyの`e2e-dev-and-preview.unit.test.ts`・TestingDocsの`testing/001`、タスク10・10.1。`spec.json`の承認の状態は変えていない。
+
+## frontend-platformの第5回の判断による承認後の改訂(改訂3、2026-10-30)
+
+- **状態**: 2026-10-30に開発者が決定した改訂で、確定している。frontend-platformの最終検証の指摘に対する第5回の判断のうちの1件(判断51)である。実装は追加タスク11.1で行う。
+- **Context**: ルートの`playwright.config.ts`は`workers`を指定せず、Playwrightの既定(CPUのコア数の半分)で並列に実行していた。frontend-platformの12.9で、開発サーバーでE2Eを並列に多く実行すると機械の負荷でworkerdが落ちることがあり、`--workers=2`では安定した。既定の並列数は機械によって変わるため、ローカルとCIで振る舞いがそろわない。
+- **決定**: 並列数の上限を2とし、環境の変数`E2E_WORKERS`(正の整数)で上書きできるようにする。ローカルとCIは変数を設定せず、同じ上限で実行する。値の解釈は`e2e/support/playwright-config.ts`の`resolveE2EWorkers`が持ち、`createPlaywrightConfig`が並列数を受け取って設定の`workers`にする。正の整数でない値は、変数の名前を示して設定の読み込みを失敗させる(百分率の指定は受け付けない)。
+- **CI**: infra-deliveryの検査のE2E(`design.md:1293`)とstagingのスモークテスト(`design.md:1227`)は`E2E_WORKERS`を設定しないため、infra-deliveryの設計を変えない。
+- **要件**: 6.13を加えた。E2Eを実行する開発者から見える振る舞い(並列数と上書きの変数)が変わるため、「承認後の改訂」の表に改訂3の行を置いた。
+- **変えた箇所**: 設計のRevalidation Triggers・File Structure Plan・追跡表の6.13・Components and Interfacesの表とE2EConfig・Testing Strategyの`playwright-config.unit.test.ts`・TestingDocsの`testing/001`、タスク11・11.1。`spec.json`の承認の状態は変えていない。
+
+## frontend-platformの第5回の判断による承認後の改訂(改訂4、2026-10-30、取り消し)
+
+- **状態**: 取り消した。2026-10-30に開発者が決定した方針による条件付きの改訂で、要否はfrontend-platformのタスク13.1の調査の結果で決まるとしていた。13.1でファイルを書かずにプレビューへシークレットを渡す経路が見つかり置き換えたため、本改訂(要件6.14・追加タスク12・12.1・設計の該当の記述)は不要になった。
+- **Context**: シークレットの注入の下で画面を持つアプリをビルドすると、`@cloudflare/vite-plugin` 1.53.0の`getLocalDevVarsForPreview`が、Wrangler設定で宣言したシークレットをWranglerの開発用の変数のファイル(`.dev.vars`)として`dist/server/`へ平文で書き出す。`test:e2e:dev-and-preview`のプレビューの段階は注入の下で`bun run build`を実行するため、コマンドの後にファイルが残り、要件6.11(シークレットをファイルに書き出さない)に反する。
+- **決定(frontend-platformの判断49)**: まずファイルを書かずにプレビューへシークレットを渡す方法を調べて置き換える。無理なら、プレビューの終了時(frontend-platformのclient・adminの`preview`)と両方の起動のE2Eの後(本specの`test:e2e:dev-and-preview`)にファイルを消し、例外として文書に書く。
+- **持ち主**: `scripts/tooling/e2e-dev-and-preview.ts`・その単体テスト・`testing/001`は本specの成果物のため、コマンドの後の削除は本specのタスク12.1で行う。プレビューの終了時の削除と`security/001`・オンボーディング・`frontend/002`の例外の記述はfrontend-platformの13.1が持つ。
+- **要件**: 6.14を6.11の例外として加え、「承認後の改訂」の表に改訂4の行を置いた。
+- **確かめ方の制約**: Claude設定のdenyにより、このファイル名を含むシェルのコマンドは拒否される。テストは一時ディレクトリの偽のファイルで確かめ、実物のファイルの確認と削除は開発者の手動の作業とする。
+- **結果(frontend-platformの13.1)**: 選んだ経路は置き換えである。`vite preview`はビルド結果の`dist/server/wrangler.json`(`secrets.required`が残る)を読み、wrangler 4.124.0の`unstable_getMiniflareWorkerOptions`→`getBindings2`→`getVarsForDev(..., secrets)`で、同じディレクトリにこのファイルが無ければ`loadDotEnv`が`includeProcessEnv: !!secrets`で`process.env`から宣言したキーだけを渡す。そこでfrontend-platformの共通部品`apps/frontend-lib/config/local-secrets-output.ts`の`excludeLocalSecretsFile()`(`enforce: 'post'`、`generateBundle: { order: 'post' }`で出力の一覧からこのファイルだけを除く)を、client・adminの`vite.config.ts`の`plugins`に加えた。注入の下のビルドでもビルド結果にファイルが無く、注入の下のプレビューは値を`process.env`から受け取るため、`test:e2e:dev-and-preview`は削除の段階を持たず、要件6.11に例外を設けない。注入しないstaging・prodのビルドは、プラグインの`getLocalDevVarsForPreview`が0件で`undefined`を返すため、除く処理が無くても書き出さない。
+- **取り消した箇所**: 要件6.14と「承認後の改訂」の表の改訂4の内容(取り消しと理由に置き換えた)、設計の追跡表の6.14・Components and Interfacesの表とE2EDualModeRunnerの要件と「シークレットのファイルの削除」の契約・Testing Strategyの`e2e-dev-and-preview.unit.test.ts`の改訂4の確認・TestingDocsの`testing/001`の削除の記述、タスク12・12.1。設計のRevalidation Triggersには取り消したことと理由を1行残し、tasks.mdのImplementation Notesに取り消しを記録した。`scripts/tooling/e2e-dev-and-preview.ts`・`testing/001`は改訂4の前のままで変えていない。`spec.json`の承認の状態は変えていない。
 
 ## References
 

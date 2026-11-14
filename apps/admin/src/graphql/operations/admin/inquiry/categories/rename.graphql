@@ -1,0 +1,5 @@
+mutation AdminRenameInquiryCategory($id: ID!, $name: String!) {
+  renameInquiryCategory(id: $id, name: $name) {
+    id
+  }
+}

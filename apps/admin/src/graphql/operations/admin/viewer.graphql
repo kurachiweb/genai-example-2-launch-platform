@@ -1,0 +1,17 @@
+query AdminViewer {
+  adminViewer {
+    id
+    nickname
+    title
+    email
+    role
+    avatar {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+    remainingRecoveryCodes
+  }
+}

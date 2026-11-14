@@ -1,0 +1,57 @@
+@plugin '@tailwindcss/typography';
+
+/* 脚注の見出しは描画したHTMLの文字列の中にだけ現れ、クラス名の走査で見つからないため、隠す規則を必ず生成させる */
+@source inline('sr-only');
+
+/* 描画したHTMLの要素には個別のクラスを付けられないため、表示部品の本文の枠の中の要素へ規則を当てる。文字組みの規則(.prose)と同じレイヤーで、それより詳細度を高くする */
+@layer utilities {
+  .prose .markdown-table-scroll {
+    overflow-x: auto;
+  }
+
+  .prose .markdown-table-scroll > table {
+    overflow-wrap: normal;
+  }
+
+  .prose .markdown-table-scroll td {
+    min-width: --spacing(28);
+  }
+
+  .prose .markdown-table-scroll th {
+    white-space: nowrap;
+  }
+
+  /* 列揃えは描画したHTMLのalign属性で表し、文字組みの規則の左揃えが属性の表示より優先されるため、属性の値ごとに揃え直す */
+  .prose .markdown-table-scroll :is(th, td)[align='left'] {
+    text-align: left;
+  }
+
+  .prose .markdown-table-scroll :is(th, td)[align='center'] {
+    text-align: center;
+  }
+
+  .prose .markdown-table-scroll :is(th, td)[align='right'] {
+    text-align: right;
+  }
+
+  .prose .contains-task-list {
+    list-style-type: none;
+    padding-inline-start: 0;
+  }
+
+  .prose .task-list-item {
+    padding-inline-start: 0;
+  }
+
+  .prose .task-list-item > input[type='checkbox'] {
+    margin-block: 0;
+    margin-inline: 0 0.5em;
+    vertical-align: middle;
+  }
+
+  .prose .footnotes {
+    margin-top: 2em;
+    border-top: 1px solid var(--border);
+    font-size: 0.875em;
+  }
+}

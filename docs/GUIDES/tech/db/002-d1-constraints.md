@@ -52,6 +52,8 @@ await db.batch([
 ```
 
 - `db.batch()`の中の文は順に実行されるが、前の文の結果を見て後の文を変えることはできない。前の結果に依存する処理は、上の「絞り込みと更新を1回のSQLにする」と同じく、SQLの条件で表す。
+- 1回の呼び出しあたりの問い合わせ数の上限に対し、`db.batch()`は中の文の数によらず1件と数える。バインド変数の上限とSQL文の長さの上限は中の各文に掛かり、一括全体には実行時間の上限が掛かる。
+- `db.batch()`で読むSELECTの結果は列の名前で写されるため、結合したテーブルに同じ名前の列(`products.name`と`categories.name`など)があると別の列の値が入る。同じ名前の列を選ぶときは`.as('category_name')`のように別名を付ける。
 
 #### ユニーク制約のあるテーブルへの追加
 
@@ -71,6 +73,93 @@ await db
     set: { count: sql`${articleViews.count} + 1` },
   });
 ```
+
+- 部分一意索引(`CREATE UNIQUE INDEX ... WHERE`)への衝突を扱う場合は、Drizzleの`onConflictDoNothing({ target, where })`を使わない。drizzle-orm 1.0.0-rc.5は`where`の条件を`DO NOTHING`の後に出力し、SQLiteの構文の誤り(`near "where": syntax error`)になる。代わりに次のどちらかで書く。
+  - 対象を指定しない`onConflictDoNothing()`にする。どの一意制約への衝突も無視されるため、他の一意制約(生成したIDの主キーなど)に衝突し得ないテーブルに限る。
+  - `onConflictDoUpdate({ target, targetWhere, set })`にする。`targetWhere`は索引の`WHERE`と同じ条件を`sql`で値を埋め込んで書く。`eq()`などで値をバインド変数にすると、SQLiteが部分一意索引と照合できず、`ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint`のエラーになる。
+
+```typescript
+await db.insert(userEvents).values(events).onConflictDoNothing();
+
+await db
+  .insert(userEvents)
+  .values(event)
+  .onConflictDoUpdate({
+    target: userEvents.userId,
+    targetWhere: sql`${userEvents.type} = 'closing'`,
+    set: { updatedAt: event.updatedAt },
+  });
+```
+
+- 制約違反を無視せず、どの一意制約に当たったかで結果を変える場合(同じ`db.batch()`で追加した行を参照する子の行も追加する場合や、一意の列を`UPDATE`で書き換える場合)は、`ON CONFLICT`を付けずに`db.batch()`の失敗を捕まえ、エラーの文言の`UNIQUE constraint failed: <テーブル>.<列>`で違反した列を判別する。`db.batch()`は全体がロールバックされるため、どの文も反映されない。
+  - `db.batch()`の実行の失敗はD1のエラーがそのまま投げられ、`cause`にSQLiteのエラーを持つ。単文の失敗と、`db.batch()`の中の文の組み立ての失敗は、Drizzleが`DrizzleQueryError`で包み、D1のエラーを`cause`に持つ。どちらも文言は`cause`をたどって調べる。
+  - 文言は`UNIQUE constraint failed: users.email: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)`のように列名の後に`: SQLITE_CONSTRAINT ...`が続くため、列名は`:`の手前までを取る。
+  - 部分一意索引(`CREATE UNIQUE INDEX ... WHERE`)の違反も、索引の名前ではなく同じ`<テーブル>.<列>`の形で報告される。
+  - 判別したい列以外の違反とその他の失敗は、そのまま投げ直す。
+
+```typescript
+const UNIQUE_VIOLATION_PATTERN = /UNIQUE constraint failed: ([^:]+)/;
+
+function uniqueViolationColumns(error: unknown): ReadonlySet<string> {
+  for (let current = error; current instanceof Error; current = current.cause) {
+    const columns = UNIQUE_VIOLATION_PATTERN.exec(current.message)?.[1];
+    if (columns !== undefined) {
+      return new Set(columns.split(',').map((column) => column.trim()));
+    }
+  }
+  return new Set();
+}
+
+try {
+  await db.batch([
+    db.insert(users).values(user),
+    db.insert(userSessions).values(session),
+  ]);
+} catch (error) {
+  if (uniqueViolationColumns(error).has('users.handle')) {
+    return 'handle-in-use';
+  }
+  throw error;
+}
+```
+
+#### 版と元データの存在を条件にした追加か更新
+
+非同期処理が元データから作る派生の行(全文検索の索引文書など)は、古い版の処理が新しい版の後に届いたり、処理の途中で元データが削除されたりする。版の比較と元データの存在の確認を、追加か更新の1文の条件にする。
+
+```sql
+INSERT INTO article_search_documents (source_id, source_version, title)
+SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM articles WHERE id = ? AND deleted_at IS NULL)
+ON CONFLICT(source_id) DO UPDATE SET source_version = excluded.source_version, title = excluded.title
+WHERE excluded.source_version >= article_search_documents.source_version;
+```
+
+- 元データが無い場合は`SELECT`が行を返さず、何も追加しない。既にある行の版より古い書き込みは`DO UPDATE`の`WHERE`で更新しない。同じ版は上書きし、同じ処理が重複して届いても同じ結果にする。
+- `INSERT … SELECT`に`ON CONFLICT`を続けるときは、`SELECT`に`WHERE`句を必ず付ける。`WHERE`句が無いと、SQLiteが`ON`を結合の条件と解釈して構文の誤りになる(SQLiteの「[UPSERT](https://sqlite.org/lang_upsert.html)」の「Parsing Ambiguity」)。
+- 書き込んだか無視したかは、`db.run()`の戻り値の`meta.changes`(0なら無視)で判定する。トリガーが書き込んだ行の数は`meta.changes`に含まれない。
+
+#### 版の検査で一括の書き込み全体を取り消す
+
+読み取った版を前提に複数の文を`db.batch()`で書き込むとき、版が変わっていれば後の文を含めて何も反映しないようにするには、先頭にNOT NULLの列へ「版が一致すれば値、一致しなければNULL」を入れる挿入を置く。`db.batch()`の中では前の文が更新した件数によって後の文を実行するかどうかを分けられないが、制約の違反は全体をロールバックさせるため、版の不一致を失敗に変えて残りの文を止められる。`UPDATE ... WHERE version = ?`は一致しなくても0行の更新で成功し、後の文が反映されてしまうため、この用途には使えない。
+
+```typescript
+await db.batch([
+  db.insert(articleEvents).values({
+    id: eventId,
+    articleId: sql`CASE WHEN (SELECT ${articles.version} FROM ${articles} WHERE ${articles.id} = ${articleId}) = ${expectedVersion} THEN ${articleId} ELSE NULL END`,
+    occurredAt: at,
+  }),
+  db
+    .update(articles)
+    .set({ status: 'archived', version: sql`${articles.version} + 1` })
+    .where(eq(articles.id, articleId)),
+  db.delete(articleDrafts).where(eq(articleDrafts.articleId, articleId)),
+]);
+```
+
+- 元の行が無い場合も副問い合わせがNULLになり、版の不一致と同じく失敗する。
+- 版の不一致は`D1_ERROR: NOT NULL constraint failed: article_events.article_id: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_NOTNULL)`として投げられ、`cause`にSQLiteのエラーを持つ。文の組み立ての失敗はDrizzleの`DrizzleQueryError`が包むため、「ユニーク制約のあるテーブルへの追加」と同じく`cause`をたどり、検査に使った`<テーブル>.<列>`の違反だけを競合のエラーに変換して、他の失敗はそのまま投げ直す。
+- 検査に使う列は、他の文がNULLを入れ得ない列にする。他の文の違反と区別できなくなるためである。
 
 ### バインド変数の上限
 
@@ -98,6 +187,23 @@ if (first !== undefined) {
 }
 ```
 
+- 分割した文は互いの対象を参照できないため、「1件でも条件を満たさなければどれも更新しない」のように全件を1つの条件で判定する更新は分割できない。この場合は値の一覧をJSONの文字列として1つのバインド変数で渡し、`json_each`で展開して1文で判定する。
+
+```typescript
+const targets = sql`SELECT value AS id FROM json_each(${JSON.stringify(ids)})`;
+const blocked = sql`SELECT 1 FROM (${targets}) AS target LEFT JOIN ${articles} AS article ON article.id = target.id WHERE article.id IS NULL OR article.deleted_at IS NOT NULL`;
+
+await db
+  .update(articles)
+  .set({ status: 'published' })
+  .where(
+    and(
+      sql`${articles.id} IN (SELECT id FROM (${targets}))`,
+      sql`NOT EXISTS (${blocked})`,
+    ),
+  );
+```
+
 - 1文が実際に使うバインド変数の数は、Drizzleのクエリの`toSQL().params.length`で確かめられる。
 - 参照: Cloudflare Docsの「[Limits](https://developers.cloudflare.com/d1/platform/limits/)」
 
@@ -116,28 +222,9 @@ wrangler d1 time-travel restore <データベース名> --bookmark=<ブックマ
 
 #### 全文検索の仮想テーブルの同期
 
-FTS5の仮想テーブルは、元のテーブルへの書き込みに自動では追随しない。そのため、FTS5の`external content`テーブルの構成(索引だけを持ち、本文は元のテーブルから読む構成)を採り、SQLiteのトリガー(`CREATE TRIGGER`)で元のテーブルへの追加・更新・削除のたびに索引を同期させる。
+FTS5の仮想テーブルは、元のテーブルへの書き込みに自動では追随しない。そのため、FTS5のexternal contentの構成(索引だけを持ち、本文は元のテーブルから読む構成)を採り、SQLiteのトリガー(`CREATE TRIGGER`)で元のテーブルへの追加・更新・削除のたびに索引を同期させる。
 
-```sql
-CREATE VIRTUAL TABLE articles_fts USING fts5(title, body, content='articles');
-
-CREATE TRIGGER articles_fts_after_insert AFTER INSERT ON articles BEGIN
-  INSERT INTO articles_fts(rowid, title, body) VALUES (new.rowid, new.title, new.body);
-END;
-
-CREATE TRIGGER articles_fts_after_delete AFTER DELETE ON articles BEGIN
-  INSERT INTO articles_fts(articles_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body);
-END;
-
-CREATE TRIGGER articles_fts_after_update AFTER UPDATE ON articles BEGIN
-  INSERT INTO articles_fts(articles_fts, rowid, title, body) VALUES ('delete', old.rowid, old.title, old.body);
-  INSERT INTO articles_fts(rowid, title, body) VALUES (new.rowid, new.title, new.body);
-END;
-```
-
-- `content_rowid`を省略すると、元のテーブルの`rowid`で索引と行を対応させる。`INTEGER PRIMARY KEY`を明示しないテーブルの`rowid`は`VACUUM`で変わり得る(SQLiteの「[VACUUM](https://sqlite.org/lang_vacuum.html)」)ため、元のテーブルに`INTEGER PRIMARY KEY`のカラムがあれば、`content_rowid`にそのカラムを指定する。
-- 参照: SQLiteの「[External Content Tables](https://sqlite.org/fts5.html#external_content_tables)」
-
-#### 仮想テーブルとトリガーの記述場所
-
-仮想テーブルとトリガーはDrizzleのスキーマ定義で表現できないため、カスタムマイグレーション(生のSQL)で記述する。作成方法は「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」に従う。
+- D1(Workers統合テストのローカルのD1を含む)は、FTS5の`prefix`の指定・`bm25()`の列ごとの重み・external contentとトリガーによる同期・`integrity-check`を、SQLiteと同じに扱う。
+- 仮想テーブルとトリガーはDrizzleのスキーマ定義で表現できないため、カスタムマイグレーション(生のSQL)で記述する。作成方法は「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」に従う。
+- 仮想テーブルとトリガーの構成、SQLの出力、元のテーブルの列を変えた後のトリガーの作り直しと再構築、元のテーブルへの書き込みで避ける構文は「[全文検索の索引](004-full-text-search.md)」に従う。
+- 参照: SQLiteの「[External Content Tables](https://sqlite.org/fts5.html#external_content_tables)」・「[The CREATE TRIGGER Statement](https://sqlite.org/lang_createtrigger.html)」

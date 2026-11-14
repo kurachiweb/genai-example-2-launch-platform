@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, mock, test } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 
 import js from '@eslint/js';
 import prettierConfig from 'eslint-config-prettier/flat';
@@ -16,6 +16,8 @@ import {
   APPS,
   EXTERNAL_SOURCE_DIRS,
   QUALITY_GATE_EXCLUDED_DIRS,
+  SHARED_DIRS,
+  type AppDefinition,
 } from '../../config/workspace-layout.ts';
 import { createBaseConfig } from '../../eslint.config.base.ts';
 import {
@@ -470,19 +472,22 @@ describe('直接実行したときの入口', () => {
   );
 });
 
-interface BunTestConfig {
+const ROOT_BUNFIG_PATH = join(REPO_ROOT, 'bunfig.toml');
+
+interface BunConfig {
+  readonly [section: string]: unknown;
   readonly test: {
+    readonly [key: string]: unknown;
     readonly pathIgnorePatterns: readonly string[];
     readonly coveragePathIgnorePatterns: readonly string[];
   };
 }
 
-const readBunTestConfig = async (): Promise<BunTestConfig['test']> =>
-  (
-    Bun.TOML.parse(
-      await readFile(join(REPO_ROOT, 'bunfig.toml'), 'utf8'),
-    ) as BunTestConfig
-  ).test;
+const readBunConfig = async (path: string): Promise<BunConfig> =>
+  Bun.TOML.parse(await readFile(path, 'utf8')) as BunConfig;
+
+const readBunTestConfig = async (): Promise<BunConfig['test']> =>
+  (await readBunConfig(ROOT_BUNFIG_PATH)).test;
 
 const readScripts = async (
   packageJsonPath: string,
@@ -501,6 +506,46 @@ const pathIgnorePatternsOf = (script: string): readonly string[] =>
     ([, singleQuoted, doubleQuoted, bare]) =>
       singleQuoted ?? doubleQuoted ?? bare ?? '',
   );
+
+const CONFIG_OPTION = /--config(?:=|\s+)(?:'([^']*)'|"([^"]*)"|([^\s'"]+))/;
+
+const configPathOf = (script: string): string => {
+  const [, singleQuoted, doubleQuoted, bare] = CONFIG_OPTION.exec(script) ?? [];
+  return singleQuoted ?? doubleQuoted ?? bare ?? '';
+};
+
+interface NonCheckerUnitTestTarget {
+  readonly app: AppDefinition;
+  readonly mountDirs: readonly string[];
+  readonly script: string;
+}
+
+// 共有ディレクトリを配置しながら検査担当でない、作成済みで単体テストを持つアプリを、配置先(アプリのディレクトリからの相対パス)とともに集める
+const listNonCheckerUnitTestTargets = async (): Promise<
+  readonly NonCheckerUnitTestTarget[]
+> => {
+  const candidates = await Promise.all(
+    APPS.map(async (app) => {
+      const packageJsonPath = join(REPO_ROOT, app.dir, 'package.json');
+      const mountDirs = SHARED_DIRS.flatMap(({ mounts, checkedBy }) =>
+        mounts
+          .filter(
+            ({ consumer }) => consumer === app.name && consumer !== checkedBy,
+          )
+          .map(({ target }) => relative(app.dir, target)),
+      );
+      const script = existsSync(packageJsonPath)
+        ? (await readScripts(packageJsonPath))['test:unit']
+        : undefined;
+      return { app, mountDirs, script };
+    }),
+  );
+  return candidates.flatMap(({ app, mountDirs, script }) =>
+    mountDirs.length > 0 && script !== undefined
+      ? [{ app, mountDirs, script }]
+      : [],
+  );
+};
 
 // 除外パターンが命名パターンと同じか、ディレクトリを問わず同じファイル名に一致する(同等以上に広い)かを判定する
 const covers = (ignorePattern: string, namingPattern: string): boolean =>
@@ -603,6 +648,59 @@ describe('書き写した除外パターンと単一定義の一致', () => {
       expect(required.filter((pattern) => !written.includes(pattern))).toEqual(
         [],
       );
+    });
+  });
+
+  describe('検査担当でない利用側アプリの単体テスト', () => {
+    test('ルートのbunfig.tomlをカバレッジの除外だけ変えて書き写した設定を指定し、共有ディレクトリの配置先をカバレッジの分母から外す', async () => {
+      const {
+        test: { coveragePathIgnorePatterns: rootCoverageIgnores, ...rootTest },
+        ...rootRest
+      } = await readBunConfig(ROOT_BUNFIG_PATH);
+      const targets = await listNonCheckerUnitTestTargets();
+
+      const checked = await Promise.all(
+        targets.map(async ({ app, script }) => {
+          const configPath = join(REPO_ROOT, app.dir, configPathOf(script));
+          const {
+            test: { coveragePathIgnorePatterns, ...test },
+            ...rest
+          } = await readBunConfig(configPath);
+          return {
+            app: app.name,
+            usesRootConfig: configPath === ROOT_BUNFIG_PATH,
+            config: { ...rest, test },
+            coveragePathIgnorePatterns: coveragePathIgnorePatterns.toSorted(),
+          };
+        }),
+      );
+
+      expect(targets.length).toBeGreaterThan(0);
+      expect(checked).toEqual(
+        targets.map(({ app, mountDirs }) => ({
+          app: app.name,
+          usesRootConfig: false,
+          config: { ...rootRest, test: rootTest },
+          coveragePathIgnorePatterns: [
+            ...rootCoverageIgnores,
+            ...mountDirs.map((dir) => `${dir}/**`),
+          ].toSorted(),
+        })),
+      );
+    });
+
+    test('test:unitが共有ディレクトリの配置先をテストファイルの選択から外す', async () => {
+      const targets = await listNonCheckerUnitTestTargets();
+
+      const missing = targets.flatMap(({ app, mountDirs, script }) =>
+        mountDirs
+          .map((dir) => `${dir}/**`)
+          .filter((pattern) => !pathIgnorePatternsOf(script).includes(pattern))
+          .map((pattern) => `${app.name}: ${pattern}`),
+      );
+
+      expect(targets.length).toBeGreaterThan(0);
+      expect(missing).toEqual([]);
     });
   });
 

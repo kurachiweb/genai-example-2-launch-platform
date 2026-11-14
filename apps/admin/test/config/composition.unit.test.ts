@@ -1,0 +1,134 @@
+import { afterEach, describe, expect, test } from 'bun:test';
+
+import { resetSync } from '@logtape/logtape';
+
+import { CLIENT_PROFILE } from '../../../client/src/composition/app-profile.ts';
+import {
+  BASE_SECURITY_POLICY_SOURCES,
+  mergeSecurityPolicySources,
+} from '../../lib/server/http/security-policy.ts';
+import { RELAY_PATH_PREFIX } from '../../lib/server/relay/relay-contract.ts';
+import {
+  FILE_DOWNLOAD_RELAY_ROUTE,
+  UPLOAD_RELAY_ROUTE,
+} from '../../lib/server/media/media-relay-routes.ts';
+import { GRAPHQL_RELAY_ROUTE } from '../../lib/server/relay/relay-route.ts';
+import {
+  createHarness,
+  pageRequest,
+} from '../../lib/test/server-entry-fixtures.ts';
+import { ADMIN_PROFILE } from '../../src/composition/app-profile.ts';
+import { RELAY_ROUTES } from '../../src/composition/relay-routes.ts';
+import { ADMIN_SECURITY_POLICY } from '../../src/composition/security-policy.ts';
+
+const STRIPE_PUBLISHABLE_KEY = `pk_test_${'0'.repeat(32)}`;
+
+afterEach(() => {
+  resetSync();
+});
+
+describe('ADMIN_PROFILE', () => {
+  test('管理者側として、管理者のセッションのCookieの名前とアクセス解析なしを持つ', () => {
+    expect(ADMIN_PROFILE.caller).toBe('admin');
+    expect(ADMIN_PROFILE.sessionCookieName).toBe('__Host-ls_admin_session');
+    expect(ADMIN_PROFILE.webAnalytics).toBe(false);
+  });
+
+  test('問い合わせの画面を持たず、静的な500の画面と画面の失敗の文言で問い合わせを促さない', () => {
+    expect(ADMIN_PROFILE.contactAvailable).toBe(false);
+    expect(CLIENT_PROFILE.contactAvailable).toBe(true);
+  });
+
+  test('利用者側とセッションのCookieの名前が異なる', () => {
+    expect(ADMIN_PROFILE.sessionCookieName).not.toBe(
+      CLIENT_PROFILE.sessionCookieName,
+    );
+  });
+
+  test('prodを含むすべての環境で検索エンジンへの登録を許さない', () => {
+    expect(ADMIN_PROFILE.indexable('prod')).toBe(false);
+    expect(ADMIN_PROFILE.indexable('staging')).toBe(false);
+    expect(ADMIN_PROFILE.indexable('local')).toBe(false);
+  });
+
+  test('prodで検索エンジンへの登録を許す利用者側と異なり、prodでも登録を許さない', () => {
+    expect(CLIENT_PROFILE.indexable('prod')).toBe(true);
+    expect(ADMIN_PROFILE.indexable('prod')).toBe(false);
+  });
+
+  test('決済を持たず、決済の公開キーが設定されていても描画とブラウザへの公開設定に渡さない', async () => {
+    expect(ADMIN_PROFILE.payments).toBe(false);
+    expect(CLIENT_PROFILE.payments).toBe(true);
+    const harness = createHarness({
+      profile: ADMIN_PROFILE,
+      env: { STRIPE_PUBLISHABLE_KEY },
+      entryOptions: {
+        relayRoutes: RELAY_ROUTES,
+        securityPolicy: ADMIN_SECURITY_POLICY,
+      },
+    });
+
+    const response = await harness.fetch(pageRequest());
+
+    expect(response.status).toBe(200);
+    expect(harness.startCalls).toHaveLength(1);
+    const publicConfig = harness.startCalls[0]?.context.publicConfig;
+    expect(publicConfig?.stripePublishableKey).toBeUndefined();
+    expect(JSON.stringify(publicConfig)).not.toContain(STRIPE_PUBLISHABLE_KEY);
+  });
+
+  test('凍結されていて書き換えられない', () => {
+    expect(Object.isFrozen(ADMIN_PROFILE)).toBe(true);
+  });
+});
+
+describe('ADMIN_SECURITY_POLICY', () => {
+  test('追加の許可先を持たない', () => {
+    expect(ADMIN_SECURITY_POLICY).toEqual({});
+  });
+
+  test('基本の許可先と合成でき、合成後は基本の許可先と同じになる', () => {
+    expect(
+      mergeSecurityPolicySources(
+        BASE_SECURITY_POLICY_SOURCES,
+        ADMIN_SECURITY_POLICY,
+      ),
+    ).toEqual(mergeSecurityPolicySources(BASE_SECURITY_POLICY_SOURCES, {}));
+  });
+
+  test('凍結されていて書き換えられない', () => {
+    expect(Object.isFrozen(ADMIN_SECURITY_POLICY)).toBe(true);
+  });
+});
+
+describe('RELAY_ROUTES', () => {
+  test('GraphQLの中継の経路の後に、アップロードとダウンロードの中継の経路を持つ', () => {
+    expect(RELAY_ROUTES).toEqual([
+      GRAPHQL_RELAY_ROUTE,
+      UPLOAD_RELAY_ROUTE,
+      FILE_DOWNLOAD_RELAY_ROUTE,
+    ]);
+  });
+
+  test('末尾が/*の経路を完全一致の経路より後に置く', () => {
+    const isPrefixRoute = RELAY_ROUTES.map(({ path }) => path.endsWith('/*'));
+
+    expect(isPrefixRoute).toEqual(isPrefixRoute.toSorted());
+  });
+
+  test('一覧と各経路が凍結されていて、defineRelayRouteの検査を経ている', () => {
+    expect(Object.isFrozen(RELAY_ROUTES)).toBe(true);
+    for (const route of RELAY_ROUTES) {
+      expect(Object.isFrozen(route)).toBe(true);
+    }
+  });
+
+  test('各経路が中継の接頭辞の下にあり、経路が重複しない', () => {
+    const paths = RELAY_ROUTES.map((route) => route.path);
+
+    for (const path of paths) {
+      expect(path.startsWith(RELAY_PATH_PREFIX)).toBe(true);
+    }
+    expect(new Set(paths).size).toBe(paths.length);
+  });
+});

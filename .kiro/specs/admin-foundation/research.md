@@ -1,0 +1,381 @@
+# Research & Design Decisions
+
+## Summary
+
+- **Feature**: `admin-foundation`
+- **Discovery Scope**: New Feature(管理者側の実装・モックアップは無い。上流の7spec(backend-platform・api-gateway・email-delivery・frontend-platform・content-processing・media-pipeline・identity-auth)の設計・タスクは承認済みで実装は未着手であり、本specはその契約の上に管理者のアカウント・認可・監査ログ・管理画面のシェルを新設する。セキュリティに直結するため完全な調査を行った)
+- **Key Findings**:
+  - identity-authの`auth`モジュールは主体に依存しない形で設計済みで、`LoginThrottleScope`に`'admin'`、Durable Objectの名前に`login-email:admin:<キー>`、HMACの用途に`admin-`の接頭辞、`AUTH_TYPES.AdminSessionVerifier`の差し替え口が用意されている。一方、`RequestMeta`・`IssuedSession`・`TotpSetupView`・`ReAuthenticator`・`MailSendLimits`は`application/identity`(利用者の層)にあるため、本specは同じ形の管理者用の型とユースケースを`application/admin`に持つ(`auth`は`identity`に依存しない規則のため、`admin`も`identity`に依存しない)。
+  - frontend-platformの`BASE_SECURITY_POLICY_SOURCES`はTurnstileの許可先を両アプリに入れ、`TURNSTILE_SITE_KEY`は管理者側の変数にもあり、infra-deliveryのTurnstileのウィジェットは利用者側と管理者側の両ホスト名を対象にしている。管理者側でbot判定を使う(Q7)ための上流の変更は不要で、確認を再検証の対象にする。
+  - media-pipelineのファイルの保有者はアップロードした主体である。最上位管理者が他の管理者のプロフィール画像を設定する(FR-ADMAC-012)と保有者が対象者と食い違うため、管理者の削除では保有者単位の削除(`eraseOwnedBy`)を使わず、管理者の行が参照する画像のIDで削除する。
+  - D1の`db.batch()`は前の文の結果で後の文を変えられない。最後の最上位管理者の保護と監査ログの同時確定は、identity-authの`UserLifecycleCommitter`と同じく、先頭の監査ログの挿入の値を条件付きの`CASE`式にしてNOT NULL制約の違反で全体を取り消す方式で実現できる。
+  - Claude設定のdenyが`wrangler d1 * --remote`を拒否するため、staging・prodでの招待の発行コマンドの実行は開発者の手作業になる。AIエージェントとE2Eは`--target local`だけを使う。
+
+## 要件フェーズ前の確認事項(2026-10-23)
+
+開発者の判断を要する論点を、要件の作成前に一括で確認した。決定は`requirements.md`の「要件フェーズでの決定事項」にも記録する。
+
+| #   | 論点                   | 根拠                                                                                                                                      | 回答(2026-10-23)                                                                                                                                                                                                                                                                                                                                                                                          |
+| --- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Q1  | 最初の最上位管理者     | FR-ADMAC-004・FR-ADMAC-015、roadmapのRequirement Ambiguities、brief Constraints                                                           | 推奨案(CLIで招待を発行)。開発者が`infisical run`でペッパーを注入して`bun`スクリプトを実行し、最上位管理者ロールの招待をD1(ローカルまたはリモート)へ書き込み、招待URLを端末に表示する。最後の最上位管理者がTOTPを失ったときの復旧にも使える                                                                                                                                                                |
+| Q2  | ダッシュボードの内容   | FR-ADMAC-001・FR-ADMUG-001、ページ配置の管理者側ページ一覧(ダッシュボード=週毎の統計グラフ)、brief Constraints                            | 選択肢2(要対応件数も表示)。区画の枠に加え、未対応の通報・問い合わせの件数カードをcontent-reporting・inquiry-chatが区画へ登録する。本specは登録口の契約を定義し、後続spec(inquiry-chat・content-reporting)が登録する作業はそれぞれのspecの担当として明記する。統計グラフはugc-moderationが登録する                                                                                                         |
+| Q3  | ロールごとの権限       | FR-ADMAC-004・005・009・FR-ADMAC-012、FR-ADMAG-004・005・007・FR-ADMAG-023〜024、FR-ADMCF-001・008・022・024、FR-ADMUG各項、NFR-SECUR-008 | 選択肢3(招待・削除はモデレーターも)。招待と、最上位管理者以外のアカウントの削除をモデレーターにも許可する。ロール変更と最上位管理者の削除は最上位管理者だけ。その他の未明記の操作は推奨案と同じ方針(閲覧のみは全メニューの参照と自分のアカウントの編集だけ、モデレーターは要件が最上位管理者に限っていない更新操作をすべて行える、機能フラグは最上位管理者だけ)で補う。監査ログの閲覧は全ロールに許可する |
+| Q4  | 管理者のTOTP紛失時     | FR-ADMAC-019・NFR-SECUR-033〜034、identity-authのQ8                                                                                       | 選択肢3(復旧手段を設けない)。リカバリコードを唯一の予備手段にする。ただし最後の最上位管理者が両方を失ったときは、Q1のCLIで新しい最上位管理者の招待を発行できる、という扱いでよいかを仮3として記録する                                                                                                                                                                                                     |
+| Q5  | 初回プロフィール設定   | FR-ADMAC-010・FR-ADMAC-015、FR-INQRY-014、media-pipeline(アップロードにはログイン中の主体が要る)                                          | 選択肢2(画像は既定アイコン)。招待の完了時にニックネームだけを必須にし、画像は後から登録できる。未登録の間は既定のアイコンを表示する。FR-ADMAC-010(画像必須)と異なるため要件定義書の改訂が必要                                                                                                                                                                                                             |
+| Q6  | 監査ログの理由欄       | FR-ADMAG-001〜003、FR-ADMUG-006・009・013〜014・025・044(「理由付き」と明記)、DR-001・DR-017                                              | 推奨案(理由付き操作だけ必須)。記録範囲はFR-ADMAG-001の列挙どおり                                                                                                                                                                                                                                                                                                                                          |
+| Q7  | 利用者側決定の水平展開 | identity-authのQ1〜Q3・Q7、FR-USER-029〜031、FR-RLMIT-001、FR-ADMAC-016〜018、SW-018、CLAUDE.mdの水平展開の規則                           | 選択肢2(Turnstileも適用)。推奨案の内容(本人確認・操作端末以外の全セッション削除・変更完了の通知メール・メールの送信回数の制限・ログイン試行の扱い・漏洩照合の縮退)をすべて管理者にも適用し、さらに管理者のログインとパスワードリセット要求にもTurnstileを使う。管理者側CSPへの許可先の追加はfrontend-platformの再検証の対象として明記する。SW-018・FR-RLMIT-001などの改訂が必要                           |
+| Q8  | 一覧部品のパッケージ   | brief Desired Outcome、FR-ADMAG-004、tech-stack.md(表・日付選択のパッケージは未採用)、CLAUDE.md(新規パッケージは候補を質問)               | 推奨案(追加しない)。一覧はshadcn/uiのTable(追加の依存なし)で作り、検索とページ送りはサーバー側で行う。期間の入力はネイティブの`<input type="date">`を使う                                                                                                                                                                                                                                                 |
+
+### 提示した選択肢(記録)
+
+- Q1: CLIで招待を発行(推奨・採用) / 初回セットアップ画面(管理者が0件の間だけ`ADMIN_BOOTSTRAP_TOKEN`を入力した人が作れる。公開ドメインに一時的な入口ができる) / 指定アドレスへ自動招待(最上位管理者が0件のとき`ADMIN_BOOTSTRAP_EMAIL`へ招待メールを自動送信) / シードデータのみ(ローカル・E2E専用)
+- Q2: 区画の枠だけ用意(推奨) / 要対応件数も表示(採用。未対応の通報・問い合わせの件数カードをcontent-reporting・inquiry-chatが登録) / 自分の情報と案内(ロールとメニューへのリンク)
+- Q3: 閲覧のみは参照だけ(推奨。招待・削除と機能フラグは最上位管理者だけ) / 監査ログは最上位だけ / 招待・削除はモデレーターも(採用。ロール変更と最上位管理者の削除は最上位管理者だけ。監査ログの閲覧は全ロール)
+- Q4: 削除して再招待(推奨) / 最上位がTOTPを解除(全セッション削除・監査ログに記録、要件に無い管理操作が増える) / 復旧手段を設けない(採用。最後の最上位管理者は仮3)
+- Q5: 初回ログイン時に必須(推奨) / 画像は既定アイコン(採用。要件定義書の改訂が要る) / 招待者が事前入力
+- Q6: 理由付き操作だけ必須(推奨・採用) / 検索以外は全て必須 / 1に認証の記録を追加(ログイン・パスワード変更・TOTP再設定も記録)
+- Q7: Turnstile以外を展開(推奨) / Turnstileも適用(採用) / 要件の文言どおり
+- Q8: 追加しない(推奨・採用) / TanStack Tableを追加(`@tanstack/react-table` 9.2.8、MIT、2026-10-08公開。9.3.1は公開から2週間未満のため避ける) / 表と日付選択を追加(2に加えて`react-day-picker` 10.0.2、MIT、2026-09-30公開、`date-fns`に依存)
+
+### 確認済みのため質問しない事項
+
+- 認証部品: identity-authの`auth`モジュール(パスワード・秘密の発行とハッシュ化・セッションの有効期限・ログイン試行の制限・TOTP・リカバリコード)を再利用し、管理者用のテーブルとセッションは利用者と分ける(brief・identity-authの要件19)。HMACの用途は`admin-`で始め、ログイン試行のDurable Objectは`login-email:admin:<キー>`。IPアドレス単位の記録は利用者と共有する(identity-authのSupporting References)。
+- セッションの検証: `composition/session.ts`の`AUTH_TYPES.AdminSessionVerifier`の束縛(既定は`InvalidSubjectSessionVerifier`)を管理者の実装へ1行で差し替える(identity-auth 19.5)。
+- セッションの有効期限とCookie: アイドル1時間・絶対12時間(NFR-SECUR-029)、ログアウト時の即時物理削除(NFR-SECUR-030)、Cookie名`__Host-ls_admin_session`(frontend-platformの`ADMIN_PROFILE`)。期限切れのセッションは日次バッチで削除する(DR-019)。
+- 認証系トークン: 招待とメールアドレス確認は24時間、パスワードリセットは30分で、1回の使用で失効させる。保存はHMACでハッシュ化し、再発行時と完了時に失効させる(NFR-SECUR-035〜037)。期限切れのトークンは日次で削除する(DR-020)。
+- パスワードの規則: 8〜128文字、文字種は不問、漏洩照合、ニックネーム・メールアドレスのローカル部との一致を拒否する(NFR-SECUR-024〜026・028)。PBKDF2の方式はNFR-SECUR-004・005で決定済み。
+- TOTPとQRコード: OTPAuthとuqr(tech-stack.md)。画面部品の`TotpQrCode`・`RecoveryCodeList`・`PasswordInput`は、identity-authが`frontend-lib/components/auth`に管理者側と共用する形で作る。管理者のTOTPは必須(NFR-SECUR-033)のため無効化の機能は設けず、再設定とリカバリコードの再発行だけを作る(FR-ADMAC-019)。
+- メールアドレス変更・パスワードリセット要求の応答: 対象の有無によらず同一の応答にする(NFR-SECUR-043)。パスワード変更は要件どおり現在のパスワードを求め、メールでの確認は求めない(FR-ADMAC-017。利用者側のFR-USER-016とは異なる)。
+- 管理者のプロフィール画像: media-pipelineの用途の登録で上限・画像形式を指定し、自動判定の対象にする。管理者のアップロードは`UploaderEligibility`の判定の対象外(media-pipeline 1.8)。
+- メール: テンプレートは`@react-email/*`、送信元は「Launch Stadium」の`noreply@`、トランザクションメールとして抑止リストの対象外(email-deliveryのQ1・Q5・Q6)。
+- 管理画面のシェル: frontend-platformの`AdminLayoutSlots`(`navigation`・`headerAccount`)へ差し込み、管理者側トップの仮ページを置き換える。16メニューの並びと内容はページ配置の管理者側ページ一覧を正とし、後続specが項目と画面を登録できる形にする(roadmapのShared seams)。
+- 監査ログ: 本specが記録APIと閲覧画面を所有し、各specが記録を呼び出す(roadmapのShared seams)。対象がユーザーなら仮名化ID(FR-USER-004、identity-authが保存)だけを記録し、メールアドレス検索は検索文字列を記録せず、結果の仮名化IDを記録する(FR-ADMAG-002〜003)。3年を過ぎた項目は日次バッチ(4:21)で物理削除し、ジョブ名は`admin-foundation.<名詞句>`(DR-017・日次タイムライン)。対応完了日時や照会日時を後続specが照会できるよう、対象と操作種別で検索できる照会口を設計で用意する(FR-ADMUG-040、権利侵害対応フロー)。
+- 理由欄に個人情報を含めない点: 機械的に判定できないため、入力欄の注意書きで扱う(FR-ADMAG-001、権利侵害対応フロー)。
+- 管理者の削除: 全端末のセッションを物理削除する(FR-ADMAC-013)。最後の最上位管理者はロール変更・削除できない(FR-ADMAC-014)。削除された管理者の情報は、後続specが「削除済み」として表示する(FR-HELP-009・FR-INQRY-015)。
+- プロフィールの編集範囲: 最上位管理者は全員、他のロールは自分だけを編集できる(FR-ADMAC-012)。メールアドレス・パスワード・TOTPは本人だけが変更できる(FR-ADMAC-016〜019)。
+- 管理者のセッション一覧: 要件に無いため設けない(FR-USER-017は利用者だけが対象)。
+- カテゴリマスタ: 各マスタは利用するspecが個別に所有し、本specは共通の編集UI部品だけを提供する(roadmapのBoundary Strategy・brief)。
+- 統計グラフ(FR-ADMUG-001)・各管理機能の画面と操作・運営者による退会の管理画面は、ugc-moderationなどの後続specの担当(brief Out・identity-authのN-6)。
+- CSRF・CSP・中継・クライアントIPの引き継ぎ: frontend-platformとapi-gatewayの契約で実装済み。
+- steering: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替する。
+
+### 仮決定(2026-10-23に開発者が承認)
+
+設計中に生じた、開発者の判断を要する論点である。回答と上流specに最も整合する案を仮に採用して設計・タスクを作り、2026-10-23に開発者の確認を得て確定した。仮1〜仮5は採用した案のまま承認され、仮6は回答により管理者アカウントのメニューのURLを`/admins`から`/accounts`へ変更して承認された(URLとルートのパスを水平展開で直し、GraphQLの型名などURL以外の識別子は変えない)。仮3はQ4の回答で記録を求められた論点である。承認後のcross-spec reviewで加えた仮7(`AuditLogReader.latestForMany`と照会の共有の偽物)は2026-10-24に開発者が確定した(推奨どおり)。経緯は末尾の「cross-spec reviewの指摘による承認後の改訂(仮7)」に記録する。本specの仮の論点はすべて確定済みである。
+
+| #   | 論点                                 | 確定した案                                                                                                                                                                                                                                                                                                   | 他の選択肢                                                 | 影響する箇所                                                  | 開発者の回答     |
+| --- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------- | ---------------- |
+| 仮1 | 自分自身のアカウントの削除           | 拒否する(`self_deletion_forbidden`)。削除が必要なら削除の権限を持つ他の管理者に依頼する。誤操作による締め出しを避ける                                                                                                                                                                                        | 最後の最上位管理者でなければ自分も削除できる               | 要件15.5、`checkDeletable`、エラーの表                        | 承認(2026-10-23) |
+| 仮2 | プロフィール画像の「500kB」の解釈    | 512,000バイト(500KiB)。product-launchのロゴの上限(文言規則の「500kB」)も同じ解釈にそろえる。spec横断レビューで決まったプロジェクト全体の規則(1kB=1,024バイト)と一致する                                                                                                                                      | 500,000バイト                                              | 要件16.2、`admin-avatar`の用途、product-launchの再検証        | 承認(2026-10-23) |
+| 仮3 | 最後の最上位管理者が両方を失った場合 | Q1の招待の発行コマンドで新しい最上位管理者の招待を発行する。締め出されたアカウントは新しい最上位管理者が削除する。復旧の機能は設けない(Q4と矛盾しない)                                                                                                                                                       | 何もしない(データベースを直接編集する以外に手段が無くなる) | 要件2.6、`operations/003`                                     | 承認(2026-10-23) |
+| 仮4 | 招待の完了後の状態                   | 完了の時点でその端末をログイン状態にする(メールのリンクとTOTPの両方を確かめた直後のため)                                                                                                                                                                                                                     | 完了後にログイン画面へ案内し、改めてログインさせる         | 要件4.3、`AdminInvitation.complete`・`activate`               | 承認(2026-10-23) |
+| 仮5 | 招待中のアカウントの扱い             | 一覧に「招待中」「招待期限切れ」として表示し、再送(リンクの再発行)と削除による取り消しを行える。再送は`admin-account.invite`として監査ログに記録する                                                                                                                                                         | 招待を別の一覧にする / 再送を設けず、取り消して招待し直す  | 要件3.3・3.4・15.1、`AdminInvitation.resend`、`displayStatus` | 承認(2026-10-23) |
+| 仮6 | 管理画面のURL                        | 16メニューのURLを本specが定めてページ配置に記載する(`/`・`/users`・`/products`・`/comments`・`/ratings`・`/media-moderation`・`/reports`・`/inquiries`・`/sponsorships`・`/help-articles`・`/categories`・`/legal-documents`・`/settings`・`/accounts`・`/audit-logs`・`/account`)。認証の画面は`/auth/`の下 | 各後続specがURLを決める                                    | `ADMIN_NAV_ITEMS`、ページ配置、全後続spec                     | 変更(2026-10-23) |
+| 仮7 | 後続specの監査ログの複数の対象の照会 | 本specが`AuditLogReader.latestForMany`と保存の照会(90件ずつ)と、照会の共有の偽物`createFakeAuditLogReader`を所有・実装する。cross-spec reviewの指摘による承認後の改訂で、2026-10-24に開発者が確定(推奨どおり)                                                                                                |
+
+### 要件定義書の改訂が必要な箇所
+
+**2026-10-25に要件定義書(`docs/requirements/README.md`)へ適用済み。** 以下は適用前に記録した改訂の内容である。
+
+要件定義書(`docs/requirements/README.md`)は本specでは編集しない(roadmapのOut)。次の改訂が必要である。
+
+| 要件ID                 | 内容                                                                                                                                                                                                                       | 根拠    |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| FR-ADMAC-010           | プロフィール画像を任意入力に改め、未登録の間は既定のアイコンを表示する旨を加える。上限「500kB」が512,000バイトであることを明記する                                                                                         | Q5・仮2 |
+| FR-ADMAC-005           | ロールごとの権限の一覧(閲覧のみは参照と自分のアカウントの編集、モデレーターは最上位管理者に限られない更新操作と招待・最上位管理者以外の削除、最上位管理者はすべて、監査ログの閲覧は全ロール)を加える                       | Q3      |
+| FR-ADMAC-001           | ダッシュボードに統計グラフと未対応の問い合わせ・通報の件数を表示する旨を明記する(明確化)                                                                                                                                   | Q2      |
+| FR-ADMAC-016・017・019 | メールアドレス変更の要求・パスワード変更・TOTPの再設定・リカバリコードの再発行で、現在のパスワードと認証コード(またはリカバリコード)を求め、全セッションの削除の後に操作した端末にだけ新しいセッションを発行する旨を加える | Q7      |
+| FR-ADMAC-016〜018      | メールアドレス変更完了(変更前のアドレス宛)・パスワードリセット完了・パスワード変更完了の通知メールを送る旨を加える(FR-USER-029〜031相当)                                                                                   | Q7      |
+| FR-RLMIT-001           | 対象に管理者のメールアドレス変更の確認とパスワードリセット要求のメール(FR-ADMAC-016・018)を加える                                                                                                                          | Q7      |
+| SW-018                 | 対象に管理者のログインとパスワードリセット要求(FR-ADMAC-002・018)を加える                                                                                                                                                  | Q7      |
+
+identity-authが報告済みのFR-RLMIT-012・FR-RLMIT-020・NFR-SECUR-026の改訂は、管理者のログインにも同じく当てはまる(本specは同じ部品を使う)。
+
+### 上流・後続specへの影響
+
+- frontend-platform(再検証): 管理者側でbot判定を使うため、`BASE_SECURITY_POLICY_SOURCES`のTurnstileの許可先(`script-src`・`frame-src`の`https://challenges.cloudflare.com`)が管理者側のCSPにも入ること、`TURNSTILE_SITE_KEY`が管理者側の変数にあることを確かめる(Q7)。設計の上では既に満たされており、無ければ`ADMIN_SECURITY_POLICY`へ加える。`components/ui`に`table`・`select`を加える。
+- identity-auth(再検証): `return-path.ts`・`fragment-token.ts`を`apps/frontend-lib/utilities/auth/`へ移して共用する。`AUTH_TYPES.AdminSessionVerifier`の束縛を差し替える(契約どおり)。
+- infra-delivery(再検証): Supporting Referencesの「ホスト名から導かれる変数の値」の表にある、APIサーバーの`ADMIN_SITE_ORIGIN`(本specの所有、管理者側のホスト名から導かれる)の行と、名前と値の一致を確かめる(行はspec横断レビューでinfra-deliveryに追加済み)。
+- media-pipeline: `UPLOAD_PURPOSES`へ`admin-avatar`を加える(契約どおり)。
+- product-launch(後続): ロゴの上限「500kB」を512,000バイトと解釈する(仮2)。
+- content-reporting(後続): `AuditLogReader.latestForMany`と保存の照会(90件ずつ)と照会の共有の偽物`createFakeAuditLogReader`を本specが所有・実装し(仮7)、content-reportingは使うだけである。
+- inquiry-chat・content-reporting(後続): Q2により、ダッシュボードの区画`DASHBOARD_CARDS`へ未対応の件数のカード(order 20・30)を登録する作業を各specの担当として加える。両specのbriefへの追記を推奨する。ugc-moderationは統計グラフのカード(order 10)を登録する。
+- 全後続の管理機能のspec: `ADMIN_NAV_ITEMS`へ定めたURLと`order`で項目を登録し(仮6)、`requireAdmin`でページ配置のロールの一覧に従ってロールを宣言し、`audit-actions/<spec名>.ts`で操作種別を登録して管理操作を記録する。roadmapのShared seams「画面シェル」「監査ログ」へ、ダッシュボードのカードとURLの分担の追記を推奨する。
+
+## spec横断レビューの指摘の反映(2026-10-23に開発者が決定)
+
+全specを横断したレビューの指摘と開発者の決定(2026-10-23)を、本specの要件の決定事項の表・設計・タスクに反映した。`spec.json`の承認の状態は変えていない。
+
+| #   | 指摘                                                                                                                                 | 決定と反映                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| X1  | (判断)「kB」「MB」の解釈がspecごとに異なる(本specの仮2は1,024倍、inquiry-chatの仮3は1,000倍)                                         | プロジェクト全体で1kB=1,024バイト・1MB=1,048,576バイトとする(文言規則`docs/GUIDES/service/design/003-text-and-copy-rules.md`に記載)。仮2の512,000バイトはこの規則と一致するため値は変えず、要件の決定事項の表・仮決定の表・設計の再検証の条件に、規則に従う旨を加えた。本specの他のバイト数(トークン32バイト・ソルト16バイト)は単位の解釈を含まない                                                                                                                                                                                                                                                                                                                |
+| X2  | (軽微)Revalidation Triggersの`AdminDirectory`の利用者がhelp-center・inquiry-chatだけで、legal-pages・ultras-subscriptionが漏れている | 各specのdesign.mdを読んで確かめ、help-center・inquiry-chat(返信した管理者の表示、データエクスポートの`adminNickname`)・legal-pages(版の公開者・下書きの保存者)・ultras-subscription(機能フラグの変更者)を列挙した                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| X3  | (軽微)E2Eで管理者を用意する補助が、legal-pages(`admin-sign-in.ts`)とinquiry-chat(`local-d1.ts`と招待の補助)で重複して作られる        | 本specが`e2e/support/admin-bootstrap.ts`(指定したロールの管理者を招待の発行コマンドで招待し、画面で完了させ、ローカルのD1でロールを設定してログインしたページを返す`signInAsNewAdmin`、再ログインの`signInAdmin`、`currentTotpCode`)と`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)を所有する。設計のFile Structure Plan・AdminE2E・Testing Strategy・Revalidation Triggersとタスク12.1に反映し、legal-pages・inquiry-chatはこれを使う                                                                                                                                                                                                           |
+| X4  | (判断)データエクスポートは各ドメインが自分のエクスポート部品を所有し、data-exportは他ドメインのテーブルを直接読まない                | 本specは利用者のデータを持たない(管理者・監査ログだけ)ため、エクスポート部品は持たない。ただしinquiry-chatのエクスポート部品`InquiryExport`(eventで動く)が返信した管理者のニックネームを要るため、`AdminDirectory`の契約とD1の実装を`apps/backend-lib/workers/admin/`へ置き、apiとeventの両方で束縛する`ADMIN_PLATFORM_MODULE`(`ADMIN_PLATFORM_TYPES.AdminDirectory`)を加えた。設計のBoundary・Dependency Direction・File Structure Plan・Components・Modified Files・Testing Strategyとタスク5.1・8.1に反映した。apiの後続specは`AdminDirectory`を`backend-lib/workers/admin`から読み込む。この置き場所の変更とapi・eventの両方での束縛は2026-10-23に開発者が承認 |
+| X5  | (判断)利用者の連絡先の読み取りを、identity-authの共有の部品`UserContactDirectory`に一本化する                                        | 本specに利用者の連絡先(メールアドレス・ニックネーム)を読む部品は無い(管理者のメールは本specの`admins`、利用者のメールアドレス検索はugc-moderationの担当)ため、変更は無い                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+
+- X4の置き場所の変更(2026-10-23に開発者が承認)は、管理者のストア(`AdminAccountStore`)の束縛をeventに持ち込まずに照会だけを共有するためである。後続のhelp-center・ultras-subscriptionは`AdminDirectory`の形(`findProfiles`)を使うだけで、置き場所の変更による振る舞いの差は無い。
+
+## spec横断レビュー(2回目)の指摘の反映(2026-10-23)
+
+2回目のspec横断レビューの指摘を、設計・タスクに反映した。`spec.json`の承認の状態は変えていない。
+
+| #   | 指摘                                                                                                                                                        | 反映                                                                                                                                             |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Y1  | (軽微)設計の上流への影響(infra-deliveryの行)とタスク12.4が、infra-deliveryの表へ`ADMIN_SITE_ORIGIN`の行を加える・開発者へ報告するとしていたが、行は既にある | 行の追加ではなく「名前と値の一致を確かめる」に改めた。設計の上流への影響、タスク12.4、本文書の「上流・後続specへの影響」を直した                 |
+| Y2  | (軽微)E2Eの補助の利用者がlegal-pages・inquiry-chatだけで、ultras-subscription(機能フラグの設定に`executeLocalD1`を使う)が漏れていた                         | 設計のRevalidation Triggersとタスク12.1の完了状態を「管理画面のE2Eを持つ全後続spec(legal-pages・inquiry-chat・ultras-subscriptionなど)」に改めた |
+
+- identity-authのユーザーライフサイクルの波及処理の`order`の契約が、各ドメインは0〜9999、identity-auth自身は10000以上に広がった。本specはユーザーライフサイクルの波及処理を登録せず、本文書・設計・タスクに旧い範囲への言及が無いことを確かめた。4:21のジョブの`order`(200・210)は変えない。
+
+## Research Log
+
+### 上流specの契約と不足
+
+- **Context**: 本specは7つの上流spec(実装は未着手)の契約の上に作る。差し替える登録箇所と、足りない契約を洗い出した。
+- **Sources Consulted**: `.kiro/specs/identity-auth/design.md`(`AUTH_TYPES`・`SessionPolicy`・`LoginThrottle`・`SubjectSessionVerifier`・`Login`・`ReAuthenticator`・`MailSendLimits`・`TotpManagement`・`AdministrativeWithdrawal`・Supporting References)、`.kiro/specs/api-gateway/design.md`(`Principal`・`SessionVerification`・`SessionAccess`・`GraphQLContext`・`CallerKind`)、`.kiro/specs/frontend-platform/design.md`(`AdminLayoutSlots`・`SecurityPolicySources`・`BASE_SECURITY_POLICY_SOURCES`・`ValidatedFrontendEnv`・`TurnstileWidget`)、`.kiro/specs/media-pipeline/design.md`(`UploadPurpose`・`MediaOwner`・`MediaFiles`・`MediaPicture`)、`.kiro/specs/email-delivery/design.md`(`EmailKind`)、`.kiro/specs/backend-platform/design.md`(`KeyedHasher`・`AppErrorKind`・`ScheduledJobDefinition`・`RateLimitCounterClient`・`BotVerifier`)、`.kiro/specs/infra-delivery/design.md`(Turnstileのウィジェット・ホスト名から導かれる変数)。
+- **Findings**:
+  - `SessionAccess`は呼び出し元が`admin`なら`subjectKind: 'admin'`で検証し、identity-authの`SubjectSessionVerifier`が`AUTH_TYPES.AdminSessionVerifier`へ振り分ける。差し替えはidentity-authが定めた1行で済む。
+  - 利用者のユースケースが使う`RequestMeta`・`IssuedSession`・`TotpSetupView`は`application/identity`にある。`admin`が読み込むと「`auth`は`identity`に依存しない」の考え方に反し、管理者と利用者の層が結合する。
+  - 管理者側のCSP・Turnstileのサイトキー・ウィジェットのホスト名は既に管理者側を含む。
+  - `MediaFiles.claim`は保有者の一致を確かめ、保有者はアップロードした主体である。
+  - `CLIENT_SITE_ORIGIN`に相当する管理者側のオリジンの変数はどのspecにも無い。
+- **Implications**: 管理者用の`AdminRequestMeta`・`IssuedAdminSession`・`AdminTotpSetupView`を`application/admin`に定義し、`admin`から`identity`への読み込みを静的解析で禁止する。管理者側のオリジンは`ADMIN_SITE_ORIGIN`として本specが所有する。
+
+### 監査ログの記録と層の規則
+
+- **Context**: 監査ログを管理操作と同じ一括の書き込みで確定させたい(要件18.2)が、application層はdrizzleの型(`BatchItem`)を扱わない。
+- **Sources Consulted**: identity-authの`UserLifecycleSyncHandler`(infrastructure層に置かれた文の契約)、backend-platformの層の規則、`db/002`のD1の制約。
+- **Findings**: identity-authは同期の波及処理の文の契約をinfrastructure層に置き、application層のポートは状態の遷移だけを受け取る。
+- **Implications**: application層の`AuditLogRecorder.prepare`で検証と正規化を済ませた値(`PreparedAuditEntry`)を作り、infrastructure層の`buildAuditLogStatements`で文にする。後続specも、ユースケースで`prepare`し、自分のストアの一括の書き込みに文を含める。
+
+### 最後の最上位管理者の保護
+
+- **Context**: FR-ADMAC-014の「1件しか無い場合」を、同時の操作でも破らないようにしたい。
+- **Sources Consulted**: identity-authの`D1UserLifecycleCommitter`(先頭の挿入の`CASE`式で全体を取り消す方式)、D1の書き込みの直列化。
+- **Findings**: D1は1つのデータベースへの書き込みを1つずつ処理する。一括の書き込みは1つのトランザクションで、途中の制約違反で全体が取り消される。
+- **Implications**: 先頭の監査ログの挿入の`operator_admin_id`を、対象の存在・権限・有効な最上位管理者の残数の条件を満たすときだけ値にする`CASE`式にする。満たさなければNOT NULL制約の違反で取り消され、監査ログも残らない。
+
+### 招待の発行コマンドとWrangler
+
+- **Context**: 最初の最上位管理者を公開された入口なしに作る(Q1)。
+- **Sources Consulted**: `.claude/settings.json`のdeny(`wrangler d1 * --remote`)、backend-platformのWrangler設定(`env.staging`・`env.prod`、D1のバインディング`DB`)、`docs/onboardings/README.md`(ローカルのポート、`--persist-to /workspace/.wrangler/state`)。
+- **Findings**: `wrangler d1 execute`は束縛変数を受け付けないため、SQLのリテラルを安全に組み立てる必要がある。メールアドレスの形式(`html5Email`)はローカル部に`'`を許す。リモートへの実行はAIエージェントに拒否される。
+- **Implications**: `sqlStringLiteral`で`'`を二重化し、制御文字を拒否する(単体テストで確かめる)。照会→判定→`--file`での書き込みの順にし、一時ファイルは実行後に消す。staging・prodの実行は開発者の手作業とし、`operations/003`と`docs/onboardings/README.md`に手順を書く。
+
+### 一覧部品のパッケージ(Q8の調査)
+
+- **Context**: Q8の選択肢を示すため、npmのレジストリで候補の版と公開日を確かめた(2026-10-23)。
+- **Findings**: `@tanstack/react-table`の最新は9.3.1(2026-10-12公開、2週間未満)、その前は9.2.8(2026-10-08)。依存は`@tanstack/table-core`・`@tanstack/react-store`だけの純粋なJavaScript。`react-day-picker`は10.0.2(2026-09-30、`date-fns`・`@date-fns/tz`に依存)。
+- **Implications**: 回答により採用しない。一覧はサーバー側の検索とページ送りのため、表の状態管理の部品は要らない。
+
+## Architecture Pattern Evaluation
+
+| Option                            | Description                                                        | Strengths                                      | Risks / Limitations                                        | Notes        |
+| --------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------- | ---------------------------------------------------------- | ------------ |
+| `admin`モジュール(`auth`を再利用) | apiに管理者の4層のモジュールを置き、認証の規則は`auth`の部品を使う | 方式の食い違いが無い。利用者と管理者が独立する | 本人確認・送信回数の制限などのユースケースは管理者用に持つ | 採用         |
+| `identity`のユースケースを汎用化  | 利用者のユースケースを主体の種類で分岐させて共用する               | コードの重複が減る                             | 承認済みのidentity-authの設計を大きく変える。分岐が増える  | 不採用       |
+| 監査ログをイベントで非同期に記録  | 管理操作の後にQueueへ送り、eventで書く                             | 操作の応答が速い                               | 操作と記録の確定がずれ、記録の欠落を防げない               | 不採用(18.2) |
+
+## Design Decisions
+
+### Decision: 管理者の認証の部品の配置(Generalization・Build vs Adopt)
+
+- **Context**: 管理者の認証を、利用者と同じ方式で作る(brief・identity-auth 19)。
+- **Alternatives Considered**:
+  1. identity-authの`auth`の部品を使い、管理者のユースケースを`application/admin`に持つ
+  2. identity-authの利用者のユースケースを汎用化して共用する
+- **Selected Approach**: 1。パスワード・秘密・セッションの有効期限・試行の制限・TOTP・リカバリコードは`auth`をそのまま使い、ログイン・本人確認・送信回数の制限・各手続きは管理者用に持つ。
+- **Rationale**: identity-authの設計が「`auth`は主体に依存しない、`identity`は利用者」の分け方で承認済みで、admin-foundationが`identity`無しで再利用できるよう作られている。
+- **Trade-offs**: 手続きの流れの一部が利用者と似た形になるが、管理者の要件(TOTP必須・招待・メール確認なしのパスワード変更)が異なるため、汎用化の分岐の方が複雑になる。
+- **Follow-up**: 両者の規則(期限・文言・試行の制限)の一致を、同じ定数と同じエラーコードで保つ。
+
+### Decision: 監査ログの操作種別の登録(Generalization)
+
+- **Context**: 10以上の後続specが、それぞれの管理操作を同じ形で記録する(FR-ADMAG-001)。理由の要否(Q6)と、利用者の対象の仮名化ID(FR-ADMAG-002)を全specで守らせたい。
+- **Selected Approach**: `common-lib/admin/audit-actions/`に、名前・表示名・対象の種類・理由の要否・詳細の鍵・対象の上限を持つ操作種別を、specごとのファイルで登録する。記録の検証は登録に従い、未登録・規則の違反は記録も操作も拒否する。common-libに置くため、管理画面も同じ表示名を使える。
+- **Trade-offs**: 操作種別を加えるたびに共有ディレクトリのファイルが増えるが、specごとのファイルに分けて衝突を避ける。
+
+### Decision: ダッシュボードとメニューの登録口(Generalization・Simplification)
+
+- **Context**: 16メニューのうち12は後続specが作る。ダッシュボードには3つのspecがカードを置く(Q2)。
+- **Selected Approach**: identity-authの`SETTINGS_NAV_ITEMS`と同じ形の、`ADMIN_NAV_ITEMS`(URL・表示名・`order`)と`DASHBOARD_CARDS`(識別子・`order`・幅・部品)の登録箇所を置く。カードは自分でデータを取得し、枠と状態の表示は`DashboardCardFrame`を使う。全ロールが全メニューを参照できる(Q3)ため、項目にロールの条件を持たせない。
+- **Trade-offs**: ダッシュボードのデータを1回の問い合わせにまとめないため、カードの数だけ問い合わせが増える(3つまでで、管理画面の利用者は少数のため許容する)。
+
+### Decision: 共通部品の置き場所
+
+- **Context**: 一覧・確認・理由・カテゴリマスタの部品を後続specが使い、カタログ(Storybook)に載せる(要件21)。
+- **Selected Approach**: GraphQLとアプリの型に依存しない部品は`apps/frontend-lib/components/admin/`に置き、Storybookに載せる。ログイン中の管理者のロールを読む`RoleGate`と`AdminViewerContext`は管理者側のアプリに置く。
+- **Trade-offs**: 管理者側だけが使う部品が共有ディレクトリに入るが、Storybookのカタログがfrontend-libにあるため、そちらを優先した。
+
+### Decision: 招待の2段階と状態
+
+- **Context**: 招待の完了でパスワードとTOTPを設定するまでログインを制限する(FR-ADMAC-015)。TOTPの設定には秘密鍵の表示と認証コードの確認の2往復が要る。
+- **Selected Approach**: 招待中の管理者の行を招待の時点で作り(一覧に表示できる、仮5)、1段目でトークンを消費せずにニックネームとパスワードのハッシュとTOTPの保留を保存し、2段目でトークンを1文で消費してから有効化・TOTP・リカバリコード・セッションを1つの一括の書き込みで確定する。
+- **Trade-offs**: 消費の後に一括の書き込みが失敗するとトークンが失われるが、招待の再送で回復できる。
+
+### Decision: 新しいパッケージを導入しない(Build vs Adopt、Q8)
+
+- **Selected Approach**: 表はshadcn/uiの`table`(依存なし)、選択は`select`(既存の`radix-ui`)、期間は`<input type="date">`。TOTP・QRコード・画像のアップロードは上流のパッケージと部品を使う。
+
+## Risks & Mitigations
+
+- 最後の最上位管理者の締め出し — ロールの変更と削除の条件付きの一括の書き込み、自分自身の削除の拒否(仮1)、招待の発行コマンドによる新しい最上位管理者の用意(仮3)。
+- 招待の発行コマンドのSQLの組み立て — リテラルのエスケープを単体テストで確かめ、メールアドレスの形式を先に検証する。一時ファイルは実行後に削除する。
+- 監査ログの欠落 — 管理操作と同じ一括の書き込みで確定させる規約を`backend/008`に書き、後続specのレビューで確かめる。
+- 後続specがロールの宣言を忘れる — ページ配置のロールの一覧を基準にし、`requireAdmin`を通らない管理者側の操作を各specのテストで確かめる(`backend/008`・`security/007`に規約を書く)。
+- 上流の未実装 — 本specのタスクは上流の実装の完了を前提にし、無い場合は該当タスクを保留して報告する。
+
+## References
+
+- `.kiro/specs/identity-auth/design.md`・`research.md` — 認証部品・利用者の決定(Q1〜Q8・仮1〜仮6)
+- `.kiro/specs/api-gateway/design.md` — セッションの受け渡し・GraphQLの文脈
+- `.kiro/specs/frontend-platform/design.md` — 管理者側のレイアウトの区画・CSP・bot判定のウィジェット
+- `.kiro/specs/media-pipeline/design.md` — 用途・保有者・画像の部品
+- `.kiro/specs/infra-delivery/design.md` — Turnstileのウィジェット・ホスト名から導かれる変数
+- `docs/GUIDES/service/design/002-page-layouts.md` — 管理者側の16メニュー
+- `docs/requirements/README.md` — 4.20・4.22・6.2・7.1
+- 参照したスキルの規則: cc-sddの`kiro-spec-requirements`(EARS・レビューの関門)、`kiro-spec-design`(設計の原則・完全な調査・統合・レビューの関門)、`kiro-spec-tasks`
+
+## cross-spec reviewの指摘による承認後の改訂(仮7、2026-10-24)
+
+- **状態**: 要件・設計・タスクの承認の後の改訂で、cross-spec reviewの指摘による。2026-10-24に開発者が確定した(推奨どおり)。管理者・利用者に見える振る舞いは変わらない(後続specへの照会口の追加)が、確定の記録として`requirements.md`の決定事項の表にも仮7の行を加えた。要件19.5(後続specが対象と操作種別から最新の監査ログの日時を照会できる照会口)の範囲に収まり、要件の変更は無い。
+- **Context**: content-reportingが一覧の対応期間を求めるために`AuditLogReader.latestForMany`とその保存の照会を本specの実装に加え、他specのテストの照会の偽物も直すタスクを持っていた。他specの実装とテストを後続specが編集する分担になっていた。
+- **Decision**: 本specが`AuditLogReader.latestForMany(input: { readonly action: string; readonly targetKind: AuditTargetKind; readonly targetIds: readonly string[] }): Promise<ReadonlyMap<string, Date>>`を所有・実装する。保存の照会は対象のIDの重複を除いて90件ずつ(操作種別と対象の種類を含めてバインド変数100個以内)に分け、対象ごとの`MAX(occurred_at)`を1回ずつ問い合わせ、記録の無い対象を含めない。あわせて、後続specの単体テストが共有する照会の偽物`createFakeAuditLogReader(overrides?)`(`application/admin/testing/fake-audit-log-reader.ts`)を作る。
+- **Reason**: 照会口と保存の実装とテストを所有するspecに置くと、契約の変更が1つのspecで閉じる。後続specが自分で偽物を書くと、`AuditLogReader`にメソッドを足すたびに全ての後続specの偽物が型検査で壊れるが、共有の偽物なら本specが既定の振る舞いを足すだけで済む。
+- **変えた箇所**: 設計のRevalidation Triggers・ファイル構成・追跡表・`AuditLogRecorder・AuditLogReader`の契約と説明・`backend/008`の内容・Testing Strategy・Performance & Scalability、本書の後続specへの影響、タスク3.1・3.2・12.2。番号の変更は無い。
+- **変更部分のタスクの検証**: kiro-spec-tasksのタスクのグラフのサニティレビューを、変更部分に絞って新しいサブエージェントによる独立した確認(independent)で行った。1回目の判定はPASSだった。軽微の指摘のうち、3.2の確かめる項目に空の入力を加え、本書の仮決定の表の前文に仮7の記録先を加えた。`spec.json`の`updated_at`を更新し、タスクの承認を保った。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の判断)
+
+- frontend-platformが実装で確定した契約(同specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表と「決定事項」)に、開発者の判断(下流specの設計を今回改訂する)で本specの設計を合わせた。
+- GraphQLの操作: 操作を各アプリの`src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始め、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む。`graphql()`を呼んで`.ts`のファイルに操作を書くと、操作の本文がブラウザのバンドルに残るため(frontend-platformの要件6.3)。
+- フォーム: `useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`を受ける`AppForm`の形にした。画面側のスキーマの`zod`の値は`utilities/validation/zod.ts`から読む(CSPの下で`new Function`の試行を止める`jitless`の設定を済ませた`z`)。
+- 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言を`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない(frontend-platformの要件8.6・8.13)。
+- bot判定: `TurnstileWidget`は非表示のウィジェットで場所を取らないため、画面に判定の枠の表示と場所を設けないことを明記した。
+- 管理者側の画面シェル: `AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ちフッターを持たないため、管理者側のナビゲーションのランドマークは`AdminNavigation`が描く名前付きの`nav`で満たす(frontend-platformの要件10.8)。768px未満の開閉ボタンはヘッダーと本文の間に出る。
+- `CategoryMasterEditor`: 共通部品はアプリのプロファイルを読まないため、拒否・失敗の文言を選ぶ関数`failureMessageOf`をpropsに加えた。管理者側の画面は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を渡す(help-center・inquiry-chat・product-launch・content-reportingのカテゴリの区画が使う)。
+- `ConfirmActionDialog`: 同じ理由で、必須の`failureMessageOf: (error: unknown) => string`をpropsに加えた。`onConfirm`が例外を投げたら、ダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言をダイアログの中に`role="alert"`で示す。管理者側の画面は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を渡す(後続specの確認のダイアログも同じ)。
+- プロフィール画像の入力: `/account`の`ProfileSection`と`/accounts`の`AdminProfileDialog`に置くmedia-pipelineの`ImageUploadField`に、`contactAvailable`として`ADMIN_PROFILE.contactAvailable`を渡す(media-pipelineがアップロードの失敗の文言を選ぶために必須で受ける)。
+- 変えた箇所: design.mdのAllowed Dependencies、上流specの変更の表のfrontend-platformの行、Technology Stackの画面の行、File Structure Planの`graphql/operations/admin/`、`AdminCommonParts`(`ConfirmActionDialog`・`CategoryMasterEditor`の`failureMessageOf`と失敗の文言)、`DashboardGrid`、`AdminNavigation`、管理者アカウントの削除・ロールの変更・招待の確認、Data Contracts & Integrationのアップロード、`frontend/009`の内容、Testing Strategyのブラウザテスト。tasks.mdの10.1・10.2・10.3・11.1・11.2・11.7。要件は変えていない。
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: frontend-platformの影響の表の水平展開として確かめた。ログインの第2要素の`challenge`、パスワードの再設定と招待の`token`、プロフィールの編集の対象の`id`はスキーマの入力に含めず`onSubmit`で足す。ログインの第2要素と本人確認の欄は、認証コードとリカバリコードのうち描いている一方だけをスキーマに含める(条件ごとに分けた定数のスキーマから選んで`useAppForm`へ渡すだけにする、判断33)。本人確認の失敗(`reauthentication_failed`)の詳細は、リゾルバが引数の形のとおりの経路(`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`など)で返し、画面は現在のパスワードと描いている第2要素の欄に示す(判断36)。第2要素を送らなかった時の`reAuthentication.secondFactor`への詳細は欄をまとめた値の経路のため、フォーム全体の失敗として示す。入力を持つ共通部品は`AppForm`の中で`FormField`を使うことを明記した。
+- **変えた箇所**: design.mdの`AdminReAuthenticator`の詳細と経路、共通部品の入力の作り方、AdminAuthPages・InvitationPages・AdminsPage・AuditLogsPage・AccountPageの節のフォームの値の規約、Error Handlingの表の`reauthentication_failed`、tasks.mdの8.3(詳細の経路のWorkers統合テスト)・11.3・11.4・11.7。
+
+## 層の規則に合わせた契約の置き場所の改訂(2026-11-02、開発者の指示)
+
+- **規則**: [依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析)のとおり、api・eventの`src/application/**`・`src/domain/**`は`**/lib/workers/**`を型だけのimportでも読み込めない。複数のアプリや別の機能のapplication層が受け取る契約とDIの識別子は`backend-lib/core/<ドメイン>`に置き、`workers`には実装と束縛のモジュールだけを置く。厳密なレート制限のカウンタのように`workers`にしか無い部品を使うクラスはinfrastructure層に置き、application層はそのポートだけを受け取る。
+- **移したもの**: `AdminProfileView`・`AdminDirectory`を`core/admin/ports.ts`へ、`ADMIN_PLATFORM_TYPES`を`core/admin/identifiers.ts`(`Symbol.for('admin.<名前>')`の凍結したオブジェクト、単体テスト`identifiers.unit.test.ts`)へ移した。`workers/admin`には`D1AdminDirectory`(`d1-admin-directory.ts`)と`ADMIN_PLATFORM_MODULE`だけを置く。
+- **新しいポートと実装**: 送信回数の制限は、ポート`AdminMailSendLimits`(`AdminLimitedMailKind`とともに`application/admin/ports.ts`)と、`RateLimitCounterClient`を使う実装`CounterAdminMailSendLimits`(`infrastructure/admin/counter-admin-mail-send-limits.ts`、Workers統合テスト)に分けた(identity-authの`CounterMailSendLimits`と同じ形)。application層の`admin-mail-send-limits.ts`は置かない。bot判定はリゾルバの`assertHuman`で行うため、ログインのコンポーネントの依存から`BotVerifier`を外した。
+- **変えた箇所**: design.mdのThis Spec Owns・Allowed Dependencies・Revalidation Triggers・Dependency Direction・File Structure Plan(`core/admin/`・`workers/admin/`・`application/admin/ports.ts`・`infrastructure/admin/`)・コンポーネントの表(AdminDirectoryの層、AdminLoginの依存、AdminMailSendLimitsの行)・AdminPorts・AdminAuthorizer・AdminDirectoryの契約と置き場所・AdminLogin・AdminReAuthenticator・AdminMailSendLimits・CounterAdminMailSendLimitsの節・ApiAdminComposition・Testing Strategy(識別子の単体テストと`CounterAdminMailSendLimits`のWorkers統合テスト)、tasks.mdの5.1・6.2・6.4。要件と受け入れ基準は変えていない。
+- **下流への影響**: `AdminDirectory`を受け取るlegal-pages・help-center・inquiry-chat・ugc-moderation・ultras-subscriptionは、契約と識別子を`core/admin`から読み込む。
+
+---
+
+## 実装前のギャップ分析(2026-11-03)
+
+- **状態**: 要件・設計・タスクの承認の後、実装に着手する前に`/cc-sdd:kiro-validate-gap`で行った。設計の時点では上流specの実装が未着手だったため、実装された上流の契約と本specの設計・タスクの前提を照合した。要件・設計・タスクはまだ改訂していない。
+- **前提の確認**:
+  - 上流の実装の状況: backend-platform(57/57)・api-gateway(52/52)・email-delivery(34/34)・frontend-platform(97/97)・content-processing(55/55)・media-pipeline(55/55)・identity-auth(67/67)・dev-tooling(47/47)のタスクは完了している。infra-deliveryは42/44で、残りは本specに関わらない。下流のugc-moderation・launch-readinessは未着手である。
+  - 本specの実装は未着手である(`apps/db/schema/admin`・`apps/common-lib/admin`・`apps/backend-lib/core/admin`・`apps/api/src/*/admin`は無く、`apps/admin`はfrontend-platformの骨格と仮のページだけ)。
+  - steering: `.kiro/steering`はroadmap.mdだけで、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替した。
+
+### 要件と既存資産の対応
+
+分類は、Missing(本specが新設する予定どおりで、既存資産は無い)、Constraint(既存の規則・設定による制約)、Drift(設計・タスクの前提と実装の食い違い。次節で扱う)、Unknown(設計に記述が無い)である。
+
+| 要件         | 実在を確かめた既存資産                                                                                                                                                                                                                                                               | 分類                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| 1            | `apps/db/schema/_shared`の`ulidPrimaryKey`・`timestamps`・`textNoCase`。部分一意索引の`WHERE`句とCHECK制約はdrizzle-kitが生成する(`20261102060846_identity_auth/migration.sql`で確認)                                                                                                | Missing                                                                      |
+| 2            | `apps/api/scripts/`(`graphql/`・`check-migrations.ts`が既存)。`.claude/settings.json`のdenyが`wrangler d1 * --remote`を拒否する                                                                                                                                                      | Missing・Constraint(stagingとprodの実行は開発者の手作業、設計どおり)         |
+| 3・4・12・14 | `application/auth`の`SecretIssuer`(`issue(purpose)`・`hashOf`)・`RecoveryCodeIssuer`、`AUTH_TYPES`の`TotpAuthenticator`(`verify`が`step`を返し再使用を判定できる)・`SecretBox`・`SecretGenerator`。`hashPurpose`は文字列の型で、`admin-`の接頭辞の用途をそのまま作れる               | Missing                                                                      |
+| 5            | `CheckingPasswordPolicy`(規則→漏洩照合→`unavailable`なら`pwned-password-check-unavailable`を報告して受け付ける)、`checkPasswordRules`と`PasswordIdentifiers`(`handle`・`nickname`・`email`)                                                                                          | Drift(G-1・G-4)                                                              |
+| 6・7・13     | `LoginThrottle`(`LoginThrottleScope`は`'user' \| 'admin'`)・`createLoginThrottleKeys`・`PasswordHasher.verifyAgainstDummy`・`normalizeTotpCode`・`SecondFactorInput`・`GraphQLContext.assertHuman`                                                                                   | Constraint(IPアドレス単位の記録は利用者と共有するため、E2Eに影響する。G-10)  |
+| 8・17        | `domain/auth/session-policy.ts`の`SessionPolicy`・`newSessionTimes`・`evaluateSession`・`cookieMaxAgeSeconds`、`composition/session.ts`の`AUTH_TYPES.AdminSessionVerifier`→`InvalidSubjectSessionVerifier`の束縛、`SessionAccess`(`requireAuthenticated`・`issue`・`clear`)          | Missing(差し替えは設計どおり1行)                                             |
+| 9〜11        | 利用者の同じ流れ(`application/identity`の`password-reset.ts`・`email-change.ts`・`password-change.ts`・`re-authenticator.ts`・`second-factor-check.ts`)は実装の手本になるが、`admin`は`identity`を読み込めない(apiの`eslint.config.ts`の層の規則に`auth`→`identity`の禁止が既にある) | Drift(G-4)                                                                   |
+| 14           | `defineEmailKind`・`EMAIL_KINDS`(`core/email/kinds/`)・`defineEmailTemplate`・送信期限`deadline`、利用者のテンプレートの部品(`templates/identity`の`link-expiry-text.tsx`・`unrecognized-change-notice.tsx`・`changed-at-text.tsx`)                                                  | Drift(G-2・G-11)                                                             |
+| 15           | `MediaFiles.eraseNow`・`claim`(保有者の一致を確かめる)、条件付きの`CASE`式で一括の書き込み全体を取り消す前例`D1UserLifecycleCommitter`                                                                                                                                               | Missing                                                                      |
+| 16           | `UploadPurpose`(`name`・`storage`・`uploaderKinds`・`allowedTypes`・`maxBytes`)、`UploaderKind`の`'admin'`、`UPLOAD_PURPOSES`は空、`IMAGE_MEDIA_TYPES`はSVGを含む、管理者側の中継に`UPLOAD_RELAY_ROUTE`が既にある、`ImageUploadField`・`MediaPicture`・`MediaPlaceholder`            | Missing                                                                      |
+| 17           | スキーマモジュールは呼び出し元で分かれず、操作の許可リスト(`allowlist.json`の`client`・`admin`)とリゾルバの判定で分ける。利用者側には`clientOnly`の前例がある                                                                                                                        | Missing(`requireAdmin`は呼び出し元が`admin`であることも確かめる、設計どおり) |
+| 18・19       | 監査ログの資産は無い。`countGraphemes`。ugc-moderationのメールアドレス検索が使う`AdminUserDirectory`は`backend-lib/core/identity`にある                                                                                                                                              | Missing                                                                      |
+| 20           | `ADMIN_LAYOUT_SLOTS`(`navigation`・`headerAccount`はnull)、`AdminLayout`はルートの`shellComponent`で全ページ(エラー・404を含む)を包む。利用者側の前例(`loadRootAuthContext`・`requireViewer`・`useViewer`で未ログインを出し分ける`AccountMenu`)                                      | Unknown(G-3)                                                                 |
+| 21           | `components/ui`に`table`・`select`は無い。`radix-ui`は1.8.1                                                                                                                                                                                                                          | Missing・Drift(G-5)                                                          |
+| 22           | `e2e/support`の`totp.ts`(`createTotpCodeSource`)・`mailpit.ts`・`client-ip.ts`(`assumeDistinctClientIp`)・`scheduled-trigger.ts`。文書の番号`security/007`・`backend/008`・`frontend/009`・`operations/003`は空いている                                                              | Drift(G-7・G-10)                                                             |
+
+設計の時点の調査項目のうち、次は実装で解消した。管理者側のCSPのTurnstileの許可先(`BASE_SECURITY_POLICY_SOURCES`の`scriptSrc`・`frameSrc`)、管理者側の3環境の`TURNSTILE_SITE_KEY`、管理者のアップロードの中継、部分一意索引とCHECK制約の生成、`CASE`式による取り消しの前例、infra-deliveryの`ADMIN_SITE_ORIGIN`の行(ローカルは`http://localhost:48045`)である。
+
+### 設計・タスクと実装の食い違い
+
+| #    | 項目                             | 設計・タスクの記述                                                                                               | 実装                                                                                                                                                                                                                                                                                                                  | 分類                          |
+| ---- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| G-1  | パスワードとメールアドレスの一致 | 要件5.2は「ニックネームまたはメールアドレスのローカル部と一致」を拒否する                                        | コミット`6317912c`で`checkPasswordRules`がメールアドレス全体とも比べるようになり、文言も「メールアドレス(@より前の部分を含む)と同じ」に変わった。管理者も同じ`PasswordPolicy`を使うため、全体の一致も拒否される。identity-authの要件5.2・設計・文言の規則・`security/006`は改訂済みで、本specへの水平展開が漏れている | 要件の改訂(水平展開)          |
+| G-2  | メール種別とテンプレートの順     | タスク7.1(並行可)でメール種別を`EMAIL_KINDS`へ登録し、7.2でテンプレートを作る                                    | `templates/index.worker.test.tsx`が全種別のテンプレートを求め、eventの`email-module.ts`は起動時に`createEmailTemplateRegistry(EMAIL_TEMPLATES, EMAIL_KINDS)`を組む。7.1だけを終えた時点でeventのテストが失敗する。identity-authは同じ理由でタスク3.3と9.1を統合した                                                   | 規則と衝突                    |
+| G-3  | 未ログインのときのシェルの区画   | `AdminNavigation`・`AdminAccountMenu`の振る舞いはログイン中だけを記述する                                        | `AdminLayout`は`shellComponent`にあり、区画の部品は`/auth/*`・404・エラーのページにも描かれる。区画の型は`ComponentType \| null`の静的な値で、ページごとにnullにできない。未ログインで部品が何を描くか(何も描かない・メニューのランドマークの有無)と、ルートの`beforeLoad`で取得に失敗したときの扱いが設計に無い      | 設計の追記                    |
+| G-4  | 利用者の層にある文言・定数       | 「両者の規則(期限・文言・試行の制限)の一致を、同じ定数と同じエラーコードで保つ」とするが、置き場所を定めていない | パスワードの拒否の文言(`PASSWORD_MATCHES_IDENTITY_MESSAGE`・`PWNED_PASSWORD_MESSAGE`・`PASSWORD_LENGTH_MESSAGE`)と`passwordRejectedError`は`application/identity`、送信回数の上限(`MAIL_SEND_LIMIT_PER_ADDRESS`など)は`infrastructure/identity`にあり、`admin`から読み込めない。複製するとG-1のような変更で食い違う   | 上流への波及                  |
+| G-5  | 版                               | Technology Stackと上流への影響の表は`radix-ui` 1.6.7・vitest 4.1.11                                              | `radix-ui` 1.8.1・vitest 4.1.12                                                                                                                                                                                                                                                                                       | 軽微                          |
+| G-6  | 業務時刻の部品の名前             | Allowed Dependenciesに`BusinessTime`とある                                                                       | `core/time/business-time.ts`は`toBusinessDateTime`・`fromBusinessDateTime`・`BusinessDate`などの関数と型だけで、`BusinessTime`という名前は無い。時刻は`Clock`                                                                                                                                                         | 軽微                          |
+| G-7  | `beforeLoad`での取得の例外の文言 | `__root.tsx`の`beforeLoad`で`adminViewer`を取得する                                                              | `frontend/006-data-fetching.md`の例外は「ログイン中の利用者」の1件の取得として書かれている。形は同じだが、管理者側も当てはまる書き方(ログイン中の主体)に直す必要がある                                                                                                                                                | 軽微(文書)                    |
+| G-8  | 4:21の予算                       | ジョブ2つ(`order` 200・210)の削除の件数と所要時間に触れていない                                                  | `SCHEDULED_RUN_BUDGETS`が4:21の起動の合計を300秒とし、超過を警告する。identity-authは件数の上限を設けず、予算の共有を設計に明記した                                                                                                                                                                                   | 軽微                          |
+| G-9  | Wrangler設定の完全一致のテスト   | Modified Filesに`apps/api/wrangler.jsonc`・`worker-configuration.d.ts`はあるが、テストが無い                     | `apps/api/test/config/wrangler-config.unit.test.ts`が`api.vars`を`toStrictEqual`で照合するため、`ADMIN_SITE_ORIGIN`を足すとこのテストの期待も直す必要がある                                                                                                                                                           | 規則と衝突(タスク8.1に加える) |
+| G-10 | E2Eの補助                        | `admin-bootstrap.ts`が`currentTotpCode`を持つ                                                                    | `e2e/support/totp.ts`の`createTotpCodeSource`が既にあり、再利用できる。ログインの失敗のIPアドレス単位の記録は利用者と共有するため、失敗を含む管理者のE2Eは`client-ip.ts`の`assumeDistinctClientIp`で接続元を分けないと、利用者側のE2Eとロックが干渉する                                                               | 軽微(タスクの注記)            |
+| G-11 | メールの本文の部品               | 6つのテンプレートを`templates/admin/`に作る                                                                      | 有効期限・心当たりが無い場合の案内・変更日時の表示の部品が`templates/identity/`にある。管理者のテンプレートから読み込むか、共通の場所へ移すか、複製するかが定まっていない                                                                                                                                             | 軽微                          |
+
+### 実装の進め方の選択肢
+
+#### Option A: 設計を変えず、各タスクの中で食い違いを吸収する
+
+- G-1〜G-11を、実装者がタスクの実行中に判断して直す。
+- ✅ 文書の改訂の手間が無く、すぐ着手できる。
+- ❌ 要件5.2(G-1)とテストの規則(G-2・G-9)に反したまま進み、`/cc-sdd:kiro-review`のたびに同じ指摘が出る。G-4の置き場所はidentity-authのファイルを動かすかどうかの判断で、実装者が決めるには影響が大きい。
+
+#### Option B: 実装の前に設計とタスクをすべて改訂する
+
+- G-1〜G-11をすべてrequirements.md・design.md・tasks.mdへ反映してから実装する。
+- ✅ 設計が実装の正となり、レビューの基準がそろう。
+- ❌ 設計は1,400行を超え、軽微な項目まで直すと改訂の量が大きい。
+
+#### Option C: 要件・規則・上流に関わる項目だけを先に改訂し、他はタスクの注記にする(混成)
+
+- 先に改訂する項目:
+  1. G-1: 要件5.2をメールアドレス全体とローカル部の両方の一致の拒否に改め、設計の文言をidentity-authに合わせる。
+  2. G-2: タスク7.1と7.2を統合するか、7.1から`EMAIL_KINDS`への登録を外して7.2で種別とテンプレートを同時に登録する。
+  3. G-3: 未ログインのときの`AdminNavigation`・`AdminAccountMenu`の振る舞いと、取得の失敗の扱いを設計に加える。
+  4. G-4: パスワードの拒否の文言と送信回数の上限の置き場所を決める(下の選択肢を参照)。
+  5. G-9: タスク8.1とModified Filesに`wrangler-config.unit.test.ts`の期待の更新を加える。
+- タスクの注記にする項目: G-5・G-6(表の版と名前の修正)、G-7(`frontend/009`の作成時に`006`の文言も直す)、G-8(予算の共有の明記)、G-10(E2Eの補助の再利用と接続元の分離)、G-11(テンプレートの部品の扱い)。
+- ✅ 要件の不整合・規則の違反・上流への波及を実装の前に防ぎ、改訂の量を抑えられる。identity-authの実装前のギャップ分析(2026-11-02)と同じ進め方である。
+- ❌ 注記と設計の本文の両方を見る必要がある。
+
+### G-4の置き場所の選択肢
+
+| 案                                             | 内容                                                                                                                                                                    | 長所                                                            | 短所                                                                                               |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| a. 主体に依存しない部分を`auth`へ移す          | パスワードの拒否の文言・`passwordRejectedError`を`application/auth`へ、送信回数の上限の定数を`application/auth`(または`domain/auth`)へ移し、identity・adminの両方が読む | 1か所の変更で両方がそろう。`auth`の役割(主体に依存しない)に合う | identity-authのファイルを動かすため、上流への影響の表に行を足し、identity-authの再検証の対象にする |
+| b. `admin`に複製し、一致を単体テストで確かめる | 管理者用の定数と文言を`admin`に置き、identityの値との一致を確かめるテストを書く                                                                                         | identity-authのコードを変えない                                 | テストが`admin`から`identity`を読み込むため、層の規則の例外が要る                                  |
+| c. `admin`に複製するだけにする                 | 管理者用に同じ値を持つ                                                                                                                                                  | 変更が最小                                                      | G-1のような変更で食い違いが再発する                                                                |
+
+### 規模とリスク
+
+- **規模: XL(2週間以上)** — タスクは約45件で、DB・api・event・admin・frontend-lib・E2E・文書のすべての層にまたがる。上流の契約は実在するため、規模を押し上げているのは本spec自身の範囲である。
+- **リスク: Medium** — 認証と権限に直結するが、認証部品・セッションの差し込み口・送信回数の制限・一括の書き込みの取り消し・利用者側の画面の流れに、実装済みの前例がある。未知の技術は無く、食い違いは実装の前に直せば手戻りにならない。
+
+### 設計フェーズへの申し送り
+
+- **推奨**: Option C。G-4はa(主体に依存しない部分を`auth`へ移す)を推奨する。管理者と利用者の規則がそろうことを要件が求めており(Q7)、G-1が実際に片側だけ変わった例だからである。先に改訂する5項目は、開発者に1件ずつ選択肢を示して決めてから設計を改訂する。
+- **Research Needed**:
+  - G-3: TanStack Startの`shellComponent`の中の部品がルートの文脈(`beforeLoad`で入れた`adminViewer`)を読めるか、エラーのページでも読めるか。利用者側の`useViewer`の実装が手本になる。
+  - G-11: eventのテンプレートの間の読み込みに層やディレクトリの規則があるか(`templates/admin`から`templates/identity`を読み込めるか)。
+  - 監査ログの期間の絞り込み(`audit-period.ts`)で、`<input type="date">`の日付を業務時刻とUTCのどちらで解釈するかが設計の記述どおりか、`core/time/business-time.ts`の関数で組めるかを、タスク11.6の着手前に確かめる。
+
+## ギャップ分析の後の改訂(2026-11-03、開発者の判断)
+
+- **状態**: 上のギャップ分析のOption Cに従い、先に改訂する5項目(G-1・G-2・G-3・G-4・G-9)を開発者に1件ずつ選択肢を示して確かめ、すべて推奨どおりに決まった。あわせて版の表記を改めた。要件・設計・タスクの承認は保ち、`spec.json`の`updated_at`を更新した。
+- **G-1(パスワードとメールアドレスの一致)**: identity-authに合わせる。要件5.2を「ニックネーム・メールアドレス・メールアドレスのローカル部のいずれかと一致する」パスワードの拒否に改め、`requirements.md`に改訂の節を加えた。管理者にはハンドルが無いため、識別子との一致の拒否の文言は「ニックネーム・メールアドレス(@より前の部分を含む)と同じパスワードは使えません。」とする。変えた箇所: 要件5.2、設計の追跡表の5.1〜5.5の行・Error Handlingの表の`password_rejected`、タスク6.3。
+- **G-4(利用者の層にある文言・定数)**: 主体に依存しない部分を`auth`へ移す(案a)。G-1と同じく片側だけが変わる食い違いを防ぐため。設計の「identity-authと同じ文言」の対象(`invalid_credentials`・`invalid_second_factor`・`login_challenge_expired`・`login_throttled`・`reauthentication_failed`・`invalid_link`・`password_rejected`・`totp_setup_expired`・`unauthenticated`・`forbidden`・`not_found`)にも同じ方針を水平展開し、`application/auth`の`auth-errors.ts`(`AUTH_ERRORS`・`authError`・`loginThrottledError`・本人確認とパスワードの拒否の文言)・`password-rejection.ts`(識別子との一致の文言だけを主体ごとに受け取る`createPasswordRejectedError`)・`mail-send-policy.ts`(`MAIL_SEND_POLICY`)へ移す。`IDENTITY_ERRORS`は`AUTH_ERRORS`を展開して利用者に固有のコードを足し、管理者は`application/admin/admin-errors.ts`の`ADMIN_ERRORS`で同じく展開する。変えた箇所: 設計のAllowed Dependencies・Revalidation Triggers・上流への影響(identity-authの行)・File Structure Plan(`application/auth/`・`admin-errors.ts`)・Modified Files・コンポーネントの表・AdminErrorsの節(新設)・`CounterAdminMailSendLimits`の説明・Error Handlingの表・Testing Strategy、タスク1.6(新設)・6.2。
+- **G-2(メール種別とテンプレートの順)**: タスク7.1と7.2を統合する。イベントサーバーのテンプレートのテストと起動時のテンプレートの登録が全種別のテンプレートを求めるため、種別だけを先に登録した状態を作らない。identity-authがタスク3.3と9.1を統合した前例と同じ。統合したタスクは7.1(並行可)とし、境界にAdminEmailTemplatesを加えた。8.1の依存は7.1のまま変わらない。
+- **G-9(Wrangler設定の完全一致のテスト)**: タスク8.1とModified Filesに加える。8.1で先に`apps/api/test/config/wrangler-config.unit.test.ts`の期待へ3環境の`ADMIN_SITE_ORIGIN`を加え、Wrangler設定へ加える前に失敗することを確かめる。
+- **G-3(未ログインのときのシェルの区画)**: 未ログインでは2つの区画とも何も描かない。管理者側には新規登録が無く、未ログインで開ける画面は認証の画面だけのため、ログインへの導線も要らない。Research Neededの「`shellComponent`の中の部品がルートの文脈を読めるか」は、利用者側の`useViewer`の実装(エラーと404のページではルートの文脈を読めないため、`beforeLoad`が入れた取得のキャッシュを`useQuery`で読み、取得の前と失敗を未ログインとする)で解消し、管理者側も同じ形の`useAdminViewer`・`useAdminViewerRefresh`・`graphql/admin-viewer.ts`にした。変えた箇所: 設計のFile Structure Plan(`components/auth/use-admin-viewer.ts`・`use-admin-viewer-refresh.ts`・`graphql/admin-viewer.ts`)・AuthenticatedLayoutの節・Testing Strategyのブラウザテスト、タスク11.2。
+- **版の表記(G-5)**: 開発者の判断で、npmで公開中の最新の版を記し、導入済みより新しい版があれば本specで上げる。2026-11-03に`bun pm view`で確かめた結果、`radix-ui` 1.8.1・Playwright 1.64.1・drizzle-orm/drizzle-kit 1.0.0-rc.5(RCの最新)は導入済みが公開中の最新だった。`otpauth`は9.6.0(2026-11-02公開、依存の`@noble/hashes`は2.4.0のまま)が出ており、タスク1.7(新設)で9.5.2から上げる。vitestは5.1.0が公開中の最新だが、`@cloudflare/vitest-pool-workers`の最新の0.23.0が`peerDependencies`で`vitest` `^4.1.0`だけを許し、`docs/GUIDES/tech/coding/002-dependency-versions.md`の「Vitest系」が対応する版が出るまで5系へ上げないと定めているため、4系の最新の4.1.12に留める。変えた箇所: 設計のAllowed Dependencies(npmパッケージ)・上流への影響(frontend-platformの`radix-ui`の行、identity-authの`otpauth`の行を新設)・Technology Stack・Modified Files、タスク1.7(新設)。

@@ -1,0 +1,5 @@
+mutation ClientUpvote($input: UpvoteInput!) {
+  upvote(input: $input) {
+    ...Match
+  }
+}

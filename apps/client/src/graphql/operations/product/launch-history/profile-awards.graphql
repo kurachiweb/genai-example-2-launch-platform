@@ -1,0 +1,7 @@
+query ClientProfileAwards($userHandle: String!) {
+  profileAwards(userHandle: $userHandle) {
+    kind
+    count
+    labels
+  }
+}
