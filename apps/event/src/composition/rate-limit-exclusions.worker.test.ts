@@ -73,8 +73,12 @@ describe('RATE_LIMIT_EXCLUSIONS', () => {
     { method: 'GET', path: '/webhooks/stripe', excluded: false },
     { method: 'POST', path: '/webhooks/stripe-other', excluded: false },
     { method: 'POST', path: '/webhooks', excluded: false },
+    { method: 'POST', path: '/unsubscribe', excluded: true },
+    { method: 'POST', path: '/unsubscribe?token=abc', excluded: true },
+    { method: 'GET', path: '/unsubscribe', excluded: false },
+    { method: 'POST', path: '/unsubscribe-other', excluded: false },
   ])(
-    '$method $pathはWebhookの除外に当たるか: $excluded',
+    '$method $pathは除外に当たるか: $excluded',
     ({ method, path, excluded }) => {
       const request = new Request(`${WEBHOOK_BASE_URL}${path}`, { method });
 

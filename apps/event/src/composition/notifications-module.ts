@@ -41,6 +41,7 @@ import { createNotificationsPlatformModule } from '../../lib/workers/notificatio
 import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-notifications-types.ts';
 import { ExpandEventHandler } from '../application/notifications/expand-event-handler.ts';
 import { FlushSlotHandler } from '../application/notifications/flush-slot-handler.ts';
+import { OneClickUnsubscribe } from '../application/notifications/one-click-unsubscribe.ts';
 import type {
   GroupDispatcher,
   SlotCollector,
@@ -50,6 +51,7 @@ import { EveningCollector } from '../infrastructure/notifications/evening-collec
 import { EmailGroupDispatcher } from '../infrastructure/notifications/group-dispatcher.ts';
 import { MorningCollector } from '../infrastructure/notifications/morning-collector.ts';
 import { RegisteredSupplementSource } from '../infrastructure/notifications/registered-supplement-source.ts';
+import { registerOneClickUnsubscribeRoute } from '../presentation/notifications/one-click-unsubscribe-route.ts';
 import type { EventEnv } from './env-schema.ts';
 import { RESULT_NOTICE_SUPPLEMENTS } from './result-notice-supplements.ts';
 
@@ -101,7 +103,7 @@ export interface EventNotificationsModuleOptions {
   readonly resultNoticeSupplements: readonly ResultNoticeSupplementRegistration[];
 }
 
-// 受信設定と通知のストア(EVENT_NOTIFICATIONS_PLATFORM_MODULE)、マッチ・プロダクト・フォロワー・利用者の照会(各機能のプラットフォームのモジュール)、メールの送信と抑止(EMAIL_PLATFORM_MODULE)が束縛されている前提で、夜と朝の枠の収集・結果の追記の取得・まとめの送信・送信枠の送り出しと受賞の展開の処理を束縛する。メールの送信者情報の取得口はemail-registrations.tsの登録をメールのモジュールが束縛する
+// 受信設定と通知のストア(EVENT_NOTIFICATIONS_PLATFORM_MODULE)、マッチ・プロダクト・フォロワー・利用者の照会(各機能のプラットフォームのモジュール)、メールの送信と抑止(EMAIL_PLATFORM_MODULE)が束縛されている前提で、夜と朝の枠の収集・結果の追記の取得・まとめの送信・送信枠の送り出しと受賞の展開の処理・ワンクリックの配信停止を束縛し、配信停止の経路を登録する。メールの送信者情報の取得口はemail-registrations.tsの登録をメールのモジュールが束縛する
 export function createEventNotificationsModule(
   options: EventNotificationsModuleOptions,
 ): EventAppModule {
@@ -135,7 +137,11 @@ export function createEventNotificationsModule(
       bind<MessageHandler<ExpandNotificationEventBody>>(
         EVENT_NOTIFICATIONS_TYPES.ExpandEventHandler,
       ).to(ExpandEventHandler);
+      bind<OneClickUnsubscribe>(
+        EVENT_NOTIFICATIONS_TYPES.OneClickUnsubscribe,
+      ).to(OneClickUnsubscribe);
     }),
+    routes: registerOneClickUnsubscribeRoute,
   };
 }
 

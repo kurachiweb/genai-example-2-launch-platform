@@ -30,6 +30,7 @@ import {
 import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-notifications-types.ts';
 import { ExpandEventHandler } from '../application/notifications/expand-event-handler.ts';
 import { FlushSlotHandler } from '../application/notifications/flush-slot-handler.ts';
+import { OneClickUnsubscribe } from '../application/notifications/one-click-unsubscribe.ts';
 import type { SupplementSource } from '../application/notifications/ports.ts';
 import { D1SenderInfoProvider } from '../infrastructure/notifications/d1-sender-info-provider.ts';
 import { EveningCollector } from '../infrastructure/notifications/evening-collector.ts';
@@ -62,6 +63,7 @@ const IMPLEMENTATIONS = [
   ['GroupDispatcher', EmailGroupDispatcher],
   ['FlushSlotHandler', FlushSlotHandler],
   ['ExpandEventHandler', ExpandEventHandler],
+  ['OneClickUnsubscribe', OneClickUnsubscribe],
 ] as const;
 
 const FAKE_PROVIDER = Symbol.for('test.FakeResultNoticeSupplementProvider');

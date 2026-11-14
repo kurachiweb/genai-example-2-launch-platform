@@ -10,6 +10,7 @@ const EXPECTED_NAMES: readonly string[] = [
   'GroupDispatcher',
   'FlushSlotHandler',
   'ExpandEventHandler',
+  'OneClickUnsubscribe',
 ];
 
 describe('EVENT_NOTIFICATIONS_TYPES', () => {
