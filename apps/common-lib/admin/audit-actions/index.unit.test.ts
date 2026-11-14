@@ -5,6 +5,7 @@ import { ADMIN_FOUNDATION_AUDIT_ACTIONS } from './admin-foundation.ts';
 import { HELP_CENTER_AUDIT_ACTIONS } from './help-center.ts';
 import { AUDIT_ACTIONS } from './index.ts';
 import { INQUIRY_AUDIT_ACTIONS } from './inquiry-chat.ts';
+import { NOTIFICATION_AUDIT_ACTIONS } from './notifications.ts';
 import { PRODUCT_LAUNCH_AUDIT_ACTIONS } from './product-launch.ts';
 import { ULTRAS_AUDIT_ACTIONS } from './ultras-subscription.ts';
 
@@ -13,7 +14,7 @@ describe('AUDIT_ACTIONS', () => {
     expect(() => createAuditActionCatalog(AUDIT_ACTIONS)).not.toThrow();
   });
 
-  test('admin-foundationの4種別・inquiry-chatの5種別・ultras-subscriptionの1種別・product-launchの3種別・help-centerの8種別だけが載る', () => {
+  test('admin-foundationの4種別・inquiry-chatの5種別・ultras-subscriptionの1種別・product-launchの3種別・help-centerの8種別・notificationsの1種別だけが載る', () => {
     expect(AUDIT_ACTIONS.map((action) => action.name)).toEqual([
       'admin-account.invite',
       'admin-account.delete',
@@ -36,6 +37,7 @@ describe('AUDIT_ACTIONS', () => {
       'help-category.rename',
       'help-category.delete',
       'help-category.reorder',
+      'notification-sender.update',
     ]);
   });
 
@@ -46,6 +48,7 @@ describe('AUDIT_ACTIONS', () => {
       ...ULTRAS_AUDIT_ACTIONS,
       ...PRODUCT_LAUNCH_AUDIT_ACTIONS,
       ...HELP_CENTER_AUDIT_ACTIONS,
+      ...NOTIFICATION_AUDIT_ACTIONS,
     ].map((action) => [action.name, action]),
   )('登録した種別%sを名前で引ける', (name, action) => {
     expect(createAuditActionCatalog(AUDIT_ACTIONS).find(name)).toBe(action);

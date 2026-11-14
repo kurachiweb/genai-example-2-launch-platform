@@ -273,6 +273,7 @@ describe('絞り込み', () => {
       'ヘルプ記事カテゴリの名前の変更',
       'ヘルプ記事カテゴリの削除',
       'ヘルプ記事カテゴリの並べ替え',
+      '通知メールの送信者情報の変更',
     ]);
     await expect
       .poll(async () => runAxe(page.getByRole('listbox').element()))
