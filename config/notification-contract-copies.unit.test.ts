@@ -10,6 +10,10 @@ const COMMON_NOTIFICATION_TOPICS =
   'apps/common-lib/notifications/notification-topics.ts';
 const DB_NOTIFICATION_PREFERENCES =
   'apps/db/schema/notifications/notification-preferences.ts';
+const BACKEND_NOTIFICATION_EVENT_CONTRACT =
+  'apps/backend-lib/core/notifications/notification-event-contract.ts';
+const DB_NOTIFICATION_EVENTS =
+  'apps/db/schema/notifications/notification-events.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
   ts.createSourceFile(
@@ -97,4 +101,19 @@ describe('通知種別の写し(apps/db/schema/notifications/notification-prefer
       readStringArray(DB_NOTIFICATION_PREFERENCES, 'NOTIFICATION_TOPICS'),
     ).toEqual(shared);
   });
+});
+
+describe('通知イベントの種類と賞の種類の写し(apps/db/schema/notifications/notification-events.ts)', () => {
+  test.each([
+    ['NOTIFICATION_EVENT_TYPES', 3],
+    ['AWARD_KINDS', 2],
+  ])(
+    'CHECK制約に使う%sがbackend-libの同名の定数と順も含めて一致する',
+    (name, length) => {
+      const shared = readStringArray(BACKEND_NOTIFICATION_EVENT_CONTRACT, name);
+
+      expect(shared).toHaveLength(length);
+      expect(readStringArray(DB_NOTIFICATION_EVENTS, name)).toEqual(shared);
+    },
+  );
 });
