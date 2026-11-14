@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react';
 
+import { SENDER_INFO_TITLE } from '../components/notifications/sender-info-messages.ts';
+import { SenderInfoSection } from '../components/notifications/sender-info-section.tsx';
 import { PROMOTION_SETTING_TITLE } from '../components/ultras/promotion-setting-messages.ts';
 import { PromotionSettingSection } from '../components/ultras/promotion-setting-section.tsx';
 
@@ -22,5 +24,11 @@ export const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[] =
       order: 20,
       title: PROMOTION_SETTING_TITLE,
       component: PromotionSettingSection,
+    },
+    {
+      id: 'notifications.sender-info',
+      order: 30,
+      title: SENDER_INFO_TITLE,
+      component: SenderInfoSection,
     },
   ]);

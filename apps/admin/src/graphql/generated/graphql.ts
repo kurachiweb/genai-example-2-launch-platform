@@ -141,6 +141,17 @@ export type UpdateHelpArticleInput = {
   reason?: string | null | undefined;
 };
 
+/** 送信者情報の保存の入力 */
+export type UpdateNotificationSenderInfoInput = {
+  businessName: string;
+  contactEmail: string;
+  /** 照会で読み取った版。最新と一致しなければversion_conflict */
+  expectedVersion: number;
+  postalAddress: string;
+  /** 監査ログに残す理由(任意) */
+  reason?: string | null | undefined;
+};
+
 /** 機能フラグの変更の入力 */
 export type UpdateUltrasPromotionSettingInput = {
   enabled: boolean;
@@ -509,6 +520,18 @@ export type AdminSaveLegalDocumentDraftMutationVariables = Exact<{
 
 export type AdminSaveLegalDocumentDraftMutation = { saveLegalDocumentDraft: { kind: LegalDocumentKind, stateVersion: number, latestBody: string | null, draft: { body: string, savedAt: string, savedBy: { id: string, nickname: string | null } } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string, publishedBy: { id: string, nickname: string | null } }> } };
 
+export type AdminNotificationSenderInfoQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminNotificationSenderInfoQuery = { notificationSenderInfo: { version: number, updatedAt: string | null, updatedByNickname: string | null, info: { businessName: string, contactEmail: string, postalAddress: string } | null } };
+
+export type AdminUpdateNotificationSenderInfoMutationVariables = Exact<{
+  input: UpdateNotificationSenderInfoInput;
+}>;
+
+
+export type AdminUpdateNotificationSenderInfoMutation = { updateNotificationSenderInfo: { version: number, updatedAt: string | null, updatedByNickname: string | null, info: { businessName: string, contactEmail: string, postalAddress: string } | null } };
+
 export type AdminProductCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -605,6 +628,8 @@ export const AdminLegalDocumentDocument = {"__meta__":{"hash":"sha256:42121f09a2
 export const AdminLegalDocumentsDocument = {"__meta__":{"hash":"sha256:2f5f703c05e4c378679abd43badd1cc30062941d402fc1ca4045ed4646c4b5c2"}} as unknown as DocumentNode<AdminLegalDocumentsQuery, AdminLegalDocumentsQueryVariables>;
 export const AdminPublishLegalDocumentDocument = {"__meta__":{"hash":"sha256:81c947606fe5b15c429d4107739c5f6696c874eebb73d163bce9f866986aa11c"}} as unknown as DocumentNode<AdminPublishLegalDocumentMutation, AdminPublishLegalDocumentMutationVariables>;
 export const AdminSaveLegalDocumentDraftDocument = {"__meta__":{"hash":"sha256:e0ae6b1245545720ebf463ace8663aaaf6b251a968c90992e6b0d4b0ff0b2085"}} as unknown as DocumentNode<AdminSaveLegalDocumentDraftMutation, AdminSaveLegalDocumentDraftMutationVariables>;
+export const AdminNotificationSenderInfoDocument = {"__meta__":{"hash":"sha256:d055b6e60c8152dac9299688ec506b92302c4be2ba07230a977ecd362787299f"}} as unknown as DocumentNode<AdminNotificationSenderInfoQuery, AdminNotificationSenderInfoQueryVariables>;
+export const AdminUpdateNotificationSenderInfoDocument = {"__meta__":{"hash":"sha256:897840cedcc642bf6bead9772339ff5763a1ce65bcbe9f78d1abf85e73e28fac"}} as unknown as DocumentNode<AdminUpdateNotificationSenderInfoMutation, AdminUpdateNotificationSenderInfoMutationVariables>;
 export const AdminProductCategoriesDocument = {"__meta__":{"hash":"sha256:da18b6862587d95df8093c5e6b74398899fa4d1420e5011466ca671aed9a19a5"}} as unknown as DocumentNode<AdminProductCategoriesQuery, AdminProductCategoriesQueryVariables>;
 export const AdminCreateProductCategoryDocument = {"__meta__":{"hash":"sha256:e0f1015c3d9281d12b8a93a04fd52222e396bcb9b5c7304e18297297605f5238"}} as unknown as DocumentNode<AdminCreateProductCategoryMutation, AdminCreateProductCategoryMutationVariables>;
 export const AdminDeleteProductCategoryDocument = {"__meta__":{"hash":"sha256:416fe8b1adab0808e5e87e5ef61f4de669a7058f9d0823a52190bfc290dc9904"}} as unknown as DocumentNode<AdminDeleteProductCategoryMutation, AdminDeleteProductCategoryMutationVariables>;

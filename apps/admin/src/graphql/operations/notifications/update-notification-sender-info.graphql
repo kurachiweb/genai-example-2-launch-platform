@@ -1,0 +1,14 @@
+mutation AdminUpdateNotificationSenderInfo(
+  $input: UpdateNotificationSenderInfoInput!
+) {
+  updateNotificationSenderInfo(input: $input) {
+    info {
+      businessName
+      contactEmail
+      postalAddress
+    }
+    version
+    updatedAt
+    updatedByNickname
+  }
+}
