@@ -16,6 +16,7 @@ import {
   matchLabel,
   matchPreviewSubject,
   matchResultSubject,
+  matchScore,
   type ResultOutcome,
   resultOutcomeOf,
   roundName,
@@ -259,6 +260,13 @@ describe('件名', () => {
     ['1件でプロダクト名が無い', [], 1],
   ] as const)('開催通知の件名は%sと例外を投げる', (_, names, count) => {
     expect(() => followedMatchesSubject(names, count)).toThrow(RangeError);
+  });
+});
+
+describe('matchScore', () => {
+  test('自分対相手の順で両者の票数を並べ、3桁ごとに区切る', () => {
+    expect(matchScore(12, 9)).toBe('12対9');
+    expect(matchScore(1234, 0)).toBe('1,234対0');
   });
 });
 

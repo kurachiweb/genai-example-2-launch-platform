@@ -117,8 +117,9 @@ export function matchPreviewSubject(own: string, opponent: string): string {
   return `まもなくキックオフ: ${own} vs ${opponent}`;
 }
 
-const scoreOf = (ownVotes: number, opponentVotes: number): string =>
-  `${formatCount(ownVotes)}対${formatCount(opponentVotes)}`;
+export function matchScore(ownVotes: number, opponentVotes: number): string {
+  return `${formatCount(ownVotes)}対${formatCount(opponentVotes)}`;
+}
 
 const resultSummaryOf = (
   input: MatchResultSubjectInput,
@@ -128,14 +129,14 @@ const resultSummaryOf = (
   switch (outcome) {
     case 'won':
       return nextRoundName === null
-        ? `${own}が${scoreOf(ownVotes, opponentVotes)}で${opponent}に勝利`
+        ? `${own}が${matchScore(ownVotes, opponentVotes)}で${opponent}に勝利`
         : `${own}が${opponent}に勝利、次は${nextRoundName}`;
     case 'bye':
       return nextRoundName === null
         ? `${own}は不戦勝`
         : `${own}は不戦勝、次は${nextRoundName}`;
     case 'lost':
-      return `${own}は${scoreOf(ownVotes, opponentVotes)}で${opponent}に敗れました`;
+      return `${own}は${matchScore(ownVotes, opponentVotes)}で${opponent}に敗れました`;
     case 'no_votes':
       return `${own}と${opponent}は両者敗北(0対0)`;
   }
