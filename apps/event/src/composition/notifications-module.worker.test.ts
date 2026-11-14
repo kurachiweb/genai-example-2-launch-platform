@@ -31,6 +31,7 @@ import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-no
 import type { SupplementSource } from '../application/notifications/ports.ts';
 import { D1SenderInfoProvider } from '../infrastructure/notifications/d1-sender-info-provider.ts';
 import { EveningCollector } from '../infrastructure/notifications/evening-collector.ts';
+import { EmailGroupDispatcher } from '../infrastructure/notifications/group-dispatcher.ts';
 import { MorningCollector } from '../infrastructure/notifications/morning-collector.ts';
 import { RegisteredSupplementSource } from '../infrastructure/notifications/registered-supplement-source.ts';
 import { EMAIL_SENDER_INFO_PROVIDER } from './email-registrations.ts';
@@ -56,6 +57,7 @@ const IMPLEMENTATIONS = [
   ['EveningCollector', EveningCollector],
   ['MorningCollector', MorningCollector],
   ['SupplementSource', RegisteredSupplementSource],
+  ['GroupDispatcher', EmailGroupDispatcher],
 ] as const;
 
 const FAKE_PROVIDER = Symbol.for('test.FakeResultNoticeSupplementProvider');

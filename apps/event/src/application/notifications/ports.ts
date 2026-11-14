@@ -32,3 +32,19 @@ export interface SupplementSource {
     }[],
   ): Promise<ReadonlyMap<string, readonly ResultNoticeSupplement[]>>;
 }
+
+export interface GroupDispatchStep {
+  readonly emails: number;
+  readonly skipped: number;
+  // 上限まで処理したため、未送信のまとめが残り得る
+  readonly more: boolean;
+}
+
+export interface GroupDispatcher {
+  // まとめのキーの昇順にlimit件のまとめを確かめ直して送り、通知を確定する。nowは処理の時点の時刻で、マッチの段階と送信の期限の判定に使う
+  dispatchNext(
+    slotKey: string,
+    now: Date,
+    limit: number,
+  ): Promise<GroupDispatchStep>;
+}

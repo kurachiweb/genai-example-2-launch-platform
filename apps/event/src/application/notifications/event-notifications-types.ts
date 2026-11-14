@@ -5,6 +5,9 @@ const EveningCollector: unique symbol = Symbol.for(
 const MorningCollector: unique symbol = Symbol.for(
   'notifications.event.MorningCollector',
 );
+const GroupDispatcher: unique symbol = Symbol.for(
+  'notifications.event.GroupDispatcher',
+);
 const SupplementSource: unique symbol = Symbol.for(
   'notifications.event.SupplementSource',
 );
@@ -13,4 +16,5 @@ export const EVENT_NOTIFICATIONS_TYPES = Object.freeze({
   EveningCollector,
   MorningCollector,
   SupplementSource,
+  GroupDispatcher,
 });
