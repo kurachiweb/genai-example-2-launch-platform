@@ -53,6 +53,28 @@ function preferenceRowOf(
   };
 }
 
+// 配信停止のトークンはULIDの利用者のIDを求めるため、userIdOfの代わりにこの識別子の利用者を使う
+export function recipientIdOf(index: number): string {
+  return `01JC0RCPT${String(index).padStart(17, '0')}`;
+}
+
+export async function insertRecipient(
+  index: number,
+  columns: Parameters<typeof insertUser>[1] = {},
+): Promise<void> {
+  await insertUser(index, { id: recipientIdOf(index), ...columns });
+}
+
+export async function readUnsubscribeTokenRows() {
+  return db
+    .select()
+    .from(notificationUnsubscribeTokens)
+    .orderBy(
+      asc(notificationUnsubscribeTokens.userId),
+      asc(notificationUnsubscribeTokens.topic),
+    );
+}
+
 export async function insertPreference(
   userIndex: number,
   topic: NotificationTopic,
