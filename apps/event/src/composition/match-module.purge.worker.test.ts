@@ -313,6 +313,7 @@ describe('Upvoteの物理削除とマッチ記録の紐付けの解除の処理�
       'user-profile-social.owned-file-erasure',
       'product-launch.product-erasure',
       UPVOTE_ERASURE_NAME,
+      'notifications.account-purge',
     ]);
   });
 

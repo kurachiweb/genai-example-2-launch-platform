@@ -260,6 +260,7 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
       OWNED_FILE_ERASURE_NAME,
       'product-launch.product-erasure',
       'match-engine.upvote-erasure',
+      'notifications.account-purge',
     ]);
     expect(
       registry.handlersFor('suspended').map(({ name }) => name),

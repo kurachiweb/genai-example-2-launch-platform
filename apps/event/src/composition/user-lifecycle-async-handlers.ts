@@ -3,6 +3,7 @@ import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
 import { EVENT_INQUIRY_TYPES } from '../application/inquiry/event-inquiry-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
+import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-notifications-types.ts';
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
@@ -83,6 +84,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['unsuspended'],
       order: 1200,
       handler: EVENT_DIRECTORY_TYPES.AccountIndexRestoreHandler,
+    },
+    {
+      name: 'notifications.account-purge',
+      events: ['purge_due'],
+      order: 1300,
+      handler: EVENT_NOTIFICATIONS_TYPES.AccountPurgeHandler,
     },
     {
       name: 'identity-auth.email-suppression-cleanup',

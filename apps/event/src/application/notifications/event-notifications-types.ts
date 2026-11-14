@@ -20,6 +20,9 @@ const ExpandEventHandler: unique symbol = Symbol.for(
 const OneClickUnsubscribe: unique symbol = Symbol.for(
   'notifications.event.OneClickUnsubscribe',
 );
+const AccountPurgeHandler: unique symbol = Symbol.for(
+  'notifications.event.AccountPurgeHandler',
+);
 
 export const EVENT_NOTIFICATIONS_TYPES = Object.freeze({
   EveningCollector,
@@ -29,4 +32,5 @@ export const EVENT_NOTIFICATIONS_TYPES = Object.freeze({
   FlushSlotHandler,
   ExpandEventHandler,
   OneClickUnsubscribe,
+  AccountPurgeHandler,
 });

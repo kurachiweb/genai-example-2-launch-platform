@@ -11,6 +11,7 @@ const EXPECTED_NAMES: readonly string[] = [
   'FlushSlotHandler',
   'ExpandEventHandler',
   'OneClickUnsubscribe',
+  'AccountPurgeHandler',
 ];
 
 describe('EVENT_NOTIFICATIONS_TYPES', () => {
