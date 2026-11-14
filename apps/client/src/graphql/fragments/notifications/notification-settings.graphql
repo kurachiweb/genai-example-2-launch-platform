@@ -1,0 +1,13 @@
+fragment NotificationSettings on NotificationSettings {
+  preferences {
+    topic
+    enabled
+  }
+  suppression {
+    reason
+    until
+  }
+  deliveryStatusAvailable
+  emailVerified
+  editable
+}

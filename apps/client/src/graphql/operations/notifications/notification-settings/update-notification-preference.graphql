@@ -1,0 +1,7 @@
+mutation ClientUpdateNotificationPreference(
+  $input: UpdateNotificationPreferenceInput!
+) {
+  updateNotificationPreference(input: $input) {
+    ...NotificationSettings
+  }
+}

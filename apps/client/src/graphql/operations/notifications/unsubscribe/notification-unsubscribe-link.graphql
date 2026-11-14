@@ -1,0 +1,5 @@
+query ClientNotificationUnsubscribeLink($token: String!) {
+  notificationUnsubscribeLink(token: $token) {
+    ...NotificationUnsubscribeLink
+  }
+}

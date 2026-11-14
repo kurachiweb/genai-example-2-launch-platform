@@ -44,6 +44,15 @@ export type CompleteSecondFactorLoginInput = {
   secondFactor: SecondFactorInput;
 };
 
+/** メールアドレスが配信の対象から除外されている理由 */
+export type DeliverySuppressionReason =
+  /** 恒久的なバウンス */
+  | 'BOUNCE'
+  /** 苦情 */
+  | 'COMPLAINT'
+  /** 受信側の拒否 */
+  | 'REJECTED';
+
 /** URLのクエリと同じ条件。不正な値はエラーにせず既定の値として扱う */
 export type DirectoryInput = {
   /** カテゴリのハンドル(大文字小文字を区別しない) */
@@ -185,6 +194,17 @@ export type MemberInquiryInput = {
   /** アップロード済みの問い合わせの添付のファイルのID */
   fileIds: Array<string | number>;
 };
+
+/** 通知メールの種別 */
+export type NotificationTopic =
+  /** フォロー中ユーザーの受賞結果 */
+  | 'FOLLOWED_USER_AWARD'
+  /** フォロー中ユーザーのマッチ開催 */
+  | 'FOLLOWED_USER_MATCH'
+  /** マッチ開始予告 */
+  | 'MATCH_PREVIEW'
+  /** 勝敗結果 */
+  | 'MATCH_RESULT';
 
 /** 決済履歴の種類 */
 export type PaymentRecordKind =
@@ -330,6 +350,12 @@ export type UpdateMyProfileInput = {
   websites: Array<ProfileWebsiteInput>;
 };
 
+/** 受信可否の変更の入力 */
+export type UpdateNotificationPreferenceInput = {
+  enabled: boolean;
+  topic: NotificationTopic;
+};
+
 export type UpdateProductInput = {
   /** 編集画面を開いたときの版 */
   expectedVersion: number;
@@ -357,6 +383,10 @@ export type UpvoteRestriction =
 export type MatchByeFragment = { reason: ByeReason, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, endedEarly: boolean }, entry: { id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } };
 
 export type MatchFragment = { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> };
+
+export type NotificationSettingsFragment = { deliveryStatusAvailable: boolean, emailVerified: boolean, editable: boolean, preferences: Array<{ topic: NotificationTopic, enabled: boolean }>, suppression: { reason: DeliverySuppressionReason, until: string | null } | null };
+
+export type NotificationUnsubscribeLinkFragment = { topic: NotificationTopic, enabled: boolean };
 
 export type ClientDirectoryCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -666,6 +696,32 @@ export type ClientUpvoteMutationVariables = Exact<{
 
 export type ClientUpvoteMutation = { upvote: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> } };
 
+export type ClientUpdateNotificationPreferenceMutationVariables = Exact<{
+  input: UpdateNotificationPreferenceInput;
+}>;
+
+
+export type ClientUpdateNotificationPreferenceMutation = { updateNotificationPreference: { deliveryStatusAvailable: boolean, emailVerified: boolean, editable: boolean, preferences: Array<{ topic: NotificationTopic, enabled: boolean }>, suppression: { reason: DeliverySuppressionReason, until: string | null } | null } };
+
+export type ClientViewerNotificationSettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientViewerNotificationSettingsQuery = { viewerNotificationSettings: { deliveryStatusAvailable: boolean, emailVerified: boolean, editable: boolean, preferences: Array<{ topic: NotificationTopic, enabled: boolean }>, suppression: { reason: DeliverySuppressionReason, until: string | null } | null } };
+
+export type ClientConfirmNotificationUnsubscribeMutationVariables = Exact<{
+  token: string;
+}>;
+
+
+export type ClientConfirmNotificationUnsubscribeMutation = { confirmNotificationUnsubscribe: { topic: NotificationTopic, enabled: boolean } };
+
+export type ClientNotificationUnsubscribeLinkQueryVariables = Exact<{
+  token: string;
+}>;
+
+
+export type ClientNotificationUnsubscribeLinkQuery = { notificationUnsubscribeLink: { topic: NotificationTopic, enabled: boolean } | null };
+
 export type ClientCheckoutQueryVariables = Exact<{
   purchaseId: string | number;
 }>;
@@ -860,6 +916,8 @@ export type ClientViewerUltrasQuery = { viewerUltras: { entitled: boolean, canOp
 
 export const MatchByeFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MatchBye"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchBye"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}}]}},{"kind":"Field","name":{"kind":"Name","value":"entry"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchByeFragment, unknown>;
 export const MatchFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Match"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Match"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}},{"kind":"Field","name":{"kind":"Name","value":"viewerRestriction"}},{"kind":"Field","name":{"kind":"Name","value":"viewerUpvotedEntryId"}},{"kind":"Field","name":{"kind":"Name","value":"entries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchFragment, unknown>;
+export const NotificationSettingsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationSettings"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"preferences"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"topic"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}},{"kind":"Field","name":{"kind":"Name","value":"suppression"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"until"}}]}},{"kind":"Field","name":{"kind":"Name","value":"deliveryStatusAvailable"}},{"kind":"Field","name":{"kind":"Name","value":"emailVerified"}},{"kind":"Field","name":{"kind":"Name","value":"editable"}}]}}]} as unknown as DocumentNode<NotificationSettingsFragment, unknown>;
+export const NotificationUnsubscribeLinkFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationUnsubscribeLink"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationUnsubscribeLink"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"topic"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}}]} as unknown as DocumentNode<NotificationUnsubscribeLinkFragment, unknown>;
 export const ClientDirectoryCategoriesDocument = {"__meta__":{"hash":"sha256:ec12184573e6602c07891ff6ede6a92821b6fcd270fcebf63b64d5182b182dee"}} as unknown as DocumentNode<ClientDirectoryCategoriesQuery, ClientDirectoryCategoriesQueryVariables>;
 export const ClientDirectoryDocument = {"__meta__":{"hash":"sha256:98bd712fadac35dcb09420e8fa1b2f5100282ec06528b10e80d28b9dd2e01a3e"}} as unknown as DocumentNode<ClientDirectoryQuery, ClientDirectoryQueryVariables>;
 export const ClientMatchSupportersDocument = {"__meta__":{"hash":"sha256:ad24d977e800104a12793e736bc255ea593215b0a7f5f361e25938fd49124c7c"}} as unknown as DocumentNode<ClientMatchSupportersQuery, ClientMatchSupportersQueryVariables>;
@@ -904,6 +962,10 @@ export const ClientCancelUpvoteDocument = {"__meta__":{"hash":"sha256:3933043522
 export const ClientQualifierBoardDocument = {"__meta__":{"hash":"sha256:ff5034376bc2a441316796107a70892c5558bbe135b0720c923dd6741a8e74bf"}} as unknown as DocumentNode<ClientQualifierBoardQuery, ClientQualifierBoardQueryVariables>;
 export const ClientUpvoteHistoryDocument = {"__meta__":{"hash":"sha256:311e7a62c4316504ae269836d447c7a3260d4b88784431dd975868b3df1ae2fe"}} as unknown as DocumentNode<ClientUpvoteHistoryQuery, ClientUpvoteHistoryQueryVariables>;
 export const ClientUpvoteDocument = {"__meta__":{"hash":"sha256:56fccaa8654bd2a433c662ef3558247b8a1840c759148008430a57a49eee8d32"}} as unknown as DocumentNode<ClientUpvoteMutation, ClientUpvoteMutationVariables>;
+export const ClientUpdateNotificationPreferenceDocument = {"__meta__":{"hash":"sha256:20a9c9e77b52f2383d655a2b48b802893088da757e14d012840700768a84b6d5"}} as unknown as DocumentNode<ClientUpdateNotificationPreferenceMutation, ClientUpdateNotificationPreferenceMutationVariables>;
+export const ClientViewerNotificationSettingsDocument = {"__meta__":{"hash":"sha256:998be6e687a6ddc11ea1bef6fd54ae128201fe54d449360fd2892008121e04d2"}} as unknown as DocumentNode<ClientViewerNotificationSettingsQuery, ClientViewerNotificationSettingsQueryVariables>;
+export const ClientConfirmNotificationUnsubscribeDocument = {"__meta__":{"hash":"sha256:e19bdaa486d4a3c3881d76a60b146580f59bd011a42dedd93bf3b2d0a8ed5931"}} as unknown as DocumentNode<ClientConfirmNotificationUnsubscribeMutation, ClientConfirmNotificationUnsubscribeMutationVariables>;
+export const ClientNotificationUnsubscribeLinkDocument = {"__meta__":{"hash":"sha256:ca0e59e06fa93a706172ea7bc554e95d299506a02c3da2414464393a0e507439"}} as unknown as DocumentNode<ClientNotificationUnsubscribeLinkQuery, ClientNotificationUnsubscribeLinkQueryVariables>;
 export const ClientCheckoutDocument = {"__meta__":{"hash":"sha256:0f679bb5c2a93b4ed3e1f29d8979625648aac67e378081ec195e3a671b265736"}} as unknown as DocumentNode<ClientCheckoutQuery, ClientCheckoutQueryVariables>;
 export const ClientConfirmCheckoutReturnDocument = {"__meta__":{"hash":"sha256:20ff36981f1f184bf48fea1f093f64a915395179e0a5e7bf171a6786ca473b30"}} as unknown as DocumentNode<ClientConfirmCheckoutReturnMutation, ClientConfirmCheckoutReturnMutationVariables>;
 export const ClientPaymentHistoryDocument = {"__meta__":{"hash":"sha256:723fccc8cbea4146117d0a1b8aee0a88b01acc1488cf7fb836a129079e19b1c5"}} as unknown as DocumentNode<ClientPaymentHistoryQuery, ClientPaymentHistoryQueryVariables>;
