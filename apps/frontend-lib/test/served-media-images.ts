@@ -46,6 +46,7 @@ export interface ServedMediaImages {
 }
 
 // テストの開発サーバーから、画像配信と同じ「<オリジン>/<キー>/<バリアント>.<拡張子>」の形で画像を配信する。ブラウザは拡張子ではなく内容で画像を判別するため、ラスター画像の全ての拡張子に同じPNGを置く
+// テストのファイルは並行に動いて書き出し先を共有し、片方の後片付けが他方の配信中の画像を消すため、キーはテストのファイルごとに変える
 export async function serveMediaImages(
   objectKey: string,
 ): Promise<ServedMediaImages> {
