@@ -5,11 +5,13 @@ import {
 import type { NoticeSuppressionReason } from '../../../../../lib/core/notifications/notice-copy.ts';
 import type { NotificationSettingsView } from '../../../../application/notifications/notification-settings-service.ts';
 import type { DeliveryStatus } from '../../../../application/notifications/ports.ts';
+import type { SenderInfoView } from '../../../../application/notifications/sender-info-service.ts';
 import type { UnsubscribeLinkView } from '../../../../application/notifications/unsubscribe-service.ts';
 import type {
   DeliverySuppression,
   DeliverySuppressionReason,
   NotificationTopic as GraphQLNotificationTopic,
+  NotificationSenderInfoState,
   NotificationSettings,
   NotificationUnsubscribeLink,
 } from '../../generated/resolvers-types.ts';
@@ -61,4 +63,16 @@ export function toNotificationUnsubscribeLink(
   view: UnsubscribeLinkView,
 ): NotificationUnsubscribeLink {
   return { topic: TOPIC_VALUES[view.topic], enabled: view.enabled };
+}
+
+export function toNotificationSenderInfoState(
+  view: SenderInfoView,
+  updatedByNickname: string | null,
+): NotificationSenderInfoState {
+  return {
+    info: view.info === null ? null : { ...view.info },
+    version: view.version,
+    updatedAt: view.updatedAt,
+    updatedByNickname,
+  };
 }

@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
+import { checkAuditReason } from '../../../../../common-lib/admin/admin-input-rules.ts';
 import type { NotificationTopic } from '../../../../../common-lib/notifications/notification-topics.ts';
 import type { NotificationTopic as GraphQLNotificationTopic } from '../../generated/resolvers-types.ts';
+import { inputRuleOf } from '../../auth-inputs.ts';
 import { INPUT_MESSAGES } from './errors.ts';
 
 // 配信停止のトークンは86文字のbase64urlで、形式と照合はユースケースが確かめる。ここでは処理量だけを抑える
@@ -35,4 +37,26 @@ export const UNSUBSCRIBE_TOKEN_ARGS = z.object({
       UNSUBSCRIBE_TOKEN_INPUT_MAX_LENGTH,
       INPUT_MESSAGES.unsubscribeTokenInvalid,
     ),
+});
+
+const expectedVersion = z.int().min(0, INPUT_MESSAGES.expectedVersionTooSmall);
+
+// 理由の未入力は操作種別が許すため、ここでは上限だけを確かめる
+const reason = inputRuleOf((value) =>
+  checkAuditReason(value) === undefined
+    ? undefined
+    : INPUT_MESSAGES.reasonTooLong,
+)
+  .nullish()
+  .transform((value) => value ?? undefined);
+
+// 送信者情報の各項目の規則はユースケースが前後の空白を除いて判定し、項目ごとの違反を返す
+export const UPDATE_NOTIFICATION_SENDER_INFO_ARGS = z.object({
+  input: z.object({
+    businessName: z.string(),
+    contactEmail: z.string(),
+    postalAddress: z.string(),
+    expectedVersion,
+    reason,
+  }),
 });
