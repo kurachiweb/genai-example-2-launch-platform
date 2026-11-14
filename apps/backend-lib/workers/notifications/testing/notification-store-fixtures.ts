@@ -1,9 +1,12 @@
 import { asc, eq } from 'drizzle-orm';
 
 import type { NotificationTopic } from '../../../../common-lib/notifications/notification-topics.ts';
+import { notificationEvents } from '../../../../db/schema/notifications/notification-events.ts';
 import { notificationNotices } from '../../../../db/schema/notifications/notification-notices.ts';
 import { notificationPreferences } from '../../../../db/schema/notifications/notification-preferences.ts';
 import { notificationSenderSettings } from '../../../../db/schema/notifications/notification-sender-settings.ts';
+import { notificationSlotReadyMarks } from '../../../../db/schema/notifications/notification-slot-ready-marks.ts';
+import { notificationSlots } from '../../../../db/schema/notifications/notification-slots.ts';
 import { notificationUnsubscribeTokens } from '../../../../db/schema/notifications/notification-unsubscribe-tokens.ts';
 import {
   after,
@@ -125,7 +128,39 @@ export async function restoreSenderInfoSeed(): Promise<void> {
 // 送信者情報の初期行はマイグレーションが入れるため消さない
 export async function clearNotificationTables(): Promise<void> {
   await db.delete(notificationNotices);
+  await db.delete(notificationSlotReadyMarks);
+  await db.delete(notificationSlots);
+  await db.delete(notificationEvents);
   await db.delete(notificationUnsubscribeTokens);
   await db.delete(notificationPreferences);
   await clearIdentityTables();
+}
+
+export async function insertReadyMarks(
+  slotKey: string,
+  participants: readonly string[],
+): Promise<void> {
+  await db.insert(notificationSlotReadyMarks).values(
+    participants.map((participant) => ({
+      id: crypto.randomUUID(),
+      slotKey,
+      participant,
+      createdAt: T0,
+    })),
+  );
+}
+
+export async function readSlotRow(slotKey: string) {
+  const [row] = await db
+    .select()
+    .from(notificationSlots)
+    .where(eq(notificationSlots.slotKey, slotKey));
+  return row;
+}
+
+export async function readNoticeRows() {
+  return db
+    .select()
+    .from(notificationNotices)
+    .orderBy(asc(notificationNotices.id));
 }
