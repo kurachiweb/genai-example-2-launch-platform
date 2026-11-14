@@ -40,7 +40,10 @@ import { LEGAL_MODULE } from './legal-module.ts';
 import { API_MATCH_MODULE, API_MATCH_PLATFORM_MODULE } from './match-module.ts';
 import { API_MEDIA_MODULE, API_MEDIA_PLATFORM_MODULE } from './media-module.ts';
 import { MEDIA_REVIEW_POLICY_BINDINGS } from './media-review-policy.ts';
-import { API_NOTIFICATIONS_PLATFORM_MODULE } from './notifications-module.ts';
+import {
+  API_NOTIFICATIONS_PLATFORM_MODULE,
+  NOTIFICATIONS_MODULE,
+} from './notifications-module.ts';
 import {
   API_PAYMENTS_MODULE,
   API_PAYMENTS_PLATFORM_MODULE,
@@ -139,4 +142,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   PRODUCT_MODULE,
   API_MATCH_MODULE,
   DIRECTORY_MODULE,
+  NOTIFICATIONS_MODULE,
 ];
