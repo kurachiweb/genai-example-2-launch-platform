@@ -25,7 +25,7 @@
 
 ### This Spec Owns
 
-- 通知のデータ: `notification_preferences`・`notification_unsubscribe_tokens`・`notification_sender_settings`・`notification_events`・`notification_slots`・`notification_slot_readiness`・`notification_notices`(`apps/db/schema/notifications/`)。
+- 通知のデータ: `notification_preferences`・`notification_unsubscribe_tokens`・`notification_sender_settings`・`notification_events`・`notification_slots`・`notification_slot_ready_marks`・`notification_notices`(`apps/db/schema/notifications/`)。
 - 通知の契約(`apps/backend-lib/core/notifications/`): 通知イベントの型と発行の口、送信枠と時刻、通知の計画(まとめ・統合・集約)、件名と文言、結果の追記の契約と登録の検証、配信停止のトークンの規則とURL、夜の枠の送り出しの入口の契約(`EveningDispatchGate`)、DIの識別子`NOTIFICATIONS_PLATFORM_TYPES`。メール種別4つ(`core/email/kinds/notifications.ts`)とメッセージ種別`notifications.flush-slot`・`notifications.expand-event`。
 - 共有部品(`apps/backend-lib/workers/notifications/`): 受信設定・トークン・送信者情報の読み取り・送信枠・通知の記録・通知イベントの発行と展開・データエクスポートの部品と、両アプリ共通の束縛`NOTIFICATIONS_PLATFORM_MODULE`。
 - apiの通知設定・配信停止・送信者情報のユースケース、スキーマモジュール`notifications`、ジョブ`notifications.evening-dispatch`・`notifications.morning-dispatch`・`notifications.maintenance`、夜の枠の送り出しの入口の束縛と送り出しの前提の登録口`EVENING_DISPATCH_PARTICIPANTS`(初版は空)、ユーザーライフサイクルの同期の処理`notifications.account-withdrawal`。
@@ -45,14 +45,14 @@
 
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`・`KeyedHasher`・`MessagePublisher`)・`hashPurpose`・`AppError`・`getAppLogger`・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`fromBusinessDateTime`・`toBusinessDateTime`・`businessWeekOf`・`parseBusinessDate`・`BusinessDate`・`BusinessTimeOfDay`。前日・翌日の業務日付は固定オフセットのため24時間の加減で求める)・`ScheduledJobDefinition`・`ScheduledJobHandler`・`ScheduledJobContext`・`defineMessageContract`・`MESSAGE_CONTRACTS`・`MessageHandler`・`MessageHandlingResult`・`RetryPolicy`・`excludePath`。形を変えない。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`caller`・`session`)・`withValidatedArgs`・`DateTime`、`SessionView`。
-- email-delivery: `EmailKind`・`defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EmailSendError`・`SuppressionList`・`SuppressionState`・`SenderInfo`・`SenderInfoProvider`・`AlertThrottle`・`EMAIL_TYPES`・`isValidEmailAddress`・`formatUtcDateTime`・`formatUtcDate`・`EmailTemplate`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・eventの`EMAIL_SENDER_INFO_PROVIDER`。
-- match-engine: `MATCH_PLATFORM_TYPES`の`MatchDirectory`(`findMatches`・`listForDate`)・`MatchRecord`・`MatchKind`・`MatchStage`・`EntryResult`・`MatchDecision`・`MatchPhase`。
-- identity-auth: `IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`verifiedUsers()`・`users`(外部キーと`verifiedUsers()`の条件)・`AccountGuard`(`currentUser`・`requireWritableUser`)・`CurrentUser`・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`LIFECYCLE_CONTINUE_DELAY_SECONDS`・`SETTINGS_NAV_ITEMS`・`_authenticated`のレイアウト・`readFragmentToken`・`viewerQueryOptions`・E2Eの`e2e/support/mailpit.ts`。
+- email-delivery: `EmailKind`・`defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EmailSendError`・`SuppressionList`・`SuppressionState`・`SenderInfo`・`SenderInfoProvider`・`AlertThrottle`・`EMAIL_TYPES`・`isValidEmailAddress`・`formatUtcDateTime`・`formatUtcDate`・`EmailTemplate`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`toMatchingKey`・`ExtraHeaders`・`AnyEmailKind`・`SuppressionReason`・`linkUrlSchema`(メール種別の入力のURLの検証)・eventの`EMAIL_SENDER_INFO_PROVIDER`。
+- match-engine: `MATCH_PLATFORM_TYPES`の`MatchDirectory`(`findMatches(ids, now)`・`listForDate({ date, kinds, now })`。`phase`は渡した`now`から導かれる)・`MatchRecord`・`MatchKind`・`MatchStage`・`EntryResult`・`MatchDecision`・`MatchPhase`。
+- identity-auth: `IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`verifiedUsers()`・`users`(外部キーと`verifiedUsers()`の条件)・`AccountGuard`(`currentUser`・`requireWritableUser`)・`CurrentUser`・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`LIFECYCLE_CONTINUE_DELAY_SECONDS`・`SETTINGS_NAV_ITEMS`・`_authenticated`のレイアウト・`viewerQueryOptions`・E2Eの`e2e/support/mailpit.ts`と`e2e/client/profile-steps.ts`の`registerVerifiedAccount`。
 - user-profile-social: `PROFILE_PLATFORM_TYPES`の`FollowerDirectory`・`UserProfileDirectory`(`findSummaries`)。
 - product-launch: `PRODUCT_PLATFORM_TYPES.ProductDirectory`(`findSummaries`)。
-- admin-foundation: `requireAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AdminDirectory`・`RoleGate`・`useAdminRole`・`ConfirmActionDialog`・E2Eの`e2e/support/admin-bootstrap.ts`・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
+- admin-foundation: `requireAdmin`・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AdminDirectory`・`useAdminRole`・`hasRole`(`common-lib/admin/admin-roles.ts`)・`ConfirmActionDialog`・E2Eの`e2e/support/admin-bootstrap.ts`・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
 - ultras-subscription: `AdminSettingsSection`・`ADMIN_SETTINGS_SECTIONS`。
-- frontend-platform・content-processing: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`AppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`notify`・`buildPageHead`・`ErrorState`・`LoadingSkeleton`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`・日時の表示部品・shadcn/uiの`switch`・`button`・`input`・`label`・`textarea`・`badge`・`runAxe`、`apps/common-lib`の書記素の文字数の数え方。
+- frontend-platform・content-processing: `executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`useAppForm`・`AppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`notify`・clientの`buildSitePageHead`(frontend-libの`buildPageHead`を包む)・`useFragmentToken`・`ErrorState`・`LoadingSkeleton`・`errorMessageOf`・各アプリの`src/composition/app-profile.ts`のプロファイル(`CLIENT_PROFILE`・`ADMIN_PROFILE`)・`utilities/validation/zod.ts`の`z`・日時の表示部品・shadcn/uiの`switch`・`button`・`input`・`label`・`textarea`・`badge`・`runAxe`、`apps/common-lib`の書記素の文字数の数え方。
   - GraphQLの操作は各アプリの`src/graphql/operations/notifications/`に1ファイル1操作の`*.graphql`で書き、操作名を利用者側は`Client`、管理者側は`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`graphql()`と`gql.ts`・`index.ts`を使わない(frontend-platformの「操作の追加手順」)。
   - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。画面のスキーマの`zod`の値は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
   - 失敗の文言: `GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。管理者側は`ADMIN_PROFILE`を使い、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない(問い合わせの画面が無いため、問い合わせの導線と問い合わせを促す文を出さない)。
@@ -81,14 +81,14 @@
 | backend-platform    | apiの`composition/scheduled-jobs.ts`に3つのジョブ、`core/messaging/contracts/index.ts`に2つのメッセージ種別、eventの`composition/message-handlers.ts`に2つの処理、eventの`composition/rate-limit-exclusions.ts`に`excludePath('/unsubscribe', 'POST')`、eventの`wrangler.jsonc`(3環境)と`composition/env-schema.ts`に`EVENT_SITE_ORIGIN` | 契約どおり。Cronの式は追加しない(0:00・23:45・4:21は登録済み)                    |
 | api-gateway         | apiの`composition/graphql-modules.ts`に`notificationsSchemaModule`、client・adminの許可リストの再生成                                                                                                                                                                                                                                    | 契約どおり                                                                       |
 
-- 上流specの文書の変更は無い。`EVENT_SITE_ORIGIN`の3環境の値の行は、infra-deliveryの改訂1が「ホスト名から導かれる変数の値」の表に加える(本specはその値をeventのWrangler設定に書く)。roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は1300、波及処理は1300」になる(本specはroadmapを編集しないため、コントローラーへ報告する)。
+- 上流specの文書の変更は無い。`EVENT_SITE_ORIGIN`の3環境の値の行は、infra-deliveryの改訂1が「ホスト名から導かれる変数の値」の表に加える(本specはその値をeventのWrangler設定に書く)。roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は1300、波及処理は1300」になる(roadmapの帯の割り当ての表に記載済み)。
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- 上流の18specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする(roadmapの順でmatch-engineまでが先に実装される)。実装済みはdev-toolingだけである。
-- apiとeventはクリーンアーキテクチャ(`domain`→`application`→`infrastructure`・`presentation`→`composition`)で、`application`は`lib/workers`・`db`を読み込めない(backend-platformの静的解析の規則)。上流の照会口(`MatchDirectory`など)は`lib/workers`にあるため、`application`は`core/notifications`のポートだけを参照し、上流の照会口を使う処理は`infrastructure`か`lib/workers`に置く。
+- 上流の18specは実装済みである(2026-11-14の時点。infra-deliveryとpaymentsの手動の作業を除く)。実装との食い違いは[research.md](research.md)の「実装前のギャップ分析」に記録し、本書へ反映した。
+- apiとeventはクリーンアーキテクチャ(`domain`→`application`→`infrastructure`・`presentation`→`composition`)で、`application`は`lib/workers`とDBの接続(`**/db/client*`)を読み込めない(backend-platformの静的解析の規則)。上流の照会口の契約(`MatchDirectory`・`ProductDirectory`・`FollowerDirectory`・`EmailSender`・`SuppressionList`など)は`core/*/ports.ts`にあり、`application`から読み込める。本specは、上流の照会口を組み合わせる収集と送信を`infrastructure`か`lib/workers`に置き、`application`は`core/notifications`のポートを通して呼ぶ。段の進行の単体テストを上流の照会口の偽物に依存させないためである。
 - Cron Triggersはapiだけにあり、同じ時刻のジョブは`order`の昇順に直列に動く。0:00ではmatch-engineの開始(1100)、23:45ではmatch-engineのペアリング(1100)の後に本specの1300が動き、tournament-week(1500)・tournament-year(1700)の23:45の組み合わせはその後になる。そのため夜の枠の送り出しは、トーナメントの23:45のジョブが最後に呼ぶ本specの入口で始める(仮2)。
 - email-deliveryは送信の受付で種別・入力・宛先・追加ヘッダーを検証し、eventのconsumerで抑止(通知メールの分類)・描画(送信者情報の取得口を含む)・送信を行う。
 
@@ -196,7 +196,7 @@ graph TB
 apps/
 ├── common-lib/notifications/                                   # 4アプリ共通(各ファイルに*.unit.test.ts)
 │   ├── notification-topics.ts                                  # NOTIFICATION_TOPICS・名称と説明
-│   └── sender-info-rules.ts                                    # 送信者情報の上限(200書記素)と必須の判定
+│   └── sender-info-input-rules.ts                              # 送信者情報の上限(200書記素)と必須の判定(coding/005の規則の置き場所)
 ├── common-lib/admin/audit-actions/notifications.ts             # notification-sender.update
 ├── db/schema/notifications/                                    # テーブル定義(各ファイルに同名の*.unit.test.ts)
 │   ├── notification-preferences.ts
@@ -204,9 +204,11 @@ apps/
 │   ├── notification-sender-settings.ts                         # 1行の設定と版
 │   ├── notification-events.ts                                  # 発行された通知イベントと展開の状態
 │   ├── notification-slots.ts                                   # 送信枠と送り出しの段・カーソル・リース・前提と依頼の時刻
-│   ├── notification-slot-readiness.ts                          # 送信枠ごとの前提の機能の準備の完了
+│   ├── notification-slot-ready-marks.ts                        # 送信枠ごとの前提の機能の準備の完了(追加だけで更新しない)
 │   ├── notification-notices.ts                                 # 宛先ごとの通知とまとめのキー
+│   ├── notifications-migration.unit.test.ts                    # 生成したマイグレーションのCHECK・一意索引とシードの文(前例match-engine-migration.unit.test.ts)
 │   └── index.ts
+├── db/notifications-schema.worker.test.ts                      # ローカルD1のCHECK・一意索引・外部キー(apiのVitestが実行、前例match-engine-schema.worker.test.ts)
 ├── backend-lib/
 │   ├── core/notifications/                                     # 純粋な契約(Bunの単体テスト)
 │   │   ├── identifiers.ts                                      # NOTIFICATIONS_PLATFORM_TYPES(Symbol.for('notifications.<名前>')の凍結したオブジェクト、identifiers.unit.test.ts)
@@ -273,6 +275,7 @@ apps/
 │   │   ├── registered-supplement-source.ts                     # RESULT_NOTICE_SUPPLEMENTSの呼び出し
 │   │   └── d1-sender-info-provider.ts                          # email-deliveryのSenderInfoProviderの実装
 │   ├── infrastructure/email/templates/notifications/           # Workers統合テスト(*.worker.test.tsx)
+│   │   ├── index.ts                                            # NOTIFICATION_EMAIL_TEMPLATES(前例ULTRAS_EMAIL_TEMPLATES)
 │   │   ├── match-preview-template.ts · match-preview-email-body.tsx
 │   │   ├── match-result-template.ts · match-result-email-body.tsx
 │   │   ├── followed-user-matches-template.ts · followed-user-matches-email-body.tsx
@@ -291,19 +294,26 @@ apps/
 │   │   ├── notification-topic-switch.tsx
 │   │   ├── delivery-status-notice.tsx                          # 抑止・未確認・停止中の案内
 │   │   ├── unsubscribe-confirmation.tsx
-│   │   └── notification-copy.ts                                # 画面の文言(*.unit.test.ts)
+│   │   └── notification-messages.ts                            # 画面の文言(*.unit.test.ts、前例settings-messages.ts)
+│   ├── graphql/notification-settings.ts                        # 通知設定と配信停止のリンクの取得の設定と結果の変換(*.unit.test.ts、frontend/006)
 │   └── graphql/operations/notifications/                       # 1ファイル1操作の*.graphql(操作名はClientで始める)
 │       ├── notification-settings/*.graphql                     # 通知設定の照会と変更
 │       └── unsubscribe/*.graphql                               # 配信停止のリンクの照会と確定
 └── admin/src/
     ├── components/notifications/
     │   ├── sender-info-section.tsx                             # AdminSettingsSectionの部品
-    │   └── sender-info-form.tsx
+    │   ├── sender-info-form.tsx
+    │   └── sender-info-messages.ts                             # 画面の文言(*.unit.test.ts、前例promotion-setting-messages.ts)
+    ├── graphql/admin-notification-sender-info.ts               # 取得の設定と最後の変更の写し(*.unit.test.ts、前例admin-ultras-promotion.ts)
     └── graphql/operations/notifications/                       # 1ファイル1操作の*.graphql(操作名はAdminで始める。送信者情報の照会と保存)
 e2e/
 ├── client/notifications.e2e.test.ts                            # 通知設定・リンクとワンクリックの配信停止
+├── client/notification-steps.ts                                # 通知設定ページと配信停止ページの操作の手順
 ├── admin/notification-sender.e2e.test.ts                       # 送信者情報の保存と監査ログ
+├── admin/notification-sender-steps.ts                          # 送信者情報の区画の操作の手順
 └── support/notification-fixtures.ts                            # 受信設定とトークンの種をローカルD1に作り、トークンを導出する補助
+config/
+└── notification-contract-copies.unit.test.ts                   # DBのCHECKの値と共有の定数の一致
 docs/GUIDES/tech/
 ├── backend/016-batched-notification-delivery.md
 └── security/010-one-click-unsubscribe.md
@@ -313,23 +323,28 @@ docs/GUIDES/tech/
 
 ### Modified Files
 
-- `apps/db/schema/index.ts`・`apps/db/migrations/<日時>_notifications/migration.sql` — 7テーブルの再エクスポートと、生成したマイグレーション(CHECK・一意索引)。mainの最新を取り込んでから生成する。
+- `apps/db/schema/index.ts`・`apps/db/migrations/<日時>_notifications/migration.sql`・`apps/db/migrations/<日時>_notifications_seed/migration.sql` — 7テーブルの再エクスポートと、生成したマイグレーション(CHECK・一意索引)と、送信者情報の版0の行を入れるカスタムのマイグレーション。mainの最新を取り込んでから生成する。
 - `apps/common-lib/admin/audit-actions/index.ts` — 本specの操作種別の連結。
 - `apps/backend-lib/core/email/kinds/index.ts` — 4種別を`EMAIL_KINDS`へ加える。
 - `apps/backend-lib/core/messaging/contracts/index.ts` — 2つのメッセージ種別を`MESSAGE_CONTRACTS`へ加える。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`user-lifecycle-sync-handlers.ts` — `NOTIFICATIONS_PLATFORM_MODULE`・`NOTIFICATIONS_MODULE`・`notificationsSchemaModule`・3つのジョブ・同期の処理。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`user-lifecycle-async-handlers.ts`・`email-registrations.ts`・`rate-limit-exclusions.ts`・`env-schema.ts` — 共有の束縛とeventの束縛と経路、2つのメッセージの処理、`notifications.account-purge`、`EMAIL_SENDER_INFO_PROVIDER`の差し替え、`excludePath('/unsubscribe', 'POST')`、`EVENT_SITE_ORIGIN`の検証。
+- `apps/event/src/infrastructure/email/sender-info/unset-sender-info-provider.ts`・`unset-sender-info-provider.worker.test.ts` — 差し替えで使われなくなるemail-deliveryの既定の実装とそのテストを削除する。
 - `apps/event/src/infrastructure/email/templates/index.ts` — 4テンプレートを`EMAIL_TEMPLATES`へ加える。
 - `apps/event/wrangler.jsonc`・`worker-configuration.d.ts`・`vitest.worker.config.ts` — 3環境の`vars`の`EVENT_SITE_ORIGIN`と、テスト用の値(`https://event.test.example`)。
 - `apps/client/src/composition/settings-navigation.ts` — `{ to: '/settings/notifications', label: '通知', order: 40 }`。
-- `apps/admin/src/composition/admin-settings-sections.ts` — `{ id: 'notifications.sender-info', order: 30, component: SenderInfoSection }`。
+- `apps/admin/src/composition/admin-settings-sections.ts` — `{ id: 'notifications.sender-info', order: 30, title: '通知メールの送信者情報', component: SenderInfoSection }`。
 - `docs/GUIDES/tech/backend/README.md`・`security/README.md` — 文書一覧の行。
-- `docs/onboardings/project-values.md` — ジョブ・処理・メッセージ種別の名前と`order`、ハッシュの用途、監査ログの操作種別、変数`EVENT_SITE_ORIGIN`の3環境の値。
-- `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 通知メールの件名(敗北・両者敗北・不戦勝・統合の不戦勝)と本文の文、画面とエラーの文言。
+- `docs/onboardings/project-values.md` — ジョブ・処理・メッセージ種別の名前と`order`、ハッシュの用途、監査ログの操作種別、変数`EVENT_SITE_ORIGIN`の3環境の値、送信者情報の提供元(`UnsetSenderInfoProvider`から`D1SenderInfoProvider`へ)。既存の「現在は」の行の書き換え(IP制限の除外、eventの変数の一覧、`EMAIL_TEMPLATES`の内訳、退会の同期の処理、管理画面の設定ページの区画の件数、設定のナビゲーション)と、他specの節と同じ形のメール種別の行。
+- `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 通知メールの件名(敗北・両者敗北・不戦勝・統合の不戦勝)と本文の文、画面とエラーの文言、「認証系メールの本文」の構成(宛名・本文・ボタンの後に送信者情報)。
 - `docs/GUIDES/service/design/002-page-layouts.md` — `/unsubscribe#token={token}`への変更(仮5)、通知設定ページと配信停止ページの配置、管理画面の送信者情報の区画。
-- `docs/GUIDES/service/overview/007-daily-timeline.md` — 23:45(1300、送り出しはトーナメントの組み合わせの準備の完了の後、遅くとも23:55)・0:00(1300)・4:21の表(1300)、トーナメントの開始予告の時刻(仮1)。
+- `docs/GUIDES/service/overview/007-daily-timeline.md` — 「同時刻に走る処理の順序」の図(23:45のペアリングが通知を送る形を、本specの1300のジョブと送り出しの入口の形へ)、23:45(1300、送り出しはトーナメントの組み合わせの準備の完了の後、遅くとも23:55)・0:00(1300)・4:21の表(1300)、トーナメントの開始予告の時刻(仮1)。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — 通知メールのオプトアウト(配信停止の手段・トークン・送信者情報の未設定)、データ保持期間(受信設定・トークン・通知の記録)。
+- `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 法的根拠の行(通知メールの送信を「正当な利益」から「同意」へ移す)と、収集する情報の一覧(受信設定、配信停止のトークンの種と照合用のハッシュ)。
 - `CLAUDE.md` — 「技術規則の参照先」に「通知メールを送る処理を書く前に: `backend/016`」。
+- `docs/GUIDES/tech/infra/004-logging-and-error-tracking.md` — エラートラッキングへ送る場合の表に、送信枠の送り出しの遅れ・送信の要求の拒否・送信者情報の未設定・通知イベントの展開の停滞・送り出しの前提の未完了の行を、本プロジェクト固有の値を含めずに加える。
+- 一覧を完全一致で確かめる既存のテスト(本specの登録を期待値に加える): `apps/common-lib/admin/audit-actions/index.unit.test.ts`・`apps/admin/src/components/pages/audit-logs-page.browser.test.tsx`(操作種別)、`apps/client/src/components/settings/settings-nav-order.unit.test.ts`(設定のナビゲーション)、`apps/admin/src/components/pages/admin-settings-page.browser.test.tsx`(区画の一覧と、送信者情報の照会の偽の応答)、`apps/api/src/composition/search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts`(4:21のジョブ)、`apps/api/src/composition/match-module.jobs.worker.test.ts`(0:00のジョブの結果)、`apps/event/src/composition/profile-module.worker.test.ts`・`user-product-erasure.worker.test.ts`・`match-module.purge.worker.test.ts`(`purge_due`の処理)、`apps/api/test/config/wrangler-config.unit.test.ts`(eventの変数と`EXPECTED_ENVIRONMENTS`)、`apps/db/schema/index.unit.test.ts`(テーブル名の一覧、前例に合わせて加える)。
+- 生成物: apiの`src/presentation/graphql/generated/schema.graphql`・`resolvers-types.ts`・`allowlist.json`(`graphql-modules.worker.test.ts`が一致を確かめる)、client・adminの`src/graphql/generated/graphql.ts`、clientの`routeTree.gen.ts`。
 
 ## System Flows
 
@@ -342,6 +357,7 @@ stateDiagram-v2
     Waiting --> Collecting: 夜と朝の枠
     Waiting --> Sending: 受賞の枠
     Collecting --> Collecting: 続きがあれば defer
+    Collecting --> Collecting: 朝の枠で未開始のマッチを待つ defer
     Collecting --> Sending: 収集の完了
     Sending --> Sending: 残りがあれば defer
     Sending --> Done: 未送信の通知が無い
@@ -381,7 +397,7 @@ sequenceDiagram
     D->>E: send
 ```
 
-- 収集(4.1・3.1): `MatchDirectory.listForDate({ date: D, kinds: ['qualifier'] })`のうち`decision`が決まったマッチの各側の投稿者で、`match_result`を受信する設定の送信の対象者に結果の通知を、`listForDate({ date: D+1, kinds: ['qualifier'] })`のうち`phase`が`scheduled`で側が2つのマッチの投稿者で、`match_preview`を受信する設定の送信の対象者に予告の通知を記録する(3.5・仮6)。トーナメントの通知は発行の時点で記録済みである(3.2・4.2)。
+- 収集(4.1・3.1): `MatchDirectory.listForDate({ date: D, kinds: ['qualifier'], now })`のうち`decision`が決まったマッチの各側の投稿者で、`match_result`を受信する設定の送信の対象者に結果の通知を、`listForDate({ date: D+1, kinds: ['qualifier'], now })`のうち`phase`が`scheduled`で側が2つのマッチの投稿者で、`match_preview`を受信する設定の送信の対象者に予告の通知を記録する(3.5・仮6)。トーナメントの通知は発行の時点で記録済みである(3.2・4.2)。
 - 送信(4.4・4.5): 夜の枠のまとめのキーは`<枠>:<宛先>:<プロダクト>`で、同じキーの結果と予告は統合したメール、片方だけならその種別のメールになる。受信しない設定に変わった種別の通知は`topic_disabled`で送らない(7.2)。
 - 23:45の判定はジョブの予定時刻の業務日付(23:44:59の起動は前日のジョブではない。ジョブは23:45にだけ登録される)。送り出しは、前提の全ての機能が準備の完了を伝えた時点で依頼され、依頼が無ければ`settle_until`(23:54:59は`defer`、23:55:00から収集)で始まる(13.1・13.8・15.2)。
 - 送り出しの前提の扱い(仮2、research.mdの「夜の枠の送り出しの入口」):
@@ -407,12 +423,15 @@ sequenceDiagram
     J->>Q: flush slot
     Q->>F: deliver
     F->>C: 1回目は投稿者の一覧を作る
+    C->>C: 開始の日時を過ぎた未開始のマッチがあれば wait
+    F->>Q: wait なら defer 300秒
     C->>FD: 500件ずつ
     C->>C: 受信する設定の送信の対象者の通知を記録
     F->>D: 宛先ごとに1通
 ```
 
-- 収集(5.1・5.5・7.8): 1回目の段で`listForDate({ date: D, kinds: ['qualifier', 'week', 'year'] })`のうち`phase`が`live`のマッチの側(投稿者とプロダクトが残るもの)を集め、`ProductDirectory.findSummaries(ids, 'visible')`で表示できるプロダクトに絞り、投稿者のIDの昇順の一覧(投稿者ごとの`matchId`・`productId`)を枠のカーソルへ保存する。以後の段は投稿者ごとに`FollowerDirectory.listVisibleFollowerIds`を500件ずつ読み、`followed_user_match`を受信する設定の送信の対象者に、投稿者の全ての対象の通知を記録する。1回の段は2,000件のフォロワーで区切る。
+- 開始を待つ(5.1・13.2): 0:00のmatch-engineの開始(1100)が失敗しても、同じ時刻の後続の本specのジョブは動く。開始の日時を過ぎても開始していない当日のマッチが残る間は、1回目の段が`wait`を返して300秒ごとに確かめ直し、運用者が0:00のジョブを手動で起こし直してマッチが開始した後に収集する。そのマッチの終了の日時を過ぎたら待たない。
+- 収集(5.1・5.5・7.8): 1回目の段で`listForDate({ date: D, kinds: ['qualifier', 'week', 'year'], now })`のうち`phase`が`live`のマッチの側(投稿者とプロダクトが残るもの)を集め、`ProductDirectory.findSummaries(ids, 'visible')`で表示できるプロダクトに絞り、投稿者のIDの昇順の一覧(投稿者ごとの`matchId`・`productId`)を枠のカーソルへ保存する。以後の段は投稿者ごとに`FollowerDirectory.listVisibleFollowerIds`を500件ずつ読み、`followed_user_match`を受信する設定の送信の対象者に、投稿者の全ての対象の通知を記録する。1回の段は2,000件のフォロワーで区切る。`now`は処理の時点の時刻で、朝の枠の段がマッチの終了(23:40)より後まで遅れると、そのマッチは`live`でなくなり対象から外れる。
 - 送信(5.2・5.3・5.6): 朝の枠のまとめのキーは`<枠>:<宛先>`で、30件までを1通にまとめ、残りの件数を添える。
 - 0:00の判定は予定時刻の業務日付で決まり、23:59:59の業務時刻は前日になる(15.2)。
 
@@ -469,66 +488,66 @@ sequenceDiagram
 ```
 
 - ワンクリック(8.2〜8.5・8.7): `POST /unsubscribe?token=<トークン>`は本文を問わず(RFC 8058の`List-Unsubscribe=One-Click`を想定)、形式違反は400、照合できなければ404、照合できれば受信を停止して200(既に停止済みでも200)。IP単位の制限の対象外(`excludePath('/unsubscribe', 'POST')`)。
-- リンク(9.2〜9.5・9.7): clientの`/unsubscribe`は`readFragmentToken`で`#token=`を読んでURLから消し、GraphQLの変数(要求の本文)で送る。開いただけでは照会だけを行い、確認のボタンで停止する。
+- リンク(9.2〜9.5・9.7): clientの`/unsubscribe`は`useFragmentToken`で`#token=`を読んでURLから消し、GraphQLの変数(要求の本文)で送る。開いただけでは照会だけを行い、確認のボタンで停止する。
 
 ## Requirements Traceability
 
-| Requirement                       | Summary                            | Components                                                                                                 | Interfaces                                                                           | Flows                          |
-| --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------ |
-| 1.1                               | 4つの通知種別                      | NotificationTopics、NotificationSchema                                                                     | `NOTIFICATION_TOPICS`                                                                | —                              |
-| 1.2                               | 初期値はすべて受信しない           | NotificationSchema、D1NotificationPreferenceStore                                                          | 行が無い種別は`false`                                                                | —                              |
-| 1.3, 1.4, 1.5                     | 設定ページの表示と変更             | NotificationSettingsRoute、NotificationSettingsPanel、NotificationTopicSwitch、NotificationSettingsService | `viewerNotificationSettings`・`updateNotificationPreference`                         | —                              |
-| 1.6                               | 停止中の拒否                       | NotificationSettingsService、DeliveryStatusNotice                                                          | `requireWritableUser`・`editable`                                                    | —                              |
-| 1.7                               | 未確認の案内                       | NotificationSettingsService、DeliveryStatusNotice                                                          | `emailVerified`                                                                      | —                              |
-| 1.8, 1.9                          | ログインの誘導とナビゲーション     | NotificationSettingsRoute、SettingsNavigation(上流)                                                        | `_authenticated`・`SETTINGS_NAV_ITEMS`                                               | —                              |
-| 2.1, 2.2, 2.3, 2.4                | 抑止による除外の表示               | DeliveryStatusReader、NotificationSettingsService、DeliveryStatusNotice                                    | `SuppressionList.getStatus`・`DeliverySuppression`                                   | —                              |
-| 3.1                               | 予選の開始予告                     | EveningCollector、NoticePlan、GroupDispatcher                                                              | `listForDate`・`matchNoticeDrafts`                                                   | 夜の送信枠                     |
-| 3.2, 3.3                          | トーナメントの予告と前日までの保持 | NotificationEventPublisher、NotificationEventExpander、NotificationSlots                                   | `previewSlotFor`                                                                     | 通知イベントの発行と受賞の展開 |
-| 3.4                               | 開始予告の件名と本文               | NoticeCopy、NoticeEmail、NotificationTemplates                                                             | `notifications.match-preview`                                                        | —                              |
-| 3.5, 3.6                          | 不戦勝と開始済みの除外             | NoticePlan、NoticeEmail                                                                                    | `matchNoticeDrafts`・`buildNoticeEmail`の`stale`                                     | 夜の送信枠                     |
-| 4.1, 4.2, 4.7                     | 勝敗結果の送り出し                 | EveningCollector、NotificationEventPublisher、NotificationSlots、GroupDispatcher                           | `resultSlotFor`                                                                      | 夜の送信枠                     |
-| 4.3                               | 結果とスコアの文                   | NoticeCopy、NotificationTemplates                                                                          | `matchResultSubject`・`resultOutcomeOf`                                              | —                              |
-| 4.4, 4.5                          | 統合と受信設定                     | NoticePlan、NoticeEmail                                                                                    | `planGroupEmail`                                                                     | 夜の送信枠                     |
-| 4.6                               | 結果の追記                         | ResultNoticeSupplementContract、RegisteredSupplementSource、NotificationTemplates                          | `RESULT_NOTICE_SUPPLEMENTS`                                                          | —                              |
-| 5.1, 5.5                          | 開催通知の対象                     | MorningCollector、NotificationJobs                                                                         | `listForDate`・`FollowerDirectory`                                                   | 朝の送信枠                     |
-| 5.2, 5.3, 5.6                     | 集約と件名と上限                   | NoticePlan、NoticeCopy、NotificationTemplates                                                              | `planGroupEmail`・`DIGEST_ITEM_LIMIT`                                                | 朝の送信枠                     |
-| 5.4                               | 開催通知の本文                     | NoticeEmail、NotificationTemplates                                                                         | `notifications.followed-user-matches`                                                | —                              |
-| 6.1, 6.3                          | 受賞の展開と即時の送り出し         | NotificationEventPublisher、ExpandEventHandler、NotificationEventExpander                                  | `award`・`notifications.expand-event`                                                | 通知イベントの発行と受賞の展開 |
-| 6.2                               | 受賞の件名と本文                   | NoticeCopy、NotificationTemplates                                                                          | `awardSubject`・`awardPeriodLabel`                                                   | —                              |
-| 7.1, 7.2                          | 送信の対象者と確かめ直し           | D1NotificationPreferenceStore、GroupDispatcher、NoticePlan                                                 | `eligibleRecipients`・`enabledTopicsOf`                                              | 夜の送信枠                     |
-| 7.3, 7.4                          | 送信基盤と抑止                     | GroupDispatcher                                                                                            | `EmailSender.send`・`SuppressionList.findSuppressed`                                 | 夜の送信枠                     |
-| 7.5, 7.6                          | 送信者情報の表示と未設定           | D1SenderInfoProvider、GroupDispatcher、SentryNotificationIncidentReporter                                  | `SenderInfoProvider`・`sender_info_missing`                                          | —                              |
-| 7.7, 7.8, 7.9                     | 表示できないプロダクト             | NoticeEmail、MorningCollector、GroupDispatcher                                                             | `own_product_unavailable`・「非公開のプロダクト」                                    | —                              |
-| 7.10, 7.11                        | 本文構成とリンク                   | NotificationTemplates、NoticeSettingsLink、NoticeEmail                                                     | `EmailTemplate`                                                                      | —                              |
-| 7.12                              | 重複の防止                         | NotificationSchema、D1NotificationNoticeStore、D1NotificationSlotStore                                     | `dedupe_key`・リース                                                                 | 送信枠の状態                   |
-| 8.1, 8.6                          | ヘッダー                           | UnsubscribeTokenRules、NoticeEmail                                                                         | `listUnsubscribeHeaders`                                                             | —                              |
-| 8.2, 8.3, 8.4, 8.5, 8.7           | ワンクリックの受け口               | OneClickUnsubscribeRoute、OneClickUnsubscribe、D1UnsubscribeTokenService                                   | `POST`・`GET /unsubscribe`・`excludePath`                                            | 配信停止                       |
-| 9.1                               | 本文のリンク                       | NotificationTemplates、NoticeCopy、NoticeEmail                                                             | `unsubscribePageUrl`・`unsubscribeLinks`・`COMBINED_UNSUBSCRIBE_LABELS`              | —                              |
-| 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8 | 配信停止ページ                     | UnsubscribeRoute、UnsubscribeConfirmation、UnsubscribeService                                              | `notificationUnsubscribeLink`・`confirmNotificationUnsubscribe`・`readFragmentToken` | 配信停止                       |
-| 10.1, 10.2, 10.3, 10.4            | トークンの発行と照合               | D1UnsubscribeTokenService、UnsubscribeTokenRules、NotificationSchema                                       | `tokensFor`・`resolve`                                                               | 配信停止                       |
-| 10.5                              | 退会での無効化                     | AccountWithdrawalSyncHandler                                                                               | `USER_LIFECYCLE_SYNC_HANDLERS`                                                       | —                              |
-| 10.6                              | トークンでできること               | UnsubscribeService、OneClickUnsubscribe                                                                    | `resolve`                                                                            | 配信停止                       |
-| 11.1, 11.2, 11.3                  | 送信者情報の区画                   | SenderInfoSection、SenderInfoForm、SenderInfoService                                                       | `ADMIN_SETTINGS_SECTIONS`・`notificationSenderInfo`                                  | —                              |
-| 11.4, 11.5, 11.6, 11.7            | 保存・検証・認可・監査・競合       | SenderInfoService、D1SenderInfoWriter、SenderInfoRules、NotificationAuditActions                           | `updateNotificationSenderInfo`・`notification-sender.update`                         | —                              |
-| 11.8                              | 以後のメールへの反映               | D1SenderInfoProvider、D1SenderInfoStore                                                                    | `SenderInfoProvider.get`                                                             | —                              |
-| 12.1, 12.2, 12.3, 12.4, 12.5      | 通知イベントの契約                 | NotificationEventContract、NotificationEventPublisher、NotificationsPlatformModule                         | `NotificationEventPublisher.publish`                                                 | 通知イベントの発行と受賞の展開 |
-| 12.6                              | 予選は照会から作る                 | EveningCollector                                                                                           | `listForDate`                                                                        | 夜の送信枠                     |
-| 12.7                              | 結果の追記の登録口                 | ResultNoticeSupplementContract、ResultNoticeSupplements、RegisteredSupplementSource                        | `createResultNoticeSupplementRegistry`                                               | —                              |
-| 12.8                              | 遅れた発行                         | D1NotificationNoticeStore、NotificationEventPublisher、FlushSlotHandler                                    | `lateSlotKeys`                                                                       | 送信枠の状態                   |
-| 13.1, 13.2                        | 送り出しの時刻                     | NotificationJobs、NotificationSlots、FlushSlotHandler、D1EveningDispatchGate                               | `EveningSlotOpener.open`・`EveningDispatchGate.markReady`                            | 夜の送信枠・朝の送信枠         |
-| 13.7, 13.9                        | 送り出しの入口と前提の登録口       | EveningDispatchContract、D1EveningDispatchGate、EveningDispatchParticipants                                | `EveningDispatchGate.markReady`・`EVENING_DISPATCH_PARTICIPANTS`                     | 夜の送信枠                     |
-| 13.8                              | 期限の送り出しと検知               | NotificationSlots、FlushSlotHandler、SentryNotificationIncidentReporter                                    | `EVENING_DISPATCH_DEADLINE_SECONDS`・`evening-dispatch-incomplete`                   | 夜の送信枠                     |
-| 13.3                              | 失敗からの再開                     | FlushSlotHandler、D1NotificationSlotStore                                                                  | `NOTIFICATION_RETRY_POLICY`・カーソル                                                | 送信枠の状態                   |
-| 13.4, 13.5                        | 日次の回復と削除                   | NotificationJobs、D1NotificationMaintenanceStore                                                           | `notifications.maintenance`                                                          | —                              |
-| 13.6                              | 帯の値                             | NotificationJobs、AccountPurgeHandler                                                                      | `order` 1300                                                                         | —                              |
-| 14.1                              | 退会の扱い                         | AccountWithdrawalSyncHandler                                                                               | `USER_LIFECYCLE_SYNC_HANDLERS`                                                       | —                              |
-| 14.2                              | 物理削除                           | AccountPurgeHandler、D1NotificationNoticeStore                                                             | `USER_LIFECYCLE_ASYNC_HANDLERS`                                                      | —                              |
-| 14.3                              | データエクスポート                 | D1NotificationSettingsExport                                                                               | `NotificationSettingsExport.find`                                                    | —                              |
-| 14.4                              | ログの規則                         | 全コンポーネント(ログの規約)、SentryNotificationIncidentReporter                                           | `getAppLogger`                                                                       | —                              |
-| 14.5                              | 宛先の照会                         | GroupDispatcher、DeliveryStatusReader                                                                      | `UserContactDirectory.findContact`                                                   | —                              |
-| 15.1, 15.2, 15.3                  | テスト                             | Testing Strategy、NotificationE2E                                                                          | —                                                                                    | —                              |
-| 15.4                              | 技術ドキュメント                   | NotificationTechDocs                                                                                       | —                                                                                    | —                              |
-| 15.5                              | サービス仕様                       | NotificationServiceSpecs                                                                                   | —                                                                                    | —                              |
+| Requirement                       | Summary                            | Components                                                                                                 | Interfaces                                                                          | Flows                          |
+| --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------ |
+| 1.1                               | 4つの通知種別                      | NotificationTopics、NotificationSchema                                                                     | `NOTIFICATION_TOPICS`                                                               | —                              |
+| 1.2                               | 初期値はすべて受信しない           | NotificationSchema、D1NotificationPreferenceStore                                                          | 行が無い種別は`false`                                                               | —                              |
+| 1.3, 1.4, 1.5                     | 設定ページの表示と変更             | NotificationSettingsRoute、NotificationSettingsPanel、NotificationTopicSwitch、NotificationSettingsService | `viewerNotificationSettings`・`updateNotificationPreference`                        | —                              |
+| 1.6                               | 停止中の拒否                       | NotificationSettingsService、DeliveryStatusNotice                                                          | `requireWritableUser`・`editable`                                                   | —                              |
+| 1.7                               | 未確認の案内                       | NotificationSettingsService、DeliveryStatusNotice                                                          | `emailVerified`                                                                     | —                              |
+| 1.8, 1.9                          | ログインの誘導とナビゲーション     | NotificationSettingsRoute、SettingsNavigation(上流)                                                        | `_authenticated`・`SETTINGS_NAV_ITEMS`                                              | —                              |
+| 2.1, 2.2, 2.3, 2.4                | 抑止による除外の表示               | DeliveryStatusReader、NotificationSettingsService、DeliveryStatusNotice                                    | `SuppressionList.getStatus`・`DeliverySuppression`                                  | —                              |
+| 3.1                               | 予選の開始予告                     | EveningCollector、NoticePlan、GroupDispatcher                                                              | `listForDate`・`matchNoticeDrafts`                                                  | 夜の送信枠                     |
+| 3.2, 3.3                          | トーナメントの予告と前日までの保持 | NotificationEventPublisher、NotificationEventExpander、NotificationSlots                                   | `previewSlotFor`                                                                    | 通知イベントの発行と受賞の展開 |
+| 3.4                               | 開始予告の件名と本文               | NoticeCopy、NoticeEmail、NotificationTemplates                                                             | `notifications.match-preview`                                                       | —                              |
+| 3.5, 3.6                          | 不戦勝と開始済みの除外             | NoticePlan、NoticeEmail                                                                                    | `matchNoticeDrafts`・`buildNoticeEmail`の`stale`                                    | 夜の送信枠                     |
+| 4.1, 4.2, 4.7                     | 勝敗結果の送り出し                 | EveningCollector、NotificationEventPublisher、NotificationSlots、GroupDispatcher                           | `resultSlotFor`                                                                     | 夜の送信枠                     |
+| 4.3                               | 結果とスコアの文                   | NoticeCopy、NotificationTemplates                                                                          | `matchResultSubject`・`resultOutcomeOf`                                             | —                              |
+| 4.4, 4.5                          | 統合と受信設定                     | NoticePlan、NoticeEmail                                                                                    | `planGroupEmail`                                                                    | 夜の送信枠                     |
+| 4.6                               | 結果の追記                         | ResultNoticeSupplementContract、RegisteredSupplementSource、NotificationTemplates                          | `RESULT_NOTICE_SUPPLEMENTS`                                                         | —                              |
+| 5.1, 5.5                          | 開催通知の対象                     | MorningCollector、NotificationJobs                                                                         | `listForDate`・`FollowerDirectory`                                                  | 朝の送信枠                     |
+| 5.2, 5.3, 5.6                     | 集約と件名と上限                   | NoticePlan、NoticeCopy、NotificationTemplates                                                              | `planGroupEmail`・`DIGEST_ITEM_LIMIT`                                               | 朝の送信枠                     |
+| 5.4                               | 開催通知の本文                     | NoticeEmail、NotificationTemplates                                                                         | `notifications.followed-user-matches`                                               | —                              |
+| 6.1, 6.3                          | 受賞の展開と即時の送り出し         | NotificationEventPublisher、ExpandEventHandler、NotificationEventExpander                                  | `award`・`notifications.expand-event`                                               | 通知イベントの発行と受賞の展開 |
+| 6.2                               | 受賞の件名と本文                   | NoticeCopy、NotificationTemplates                                                                          | `awardSubject`・`awardPeriodLabel`                                                  | —                              |
+| 7.1, 7.2                          | 送信の対象者と確かめ直し           | D1NotificationPreferenceStore、GroupDispatcher、NoticePlan                                                 | `eligibleRecipients`・`enabledTopicsOf`                                             | 夜の送信枠                     |
+| 7.3, 7.4                          | 送信基盤と抑止                     | GroupDispatcher                                                                                            | `EmailSender.send`・`SuppressionList.findSuppressed`                                | 夜の送信枠                     |
+| 7.5, 7.6                          | 送信者情報の表示と未設定           | D1SenderInfoProvider、GroupDispatcher、SentryNotificationIncidentReporter                                  | `SenderInfoProvider`・`sender_info_missing`                                         | —                              |
+| 7.7, 7.8, 7.9                     | 表示できないプロダクト             | NoticeEmail、MorningCollector、GroupDispatcher                                                             | `own_product_unavailable`・「非公開のプロダクト」                                   | —                              |
+| 7.10, 7.11                        | 本文構成とリンク                   | NotificationTemplates、NoticeSettingsLink、NoticeEmail                                                     | `EmailTemplate`                                                                     | —                              |
+| 7.12                              | 重複の防止                         | NotificationSchema、D1NotificationNoticeStore、D1NotificationSlotStore                                     | `dedupe_key`・リース                                                                | 送信枠の状態                   |
+| 8.1, 8.6                          | ヘッダー                           | UnsubscribeTokenRules、NoticeEmail                                                                         | `listUnsubscribeHeaders`                                                            | —                              |
+| 8.2, 8.3, 8.4, 8.5, 8.7           | ワンクリックの受け口               | OneClickUnsubscribeRoute、OneClickUnsubscribe、D1UnsubscribeTokenService                                   | `POST`・`GET /unsubscribe`・`excludePath`                                           | 配信停止                       |
+| 9.1                               | 本文のリンク                       | NotificationTemplates、NoticeCopy、NoticeEmail                                                             | `unsubscribePageUrl`・`unsubscribeLinks`・`COMBINED_UNSUBSCRIBE_LABELS`             | —                              |
+| 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8 | 配信停止ページ                     | UnsubscribeRoute、UnsubscribeConfirmation、UnsubscribeService                                              | `notificationUnsubscribeLink`・`confirmNotificationUnsubscribe`・`useFragmentToken` | 配信停止                       |
+| 10.1, 10.2, 10.3, 10.4            | トークンの発行と照合               | D1UnsubscribeTokenService、UnsubscribeTokenRules、NotificationSchema                                       | `tokensFor`・`resolve`                                                              | 配信停止                       |
+| 10.5                              | 退会での無効化                     | AccountWithdrawalSyncHandler                                                                               | `USER_LIFECYCLE_SYNC_HANDLERS`                                                      | —                              |
+| 10.6                              | トークンでできること               | UnsubscribeService、OneClickUnsubscribe                                                                    | `resolve`                                                                           | 配信停止                       |
+| 11.1, 11.2, 11.3                  | 送信者情報の区画                   | SenderInfoSection、SenderInfoForm、SenderInfoService                                                       | `ADMIN_SETTINGS_SECTIONS`・`notificationSenderInfo`                                 | —                              |
+| 11.4, 11.5, 11.6, 11.7            | 保存・検証・認可・監査・競合       | SenderInfoService、D1SenderInfoWriter、SenderInfoRules、NotificationAuditActions                           | `updateNotificationSenderInfo`・`notification-sender.update`                        | —                              |
+| 11.8                              | 以後のメールへの反映               | D1SenderInfoProvider、D1SenderInfoStore                                                                    | `SenderInfoProvider.get`                                                            | —                              |
+| 12.1, 12.2, 12.3, 12.4, 12.5      | 通知イベントの契約                 | NotificationEventContract、NotificationEventPublisher、NotificationsPlatformModule                         | `NotificationEventPublisher.publish`                                                | 通知イベントの発行と受賞の展開 |
+| 12.6                              | 予選は照会から作る                 | EveningCollector                                                                                           | `listForDate`                                                                       | 夜の送信枠                     |
+| 12.7                              | 結果の追記の登録口                 | ResultNoticeSupplementContract、ResultNoticeSupplements、RegisteredSupplementSource                        | `createResultNoticeSupplementRegistry`                                              | —                              |
+| 12.8                              | 遅れた発行                         | D1NotificationNoticeStore、NotificationEventPublisher、FlushSlotHandler                                    | `lateSlotKeys`                                                                      | 送信枠の状態                   |
+| 13.1, 13.2                        | 送り出しの時刻                     | NotificationJobs、NotificationSlots、FlushSlotHandler、D1EveningDispatchGate                               | `EveningSlotOpener.open`・`EveningDispatchGate.markReady`                           | 夜の送信枠・朝の送信枠         |
+| 13.7, 13.9                        | 送り出しの入口と前提の登録口       | EveningDispatchContract、D1EveningDispatchGate、EveningDispatchParticipants                                | `EveningDispatchGate.markReady`・`EVENING_DISPATCH_PARTICIPANTS`                    | 夜の送信枠                     |
+| 13.8                              | 期限の送り出しと検知               | NotificationSlots、FlushSlotHandler、SentryNotificationIncidentReporter                                    | `EVENING_DISPATCH_DEADLINE_SECONDS`・`evening-dispatch-incomplete`                  | 夜の送信枠                     |
+| 13.3                              | 失敗からの再開                     | FlushSlotHandler、D1NotificationSlotStore                                                                  | `NOTIFICATION_RETRY_POLICY`・カーソル                                               | 送信枠の状態                   |
+| 13.4, 13.5                        | 日次の回復と削除                   | NotificationJobs、D1NotificationMaintenanceStore                                                           | `notifications.maintenance`                                                         | —                              |
+| 13.6                              | 帯の値                             | NotificationJobs、AccountPurgeHandler                                                                      | `order` 1300                                                                        | —                              |
+| 14.1                              | 退会の扱い                         | AccountWithdrawalSyncHandler                                                                               | `USER_LIFECYCLE_SYNC_HANDLERS`                                                      | —                              |
+| 14.2                              | 物理削除                           | AccountPurgeHandler、D1NotificationNoticeStore                                                             | `USER_LIFECYCLE_ASYNC_HANDLERS`                                                     | —                              |
+| 14.3                              | データエクスポート                 | D1NotificationSettingsExport                                                                               | `NotificationSettingsExport.find`                                                   | —                              |
+| 14.4                              | ログの規則                         | 全コンポーネント(ログの規約)、SentryNotificationIncidentReporter                                           | `getAppLogger`                                                                      | —                              |
+| 14.5                              | 宛先の照会                         | GroupDispatcher、DeliveryStatusReader                                                                      | `UserContactDirectory.findContact`                                                  | —                              |
+| 15.1, 15.2, 15.3                  | テスト                             | Testing Strategy、NotificationE2E                                                                          | —                                                                                   | —                              |
+| 15.4                              | 技術ドキュメント                   | NotificationTechDocs                                                                                       | —                                                                                   | —                              |
+| 15.5                              | サービス仕様                       | NotificationServiceSpecs                                                                                   | —                                                                                   | —                              |
 
 ## Components and Interfaces
 
@@ -545,9 +564,9 @@ sequenceDiagram
 | EveningCollector・MorningCollector・GroupDispatcher・RegisteredSupplementSource・D1SenderInfoProvider                                                                                                                                                                                 | event/infrastructure              | 収集・送信・追記・送信者情報               | 3.1, 4.1, 4.6, 5.1, 5.5, 7.1〜7.9, 11.8, 12.6, 14.4, 14.5                       | MatchDirectory (P0)、EmailSender (P0)                | Batch, Service |
 | OneClickUnsubscribeRoute                                                                                                                                                                                                                                                              | event/presentation                | `POST`・`GET /unsubscribe`                 | 8.2〜8.5, 8.7                                                                   | Hono (P0)                                            | API            |
 | NotificationTemplates(MatchPreview・MatchResult・FollowedUserMatches・FollowedUserAward・ResultSupplementBlock・NoticeSettingsLink)・ResultNoticeSupplements                                                                                                                          | event/infrastructure・composition | 4つのテンプレートと追記の登録口            | 3.4, 4.3, 4.4, 4.6, 5.2〜5.4, 6.2, 7.10, 7.11, 9.1, 12.7                        | email-deliveryのテンプレート基盤 (P0)                | Service        |
-| NotificationSettingsRoute・NotificationSettingsPanel・NotificationTopicSwitch・DeliveryStatusNotice・NotificationCopy                                                                                                                                                                 | client                            | 通知設定ページ                             | 1.3〜1.9, 2.1〜2.4                                                              | SETTINGS_NAV_ITEMS (P0)                              | State          |
-| UnsubscribeRoute・UnsubscribeConfirmation                                                                                                                                                                                                                                             | client                            | 配信停止ページ                             | 9.2〜9.8                                                                        | readFragmentToken (P0)                               | State          |
-| SenderInfoSection・SenderInfoForm                                                                                                                                                                                                                                                     | admin                             | 送信者情報の区画                           | 11.1〜11.4, 11.7                                                                | ADMIN_SETTINGS_SECTIONS (P0)、RoleGate (P0)          | State          |
+| NotificationSettingsRoute・NotificationSettingsPanel・NotificationTopicSwitch・DeliveryStatusNotice・NotificationMessages                                                                                                                                                             | client                            | 通知設定ページ                             | 1.3〜1.9, 2.1〜2.4                                                              | SETTINGS_NAV_ITEMS (P0)                              | State          |
+| UnsubscribeRoute・UnsubscribeConfirmation                                                                                                                                                                                                                                             | client                            | 配信停止ページ                             | 9.2〜9.8                                                                        | useFragmentToken (P0)                                | State          |
+| SenderInfoSection・SenderInfoForm                                                                                                                                                                                                                                                     | admin                             | 送信者情報の区画                           | 11.1〜11.4, 11.7                                                                | ADMIN_SETTINGS_SECTIONS (P0)、useAdminRole (P0)      | State          |
 | NotificationE2E・NotificationFixtures                                                                                                                                                                                                                                                 | e2e                               | E2Eテストと補助                            | 15.3                                                                            | admin-bootstrap (P0)                                 | Batch          |
 | NotificationTechDocs・NotificationServiceSpecs                                                                                                                                                                                                                                        | docs                              | 技術ドキュメントとサービス仕様             | 15.4, 15.5                                                                      | —                                                    | —              |
 
@@ -573,18 +592,18 @@ export declare const NOTIFICATION_TOPIC_COPY: Readonly<
   >
 >; // 名称と説明は「Supporting References」の文言
 
-// common-lib/notifications/sender-info-rules.ts
-export declare const SENDER_INFO_MAX_LENGTH: 200; // 書記素
+// common-lib/notifications/sender-info-input-rules.ts
+export declare const SENDER_INFO_MAX_GRAPHEMES: 200;
 export type SenderInfoField = 'businessName' | 'contactEmail' | 'postalAddress';
 export type SenderInfoViolation = {
   readonly field: SenderInfoField;
-  readonly reason: 'required' | 'too_long';
+  readonly reason: 'empty' | 'too-long';
 };
 export declare function checkSenderInfoLengths(input: {
   readonly businessName: string;
   readonly contactEmail: string;
   readonly postalAddress: string;
-}): readonly SenderInfoViolation[]; // 前後の空白を除いた値で判定。メールアドレスの形式はサーバーがisValidEmailAddress、画面が`utilities/validation/zod.ts`の`z.email()`で確かめる
+}): readonly SenderInfoViolation[]; // 前後の空白を除いた値で判定。メールアドレスの形式は、サーバーが`isValidEmailAddress`、画面が前後の空白を除いた値を`z.regexes.html5Email`と`EMAIL_MAX_LENGTH`(`common-lib/identity/account-input-rules.ts`)で確かめる(サーバーと同じ規則。zodの既定の`email()`は定義が違うため使わない。前例`account-form-schemas.ts`)
 
 // common-lib/admin/audit-actions/notifications.ts
 // defineAuditAction({ name: 'notification-sender.update', label: '通知メールの送信者情報の変更', targetKind: 'setting', reason: 'optional', detailKeys: ['fields'], maxTargets: 1 })
@@ -686,6 +705,7 @@ export interface NotificationSlot {
 export declare const EVENING_SLOT_TIME: BusinessTimeOfDay; // 23:45
 export declare const MORNING_SLOT_TIME: BusinessTimeOfDay; // 0:00
 export declare const EVENING_DISPATCH_DEADLINE_SECONDS: 600; // 夜の枠の期限(23:55、仮2)
+export declare const MORNING_KICKOFF_WAIT_SECONDS: 300; // 朝の枠が未開始の当日のマッチを待つ間隔
 export declare function eveningSlot(date: BusinessDate): NotificationSlot;
 export declare function morningSlot(date: BusinessDate): NotificationSlot;
 export declare function awardSlot(eventId: string, at: Date): NotificationSlot;
@@ -747,7 +767,7 @@ export declare const EVENING_DISPATCH_PARTICIPANTS: readonly string[]; // 初版
 ```
 
 - 呼ぶ側の契約(tournament-week・tournament-year): apiの毎日の23:45のジョブ(`order`はそれぞれの帯)の最後に、組み合わせ・ラウンドの進行・通知イベントの発行(`NotificationEventPublisher.publish`)を全て終えた後で、`markReady({ participant: <登録した名前>, date: context.business.date, at: clock.now() })`を1回呼ぶ。組み合わせや進行が無い日も呼ぶ。自分の処理が失敗したときは呼ばずに例外を投げ、本specの期限(23:55)の送り出しに任せる。戻り値で処理を変えない(ログにだけ使う)。
-- `markReady`(`D1EveningDispatchGate`、冪等): (1)`participant`が`EVENING_DISPATCH_PARTICIPANTS`に無ければ`EveningDispatchError('unknown-participant')`。(2)夜の枠を`ensure`し、`fixParticipants`で前提の一覧(`EVENING_DISPATCH_PARTICIPANTS`の写し)を一覧が未確定(NULL)のときだけ書き込む。書き込んだ呼び出しは期限の送り出し(`flushSlot(key, max(0, settle_until − 現在時刻の秒数))`)を依頼する(本specのジョブが失敗した夜の備え)。(3)`notification_slot_readiness`へ`(slot_key, participant)`の`onConflictDoNothing()`で記録する。(4)`UPDATE notification_slots SET dispatch_requested_at = ? WHERE slot_key = ? AND dispatch_requested_at IS NULL AND phase = 'waiting' AND required_participants IS NOT NULL AND NOT EXISTS (前提の一覧のうち準備の完了が無い名前) RETURNING slot_key`で依頼を記録し、記録できた呼び出しだけが`flushSlot(key, 0)`を送って`dispatch-requested`を返す。記録できず依頼済み・待機の段でないなら`already-requested`、それ以外は`waiting`と未完了の名前を返す(13.7)。
+- `markReady`(`D1EveningDispatchGate`、冪等): (1)`participant`が`EVENING_DISPATCH_PARTICIPANTS`に無ければ`EveningDispatchError('unknown-participant')`。(2)夜の枠を`ensure`し、`fixParticipants`で前提の一覧(`EVENING_DISPATCH_PARTICIPANTS`の写し)を一覧が未確定(NULL)のときだけ書き込む。書き込んだ呼び出しは期限の送り出し(`flushSlot(key, max(0, settle_until − 現在時刻の秒数))`)を依頼する(本specのジョブが失敗した夜の備え)。(3)`notification_slot_ready_marks`へ`(slot_key, participant)`の`onConflictDoNothing()`で記録する。(4)`UPDATE notification_slots SET dispatch_requested_at = ? WHERE slot_key = ? AND dispatch_requested_at IS NULL AND phase = 'waiting' AND required_participants IS NOT NULL AND NOT EXISTS (前提の一覧のうち準備の完了が無い名前) RETURNING slot_key`で依頼を記録し、記録できた呼び出しだけが`flushSlot(key, 0)`を送って`dispatch-requested`を返す。記録できず依頼済み・待機の段でないなら`already-requested`、それ以外は`waiting`と未完了の名前を返す(13.7)。
 - `open`(本specの`notifications.evening-dispatch`): 枠を`ensure`し、`fixParticipants`で前提の一覧を未確定のときだけ書き込み、書き込んだ場合は期限の送り出し(`markReady`の(2)と同じ秒数の求め方)を依頼する。その後、一覧が空なら(4)と同じ条件付きの更新で依頼して`flushSlot(key, 0)`を送る(13.9)。空でなければ直ちには依頼しない(13.1・13.8)。
 - 枠は`ensure`の時点では前提の一覧を持たない(NULL)。通知の記録(`NotificationNoticeStore.record`)が数日前に作った夜の枠(Yearの1回戦の予告など)も同じで、その夜の`open`か最初の`markReady`が一覧を確定させる。一覧が未確定の枠は依頼されず、待機の段は期限まで進まない。
 - 前提の一覧は最初に確定させた時点の写しで、その夜の途中の登録の変更に影響されない。`EVENING_DISPATCH_PARTICIPANTS`は起動の時点で`assertEveningDispatchParticipants`で検証する。`EveningDispatchGate`・`EveningSlotOpener`はapiの`NOTIFICATIONS_MODULE`だけが束縛する(Cron Triggersはapiだけにあるため)。
@@ -950,6 +970,7 @@ export type NoticeEmailBuild =
       readonly emailKind: AnyEmailKind; // core/email/kinds/notifications.tsの4種別
       readonly input: unknown; // 種別のinputSchemaを満たす値
       readonly headers: ExtraHeaders; // List-Unsubscribe・List-Unsubscribe-Post(オリジンがhttps:のときだけ)
+      readonly deadline: Date | undefined; // 単独の開始予告と開催通知だけ(EmailSendRequest.deadline)
       readonly sentNoticeIds: readonly string[];
       readonly skipped: readonly {
         readonly noticeId: string;
@@ -973,6 +994,7 @@ export declare function buildNoticeEmail(
 - 結果: `resultOutcomeOf`が`null`、または自分のプロダクトが無ければ`own_product_unavailable`(7.7)。相手のプロダクトが無ければ`UNAVAILABLE_PRODUCT_NAME`(7.9)。追記のうち行動のボタンを持つ最初のものを主要な行動にし、無ければ「自分のプロダクトを見る」(`<client>/my/products`)(4.6)。
 - 開催通知: プロダクトまたは投稿者が表示できない項目を除き(7.8)、0件になれば`skip`。
 - 受賞: プロダクトまたは投稿者が表示できなければ`skip`。ボタンは`<client>/p/<ハンドル>`。
+- 送信の期限(`deadline`): 単独の開始予告はマッチの`startsAt`、開催通知は1通に載せた項目のマッチの`endsAt`のうち最も早い時刻とする。期限を過ぎた送信はemail-deliveryが送らないため、送信が遅れても開始の後の予告・終わったマッチの開催通知は届かない(3.6)。勝敗結果(統合したメールを含む)と受賞結果は遅れても伝える価値があるため、期限を付けない。
 - 全種別に`settingsUrl`(`<client>/settings/notifications`、7.11)と、主たる種別のトークンの`unsubscribeUrl`(9.1)・ヘッダー(8.1)を入れる。統合したメールのヘッダーは`match_result`のトークン(8.6・仮4)で、`next.unsubscribeUrl`に`match_preview`のトークンの配信停止のURLも入れる(9.1)。どちらのURLも、テンプレートの`unsubscribeLinks`がemail-deliveryの配信停止の区画へ渡す(「NotificationTemplates・ResultNoticeSupplements」)。
 
 #### ResultNoticeSupplementContract
@@ -1198,21 +1220,22 @@ export interface UnsubscribeTokenService {
   resolve(token: string): Promise<UnsubscribeTarget | undefined>; // 形式違反・不一致・種の削除済み(退会)はundefined
   deleteAllOf(userId: string): Promise<void>; // 物理削除の残りの防御
 }
-export interface SenderInfoRecord extends SenderInfo {
-  readonly settingId: string;
-  readonly version: number;
+export interface SenderInfoRecord {
+  readonly settingId: string; // シードの固定のID
+  readonly version: number; // 0は未設定
+  readonly info: SenderInfo | undefined; // 未設定(版0)はundefined
   readonly updatedAt: Date;
   readonly updatedByAdminId: string | null;
 }
 export interface SenderInfoStore {
-  get(): Promise<SenderInfoRecord | undefined>; // 未設定はundefined
+  get(): Promise<SenderInfoRecord | undefined>; // シードの行が無いときだけundefined
 }
 ```
 
 - `eligibleRecipients`・`enabledTopicsOf`は`notification_preferences`と`users`を結合し`verifiedUsers()`で絞る(identity-authの部品の使い方どおり。メールアドレスとニックネームは読まない)。
-- `tokensFor`: 対象の`(user_id, topic)`の種の行を`onConflictDoNothing()`で挿入し(種は`crypto.getRandomValues`の32バイト、照合用のハッシュは導出したトークンの`KeyedHasher.hash(UNSUBSCRIBE_LOOKUP_PURPOSE, token)`)、読み直した種から`KeyedHasher.hash(UNSUBSCRIBE_TOKEN_PURPOSE, unsubscribeTokenSource(...))`でトークンを導出する(10.1〜10.3)。平文を保存しない。
+- `tokensFor`: 対象の`(user_id, topic)`の種の行を`onConflictDoNothing()`で挿入し(種は`crypto.getRandomValues`の32バイト、照合用のハッシュは導出したトークンの`KeyedHasher.hash(UNSUBSCRIBE_LOOKUP_PURPOSE, token)`)、読み直した種から`KeyedHasher.hash(UNSUBSCRIBE_TOKEN_PURPOSE, unsubscribeTokenSource(...))`でトークンを導出する(10.1〜10.3)。平文を保存しない。導出したトークンの照合用のハッシュが保存した`token_hash`と違えば、`token_hash`を読んだ値を条件に更新する。ペッパー(`HASH_PEPPER`)を変えた後は、変更の前に送ったメールのリンクだけが無効になり、以後に送るメールのリンクは手作業なしで照合できる(通知設定ページからの停止は変わらず行える)。
 - `resolve`: `isWellFormedUnsubscribeToken`→照合用のハッシュの一意索引で1行→`KeyedHasher.verify(UNSUBSCRIBE_LOOKUP_PURPOSE, token, row.token_hash)`(タイミングセーフ、10.2)。種の行が退会で消えていればundefined(10.4・10.5)。
-- `D1SenderInfoStore.get`は1行を読む。前後の空白を除いた値を保存するため、そのまま`SenderInfo`として返せる。
+- `D1SenderInfoStore.get`はシードの1行を読み、版0(3項目がNULL)なら`info`を`undefined`にする。前後の空白を除いた値を保存するため、版1以上の値はそのまま`SenderInfo`として返せる。
 
 #### D1NotificationSlotStore・D1NotificationNoticeStore
 
@@ -1272,7 +1295,7 @@ export interface NotificationNoticeStore {
   ): Promise<{
     readonly created: number;
     readonly lateSlotKeys: readonly string[]; // 記録した枠のうちsending・doneのもの(12.8)
-  }>; // 枠をensureし、通知をdedupe_keyのonConflictDoNothingで挿入(1文12行まで)
+  }>; // 枠をensureし、通知をdedupe_keyのonConflictDoNothingで挿入(1文の行数は列数から決めた定数で、16列なら6行まで。単体テストで`toSQL().params.length`が100以下であることを確かめる)
   nextPendingGroups(
     slotKey: string,
     limit: number,
@@ -1371,7 +1394,7 @@ export interface NotificationIncidentReporter {
 }
 ```
 
-- `SentryNotificationIncidentReporter`(`workers/notifications/sentry-notification-incident-reporter.ts`): `@sentry/cloudflare`の`captureEvent`(定型の文言を`logentry.message`に置く。`infra/004`の「同じ文言を繰り返し送る通知」)で、`slot-overdue`・`send-rejected`・`event-stalled`は`error`、`sender-info-missing`・`evening-dispatch-incomplete`は`warning`。タグ`notification_incident`、fingerprint`['notifications', <種類>]`。メールアドレス・名称・トークンを送らない(14.4)。apiの保守(4:21)とeventの送信の両方で使う。
+- `SentryNotificationIncidentReporter`(`workers/notifications/sentry-notification-incident-reporter.ts`): `@sentry/cloudflare`の`captureEvent`(定型の文言を`logentry.message`に置く。`infra/004`の「同じ文言を繰り返し送る通知」)で、`slot-overdue`・`send-rejected`・`event-stalled`は`error`、`sender-info-missing`・`evening-dispatch-incomplete`は`warning`。タグ`notifications_incident`(`infra/004`の`<ドメイン>_incident`)、fingerprint`['notifications', <種類>]`。メールアドレス・名称・トークンを送らない(14.4)。apiの保守(4:21)とeventの送信の両方で使う。
 - `MessageWorkRequester`(`NotificationWorkRequester`の実装)は`MessagePublisher.publish`で2つのメッセージを送る。apiとeventの`application`は`lib/workers`を読み込めないため、メッセージの送信をこのポート越しに行う。
 - `NOTIFICATIONS_PLATFORM_MODULE`は上の部品と`NotificationEventPublisher`・`NotificationEventExpander`・`NotificationWorkRequester`・`NotificationIncidentReporter`を処理単位で束縛し、apiとeventの`composition/modules.ts`の両方へ入れる(12.1)。DIの識別子は`NOTIFICATIONS_PLATFORM_TYPES`(`Symbol.for('notifications.<名前>')`の凍結したオブジェクト、`core/notifications/identifiers.ts`。値と凍結は`identifiers.unit.test.ts`で確かめる)。
 
@@ -1453,7 +1476,7 @@ export interface UnsubscribeService {
 export interface SenderInfoView {
   readonly info: SenderInfo | null; // 未設定はnull(11.2)
   readonly version: number; // 未設定は0
-  readonly updatedAt: Date | null;
+  readonly updatedAt: Date | null; // 版0はnull(シードの作成の日時を最後に変更した日時として出さない)
   readonly updatedByAdminId: string | null; // ニックネームはリゾルバがAdminDirectoryで引く
 }
 export type SenderInfoUpdateResult =
@@ -1462,7 +1485,7 @@ export type SenderInfoUpdateResult =
       readonly kind: 'invalid';
       readonly violations: readonly {
         readonly field: SenderInfoField;
-        readonly reason: 'required' | 'too_long' | 'invalid_email';
+        readonly reason: 'empty' | 'too-long' | 'invalid-email';
       }[];
     };
 export interface SenderInfoService {
@@ -1481,7 +1504,7 @@ export interface SenderInfoService {
 
 - `NotificationSettingsService.update`: リゾルバが`AccountGuard.requireWritableUser`(未ログイン・停止中・退会済みを拒否、1.6)を先に行い、`setPreference`の後に`read`の結果を返す(1.4)。`read`の`delivery`は`DeliveryStatusReader`(`UserContactDirectory.findContact`→`SuppressionList.getStatus`、失敗は`unknown`、2.1〜2.4・14.5)、`emailVerified`は`CurrentUser`から読む(1.7)。
 - `UnsubscribeService.confirm`: `resolve`→`preferencesOf`で現在の値→有効なら`setPreference(false)`。既に無効なら`alreadyDisabled: true`(9.5)。トークンでは停止だけを行う(10.6)。
-- `SenderInfoService.update`: (リゾルバの`requireAdmin(context, 'super_admin')`、不足は`forbidden`、11.5)→値の前後の空白を除いて`checkSenderInfoLengths`と`isValidEmailAddress`(違反は`invalid`、リゾルバが`validation_error`と項目ごとの理由にする、11.4)→`AuditLogRecorder.prepare({ operatorAdminId: adminId, action: 'notification-sender.update', targetIds: [settingId], reason, detail: { fields }, occurredAt: now })`(11.6)→`SenderInfoWriter.save`(`version_conflict`はAppError、11.7)。`read`の変更者のニックネームは、リゾルバが`AdminDirectory`で引く(削除済みはnull)。
+- `SenderInfoService.update`: (リゾルバの`requireAdmin(context, 'super_admin')`、不足は`forbidden`、11.5)→値の前後の空白を除いて`checkSenderInfoLengths`と`isValidEmailAddress`(違反は`invalid`、リゾルバが`validation_error`と項目ごとの理由にする、11.4)→`AuditLogRecorder.prepare({ operatorAdminId: adminId, action: 'notification-sender.update', targetIds: [settingId], reason, detail: { fields }, occurredAt: now })`(`settingId`は`SenderInfoStore.get()`が返すシードの固定のID、11.6)→`SenderInfoWriter.save`(`version_conflict`はAppError、11.7)。`read`の変更者のニックネームは、リゾルバが`AdminDirectory.findProfiles`で引く(有効な管理者だけを返すため、削除済み・停止中・招待中の管理者はnull)。
 
 #### NotificationJobs
 
@@ -1505,7 +1528,7 @@ export interface SenderInfoService {
 
 **Contracts**: State [x] / Event [x]
 
-- `D1SenderInfoWriter.save`: 1つの一括の書き込みで、(1)設定の行の挿入または`version = expectedVersion`の条件付きの更新(`CASE`式のNOT NULL制約の違反で版の不一致を全体の取り消しにする、ultras-subscriptionの機能フラグと同じ形)、(2)`buildAuditLogStatements(audit)`(11.6)。取り消しは`version_conflict`に変換する(11.7)。
+- `D1SenderInfoWriter.save`: ultras-subscriptionの機能フラグ(`apps/api/src/infrastructure/ultras/d1-promotion-setting-writer.ts`)と同じ形で、1つの一括の書き込みに(1)`buildAuditLogStatements(db, audit, { kind: 'condition', condition })`(条件は「`setting_key = 'sender-info'`かつ`version = expectedVersion`の行がある」)、(2)同じ条件の`UPDATE`(3項目・`version = version + 1`・`updated_by_admin_id`・`updated_at`)をこの順に入れる(11.6)。行はシードのマイグレーションで作るため挿入は行わず、初回の保存も版0を条件にした更新になる。2人が同時に初回の保存をしても、2人目は版の不一致になる。`isAuditGuardRejection`で判定した取り消しを`version_conflict`に変換し、他の失敗はそのまま投げる(11.7)。
 - `AccountWithdrawalSyncHandler`(`notifications.account-withdrawal`、`withdrawn`): 利用者IDを条件にした集合の更新の文だけを返す。(1)`DELETE FROM notification_unsubscribe_tokens WHERE user_id = ?`(10.5)、(2)`DELETE FROM notification_preferences WHERE user_id = ?`、(3)`UPDATE notification_notices SET status = 'skipped', skip_reason = 'recipient_withdrawn', settled_at = ? WHERE recipient_user_id = ? AND status = 'pending'`(14.1)。停止・停止の解除には登録しない(10.4)。
 - `D1NotificationMaintenanceStore`: `NotificationMaintenanceStore`(api/application/notifications/ports.ts)のD1の実装。削除は`id IN (SELECT ... LIMIT ?)`の形で1回の件数を区切る。
 - `DeliveryStatusReader`: `UserContactDirectory.findContact`のメールアドレスを`SuppressionList.getStatus`へ渡し、`hard_bounce`→`bounce`に写す。連絡先が無い・照会の例外は`unknown`(2.4・14.5)。
@@ -1610,11 +1633,19 @@ type Mutation {
 
 ```typescript
 // application/notifications/ports.ts
+export type SlotCollectStep =
+  | {
+      readonly kind: 'progress';
+      readonly cursor: string | null;
+      readonly done: boolean;
+    }
+  | {
+      readonly kind: 'wait'; // 朝の枠で、開始の日時を過ぎても開始していない当日のマッチが残る
+      readonly delaySeconds: number;
+      readonly pendingKickoffs: number;
+    };
 export interface SlotCollector {
-  step(
-    slot: StoredSlot,
-    now: Date,
-  ): Promise<{ readonly cursor: string | null; readonly done: boolean }>; // 夜・朝の枠ごとの実装
+  step(slot: StoredSlot, now: Date): Promise<SlotCollectStep>; // 夜・朝の枠ごとの実装
 }
 export interface GroupDispatcher {
   dispatchNext(
@@ -1639,7 +1670,7 @@ export interface SupplementSource {
 
 - 異常の通知のポート`NotificationIncidentReporter`は、apiの保守とeventの送信の両方が使うため`core/notifications/ports.ts`に置く(「D1NotificationSettingsExport・NotificationsPlatformModule」の節)。
 
-- `FlushSlotHandler`(`notifications.flush-slot`、`NOTIFICATION_RETRY_POLICY`): System Flows「送信枠の状態」の順。待機の段は、依頼があれば進み、依頼が無く`settle_until`より前なら残りの時間の`defer`、`settle_until`を過ぎたら依頼の時刻を記録して進み、前提のうち準備の完了が無い名前を`evening-dispatch-incomplete`として報告する(13.8)。リースの保持者は封筒のID(`meta.id`)。収集は夜なら`EveningCollector`、朝なら`MorningCollector`。送信は`GroupDispatcher.dispatchNext(slotKey, now, 20)`。例外はそのまま投げ、再試行では`pending`の通知とカーソルから再開する(13.3)。ログはカテゴリ`['event', 'notifications', 'flush']`、属性は`slotKey`・`phase`・件数だけ(14.4)。
+- `FlushSlotHandler`(`notifications.flush-slot`、`NOTIFICATION_RETRY_POLICY`): System Flows「送信枠の状態」の順。待機の段は、依頼があれば進み、依頼が無く`settle_until`より前なら残りの時間の`defer`、`settle_until`を過ぎたら依頼の時刻を記録して進み、前提のうち準備の完了が無い名前を`evening-dispatch-incomplete`として報告する(13.8)。リースの保持者は封筒のID(`meta.id`)。収集は夜なら`EveningCollector`、朝なら`MorningCollector`。収集が`wait`を返したら段とカーソルを変えずにリースを放し、`delaySeconds`の`defer`で同じメッセージを再び受け取る(試行の回数に数えない)。送信は`GroupDispatcher.dispatchNext(slotKey, now, 20)`。例外はそのまま投げ、再試行では`pending`の通知とカーソルから再開する(13.3)。ログはカテゴリ`['event', 'notifications', 'flush']`、属性は`slotKey`・`phase`・件数だけ(14.4)。
 - `ExpandEventHandler`(`notifications.expand-event`、`NOTIFICATION_RETRY_POLICY`): `NotificationEventExpander.expand(eventId, now, 2000)`が`continue`なら`defer`(1秒)、`done`なら`lateSlotKeys`と`flushSlotKey`へ`NotificationWorkRequester.flushSlot(key, 0)`(6.3・12.8)。
 - `OneClickUnsubscribe.execute(token, now)`: `resolve`→無効なら`invalid`、有効なら`setPreference(false)`(既に無効でも成功、8.7)。トークンでは停止だけを行う(10.6)。
 - `AccountPurgeHandler`(`notifications.account-purge`、`purge_due`、1300): `deleteByRecipient(userId, 1000)`が1,000件なら`continue`、未満なら受信設定と種の残りを消して`done`(14.2)。`users`への外部キーで物理削除を止めない。
@@ -1649,10 +1680,10 @@ export interface SupplementSource {
 **Contracts**: Batch [x] / Service [x]
 
 - `EveningCollector.step`: System Flows「夜の送信枠」の収集を1回で行う(予選のマッチは1日に数千件まで。投稿者の`eligibleRecipients`は90件ずつ)(3.1・4.1・12.6)。
-- `MorningCollector.step`: System Flows「朝の送信枠」。カーソルは`{ owners: { ownerUserId, items: { matchId, productId }[] }[], ownerIndex, followAfter }`のJSONで、2,000件のフォロワーごとに`done: false`を返す(5.1・5.5)。
-- `GroupDispatcher.dispatchNext`: (1)`nextPendingGroups(slotKey, 20)`。(2)`enabledTopicsOf`で確かめ直し、`planGroupEmail`(7.1・7.2)。(3)`SenderInfoStore.get()`が未設定なら全てを`sender_info_missing`にし、`AlertThrottle.tryAcquire('notifications-sender-info-missing', now, 3600)`が真なら報告(7.6・仮3)。(4)宛先ごとに`UserContactDirectory.findContact`(無い→`recipient_unavailable`、未確認→`email_not_verified`)、`SuppressionList.findSuppressed`(→`suppressed`)(7.3・7.4・14.5)。(5)`MatchDirectory.findMatches`・`ProductDirectory.findSummaries(ids, 'visible')`・`UserProfileDirectory.findSummaries(ids, 'visible')`を1回ずつ、結果の通知ごとに`SupplementSource`、主たる種別のトークンを`tokensFor`で1回。(6)`buildNoticeEmail`→`EmailSender.send({ kind, to, input, headers })`(`EmailSendError`は`send_rejected`で報告)→`settle`(送った通知は`sent`と送信要求の識別子)。
+- `MorningCollector.step`: System Flows「朝の送信枠」。カーソルは`{ owners: { ownerUserId, items: { matchId, productId }[] }[], ownerIndex, followAfter }`のJSONで、2,000件のフォロワーごとに`done: false`を返す(5.1・5.5)。カーソルが無い1回目の段は、`listForDate({ date, kinds, now })`のうち`phase`が`scheduled`で`startsAt <= now < endsAt`のマッチ(0:00のmatch-engineの開始が失敗して未開始のまま残ったもの)を数え、1件以上なら投稿者の一覧を作らずに`{ kind: 'wait', delaySeconds: MORNING_KICKOFF_WAIT_SECONDS, pendingKickoffs }`を返す(件数だけを`warn`のログに出す)。運用者が0:00のジョブを手動で起こし直してマッチが開始すると、次の段で収集を始める。`endsAt`を過ぎたマッチは数えないため、開始されないままその日のマッチが終われば、開始したマッチだけで収集する。待つ間の遅れは、4:21の保守の`notification-slot-overdue`(13.4)で検知される。
+- `GroupDispatcher.dispatchNext`: (1)`nextPendingGroups(slotKey, 20)`。(2)`enabledTopicsOf`で確かめ直し、`planGroupEmail`(7.1・7.2)。(3)`SenderInfoStore.get()`が未設定なら全てを`sender_info_missing`にし、`AlertThrottle.tryAcquire('notifications-sender-info-missing', now, 3600)`が真なら報告(7.6・仮3)。(4)宛先ごとに`UserContactDirectory.findContact`(無い→`recipient_unavailable`、未確認→`email_not_verified`)、`SuppressionList.findSuppressed`(→`suppressed`。戻り値は照合キーの集合のため、連絡先のアドレスを`toMatchingKey`に通して照合する)(7.3・7.4・14.5)。(5)`MatchDirectory.findMatches(ids, now)`・`ProductDirectory.findSummaries(ids, 'visible')`・`UserProfileDirectory.findSummaries(ids, 'visible')`を1回ずつ、結果の通知ごとに`SupplementSource`、主たる種別のトークンを`tokensFor`で1回。(6)`buildNoticeEmail`→`EmailSender.send({ kind, to, input, headers, deadline })`(`deadline`は`buildNoticeEmail`の値で、無ければ渡さない。`EmailSendError`は`send_rejected`で報告)→`settle`(送った通知は`sent`と送信要求の識別子)。`EmailSender`は呼び出し側の重複のキーを受け付けないため、`send`の後の`settle`が失敗して段が再試行されると、同じ通知をもう1通依頼し得る。この重複は、依頼の後の記録の失敗に限って許容する(paymentsの`purchase-notifier.ts`の前例と同じ扱い、要件7.12の注記)。期限を過ぎた送信はemail-deliveryが`expired`で送らずに完了するが、本specの通知は依頼の時点で`sent`のまま残す。
 - `RegisteredSupplementSource`: `RESULT_NOTICE_SUPPLEMENTS`の`providersFor(kind)`を`order`順に処理単位のコンテナから解決して呼び、`resultNoticeSupplementSchema`に合わない追記は捨てて`warn`のログ(提供元の名前だけ)。3件まで(4.6)。
-- `D1SenderInfoProvider`: email-deliveryの`SenderInfoProvider`の実装で、`SenderInfoStore.get()`の`SenderInfo`を返す。eventの`EMAIL_SENDER_INFO_PROVIDER`をこのクラスへ書き換える(7.5・11.8)。`EMAIL_SENDER_INFO_PROVIDER`は`Newable<SenderInfoProvider>`で`.to()`で束縛されるため、ファクトリではなく、`@injectable()`とコンストラクタ引数の`@inject(NOTIFICATIONS_PLATFORM_TYPES.SenderInfoStore)`を持つクラスにする。
+- `D1SenderInfoProvider`: email-deliveryの`SenderInfoProvider`の実装で、`SenderInfoStore.get()`の`info`を返す(未設定・シードの行が無いときは`undefined`)。eventの`EMAIL_SENDER_INFO_PROVIDER`をこのクラスへ書き換える(7.5・11.8)。email-deliveryは種別を問わず毎通この取得口を呼び、値があれば全種別のメール(認証系・決済などのトランザクションメールを含む)の末尾に送信者情報の区画を描く(email-deliveryの確認済みの決定)。取得は毎通D1の1行の読み取りで、isolateの中で値を持ち越さない(保存の直後のメールから新しい値を使うため、11.8)。差し替えで使われなくなるemail-deliveryの既定の実装`UnsetSenderInfoProvider`とそのテストは削除する。`EMAIL_SENDER_INFO_PROVIDER`は`Newable<SenderInfoProvider>`で`.to()`で束縛されるため、ファクトリではなく、`@injectable()`とコンストラクタ引数の`@inject(NOTIFICATIONS_PLATFORM_TYPES.SenderInfoStore)`を持つクラスにする。
 
 #### OneClickUnsubscribeRoute
 
@@ -1663,7 +1694,7 @@ export interface SupplementSource {
 | POST   | `/unsubscribe?token=<トークン>` | 本文は任意(`List-Unsubscribe=One-Click`) | 200 `text/plain`「配信を停止しました。」                                                            | 400(形式違反)「このリンクは無効です。」、404(照合できない)「このリンクは無効です。」 |
 | GET    | `/unsubscribe?token=<トークン>` | —                                        | 303 `Location: <CLIENT_SITE_ORIGIN>/unsubscribe#token=<トークン>`(トークンが無ければ`/unsubscribe`) | —                                                                                    |
 
-- 応答は`Cache-Control: no-store`・`Referrer-Policy: no-referrer`。POSTはCookie・認証を求めない(8.2)。`excludePath('/unsubscribe', 'POST')`でIP単位の制限の対象外(8.5)、GETは対象のまま。アクセスログはクエリを除くためトークンを残さない(9.7・10.3)。
+- 200・400・404の本文は`text/plain`で、経路から直接返す(`AppError`を投げると共通エラー形式のJSONになるため使わない)。応答は`Cache-Control: no-store`。`Referrer-Policy`は経路で付けず、全体のセキュリティヘッダーの`same-origin`のままにする(全体の処理が経路の値を上書きするため)。GETは303の移動だけで本文を持たず、Refererにはフラグメントが含まれないため、`same-origin`でもトークンは外部のオリジンへ送られない(9.7)。POSTはCookie・認証を求めない(8.2)。`excludePath('/unsubscribe', 'POST')`でIP単位の制限の対象外(8.5)、GETは対象のまま。アクセスログはクエリを除くためトークンを残さない(9.7・10.3)。
 
 #### NotificationTemplates・ResultNoticeSupplements
 
@@ -1674,7 +1705,7 @@ export interface SupplementSource {
 ### client
 
 ```typescript
-// components/notifications/notification-copy.ts
+// components/notifications/notification-messages.ts
 export declare const SUPPRESSION_MESSAGES: Readonly<
   Record<'BOUNCE' | 'COMPLAINT' | 'REJECTED', string>
 >;
@@ -1683,14 +1714,14 @@ export declare function unsubscribeQuestion(topicLabel: string): string; // '「
 
 #### NotificationSettingsRoute・NotificationSettingsPanel・NotificationTopicSwitch・DeliveryStatusNotice
 
-- `routes/_authenticated/settings/notifications.tsx`: `_authenticated`の下に置き(未ログインはログインへ誘導して戻す、1.8)、`loader`で`viewerNotificationSettings`を`ensureQueryData`、`head`は`buildPageHead({ title: '通知', noIndex: true })`。ナビゲーションは`SETTINGS_NAV_ITEMS`の`notifications`(40)(1.9)。
+- `routes/_authenticated/settings/notifications.tsx`: `_authenticated`の下に置き(未ログインはログインへ誘導して戻す、1.8)、`loader`で`viewerNotificationSettings`を`queryClient.query({ ...options, staleTime: 'static' })`で取得し(`frontend/006`。`ensureQueryData`は使わない)、`head`は`buildSitePageHead({ title: '通知', noIndex: true })`(`apps/client/src/head/page-heads.ts`。frontend-libの`buildPageHead`は`siteName`を必須にするため直接呼ばない)。ナビゲーションは`SETTINGS_NAV_ITEMS`の`notifications`(40)(1.9)。
 - `NotificationSettingsPanel`: 見出し「通知メール」と説明(初期設定はすべて受け取らない旨、1.3)、`DeliveryStatusNotice`、通知種別ごとの`NotificationTopicSwitch`(`NOTIFICATION_TOPICS`の順)。
-- `NotificationTopicSwitch`: shadcn/uiの`switch`(`aria-describedby`で説明)。切り替えで`updateNotificationPreference`を送り、送信中はスイッチを無効にし、成功でサーバーの値に更新して`notify.success('通知設定を保存しました。')`、失敗で元の値に保って`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言を`notify.error`(1.4・1.5)。`editable`が偽なら無効(1.6)。
+- `NotificationTopicSwitch`: shadcn/uiの`switch`(`aria-describedby`で説明)。切り替えで`updateNotificationPreference`を送り、送信中はスイッチを`disabled`にせず、`aria-disabled`と`aria-busy`にして押下を無視し(フォーカスを失わないため、`frontend/004`)、成功でサーバーの値に更新して`notify.success('通知設定を保存しました。')`、失敗で元の値に保って`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言を`notify.error`(1.4・1.5)。`editable`が偽なら無効(1.6)。
 - `DeliveryStatusNotice`: `suppression`があれば理由ごとの文言(`REJECTED`は`until`を`<time datetime>`)と`/settings/account`への導線(2.1〜2.3)、`deliveryStatusAvailable`が偽なら「配信の状態を確認できませんでした。」(2.4)、`emailVerified`が偽なら未確認の案内(1.7)、`editable`が偽なら停止中の案内(1.6)。
 
 #### UnsubscribeRoute・UnsubscribeConfirmation
 
-- `routes/unsubscribe.tsx`: ログイン不要。`head`は`buildPageHead({ title: '配信停止', noIndex: true })`(9.6)。描画の後に`readFragmentToken(location.hash)`でトークンを読みURLから消す(9.7)。トークンが無ければ無効の表示。
+- `routes/unsubscribe.tsx`: ログイン不要。`head`は`buildSitePageHead({ title: '配信停止', noIndex: true })`(9.6)。frontend-libの`useFragmentToken`でトークンを読む。ハイドレーション中は`reading`を返し、読めたら`found`にしてURLからフラグメントを消す(9.7、前例`password-reset-form.tsx`)。`found`の間だけ`notificationUnsubscribeLink`の照会を有効にし、トークンが無ければ無効の表示。`LinkConfirmation`は開いた時の照会(9.5の既に停止の表示)を持たないため使わない。
 - `UnsubscribeConfirmation`: `notificationUnsubscribeLink`の結果で、無効は「このリンクは無効です。」と通知設定への導線(9.4)、`enabled`が偽は既に停止している旨(9.5)、それ以外は「「<種別>」の通知メールの配信を停止しますか?」と「配信を停止する」(9.2)。押下で`confirmNotificationUnsubscribe`、成功で停止した旨と「通知設定を開く」(`/settings/notifications`)(9.3)、失敗で「配信を停止できませんでした。時間をおいて再度お試しください。」と再試行(9.8)。メールアドレス・ニックネームを表示しない(9.6)。
 
 ### admin
@@ -1698,17 +1729,21 @@ export declare function unsubscribeQuestion(topicLabel: string): string; // '「
 #### SenderInfoSection・SenderInfoForm
 
 - 登録: `ADMIN_SETTINGS_SECTIONS`に`{ id: 'notifications.sender-info', order: 30, title: '通知メールの送信者情報', component: SenderInfoSection }`(11.1)。設定ページが区画ごとに`RecoverableSlot`で包み、読み込み中と失敗の間は`title`の見出しを補うため、`title`は部品が描く見出しと同じ文言にする。
-- `SenderInfoSection`: 見出し「通知メールの送信者情報」と説明、未設定なら「送信者情報が未設定のため、通知メールを送信していません。」の警告(11.2・仮3)、現在の値と最後に変更した日時(`<time datetime>`)と管理者のニックネーム。`RoleGate({ minimum: 'super_admin' })`のときだけ`SenderInfoForm`、それ以外は参照だけで「最上位管理者だけが変更できます」(11.3)。
-- `SenderInfoForm`: `useAppForm(<送信者情報のスキーマ>, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)、`checkSenderInfoLengths`・`utilities/validation/zod.ts`の`z.email()`の検証(フォーカスアウト、11.4)。スキーマの入力は描く3項目(`businessName`・`contactEmail`・`postalAddress`)だけで、版の値の`expectedVersion`(読み込んだ版、未設定は0)と確認のダイアログで受ける`reason`はスキーマの入力に含めず、`onSubmit`(確認のダイアログの確定)で足して`UpdateNotificationSenderInfoInput`にする。保存は`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)で確定し`updateNotificationSenderInfo`を送る。確定の失敗はダイアログの中に`failureMessageOf`の文言で示し(`version_conflict`はAPIの最新を読み直す案内、11.7)、`validation_error`の欄ごとの詳細は`applyServerFieldErrors`でフォームの欄にも示す。成功で「送信者情報を保存しました。」。
-- `SenderInfoSection`の取得の失敗は`ErrorState`を`contactHref`無しで描き、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ。
+- `SenderInfoSection`: 見出し「通知メールの送信者情報」と説明、未設定なら「送信者情報が未設定のため、通知メールを送信していません。」の警告(11.2・仮3)、現在の値と最後に変更した日時(`<time datetime>`)と管理者のニックネーム。`hasRole(useAdminRole(), 'super_admin')`が真のときだけ`SenderInfoForm`を編集できる状態で描き、それ以外は参照だけで「最上位管理者だけが変更できます」(11.3、前例`promotion-setting-section.tsx`)。最後に変更した日時と管理者が無い(版0、または管理者が有効でない)ときは「なし」と示す。
+- `SenderInfoForm`: `useAppForm(<送信者情報のスキーマ>, { defaultValues })`(`defaultValues`は全欄)と`AppForm`(`serverFieldPrefix="input"`)、`checkSenderInfoLengths`と、前後の空白を除いた値の`z.regexes.html5Email`・`EMAIL_MAX_LENGTH`による連絡先メールアドレスの検証(フォーカスアウト、11.4。`z`は`utilities/validation/zod.ts`から読む)。スキーマの入力は描く3項目(`businessName`・`contactEmail`・`postalAddress`)だけで、版の値の`expectedVersion`(読み込んだ版、未設定は0)と確認のダイアログで受ける`reason`はスキーマの入力に含めず、送る時に足して`UpdateNotificationSenderInfoInput`にする。`ConfirmActionDialog`は自分のフォームを持ち、送信のイベントが入力欄のフォームへ伝わらないよう、入力欄の`AppForm`の外に置く(前例`apps/admin/src/components/legal/legal-draft-form.tsx`)。保存は次の順で行う。
+  - 入力欄の`AppForm`の`onSubmit`は、検証を通った3項目を持って`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)を開き、ダイアログの確定か取り消しまで解決しないPromiseを返す。その間、入力欄のフォームは送信中のままになる。
+  - ダイアログの`onConfirm({ reason })`が`updateNotificationSenderInfo`を送る。成功ならダイアログを閉じて`onSubmit`のPromiseを解決し、「送信者情報を保存しました。」を通知する。
+  - `validation_error`ならダイアログを閉じ、`onSubmit`のPromiseをその`GraphQLClientError`で拒否する。`AppForm`が`serverFieldPrefix="input"`で欄ごとの詳細を欄に付け、欄に当たらない詳細は`onSubmitError`へ渡す(11.4)。`onConfirm`は例外を投げずに終える。
+  - それ以外の失敗は`onConfirm`から投げ、ダイアログの中に`failureMessageOf`の文言で示す(`version_conflict`はAPIの最新を読み直す案内、11.7)。ダイアログを閉じたら(取り消しを含む)`onSubmit`のPromiseを何もせずに解決し、入力欄のフォームを送信中から戻す。
+- `SenderInfoSection`の取得は、値が無い間の失敗を`throwOnError: (_error, query) => query.state.data === undefined`で投げ、設定ページの`RecoverableSlot`と`SectionFallback`(見出しの補いと`ADMIN_PROFILE.contactAvailable`による文言)に描かせる(前例`promotion-setting-section.tsx`)。区画は`ErrorState`を自分で描かない。
 
 ### docs・e2e
 
 #### NotificationTechDocs・NotificationServiceSpecs・NotificationE2E・NotificationFixtures
 
-- `backend/016-batched-notification-delivery.md`(15.4): 送信枠ごとの通知の記録(枠のキーと期日・まとめのキー・重複のキー)、段(待機・収集・送信・完了)とリースと`defer`による継続、同じ時刻の後続の処理が準備の完了を伝えて送り出しを始める入口(前提の登録・冪等な依頼・期限による送り出し)、遅れた通知の扱い、送る直前の確かめ直し、受信設定の初期値、日次の回復と削除、少なくとも1回の送信の限界。
-- `security/010-one-click-unsubscribe.md`(15.4): RFC 8058のヘッダーと受け口(POSTで止めGETで止めない・認証を求めない・IP制限の除外とトークンでの真正性)、組ごとのトークンを種とペッパーから導出し照合用のハッシュだけで引く方式、フラグメントとクエリによる受け渡しとアクセスログ・Refererの扱い、退会での無効化、DKIMの署名の対象の確認。本プロジェクト固有の値を含めない。
-- サービス仕様(15.5): 文言規則(「Supporting References」の件名・本文・画面・エラーの文言)、ページ配置(`/unsubscribe#token={token}`への変更(仮5)、通知設定ページ・配信停止ページ・送信者情報の区画)、日次タイムライン(23:45の`notifications.evening-dispatch`(1300、送り出しはトーナメントのジョブの準備の完了の後、遅くとも23:55)・0:00の`notifications.morning-dispatch`(1300)・4:21の`notifications.maintenance`(1300)、トーナメントの開始予告は前日の23:45(仮1))、準拠方針(配信停止の手段・トークン・送信者情報の未設定の扱い・データ保持期間の行)、`docs/onboardings/project-values.md`。
+- `backend/016-batched-notification-delivery.md`(15.4): 送信枠ごとの通知の記録(枠のキーと期日・まとめのキー・重複のキー)、段(待機・収集・送信・完了)とリースと`defer`による継続、同じ時刻の後続の処理が準備の完了を伝えて送り出しを始める入口(前提の登録・冪等な依頼・期限による送り出し)、遅れた通知の扱い、前段の処理の完了を待つ収集(前段が失敗して未完了なら待ち、前段の対象の期限を過ぎたら待たない)、送る直前の確かめ直し、受信設定の初期値、送信の期限、日次の回復と削除、少なくとも1回の送信の限界(依頼の後の記録の失敗による重複)。
+- `security/010-one-click-unsubscribe.md`(15.4): RFC 8058のヘッダーと受け口(POSTで止めGETで止めない・認証を求めない・IP制限の除外とトークンでの真正性)、組ごとのトークンを種とペッパーから導出し照合用のハッシュだけで引く方式、フラグメントとクエリによる受け渡しとアクセスログ・Refererの扱い、退会での無効化、ペッパーを変えた後の扱い(変更の前に送ったメールのリンクだけが無効になり、以後のメールを送る時に照合用のハッシュを直す)、DKIMの署名の対象の確認。本プロジェクト固有の値を含めない。
+- サービス仕様(15.5): 文言規則(「Supporting References」の件名・本文・画面・エラーの文言と、「認証系メールの本文」の構成の末尾への送信者情報の追加)、ページ配置(`/unsubscribe#token={token}`への変更(仮5)、通知設定ページ・配信停止ページ・送信者情報の区画)、日次タイムライン(23:45の`notifications.evening-dispatch`(1300、送り出しはトーナメントのジョブの準備の完了の後、遅くとも23:55)・0:00の`notifications.morning-dispatch`(1300)・4:21の`notifications.maintenance`(1300)、トーナメントの開始予告は前日の23:45(仮1))、準拠方針(配信停止の手段・トークン・送信者情報の未設定の扱い・データ保持期間の行)、プライバシーポリシーの大枠(通知メールの送信の法的根拠を「正当な利益」から「同意(通知設定で種類ごとに選び、いつでも撤回できる)」へ移し、収集する情報の一覧に受信設定と配信停止のトークンの種・照合用のハッシュを記す)、`docs/onboardings/project-values.md`。
 - E2E(15.3)は「Testing Strategy」に示す。`e2e/support/notification-fixtures.ts`は、admin-foundationの`executeLocalD1`で受信設定とトークンの種の行を作り、シークレットとして注入された`HASH_PEPPER`でトークンを導出する(導出の方式は`security/010`のとおり、Web Cryptoで計算)。
 
 ## Data Models
@@ -1717,10 +1752,10 @@ export declare function unsubscribeQuestion(topicLabel: string): string; // '「
 
 - **受信設定(NotificationPreference)**: 利用者と通知種別の組ごとに0か1件。行が無ければ受信しない(1.2)。
 - **配信停止のトークンの種(UnsubscribeTokenSeed)**: 利用者と通知種別の組ごとに0か1件。種と照合用のハッシュを持ち、平文を持たない。退会で消える(10.5)。
-- **送信者情報(SenderSetting)**: 1件。版で競合を検出する。
+- **送信者情報(SenderSetting)**: シードで作る1件。版0は未設定で、版で競合を検出する。
 - **通知イベント(NotificationEvent)**: 発行ごとに1件(`dedupe_key`で一意)。`pending`→`expanded`。
 - **送信枠(NotificationSlot)**: 枠のキーごとに1件。`waiting`→`collecting`→`sending`→`done`(→`sending`)。夜の枠は送り出しの前提の一覧(その夜の`open`か最初の`markReady`で確定させる)と依頼の時刻を持つ。
-- **送信枠の準備の完了(SlotReadiness)**: 枠と前提の機能の組ごとに1件。
+- **送信枠の準備の完了(SlotReadyMark)**: 枠と前提の機能の組ごとに1件。追加だけで更新しない。
 - **通知(NotificationNotice)**: 宛先と出どころごとに1件(`dedupe_key`)。`pending`→`sent`・`skipped`。
 - **不変条件**: (1)同じ`dedupe_key`の通知は1件だけ(7.12)。(2)`sent`・`skipped`の通知は変わらない。(3)送信枠の段の更新はリースの保持者だけが行う。(4)トークンの平文を保存しない(10.3)。
 
@@ -1736,16 +1771,16 @@ erDiagram
 
 ### Physical Data Model
 
-すべて`snake_case`、日時はエポックミリ秒の整数、IDはULID(`ulidPrimaryKey()`)、`timestamps()`を持つ。
+すべて`snake_case`、日時はエポックミリ秒の整数、IDはULID(`ulidPrimaryKey()`)、`timestamps()`を持つ。ただし追加だけで更新しない`notification_slot_ready_marks`は、`db/003`の「共通カラム」に従い`created_at`だけを持つ。`notification_unsubscribe_tokens`はペッパーの変更の後に`token_hash`を更新するため`timestamps()`を持つ。
 
 | テーブル                          | 列(共通カラム以外)                                                                                                                                                                                                                                                              | 制約・索引                                                                                                                                        |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `notification_preferences`        | `user_id`(→`users.id`)・`topic` text・`enabled` integer(0・1)                                                                                                                                                                                                                   | `topic`のCHECK、`(user_id, topic)`一意、`(topic, enabled, user_id)`の索引                                                                         |
 | `notification_unsubscribe_tokens` | `user_id`(→`users.id`)・`topic` text・`seed` text(base64url 43文字)・`token_hash` text                                                                                                                                                                                          | `topic`のCHECK、`(user_id, topic)`一意、`token_hash`一意                                                                                          |
-| `notification_sender_settings`    | `setting_key` text(`'sender-info'`)・`business_name` text・`contact_email` text・`postal_address` text・`version` integer・`updated_by_admin_id` text?(外部キーなし)                                                                                                            | `setting_key`一意、`version >= 1`のCHECK                                                                                                          |
+| `notification_sender_settings`    | `setting_key` text(`'sender-info'`)・`business_name` text?・`contact_email` text?・`postal_address` text?・`version` integer・`updated_by_admin_id` text?(外部キーなし)                                                                                                         | `setting_key`一意、`version >= 0`のCHECK、版0なら3項目がNULL・版1以上なら3項目がNOT NULLのCHECK。行はシードで1行だけ入れる                        |
 | `notification_events`             | `type` text・`dedupe_key` text・`publisher` text・`match_id` text?・`award` text?・`period` text?・`product_id` text?・`status` text・`cursor` text?・`occurred_at` integer・`expanded_at` integer?・`dispatch_count` integer・`last_dispatched_at` integer                     | `type`・`status`・`award`のCHECK、`dedupe_key`一意、`(status, last_dispatched_at)`・`(status, expanded_at)`の索引                                 |
 | `notification_slots`              | `slot_key` text・`kind` text・`due_at` integer・`settle_until` integer・`required_participants` text?(JSONの配列)・`dispatch_requested_at` integer?・`phase` text・`cursor` text?・`lease_holder` text?・`lease_until` integer?・`started_at` integer?・`completed_at` integer? | `kind`・`phase`のCHECK、`slot_key`一意、`(phase, settle_until)`・`(phase, completed_at)`の索引                                                    |
-| `notification_slot_readiness`     | `slot_key` text・`participant` text・`ready_at` integer                                                                                                                                                                                                                         | `(slot_key, participant)`一意。枠と同じく30日で削除する                                                                                           |
+| `notification_slot_ready_marks`   | `slot_key` text・`participant` text(準備の完了の日時は`created_at`)                                                                                                                                                                                                             | `(slot_key, participant)`一意。枠と同じく30日で削除する                                                                                           |
 | `notification_notices`            | `dedupe_key` text・`slot_key` text・`group_key` text・`topic` text・`recipient_user_id`(→`users.id`)・`match_id` text?・`entry_id` text?・`product_id` text?・`event_id` text?・`status` text・`skip_reason` text?・`email_request_id` text?・`settled_at` integer?             | `topic`・`status`・`skip_reason`のCHECK、`dedupe_key`一意、`(slot_key, status, group_key, id)`・`recipient_user_id`・`(status, settled_at)`の索引 |
 
 - `match_id`・`product_id`・`event_id`・`slot_key`は外部キーを持たない(上流の物理削除と本specの削除の順を縛らないため)。`users`への外部キーは`notifications.account-purge`がidentity-authの最後の物理削除より前に行を消す。
@@ -1763,26 +1798,26 @@ erDiagram
 ### Error Strategy
 
 - 想定内の失敗は`AppError`で返し、画面が`extensions.code`で出し分ける。版の競合は一括の書き込みの取り消しで検出する。
-- 送り出しの失敗は例外として再試行し(`NOTIFICATION_RETRY_POLICY`)、`pending`の通知とカーソルから再開する。上限ではbackend-platformのデッドレターとSentryで知らせ、4:21の保守で送り直す。
+- 送り出しの失敗は例外として再試行し(`NOTIFICATION_RETRY_POLICY`)、`pending`の通知とカーソルから再開する。上限ではbackend-platformのデッドレターとSentryで知らせ、4:21の保守で送り直す。送信の依頼の後の記録の失敗による再試行では同じ通知をもう1通依頼し得るが、これを許容する(要件7.12の注記)。
 - 送らない判断(受信しない設定・抑止・送信者情報の未設定・表示できないプロダクト・古い予告)は例外にせず、通知を`skipped`と理由で確定する。
 - 結果の追記の提供元の例外は送り出しの段の再試行にする(決済期限の欠けたメールを送らない)。形式に合わない追記は捨てる。
 - 画面に出す失敗の文言は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(利用者側は`CLIENT_PROFILE`、管理者側は`ADMIN_PROFILE`)。管理者側の送信者情報の区画は`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さず、問い合わせの導線と問い合わせを促す文を出さない。
 
 ### Error Categories and Responses
 
-| コード                                                | 種類(状態コード)    | 場面                           | 文言(文言規則に追加・既存)                                                                                    |
-| ----------------------------------------------------- | ------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `invalid_link`                                        | 既存(identity-auth) | 配信停止の確定で無効なトークン | 画面は「このリンクは無効です。通知メールの受信は通知設定から変更できます。」                                  |
-| `version_conflict`                                    | 既存                | 送信者情報の競合               | 既存の文言                                                                                                    |
-| `validation_error`                                    | bad_request(400)    | 送信者情報の項目               | 「<項目>を入力してください。」「200文字以内で入力してください。」「メールアドレスの形式で入力してください。」 |
-| `unauthenticated`・`account_unavailable`・`forbidden` | 既存                | 既存                           | 既存の文言                                                                                                    |
+| コード                                                | 種類(状態コード)    | 場面                           | 文言(文言規則に追加・既存)                                                                                                |
+| ----------------------------------------------------- | ------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `invalid_link`                                        | 既存(identity-auth) | 配信停止の確定で無効なトークン | 画面は「このリンクは無効です。通知メールの受信は通知設定から変更できます。」                                              |
+| `version_conflict`                                    | 既存                | 送信者情報の競合               | 既存の文言                                                                                                                |
+| `validation_error`                                    | bad_request(400)    | 送信者情報の項目               | 「<項目>を入力してください。」「200文字以内で入力してください。」「メールアドレスの形式が正しくありません。」(既存の文言) |
+| `unauthenticated`・`account_unavailable`・`forbidden` | 既存                | 既存                           | 既存の文言                                                                                                                |
 
 - 画面の状態・トーストの文言は「Supporting References」の表に示し、文言規則に追加する。
 
 ### Monitoring
 
 - `getAppLogger(['api'|'event', 'application', 'notifications'])`で、枠・通知・通知イベント・マッチ・利用者の識別と件数・理由だけを記録する(14.4)。メールアドレス・ニックネーム・プロダクト名・トークン・送信者情報の値は記録しない。
-- Sentry: `notification-slot-overdue`・`sender-info-missing`(1時間に1回)・`send-rejected`・`event-stalled`、メッセージの処理の再試行の上限(デッドレター)。`AppError`は送らない。
+- Sentry: `notification-slot-overdue`・`sender-info-missing`(1時間に1回)・`send-rejected`・`event-stalled`、メッセージの処理の再試行の上限(デッドレター)。`AppError`は送らない。朝の枠が未開始のマッチを待つ間は`warn`のログ(枠のキーと件数だけ)を出し、1時間を過ぎた待ちは`notification-slot-overdue`で知らせる。
 
 ## Testing Strategy
 
@@ -1791,26 +1826,26 @@ erDiagram
   - `notification-slots`: 夜の枠の期日(業務日付の23:45=UTCの翌日7:45)と`settle_until`(23:55)、朝の枠(0:00=UTCの8:00)、`previewSlotFor`が前日の夜の枠、`resultSlotFor`が当日、キーの往復と形式違反(3.3・13.1・13.2・15.2)。
   - `notice-plan`: `matchNoticeDrafts`(予告は`scheduled`で側が2つだけ・不戦勝の除外(仮6)・結果は確定だけ・紐付けの無い側の除外)、`noticeDedupeKey`・`groupKeyFor`、`planGroupEmail`(統合・片方だけ受信(4.5)・受信しない種別の`topic_disabled`・送信の対象者でない・31件目以降の`omittedCount`)(3.5・4.4・4.5・5.2・5.6・7.2)。
   - `notice-copy`: 件名の全ての形(勝利・敗北・両者敗北・不戦勝・統合・予告・開催の1件と複数・受賞)、`resultOutcomeOf`の写像(`both_forfeited`はnull)、`matchLabel`・`roundName`、`awardPeriodLabel`(ISO週の年末年始の境界)、`COMBINED_UNSUBSCRIBE_LABELS`の文言(3.4・4.3・5.2・5.3・6.2・9.1)。
-  - `notice-email`: 古い予告の除外と統合からの予告の切り離し、自分のプロダクトの非公開化(仮7)、相手の「非公開のプロダクト」、開催通知の表示できない項目の除外と0件のskip、追記の行動のボタンの優先、ヘッダーがhttps:のときだけ・統合したメールのヘッダーが`match_result`のトークン(仮4)・本文の2つのリンク(3.6・4.6・7.7〜7.9・8.1・8.6・9.1)。
+  - `notice-email`: 古い予告の除外と統合からの予告の切り離し、自分のプロダクトの非公開化(仮7)、相手の「非公開のプロダクト」、開催通知の表示できない項目の除外と0件のskip、追記の行動のボタンの優先、ヘッダーがhttps:のときだけ・統合したメールのヘッダーが`match_result`のトークン(仮4)・本文の2つのリンク、送信の期限(単独の予告は`startsAt`・開催通知は載せた項目の最も早い`endsAt`・結果と統合したメールと受賞は無し)(3.6・4.6・7.7〜7.9・8.1・8.6・9.1)。
   - `result-notice-supplements`・`unsubscribe-token`・`notification-event-contract`: 登録の名前と順の重複の例外、追記の形式の検証、トークンの形式とURLとヘッダー、通知イベントの検証と重複のキー(8.1・12.4・12.5・12.7)。
-  - common-lib: 通知種別の値、送信者情報の長さ(200書記素と201書記素・空白だけ)(11.4)。
-  - ユースケース(模擬のポート): `NotificationSettingsService`(停止中の`editable`・未確認・照会の失敗で`unknown`)、`UnsubscribeService`(無効でnull・既に停止で`alreadyDisabled`)、`SenderInfoService`(ロール・検証・監査ログの準備・`version_conflict`)、`NotificationJobs`(業務時刻23:44:59と23:45:00の予定時刻で枠の日付・前提の有無による即時の依頼と期限の依頼、4:21の各段の上限)、`FlushSlotHandler`(依頼済みなら即時の収集・依頼が無いときの23:54:59の`defer`と23:55:00の収集と未完了の前提の報告・リースを取れないときの`defer`・段の進行・例外の再送出・`done`の枠の遅れた通知)、`ExpandEventHandler`(`continue`と`done`の送り出し)、`OneClickUnsubscribe`、`AccountPurgeHandler`(1,000件で`continue`)(1.6・1.7・2.4・9.4・9.5・11.5〜11.7・12.8・13.1〜13.4・14.2・15.2)。
+  - common-lib: 通知種別の値、送信者情報の長さ(200書記素と201書記素・空白だけ)(11.4)。`config/notification-contract-copies.unit.test.ts`で、DBの`topic`のCHECKの値と`NOTIFICATION_TOPICS`が一致することをソースの構文解析で確かめる(`apps/db`は共有ディレクトリを読み込まないため写しになる。前例`config/product-contract-copies.unit.test.ts`)。
+  - ユースケース(模擬のポート): `NotificationSettingsService`(停止中の`editable`・未確認・照会の失敗で`unknown`)、`UnsubscribeService`(無効でnull・既に停止で`alreadyDisabled`)、`SenderInfoService`(ロール・検証・シードの`settingId`を対象にした監査ログの準備・`version_conflict`)、`NotificationJobs`(業務時刻23:44:59と23:45:00の予定時刻で枠の日付・前提の有無による即時の依頼と期限の依頼、4:21の各段の上限)、`FlushSlotHandler`(依頼済みなら即時の収集・依頼が無いときの23:54:59の`defer`と23:55:00の収集と未完了の前提の報告・リースを取れないときの`defer`・段の進行・収集の`wait`で段とカーソルを変えずに`delaySeconds`の`defer`・例外の再送出・`done`の枠の遅れた通知)、`ExpandEventHandler`(`continue`と`done`の送り出し)、`OneClickUnsubscribe`、`AccountPurgeHandler`(1,000件で`continue`)(1.6・1.7・2.4・9.4・9.5・11.5〜11.7・12.8・13.1〜13.4・14.2・15.2)。
 - Integration Tests(Vitestのworkerd、`*.worker.test.ts(x)`、ローカルD1):
-  - スキーマ: CHECK・一意索引(同じ`dedupe_key`の通知が1件・同じ組の種が1件・`token_hash`の一意)、`users`への外部キー(1.2・7.12・10.1)。
-  - 共有部品: 受信設定の初期値と`upsert`、`eligibleRecipients`・`enabledTopicsOf`が停止中・未確認・退会済みを除き91件以上を分けて読むこと、トークンの導出が同じ組で同じ値・照合・別の用途の値が一致しないこと・種の削除で無効、送信枠のリースの排他と段の更新、通知の記録の重複の無視と`lateSlotKeys`、発行の検証(未確定の結果・開始済みの予告・不明なマッチ・51件)と重複・受賞の展開の500件ずつとカーソル、データエクスポートの項目と`bounce`の写像(1.2・3.2・3.3・6.1・7.1・7.12・10.1〜10.5・12.1〜12.5・12.8・14.3)。
-  - api: 退会の同期の処理(identity-authの退会の確定と同じ一括の書き込みで種・受信設定が消え`pending`の通知が`recipient_withdrawn`になり、競合で本specの文も取り消される)、送信者情報の保存と監査ログが同じ一括の書き込みで、版の不一致で両方とも書かれないこと、保守の削除と期限切れ、スキーマモジュールの各操作の権限・エラーコード・`client`と`admin`以外の拒否・未設定の送信者情報・抑止の理由と期限(1.3〜1.7・2.1〜2.4・9.2〜9.5・10.5・11.2〜11.7・13.4・13.5・14.1)。
-  - event: 夜の収集がmatch-engineの予選(当日の確定・翌日の予定)から受信する設定の投稿者だけの通知を作り再実行で増えないこと、朝の収集がマッチ中のマッチの投稿者のフォロワーを2,000件で区切ってカーソルで続け、表示できないプロダクトを除くこと、送信がEmailSenderの偽物に統合・集約・抑止・未設定・古い予告を正しく渡し`settle`すること、`D1SenderInfoProvider`の値、ワンクリックの経路(200・400・404・繰り返し・GETの303と`Location`・IP制限の除外・`Cache-Control`)、テンプレートの件名・本文・UTC表記・リンク・追記・配信停止の区画(統合したメールの2つのラベル付きのリンクと、1つのときの既定の文言)・エスケープ(4種別と`EMAIL_KINDS`・`EMAIL_TEMPLATES`の1対1)、`email.send`の封筒の`headers`(3.1・3.4・4.1・4.3・4.4・4.6・5.1〜5.6・6.2・7.3〜7.11・8.1〜8.5・8.7・9.1・11.8・12.6)。
+  - スキーマ: CHECK・一意索引(同じ`dedupe_key`の通知が1件・同じ組の種が1件・`token_hash`の一意・送信者情報の版と3項目のNULLの組み合わせ)、`users`への外部キー、シードのマイグレーションが送信者情報の版0の行を1行だけ入れること(1.2・7.12・10.1・11.2)。
+  - 共有部品: 受信設定の初期値と`upsert`、`eligibleRecipients`・`enabledTopicsOf`が停止中・未確認・退会済みを除き91件以上を分けて読むこと、トークンの導出が同じ組で同じ値・照合・別の用途の値が一致しないこと・種の削除で無効・ペッパーを変えた後の`tokensFor`が照合用のハッシュを直し、`resolve`が新しいトークンを受け付けて変更の前のトークンを拒否すること、送信枠のリースの排他と段の更新、通知の記録の重複の無視と`lateSlotKeys`、発行の検証(未確定の結果・開始済みの予告・不明なマッチ・51件)と重複・受賞の展開の500件ずつとカーソル、データエクスポートの項目と`bounce`の写像(1.2・3.2・3.3・6.1・7.1・7.12・10.1〜10.5・12.1〜12.5・12.8・14.3)。
+  - api: 退会の同期の処理(identity-authの退会の確定と同じ一括の書き込みで種・受信設定が消え`pending`の通知が`recipient_withdrawn`になり、競合で本specの文も取り消される)、送信者情報の保存と監査ログが同じ一括の書き込みで、版の不一致で両方とも書かれないこと(版0からの初回の保存と、同じ版0からの2回目の保存が`version_conflict`になることを含む)、保守の削除と期限切れ、スキーマモジュールの各操作の権限・エラーコード・`client`と`admin`以外の拒否・未設定の送信者情報・抑止の理由と期限(1.3〜1.7・2.1〜2.4・9.2〜9.5・10.5・11.2〜11.7・13.4・13.5・14.1)。
+  - event: 夜の収集がmatch-engineの予選(当日の確定・翌日の予定)から受信する設定の投稿者だけの通知を作り再実行で増えないこと、朝の収集がマッチ中のマッチの投稿者のフォロワーを2,000件で区切ってカーソルで続け、表示できないプロダクトを除くこと、開始の日時を過ぎた未開始の当日のマッチが残る間は`wait`を返し、開始された後と終了の日時を過ぎた後は収集すること、送信がEmailSenderの偽物に統合・集約・抑止・未設定・古い予告・送信の期限を正しく渡し`settle`すること、`D1SenderInfoProvider`の値(版0で`undefined`)、ワンクリックの経路(200・400・404・繰り返し・GETの303と`Location`・IP制限の除外・`Cache-Control`・Worker全体を通した応答の`Referrer-Policy`が`same-origin`)、テンプレートの件名・本文・UTC表記・リンク・追記・配信停止の区画(統合したメールの2つのラベル付きのリンクと、1つのときの既定の文言)・エスケープ(4種別と`EMAIL_KINDS`・`EMAIL_TEMPLATES`の1対1)、`email.send`の封筒の`headers`(3.1・3.4・4.1・4.3・4.4・4.6・5.1〜5.6・6.2・7.3〜7.11・8.1〜8.5・8.7・9.1・11.8・12.6)。
   - 送り出しの入口(`D1EveningDispatchGate`、ローカルD1): 前提が2つで1つ目の呼び出しが`waiting`と残りの名前・2つ目が`dispatch-requested`で送り出しのメッセージが1通だけ・同じ呼び出しの繰り返しと期限の後の呼び出しが`already-requested`・登録の無い名前の`unknown-participant`・本specのジョブより先に呼ばれた場合に枠と前提の一覧と期限の送り出しを作ること・通知の記録が先に作った夜の枠に`open`が一覧を写して直ちには依頼しないこと・前提が空のときに`open`が直ちに依頼すること・2つの呼び出しを同時に行っても依頼が1回であること(13.1・13.7〜13.9・15.2)。
 - E2E/UI Tests:
-  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `NotificationTopicSwitch`(送信中・成功の通知・失敗で元に戻る・無効)、`NotificationSettingsPanel`(4種別の順と初期値の説明)、`DeliveryStatusNotice`(3つの理由・期限・未確認・停止中・照会の失敗)、`UnsubscribeConfirmation`(確認・成功・既に停止・無効・失敗の再試行・個人情報を出さない)、`SenderInfoSection`・`SenderInfoForm`(未設定の警告・ロールによる参照だけ・項目ごとの検証・競合の案内)(1.3〜1.7・2.1〜2.4・9.2〜9.6・9.8・11.1〜11.4・11.7)。
-  - E2E(15.3): `e2e/client/notifications.e2e.test.ts`は、identity-authの`e2e/support/mailpit.ts`で確認済みの利用者を登録し(メールアドレスのドメインは`.example`)、`/settings/notifications`で4つが受信しない設定であること、2つを切り替えて再読み込みで保たれることを確かめる。続いて`notification-fixtures.ts`で`match_result`のトークンを作り、`/unsubscribe#token=<トークン>`を開いて確認のボタンで停止し、通知設定で受信しない設定になることを、`followed_user_award`のトークンでeventの`POST /unsubscribe?token=<トークン>`が200を返し通知設定に反映されることを確かめる。`e2e/admin/notification-sender.e2e.test.ts`は、admin-foundationの`e2e/support/admin-bootstrap.ts`で最上位管理者としてログインし、`/settings`の送信者情報の区画で3項目を保存し、監査ログの画面に`通知メールの送信者情報の変更`が載ることを確かめる。通知メールの送り出しの全体は時刻に依存するため、Workers統合テストで確かめる。
+  - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `NotificationTopicSwitch`(送信中の`aria-disabled`・`aria-busy`とフォーカスの維持・成功の通知・失敗で元に戻る・無効)、`NotificationSettingsPanel`(4種別の順と初期値の説明)、`DeliveryStatusNotice`(3つの理由・期限・未確認・停止中・照会の失敗)、`UnsubscribeConfirmation`(確認・成功・既に停止・無効・失敗の再試行・個人情報を出さない)、`SenderInfoSection`・`SenderInfoForm`(未設定の警告・ロールによる参照だけ・項目ごとの検証・確認のダイアログの確定での保存・取り消しで入力欄のフォームが送信中から戻ること・サーバーの`validation_error`でダイアログを閉じて欄に詳細を付けること・競合の案内をダイアログに示すこと)(1.3〜1.7・2.1〜2.4・9.2〜9.6・9.8・11.1〜11.4・11.7)。
+  - E2E(15.3): `e2e/client/notifications.e2e.test.ts`は、`e2e/client/profile-steps.ts`の`registerVerifiedAccount`(identity-authの`e2e/support/mailpit.ts`を使う)で確認済みの利用者を登録し(メールアドレスのドメインは`.example`)、`/settings/notifications`で4つが受信しない設定であること、2つを切り替えて再読み込みで保たれることを確かめる。続いて`notification-fixtures.ts`で`match_result`のトークンを作り、`/unsubscribe#token=<トークン>`を開いて確認のボタンで停止し、通知設定で受信しない設定になることを、`followed_user_award`のトークンでeventの`POST /unsubscribe?token=<トークン>`が200を返し通知設定に反映されることを確かめる。`e2e/admin/notification-sender.e2e.test.ts`は、admin-foundationの`e2e/support/admin-bootstrap.ts`で最上位管理者としてログインし、`/settings`の送信者情報の区画で3項目を保存し、監査ログの画面に`通知メールの送信者情報の変更`が載ることを確かめる。通知メールの送り出しの全体は時刻に依存するため、Workers統合テストで確かめる。画面の操作は`e2e/client/notification-steps.ts`・`e2e/admin/notification-sender-steps.ts`に置く。`notification-fixtures.ts`が読む`HASH_PEPPER`は、CIのE2Eでもシークレットの注入で渡る。
 - Performance: 朝の収集で2,000件のフォロワーの段の所要時間と、20通の送信の段の所要時間を統合テストで記録する。
 
 ## Security Considerations
 
-- 配信停止のトークン: 推測できない値(HMAC-SHA512の86文字)、照合用のハッシュの一意索引とタイミングセーフな照合、平文の非保存、退会での即時の無効化、できることは1つの種別の受信の停止だけ(10.1〜10.6)。ワンクリックの経路は認証を求めずIP制限の対象外のため、トークンの形式違反を本文を読まずに400で返す。
-- 漏洩の経路: 本文のリンクはフラグメント(サーバー・アクセス解析に届かない)、ヘッダーのURIはクエリ(アクセスログから除かれる)、GraphQLは変数(要求の本文)で受け取る。応答に`Referrer-Policy: no-referrer`(9.7)。
-- 認可: 受信設定は本人だけ(利用者IDはセッションから取る)。送信者情報の変更は最上位管理者だけ(サーバーの`requireAdmin`、画面の`RoleGate`は補助)で、監査ログに記録する(11.5・11.6)。
+- 配信停止のトークン: 推測できない値(HMAC-SHA512の86文字)、照合用のハッシュの一意索引とタイミングセーフな照合、平文の非保存、退会での即時の無効化、できることは1つの種別の受信の停止だけ(10.1〜10.6)。ペッパーを変えた後は、送る時に照合用のハッシュを導出し直した値へ更新するため、変更の前に送ったリンクだけが無効になる。ワンクリックの経路は認証を求めずIP制限の対象外のため、トークンの形式違反を本文を読まずに400で返す。
+- 漏洩の経路: 本文のリンクはフラグメント(サーバー・アクセス解析に届かない)、ヘッダーのURIはクエリ(アクセスログから除かれる)、GraphQLは変数(要求の本文)で受け取る。Refererはフラグメントを含まず、全体のセキュリティヘッダーの`Referrer-Policy: same-origin`で外部のオリジンへ送られない(9.7)。
+- 認可: 受信設定は本人だけ(利用者IDはセッションから取る)。送信者情報の変更は最上位管理者だけ(サーバーの`requireAdmin`、画面の`hasRole`による出し分けは補助)で、監査ログに記録する(11.5・11.6)。
 - 個人情報: 配信停止ページに個人情報を出さない(9.6)。ログ・Sentry・メッセージの本文に、メールアドレス・ニックネーム・名称・トークン・送信者情報の値を入れない(14.4)。監査ログの詳細は変更した項目の名前だけ。
 - ヘッダーの注入: ヘッダーはemail-deliveryの許可リストと値の検証を通る。URLは固定の形の組み立てで、入力から作らない。
 - 同意: 受信設定の初期値は受信しない(LR-005のオプトイン)。撤回は設定ページ・ワンクリック・リンクの3つの手段で同じ容易さにする。
@@ -1819,13 +1854,15 @@ erDiagram
 
 - 夜の収集は予選のマッチを2回の照会で読み、投稿者の受信設定を90件ずつ照会する。送信の段は20通ごとに、照会をまとめて(マッチ1回・プロダクト1〜2回・利用者の表示1回・抑止1回・トークン1回)行い、連絡先だけを宛先ごとに引く。
 - 朝の収集・受賞の展開は1回の処理を2,000件のフォロワーで区切る。受信設定の初期値が受信しないため、記録される通知は受信する設定の利用者の分だけである。
-- 1文のバインド変数を100個以内にする(通知の挿入は1文12行まで、IDの照会は90件ずつ)。
+- 送信者情報の取得口は全種別のメールの送信で毎通呼ばれ、D1の1行を`setting_key`の一意索引で読む。保存の直後のメールから新しい値を使う(11.8)ため、isolateの中で値を持ち越さない。
+- 1文のバインド変数を100個以内にする(通知の挿入は列数から決めた行数ごと(16列なら6行)、IDの照会は90件ずつ)。
 - 通知・枠・通知イベントは30日で削除する。
 
 ## Migration Strategy
 
 - 新しいテーブルを足すだけのExpandの変更で、既存のデータの移行は無い。
-- 登録箇所への追記と、email-deliveryの送信者情報の取得口の差し替え(既定の未設定から本specの実装へ)を行う。送信者情報を設定するまでは、通知メールを送らない(仮3)。
+- 登録箇所への追記と、email-deliveryの送信者情報の取得口の差し替え(既定の未設定から本specの実装へ)を行う。送信者情報を設定するまでは、通知メールを送らない(仮3)。設定した後は全てのメールに送信者情報が載る。
+- 送信者情報の行は、生成したマイグレーションとは別のカスタムのマイグレーション`<日時>_notifications_seed`で、固定のID(IDの時刻部と`created_at`を一致させる)・`setting_key` `'sender-info'`・3項目NULL・版0の1行を`ON CONFLICT (setting_key) DO NOTHING`で入れる(`db/003`の「初期データ」、前例`20261106115514_ultras_subscription_seed`)。
 - eventの`EVENT_SITE_ORIGIN`は環境の検証で必須にするため、変数の追加と検証の追加を同じ変更で行う。シークレットではないため、Infisicalへの登録は要らない。
 - 開発者の手作業(AIエージェントは行わない): staging・prodで送信者情報を設定する、stagingで受信した通知メールの`List-Unsubscribe`・`List-Unsubscribe-Post`とDKIMの署名の対象を確かめる。
 
@@ -1833,19 +1870,19 @@ erDiagram
 
 ### 本specが定める固有の値
 
-| 項目                   | 値                                                                                                                                                                                                             |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ユーザーの波及処理     | `notifications.account-withdrawal`(同期、`withdrawn`)、`notifications.account-purge`(`purge_due`、1300)                                                                                                        |
-| ジョブ                 | `notifications.evening-dispatch`(23:45、1300)、`notifications.morning-dispatch`(0:00、1300)、`notifications.maintenance`(4:21、1300)                                                                           |
-| メッセージ種別         | `notifications.flush-slot`・`notifications.expand-event`                                                                                                                                                       |
-| メール種別             | `notifications.match-preview`・`notifications.match-result`・`notifications.followed-user-matches`・`notifications.followed-user-award`                                                                        |
-| 登録口と`order`        | 夜の枠の送り出しの前提`EVENING_DISPATCH_PARTICIPANTS`(初版は空)、設定ページのナビゲーション`notifications` 40、管理画面の設定ページの区画`notifications.sender-info` 30、`RESULT_NOTICE_SUPPLEMENTS`(初版は空) |
-| 監査ログの操作種別     | `notification-sender.update`(対象`setting`・理由`optional`・詳細`fields`)                                                                                                                                      |
-| ハッシュの用途         | `notification-unsubscribe-token`・`notification-unsubscribe-lookup`                                                                                                                                            |
-| 変数                   | eventの`EVENT_SITE_ORIGIN`(ローカル`http://localhost:48043`、staging`https://genai-example-2-event-staging.lab.kurachiweb.com`、prod`https://genai-example-2-event.lab.kurachiweb.com`)                        |
-| 経路                   | event`POST`・`GET /unsubscribe?token=`、client`/unsubscribe#token=`・`/settings/notifications`                                                                                                                 |
-| 上限・時間             | 夜の枠の送り出しの期限600秒(23:55)、送信の段20通、収集・展開の段2,000件、開催通知の30件、追記3件、リース120秒、保守の通知の期限切れ3日、記録の保持30日                                                         |
-| 技術ドキュメントの番号 | `backend/016-batched-notification-delivery.md`・`security/010-one-click-unsubscribe.md`                                                                                                                        |
+| 項目                   | 値                                                                                                                                                                                                                            |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ユーザーの波及処理     | `notifications.account-withdrawal`(同期、`withdrawn`)、`notifications.account-purge`(`purge_due`、1300)                                                                                                                       |
+| ジョブ                 | `notifications.evening-dispatch`(23:45、1300)、`notifications.morning-dispatch`(0:00、1300)、`notifications.maintenance`(4:21、1300)                                                                                          |
+| メッセージ種別         | `notifications.flush-slot`・`notifications.expand-event`                                                                                                                                                                      |
+| メール種別             | `notifications.match-preview`・`notifications.match-result`・`notifications.followed-user-matches`・`notifications.followed-user-award`                                                                                       |
+| 登録口と`order`        | 夜の枠の送り出しの前提`EVENING_DISPATCH_PARTICIPANTS`(初版は空)、設定ページのナビゲーション`notifications` 40、管理画面の設定ページの区画`notifications.sender-info` 30、`RESULT_NOTICE_SUPPLEMENTS`(初版は空)                |
+| 監査ログの操作種別     | `notification-sender.update`(対象`setting`・理由`optional`・詳細`fields`)                                                                                                                                                     |
+| ハッシュの用途         | `notification-unsubscribe-token`・`notification-unsubscribe-lookup`                                                                                                                                                           |
+| 変数                   | eventの`EVENT_SITE_ORIGIN`(ローカル`http://localhost:48043`、staging`https://genai-example-2-event-staging.lab.kurachiweb.com`、prod`https://genai-example-2-event.lab.kurachiweb.com`)                                       |
+| 経路                   | event`POST`・`GET /unsubscribe?token=`、client`/unsubscribe#token=`・`/settings/notifications`                                                                                                                                |
+| 上限・時間             | 夜の枠の送り出しの期限600秒(23:55)、朝の枠が未開始のマッチを待つ間隔300秒(`MORNING_KICKOFF_WAIT_SECONDS`)、送信の段20通、収集・展開の段2,000件、開催通知の30件、追記3件、リース120秒、保守の通知の期限切れ3日、記録の保持30日 |
+| 技術ドキュメントの番号 | `backend/016-batched-notification-delivery.md`・`security/010-one-click-unsubscribe.md`                                                                                                                                       |
 
 ### 通知メールの文(文言規則に追加)
 
@@ -1876,4 +1913,4 @@ erDiagram
 | 停止中                         | このアカウントは停止されているため、通知設定を変更できません。                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | 配信停止の確認・完了           | 「<種別>」の通知メールの配信を停止しますか?/配信を停止する/「<種別>」の通知メールの配信を停止しました。通知設定からいつでも再開できます。/通知設定を開く                                                                                                                                                                                                                                                                                                                                                         |
 | 配信停止の既に停止・無効・失敗 | 「<種別>」の通知メールは既に配信を停止しています。/このリンクは無効です。通知メールの受信は通知設定から変更できます。/配信を停止できませんでした。時間をおいて再度お試しください。                                                                                                                                                                                                                                                                                                                               |
-| 送信者情報の区画               | 通知メールの送信者情報/通知メールの末尾に表示します。各200文字以内で入力してください。/送信者情報が未設定のため、通知メールを送信していません。/最上位管理者だけが変更できます/送信者情報を保存しました。                                                                                                                                                                                                                                                                                                        |
+| 送信者情報の区画               | 通知メールの送信者情報/全てのメールの末尾に表示します。各200文字以内で入力してください。/送信者情報が未設定のため、通知メールを送信していません。/最上位管理者だけが変更できます/送信者情報を保存しました。                                                                                                                                                                                                                                                                                                      |
