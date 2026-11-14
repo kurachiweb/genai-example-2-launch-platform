@@ -11,6 +11,7 @@ interface NotificationsErrorDefinition {
 
 export const NOTIFICATIONS_ERRORS = Object.freeze({
   account_unavailable: IDENTITY_ERRORS.account_unavailable,
+  invalid_link: IDENTITY_ERRORS.invalid_link,
 } satisfies Readonly<Record<string, NotificationsErrorDefinition>>);
 
 export type NotificationsErrorCode = keyof typeof NOTIFICATIONS_ERRORS;

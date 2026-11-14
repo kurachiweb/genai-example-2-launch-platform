@@ -10,13 +10,17 @@ import {
 } from '../application/notifications/notification-settings-service.ts';
 import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
 import type { DeliveryStatusReader } from '../application/notifications/ports.ts';
+import {
+  TokenUnsubscribeService,
+  type UnsubscribeService,
+} from '../application/notifications/unsubscribe-service.ts';
 import { SuppressionDeliveryStatusReader } from '../infrastructure/notifications/delivery-status-reader.ts';
 
 export const API_NOTIFICATIONS_PLATFORM_MODULE: AppModule<
   Hono<PlatformHonoEnv<Env>>
 > = createNotificationsPlatformModule('api');
 
-// 受信設定のストア(API_NOTIFICATIONS_PLATFORM_MODULE)・利用者の連絡先(IDENTITY_PLATFORM_MODULE)・抑止の照会(EMAIL_PLATFORM_MODULE)は各基盤のモジュールの束縛を使う
+// 受信設定のストアと配信停止のトークンのサービス(API_NOTIFICATIONS_PLATFORM_MODULE)・利用者の連絡先(IDENTITY_PLATFORM_MODULE)・抑止の照会(EMAIL_PLATFORM_MODULE)は各基盤のモジュールの束縛を使う
 export const NOTIFICATIONS_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'notifications',
   bindings: new ContainerModule(({ bind }) => {
@@ -26,5 +30,8 @@ export const NOTIFICATIONS_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<NotificationSettingsService>(
       NOTIFICATIONS_TYPES.NotificationSettingsService,
     ).to(StoreNotificationSettingsService);
+    bind<UnsubscribeService>(NOTIFICATIONS_TYPES.UnsubscribeService).to(
+      TokenUnsubscribeService,
+    );
   }),
 };

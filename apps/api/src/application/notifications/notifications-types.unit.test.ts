@@ -6,6 +6,7 @@ import { NOTIFICATIONS_TYPES } from './notifications-types.ts';
 const EXPECTED_NAMES = [
   'DeliveryStatusReader',
   'NotificationSettingsService',
+  'UnsubscribeService',
 ] as const;
 
 describe('NOTIFICATIONS_TYPES', () => {

@@ -11,6 +11,12 @@ import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
 import { EMAIL_TYPES } from '../../lib/core/email/identifiers.ts';
 import type { SuppressionRecorder } from '../../lib/core/email/ports.ts';
 import type { CurrentUser } from '../../lib/core/identity/account-guard.ts';
+import { NOTIFICATIONS_PLATFORM_TYPES } from '../../lib/core/notifications/identifiers.ts';
+import { unsubscribeTokenKey } from '../../lib/core/notifications/notice-email.ts';
+import type {
+  NotificationPreferenceStore,
+  UnsubscribeTokenService,
+} from '../../lib/core/notifications/ports.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
   clearNotificationTables,
@@ -25,6 +31,10 @@ import {
 } from '../application/notifications/notification-settings-service.ts';
 import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
 import type { DeliveryStatusReader } from '../application/notifications/ports.ts';
+import {
+  TokenUnsubscribeService,
+  type UnsubscribeService,
+} from '../application/notifications/unsubscribe-service.ts';
 import { SuppressionDeliveryStatusReader } from '../infrastructure/notifications/delivery-status-reader.ts';
 import { MODULES } from './modules.ts';
 
@@ -92,6 +102,11 @@ describe('APIサーバーの通知の束縛', () => {
       NOTIFICATIONS_TYPES.NotificationSettingsService,
       StoreNotificationSettingsService,
     ],
+    [
+      'UnsubscribeService',
+      NOTIFICATIONS_TYPES.UnsubscribeService,
+      TokenUnsubscribeService,
+    ],
   ] as const)(
     '処理単位のコンテナから%sを解決する',
     (_name, identifier, implementation) => {
@@ -154,5 +169,53 @@ describe('APIサーバーの通知の束縛', () => {
     ).resolves.toEqual([
       { topic: 'followed_user_match', enabled: true, updatedAt: NOW },
     ]);
+  });
+
+  test('束縛から取り出した配信停止のユースケースが、発行したトークンの組の種別だけを停止する', async () => {
+    await insertRecipient(1, { emailVerifiedAt: T0 });
+    const container = createContainer();
+    const preferences = container.get<NotificationPreferenceStore>(
+      NOTIFICATIONS_PLATFORM_TYPES.NotificationPreferenceStore,
+    );
+    for (const topic of ['match_result', 'match_preview'] as const) {
+      await preferences.setPreference({
+        userId: recipientIdOf(1),
+        topic,
+        enabled: true,
+        at: T0,
+      });
+    }
+    const target = { userId: recipientIdOf(1), topic: 'match_result' } as const;
+    const tokens = await container
+      .get<UnsubscribeTokenService>(
+        NOTIFICATIONS_PLATFORM_TYPES.UnsubscribeTokenService,
+      )
+      .tokensFor([target], T0);
+    const token = tokens.get(unsubscribeTokenKey(target)) ?? '';
+    const service = container.get<UnsubscribeService>(
+      NOTIFICATIONS_TYPES.UnsubscribeService,
+    );
+
+    await expect(service.inspect(token)).resolves.toEqual({
+      topic: 'match_result',
+      enabled: true,
+    });
+    await expect(service.confirm(token, NOW)).resolves.toEqual({
+      topic: 'match_result',
+      alreadyDisabled: false,
+    });
+    await expect(service.confirm(token, NOW)).resolves.toEqual({
+      topic: 'match_result',
+      alreadyDisabled: true,
+    });
+    await expect(preferences.preferencesOf(recipientIdOf(1))).resolves.toEqual(
+      new Map([
+        ['match_preview', true],
+        ['match_result', false],
+        ['followed_user_match', false],
+        ['followed_user_award', false],
+      ]),
+    );
+    await expect(service.inspect(`${token}x`)).resolves.toBeNull();
   });
 });
