@@ -133,6 +133,7 @@ interface ExpectedEnvironment {
   readonly appEnvironment: string;
   readonly clientSiteOrigin: string;
   readonly adminSiteOrigin: string;
+  readonly eventSiteOrigin: string;
 }
 
 const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
@@ -153,6 +154,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     appEnvironment: 'local',
     clientSiteOrigin: 'http://localhost:48044',
     adminSiteOrigin: 'http://localhost:48045',
+    eventSiteOrigin: 'http://localhost:48043',
   },
   {
     label: 'staging',
@@ -173,6 +175,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     clientSiteOrigin:
       'https://genai-example-2-client-staging.lab.kurachiweb.com',
     adminSiteOrigin: 'https://genai-example-2-admin-staging.lab.kurachiweb.com',
+    eventSiteOrigin: 'https://genai-example-2-event-staging.lab.kurachiweb.com',
   },
   {
     label: 'prod',
@@ -192,6 +195,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     appEnvironment: 'prod',
     clientSiteOrigin: 'https://genai-example-2-client.lab.kurachiweb.com',
     adminSiteOrigin: 'https://genai-example-2-admin.lab.kurachiweb.com',
+    eventSiteOrigin: 'https://genai-example-2-event.lab.kurachiweb.com',
   },
 ];
 
@@ -382,7 +386,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     });
   });
 
-  test('eventのメール・キーワード抽出・メディア・決済以外の変数はシークレットを含まず、環境ごとの値とQueue名と利用者側のオリジンを持つ', () => {
+  test('eventのメール・キーワード抽出・メディア・決済以外の変数はシークレットを含まず、環境ごとの値とQueue名と利用者側とイベントサーバーのオリジンを持つ', () => {
     expect(withoutDelegatedEntries(event.vars)).toStrictEqual({
       LOG_LEVEL: env.logLevel,
       SENTRY_ENVIRONMENT: env.sentryEnvironment,
@@ -391,6 +395,7 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
       JOBS_QUEUE_NAME: jobsQueue,
       JOBS_DLQ_NAME: jobsDlq,
       CLIENT_SITE_ORIGIN: env.clientSiteOrigin,
+      EVENT_SITE_ORIGIN: env.eventSiteOrigin,
     });
   });
 

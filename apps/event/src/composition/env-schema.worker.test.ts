@@ -553,3 +553,55 @@ describe('eventEnvSchemaの決済の設定', () => {
     expect(error.invalidKeys).toEqual(['STRIPE_API_KEY']);
   });
 });
+
+describe('eventEnvSchemaの通知の設定', () => {
+  test('Workers統合テストの環境はHTTPSのイベントサーバーのオリジンを持つ', () => {
+    expect(env.EVENT_SITE_ORIGIN).toBe('https://event.test.example');
+  });
+
+  test('イベントサーバーのオリジンが欠けると、そのキー名だけを欠けたキーにする', () => {
+    const error = captureValidationError(copyEnv({}, ['EVENT_SITE_ORIGIN']));
+
+    expect(error.missingKeys).toEqual(['EVENT_SITE_ORIGIN']);
+    expect(error.invalidKeys).toEqual([]);
+  });
+
+  test.each(['http://localhost:48043', 'https://event.example'])(
+    'イベントサーバーのオリジン%sを受け付ける',
+    (value) => {
+      expect(() =>
+        validateEnv(eventEnvSchema, copyEnv({ EVENT_SITE_ORIGIN: value })),
+      ).not.toThrow();
+    },
+  );
+
+  test.each([
+    '',
+    'event.example',
+    'https://event.example/',
+    'https://event.example/unsubscribe',
+    'https://event.example?token=x',
+    'ftp://event.example',
+  ])(
+    'イベントサーバーのオリジンの形式でない「%s」を不正なキーにする',
+    (value) => {
+      const error = captureValidationError(
+        copyEnv({ EVENT_SITE_ORIGIN: value }),
+      );
+
+      expect(error.invalidKeys).toEqual(['EVENT_SITE_ORIGIN']);
+      expect(error.missingKeys).toEqual([]);
+    },
+  );
+
+  test('イベントサーバーのオリジンの欠落は他の設定の欠落と一緒に報告する', () => {
+    const error = captureValidationError(
+      copyEnv({}, ['EVENT_SITE_ORIGIN', 'CLIENT_SITE_ORIGIN']),
+    );
+
+    expect(error.missingKeys).toEqual([
+      'CLIENT_SITE_ORIGIN',
+      'EVENT_SITE_ORIGIN',
+    ]);
+  });
+});
