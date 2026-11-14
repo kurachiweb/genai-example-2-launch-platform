@@ -1,4 +1,12 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  test,
+  vi,
+} from 'vitest';
 import { page } from 'vitest/browser';
 
 import '../../styles.css';
@@ -7,7 +15,15 @@ import {
   applyColorScheme,
   COLOR_SCHEMES,
 } from '../../../lib/test/computed-style.ts';
-import { renderInRouter } from '../../../test/page-router.tsx';
+import {
+  type ServedMediaImages,
+  serveMediaImages,
+} from '../../../lib/test/served-media-images.ts';
+import {
+  createPageRouterContext,
+  renderInRouter,
+  SERVED_IMAGES_ORIGIN,
+} from '../../../test/page-router.tsx';
 import type { HelpArticleAuthorView } from '../../graphql/help-center.ts';
 import { HelpArticleAuthor } from './help-article-author.tsx';
 
@@ -16,7 +32,7 @@ vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
   executeGraphQL: vi.fn(),
 }));
 
-const OBJECT_KEY = '0123456789abcdef0123456789abcdef';
+const OBJECT_KEY = '89abcdef01234567'.repeat(2);
 
 const AUTHOR: NonNullable<HelpArticleAuthorView> = {
   nickname: '運営チームの佐藤',
@@ -35,12 +51,27 @@ const renderAuthor = (author: HelpArticleAuthorView) =>
     <div id="author-root" className="bg-background p-4 text-foreground">
       <HelpArticleAuthor author={author} />
     </div>,
+    {
+      context: createPageRouterContext('local', {
+        imagesOrigin: SERVED_IMAGES_ORIGIN,
+      }),
+    },
   );
 
 const rootText = () => document.getElementById('author-root')?.textContent;
 
 const placeholder = () =>
   document.querySelector('[data-slot="media-placeholder"]');
+
+let served: ServedMediaImages;
+
+beforeAll(async () => {
+  served = await serveMediaImages(OBJECT_KEY);
+});
+
+afterAll(async () => {
+  await served.remove();
+});
 
 afterEach(() => {
   applyColorScheme('light');
@@ -52,11 +83,12 @@ describe('HelpArticleAuthor', () => {
 
     await expect.element(page.getByText('運営チームの佐藤')).toBeVisible();
     await expect.element(page.getByText('サポート担当')).toBeVisible();
-    const image = document.querySelector('img');
-    expect(image?.getAttribute('src')).toBe(
-      `https://images.example/${OBJECT_KEY}/square-xs.jpg`,
+    const image = () => document.querySelector('img');
+    await expect.poll(() => image()?.naturalWidth).toBeGreaterThan(0);
+    expect(image()?.getAttribute('src')).toBe(
+      `${SERVED_IMAGES_ORIGIN}/${OBJECT_KEY}/square-xs.jpg`,
     );
-    expect(image?.getAttribute('alt')).toBe('');
+    expect(image()?.getAttribute('alt')).toBe('');
     expect(placeholder()).toBeNull();
   });
 

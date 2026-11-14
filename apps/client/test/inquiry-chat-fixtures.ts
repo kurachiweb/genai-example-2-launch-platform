@@ -10,7 +10,7 @@ export const CHAT_INQUIRY_ID = '01JC0INQVRY000000000000001';
 
 export const ADMIN_NICKNAME = 'サポート担当';
 
-export const ADMIN_AVATAR_KEY = 'fedcba9876543210fedcba9876543210';
+export const ADMIN_AVATAR_KEY = '76543210fedcba98'.repeat(2);
 
 export const firstMessage = (): InquiryChatMessageResult => ({
   id: CHAT_INQUIRY_ID,

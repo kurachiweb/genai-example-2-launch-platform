@@ -25,6 +25,7 @@ import { placeholderAppearanceOf } from '../../../lib/utilities/media/placeholde
 import {
   createPageRouterContext,
   renderInRouter,
+  SERVED_IMAGES_ORIGIN,
 } from '../../../test/page-router.tsx';
 import { UserAvatar, type UserAvatarProps } from './user-avatar.tsx';
 
@@ -34,7 +35,7 @@ vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
   executeGraphQL,
 }));
 
-const KEY = '0123456789abcdef'.repeat(2);
+const KEY = '456789abcdef0123'.repeat(2);
 
 const MISSING_IMAGES_ORIGIN = `${location.origin}/__missing-media-images`;
 
@@ -68,9 +69,6 @@ const placeholder = () => page.getByRole('img', { name: AVATAR_NAME });
 
 const isPlaceholder = (element: Element): boolean =>
   element.getAttribute('data-slot') === 'media-placeholder';
-
-// 画像の書き出し先はアプリのルート直下で、共通部品の補助が返すオリジンは共通部品のディレクトリ基準のため、開発サーバーのルートから配信されるURLを自分で組み立てる
-const SERVED_IMAGES_ORIGIN = `${location.origin}/.vitest-attachments/served-media-images`;
 
 let served: ServedMediaImages;
 

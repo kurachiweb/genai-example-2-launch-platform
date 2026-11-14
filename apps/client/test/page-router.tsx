@@ -62,6 +62,9 @@ const PAGE_ROUTER_DISPLAY: DisplayPreferences = Object.freeze({
   locale: 'ja-JP',
 });
 
+// 画像の書き出し先はアプリのルート直下で、共通部品の補助が返すオリジンは共通部品のディレクトリ基準のため、開発サーバーのルートから配信されるURLを自分で組み立てる
+export const SERVED_IMAGES_ORIGIN = `${location.origin}/.vitest-attachments/served-media-images`;
+
 export const createPageRouterContext = (
   environment: AppEnvironment,
   publicConfig: Partial<PublicRuntimeConfig> = {},

@@ -1,4 +1,13 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import '../../styles.css';
@@ -9,6 +18,10 @@ import {
   COLOR_SCHEMES,
 } from '../../../lib/test/computed-style.ts';
 import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
+import {
+  type ServedMediaImages,
+  serveMediaImages,
+} from '../../../lib/test/served-media-images.ts';
 import type { DisplayPreferences } from '../../../lib/utilities/datetime/display-preferences.ts';
 import {
   ADMIN_AVATAR_KEY,
@@ -22,6 +35,7 @@ import {
 import {
   createPageRouterContext,
   renderInRouter,
+  SERVED_IMAGES_ORIGIN,
 } from '../../../test/page-router.tsx';
 import {
   signedInViewerQuery,
@@ -63,7 +77,9 @@ const renderChat = async (
   data: ClientMemberInquiryQuery = memberInquiryResult(),
   viewer: ClientViewer = viewerOf(),
 ) => {
-  const context = createPageRouterContext('local');
+  const context = createPageRouterContext('local', {
+    imagesOrigin: SERVED_IMAGES_ORIGIN,
+  });
   context.queryClient.setQueryData(
     memberInquiryQueryOptions(viewer, CHAT_INQUIRY_ID).queryKey,
     data,
@@ -90,6 +106,16 @@ const chatCalls = () =>
   executeGraphQL.mock.calls.filter(
     ([document]) => document === ClientMemberInquiryDocument,
   );
+
+let served: ServedMediaImages;
+
+beforeAll(async () => {
+  served = await serveMediaImages(ADMIN_AVATAR_KEY);
+});
+
+afterAll(async () => {
+  await served.remove();
+});
 
 beforeEach(async () => {
   executeGraphQL.mockReset();
@@ -137,30 +163,14 @@ describe('InquiryChatView', () => {
   });
 
   test('管理者の返信に、返信した管理者のプロフィール画像とニックネームを示す', async () => {
-    // 前のテストで読み込めなかった画像はブラウザが失敗を覚えていて直ちに既定のアイコンへ切り替わるため、このテストだけの画像にする
-    const objectKey = ADMIN_AVATAR_KEY.split('').reverse().join('');
-    const reply = adminReply();
     await renderChat(
-      memberInquiryResult({
-        messages: [
-          firstMessage(),
-          {
-            ...reply,
-            admin: reply.admin && {
-              ...reply.admin,
-              avatar: reply.admin.avatar && {
-                ...reply.admin.avatar,
-                objectKey,
-              },
-            },
-          },
-        ],
-      }),
+      memberInquiryResult({ messages: [firstMessage(), adminReply()] }),
     );
+    const avatar = () => messages().nth(1).element().querySelector('img');
 
-    const avatar = messages().nth(1).element().querySelector('img');
-    expect(avatar?.getAttribute('src')).toContain(objectKey);
-    expect(avatar?.getAttribute('alt')).toBe('');
+    await expect.poll(() => avatar()?.naturalWidth).toBeGreaterThan(0);
+    expect(avatar()?.getAttribute('src')).toContain(ADMIN_AVATAR_KEY);
+    expect(avatar()?.getAttribute('alt')).toBe('');
     await expect.element(messages().nth(1)).toHaveTextContent(ADMIN_NICKNAME);
   });
 
