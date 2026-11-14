@@ -1,6 +1,7 @@
 import { createRoute } from '@tanstack/react-router';
 import type { Mock } from 'vitest';
 
+import type { RouterContext } from '../lib/start/router-context.ts';
 import type { GraphQLResult } from '../lib/utilities/graphql/graphql-result.ts';
 import { GraphQLClientError } from '../lib/utilities/graphql/graphql-result.ts';
 import {
@@ -158,10 +159,11 @@ const createRoutes = (rootRoute: PageRootRoute) => {
   ];
 };
 
-export const renderAccountsPage = (role: AdminRole) =>
+export const renderAccountsPage = (role: AdminRole, context?: RouterContext) =>
   renderPageRouter({
     path: ACCOUNTS_PATH,
     createRoutes,
+    context,
     cachedViewer: adminWithRole(role),
   });
 

@@ -1,12 +1,25 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import '../../styles.css';
+import type { RouterContext } from '../../../lib/start/router-context.ts';
 import { runAxe } from '../../../lib/test/a11y.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
 } from '../../../lib/test/computed-style.ts';
+import {
+  type ServedMediaImages,
+  serveMediaImages,
+} from '../../../lib/test/served-media-images.ts';
 import {
   AVATAR_OBJECT_KEY,
   callsOf,
@@ -20,6 +33,10 @@ import {
   SUPER_ADMIN_ACCOUNT,
 } from '../../../test/admin-accounts-fixtures.ts';
 import { ADMIN_NICKNAME } from '../../../test/admin-viewer-fixtures.ts';
+import {
+  createPageRouterContext,
+  SERVED_IMAGES_ORIGIN,
+} from '../../../test/page-router.tsx';
 import { loadAdminAccounts } from '../../graphql/admin-accounts.ts';
 import {
   AdminAccountsDocument,
@@ -84,12 +101,22 @@ async function expectRowActions(
   }
 }
 
-const renderAs = async (role: AdminRole) => {
+const renderAs = async (role: AdminRole, context?: RouterContext) => {
   respondAdminGraphQL(executeGraphQL, { role });
-  const router = await renderAccountsPage(role);
+  const router = await renderAccountsPage(role, context);
   await expect.element(table()).toBeVisible();
   return router;
 };
+
+let served: ServedMediaImages;
+
+beforeAll(async () => {
+  served = await serveMediaImages(AVATAR_OBJECT_KEY);
+});
+
+afterAll(async () => {
+  await served.remove();
+});
 
 beforeEach(() => {
   executeGraphQL.mockReset();
@@ -97,7 +124,10 @@ beforeEach(() => {
 
 describe('管理者の一覧', () => {
   test('全管理者を、画像・ニックネーム・肩書き・メールアドレス・ロール・状態・登録日時とともにAPIの順で表示する', async () => {
-    await renderAs('VIEWER');
+    await renderAs(
+      'VIEWER',
+      createPageRouterContext('local', { imagesOrigin: SERVED_IMAGES_ORIGIN }),
+    );
 
     await expect
       .element(main().getByRole('heading', { level: 1 }))
@@ -121,9 +151,9 @@ describe('管理者の一覧', () => {
     await expect.element(moderatorRow).toHaveTextContent('モデレーション担当');
     await expect.element(moderatorRow).toHaveTextContent('モデレーター');
     await expect.element(moderatorRow).toHaveTextContent('有効');
-    expect(
-      moderatorRow.element().querySelector('img')?.getAttribute('src'),
-    ).toContain(AVATAR_OBJECT_KEY);
+    const moderatorImage = () => moderatorRow.element().querySelector('img');
+    await expect.poll(() => moderatorImage()?.naturalWidth).toBeGreaterThan(0);
+    expect(moderatorImage()?.getAttribute('src')).toContain(AVATAR_OBJECT_KEY);
     expect(
       moderatorRow.element().querySelector('time')?.getAttribute('datetime'),
     ).toBe(MODERATOR_ACCOUNT.createdAt);

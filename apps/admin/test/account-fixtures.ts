@@ -93,8 +93,8 @@ const createRoutes = (rootRoute: PageRootRoute) => {
 
 export async function renderAccountPage(
   cachedViewer: AdminViewerQuery = signedInAdminQuery(),
+  context = createPageRouterContext('local'),
 ) {
-  const context = createPageRouterContext('local');
   const router = await renderPageRouter({
     path: ACCOUNT_PATH,
     createRoutes,

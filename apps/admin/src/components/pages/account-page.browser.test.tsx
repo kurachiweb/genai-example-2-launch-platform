@@ -1,5 +1,14 @@
 import { toast } from 'sonner';
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 
@@ -15,14 +24,18 @@ import {
   stubUploadFetch,
   uploadedReply,
 } from '../../../lib/test/fake-upload-fetch.ts';
+import type { RouterContext } from '../../../lib/start/router-context.ts';
 import { createSvgFile } from '../../../lib/test/media-files.ts';
+import {
+  type ServedMediaImages,
+  serveMediaImages,
+} from '../../../lib/test/served-media-images.ts';
 import {
   renderAccountPage,
   respondAccountGraphQL,
 } from '../../../test/account-fixtures.ts';
 import {
   AVATAR,
-  AVATAR_OBJECT_KEY,
   callsOf,
   failure,
   type GraphQLHandler,
@@ -33,6 +46,10 @@ import {
   ADMIN_NICKNAME,
   signedInAdminQuery,
 } from '../../../test/admin-viewer-fixtures.ts';
+import {
+  createPageRouterContext,
+  SERVED_IMAGES_ORIGIN,
+} from '../../../test/page-router.tsx';
 import {
   AdminUpdateProfileDocument,
   type AdminViewerQuery,
@@ -66,6 +83,8 @@ const saveButton = () => profile().getByRole('button', { name: '保存する' })
 
 const WITH_AVATAR = signedInAdminQuery({ avatar: AVATAR });
 
+const SERVED_AVATAR_KEY = '89abcdef01234567'.repeat(2);
+
 const fileInputOf = (element: Element): HTMLInputElement => {
   const input = element.querySelector<HTMLInputElement>('input[type="file"]');
   if (input === null) {
@@ -77,13 +96,24 @@ const fileInputOf = (element: Element): HTMLInputElement => {
 async function renderWith(
   handlers: ReadonlyMap<unknown, GraphQLHandler> = new Map(),
   viewer: AdminViewerQuery = signedInAdminQuery(),
+  context?: RouterContext,
 ) {
   respondAccountGraphQL(executeGraphQL, { viewer: () => viewer, handlers });
   await render(<Toaster />);
-  const rendered = await renderAccountPage(viewer);
+  const rendered = await renderAccountPage(viewer, context);
   await expect.element(profile()).toBeVisible();
   return rendered;
 }
+
+let served: ServedMediaImages;
+
+beforeAll(async () => {
+  served = await serveMediaImages(SERVED_AVATAR_KEY);
+});
+
+afterAll(async () => {
+  await served.remove();
+});
 
 beforeEach(() => {
   executeGraphQL.mockReset();
@@ -150,16 +180,17 @@ describe('プロフィール', () => {
   });
 
   test('登録済みの画像を表示する', async () => {
-    // 前のテストで読み込めなかった画像はブラウザが失敗を覚えていて直ちに既定のアイコンへ切り替わるため、このテストだけの画像にする
-    const objectKey = AVATAR_OBJECT_KEY.split('').reverse().join('');
     await renderWith(
       new Map(),
-      signedInAdminQuery({ avatar: { ...AVATAR, objectKey } }),
+      signedInAdminQuery({
+        avatar: { ...AVATAR, objectKey: SERVED_AVATAR_KEY },
+      }),
+      createPageRouterContext('local', { imagesOrigin: SERVED_IMAGES_ORIGIN }),
     );
+    const image = () => profile().element().querySelector('img');
 
-    expect(
-      profile().element().querySelector('img')?.getAttribute('src'),
-    ).toContain(objectKey);
+    await expect.poll(() => image()?.naturalWidth).toBeGreaterThan(0);
+    expect(image()?.getAttribute('src')).toContain(SERVED_AVATAR_KEY);
   });
 
   test('画像が未登録なら既定のアイコンを表示し、取り除く操作を描かない', async () => {

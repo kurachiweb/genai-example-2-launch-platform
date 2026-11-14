@@ -18,6 +18,7 @@ import {
   createRouterContext,
   type RouterContext,
 } from '../lib/start/router-context.ts';
+import type { PublicRuntimeConfig } from '../lib/server/env/frontend-env.ts';
 import type { DisplayPreferences } from '../lib/utilities/datetime/display-preferences.ts';
 import type { AppEnvironment } from '../lib/utilities/system/system-status-availability.ts';
 import { AdminLayout } from '../src/components/layout/admin-layout.tsx';
@@ -49,8 +50,12 @@ const PAGE_ROUTER_DISPLAY: DisplayPreferences = Object.freeze({
   locale: 'ja-JP',
 });
 
+// 画像の書き出し先はアプリのルート直下で、共通部品の補助が返すオリジンは共通部品のディレクトリ基準のため、開発サーバーのルートから配信されるURLを自分で組み立てる
+export const SERVED_IMAGES_ORIGIN = `${location.origin}/.vitest-attachments/served-media-images`;
+
 export const createPageRouterContext = (
   environment: AppEnvironment,
+  publicConfig: Partial<PublicRuntimeConfig> = {},
 ): RouterContext =>
   createRouterContext({
     publicConfig: {
@@ -61,6 +66,7 @@ export const createPageRouterContext = (
       sentry: { dsn: undefined, environment, tracesSampleRate: 0 },
       webAnalyticsToken: undefined,
       stripePublishableKey: undefined,
+      ...publicConfig,
     },
     display: PAGE_ROUTER_DISPLAY,
   });
