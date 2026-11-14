@@ -6,6 +6,7 @@ import { EVENT_NOTIFICATIONS_TYPES } from './event-notifications-types.ts';
 const EXPECTED_NAMES: readonly string[] = [
   'EveningCollector',
   'MorningCollector',
+  'SupplementSource',
 ];
 
 describe('EVENT_NOTIFICATIONS_TYPES', () => {

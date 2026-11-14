@@ -1,4 +1,8 @@
 import type { StoredSlot } from '../../../lib/core/notifications/ports.ts';
+import type {
+  ResultNoticeSupplement,
+  ResultNoticeSupplementInput,
+} from '../../../lib/core/notifications/result-notice-supplements.ts';
 
 export type SlotCollectStep =
   | {
@@ -17,4 +21,14 @@ export type SlotCollectStep =
 export interface SlotCollector {
   // 夜・朝の枠ごとの実装。nowは処理の時点の時刻で、マッチの段階はこの時刻から導く
   step(slot: StoredSlot, now: Date): Promise<SlotCollectStep>;
+}
+
+export interface SupplementSource {
+  // 結果の通知のIDから追記への対応表で、追記の無い通知は含めない。提供元の例外はそのまま投げる
+  supplementsFor(
+    requests: readonly {
+      readonly noticeId: string;
+      readonly input: ResultNoticeSupplementInput;
+    }[],
+  ): Promise<ReadonlyMap<string, readonly ResultNoticeSupplement[]>>;
 }
