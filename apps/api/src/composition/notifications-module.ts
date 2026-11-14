@@ -21,6 +21,8 @@ import {
   TokenUnsubscribeService,
   type UnsubscribeService,
 } from '../application/notifications/unsubscribe-service.ts';
+import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
+import { AccountWithdrawalSyncHandler } from '../infrastructure/notifications/account-withdrawal-sync-handler.ts';
 import { D1SenderInfoWriter } from '../infrastructure/notifications/d1-sender-info-writer.ts';
 import { SuppressionDeliveryStatusReader } from '../infrastructure/notifications/delivery-status-reader.ts';
 
@@ -47,5 +49,8 @@ export const NOTIFICATIONS_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<SenderInfoService>(NOTIFICATIONS_TYPES.SenderInfoService).to(
       StoreSenderInfoService,
     );
+    bind<UserLifecycleSyncHandler>(
+      NOTIFICATIONS_TYPES.AccountWithdrawalSyncHandler,
+    ).to(AccountWithdrawalSyncHandler);
   }),
 };

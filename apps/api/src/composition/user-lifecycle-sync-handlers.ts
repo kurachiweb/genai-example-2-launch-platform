@@ -1,6 +1,7 @@
 import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
 import { INQUIRY_TYPES } from '../application/inquiry/inquiry-types.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
+import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
 import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
 import type { UserLifecycleSyncRegistration } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
@@ -37,5 +38,10 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       name: 'directory-discovery.account-index-removal',
       events: ['withdrawn', 'suspended'],
       handler: DIRECTORY_TYPES.AccountIndexRemovalSyncHandler,
+    },
+    {
+      name: 'notifications.account-withdrawal',
+      events: ['withdrawn'],
+      handler: NOTIFICATIONS_TYPES.AccountWithdrawalSyncHandler,
     },
   ];

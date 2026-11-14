@@ -4,6 +4,7 @@ import { NOTIFICATIONS_PLATFORM_TYPES } from '../../../lib/core/notifications/id
 import { NOTIFICATIONS_TYPES } from './notifications-types.ts';
 
 const EXPECTED_NAMES = [
+  'AccountWithdrawalSyncHandler',
   'DeliveryStatusReader',
   'NotificationSettingsService',
   'SenderInfoService',

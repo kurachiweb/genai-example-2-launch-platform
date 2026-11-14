@@ -18,10 +18,15 @@ const SenderInfoWriter: unique symbol = Symbol.for(
   'notifications.SenderInfoWriter',
 );
 
+const AccountWithdrawalSyncHandler: unique symbol = Symbol.for(
+  'notifications.AccountWithdrawalSyncHandler',
+);
+
 export const NOTIFICATIONS_TYPES = Object.freeze({
   DeliveryStatusReader,
   NotificationSettingsService,
   UnsubscribeService,
   SenderInfoService,
   SenderInfoWriter,
+  AccountWithdrawalSyncHandler,
 });
