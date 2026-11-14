@@ -11,10 +11,14 @@ const GroupDispatcher: unique symbol = Symbol.for(
 const SupplementSource: unique symbol = Symbol.for(
   'notifications.event.SupplementSource',
 );
+const FlushSlotHandler: unique symbol = Symbol.for(
+  'notifications.event.FlushSlotHandler',
+);
 
 export const EVENT_NOTIFICATIONS_TYPES = Object.freeze({
   EveningCollector,
   MorningCollector,
   SupplementSource,
   GroupDispatcher,
+  FlushSlotHandler,
 });

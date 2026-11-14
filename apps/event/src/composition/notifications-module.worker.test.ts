@@ -28,6 +28,7 @@ import {
   SENDER_INFO_SEED_ROW,
 } from '../../lib/workers/notifications/testing/notification-store-fixtures.ts';
 import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-notifications-types.ts';
+import { FlushSlotHandler } from '../application/notifications/flush-slot-handler.ts';
 import type { SupplementSource } from '../application/notifications/ports.ts';
 import { D1SenderInfoProvider } from '../infrastructure/notifications/d1-sender-info-provider.ts';
 import { EveningCollector } from '../infrastructure/notifications/evening-collector.ts';
@@ -58,6 +59,7 @@ const IMPLEMENTATIONS = [
   ['MorningCollector', MorningCollector],
   ['SupplementSource', RegisteredSupplementSource],
   ['GroupDispatcher', EmailGroupDispatcher],
+  ['FlushSlotHandler', FlushSlotHandler],
 ] as const;
 
 const FAKE_PROVIDER = Symbol.for('test.FakeResultNoticeSupplementProvider');

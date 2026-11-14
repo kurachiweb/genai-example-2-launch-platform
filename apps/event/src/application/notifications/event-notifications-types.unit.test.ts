@@ -8,6 +8,7 @@ const EXPECTED_NAMES: readonly string[] = [
   'MorningCollector',
   'SupplementSource',
   'GroupDispatcher',
+  'FlushSlotHandler',
 ];
 
 describe('EVENT_NOTIFICATIONS_TYPES', () => {
