@@ -425,6 +425,26 @@ type DeleteHelpCategoryPayload {
   reassignedCount: Int!
 }
 
+"""配信の対象からの除外"""
+type DeliverySuppression {
+  reason: DeliverySuppressionReason!
+
+  """受信側の拒否による期限付きの除外の終了。期限なしはnull"""
+  until: DateTime
+}
+
+"""メールアドレスが配信の対象から除外されている理由"""
+enum DeliverySuppressionReason {
+  """恒久的なバウンス"""
+  BOUNCE
+
+  """苦情"""
+  COMPLAINT
+
+  """受信側の拒否"""
+  REJECTED
+}
+
 """サーバーが正規化した条件。既定の値の項目はnull"""
 type DirectoryAppliedQuery {
   """解決したカテゴリのハンドル"""
@@ -1112,6 +1132,9 @@ type Mutation {
   """メールアドレス変更の確定"""
   confirmEmailChange(token: String!): ConfirmationResult!
 
+  """配信停止のリンクの確定。ログイン不要。その通知種別の受信を停止する。既に停止していても成功。照合できないトークンはinvalid_link"""
+  confirmNotificationUnsubscribe(token: String!): NotificationUnsubscribeLink!
+
   """パスワード変更の確定"""
   confirmPasswordChange(token: String!): ConfirmationResult!
   createHelpArticle(input: CreateHelpArticleInput!): AdminHelpArticle!
@@ -1274,6 +1297,9 @@ type Mutation {
   """メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない"""
   updateMyProfile(input: UpdateMyProfileInput!): MyProfile!
 
+  """1つの通知種別の受信可否の保存。保存の後の通知設定を返す。停止中はaccount_unavailable"""
+  updateNotificationPreference(input: UpdateNotificationPreferenceInput!): NotificationSettings!
+
   """停止していない利用者が自分のプロダクトを保存する。bot判定の操作名はproduct_save"""
   updateProduct(input: UpdateProductInput!): MyProduct!
 
@@ -1353,6 +1379,52 @@ type MyProfile {
   previousHandle: String
   suspended: Boolean!
   websites: [ProfileWebsite!]!
+}
+
+"""通知種別ごとの受信可否"""
+type NotificationPreference {
+  enabled: Boolean!
+  topic: NotificationTopic!
+}
+
+"""ログイン中の利用者の通知設定"""
+type NotificationSettings {
+  """配信の状態を確認できたか"""
+  deliveryStatusAvailable: Boolean!
+
+  """受信可否を変更できるか。停止中は偽"""
+  editable: Boolean!
+
+  """メールアドレスが確認済みか"""
+  emailVerified: Boolean!
+
+  """4つの通知種別の受信可否。種別の順は決まっている"""
+  preferences: [NotificationPreference!]!
+
+  """除外されていない・配信の状態を確認できなければnull"""
+  suppression: DeliverySuppression
+}
+
+"""通知メールの種別"""
+enum NotificationTopic {
+  """フォロー中ユーザーの受賞結果"""
+  FOLLOWED_USER_AWARD
+
+  """フォロー中ユーザーのマッチ開催"""
+  FOLLOWED_USER_MATCH
+
+  """マッチ開始予告"""
+  MATCH_PREVIEW
+
+  """勝敗結果"""
+  MATCH_RESULT
+}
+
+"""配信停止のリンクの対象"""
+type NotificationUnsubscribeLink {
+  """その通知種別を受信する設定か。確定の後は偽"""
+  enabled: Boolean!
+  topic: NotificationTopic!
 }
 
 type OffsetPageInfo {
@@ -1875,6 +1947,9 @@ type Query {
   """登録画面で選べるローンチ日"""
   newProductLaunchWindow: LaunchDateWindow!
 
+  """配信停止のリンクの照会。ログイン不要。形式違反・照合できないトークンはnull"""
+  notificationUnsubscribeLink(token: String!): NotificationUnsubscribeLink
+
   """ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順)"""
   paymentHistory(after: String, first: Int): PaymentRecordConnection!
 
@@ -1927,6 +2002,9 @@ type Query {
 
   """ログイン中の利用者。未ログイン・無効なセッションではnull"""
   viewer: Viewer
+
+  """ログイン中の利用者の通知設定。停止中も返す"""
+  viewerNotificationSettings: NotificationSettings!
 
   """ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull"""
   viewerUltras: ViewerUltras
@@ -2112,6 +2190,12 @@ input UpdateMyProfileInput {
   headline: String
   nickname: String!
   websites: [ProfileWebsiteInput!]!
+}
+
+"""受信可否の変更の入力"""
+input UpdateNotificationPreferenceInput {
+  enabled: Boolean!
+  topic: NotificationTopic!
 }
 
 input UpdateProductInput {

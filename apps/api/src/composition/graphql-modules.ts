@@ -6,6 +6,7 @@ import { inquirySchemaModule } from '../presentation/graphql/modules/inquiry/ind
 import { legalSchemaModule } from '../presentation/graphql/modules/legal/index.ts';
 import { matchSchemaModule } from '../presentation/graphql/modules/match/index.ts';
 import { mediaSchemaModule } from '../presentation/graphql/modules/media/index.ts';
+import { notificationsSchemaModule } from '../presentation/graphql/modules/notifications/index.ts';
 import { paymentsSchemaModule } from '../presentation/graphql/modules/payments/index.ts';
 import { productSchemaModule } from '../presentation/graphql/modules/product/index.ts';
 import { profileSchemaModule } from '../presentation/graphql/modules/profile/index.ts';
@@ -27,4 +28,5 @@ export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
   productSchemaModule,
   matchSchemaModule,
   directorySchemaModule,
+  notificationsSchemaModule,
 ];

@@ -438,6 +438,23 @@ export type DeleteHelpCategoryPayload = {
   reassignedCount: Scalars['Int']['output'];
 };
 
+/** 配信の対象からの除外 */
+export type DeliverySuppression = {
+  __typename?: 'DeliverySuppression';
+  reason: DeliverySuppressionReason;
+  /** 受信側の拒否による期限付きの除外の終了。期限なしはnull */
+  until?: Maybe<Scalars['DateTime']['output']>;
+};
+
+/** メールアドレスが配信の対象から除外されている理由 */
+export type DeliverySuppressionReason =
+  /** 恒久的なバウンス */
+  | 'BOUNCE'
+  /** 苦情 */
+  | 'COMPLAINT'
+  /** 受信側の拒否 */
+  | 'REJECTED';
+
 /** サーバーが正規化した条件。既定の値の項目はnull */
 export type DirectoryAppliedQuery = {
   __typename?: 'DirectoryAppliedQuery';
@@ -1072,6 +1089,8 @@ export type Mutation = {
   confirmCheckoutReturn: CheckoutReturnResult;
   /** メールアドレス変更の確定 */
   confirmEmailChange: ConfirmationResult;
+  /** 配信停止のリンクの確定。ログイン不要。その通知種別の受信を停止する。既に停止していても成功。照合できないトークンはinvalid_link */
+  confirmNotificationUnsubscribe: NotificationUnsubscribeLink;
   /** パスワード変更の確定 */
   confirmPasswordChange: ConfirmationResult;
   createHelpArticle: AdminHelpArticle;
@@ -1174,6 +1193,8 @@ export type Mutation = {
   updateHelpArticle: AdminHelpArticle;
   /** メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない */
   updateMyProfile: MyProfile;
+  /** 1つの通知種別の受信可否の保存。保存の後の通知設定を返す。停止中はaccount_unavailable */
+  updateNotificationPreference: NotificationSettings;
   /** 停止していない利用者が自分のプロダクトを保存する。bot判定の操作名はproduct_save */
   updateProduct: MyProduct;
   /** モデレーター以上の管理者がプロダクトカテゴリの名前とハンドルを変更する。標準カテゴリは変更できない */
@@ -1253,6 +1274,11 @@ export type MutationConfirmCheckoutReturnArgs = {
 
 
 export type MutationConfirmEmailChangeArgs = {
+  token: Scalars['String']['input'];
+};
+
+
+export type MutationConfirmNotificationUnsubscribeArgs = {
   token: Scalars['String']['input'];
 };
 
@@ -1520,6 +1546,11 @@ export type MutationUpdateMyProfileArgs = {
 };
 
 
+export type MutationUpdateNotificationPreferenceArgs = {
+  input: UpdateNotificationPreferenceInput;
+};
+
+
 export type MutationUpdateProductArgs = {
   input: UpdateProductInput;
 };
@@ -1604,6 +1635,47 @@ export type MyProfile = {
   previousHandle?: Maybe<Scalars['String']['output']>;
   suspended: Scalars['Boolean']['output'];
   websites: Array<ProfileWebsite>;
+};
+
+/** 通知種別ごとの受信可否 */
+export type NotificationPreference = {
+  __typename?: 'NotificationPreference';
+  enabled: Scalars['Boolean']['output'];
+  topic: NotificationTopic;
+};
+
+/** ログイン中の利用者の通知設定 */
+export type NotificationSettings = {
+  __typename?: 'NotificationSettings';
+  /** 配信の状態を確認できたか */
+  deliveryStatusAvailable: Scalars['Boolean']['output'];
+  /** 受信可否を変更できるか。停止中は偽 */
+  editable: Scalars['Boolean']['output'];
+  /** メールアドレスが確認済みか */
+  emailVerified: Scalars['Boolean']['output'];
+  /** 4つの通知種別の受信可否。種別の順は決まっている */
+  preferences: Array<NotificationPreference>;
+  /** 除外されていない・配信の状態を確認できなければnull */
+  suppression?: Maybe<DeliverySuppression>;
+};
+
+/** 通知メールの種別 */
+export type NotificationTopic =
+  /** フォロー中ユーザーの受賞結果 */
+  | 'FOLLOWED_USER_AWARD'
+  /** フォロー中ユーザーのマッチ開催 */
+  | 'FOLLOWED_USER_MATCH'
+  /** マッチ開始予告 */
+  | 'MATCH_PREVIEW'
+  /** 勝敗結果 */
+  | 'MATCH_RESULT';
+
+/** 配信停止のリンクの対象 */
+export type NotificationUnsubscribeLink = {
+  __typename?: 'NotificationUnsubscribeLink';
+  /** その通知種別を受信する設定か。確定の後は偽 */
+  enabled: Scalars['Boolean']['output'];
+  topic: NotificationTopic;
 };
 
 export type OffsetPageInfo = {
@@ -2050,6 +2122,8 @@ export type Query = {
   mySessions: Array<UserSessionSummary>;
   /** 登録画面で選べるローンチ日 */
   newProductLaunchWindow: LaunchDateWindow;
+  /** 配信停止のリンクの照会。ログイン不要。形式違反・照合できないトークンはnull */
+  notificationUnsubscribeLink?: Maybe<NotificationUnsubscribeLink>;
   /** ログイン中の利用者の決済履歴(既定20件・1〜50件、発生時刻の新しい順) */
   paymentHistory: PaymentRecordConnection;
   /** 公開のピン留めの記事をヘルプトップと同じ順で返す */
@@ -2080,6 +2154,8 @@ export type Query = {
   upvoteHistory?: Maybe<UpvoteHistoryConnection>;
   /** ログイン中の利用者。未ログイン・無効なセッションではnull */
   viewer?: Maybe<Viewer>;
+  /** ログイン中の利用者の通知設定。停止中も返す */
+  viewerNotificationSettings: NotificationSettings;
   /** ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull */
   viewerUltras?: Maybe<ViewerUltras>;
 };
@@ -2206,6 +2282,11 @@ export type QueryMyProductArgs = {
 export type QueryMyProductsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first: Scalars['Int']['input'];
+};
+
+
+export type QueryNotificationUnsubscribeLinkArgs = {
+  token: Scalars['String']['input'];
 };
 
 
@@ -2424,6 +2505,12 @@ export type UpdateMyProfileInput = {
   headline?: InputMaybe<Scalars['String']['input']>;
   nickname: Scalars['String']['input'];
   websites: Array<ProfileWebsiteInput>;
+};
+
+/** 受信可否の変更の入力 */
+export type UpdateNotificationPreferenceInput = {
+  enabled: Scalars['Boolean']['input'];
+  topic: NotificationTopic;
 };
 
 export type UpdateProductInput = {
@@ -2683,6 +2770,8 @@ export type ResolversTypes = {
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   DeleteHelpArticlePayload: ResolverTypeWrapper<DeleteHelpArticlePayload>;
   DeleteHelpCategoryPayload: ResolverTypeWrapper<DeleteHelpCategoryPayload>;
+  DeliverySuppression: ResolverTypeWrapper<DeliverySuppression>;
+  DeliverySuppressionReason: DeliverySuppressionReason;
   DirectoryAppliedQuery: ResolverTypeWrapper<DirectoryAppliedQuery>;
   DirectoryInput: DirectoryInput;
   DirectoryItem: ResolverTypeWrapper<DirectoryItemModel>;
@@ -2760,6 +2849,10 @@ export type ResolversTypes = {
   MyProductRedirect: ResolverTypeWrapper<MyProductRedirect>;
   MyProductResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['MyProductResult']>;
   MyProfile: ResolverTypeWrapper<MyProfileModel>;
+  NotificationPreference: ResolverTypeWrapper<NotificationPreference>;
+  NotificationSettings: ResolverTypeWrapper<NotificationSettings>;
+  NotificationTopic: NotificationTopic;
+  NotificationUnsubscribeLink: ResolverTypeWrapper<NotificationUnsubscribeLink>;
   OffsetPageInfo: ResolverTypeWrapper<OffsetPageInfo>;
   PageInfo: ResolverTypeWrapper<PageInfo>;
   PaymentRecord: ResolverTypeWrapper<PaymentRecord>;
@@ -2821,6 +2914,7 @@ export type ResolversTypes = {
   UltrasPromotionSetting: ResolverTypeWrapper<UltrasPromotionSetting>;
   UpdateHelpArticleInput: UpdateHelpArticleInput;
   UpdateMyProfileInput: UpdateMyProfileInput;
+  UpdateNotificationPreferenceInput: UpdateNotificationPreferenceInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UpvoteDateTotal: ResolverTypeWrapper<UpvoteDateTotal>;
@@ -2874,6 +2968,7 @@ export type ResolversParentTypes = {
   DateTime: Scalars['DateTime']['output'];
   DeleteHelpArticlePayload: DeleteHelpArticlePayload;
   DeleteHelpCategoryPayload: DeleteHelpCategoryPayload;
+  DeliverySuppression: DeliverySuppression;
   DirectoryAppliedQuery: DirectoryAppliedQuery;
   DirectoryInput: DirectoryInput;
   DirectoryItem: DirectoryItemModel;
@@ -2933,6 +3028,9 @@ export type ResolversParentTypes = {
   MyProductRedirect: MyProductRedirect;
   MyProductResult: ResolversUnionTypes<ResolversParentTypes>['MyProductResult'];
   MyProfile: MyProfileModel;
+  NotificationPreference: NotificationPreference;
+  NotificationSettings: NotificationSettings;
+  NotificationUnsubscribeLink: NotificationUnsubscribeLink;
   OffsetPageInfo: OffsetPageInfo;
   PageInfo: PageInfo;
   PaymentRecord: PaymentRecord;
@@ -2984,6 +3082,7 @@ export type ResolversParentTypes = {
   UltrasPromotionSetting: UltrasPromotionSetting;
   UpdateHelpArticleInput: UpdateHelpArticleInput;
   UpdateMyProfileInput: UpdateMyProfileInput;
+  UpdateNotificationPreferenceInput: UpdateNotificationPreferenceInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
   UpvoteDateTotal: UpvoteDateTotal;
@@ -3230,6 +3329,11 @@ export type DeleteHelpArticlePayloadResolvers<ContextType = GraphQLContext, Pare
 export type DeleteHelpCategoryPayloadResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DeleteHelpCategoryPayload'] = ResolversParentTypes['DeleteHelpCategoryPayload']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   reassignedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type DeliverySuppressionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DeliverySuppression'] = ResolversParentTypes['DeliverySuppression']> = {
+  reason?: Resolver<ResolversTypes['DeliverySuppressionReason'], ParentType, ContextType>;
+  until?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
 };
 
 export type DirectoryAppliedQueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DirectoryAppliedQuery'] = ResolversParentTypes['DirectoryAppliedQuery']> = {
@@ -3558,6 +3662,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   confirmAdminEmailChange?: Resolver<ResolversTypes['AdminConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmAdminEmailChangeArgs, 'token'>>;
   confirmCheckoutReturn?: Resolver<ResolversTypes['CheckoutReturnResult'], ParentType, ContextType, RequireFields<MutationConfirmCheckoutReturnArgs, 'sessionId'>>;
   confirmEmailChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmEmailChangeArgs, 'token'>>;
+  confirmNotificationUnsubscribe?: Resolver<ResolversTypes['NotificationUnsubscribeLink'], ParentType, ContextType, RequireFields<MutationConfirmNotificationUnsubscribeArgs, 'token'>>;
   confirmPasswordChange?: Resolver<ResolversTypes['ConfirmationResult'], ParentType, ContextType, RequireFields<MutationConfirmPasswordChangeArgs, 'token'>>;
   createHelpArticle?: Resolver<ResolversTypes['AdminHelpArticle'], ParentType, ContextType, RequireFields<MutationCreateHelpArticleArgs, 'input'>>;
   createHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationCreateHelpCategoryArgs, 'name'>>;
@@ -3612,6 +3717,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
   updateHelpArticle?: Resolver<ResolversTypes['AdminHelpArticle'], ParentType, ContextType, RequireFields<MutationUpdateHelpArticleArgs, 'input'>>;
   updateMyProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType, RequireFields<MutationUpdateMyProfileArgs, 'input'>>;
+  updateNotificationPreference?: Resolver<ResolversTypes['NotificationSettings'], ParentType, ContextType, RequireFields<MutationUpdateNotificationPreferenceArgs, 'input'>>;
   updateProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationUpdateProductArgs, 'input'>>;
   updateProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationUpdateProductCategoryArgs, 'id' | 'input'>>;
   updateUltrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType, RequireFields<MutationUpdateUltrasPromotionSettingArgs, 'input'>>;
@@ -3662,6 +3768,24 @@ export type MyProfileResolvers<ContextType = GraphQLContext, ParentType extends 
   previousHandle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   suspended?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   websites?: Resolver<Array<ResolversTypes['ProfileWebsite']>, ParentType, ContextType>;
+};
+
+export type NotificationPreferenceResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['NotificationPreference'] = ResolversParentTypes['NotificationPreference']> = {
+  enabled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  topic?: Resolver<ResolversTypes['NotificationTopic'], ParentType, ContextType>;
+};
+
+export type NotificationSettingsResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['NotificationSettings'] = ResolversParentTypes['NotificationSettings']> = {
+  deliveryStatusAvailable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  editable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  emailVerified?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  preferences?: Resolver<Array<ResolversTypes['NotificationPreference']>, ParentType, ContextType>;
+  suppression?: Resolver<Maybe<ResolversTypes['DeliverySuppression']>, ParentType, ContextType>;
+};
+
+export type NotificationUnsubscribeLinkResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['NotificationUnsubscribeLink'] = ResolversParentTypes['NotificationUnsubscribeLink']> = {
+  enabled?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  topic?: Resolver<ResolversTypes['NotificationTopic'], ParentType, ContextType>;
 };
 
 export type OffsetPageInfoResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['OffsetPageInfo'] = ResolversParentTypes['OffsetPageInfo']> = {
@@ -3899,6 +4023,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   myProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
   newProductLaunchWindow?: Resolver<ResolversTypes['LaunchDateWindow'], ParentType, ContextType>;
+  notificationUnsubscribeLink?: Resolver<Maybe<ResolversTypes['NotificationUnsubscribeLink']>, ParentType, ContextType, RequireFields<QueryNotificationUnsubscribeLinkArgs, 'token'>>;
   paymentHistory?: Resolver<ResolversTypes['PaymentRecordConnection'], ParentType, ContextType, Partial<QueryPaymentHistoryArgs>>;
   pinnedHelpArticles?: Resolver<Array<ResolversTypes['HelpArticleLink']>, ParentType, ContextType>;
   productCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
@@ -3914,6 +4039,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   ultrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType>;
   upvoteHistory?: Resolver<Maybe<ResolversTypes['UpvoteHistoryConnection']>, ParentType, ContextType, RequireFields<QueryUpvoteHistoryArgs, 'first' | 'userHandle'>>;
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
+  viewerNotificationSettings?: Resolver<ResolversTypes['NotificationSettings'], ParentType, ContextType>;
   viewerUltras?: Resolver<Maybe<ResolversTypes['ViewerUltras']>, ParentType, ContextType>;
 };
 
@@ -4062,6 +4188,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   DateTime?: GraphQLScalarType;
   DeleteHelpArticlePayload?: DeleteHelpArticlePayloadResolvers<ContextType>;
   DeleteHelpCategoryPayload?: DeleteHelpCategoryPayloadResolvers<ContextType>;
+  DeliverySuppression?: DeliverySuppressionResolvers<ContextType>;
   DirectoryAppliedQuery?: DirectoryAppliedQueryResolvers<ContextType>;
   DirectoryItem?: DirectoryItemResolvers<ContextType>;
   DirectoryItemMetric?: DirectoryItemMetricResolvers<ContextType>;
@@ -4112,6 +4239,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   MyProductRedirect?: MyProductRedirectResolvers<ContextType>;
   MyProductResult?: MyProductResultResolvers<ContextType>;
   MyProfile?: MyProfileResolvers<ContextType>;
+  NotificationPreference?: NotificationPreferenceResolvers<ContextType>;
+  NotificationSettings?: NotificationSettingsResolvers<ContextType>;
+  NotificationUnsubscribeLink?: NotificationUnsubscribeLinkResolvers<ContextType>;
   OffsetPageInfo?: OffsetPageInfoResolvers<ContextType>;
   PageInfo?: PageInfoResolvers<ContextType>;
   PaymentRecord?: PaymentRecordResolvers<ContextType>;
