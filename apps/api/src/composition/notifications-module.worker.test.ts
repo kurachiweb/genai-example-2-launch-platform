@@ -47,6 +47,7 @@ import {
   clearAdminTables,
 } from '../infrastructure/admin/testing/admin-store-fixtures.ts';
 import { AccountWithdrawalSyncHandler } from '../infrastructure/notifications/account-withdrawal-sync-handler.ts';
+import { D1NotificationMaintenanceStore } from '../infrastructure/notifications/d1-notification-maintenance-store.ts';
 import { D1SenderInfoWriter } from '../infrastructure/notifications/d1-sender-info-writer.ts';
 import { SuppressionDeliveryStatusReader } from '../infrastructure/notifications/delivery-status-reader.ts';
 import { MODULES } from './modules.ts';
@@ -136,6 +137,11 @@ describe('APIサーバーの通知の束縛', () => {
       'AccountWithdrawalSyncHandler',
       NOTIFICATIONS_TYPES.AccountWithdrawalSyncHandler,
       AccountWithdrawalSyncHandler,
+    ],
+    [
+      'NotificationMaintenanceStore',
+      NOTIFICATIONS_TYPES.NotificationMaintenanceStore,
+      D1NotificationMaintenanceStore,
     ],
   ] as const)(
     '処理単位のコンテナから%sを解決する',

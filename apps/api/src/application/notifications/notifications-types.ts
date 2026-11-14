@@ -22,6 +22,10 @@ const AccountWithdrawalSyncHandler: unique symbol = Symbol.for(
   'notifications.AccountWithdrawalSyncHandler',
 );
 
+const NotificationMaintenanceStore: unique symbol = Symbol.for(
+  'notifications.NotificationMaintenanceStore',
+);
+
 export const NOTIFICATIONS_TYPES = Object.freeze({
   DeliveryStatusReader,
   NotificationSettingsService,
@@ -29,4 +33,5 @@ export const NOTIFICATIONS_TYPES = Object.freeze({
   SenderInfoService,
   SenderInfoWriter,
   AccountWithdrawalSyncHandler,
+  NotificationMaintenanceStore,
 });
