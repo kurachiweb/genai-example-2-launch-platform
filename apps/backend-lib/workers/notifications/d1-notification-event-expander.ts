@@ -79,7 +79,7 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   );
 }
 
-function noticeSourceOf(record: MatchRecord): MatchNoticeSource {
+export function noticeSourceOf(record: MatchRecord): MatchNoticeSource {
   return {
     matchId: record.matchId,
     matchDate: record.matchDate,

@@ -18,7 +18,10 @@ import {
   restoreSenderInfoSeed,
   SENDER_INFO_SEED_ROW,
 } from '../../lib/workers/notifications/testing/notification-store-fixtures.ts';
+import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-notifications-types.ts';
 import { D1SenderInfoProvider } from '../infrastructure/notifications/d1-sender-info-provider.ts';
+import { EveningCollector } from '../infrastructure/notifications/evening-collector.ts';
+import { MorningCollector } from '../infrastructure/notifications/morning-collector.ts';
 import { EMAIL_SENDER_INFO_PROVIDER } from './email-registrations.ts';
 import { MODULES } from './modules.ts';
 
@@ -32,6 +35,11 @@ const SENDER_INFO = {
 const testEnv = env as Env & { readonly TEST_MIGRATIONS: D1Migration[] };
 
 const INVOCATION_KINDS = ['fetch', 'queue'] as const;
+
+const IMPLEMENTATIONS = [
+  ['EveningCollector', EveningCollector],
+  ['MorningCollector', MorningCollector],
+] as const;
 
 function createContainer(kind: (typeof INVOCATION_KINDS)[number]): Container {
   return createInvocationContainer(
@@ -97,3 +105,19 @@ describe.each(INVOCATION_KINDS)(
     });
   },
 );
+
+describe('イベントサーバーの通知の識別子の解決', () => {
+  test('解決を確かめる識別子はEVENT_NOTIFICATIONS_TYPESの全てである', () => {
+    expect(IMPLEMENTATIONS.map(([name]) => name).toSorted()).toEqual(
+      Object.keys(EVENT_NOTIFICATIONS_TYPES).toSorted(),
+    );
+  });
+
+  describe.each(INVOCATION_KINDS)('%sの処理単位のコンテナ', (kind) => {
+    test.each(IMPLEMENTATIONS)('%sを解決する', (name, implementation) => {
+      expect(
+        createContainer(kind).get(EVENT_NOTIFICATIONS_TYPES[name]),
+      ).toBeInstanceOf(implementation);
+    });
+  });
+});

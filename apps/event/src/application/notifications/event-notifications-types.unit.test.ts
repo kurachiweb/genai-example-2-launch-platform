@@ -3,7 +3,10 @@ import { describe, expect, test } from 'bun:test';
 import { NOTIFICATIONS_PLATFORM_TYPES } from '../../../lib/core/notifications/identifiers.ts';
 import { EVENT_NOTIFICATIONS_TYPES } from './event-notifications-types.ts';
 
-const EXPECTED_NAMES: readonly string[] = [];
+const EXPECTED_NAMES: readonly string[] = [
+  'EveningCollector',
+  'MorningCollector',
+];
 
 describe('EVENT_NOTIFICATIONS_TYPES', () => {
   test('イベントサーバーの通知の識別子だけを持つ', () => {
