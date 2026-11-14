@@ -12,6 +12,7 @@ export * from './legal/index.ts';
 export * from './match/index.ts';
 export * from './media/media-file-quarantine-reasons.ts';
 export * from './media/media-files.ts';
+export * from './notifications/index.ts';
 export * from './payments/index.ts';
 export * from './product/index.ts';
 export * from './profile/index.ts';

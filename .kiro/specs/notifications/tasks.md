@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共有の定義・テーブル・サービス仕様
-- [ ] 1.1 通知種別・送信者情報の規則・監査ログの操作種別と、7テーブルを定義し、マイグレーションを作る
+- [x] 1.1 通知種別・送信者情報の規則・監査ログの操作種別と、7テーブルを定義し、マイグレーションを作る
   - 前提: dev-tooling〜match-engineの18specの全タスクが完了していること(email-deliveryの送信の受付・抑止リスト・テンプレート基盤・送信者情報の取得口、match-engineの`MatchDirectory`と0:00・23:45のジョブ、identity-authの`UserContactDirectory`・`verifiedUsers()`・ライフサイクルの登録口・設定ページのシェル、frontend-libの`useFragmentToken`、user-profile-socialの`FollowerDirectory`、product-launchの`ProductDirectory`、admin-foundationの認可と監査ログとE2Eの補助、ultras-subscriptionの`ADMIN_SETTINGS_SECTIONS`、paymentsが加えたeventの`CLIENT_SITE_ORIGIN`、infra-deliveryの改訂1の「ホスト名から導かれる変数の値」の表のeventの`EVENT_SITE_ORIGIN`の行)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、通知種別の4つの値と順、送信者情報の長さの判定(200書記素と201書記素・空白だけの値)、監査ログの操作種別の検証(操作種別の集約点に例外なく加わること)、テーブルの定義のCHECK(通知種別・送信枠の種類と段・通知の状態と送らない理由・通知イベントの種類と状態・版が0以上で、版0なら送信者情報の3項目がNULL・版1以上ならNOT NULL)・一意索引(受信設定とトークンの種は利用者と種別で1つ・照合用のハッシュ・通知と通知イベントの重複のキー・送信枠のキー・送信枠と前提の機能の組・設定のキー)、送信枠の送り出しの前提の一覧と依頼の時刻の列・外部キー(`users`だけで`ON DELETE`の指定なし、マッチ・プロダクト・通知イベントへは無し)を確かめる
   - 作業量が3時間の上限に近いため、テーブルとマイグレーションを先に終え、共有の定数と監査ログの操作種別を最後に足す
@@ -311,3 +311,7 @@
   - eventの`EVENT_SITE_ORIGIN`とIP制限の除外が`wrangler deploy`で反映される旨、staging・prodで送信者情報を設定するまで通知メールが送られない旨(仮3)、stagingで受信した通知メールの`List-Unsubscribe`・`List-Unsubscribe-Post`がDKIMの署名の対象かを開発者が確かめる旨、roadmapの帯の割り当ての表の本specの「使用中の値」(4:21は1300、波及処理は1300)が記載済みであること、tournament-week・tournament-yearが送り出しの前提の登録口に名前を登録して毎日の23:45のジョブの最後に送り出しの入口を呼ぶまでは、前提が空のため本specのジョブの時点で送り出す旨を作業の報告に記録する
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に運用の事項が載っている
   - _Requirements: 14.4, 15.1, 15.2_
+
+## Implementation Notes
+
+- 1.1: テーブルは`apps/db/schema/notifications/`(`notification_preferences`・`notification_unsubscribe_tokens`・`notification_sender_settings`・`notification_events`・`notification_slots`・`notification_slot_ready_marks`・`notification_notices`(16列))。マイグレーションは`20261114141428_notifications`(生成)・`20261114141436_notifications_seed`。送信者情報のシードは固定のID`01M7BNN5000000000000000001`・設定のキー`'sender-info'`・作成日時1794614400000(2026-11-14T00:00Z)・版0・3項目NULL(G-3の(A))。版0から1へ進める更新は3項目を同じ文で埋めないとCHECKに阻まれる。DBの通知種別の写しは`notification-preferences.ts`の非公開の`NOTIFICATION_TOPICS`の1箇所で、他のテーブルは`notificationPreferences.topic.enumValues`を使い回す。既定値は`notification_events`の`status='pending'`・`dispatch_count=1`、`notification_slots`の`phase='waiting'`、`notification_notices`の`status='pending'`。設計のCHECKの一覧に無い`enabled in (0, 1)`を前例に倣って加えた。共有は`apps/common-lib/notifications/notification-topics.ts`(`NOTIFICATION_TOPICS`・`NotificationTopic`・`NOTIFICATION_TOPIC_COPY`)・`sender-info-input-rules.ts`(`SENDER_INFO_MAX_GRAPHEMES`・`SenderInfoInput`・`SenderInfoViolation`・`checkSenderInfoLengths`。前後の空白を除いて判定し、メールアドレスの形式は判定しない)・`admin/audit-actions/notifications.ts`(`notification-sender.update`)。design.mdのDomain Modelのmermaidが旧名`NOTIFICATION_SLOT_READINESS`のまま(実装は物理データモデルどおり`notification_slot_ready_marks`)。Workers統合テストは制約の確かめとして実装の後に書いた。レビューの任意の指摘: 利用者の物理削除を外部キーが止めることは受信設定でしか統合テストしていない(種と通知は単体テストのSQL照合で担保)
