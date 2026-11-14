@@ -1,3 +1,4 @@
+import { userFollows } from '../../../../db/schema/follow/user-follows.ts';
 import { notificationEvents } from '../../../../db/schema/notifications/notification-events.ts';
 import type { NotificationTopic } from '../../../../common-lib/notifications/notification-topics.ts';
 import type { NotificationWorkRequester } from '../../../core/notifications/ports.ts';
@@ -15,11 +16,17 @@ import {
   clearNotificationRows,
   db,
   insertPreference,
+  insertPreferences,
   insertUser,
+  insertUsers,
   T0,
+  userIdOf,
 } from './notification-store-fixtures.ts';
 
 export const MATCH_DAY = parseBusinessDate('2026-11-20');
+
+// 1行が6個のバインド変数を使うため、上限(100)に収まる行数ずつ追加する
+const FOLLOW_ROWS_PER_INSERT = 15;
 
 export interface FlushRequest {
   readonly slotKey: string;
@@ -115,4 +122,41 @@ export async function insertEventRow(
   columns: typeof notificationEvents.$inferInsert,
 ): Promise<void> {
   await db.insert(notificationEvents).values(columns);
+}
+
+export function followIdOf(followerIndex: number): string {
+  return `01JC0FLW${String(followerIndex).padStart(18, '0')}`;
+}
+
+export async function clearFollows(): Promise<void> {
+  await db.delete(userFollows);
+}
+
+// フォローのIDはフォロワーの番号から作るため、番号の昇順がフォロワーの一覧の読み取りの順になる
+export async function insertFollowers(
+  followeeIndex: number,
+  followerIndexes: readonly number[],
+): Promise<void> {
+  const rows = followerIndexes.map((followerIndex) => ({
+    id: followIdOf(followerIndex),
+    followerId: userIdOf(followerIndex),
+    followeeId: userIdOf(followeeIndex),
+    createdAt: T0,
+    updatedAt: T0,
+  }));
+  for (let start = 0; start < rows.length; start += FOLLOW_ROWS_PER_INSERT) {
+    await db
+      .insert(userFollows)
+      .values(rows.slice(start, start + FOLLOW_ROWS_PER_INSERT));
+  }
+}
+
+// メールアドレスを確認済みで受賞結果を受信する利用者を作り、指定した利用者をフォローさせる
+export async function seedAwardFollowers(
+  followeeIndex: number,
+  followerIndexes: readonly number[],
+): Promise<void> {
+  await insertUsers(followerIndexes, { emailVerifiedAt: T0 });
+  await insertPreferences(followerIndexes, 'followed_user_award', true);
+  await insertFollowers(followeeIndex, followerIndexes);
 }
