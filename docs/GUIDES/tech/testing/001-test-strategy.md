@@ -217,7 +217,7 @@ bun <配布のスクリプト>/cli.ts run-with-secrets --scope checks -- bun <�
 - メール受信箱の実行ファイルは、`e2e-stack`が環境変数`MAILPIT_BIN`のパスで起動する。未設定なら`PATH`上の`mailpit`を使う。CIでは導入した実行ファイルのパスを渡す。
 - APIサーバー・イベントサーバーは、devの共通のフォルダの値に、そのWorkerのフォルダの値を重ねて受け取る。Workerのフォルダの値はそのWorkerの子プロセスにだけ渡り、E2Eテストのコマンドには渡らない。共通のフォルダの値は、E2Eテストのコマンドと、それが起動する対象のアプリにも引き継がれる。
 - E2Eテストの実行中にサービスが止まったら、`e2e-stack`はその名前・終了コード・ログの末尾を表示し、起動し直して応答を待つ。止まった時に実行中だったテストは失敗し得るが、後続のテストと再試行は起動し直したサービスで続く。起動し直すのは各サービス3回までとする。
-- 失敗したときは、Playwright Testの成果物(`playwright-report`・`test-results`)と各サービスのログを、CIの成果物として保存する。CIは失敗したテストを1回再試行し、その再試行のトレース(`test-results/<テストの名前>-retry1/trace.zip`)も成果物に含まれる。`bunx playwright show-trace <trace.zipのパス>`で、失敗した時の画面と操作を確かめる。
+- 失敗したときは、Playwright Testの成果物(`playwright-report`・`test-results`)と各サービスのログ(Wranglerのdebugを含むログのファイルを含む)を、CIの成果物として保存する。CIは失敗したテストを1回再試行し、その再試行のトレース(`test-results/<テストの名前>-retry1/trace.zip`)も成果物に含まれる。`bunx playwright show-trace <trace.zipのパス>`で、失敗した時の画面と操作を確かめる。
 - ローカル専用の前提(メール受信箱の内容、ローカルのD1への直接の投入、`triggerScheduled`による定期実行の起動など)を持つE2Eテストも、CIでは実行される。デプロイ先に向けて実行するのは、`@smoke`タグを付けたテストだけである(「[デプロイ後のスモークテスト](#デプロイ後のスモークテスト)」)。
 
 ### 対象が0件のとき

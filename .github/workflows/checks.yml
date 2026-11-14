@@ -133,8 +133,10 @@ jobs:
       # アプリのスクリプトと設定がローカル状態の保存先を開発コンテナの絶対パスで指すため、同じパスでワークスペースを指す
       - run: sudo ln -sfn "$GITHUB_WORKSPACE" /workspace
       - run: bun scripts/delivery/cli.ts infisical-login --scope checks
+      # Wranglerが落ちた時の例外は画面の出力に出ないことがあるため、debugを含むWranglerのログのファイルを各サービスのログと同じ成果物に入れる
       - env:
           MAILPIT_BIN: ${{ steps.toolchain.outputs.mailpit-bin }}
+          WRANGLER_LOG_PATH: ${{ runner.temp }}/e2e-logs/wrangler
         run: bun scripts/delivery/cli.ts run-with-secrets --scope checks -- bun scripts/delivery/cli.ts e2e-stack -- bun run test:e2e:dev-and-preview
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
