@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import type { BatchItem } from 'drizzle-orm/batch';
 
 import { launchComments } from '../../../../db/schema/engagement/launch-comments.ts';
 import { productRatings } from '../../../../db/schema/engagement/product-ratings.ts';
@@ -28,6 +29,30 @@ export {
 };
 
 type CommentRow = typeof launchComments.$inferInsert;
+
+export const COMMENT_GUARD_VIOLATION =
+  /NOT NULL constraint failed: launch_comments\.product_id/u;
+
+export async function runBatch(
+  items: readonly [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]],
+): Promise<void> {
+  await db.batch(items);
+}
+
+export function changesOf(result: unknown): number {
+  if (
+    typeof result === 'object' &&
+    result !== null &&
+    'meta' in result &&
+    typeof result.meta === 'object' &&
+    result.meta !== null &&
+    'changes' in result.meta &&
+    typeof result.meta.changes === 'number'
+  ) {
+    return result.meta.changes;
+  }
+  throw new TypeError('D1の書き込みの結果に変更の件数がありません');
+}
 
 export function commentIdOf(index: number): string {
   return `01JD0CMNT${String(index).padStart(17, '0')}`;

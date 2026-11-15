@@ -32,7 +32,7 @@
   - 完了状態: 単体テストとWorkers統合テストが成功し、識別子でコメントのストアを取得する型検査が通り、`core/engagement`が`workers`・`apps/db`を読み込まない(静的解析が成功する)
   - _Requirements: 1.9, 2.1, 2.3, 2.4, 7.4, 12.5_
 
-- [ ] 2.2 コメントの文の部品に編集・削除・非公開化の書き込みを加える
+- [x] 2.2 コメントの文の部品に編集・削除・非公開化の書き込みを加える
   - 先に、Workers統合テストで、編集の文が他者・削除済み・非公開化・匿名化のコメントと閲覧できないプロダクトで一括の書き込みごと失敗し、成功で編集の日時が入ること、削除の文が自分の未削除・未非公開化のコメントだけを変え、変更の件数で対象の有無が分かること、非公開化と復元が変更の有無と不在を返し、渡した文を同じ一括の書き込みに入れることを確かめる
   - 完了状態: Workers統合テストが成功する
   - _Boundary: CommentStatements_
@@ -287,3 +287,4 @@
 - 1.2: テーブルは`apps/db/schema/engagement/`の`launchComments`・`productRatings`、条件の部品は`displayableComment()`(`users`を`author_user_id`で外部結合する前提)・`validRating()`(`users`を`user_id`で内部結合する前提)。マイグレーションは`20261115074652_engagement`。トップレベルの`root_id`は自身のIDで、返信のまとめ読みの索引`(root_id, created_at, id)`にトップレベル自身も入るため、2.3の返信の照会は`depth > 1`で除く。`depth = 1`と`parent_id`のNULLの整合はDBの制約に無く、2.1の書き込みの文で保つ。階層のCHECKは`between 1 and 3`(整数でない値は書き込みの文が作らない)。
 - 1.3(差し戻し1回): 設計に文言が無くモックアップから決めた文言(0件の一言4つ・ログインの案内のダイアログの題名と説明・「このプロダクトの評価(任意)」・「コメントを読み込み中」「評価を読み込み中」)を文言規則に置いた。6・7は`003-text-and-copy-rules.md`の「コメントと評価の画面の文言」節の文字列をそのまま使う。評価を添えた編集のトーストは「コメントを更新しました。」、未確認でも評価済みなら「取り消す」を使える(6.3で確かめる)、30日以上前の投稿日時は`dateWeekday`で年を付けない(ローンチ・マッチの日付の「今年なら年を省く」と違う。最終報告で開発者へ挙げる)。IDの形式違反(`validation_error`)の文言は未定(3.x・4.xで既存の前例に従う)。
 - 2.1: 契約と型は`apps/backend-lib/core/engagement/ports.ts`、識別子は`identifiers.ts`(10種、`Symbol.for('engagement.<名前>')`)。`CommentStatements`(`workers/engagement/comment-statements.ts`)の型は`insertStatement`だけで、2.2が編集・削除・非公開化を足す。`RatingStatements`の型は2.4で作る。投稿の文は条件が成り立たないと`product_id`にNULLを入れて一括ごと失敗させる(違反の判定は`NOT NULL constraint failed: launch_comments.product_id`)。設計のCASEに加え「ローンチがそのプロダクトのものであること」「渡した親のルートと階層が親の行と一致し親が第3階層でないこと」を条件に足した。`requireListed`は呼び出し側(3.2・3.3)が`ownerUserId`との比較から導く。ローンチのキックオフ前・取消は書き込みの条件に無く3.2・3.3で判定する。テストの補助は`workers/engagement/testing/engagement-fixtures.ts`(`commentIdOf`・`insertComment`・`readComment`・`countComments`・`clearEngagementTables`)。Workers統合テストはapiの`vitest.worker.config.ts`から`lib/workers/engagement`で実行する。
+- 2.2: 編集の文は条件の違反で`product_id`をNULLにする(design.mdのCommentStatementsの箇条は`body`をCASEにするとしており、実装と食い違う)。投稿と同じ`NOT NULL constraint failed: launch_comments.product_id`で一括ごと失敗するため、3.3・3.4の`D1CommentWriter`は1つの判定で`rejected`にできる(判定の正規表現は`comment-statements.ts`の外へ出していない。3.3でエクスポートして再利用し、写しを作らない)。存在しないコメントの編集は失敗せず変更0行になり同じ一括の評価の文は確定するため、3.4は先に`findByIds`で確かめるか`meta.changes`を見る。削除の文はプロダクトの閲覧の可否と停止を条件に持たない(3.4が判定する)。`setHidden`は先に読み、`not-found`・`unchanged`では渡した文を流さない(ugc-moderationの設計に合う)。読みの後の物理削除は捕まえられない(既知の限界)。D1の結果の`meta.changes`は`engagement-fixtures.ts`の`changesOf`と同じ形で絞る(lintの`no-unsafe-*`)。
