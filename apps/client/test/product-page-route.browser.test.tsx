@@ -22,6 +22,7 @@ import {
   callsOf,
   ok,
   renderProductRoute,
+  respondOtherSections,
   respondProductRoute,
 } from './product-page-route-fixtures.ts';
 
@@ -182,12 +183,17 @@ describe('プロダクト詳細の経路', () => {
   });
 
   test('詳細ページの取得の失敗はページ全体を再試行と問い合わせの導線に置き換え、再試行で表示し直して見出しへフォーカスを移す', async () => {
-    executeGraphQL.mockImplementation((document: unknown) => {
-      if (document === ClientProductLiveMatchDocument) {
-        return Promise.resolve(ok({ productLiveMatch: null }));
-      }
-      return Promise.resolve(INTERNAL_ERROR);
-    });
+    executeGraphQL.mockImplementation(
+      (document: unknown, variables: unknown) => {
+        if (document === ClientProductLiveMatchDocument) {
+          return Promise.resolve(ok({ productLiveMatch: null }));
+        }
+        return (
+          respondOtherSections(document, variables) ??
+          Promise.resolve(INTERNAL_ERROR)
+        );
+      },
+    );
 
     await renderProductRoute('/p/Pitch-Notes');
 

@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 
+import {
+  graphqlResponse,
+  htmlResponse,
+  recordingApi,
+  renderContextOf,
+  runInStartRequest,
+} from '../../lib/test/start-request-fixtures.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import {
   launchCommentCountsKeyOf,
@@ -164,5 +171,97 @@ describe('launchCommentCountsQueryOptions', () => {
         2,
       ),
     ).toStrictEqual([...launchCommentCountsKeyOf(PRODUCT_ID)]);
+  });
+});
+
+const runThroughApi = async (
+  run: (queryClient: QueryClient) => Promise<unknown>,
+  respond: (request: Request) => Promise<Response>,
+) => {
+  const api = recordingApi(respond);
+  const queryClient = new QueryClient();
+  let result: unknown;
+  await runInStartRequest({
+    context: renderContextOf({ api, reported: [] }),
+    render: async () => {
+      result = await run(queryClient);
+      return htmlResponse();
+    },
+  });
+  const sent = await Promise.all(api.requests.map((request) => request.json()));
+  return { result, sent };
+};
+
+describe('取得の処理', () => {
+  test('スレッドの最初のページはプロダクトとローンチだけ、続きのページはカーソルを加えた変数で実行する', async () => {
+    const { result, sent } = await runThroughApi(
+      async (queryClient) => {
+        const options = launchCommentsQueryOptions(
+          VIEWER_ID,
+          PRODUCT_ID,
+          LAUNCH_ID,
+        );
+        await queryClient.infiniteQuery(options);
+        return queryClient.infiniteQuery({ ...options, pages: 2 });
+      },
+      () =>
+        Promise.resolve(
+          graphqlResponse({ data: threadPageOf('cursor-10', true) }),
+        ),
+    );
+    const documentId = documentIdOf(ClientLaunchCommentsDocument);
+
+    expect(sent).toStrictEqual([
+      { documentId, variables: { productId: PRODUCT_ID, launchId: LAUNCH_ID } },
+      { documentId, variables: { productId: PRODUCT_ID, launchId: LAUNCH_ID } },
+      {
+        documentId,
+        variables: {
+          productId: PRODUCT_ID,
+          launchId: LAUNCH_ID,
+          after: 'cursor-10',
+        },
+      },
+    ]);
+    expect(result).toStrictEqual({
+      pages: [threadPageOf('cursor-10', true), threadPageOf('cursor-10', true)],
+      pageParams: [null, 'cursor-10'],
+    });
+  });
+
+  test('ローンチごとのコメント数はプロダクトのIDを変数にして実行する', async () => {
+    const counts = {
+      launchCommentCounts: [{ launchId: LAUNCH_ID, count: 3 }],
+    };
+    const { result, sent } = await runThroughApi(
+      (queryClient) =>
+        queryClient.query(launchCommentCountsQueryOptions(null, PRODUCT_ID)),
+      () => Promise.resolve(graphqlResponse({ data: counts })),
+    );
+
+    expect(sent).toStrictEqual([
+      {
+        documentId: documentIdOf(ClientLaunchCommentCountsDocument),
+        variables: { productId: PRODUCT_ID },
+      },
+    ]);
+    expect(result).toStrictEqual(counts);
+  });
+
+  test('評価欄の値はプロダクトのIDを変数にして実行する', async () => {
+    const { result, sent } = await runThroughApi(
+      (queryClient) =>
+        queryClient.query(productRatingQueryOptions(VIEWER_ID, PRODUCT_ID)),
+      () =>
+        Promise.resolve(graphqlResponse({ data: { productRating: RATING } })),
+    );
+
+    expect(sent).toStrictEqual([
+      {
+        documentId: documentIdOf(ClientProductRatingDocument),
+        variables: { productId: PRODUCT_ID },
+      },
+    ]);
+    expect(result).toStrictEqual({ productRating: RATING });
   });
 });

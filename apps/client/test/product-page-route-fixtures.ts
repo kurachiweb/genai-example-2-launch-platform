@@ -2,10 +2,13 @@ import { createRoute } from '@tanstack/react-router';
 
 import type { ProductLiveMatchView } from '../src/components/product-page/live-match-fixtures.ts';
 import {
+  ClientLaunchCommentCountsDocument,
+  ClientLaunchCommentsDocument,
   ClientProductLiveMatchDocument,
   ClientProductOwnerStatusDocument,
   ClientProductPageDocument,
   type ClientProductPageQuery,
+  ClientProductRatingDocument,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as ProductPageRoute } from '../src/routes/p/$handle.tsx';
 import { GUEST_VIEWER_QUERY, renderPageRouter } from './page-router.tsx';
@@ -64,6 +67,40 @@ const isFailure = (value: unknown): boolean =>
   'ok' in value &&
   value.ok === false;
 
+// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄)の取得には、評価もコメントも無い結果を返す
+export const respondOtherSections = (
+  document: unknown,
+  variables: unknown,
+): Promise<unknown> | undefined => {
+  if (document === ClientProductRatingDocument) {
+    const { productId } = variables as { readonly productId: string };
+    return Promise.resolve(
+      ok({
+        productRating: {
+          productId,
+          average: null,
+          count: 0,
+          viewerScore: null,
+        },
+      }),
+    );
+  }
+  if (document === ClientLaunchCommentCountsDocument) {
+    return Promise.resolve(ok({ launchCommentCounts: [] }));
+  }
+  if (document === ClientLaunchCommentsDocument) {
+    return Promise.resolve(
+      ok({
+        launchComments: {
+          nodes: [],
+          pageInfo: { endCursor: null, hasNextPage: false },
+        },
+      }),
+    );
+  }
+  return undefined;
+};
+
 export const respondProductRoute = (
   executeGraphQL: ExecuteGraphQLMock,
   { pages, liveMatches = [null] }: ProductRouteResponses,
@@ -83,7 +120,10 @@ export const respondProductRoute = (
     if (document === ClientProductOwnerStatusDocument) {
       return Promise.resolve(ok({ productOwnerStatus: null }));
     }
-    return Promise.reject(new Error('想定外の文書の取得'));
+    return (
+      respondOtherSections(document, variables) ??
+      Promise.reject(new Error('想定外の文書の取得'))
+    );
   });
 };
 
