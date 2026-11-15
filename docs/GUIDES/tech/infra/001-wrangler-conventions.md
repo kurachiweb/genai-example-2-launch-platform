@@ -39,6 +39,7 @@ wrangler r2 object put <バケット名>/<オブジェクトキー> --file <フ�
 - `@cloudflare/vite-plugin`で起動するアプリも、同じ`<ローカル状態の保存先>`を使うよう設定する。設定方法は「[開発時とデプロイ前の起動](../frontend/002-tanstack-start-on-workers.md#開発時とデプロイ前の起動)」に従う。
 - 同じ`<ローカル状態の保存先>`を使う複数の`wrangler dev`を、スクリプトから同時に起動しない。起動の時に各workerdが保存先のSQLiteを同時に開くと、`database is locked`(`SQLITE_BUSY`)で起動に失敗することがある。1つを起動して応答を待ってから次を起動する。
 - 起動の後も、別々の`wrangler dev`のworkerdが同じD1のSQLiteへ同時に書き込むと`SQLITE_BUSY`になり、その要求が失敗するか、Wranglerが落ちて止まることがある。保存先を共有する複数の`wrangler dev`を長く動かすスクリプトは、止まったプロセスを起動し直す。
+- `wrangler d1 execute --local`も、同じ保存先を開く別のプロセス(`wrangler dev`や別の`wrangler d1 execute --local`)と同時に動くと、読み取りだけの文でも`database is locked: SQLITE_BUSY`で失敗することがあり、書き込みの文はまれに`attempt to write a readonly database: SQLITE_READONLY`でも失敗する。`SQLITE_BUSY`の後には拡張のコード(`SQLITE_BUSY_RECOVERY`・`SQLITE_BUSY_SNAPSHOT`)が続くこともあり、失敗の文は`--json`の出力(標準出力)とworkerdの標準エラーのどちらかに出る。Wranglerは1回の実行の文をまとめて1つのトランザクションで実行するため、これらのロックの競合の失敗では文が1つも反映されない。スクリプトから並行して呼ぶときは、これらの文を含む失敗の時だけ短い待ちを挟んで決まった回数まで実行し直し、他の失敗(SQLの誤りなど)はそのまま失敗させる。実行し直す回数と待ちは、各回の実行の時間を含めた合計が呼び出し元の時間切れより十分短くなるように決める。
 
 ### 複数Worker間でのリソースIDの共有
 

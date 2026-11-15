@@ -4,6 +4,16 @@ export type LocalD1Row = Readonly<Record<string, unknown>>;
 
 const D1_BINDING = 'DB';
 
+export const LOCAL_D1_LOCK_CONFLICT_MAX_ATTEMPTS = 5;
+
+export const LOCAL_D1_LOCK_CONFLICT_RETRY_DELAY_MS = 300;
+
+// 別のプロセスが同じローカルのD1を開いていてロックの競合で書き込みが取り消された時に、Wranglerの標準出力かworkerdの標準エラーに出る文言。後に拡張のコード(`SQLITE_BUSY_RECOVERY`など)が続くことがある
+const LOCAL_D1_LOCK_CONFLICT_OUTPUTS = Object.freeze([
+  'database is locked: SQLITE_BUSY',
+  'attempt to write a readonly database: SQLITE_READONLY',
+]);
+
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -51,4 +61,30 @@ export function parseLocalD1Output(stdout: string): readonly LocalD1Row[] {
     }
     return rows;
   });
+}
+
+export const isLocalD1LockConflict = (error: unknown): boolean =>
+  error instanceof Error &&
+  LOCAL_D1_LOCK_CONFLICT_OUTPUTS.some((output) =>
+    error.message.includes(output),
+  );
+
+// ロックの競合で失敗した実行は文を1つも反映しないため、同じSQLを実行し直しても二重に書き込まない
+export async function retryOnLocalD1LockConflict<T>(
+  attempt: () => Promise<T>,
+  wait: (milliseconds: number) => Promise<void>,
+): Promise<T> {
+  for (let attempted = 1; ; attempted += 1) {
+    try {
+      return await attempt();
+    } catch (error) {
+      if (
+        attempted >= LOCAL_D1_LOCK_CONFLICT_MAX_ATTEMPTS ||
+        !isLocalD1LockConflict(error)
+      ) {
+        throw error;
+      }
+      await wait(LOCAL_D1_LOCK_CONFLICT_RETRY_DELAY_MS);
+    }
+  }
 }
