@@ -217,6 +217,7 @@ describe('利用者のプロダクトの物理削除の波及処理の登録', (
       HANDLER_NAME,
       'match-engine.upvote-erasure',
       'notifications.account-purge',
+      'engagement.account-erasure',
     ]);
   });
 

@@ -261,6 +261,7 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
       'product-launch.product-erasure',
       'match-engine.upvote-erasure',
       'notifications.account-purge',
+      'engagement.account-erasure',
     ]);
     expect(
       registry.handlersFor('suspended').map(({ name }) => name),

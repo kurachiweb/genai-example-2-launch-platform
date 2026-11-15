@@ -390,6 +390,7 @@ describe('プロダクトライフサイクルの非同期の処理の登録口'
       'product-launch.image-erasure',
       'match-engine.entry-unlink',
       'directory-discovery.entry-erasure',
+      'engagement.product-erasure',
     ]);
     expect(namesOf('deleted')).toStrictEqual([
       'match-engine.product-decision-follow-up',

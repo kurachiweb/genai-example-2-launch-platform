@@ -12,6 +12,7 @@ import { PROFILE_PLATFORM_MODULE } from '../../lib/workers/profile/profile-platf
 import { createImageGatewayModule } from '../presentation/media/image-gateway-module.ts';
 import { EVENT_DIRECTORY_MODULE } from './directory-module.ts';
 import { EVENT_EMAIL_MODULE } from './email-module.ts';
+import { EVENT_ENGAGEMENT_MODULE } from './engagement-module.ts';
 import type { EventEnv } from './env-schema.ts';
 import { EVENT_IDENTITY_MODULE } from './identity-module.ts';
 import { EVENT_INQUIRY_MODULE } from './inquiry-module.ts';
@@ -63,6 +64,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_NOTIFICATIONS_PLATFORM_MODULE,
     EVENT_NOTIFICATIONS_MODULE,
     ENGAGEMENT_PLATFORM_MODULE,
+    EVENT_ENGAGEMENT_MODULE,
     EVENT_PROFILE_MODULE,
     EVENT_SEARCH_PLATFORM_MODULE,
     EVENT_SEARCH_MODULE,

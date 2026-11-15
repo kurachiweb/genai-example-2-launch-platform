@@ -1,5 +1,6 @@
 import type { ProductLifecycleAsyncRegistration } from '../../lib/core/product/product-lifecycle.ts';
 import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-types.ts';
+import { EVENT_ENGAGEMENT_TYPES } from '../application/engagement/event-engagement-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 
@@ -42,5 +43,11 @@ export const PRODUCT_LIFECYCLE_ASYNC_HANDLERS: readonly ProductLifecycleAsyncReg
       events: ['purge_due'],
       order: 1200,
       handler: EVENT_DIRECTORY_TYPES.EntryErasureHandler,
+    },
+    {
+      name: 'engagement.product-erasure',
+      events: ['purge_due'],
+      order: 1400,
+      handler: EVENT_ENGAGEMENT_TYPES.ProductErasureHandler,
     },
   ]);

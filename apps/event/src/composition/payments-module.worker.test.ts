@@ -307,6 +307,7 @@ describe('メッセージの処理と波及処理の登録', () => {
       'product-launch.product-erasure',
       'match-engine.upvote-erasure',
       'notifications.account-purge',
+      'engagement.account-erasure',
     ]);
     expect(namesFor('withdrawn')).toStrictEqual([
       'payments.open-checkout-expiry',
