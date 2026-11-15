@@ -72,6 +72,13 @@ describe('スキーマの集約点', () => {
     'help_articles',
     'help_article_previous_handles',
     'help_article_search_documents',
+    'notification_preferences',
+    'notification_unsubscribe_tokens',
+    'notification_sender_settings',
+    'notification_events',
+    'notification_slots',
+    'notification_slot_ready_marks',
+    'notification_notices',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

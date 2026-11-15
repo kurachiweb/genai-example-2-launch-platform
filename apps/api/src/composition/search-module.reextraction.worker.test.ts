@@ -18,6 +18,10 @@ import {
 import { Hono } from 'hono';
 
 import { createDatabase } from '../../db/client.ts';
+import {
+  EXPAND_NOTIFICATION_EVENT_MESSAGE,
+  FLUSH_NOTIFICATION_SLOT_MESSAGE,
+} from '../../lib/core/messaging/contracts/notifications.ts';
 import { SEARCH_INDEX_REFRESH_MESSAGE } from '../../lib/core/messaging/contracts/search-index-refresh.ts';
 import type { QueueEnvelope } from '../../lib/core/messaging/envelope.ts';
 import { createCronRegistry } from '../../lib/core/scheduling/cron-registry.ts';
@@ -89,10 +93,21 @@ function recordConsole(): LoggedObject[] {
   return logs;
 }
 
+// 同じ4:21の起動で通知の保守が送る送り出しと展開の依頼は、記録せずに受け付ける
+const NOTIFICATION_MESSAGE_TYPES: ReadonlySet<string> = new Set([
+  FLUSH_NOTIFICATION_SLOT_MESSAGE.type,
+  EXPAND_NOTIFICATION_EVENT_MESSAGE.type,
+]);
+
 function recordSends(failingSourceIds: readonly string[] = []): string[] {
   const sourceIds: string[] = [];
   vi.spyOn(env.JOBS_QUEUE, 'send').mockImplementation((message) => {
     const envelope = message as QueueEnvelope;
+    if (NOTIFICATION_MESSAGE_TYPES.has(envelope.type)) {
+      return Promise.resolve({
+        metadata: { metrics: {} },
+      } as QueueSendResponse);
+    }
     expect(envelope.type).toBe(SEARCH_INDEX_REFRESH_MESSAGE.type);
     const { target, sourceId } = envelope.body as {
       readonly target: string;
@@ -245,6 +260,10 @@ describe('検索対象のある日次の再抽出', () => {
         }),
         expect.objectContaining({ name: 'match-engine.event-redispatch' }),
         expect.objectContaining({ name: 'match-engine.event-cleanup' }),
+        expect.objectContaining({
+          name: 'notifications.maintenance',
+          result: 'succeeded',
+        }),
         expect.objectContaining({
           name: REEXTRACTION_JOB_NAME,
           result: 'succeeded',

@@ -10,6 +10,17 @@ import type { SenderInfo } from '../../../../lib/core/email/ports.ts';
 import { EmailLayout } from './email-layout.tsx';
 import type { EmailTemplate, EmailTemplateRegistry } from './email-template.ts';
 
+// テキストのパートの変換は既定で見出しを大文字にするため、英語の固有名詞を表記のまま残すよう見出しの変換を改める
+const PLAIN_TEXT_OPTIONS = Object.freeze({
+  plainText: true,
+  htmlToTextOptions: {
+    selectors: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].map((selector) => ({
+      selector,
+      options: { uppercase: false },
+    })),
+  },
+});
+
 export class ReactEmailRenderer implements EmailRenderer {
   constructor(private readonly registry: EmailTemplateRegistry) {}
 
@@ -57,7 +68,7 @@ async function renderTemplate(
   );
   const [html, text] = await Promise.all([
     render(element),
-    render(element, { plainText: true }),
+    render(element, PLAIN_TEXT_OPTIONS),
   ]);
   return { subject, html, text };
 }

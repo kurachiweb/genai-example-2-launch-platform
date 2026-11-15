@@ -1,0 +1,5 @@
+mutation ClientConfirmNotificationUnsubscribe($token: String!) {
+  confirmNotificationUnsubscribe(token: $token) {
+    ...NotificationUnsubscribeLink
+  }
+}

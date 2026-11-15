@@ -17,6 +17,11 @@ import {
 } from '../../lib/core/messaging/contracts/identity.ts';
 import { RUN_MATCH_EVENT_MESSAGE } from '../../lib/core/messaging/contracts/match.ts';
 import { RUN_PRODUCT_LIFECYCLE_MESSAGE } from '../../lib/core/messaging/contracts/product.ts';
+import {
+  EXPAND_NOTIFICATION_EVENT_MESSAGE,
+  FLUSH_NOTIFICATION_SLOT_MESSAGE,
+  NOTIFICATION_RETRY_POLICY,
+} from '../../lib/core/messaging/contracts/notifications.ts';
 import type { MessageHandlerRegistration } from '../../lib/core/messaging/message-contract.ts';
 import { PAYMENTS_REFUND_MESSAGE } from '../../lib/core/payments/refund-message.ts';
 import { PRODUCT_LIFECYCLE_RETRY_POLICY } from '../../lib/core/product/product-lifecycle.ts';
@@ -31,6 +36,7 @@ import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import { EVENT_MEDIA_HANDLER_TYPES } from '../application/media/media-handler-types.ts';
 import { MODERATION_RETRY_POLICY } from '../application/media/moderate-image-handler.ts';
 import { PURGE_IMAGE_CACHE_RETRY_POLICY } from '../application/media/purge-image-cache-handler.ts';
+import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-notifications-types.ts';
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
 import { REFUND_PAYMENT_RETRY_POLICY } from '../application/payments/refund-payment-handler.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
@@ -90,5 +96,15 @@ export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
       contract: RUN_MATCH_EVENT_MESSAGE,
       handler: EVENT_MATCH_TYPES.MatchEventRunner,
       retry: MATCH_EVENT_RETRY_POLICY,
+    },
+    {
+      contract: FLUSH_NOTIFICATION_SLOT_MESSAGE,
+      handler: EVENT_NOTIFICATIONS_TYPES.FlushSlotHandler,
+      retry: NOTIFICATION_RETRY_POLICY,
+    },
+    {
+      contract: EXPAND_NOTIFICATION_EVENT_MESSAGE,
+      handler: EVENT_NOTIFICATIONS_TYPES.ExpandEventHandler,
+      retry: NOTIFICATION_RETRY_POLICY,
     },
   ]);

@@ -36,6 +36,9 @@ const TEST_STRIPE_WEBHOOK_SECRET = ['whsec', 'WorkersIntegrationTests'].join(
   '_',
 );
 
+// デプロイ先と同じくHTTPSのオリジンにして、配信停止のヘッダーを付ける経路を試せるようにする
+const TEST_EVENT_SITE_ORIGIN = 'https://event.test.example';
+
 // 判定サービスへ送らず、判定用画像の寸法で結果を決める代替の判定を使う
 const TEST_MODERATION_PROVIDER = 'stub';
 
@@ -74,6 +77,7 @@ export default defineConfig({
           MODERATION_PROVIDER: TEST_MODERATION_PROVIDER,
           MODERATION_MIN_CONFIDENCE: TEST_MODERATION_MIN_CONFIDENCE,
           MODERATION_BLOCKED_CATEGORIES: TEST_MODERATION_BLOCKED_CATEGORIES,
+          EVENT_SITE_ORIGIN: TEST_EVENT_SITE_ORIGIN,
           TEST_MIGRATIONS: await readNestedD1Migrations(
             join(import.meta.dirname, 'db', 'migrations'),
           ),

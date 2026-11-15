@@ -14,6 +14,11 @@ import {
   QUALIFIER_PAIRING_JOB_DEFINITION,
 } from '../application/match/match-jobs.ts';
 import { MEDIA_JOB_TYPES } from '../application/media/media-daily-jobs.ts';
+import {
+  EVENING_DISPATCH_JOB_DEFINITION,
+  MORNING_DISPATCH_JOB_DEFINITION,
+  NOTIFICATION_MAINTENANCE_JOB_DEFINITION,
+} from '../application/notifications/notification-jobs.ts';
 import { CHECKOUT_RECONCILIATION_JOB_DEFINITION } from '../application/payments/jobs/checkout-reconciliation-job.ts';
 import { PAYMENT_HISTORY_RETENTION_JOB_DEFINITION } from '../application/payments/jobs/payment-history-retention-job.ts';
 import { PENDING_CHECKOUT_SWEEP_JOB_DEFINITION } from '../application/payments/jobs/pending-checkout-sweep-job.ts';
@@ -86,6 +91,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   PRODUCT_LIFECYCLE_REDISPATCH_JOB_DEFINITION,
   MATCH_EVENT_REDISPATCH_JOB_DEFINITION,
   MATCH_EVENT_CLEANUP_JOB_DEFINITION,
+  NOTIFICATION_MAINTENANCE_JOB_DEFINITION,
   {
     name: 'content-processing.keyword-reextraction',
     at: { hour: 4, minute: 21 },
@@ -96,6 +102,8 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   MATCH_SETTLEMENT_JOB_DEFINITION,
   QUALIFIER_PAIRING_JOB_DEFINITION,
   MATCH_KICKOFF_JOB_DEFINITION,
+  EVENING_DISPATCH_JOB_DEFINITION,
+  MORNING_DISPATCH_JOB_DEFINITION,
   // 4:21のメールの後始末と、送り直したイベントの波及処理による抑止記録の削除が同じ起動で重ならないよう、12時間離す
   {
     name: 'identity-auth.lifecycle-redispatch',

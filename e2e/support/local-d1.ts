@@ -1,11 +1,13 @@
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
+import { setTimeout } from 'node:timers/promises';
 import { promisify } from 'node:util';
 
 import {
   type LocalD1Row,
   localD1ExecuteArgs,
   parseLocalD1Output,
+  retryOnLocalD1LockConflict,
 } from './local-d1-command.ts';
 
 export type { LocalD1Row } from './local-d1-command.ts';
@@ -30,16 +32,14 @@ const outputOf = (error: unknown, key: 'stdout' | 'stderr'): string => {
   return typeof value === 'string' ? value.trim() : '';
 };
 
-// 画面から作れない状態(ロールの設定など)をローカルのD1へ直接用意する。リモートのD1を操作する引数は組み立てない
-export async function executeLocalD1(
-  sql: string,
-): Promise<readonly LocalD1Row[]> {
-  let stdout: string;
+const executeOnce = async (sql: string): Promise<string> => {
   try {
-    ({ stdout } = await runFile(WRANGLER_BIN, [...localD1ExecuteArgs(sql)], {
-      cwd: API_DIR,
-      maxBuffer: MAX_OUTPUT_BYTES,
-    }));
+    const { stdout } = await runFile(
+      WRANGLER_BIN,
+      [...localD1ExecuteArgs(sql)],
+      { cwd: API_DIR, maxBuffer: MAX_OUTPUT_BYTES },
+    );
+    return stdout;
   } catch (error) {
     const details = [outputOf(error, 'stdout'), outputOf(error, 'stderr')]
       .filter((text) => text !== '')
@@ -48,5 +48,17 @@ export async function executeLocalD1(
       cause: error,
     });
   }
+};
+
+// 画面から作れない状態(ロールの設定など)をローカルのD1へ直接用意する。リモートのD1を操作する引数は組み立てない。並行するテストや開発サーバーとのロックの競合で失敗した時は、少し待って実行し直す
+export async function executeLocalD1(
+  sql: string,
+): Promise<readonly LocalD1Row[]> {
+  const stdout = await retryOnLocalD1LockConflict(
+    () => executeOnce(sql),
+    async (milliseconds) => {
+      await setTimeout(milliseconds);
+    },
+  );
   return parseLocalD1Output(stdout);
 }

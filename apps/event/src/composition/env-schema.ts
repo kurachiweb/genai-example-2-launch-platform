@@ -37,6 +37,7 @@ export interface EventPlatformEnv
   // ローカル環境だけ省略できる。空文字は未設定として扱う
   readonly DISIFY_API_KEY?: string;
   readonly CLIENT_SITE_ORIGIN: string;
+  readonly EVENT_SITE_ORIGIN: string;
   // 未登録のローカルとCIでも起動できるよう任意にする。未設定なら決済の機能だけが縮退する
   readonly STRIPE_API_KEY?: string;
   readonly STRIPE_WEBHOOK_SECRET?: string;
@@ -98,6 +99,7 @@ export const eventEnvSchema = z
     GOOGLE_NL_API_KEY: z.string().min(1).optional(),
     DISIFY_API_KEY: z.string().optional(),
     CLIENT_SITE_ORIGIN: z.string().refine(isHttpOrigin),
+    EVENT_SITE_ORIGIN: z.string().refine(isHttpOrigin),
     ...mediaEnvShape,
     ...paymentsEventEnvShape,
   })

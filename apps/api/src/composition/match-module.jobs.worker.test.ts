@@ -224,6 +224,7 @@ describe('APIサーバーのマッチのモジュールの日次のジョブの�
     });
     expect(jobResults(logs)).toEqual([
       { name: 'match-engine.match-kickoff', result: 'succeeded' },
+      { name: 'notifications.morning-dispatch', result: 'succeeded' },
     ]);
   });
 });

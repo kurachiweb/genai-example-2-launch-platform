@@ -1,0 +1,12 @@
+query AdminNotificationSenderInfo {
+  notificationSenderInfo {
+    info {
+      businessName
+      contactEmail
+      postalAddress
+    }
+    version
+    updatedAt
+    updatedByNickname
+  }
+}

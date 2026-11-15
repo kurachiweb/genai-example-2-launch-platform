@@ -365,3 +365,273 @@
 
 - ultras-subscriptionの実装前のギャップ分析への開発者の決定で、管理画面の設定ページの区画の登録口`ADMIN_SETTINGS_SECTIONS`の形が、adminの前例に合わせて`id`(`'<spec名>.<名詞句>'`。`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例)・`order`・`title`(区画の見出し。`CATEGORY_SECTIONS`の前例)・`component`になった。ページは区画ごとにfrontend-libへ移した`RecoverableSlot`で包み、1つの区画の描画や取得の失敗をその区画の位置に留め、読み込み中と失敗の間は`title`の見出しを補う。
 - 本specの登録に、部品が描く見出しと同じ文言の`title`を加えた(design.mdの登録の行、tasks.mdの登録のタスク)。要件と受け入れ基準は変えていない。タスクの番号は変えていない。
+
+---
+
+## 実装前のギャップ分析(2026-11-14、`/cc-sdd:kiro-validate-gap`)
+
+### 分析の前提と方法
+
+- **状態**: 要件・設計・タスクは承認済みで、タスクは49件すべて未着手である(`ready_for_implementation`は`false`)。上流のspecは、infra-deliveryの2件とpaymentsの4件(どちらも手動の作業)を除いて実装を終えている。本specの設計は、上流の大半の実装より前に書かれた。
+- **方法**: 設計が「既にある」と前提にする上流の型・関数・ファイル・登録箇所・文書を、4つの領域に分けて実際のコードと突き合わせた。領域は、eventの上流の契約(email-delivery・match-engine・user-profile-social・product-launch)、api・eventのバックエンド基盤(backend-platform・api-gateway・identity-auth・admin-foundation)、clientとadminとE2E、DBとcommon-libと文書である。影響の大きい指摘はコードを直接読んで確かめ直した。対象は送信者情報の描画、`buildPageHead`の入力、`Referrer-Policy`の上書き、確認のダイアログのフォーム、送信者情報の保存の前例、壊れるテストの行である。本specが新しく作るものが無いことは前提どおりのため、ギャップとして数えない。
+- **結論の要約**: 上流の契約の名前・置き場所・形は、ほぼ設計どおりに存在する。登録口の`order`(設定のナビゲーションの40、管理画面の設定ページの区画の30)、roadmapの帯の割り当て(4:21と波及処理の1300)、`EVENT_SITE_ORIGIN`の3環境の値(infra-delivery)、技術ドキュメントの番号`backend/016`・`security/010`は、どれも予約されているか空いている。食い違いは次の4種に分かれる。
+  - (1)書いたとおりには型検査や実装が通らない設計が5点(G-1〜G-5)。
+  - (2)上流の口や規約・前例との細かな不一致が17点(G-6〜G-22)。
+  - (3)設計が挙動を定めていない箇所が6点(G-23〜G-28)。
+  - (4)既存の「一覧を完全一致で確かめるテスト」と、一覧を記した文書が本specの追加で壊れるのに、Modified Filesに無いものが多数ある。
+
+### 要件と資産の対応
+
+| 要件                        | 使う上流の資産(実在を確認)                                                                                                                                                                                                                                                                                   | ギャップ                                                                                                   |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| 1(受信設定・通知設定ページ) | `SETTINGS_NAV_ITEMS`(`apps/client/src/composition/settings-navigation.ts`、40は予約済み)・`_authenticated`の`requireViewer`・`viewerQueryOptions`・`SuspendedAccountNotice`・`AccountGuard`(`currentUser`・`requireWritableUser`)・`verifiedUsers()`・shadcn/uiの`switch`(前例`auto-refresh-switch.tsx`)     | Missing: 本specの全部品。Constraint: G-1・G-7・G-8・G-9                                                    |
+| 2(抑止による除外の表示)     | `UserContactDirectory.findContact`・`SuppressionList.getStatus`・`SuppressionReason`(`hard_bounce`・`complaint`・`rejected`)                                                                                                                                                                                 | Constraint: G-10(照合キー)                                                                                 |
+| 3〜5(予告・結果・開催)      | `MatchDirectory`(`findMatches(ids, now)`・`listForDate({ date, kinds, now })`)・`MatchRecord`の全項目・`FollowerDirectory.listVisibleFollowerIds`(`limit`は1〜500)・`ProductDirectory.findSummaries`・`UserProfileDirectory.findSummaries`、match-engineのジョブの1100                                       | Constraint: G-6(`now`)・G-11(挿入の行数)。Unknown: G-23〜G-25                                              |
+| 6(受賞)                     | 同上・`businessWeekOf`                                                                                                                                                                                                                                                                                       | Missing: 発行の実装(tournament-week・tournament-year)                                                      |
+| 7(送信の共通規則)           | `EmailSender.send`(`deadline?`あり)・`EMAIL_KINDS`・`EMAIL_TEMPLATES`・`defineEmailTemplate`(`unsubscribeLinks`)・`ALLOWED_EXTRA_HEADERS`・`EMAIL_SENDER_INFO_PROVIDER`(既定は`UnsetSenderInfoProvider`)・`linkUrlSchema`                                                                                    | Constraint: G-26(送信者情報は全種別に載る)。Unknown: G-23(二重送信)・G-24(`deadline`)                      |
+| 8〜10(配信停止・トークン)   | `KeyedHasher`・`hashPurpose`(HMAC-SHA512のbase64urlは86文字)・`excludePath`・`readFragmentToken`と`useFragmentToken`・アクセスログ(`c.req.path`でクエリを含まない)・Sentryの`urlQueryParams: false`                                                                                                          | Constraint: G-4(`Referrer-Policy`)・G-7(`useFragmentToken`)・G-20(応答の形)。Unknown: G-27(ペッパーの変更) |
+| 11(送信者情報の設定)        | `ADMIN_SETTINGS_SECTIONS`(30は予約済み、`title`は必須)・`RecoverableSlot`・`hasRole(useAdminRole(), 'super_admin')`・`ConfirmActionDialog`・`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements(db, audit, guard)`・`isAuditGuardRejection`・`AdminDirectory.findProfiles`・`targetKind: 'setting'` | Constraint: G-2・G-3・G-5・G-13・G-14・G-21                                                                |
+| 12・13(通知イベント・時刻)  | `ScheduledJobDefinition`・Cronの`0 8`・`45 7`・`21 12`(登録済み)・同じ時刻の`order`順の直列の実行(前のジョブが失敗しても続く)・`defineMessageContract`・`RetryPolicy`(上限6回)・`defer`(同じ封筒IDで試行回数を数えない、遅延の上限43200秒)・時刻ごとの所要時間の予算300秒                                    | Unknown: G-25(上流のジョブの失敗)                                                                          |
+| 14(ライフサイクル・出力)    | `UserLifecycleSyncHandler`(`statementsFor(event, db)`)・`createAsyncLifecycleRegistry`・`LIFECYCLE_CONTINUE_DELAY_SECONDS`(5)・`purge_due`の1300は空き・data-exportの`notificationSettings`の5項目(設計と一致)                                                                                               | Constraint: 壊れるテスト(`purge_due`の一覧の3件)                                                           |
+| 15(文書とテスト)            | 技術ドキュメントの番号(`backend/016`・`security/010`は空き、他specの予約と衝突しない)・`e2e/support/mailpit.ts`・`admin-bootstrap.ts`・`local-d1.ts`・`e2e/client/profile-steps.ts`の`registerVerifiedAccount`                                                                                               | Constraint: G-22(E2Eの手順のファイル)・Modified Filesに無い文書                                            |
+
+### 書いたとおりには通らない設計(G-1〜G-5)
+
+- **G-1 ページの`head`**(design.md 1686・1693行、タスク6.2・6.3)
+  - 設計: `buildPageHead({ title, noIndex: true })`。
+  - 実際: `PageHeadInput`は`siteName`が必須である(`apps/frontend-lib/start/page-head.ts:8-14`)。clientのページは`buildSitePageHead`(`apps/client/src/head/page-heads.ts`)を使う。前例は`settings/follows.tsx`・`auth/verify-email.tsx`。
+  - 直し方: `buildSitePageHead({ title, noIndex: true })`に改める。選択肢は無い。
+- **G-2 送信者情報のフォームと確認のダイアログ**(design.md 1702行、タスク7.1、要件11.4・11.7)
+  - 設計: `SenderInfoForm`の`AppForm`(`serverFieldPrefix="input"`)の`onSubmit`を確認のダイアログの確定とする。そこで`expectedVersion`と`reason`を足して送り、`validation_error`を`applyServerFieldErrors`で欄に示す。
+  - 実際: `ConfirmActionDialog`は自分の`AppForm`を持つ(`apps/frontend-lib/components/admin/confirm-action-dialog.tsx:96-147`)。送信のイベントが入力欄のフォームへ伝わらないよう、ダイアログはフォームの外に置く決まりである(`apps/admin/src/components/legal/legal-draft-form.tsx:232`のコメント)。ダイアログの`onConfirm`で保存すると、入力欄の`AppForm`が欄にエラーを付ける処理を通らない。`applyServerFieldErrors`を外から呼ぶと、`AppForm`の内部の欄の状態に頼ることになる。
+  - 選択肢:
+    - (a)入力欄の`AppForm`の`onSubmit`がダイアログを開き、確定か取り消しまでPromiseで待つ。`AppForm`の欄のエラーの処理をそのまま使える。
+    - (b)欄の詳細はダイアログの`failureMessageOf`の文言だけで示し、欄には付けない。画面とサーバーの規則が同じなら、サーバーの欄のエラーは改ざんされた要求の場合に限られる。
+    - (c)frontend-libに公開の補助を足す(上流の変更になる)。
+  - 機能フラグの区画(`apps/admin/src/components/ultras/promotion-setting-section.tsx`)は欄の入力を持たないため、この問題の前例にならない。
+- **G-3 送信者情報の保存の文と初回の挿入**(design.md 1508行、タスク4系、要件11.6・11.7)
+  - 設計: (1)設定の行の挿入か、版を条件にした更新(`CASE`式で取り消す)。(2)`buildAuditLogStatements(audit)`。「ultras-subscriptionの機能フラグと同じ形」としている。
+  - 実際の前例(`apps/api/src/infrastructure/ultras/d1-promotion-setting-writer.ts:52-77`):
+    - `buildAuditLogStatements(db, audit, { kind: 'condition', condition: rowExists(matches) })`を**先に**置き、続けて`UPDATE`を行う。`CASE`式による取り消しは、`buildAuditLogStatements`の中で監査ログの操作者のIDに掛かる。
+    - 拒否は`isAuditGuardRejection`で見分ける。
+    - 行はシードのマイグレーションで作られており(`apps/db/migrations/20261106115514_ultras_subscription_seed`)、更新しか行わない。
+  - 本specは行の無い状態から挿入し、`version >= 1`のCHECKを持つ。次の3点が定まっていない。
+    - 初回の挿入の条件。
+    - 2人が同時に初回の保存をしたときに、一意の違反ではなく`version_conflict`になる文の順序。
+    - 未設定のときに監査ログの`targetIds`へ入れる`settingId`の採番元(design.md 1484行)。
+  - 選択肢:
+    - (A)前例と同じくシードで行を作り、更新だけにする。3項目をNULL可にし、版0を未設定とする。
+    - (B)行を作らず、監査ログの条件を「版0なら行が無い、版1以上なら版が一致する」とする。`settingId`は固定の値(`setting_key`の`'sender-info'`)にする。
+- **G-4 `Referrer-Policy: no-referrer`が上書きされる**(design.md 1666・1812行、タスク5系、要件9.7)
+  - 設計: ワンクリックの経路の応答に`Referrer-Policy: no-referrer`を付ける。
+  - 実際: 全体の処理の`setSecurityHeaders`が、`headers.set('Referrer-Policy', 'same-origin')`で常に上書きする(`apps/backend-lib/workers/http/security-headers.ts:5,36-39`)。Workerを丸ごと通すテストは失敗し、Honoのアプリ単体のテストでは本番との違いを見逃す。
+  - clientのページも全て`same-origin`で、ルートごとに変える仕組みは無い。Refererにフラグメントは含まれず、eventのGETは303の移動だけである。そのため、`same-origin`でもトークンは外部のオリジンへ送られない。
+  - 選択肢:
+    - (a)`same-origin`で要件9.7を満たすとして、設計の`no-referrer`の記述を消す。
+    - (b)上流の`setSecurityHeaders`を、経路が付けた値を残す形に変える(backend-platformの変更になる)。
+- **G-5 通知の挿入の行数がバインド変数の上限を超える**(design.md 1275・1822行、要件7.12)
+  - 設計: 「通知の挿入は1文12行まで」。
+  - 実際: `notification_notices`は共通カラムを含めて16列ある。値を必ず送る列(ID・重複のキー・枠・まとめのキー・種別・宛先・状態・作成と更新の日時)だけでも9列あり、任意の列を加えると1行あたり12前後になる。12行では100を超える。D1の規約は「行数×カラム数」で数える(`docs/GUIDES/tech/db/002-d1-constraints.md:164-170`)。
+  - 直し方: 前例(`EVENT_ROWS_PER_STATEMENT = 8`・`ROWS_PER_INSERT = 10`など)と同じく、列数から定数を決める。単体テストで`toSQL().params.length`が100以下であることを確かめる。上限は6行(16列)である。
+
+### 上流の口・規約・前例との不一致(G-6〜G-22)
+
+- **G-6 `listForDate`・`findMatches`は`now`を取る**(design.md 384・415行、タスク5.4・5.6): 実際は`listForDate({ date, kinds, now })`・`findMatches(ids, now)`で、`phase`はその`now`から導かれる(`apps/backend-lib/core/match/ports.ts:66-70`)。収集は処理の時点の時刻を渡せばよい。ただし朝の枠の段が23:40より後まで遅れると、マッチは`live`ではなくなる。4:21の保守による再開の範囲では起きないが、設計に記す。
+- **G-7 フラグメントのトークンは`useFragmentToken`で読む**(design.md 472・1693行、タスク6.3)
+  - 実際: 共通のフック`useFragmentToken`(`apps/frontend-lib/components/auth/use-fragment-token.ts`)がある。ハイドレーション中は`reading`を返し、`history.replace`でフラグメントを消す。前例は`password-reset-form.tsx:44`。
+  - 設計どおり描画の後に自前で`readFragmentToken`を呼ぶと、この処理と重複する。`status === 'found'`の間だけ照会を有効にする形にする。
+  - `LinkConfirmation`は開いた時の照会(要件9.5の既に停止の表示)を持たないため、そのままは使えない。
+- **G-8 `loader`の取得**(design.md 1686行、タスク6.2): `docs/GUIDES/tech/frontend/006-data-fetching.md:121`は`ensureQueryData`を使わず、`queryClient.query({ ...options, staleTime: 'static' })`とすると定める。
+- **G-9 画面の補助と文言のファイル**(File Structure Plan、タスク6.1・7.1)
+  - 結果の変換は`src/graphql/<内容>.ts`に置き、単体テストを書く(`006-data-fetching.md:38`)。前例は`client/src/graphql/follow-list.ts`・`admin/src/graphql/admin-ultras-promotion.ts`。設計にこのファイルが無い。
+  - 文言のファイル名は、前例では`*-messages.ts`である(`settings-messages.ts`・`promotion-setting-messages.ts`)。設計の`notification-copy.ts`は前例と違う名前で、adminの文言のファイルは設計に無い。
+- **G-10 抑止の照合キー**(design.md 1653行、タスク5.6、要件7.4): `SuppressionList.findSuppressed`の戻り値は照合キー(`toMatchingKey`: 前後の空白を除いて小文字にする)の集合である(`apps/backend-lib/core/email/ports.ts:54-55`、`email-address.ts:15`)。連絡先のアドレスをそのまま照合すると、大文字を含むアドレスで抑止を見逃す。送信時にもemail-deliveryが抑止を確かめるため、メールは送られない。ただし、`skipped`の理由と件数が誤る。`toMatchingKey`をAllowed Dependenciesに加える。
+- **G-11 スイッチの送信中の扱い**(design.md 1688行、タスク6.2): 処理中は`disabled`にせず、`aria-disabled`と`aria-busy`にして押下を無視する(`docs/GUIDES/tech/frontend/004-accessibility-rules.md:47,50`)。`disabled`にするとフォーカスを失うためである。停止中(要件1.6)の`disabled`はそのままでよい。
+- **G-12 メールアドレスの形式**(design.md 587・1702・1777行、要件11.4)
+  - 設計: 画面は`z.email()`、サーバーは`isValidEmailAddress`。
+  - 実際: `isValidEmailAddress`は`z.regexes.html5Email`と254文字以内で判定する。注記に「zodの既定の`email()`は定義が違う」とある(`apps/backend-lib/core/email/email-address.ts:5-6`)。画面の前例も`html5Email`である(`apps/client/src/components/auth/account-form-schemas.ts:51-62`)。このままでは画面とサーバーで受け付ける値が食い違う。
+  - 文言も、設計の「メールアドレスの形式で入力してください。」に対し、既存は「メールアドレスの形式が正しくありません。」である(`docs/GUIDES/service/design/003-text-and-copy-rules.md:163`)。
+- **G-13 区画の取得の失敗**(design.md 1703行、タスク7.1): 機能フラグの区画は`throwOnError: (_e, q) => q.state.data === undefined`で`RecoverableSlot`へ投げ、`SectionFallback`が見出しと失敗を描く(`promotion-setting-section.tsx`、`admin-settings-page.browser.test.tsx:157`)。前例に合わせれば、区画が自分で`ErrorState`を描く必要は無い。ロールの出し分けも、前例は`RoleGate`ではなく`hasRole(useAdminRole(), 'super_admin')`による`disabled`と案内である(どちらでも成立する)。
+- **G-14 変更者のニックネームがnullになる条件**(design.md 1484行、要件11.2): `AdminDirectory.findProfiles`は`status='active'`だけを返す(`d1-admin-directory.ts:41`)。そのため、削除済みに加えて停止中・招待中の管理者もnullになる。表示の文言(「削除済み」など)を決めているなら合わせる。
+- **G-15 入力規則の命名**(design.md 577-587行、タスク2.1): 規約(`docs/GUIDES/tech/coding/005-input-validation.md`の「規則の置き場所」)と前例(`common-lib/help/help-input-rules.ts`・`identity/account-input-rules.ts`)は次の形である。
+  - ファイル: `<機能>/<機能>-input-rules.ts`(設計は`sender-info-rules.ts`)
+  - 上限の定数: `*_MAX_GRAPHEMES`(設計は`SENDER_INFO_MAX_LENGTH`)
+  - 違反の値: `'empty' | 'too-long'`(設計は`'required' | 'too_long'`)
+- **G-16 DBのCHECKの値の写し**(タスク1.1): `apps/db`は共用部品を読み込まない(`apps/db/schema/profile/user-profile-websites.ts:30`)。そのため`topic`のCHECKの値は`NOTIFICATION_TOPICS`の写しになる。前例の`config/product-contract-copies.unit.test.ts:139`と同じ照合のテストが設計に無い。
+- **G-17 共通カラムとテーブル名**(design.md 1739行)
+  - 規約は、追加だけで更新しない表に`created_at`だけを持たせる(`docs/GUIDES/tech/db/003-schema-conventions.md:217-228`)。`notification_slot_readiness`と、行を更新しない`notification_unsubscribe_tokens`がこれに当たる。更新しないのに`timestamps()`を持つ前例(`match/match-event-handler-runs.ts`)もあるため、どちらかに決める。
+  - `notification_slot_readiness`は複数形ではない(`db/001`の命名規則)。
+- **G-18 スキーマのテストの置き場所**(design.md 1752・1799行): CHECKと一意索引のテストを求めているが、File Structure Planにファイルが無い。前例は次の2つである。
+  - `apps/db/schema/match/match-engine-migration.unit.test.ts`(マイグレーションの名前の末尾で検索する)
+  - `apps/db/match-engine-schema.worker.test.ts`(apiのVitestが`db/**`を実行する)
+- **G-19 Sentryのタグ名**(design.md 1374行): 規約は`<ドメイン>_incident`(`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の270〜277行、例`match_incident`)。設計の`notification_incident`は単数形で、`notifications_incident`にそろえる。
+- **G-20 ワンクリックの経路の応答**(design.md 1663行): `text/plain`の400・404は共通エラー形式(JSON)ではない。`AppError`を投げるとJSONになるため、経路から直接返すことを明記する。
+- **G-21 登録の行の`title`**(design.md 325行): Modified Filesの`ADMIN_SETTINGS_SECTIONS`の行に、必須の`title`が無い(1700行とtasks.mdには反映済み)。
+- **G-22 E2Eの手順のファイル**(タスク9系)
+  - 規約は、テストと同じ階層に画面の操作の手順(`<手順の名前>-steps.ts`)を置く。設計に`e2e/client/notification-steps.ts`・`e2e/admin/notification-sender-steps.ts`が無い。
+  - 確認済みの利用者を登録する補助は`mailpit.ts`には無く、`e2e/client/profile-steps.ts:60`の`registerVerifiedAccount`にある。
+  - `HASH_PEPPER`を読むE2Eはまだ無い。CIのE2Eは`run-with-secrets --scope checks`で包まれる(`.github/workflows/checks.yml:140`)ため、タスク9.1の事前の確認で、共有のフォルダが渡ることを確かめる。
+
+### 設計が挙動を定めていない箇所(G-23〜G-28)
+
+- **G-23 送信と確定の間の失敗による二重送信**(design.md 1653行、要件7.12): `EmailSender.send`の重複の判定は封筒のIDごとである(`send-email-handler.ts:141`)。`send`の後の`settle`が失敗して段が再試行されると、新しい封筒で同じ通知を再び送る。選択肢は次の2つで、設計はどちらとも定めていない。
+  - (a)起こり得る重複として許容する。
+  - (b)送る前に通知へ送信の予定を書き、再試行でその記録を確かめる。
+- **G-24 送信の期限**(要件3.6): `EmailSendRequest.deadline?`があり、期限を過ぎた送信は`expired`で送られない(`ports.ts:9`)。設計は期限を渡していない。日次の上限などで送信が遅れると、開始予告がキックオフの後に届き得る。予告の期限を`startsAt`にするかを決める。
+- **G-25 上流のジョブが失敗したときの漏れ**(要件3.1・5.1・13.4): 同じ時刻のジョブは、前のジョブが失敗しても次へ進む(`scheduled-dispatcher.ts:137-141,175-180`)。次の2つの場合の扱いが設計に無い。
+  - 0:00の開始(1100)が失敗すると、朝の収集はマッチを`scheduled`と見て開催通知を作らない。
+  - 23:45のペアリングが失敗して0:00に遅れて組まれたマッチ(`MatchKickoffJob`の遅れたペアリング)には、開始予告が出ない。
+  - 4:21の保守が送り出しを始め直すのは本specの枠だけで、上流の遅れは拾わない。
+- **G-26 送信者情報は全種別のメールに載る**
+  - これは既知の決定である(email-deliveryの確認済み事項で、本書の冒頭の「Key Findings」にある)。`SendEmailHandler`は種別を問わず毎通`senderInfo.get()`を呼び(`send-email-handler.ts:190`)、レイアウトは値があれば区画を描く(`email-layout.tsx:49-51`)。
+  - 次の点が決定と合っていない、または定まっていない。
+    - 管理画面の区画の説明の「通知メールの末尾に表示します。」(design.md 1879行)。
+    - 文言規則の「認証系メールの本文は宛名・本文・ボタンの順」(`003-text-and-copy-rules.md`の「認証系メールの本文」)。
+    - 全てのメールで毎通D1を1回読むこと(必要ならisolateの中で短時間だけ値を持つ)。
+    - 差し替えの後に`UnsetSenderInfoProvider`とそのテスト(`apps/event/src/infrastructure/email/sender-info/unset-sender-info-provider.worker.test.ts`)を残すかどうか。
+    - テンプレートの集約点`templates/notifications/index.ts`(前例は`ULTRAS_EMAIL_TEMPLATES`)の有無。
+- **G-27 ペッパーの変更とトークン**: 保存した種からペッパーでトークンを導出する使い方は、`docs/GUIDES/tech/security/002-keyed-hashing.md`の「ハッシュ化の対象」に無い新しい使い方である。ペッパーを変えると、配信済みの全てのメールのリンクが無効になる。この点を`security/010`と運用の文書に書くかを決める。
+- **G-28 プライバシーポリシーの法的根拠**: `docs/GUIDES/service/legal/003-privacy-policy-outline.md:12`は、通知メールの送信を「正当な利益」に分類している。本specの受信設定はオプトイン(初期値は受信しない、LR-005)で、同意に当たる。同ファイル36行の「配信停止トークン(ハッシュ)」には、保存する種の記載が無い。法的根拠の書き換えはサービス仕様の判断のため、開発者の確認が要る。
+
+### 本specの追加で壊れる既存テストと、Modified Filesに無い文書・生成物
+
+| 対象                                                                                                                                                                                                                     | 壊れ方                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/common-lib/admin/audit-actions/index.unit.test.ts:16-40`                                                                                                                                                           | 操作種別の名前を`toEqual`で完全一致させ、テスト名にも件数がある                                                                      |
+| `apps/admin/src/components/pages/audit-logs-page.browser.test.tsx:243-276`                                                                                                                                               | 操作種別の選択肢を完全一致で確かめる                                                                                                 |
+| `apps/client/src/components/settings/settings-nav-order.unit.test.ts:38-47`                                                                                                                                              | `SETTINGS_NAV_ITEMS`の6件を`toStrictEqual`で確かめる                                                                                 |
+| `apps/admin/src/components/pages/admin-settings-page.browser.test.tsx:66-75・122-133・175`                                                                                                                               | 区画の1件を`toStrictEqual`で確かめる。偽の応答が機能フラグの照会だけで、送信者情報の区画が失敗の表示になり、`alert`0件の期待が崩れる |
+| `apps/api/src/composition/search-module.worker.test.ts:142-157`                                                                                                                                                          | 4:21のジョブの名前を完全一致で確かめる(`MATCH_JOB_NAMES`と再抽出の間に`notifications.maintenance`が入る)                             |
+| `apps/api/src/composition/search-module.reextraction.worker.test.ts:201-252`                                                                                                                                             | 4:21の実行結果の`jobs`を配列で確かめる。新しいジョブがこのテストの環境で成功することも要る                                           |
+| `apps/api/src/composition/match-module.jobs.worker.test.ts:225`                                                                                                                                                          | 0:00の結果が`match-engine.match-kickoff`だけであることを確かめる                                                                     |
+| `apps/event/src/composition/profile-module.worker.test.ts:253-263`・`user-product-erasure.worker.test.ts:209-219`・`match-module.purge.worker.test.ts:304-315`                                                           | `purge_due`の処理の一覧を`toStrictEqual`で確かめる                                                                                   |
+| `apps/api/test/config/wrangler-config.unit.test.ts:385-395`                                                                                                                                                              | eventの変数を`toStrictEqual`で確かめる。`EXPECTED_ENVIRONMENTS`の値にも`EVENT_SITE_ORIGIN`が要る                                     |
+| `apps/api/src/presentation/graphql/generated/schema.graphql`・`resolvers-types.ts`・`allowlist.json`                                                                                                                     | 生成物。スキーマの一致を`graphql-modules.worker.test.ts:14`が確かめる                                                                |
+| `apps/db/schema/index.unit.test.ts`                                                                                                                                                                                      | `toContain`のため壊れないが、7テーブルの名前を加えるのが前例                                                                         |
+| `docs/GUIDES/service/overview/007-daily-timeline.md:84-108`                                                                                                                                                              | 順序の図が「23:45のペアリングが通知を送る」のままである。設計は表(330行)しか挙げていない                                             |
+| `docs/GUIDES/service/legal/003-privacy-policy-outline.md:12・36`                                                                                                                                                         | G-28                                                                                                                                 |
+| `docs/onboardings/project-values.md`の既存の行(332行のIP制限の除外、357・410行付近の変数の一覧、782行の`EMAIL_TEMPLATES`の内訳、783行の送信者情報の提供元、867行の同期の処理、919行の区画の件数、1048行のナビゲーション) | Modified Filesは値の種類だけを挙げ、「現在は」の書き換えの範囲を挙げていない。他specの節と同じ形の「メール種別」の行も要る           |
+| `docs/GUIDES/tech/infra/004-logging-and-error-tracking.md:262-277`(推測)                                                                                                                                                 | `captureEvent`の一覧に、本specの4つの通知の行が要る可能性がある                                                                      |
+
+- 壊れないことを確かめたもの: `MESSAGE_CONTRACTS`・IP制限の除外・`EMAIL_KINDS`と`EMAIL_TEMPLATES`のテスト(含むかどうかの検査、または一覧から期待値を導く形)、退会の同期の処理の一覧、eventの環境の検証のテスト、マイグレーションの数、README・CLAUDE.mdのリンク。
+- 条件: テンプレートの検査はeventのisolateの起動時に走る(`email-module.ts:32-35`)。種別だけを先に`EMAIL_KINDS`へ足すと、eventのWorkers統合テストが全て落ちる。tasks.mdの2.4と5.3は同時に足す計画で、これを満たしている。
+
+### 上流が先に済ませていて、確かめるだけになったもの
+
+- 登録口の`order`の予約: 設定のナビゲーションの40(`settings-navigation.ts:4`のコメント)と、管理画面の設定ページの区画の30(`admin-settings-sections.ts:9`・`project-values.md:919`・`002-page-layouts.md:1261`)。
+- roadmapの帯の割り当ての表には「notifications | 1300番台 | 4:21は1300、波及処理は1300」が既にある(`.kiro/steering/roadmap.md:100`)。design.md 84行の「コントローラーへ報告する」は不要になった。1300は0:00・23:45・4:21・`purge_due`のどこでも空いている。
+- `EVENT_SITE_ORIGIN`の3環境の値は、infra-deliveryの設計(`.kiro/specs/infra-delivery/design.md:1829-1847`)と`apps/infra/environments/*.json:32`に記載済みで、design.mdの値と一致する。
+- 文言規則の件名の例は、frontend-platformのタスク10.3が日付を基準にした相対表現を除いた形に直し済みである(`003-text-and-copy-rules.md:943-948`)。
+- ページ配置の`/settings/notifications`の行(`002-page-layouts.md:544`)はある。`/unsubscribe/{token}`の行(25行)は残っており、設計どおりの書き換えが要る。
+- 準拠方針のオプトアウトの対象の表(`001-compliance-policy.md:43-51`)はある。データ保持期間の表に通知の行は無く、設計どおりの追加が要る。
+- 要件定義書のFR-NOTIF-001・003・004・006〜010・012〜014・016〜018・023、FR-ADMCF-024、LR-005、DR-002は、requirements.mdと食い違わない(2026-10-25の改訂は適用済み)。
+- email-deliveryは次を実装済みである。
+  - 配信停止のリンクを複数並べること(ラベル必須)と、通知メールにだけ区画を置くこと。
+  - 抑止中の宛先への通知メールの取りやめ。
+  - 追加ヘッダーの許可リストと値の検証(httpsのURIを含まない`List-Unsubscribe`の拒否)。
+  - 送信要求の本文の上限(64KiB)。
+- 上流の照会は全て90件ずつ分割されていて、バインド変数の上限に収まる。照会は`findMatches`・プロダクトと利用者の`findSummaries`・`findSuppressed`である。
+- 23:45のペアリングは未確定のマッチを確定してから組むため、1300の時点で当日の予選は確定済みである。
+- 3つのCronの式は登録済みで、時刻ごとの所要時間の予算(各300秒)もある(`apps/api/src/composition/scheduled-jobs.ts:116-121`)。
+- 設計の前提の誤り(design.md 91行): 上流の照会口(`MatchDirectory`・`ProductDirectory`・`FollowerDirectory`・`EmailSender`・`SuppressionList`)は`lib/workers`ではなく`core/*/ports.ts`にある。application層が禁じられているのは`**/db/client*`と`**/lib/workers/**`である(`config/eslint/backend-layers.ts:49-66`)。設計の置き方のほうが厳しいため違反にはならない。ただし「遠回りが要る」という前提は不要で、収集と送信の一部をapplication層に置ける。
+
+### 実装の方針の選択肢
+
+- **Option A(設計を前例に合わせて改訂し、上流は変えない)**
+  - 内容: G-1〜G-22を本specの設計とタスクの改訂で吸収する。G-4は(a)、G-2は(a)か(b)、G-3は(A)か(B)を選ぶ。
+  - ✅ 上流のspecと既存のテストに触れない。本specの範囲で閉じる。
+  - ❌ 共通部品の不足(ダイアログと欄のエラーの組み合わせ)を、本specの中の工夫で埋めることになる。
+- **Option B(上流の共通部品を拡張する)**
+  - 内容: `setSecurityHeaders`が経路の`Referrer-Policy`を残す形、frontend-libの欄のエラーの公開の補助、email-deliveryのレイアウトが送信者情報を通知メールにだけ描く形などを、上流の変更として行う。
+  - ✅ 後続のspec(sponsorship・ugc-moderationなど)も同じ部品を使える。
+  - ❌ 上流のspecの文書・テストの改訂が要り、既存の決定(送信者情報を全種別に載せる)を覆すものがある。
+- **Option C(混成)**
+  - 内容: 型検査や実装が通らない点と規約のずれ(G-1・G-5〜G-22)はAのとおり本specで直す。判断の要る点(G-2・G-3・G-4・G-23〜G-28)だけを、上流の変更を含めて個別に決める。
+  - ✅ 判断の要る点を個別に決められ、上流を変えるのは必要な箇所に限られる。
+  - ❌ 決める点が多く、設計の改訂の前に開発者への確認が要る。
+
+### 工数とリスク
+
+- **工数: XL(2週間超)**。タスク49件、7テーブル、4アプリと共有部品に及ぶ。送信枠の状態の遷移・リース・送り出しの入口の並行の制御と、テンプレート4つ、画面3つ、E2E2本を含む。上流の口は揃っているため、未知の技術によるものではない。
+- **リスク: Medium**。上流の契約は実在し形も合う。一方で、送り出しの入口の並行の呼び出し、送信と確定の間の失敗(G-23)、上流のジョブの失敗による漏れ(G-25)は、前例の無い時刻の制御である。壊れる既存テストも多く、設計の改訂なしに着手すると手戻りが出る。
+
+### 設計の改訂への申し送り
+
+- **開発者の判断が要る事項(個別に確認する)**: G-2(フォームとダイアログ)、G-3(初回の挿入)、G-4(`Referrer-Policy`)、G-23(二重送信)、G-24(予告の期限)、G-25(上流のジョブの失敗)、G-26(送信者情報の説明の文言・D1の読み取り・既定の実装の扱い)、G-27(ペッパーの変更)、G-28(法的根拠)。
+- **判断なしに設計とタスクへ反映できる事項**: G-1、G-5〜G-22、壊れるテストと文書の表。Modified Filesとタスクの完了状態に、壊れるテストの更新を加える。
+- **設計の段階で確かめる事項(Research Needed)**:
+  - `notification_notices`の挿入で実際に送るバインド変数の数(Drizzleが値の無い任意の列を変数にしないか)。
+  - `useFragmentToken`と開いた時の照会を組み合わせたときのハイドレーションの挙動。
+  - 0:00の開始が失敗した日の、朝の枠の再開の条件。
+
+## 実装前のギャップ分析への開発者の回答の反映(2026-11-14)
+
+- **状態**: 上の「実装前のギャップ分析」で開発者の判断が要るとした9点(G-2・G-3・G-4・G-23〜G-28)について、開発者へ1件ずつ選択肢と推奨を示して決定を得た。決定に従ってdesign.md・tasks.mdを改訂し、requirements.mdの受け入れ基準7.12に注記を加えた。タスクの番号は変えていない。`spec.json`の承認の状態と`ready_for_implementation`は変えていない。
+
+### 決定
+
+| 項目                           | 決定                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 推奨との違い                                   |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| G-2 フォームと確認のダイアログ | 入力欄の`AppForm`の`onSubmit`が`ConfirmActionDialog`を開き、確定か取り消しまで解決しないPromiseを返す。ダイアログの`onConfirm`が保存を送り、成功で解決する。`validation_error`ならダイアログを閉じてそのPromiseを例外で拒否し、`AppForm`の欄のエラーの処理(`serverFieldPrefix="input"`)に任せる。それ以外の失敗はダイアログの中に示す。ダイアログは入力欄のフォームの外に置く(前例`legal-draft-form.tsx`)。上流は変えない                                                                                                                                                                                                                                                | 推奨どおり                                     |
+| G-3 送信者情報の初回の保存     | 機能フラグの前例と同じく、カスタムのマイグレーション`<日時>_notifications_seed`で固定のID・3項目NULL・版0の1行を入れ、保存は更新だけにする。3項目はNULL可にし、CHECKを「版0以上、版0なら3項目がNULL・版1以上ならNOT NULL」にする。監査ログの文(版の一致を条件)を先に置き、同じ条件の更新を続け、`isAuditGuardRejection`を`version_conflict`に変える。監査ログの対象のIDはシードの固定のID。同時の初回の保存の2人目は版の不一致になる                                                                                                                                                                                                                                     | 推奨どおり                                     |
+| G-4 `Referrer-Policy`          | 経路では付けず、全体のセキュリティヘッダーの`same-origin`で要件9.7を満たすとする。Refererはフラグメントを含まず、GETは303の移動だけのため、トークンは外部のオリジンへ送られない。上流は変えない                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | 推奨どおり                                     |
+| G-23 二重送信                  | 送信の依頼の後に送ったことの記録が失敗した再試行に限り、同じ通知が2通届くことを許容する(paymentsの`purchase-notifier.ts`の前例と同じ)。要件7.12に注記を加えた                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 推奨どおり                                     |
+| G-24 送信の期限                | `EmailSendRequest.deadline`を、単独の開始予告はマッチの開始の日時、開催通知は載せた項目のマッチの最も早い終了の日時にする。勝敗結果(統合したメールを含む)と受賞結果は期限なし。期限を過ぎた送信はemail-deliveryが`expired`で送らず、本specの通知は依頼の時点の`sent`のまま残す                                                                                                                                                                                                                                                                                                                                                                                           | 推奨どおり                                     |
+| G-25 上流のジョブの失敗        | 朝の枠の1回目の収集は、開始の日時を過ぎても未開始(`scheduled`かつ`startsAt <= now < endsAt`)の当日のマッチが残る間、投稿者の一覧を作らずに`wait`を返し、送り出しの処理が段とカーソルを変えずに300秒(`MORNING_KICKOFF_WAIT_SECONDS`)の`defer`で確かめ直す。運用者が0:00のジョブを手動で起こし直してマッチが開始した後に収集する(日次タイムラインの`match-engine.match-kickoff`の運用の手順)。そのマッチの終了の日時を過ぎたら待たない。待つ間は`warn`のログを出し、1時間を過ぎた待ちは4:21の保守の`notification-slot-overdue`(13.4)で検知する。23:45のペアリングの失敗で0:00に遅れて組まれたマッチに予告が出ないのは、要件3.6(開始済みなら送らない)と一致するため変えない | 推奨(制約として記し件数を報告するだけ)と異なる |
+| G-26 送信者情報の表示の範囲    | email-deliveryの実装と確認済みの決定に合わせ、送信者情報は全種別のメールの末尾に載るものとして文書を直す。管理画面の区画の説明を「全てのメールの末尾に表示します。」に、文言規則の「認証系メールの本文」の構成を宛名・本文・ボタンの後に送信者情報が続く形にする。取得は毎通D1の1行を読み、isolateの中で値を持ち越さない。使われなくなる`UnsetSenderInfoProvider`とそのテストは削除する                                                                                                                                                                                                                                                                                  | 推奨どおり                                     |
+| G-27 ペッパーの変更            | `tokensFor`が導出したトークンの照合用のハッシュを保存した`token_hash`と比べ、違えば読んだ値を条件に更新する。ペッパーを変えた後は、変更の前に送ったメールのリンクだけが無効になり(通知設定ページからの停止は行える)、以後のメールは手作業なしで照合できる。`security/010`に記す。これにより、設計にあった「ペッパーを変えると以後のメールのリンクも照合できなくなる」潜在の不具合を直した                                                                                                                                                                                                                                                                                | 推奨どおり                                     |
+| G-28 プライバシーポリシー      | `003-privacy-policy-outline.md`の法的根拠の行で、通知メールの送信を「正当な利益」から「同意(通知設定で種類ごとに選び、いつでも撤回できる)」へ移し、収集する情報の一覧に受信設定と配信停止のトークンの種・照合用のハッシュを記す。設計との整合の観点の決定で、法的な確認を経たものではない                                                                                                                                                                                                                                                                                                                                                                                | 推奨どおり                                     |
+
+### 変えた箇所
+
+- design.md:
+  - System Flowsの「送信枠の状態」(朝の枠の待ち)と「朝の送信枠」(図と「開始を待つ」の段落)。
+  - `MORNING_KICKOFF_WAIT_SECONDS`、`NoticeEmailBuild`の`deadline`と期限の規則。
+  - `SenderInfoRecord`・`SenderInfoStore`(シードの固定のID・版0の`info`)、`tokensFor`(照合用のハッシュの更新)、`SenderInfoView`の`updatedAt`、`SenderInfoService.update`の対象のID、`D1SenderInfoWriter.save`。
+  - `SlotCollectStep`と`FlushSlotHandler`・`MorningCollector`、`GroupDispatcher`(期限と許容する重複)、`D1SenderInfoProvider`(全種別・毎通の読み取り・既定の実装の削除)、ワンクリックの経路の応答のヘッダー。
+  - `SenderInfoForm`の保存の順序、docs・e2eの節(`backend/016`・`security/010`・サービス仕様)、Data Modelsの送信者情報、Error Strategy、Monitoring、Testing Strategy、Security Considerations、Performance & Scalability、Migration Strategy(シードのマイグレーション)、Supporting Referencesの上限・時間と区画の説明の文言。
+  - Modified Files(シードのマイグレーション、`UnsetSenderInfoProvider`とそのテストの削除、`project-values.md`の送信者情報の提供元、文言規則の認証系メールの構成、`003-privacy-policy-outline.md`)。
+- tasks.md: 1.1(CHECKとシードのマイグレーション)、1.2(文言規則の認証系メールの構成・プライバシーポリシーの大枠)、2.4(送信の期限)、3.1(版0とシードのID)、3.2(ペッパーの変更)、4.3(保存の文の順序と初回の保存)、5.1(既定の実装の削除と全種別への表示)、5.4(朝の枠の待ち)、5.6(期限と許容する重複)、5.7(待ちの`defer`)、5.9(`Referrer-Policy`)、7.1(ダイアログとフォームの順序)、8.1(技術ドキュメントの内容)、8.2(`project-values.md`の送信者情報の提供元)。
+- requirements.md: 受け入れ基準7.12に、依頼の後の記録の失敗による重複を許容する旨の注記。
+- 水平展開: 他のspecの設計で、送信者情報を通知メールに限るもの・`no-referrer`を前提にするものは無かった。ugc-moderation・content-reportingは本文の構成の末尾に送信者情報を置く前提で、今回の決定と合う。
+
+### 反映しなかった項目
+
+- G-1・G-5〜G-22と、上の「本specの追加で壊れる既存テスト」の表は、判断なしに設計とタスクへ反映できる事項として残した。今回の改訂の範囲(開発者の判断が要る9点)の外のため、別に反映する。
+- G-17の`notification_unsubscribe_tokens`は、G-27の決定で照合用のハッシュを更新するようになったため、`timestamps()`を持つ現在の設計のままでよい。
+- Research Neededの3項目は、上の「設計の改訂への申し送り」のとおり実装の中で確かめる。G-25の決定により、3項目めの「0:00の開始が失敗した日の、朝の枠の再開の条件」は、未開始の当日のマッチが残る間の待ちとして決まった。
+
+## 判断の要らない指摘と壊れるテストの反映(2026-11-14、開発者の指示)
+
+- **状態**: 上の「実装前のギャップ分析」で判断なしに反映できるとしたG-1・G-5〜G-22と、「本specの追加で壊れる既存テスト」の表を、開発者の指示でdesign.md・tasks.mdへ反映した。要件の受け入れ基準は変えていない。タスクの番号は変えていない。反映を終えたため、開発者の指示で`spec.json`の`ready_for_implementation`を`true`にした。
+
+### 反映した内容
+
+| 項目               | 反映                                                                                                                                                                                                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G-1                | 両ページの`head`をclientの`buildSitePageHead({ title, noIndex: true })`にした(design.mdのclientの節、tasks.mdの6.2・6.3)                                                                                                                           |
+| G-5                | 通知の挿入の1文の行数を列数から決めた定数(16列なら6行)にし、`toSQL().params.length`が100以下であることを単体テストで確かめる(`NotificationNoticeStore.record`・Performance & Scalability、3.3)                                                     |
+| G-6                | `listForDate({ date, kinds, now })`・`findMatches(ids, now)`に改め、朝の枠の段が23:40より後まで遅れたときの扱いを記した(Allowed Dependencies・System Flows・`GroupDispatcher`・`expand`、5.4・5.6)                                                 |
+| G-7                | 配信停止ページのトークンをfrontend-libの`useFragmentToken`で読み、`found`の間だけ照会する(System Flowsの「配信停止」・clientの節・Allowed Dependencies・追跡表、1.1の前提・6.3)                                                                    |
+| G-8                | 通知設定ページの`loader`を`queryClient.query({ ...options, staleTime: 'static' })`にした(6.2)                                                                                                                                                      |
+| G-9                | clientの文言のファイルを`notification-messages.ts`に改め、取得の設定と結果の変換の`src/graphql/notification-settings.ts`、adminの`sender-info-messages.ts`・`src/graphql/admin-notification-sender-info.ts`をFile Structure Planに加えた(6.1・7.1) |
+| G-10               | 抑止の照会の戻り値を`toMatchingKey`で照合し、Allowed Dependenciesに`toMatchingKey`・`ExtraHeaders`・`AnyEmailKind`・`SuppressionReason`・`linkUrlSchema`を加えた(5.6)                                                                              |
+| G-11               | スイッチの送信中を`aria-disabled`・`aria-busy`にし、`disabled`にしない(clientの節・Testing Strategy、6.2)                                                                                                                                          |
+| G-12               | 画面のメールアドレスの判定を前後の空白を除いた値の`z.regexes.html5Email`と`EMAIL_MAX_LENGTH`にし、文言を既存の「メールアドレスの形式が正しくありません。」にした(common-libの節・`SenderInfoForm`・Error Categories、7.1)                          |
+| G-13               | 区画の取得の失敗を`throwOnError`で`RecoverableSlot`へ投げて`SectionFallback`に描かせ、ロールの判定を`hasRole(useAdminRole(), 'super_admin')`にした(adminの節・コンポーネントの表・Security Considerations、7.1)                                    |
+| G-14               | 変更者のニックネームは削除済み・停止中・招待中の管理者でnullになり、画面は「なし」と示す(`SenderInfoService`・adminの節、4.9・7.1)                                                                                                                 |
+| G-15               | 入力規則を`sender-info-input-rules.ts`・`SENDER_INFO_MAX_GRAPHEMES`・`'empty' \| 'too-long'`にし、サーバーの違反も`'empty' \| 'too-long' \| 'invalid-email'`にそろえた(1.1)                                                                        |
+| G-16               | `config/notification-contract-copies.unit.test.ts`でDBの通知種別のCHECKと`NOTIFICATION_TOPICS`の一致を確かめる(File Structure Plan・Testing Strategy、1.3)                                                                                         |
+| G-17               | 準備の完了の表を複数形の`notification_slot_ready_marks`に改め、共通カラムを`created_at`だけにした。`notification_unsubscribe_tokens`はG-27の決定で`token_hash`を更新するため`timestamps()`のまま(Data Models、1.1)                                 |
+| G-18               | スキーマのテストを`apps/db/schema/notifications/notifications-migration.unit.test.ts`と`apps/db/notifications-schema.worker.test.ts`に置く(File Structure Plan、1.1)                                                                               |
+| G-19               | Sentryのタグを`notifications_incident`にした(3.7)                                                                                                                                                                                                  |
+| G-20               | ワンクリックの経路の`text/plain`の本文を経路から直接返し、`AppError`を投げない(eventの節、5.9)                                                                                                                                                     |
+| G-21               | Modified Filesの区画の登録に`title`を加えた                                                                                                                                                                                                        |
+| G-22               | E2Eの手順のファイル`e2e/client/notification-steps.ts`・`e2e/admin/notification-sender-steps.ts`と、利用者の登録の`registerVerifiedAccount`を加えた(File Structure Plan・Testing Strategy、9.1)                                                     |
+| 壊れるテストと文書 | Modified Filesに一覧を完全一致で確かめる既存のテスト・生成物・`infra/004`・日次タイムラインの図・`project-values.md`の既存の行を加え、更新を1.3・4.7・4.8・4.9・5.1・5.10・6.2・7.1・8.1・8.2へ割り当てた                                          |
+| その他             | Existing Architecture Analysisの上流の実装の状況と照会口の置き場所の前提、上流への影響のroadmapの記述(記載済み)を直した。テンプレートの集まり`templates/notifications/index.ts`(前例`ULTRAS_EMAIL_TEMPLATES`)を加えた(5.3)                         |
+
+### 残る事項
+
+- Research Neededの2項目(`notification_notices`の挿入で実際に送るバインド変数の数、`useFragmentToken`と開いた時の照会の組み合わせのハイドレーション)は、タスク3.3・6.3の実装の中で確かめる。
+- タスク1.1は作業量の上限に近いまま確かめる事項が増えたため、開発者の指示(2026-11-14)で、既存のテストの更新(操作種別の一覧・監査ログの操作種別の選択肢・テーブル名の一覧)とDBの値と共有の定数の照合のテストを、新しいタスク1.3へ分けた。既存のタスクの番号は変えていない。1.1の後は操作種別の一覧を完全一致で確かめる既存の2つのテストが失敗するため、1.3は1.1の直後に行う。

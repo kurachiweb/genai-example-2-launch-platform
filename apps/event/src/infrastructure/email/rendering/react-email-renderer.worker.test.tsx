@@ -1,4 +1,4 @@
-import { Text } from '@react-email/components';
+import { Heading, Text } from '@react-email/components';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
@@ -131,6 +131,25 @@ const unlabeledLinksTemplate = defineEmailTemplate({
   Body: () => <Text>本文です。</Text>,
 });
 
+const headedKind = defineEmailKind({
+  name: 'test.renderer-headed',
+  category: 'transactional',
+  inputSchema: z.object({}),
+});
+
+const headedTemplate = defineEmailTemplate({
+  kind: headedKind,
+  subject: () => '件名です',
+  preview: () => '冒頭の文です。',
+  greeting: () => undefined,
+  Body: () => (
+    <>
+      <Heading as="h2">Product of the Weekの受賞</Heading>
+      <Text>本文です。</Text>
+    </>
+  ),
+});
+
 const TEST_KINDS: readonly AnyEmailKind[] = [
   digestKind,
   receiptKind,
@@ -138,6 +157,7 @@ const TEST_KINDS: readonly AnyEmailKind[] = [
   brokenBodyKind,
   combinedKind,
   unlabeledLinksKind,
+  headedKind,
 ];
 
 const TEST_TEMPLATES: readonly EmailTemplate<unknown>[] = [
@@ -147,6 +167,7 @@ const TEST_TEMPLATES: readonly EmailTemplate<unknown>[] = [
   brokenBodyTemplate,
   combinedTemplate,
   unlabeledLinksTemplate,
+  headedTemplate,
 ];
 
 const RENDER_COUNT_FOR_TIMING = 20;
@@ -197,6 +218,13 @@ describe('React Emailによる描画', () => {
     );
     expect(rendered.text).toContain('10月27日07:40(UTC)');
     expect(rendered.text).not.toMatch(/<[a-z]/iu);
+  });
+
+  test('テキストのパートでも見出しの英字を大文字に変えず、英語の固有名詞を表記のまま置く', async () => {
+    const rendered = await createRenderer().render(headedKind, {}, undefined);
+
+    expect(rendered.text).toContain('Product of the Weekの受賞');
+    expect(rendered.text).not.toContain('PRODUCT OF THE WEEK');
   });
 
   test('テキストのパートにHTMLのリンクと同じURLを含める', async () => {

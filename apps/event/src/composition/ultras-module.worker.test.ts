@@ -400,6 +400,7 @@ describe('退会・停止の解約と物理削除の波及処理の登録', () =
       'user-profile-social.owned-file-erasure',
       'product-launch.product-erasure',
       'match-engine.upvote-erasure',
+      'notifications.account-purge',
     ]);
     expect(
       namesFor('unsuspended').filter((name) =>

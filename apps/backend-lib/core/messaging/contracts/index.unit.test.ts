@@ -14,6 +14,10 @@ import {
 } from './identity.ts';
 import { MESSAGE_CONTRACTS } from './index.ts';
 import { RUN_MATCH_EVENT_MESSAGE } from './match.ts';
+import {
+  EXPAND_NOTIFICATION_EVENT_MESSAGE,
+  FLUSH_NOTIFICATION_SLOT_MESSAGE,
+} from './notifications.ts';
 import { RUN_PRODUCT_LIFECYCLE_MESSAGE } from './product.ts';
 import { SEARCH_INDEX_REFRESH_MESSAGE } from './search-index-refresh.ts';
 
@@ -73,6 +77,19 @@ describe('MESSAGE_CONTRACTS', () => {
 
   test('マッチイベントの実行の契約match.run-match-eventを集約している', () => {
     expect(MESSAGE_CONTRACTS).toContain(RUN_MATCH_EVENT_MESSAGE);
+  });
+
+  test.each([
+    [
+      '送信枠の送り出しの契約notifications.flush-slot',
+      FLUSH_NOTIFICATION_SLOT_MESSAGE,
+    ],
+    [
+      '通知イベントの展開の契約notifications.expand-event',
+      EXPAND_NOTIFICATION_EVENT_MESSAGE,
+    ],
+  ])('%sを集約している', (_label, contract) => {
+    expect(MESSAGE_CONTRACTS).toContain(contract);
   });
 
   test('集約点は凍結されていて実行時に契約を追加できない', () => {

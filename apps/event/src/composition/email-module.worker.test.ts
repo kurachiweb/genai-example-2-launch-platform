@@ -20,6 +20,7 @@ import {
 import { createDatabase } from '../../db/client.ts';
 import { emailSendRecords } from '../../db/schema/email/email-send-records.ts';
 import { emailSuppressions } from '../../db/schema/email/email-suppressions.ts';
+import { notificationSenderSettings } from '../../db/schema/notifications/notification-sender-settings.ts';
 import { EMAIL_SEND_RETRY_POLICY } from '../../lib/core/email/delivery-decision.ts';
 import {
   BOUNCED_EVENT_SAMPLE,
@@ -27,9 +28,19 @@ import {
   SAMPLE_RECIPIENT,
 } from '../../lib/core/email/delivery-event.fixtures.ts';
 import { EMAIL_DELIVERY_SMOKE_KIND } from '../../lib/core/email/kinds/email-delivery-smoke.ts';
+import {
+  NOTIFICATION_FOLLOWED_USER_AWARD_KIND,
+  NOTIFICATION_FOLLOWED_USER_MATCHES_KIND,
+  NOTIFICATION_MATCH_PREVIEW_KIND,
+  NOTIFICATION_MATCH_RESULT_KIND,
+} from '../../lib/core/email/kinds/notifications.ts';
 import { EMAIL_SEND_MESSAGE } from '../../lib/core/email/send-message.ts';
 import type { QueueEnvelope } from '../../lib/core/messaging/envelope.ts';
 import { decideOnFailure } from '../../lib/core/messaging/retry-policy.ts';
+import {
+  restoreSenderInfoSeed,
+  SENDER_INFO_SEED_ROW,
+} from '../../lib/workers/notifications/testing/notification-store-fixtures.ts';
 import worker from '../index.ts';
 
 declare global {
@@ -281,5 +292,222 @@ describe('イベントサーバーのメールの結線', () => {
         }),
       );
     expect(stable(afterSecond)).toStrictEqual(stable(afterFirst));
+  });
+});
+
+describe('イベントサーバーのメールへの送信者情報の表示', () => {
+  const SENDER_INFO = {
+    businessName: 'ローンチ運営事務局',
+    contactEmail: 'support@launch.example',
+    postalAddress: '東京都千代田区1-1-1',
+  } as const;
+
+  const UPDATED_SENDER_INFO = {
+    businessName: 'ローンチ運営事務局(新)',
+    contactEmail: 'help@launch.example',
+    postalAddress: '大阪府大阪市北区2-2-2',
+  } as const;
+
+  const NOTICE_LINKS = {
+    settingsUrl: 'https://client.example/settings/notifications',
+    unsubscribeUrl: 'https://client.example/unsubscribe#token=0123456789abcdef',
+  } as const;
+
+  const SENDER_INFO_VALUES = [
+    ...Object.values(SENDER_INFO),
+    ...Object.values(UPDATED_SENDER_INFO),
+  ];
+
+  const MAIL_CASES = [
+    {
+      label: '疎通確認',
+      body: (to: string) => ({
+        kind: EMAIL_DELIVERY_SMOKE_KIND.name,
+        to,
+        input: { requestedAt: REQUESTED_AT },
+      }),
+    },
+    {
+      label: 'メールアドレスの確認',
+      body: (to: string) => ({
+        kind: 'identity.email-verification',
+        to,
+        input: {
+          nickname: '山田',
+          verifyUrl: 'https://client.example/verify-email#token=abc',
+          expiresAt: REQUESTED_AT,
+        },
+      }),
+    },
+    {
+      label: 'マッチ開始予告の通知',
+      body: (to: string) => ({
+        kind: NOTIFICATION_MATCH_PREVIEW_KIND.name,
+        to,
+        input: {
+          ...NOTICE_LINKS,
+          nickname: '山田',
+          ownProductName: 'Pitch Notes',
+          opponentProductName: 'Tactics Board',
+          matchLabel: '予選',
+          startsAt: REQUESTED_AT,
+          endsAt: REQUESTED_AT,
+          topPageUrl: 'https://client.example/',
+        },
+      }),
+    },
+    {
+      label: '勝敗結果の通知',
+      body: (to: string) => ({
+        kind: NOTIFICATION_MATCH_RESULT_KIND.name,
+        to,
+        input: {
+          ...NOTICE_LINKS,
+          nickname: '山田',
+          ownProductName: 'Pitch Notes',
+          opponentProductName: 'Tactics Board',
+          matchLabel: '予選',
+          outcome: 'won',
+          decidedByLastUpvote: false,
+          ownVotes: 12,
+          opponentVotes: 9,
+          supplements: [],
+          action: {
+            label: '自分のプロダクトを見る',
+            url: 'https://client.example/my/products',
+          },
+          next: null,
+        },
+      }),
+    },
+    {
+      label: 'フォロー中の利用者のマッチの開催通知',
+      body: (to: string) => ({
+        kind: NOTIFICATION_FOLLOWED_USER_MATCHES_KIND.name,
+        to,
+        input: {
+          ...NOTICE_LINKS,
+          nickname: '山田',
+          items: [
+            {
+              productName: 'Pitch Notes',
+              makerNickname: '佐藤',
+              matchLabel: '予選',
+              opponentProductName: 'Tactics Board',
+            },
+          ],
+          omittedCount: 0,
+          topPageUrl: 'https://client.example/',
+        },
+      }),
+    },
+    {
+      label: 'フォロー中の利用者の受賞結果の通知',
+      body: (to: string) => ({
+        kind: NOTIFICATION_FOLLOWED_USER_AWARD_KIND.name,
+        to,
+        input: {
+          ...NOTICE_LINKS,
+          nickname: '山田',
+          productName: 'Pitch Notes',
+          makerNickname: '佐藤',
+          award: 'product_of_the_week',
+          periodLabel: '2026年第37週(9/7〜9/13)',
+          productUrl: 'https://client.example/p/pitch-notes',
+        },
+      }),
+    },
+  ] as const;
+
+  async function saveSenderInfo(
+    info: typeof SENDER_INFO | typeof UPDATED_SENDER_INFO,
+    version: number,
+  ): Promise<void> {
+    await db
+      .update(notificationSenderSettings)
+      .set({ ...info, version })
+      .where(eq(notificationSenderSettings.id, SENDER_INFO_SEED_ROW.id));
+  }
+
+  async function sendOne(
+    body: (to: string) => Record<string, unknown>,
+  ): Promise<MailpitRequest> {
+    const id = nextUlid();
+    const requests = stubMailpit(mailpitAccepted);
+    const envelope: QueueEnvelope = {
+      v: 1,
+      type: EMAIL_SEND_MESSAGE.type,
+      id,
+      sentAt: '2026-10-27T01:02:04.000Z',
+      body: body(`${RECIPIENT_MARKER}-sender-info-${id}@test.example`),
+    };
+
+    const outcomes = await dispatch(env.JOBS_QUEUE_NAME, [
+      { id, body: envelope, attempts: 1 },
+    ]);
+
+    expect(outcomes).toStrictEqual([{ acked: true, retried: false }]);
+    const [request] = requests;
+    if (request === undefined) {
+      throw new Error('Mailpitへの送信の要求が無い');
+    }
+    return request;
+  }
+
+  function partsOf(request: MailpitRequest): readonly string[] {
+    return [String(request.body['HTML']), String(request.body['Text'])];
+  }
+
+  beforeEach(async () => {
+    await restoreSenderInfoSeed();
+  });
+
+  afterEach(async () => {
+    await restoreSenderInfoSeed();
+  });
+
+  test.each(MAIL_CASES)(
+    '送信者情報が版0なら、$labelのメールに送信者情報の区画を置かない',
+    async ({ body }) => {
+      const request = await sendOne(body);
+
+      for (const part of partsOf(request)) {
+        for (const value of SENDER_INFO_VALUES) {
+          expect(part).not.toContain(value);
+        }
+      }
+    },
+  );
+
+  test.each(MAIL_CASES)(
+    '送信者情報が設定済みなら、$labelのメールの両パートに3項目を載せる',
+    async ({ body }) => {
+      await saveSenderInfo(SENDER_INFO, 1);
+
+      const request = await sendOne(body);
+
+      for (const part of partsOf(request)) {
+        for (const value of Object.values(SENDER_INFO)) {
+          expect(part).toContain(value);
+        }
+      }
+    },
+  );
+
+  test('送信者情報を保存し直すと、直後のメールから新しい値を載せる', async () => {
+    const [smoke] = MAIL_CASES;
+    await saveSenderInfo(SENDER_INFO, 1);
+    const before = await sendOne(smoke.body);
+
+    await saveSenderInfo(UPDATED_SENDER_INFO, 2);
+    const afterUpdate = await sendOne(smoke.body);
+
+    expect(String(before.body['Text'])).toContain(SENDER_INFO.businessName);
+    for (const part of partsOf(afterUpdate)) {
+      for (const value of Object.values(UPDATED_SENDER_INFO)) {
+        expect(part).toContain(value);
+      }
+      expect(part).not.toContain(SENDER_INFO.contactEmail);
+    }
   });
 });

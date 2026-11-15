@@ -21,6 +21,8 @@ import {
 } from '../../../test/page-router.tsx';
 import { ADMIN_SETTINGS_SECTIONS } from '../../composition/admin-settings-sections.ts';
 import {
+  AdminNotificationSenderInfoDocument,
+  type AdminNotificationSenderInfoQuery,
   type AdminRole,
   AdminUltrasPromotionSettingDocument,
   type AdminUltrasPromotionSettingQuery,
@@ -28,6 +30,7 @@ import {
 import { buildAdminPageHead } from '../../head/page-heads.ts';
 import { Route as AuthenticatedRoute } from '../../routes/_authenticated/route.tsx';
 import { Route as SettingsRoute } from '../../routes/_authenticated/settings/index.tsx';
+import { SenderInfoSection } from '../notifications/sender-info-section.tsx';
 import { PromotionSettingSection } from '../ultras/promotion-setting-section.tsx';
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
@@ -46,6 +49,8 @@ const SECTION_TITLE = 'Ultras導線の機能フラグ';
 
 const SWITCH_LABEL = '未加入者への導線と新規加入';
 
+const SENDER_INFO_TITLE = '通知メールの送信者情報';
+
 const CONTACT_PHRASE = 'お問い合わせ';
 
 const ENABLED_SETTING: AdminUltrasPromotionSettingQuery = {
@@ -54,6 +59,19 @@ const ENABLED_SETTING: AdminUltrasPromotionSettingQuery = {
     updatedAt: '2026-11-05T01:02:03.000Z',
     updatedByNickname: '統括の担当',
     version: 3,
+  },
+};
+
+const SENDER_INFO: AdminNotificationSenderInfoQuery = {
+  notificationSenderInfo: {
+    info: {
+      businessName: '運営事務局',
+      contactEmail: 'support@launch.example',
+      postalAddress: '東京都千代田区1-2-3',
+    },
+    version: 1,
+    updatedAt: '2026-11-14T01:02:03.000Z',
+    updatedByNickname: '統括の担当',
   },
 };
 
@@ -66,11 +84,13 @@ const INTERNAL_ERROR = Object.freeze({
 const respondSettings = (
   role: AdminRole,
   setting: GraphQLHandler = () => success(ENABLED_SETTING),
+  senderInfo: GraphQLHandler = () => success(SENDER_INFO),
 ): void => {
   respondAdminGraphQL(executeGraphQL, {
     role,
     handlers: new Map<unknown, GraphQLHandler>([
       [AdminUltrasPromotionSettingDocument, setting],
+      [AdminNotificationSenderInfoDocument, senderInfo],
     ]),
   });
 };
@@ -97,8 +117,9 @@ const createRoutes = (rootRoute: PageRootRoute) => {
 const renderSettingsPage = async (
   role: AdminRole,
   setting?: GraphQLHandler,
+  senderInfo?: GraphQLHandler,
 ) => {
-  respondSettings(role, setting);
+  respondSettings(role, setting, senderInfo);
   await renderPageRouter({
     path: SETTINGS_PATH,
     createRoutes,
@@ -109,6 +130,10 @@ const renderSettingsPage = async (
 const main = () => page.getByRole('main');
 const section = () => main().getByRole('region', { name: SECTION_TITLE });
 const toggle = () => section().getByRole('switch', { name: SWITCH_LABEL });
+const senderInfoSection = () =>
+  main().getByRole('region', { name: SENDER_INFO_TITLE });
+const businessNameInput = () =>
+  senderInfoSection().getByRole('textbox', { name: '事業者名(必須)' });
 
 beforeEach(() => {
   executeGraphQL.mockReset();
@@ -119,13 +144,19 @@ afterEach(() => {
 });
 
 describe('設定の区画の登録口', () => {
-  test('Ultras導線の機能フラグの区画をorder 20で登録し、凍結されている', () => {
+  test('Ultras導線の機能フラグの区画をorder 20、通知メールの送信者情報の区画をorder 30で登録し、凍結されている', () => {
     expect(ADMIN_SETTINGS_SECTIONS).toStrictEqual([
       {
         id: 'ultras-subscription.promotion-flag',
         order: 20,
         title: SECTION_TITLE,
         component: PromotionSettingSection,
+      },
+      {
+        id: 'notifications.sender-info',
+        order: 30,
+        title: SENDER_INFO_TITLE,
+        component: SenderInfoSection,
       },
     ]);
     expect(Object.isFrozen(ADMIN_SETTINGS_SECTIONS)).toBe(true);
@@ -144,6 +175,15 @@ describe('設定のページ', () => {
       .element(main().getByRole('heading', { level: 2, name: SECTION_TITLE }))
       .toBeVisible();
     await expect.element(toggle()).toHaveAttribute('aria-checked', 'true');
+    await expect
+      .element(senderInfoSection().getByText('運営事務局'))
+      .toBeVisible();
+    expect(
+      main()
+        .getByRole('heading', { level: 2 })
+        .elements()
+        .map((heading) => heading.textContent),
+    ).toStrictEqual([SECTION_TITLE, SENDER_INFO_TITLE]);
     expect(main().getByRole('link').elements()).toHaveLength(0);
   });
 
@@ -167,11 +207,44 @@ describe('設定のページ', () => {
       .toHaveTextContent(PAGE_TITLE);
     expect(main().getByRole('link').elements()).toHaveLength(0);
     expect(document.body.textContent).not.toContain(CONTACT_PHRASE);
+    await expect.element(businessNameInput()).toHaveValue('運営事務局');
+    expect(senderInfoSection().getByRole('alert').elements()).toHaveLength(0);
 
     failing = false;
     await userEvent.click(section().getByRole('button', { name: '再試行' }));
 
     await expect.element(toggle()).toHaveAttribute('aria-checked', 'true');
+    expect(page.getByRole('alert').elements()).toHaveLength(0);
+  });
+
+  test('送信者情報の区画の取得の失敗はその区画の位置に見出しと再試行で示し、機能フラグの区画の表示を続ける', async () => {
+    let failing = true;
+    await renderSettingsPage(
+      'SUPER_ADMIN',
+      () => success(ENABLED_SETTING),
+      () => (failing ? failure(INTERNAL_ERROR) : success(SENDER_INFO)),
+    );
+
+    await expect
+      .element(senderInfoSection().getByRole('alert'))
+      .toHaveTextContent(INTERNAL_ERROR.message);
+    await expect
+      .element(
+        senderInfoSection().getByRole('heading', {
+          level: 2,
+          name: SENDER_INFO_TITLE,
+        }),
+      )
+      .toBeVisible();
+    await expect.element(toggle()).toHaveAttribute('aria-checked', 'true');
+    expect(section().getByRole('alert').elements()).toHaveLength(0);
+
+    failing = false;
+    await userEvent.click(
+      senderInfoSection().getByRole('button', { name: '再試行' }),
+    );
+
+    await expect.element(businessNameInput()).toHaveValue('運営事務局');
     expect(page.getByRole('alert').elements()).toHaveLength(0);
   });
 

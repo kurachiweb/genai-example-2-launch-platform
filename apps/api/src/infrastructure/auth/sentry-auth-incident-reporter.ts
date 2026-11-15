@@ -1,6 +1,7 @@
 import { captureEvent, type SeverityLevel } from '@sentry/cloudflare';
 import { injectable } from 'inversify';
 
+import { isUppercaseUlid } from '../../../lib/core/ids/uppercase-ulid.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import type {
   AuthIncident,
@@ -51,8 +52,6 @@ const KNOWN_REASONS: ReadonlySet<string> = new Set<PwnedUnavailableReason>([
   'invalid-response',
 ]);
 
-const EVENT_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
-
 const UNSAFE_VALUE = 'unknown';
 
 const CONTEXT_NAME = 'auth_incident';
@@ -64,7 +63,7 @@ const toReason = (reason: string): string =>
   KNOWN_REASONS.has(reason) ? reason : UNSAFE_VALUE;
 
 const toEventId = (eventId: string): string =>
-  EVENT_ID_PATTERN.test(eventId) ? eventId : UNSAFE_VALUE;
+  isUppercaseUlid(eventId) ? eventId : UNSAFE_VALUE;
 
 function detailsOf(incident: AuthIncident): IncidentDetails {
   const kindTag = { auth_incident: incident.kind };

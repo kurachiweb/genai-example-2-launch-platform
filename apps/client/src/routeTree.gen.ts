@@ -14,6 +14,7 @@ import { Route as AtChar123handleChar125RouteImport } from './routes/@{$handle}'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
@@ -33,6 +34,7 @@ import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_authenticated/settings/billing'
 import { Route as AuthenticatedSettingsFollowsRouteImport } from './routes/_authenticated/settings/follows'
+import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
 import { Route as AuthenticatedSettingsPlanRouteImport } from './routes/_authenticated/settings/plan'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings/profile'
 import { Route as AuthenticatedSettingsSecurityRouteImport } from './routes/_authenticated/settings/security'
@@ -69,6 +71,11 @@ const ContactRoute = ContactRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsRouteRoute =
@@ -174,6 +181,12 @@ const AuthenticatedSettingsFollowsRoute =
     path: '/follows',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedSettingsNotificationsRoute =
+  AuthenticatedSettingsNotificationsRouteImport.update({
+    id: '/notifications',
+    path: '/notifications',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
 const AuthenticatedSettingsPlanRoute =
   AuthenticatedSettingsPlanRouteImport.update({
     id: '/plan',
@@ -256,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/@{$handle}': typeof AtChar123handleChar125Route
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -274,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/settings/follows': typeof AuthenticatedSettingsFollowsRoute
+  '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -294,6 +309,7 @@ export interface FileRoutesByTo {
   '/@{$handle}': typeof AtChar123handleChar125Route
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/verify-email': typeof AuthVerifyEmailRoute
@@ -311,6 +327,7 @@ export interface FileRoutesByTo {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/settings/follows': typeof AuthenticatedSettingsFollowsRoute
+  '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -333,6 +350,7 @@ export interface FileRoutesById {
   '/@{$handle}': typeof AtChar123handleChar125Route
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -351,6 +369,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/_authenticated/settings/follows': typeof AuthenticatedSettingsFollowsRoute
+  '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/_authenticated/settings/security': typeof AuthenticatedSettingsSecurityRoute
@@ -373,6 +392,7 @@ export interface FileRouteTypes {
     | '/@{$handle}'
     | '/contact'
     | '/pricing'
+    | '/unsubscribe'
     | '/settings'
     | '/auth/login'
     | '/auth/register'
@@ -391,6 +411,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/billing'
     | '/settings/follows'
+    | '/settings/notifications'
     | '/settings/plan'
     | '/settings/profile'
     | '/settings/security'
@@ -411,6 +432,7 @@ export interface FileRouteTypes {
     | '/@{$handle}'
     | '/contact'
     | '/pricing'
+    | '/unsubscribe'
     | '/auth/login'
     | '/auth/register'
     | '/auth/verify-email'
@@ -428,6 +450,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/billing'
     | '/settings/follows'
+    | '/settings/notifications'
     | '/settings/plan'
     | '/settings/profile'
     | '/settings/security'
@@ -449,6 +472,7 @@ export interface FileRouteTypes {
     | '/@{$handle}'
     | '/contact'
     | '/pricing'
+    | '/unsubscribe'
     | '/_authenticated/settings'
     | '/auth/login'
     | '/auth/register'
@@ -467,6 +491,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/billing'
     | '/_authenticated/settings/follows'
+    | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/plan'
     | '/_authenticated/settings/profile'
     | '/_authenticated/settings/security'
@@ -489,6 +514,7 @@ export interface RootRouteChildren {
   AtChar123handleChar125Route: typeof AtChar123handleChar125Route
   ContactRoute: typeof ContactRoute
   PricingRoute: typeof PricingRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
@@ -544,6 +570,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings': {
@@ -679,6 +712,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsFollowsRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/settings/notifications': {
+      id: '/_authenticated/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof AuthenticatedSettingsNotificationsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
     '/_authenticated/settings/plan': {
       id: '/_authenticated/settings/plan'
       path: '/plan'
@@ -777,6 +817,7 @@ interface AuthenticatedSettingsRouteRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
   AuthenticatedSettingsBillingRoute: typeof AuthenticatedSettingsBillingRoute
   AuthenticatedSettingsFollowsRoute: typeof AuthenticatedSettingsFollowsRoute
+  AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
   AuthenticatedSettingsPlanRoute: typeof AuthenticatedSettingsPlanRoute
   AuthenticatedSettingsProfileRoute: typeof AuthenticatedSettingsProfileRoute
   AuthenticatedSettingsSecurityRoute: typeof AuthenticatedSettingsSecurityRoute
@@ -788,6 +829,8 @@ const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteCh
     AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
     AuthenticatedSettingsBillingRoute: AuthenticatedSettingsBillingRoute,
     AuthenticatedSettingsFollowsRoute: AuthenticatedSettingsFollowsRoute,
+    AuthenticatedSettingsNotificationsRoute:
+      AuthenticatedSettingsNotificationsRoute,
     AuthenticatedSettingsPlanRoute: AuthenticatedSettingsPlanRoute,
     AuthenticatedSettingsProfileRoute: AuthenticatedSettingsProfileRoute,
     AuthenticatedSettingsSecurityRoute: AuthenticatedSettingsSecurityRoute,
@@ -829,6 +872,7 @@ const rootRouteChildren: RootRouteChildren = {
   AtChar123handleChar125Route: AtChar123handleChar125Route,
   ContactRoute: ContactRoute,
   PricingRoute: PricingRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   AuthVerifyEmailRoute: AuthVerifyEmailRoute,

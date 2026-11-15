@@ -261,7 +261,7 @@
 
 利用者側・管理者側の疎通確認の画面で、応答のセキュリティヘッダーとnonce付きのCSP、APIサーバーの時刻と「到達可能」の表示、再確認、ハイドレーションの後も再確認までは中継へ取得し直さないこと、CSPの違反が起きないこと、存在しないページの404、クロスサイトを名乗る中継の要求の403、スクリプトの読み込み方、静的なファイルがWorkerを通らずに配信されること、管理者側の画面にフッターが無いことを、PlaywrightのE2Eテスト(`e2e/client/system-status.e2e.test.ts`・`e2e/admin/system-status.e2e.test.ts`)で確かめる。クイックスタートの手順13の開発サーバーか、手順14のプレビューで、APIサーバー・利用者側・管理者側を起動してから実行する。両方の起動で続けて確かめるときは、「[開発サーバーとビルド後のプレビューの両方での実行](#開発サーバーとビルド後のプレビューの両方での実行)」のコマンドを使う。
 
-E2Eテストのコマンドは、Infisicalの注入の下で実行する。管理者側のE2Eテストは、Playwrightのプロセスから招待の発行コマンド(`apps/api`の`bun run admin:invite-super-admin -- --target local --email <アドレス>`)を呼び、このコマンドは`HASH_PEPPER`を環境変数から読むためである。注入を付けないと、管理者を用意するE2Eテストがすべて`HASH_PEPPER`が注入されていない旨の案内で失敗する。`HASH_PEPPER`はInfisicalの`dev`の共通のフォルダ(`/`)にあり、注入した値はE2Eテストのプロセスから招待の発行コマンドへそのまま引き継がれる(コマンドの中では注入し直さない)。
+E2Eテストのコマンドは、Infisicalの注入の下で実行する。管理者側のE2Eテストは、Playwrightのプロセスから招待の発行コマンド(`apps/api`の`bun run admin:invite-super-admin -- --target local --email <アドレス>`)を呼び、このコマンドは`HASH_PEPPER`を環境変数から読むためである。利用者側の通知のE2Eテスト(`e2e/client/notifications.e2e.test.ts`)も、配信停止のトークンをAPIサーバー・イベントサーバーと同じペッパーで導出するため、Playwrightのプロセスで`HASH_PEPPER`を読む。注入を付けないと、管理者を用意するE2Eテストと通知のE2Eテストがすべて`HASH_PEPPER`が注入されていない旨の案内で失敗する。`HASH_PEPPER`はInfisicalの`dev`の共通のフォルダ(`/`)にあり、注入した値はE2Eテストのプロセスから招待の発行コマンドへそのまま引き継がれる(コマンドの中では注入し直さない)。
 
 ```sh
 cd /workspace
@@ -358,6 +358,21 @@ infisical --telemetry=false run --env dev -- bun run test:e2e --project admin # 
 - 予選と一覧のための掲載中のプロダクト21件は共有の補助`e2e/support/directory-fixtures.ts`(`createEndedQualifier`・`createListedProducts`)がローカルのD1へ直接作り、確定は`e2e/support/scheduled-trigger.ts`の`triggerScheduled`で起こす。21件は索引を持たないため検索には現れず、実施日を予選と同じ当日にして当日の期間で一覧とページ送りを確かめる。前回までの実行のデータも当日の期間に残るため、件数は総数を数えず範囲だけを確かめ、特定のプロダクトが2ページ目に来ることを前提にしない。手順(検索・カテゴリと並び順の選択・ページの移動・詳細ページのマッチ履歴とサポーター・未掲載の案内と404の確認・検索の結果の待ち)は`e2e/client/directory-steps.ts`にあり、利用者とプロダクトの登録は`e2e/client/profile-steps.ts`・`e2e/client/product-steps.ts`を再利用する。
 - 23:40の確定のジョブは業務時刻の23:44:50を過ぎると何も確定させないため、トップページの予選のマッチの流れと同じく業務時刻の23:20〜24:00は`test.skip`で理由を示して飛ばす。Ultrasの機能フラグで結果が変わる表示は確かめない。
 - 利用者・プロダクト・マッチ・掲載の記録・索引文書はローカルの状態に残る。メールとローカルのD1・定期実行の起動を前提にするため、`@smoke`タグを付けない。
+
+利用者側の通知設定と配信停止の流れ(確認済みの利用者の`/settings/notifications`で4つの種別がすべて受信しない設定→「勝敗結果」と「フォロー中ユーザーの受賞結果」を受信する設定に切り替えるとトースト「通知設定を保存しました。」が出て、再読み込みの後も保たれる→受賞結果のトークンでイベントサーバーのワンクリックの経路`POST /unsubscribe?token=<トークン>`が200を返す→勝敗結果のトークンで開いた`/unsubscribe#token=<トークン>`の「配信を停止する」で完了の文と「通知設定を開く」のリンクが出る→そのリンクで開いた通知設定で2つとも受信しない設定に戻っている)は`e2e/client/notifications.e2e.test.ts`で、管理者側の通知メールの送信者情報(最上位管理者が`/settings`の送信者情報の区画で事業者名・連絡先メールアドレス・物理的郵送先住所を入力し、確認のダイアログで理由を入れて「保存する」→トースト「送信者情報を保存しました。」と区画に保存した値と変更した管理者が出て、ローカルのD1の版が1つ進む→監査ログの一覧に「通知メールの送信者情報の変更」の記録が理由とともに出る)は`e2e/admin/notification-sender.e2e.test.ts`で確かめる。
+
+- 実行の前に、`apps/api`で`bun run db:migrate:local`を実行し、APIサーバー・イベントサーバー・利用者側をクイックスタートの手順13のとおり起動しておく。管理者側のテストには管理者側も要る。利用者はメールアドレスの確認まで済ませ、ワンクリックの配信停止の経路はイベントサーバーにあるため、イベントサーバーを起動していないと確認のメールの待ちの期限(20秒)か配信停止の要求で失敗する。どちらのテストも`HASH_PEPPER`を読むため、Infisicalの注入の下で実行する(`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/client/notifications.e2e.test.ts --project client`・`infisical --telemetry=false run --env dev -- bun run test:e2e e2e/admin/notification-sender.e2e.test.ts --project admin`)。
+- ローカルのイベントサーバーのオリジンは`https:`でないため、通知メールに`List-Unsubscribe`のヘッダーが付かない(「[メールのワンクリックの配信停止](../GUIDES/tech/security/010-one-click-unsubscribe.md#追加ヘッダー)」)。そのためテストは通知メールを送らず、共有の補助`e2e/support/notification-fixtures.ts`で受信する設定の行とトークンの種の行をローカルのD1(`e2e/support/local-d1.ts`)へ直接入れ、注入された`HASH_PEPPER`で送信の時と同じ方式(`e2e/support/unsubscribe-link.ts`)でトークンを導出して、配信停止ページとワンクリックの経路へ直接渡す。導出がbackend-libと一致することは`e2e/support/unsubscribe-link.unit.test.ts`が確かめる。手順(通知設定の表示・切り替え・配信停止ページの確定・ワンクリックの経路への要求・送信者情報の保存・監査ログの記録の確認)は`e2e/client/notification-steps.ts`・`e2e/admin/notification-sender-steps.ts`にある。
+- 利用者・受信設定・トークンの種の行は実行ごとに乱数の利用者で作り、ローカルの状態(`/workspace/.wrangler/state`)に残る。
+- 送信者情報の行は共有のローカルのD1に1つだけあり、設定されている間はローカルでも通知メールが送られ得る(未設定の間は送らない)。そのため管理者側のテストは保存の前の行(3項目・版・変更した管理者・更新日時)を読み、確認の後に`finally`でその行へ戻す。テストの時間切れ・`Ctrl+C`などの中断で`finally`が実行されなかったときや、戻す処理が失敗したとき(共有の補助`executeLocalD1`は並行するテストとのロックの競合(`database is locked: SQLITE_BUSY`・`attempt to write a readonly database: SQLITE_READONLY`)の時だけ数回実行し直すため、競合がその回数を超えて続いたときや、他の失敗のとき。テストは`ローカルのD1でSQLを実行できませんでした。`か`ローカルのD1の送信者情報を元の値へ戻せませんでした`で失敗する)は、送信者情報がE2Eの値(事業者名`E2E事業者<乱数>`)のまま残る。次のようにローカルのD1で確かめ、初期データと同じ版0・3項目NULLへ戻す(`--local --persist-to`を付けてローカルの状態だけを操作する)。開発者が自分で送信者情報を設定していた場合は、戻した後に管理画面で設定し直す。
+
+  ```sh
+  cd /workspace/apps/api
+  bunx wrangler d1 execute DB --local --persist-to /workspace/.wrangler/state --command "SELECT version, business_name, updated_by_admin_id FROM notification_sender_settings WHERE setting_key = 'sender-info';"
+  bunx wrangler d1 execute DB --local --persist-to /workspace/.wrangler/state --command "UPDATE notification_sender_settings SET business_name = NULL, contact_email = NULL, postal_address = NULL, version = 0, updated_by_admin_id = NULL, updated_at = 1794614400000 WHERE setting_key = 'sender-info';"
+  ```
+
+- メールとローカルのD1への直接の投入、注入されたペッパーによるトークンの導出を前提にするため、`@smoke`タグを付けない。
 
 管理者側の流れ(招待の発行コマンドのリンクからの最初の最上位管理者の招待の完了→空の状態のダッシュボード、誤ったパスワードの文言、ログアウトと認証コード・リカバリコードでのログイン、ログイン必須のページからログイン画面へ移りログインの後に元のページへ戻ること)、管理者アカウントの管理(最上位管理者によるモデレーターの招待とMailpitのリンクからの完了、ロールの変更、最後の最上位管理者の自己降格の拒否、削除、監査ログの操作者・操作種別・期間での絞り込み)、自分のアカウント(プロフィールのニックネーム・肩書き・画像の登録と取り除き・既定のアイコン、パスワードリセット、メールアドレス変更、パスワード変更、多要素認証の再設定)、ロール(閲覧のみ・モデレーター・最上位管理者)によるヘッダーの表示と操作の出し分けと再ログイン、法務文書(最上位管理者による利用規約の下書きの保存→利用者側の公開ページに下書きが出ないこと→公開→公開ページの本文・最終改訂日・改訂履歴の先頭の版→続けての公開→改訂履歴が新しい順に2版増え、1つ前の版のページに過去の版である旨と最新版へのリンクが出ること)は、`e2e/admin/`のE2Eテスト(`admin-sign-in.e2e.test.ts`・`admin-accounts.e2e.test.ts`・`my-account.e2e.test.ts`・`admin-roles.e2e.test.ts`・`legal-documents.e2e.test.ts`)で確かめる。
 

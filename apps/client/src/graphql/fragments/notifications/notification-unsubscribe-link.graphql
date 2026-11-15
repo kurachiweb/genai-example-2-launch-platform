@@ -1,0 +1,4 @@
+fragment NotificationUnsubscribeLink on NotificationUnsubscribeLink {
+  topic
+  enabled
+}
