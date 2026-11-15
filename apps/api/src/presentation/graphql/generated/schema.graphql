@@ -395,6 +395,14 @@ type CheckoutSummary {
   serviceTiming: String!
 }
 
+"""コメントの投稿と編集の結果"""
+type CommentMutationResult {
+  comment: LaunchComment!
+
+  """評価を添えなければnull"""
+  rating: ProductRating
+}
+
 input CompleteSecondFactorLoginInput {
   challenge: String!
   secondFactor: SecondFactorInput!
@@ -750,6 +758,54 @@ enum InquiryStatus {
   OPEN
   REJECTED
   RESOLVED
+}
+
+type LaunchComment {
+  """REMOVEDと、投稿者を表示できなくなった競合はnull"""
+  author: UserSummary
+
+  """マークダウンの本文。REMOVEDはnull"""
+  body: String
+
+  """投稿者がプロダクトの投稿者本人か。REMOVEDは偽"""
+  byProductOwner: Boolean!
+
+  """REMOVEDはnull"""
+  createdAt: DateTime
+  depth: Int!
+
+  """REMOVEDは偽"""
+  edited: Boolean!
+  id: ID!
+
+  """トップレベルはnull"""
+  parentId: ID
+  state: LaunchCommentState!
+
+  """投稿者が閲覧者自身か。REMOVEDは偽"""
+  viewerIsAuthor: Boolean!
+}
+
+type LaunchCommentConnection {
+  nodes: [LaunchCommentThread!]!
+  pageInfo: PageInfo!
+}
+
+type LaunchCommentCount {
+  count: Int!
+  launchId: ID!
+}
+
+"""コメントの表示の状態。REMOVEDは削除・非公開化・匿名化・投稿者の退会や停止を区別しない置き換え表示"""
+enum LaunchCommentState {
+  REMOVED
+  SHOWN
+}
+
+"""トップレベルのコメントと、その全ての返信を同じ親の中で古い順に平たく並べた一覧"""
+type LaunchCommentThread {
+  comment: LaunchComment!
+  replies: [LaunchComment!]!
 }
 
 """選べない日の範囲(両端を含む業務日付)"""
@@ -1752,6 +1808,17 @@ type ProductPageScreenshot {
   image: MediaImage
 }
 
+"""プロダクトの評価欄の値"""
+type ProductRating {
+  """丸めない平均値。有効な評価が無ければnull"""
+  average: Float
+  count: Int!
+  productId: ID!
+
+  """閲覧者の評価。未ログイン・投稿者本人・未評価はnull、管理者に無効化された評価も返す"""
+  viewerScore: Int
+}
+
 type ProductScreenshot {
   """画像のバイト数。編集画面で保存済みの合計を数えるのに使う。画像の記録が無ければ0"""
   byteSize: Int!
@@ -1933,6 +2000,12 @@ type Query {
 
   """問い合わせフォームに表示する送信者。停止していないログイン中の利用者だけ値を返す"""
   inquiryComposer: InquiryComposer
+
+  """取消を除くローンチごとの表示できるコメントの数。閲覧できないプロダクトはnull"""
+  launchCommentCounts(productId: ID!): [LaunchCommentCount!]
+
+  """ローンチへのコメントのページ。閲覧できないプロダクトと、別のプロダクト・取消・存在しないローンチはnull"""
+  launchComments(after: String, launchId: ID!, productId: ID!): LaunchCommentConnection
 
   """
   公開プロフィールのローンチ履歴。他人には掲載済みの、本人には論理削除していない自分のプロダクトを、いずれも非公開化中を除いて最新のローンチ日の新しい順に返す。利用者を表示できなければnull。firstは1〜20

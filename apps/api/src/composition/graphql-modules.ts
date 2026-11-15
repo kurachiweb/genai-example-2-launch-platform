@@ -1,5 +1,6 @@
 import { adminSchemaModule } from '../presentation/graphql/modules/admin/index.ts';
 import { directorySchemaModule } from '../presentation/graphql/modules/directory/index.ts';
+import { engagementSchemaModule } from '../presentation/graphql/modules/engagement/index.ts';
 import { helpSchemaModule } from '../presentation/graphql/modules/help/index.ts';
 import { identitySchemaModule } from '../presentation/graphql/modules/identity/index.ts';
 import { inquirySchemaModule } from '../presentation/graphql/modules/inquiry/index.ts';
@@ -29,4 +30,5 @@ export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
   matchSchemaModule,
   directorySchemaModule,
   notificationsSchemaModule,
+  engagementSchemaModule,
 ];

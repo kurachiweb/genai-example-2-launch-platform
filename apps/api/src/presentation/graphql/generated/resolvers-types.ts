@@ -8,6 +8,7 @@ import type { MyProductModel, ProductScreenshotModel, LaunchHistoryProductModel 
 import type { MatchSource, MatchEntrySource, MatchProductSource, UpvoteHistoryItemModel } from '../modules/match/mappers.ts';
 import type { DirectoryItemModel } from '../modules/directory/mappers.ts';
 import type { ProductPageModel, ProductPageRedirectModel, ProductPageScreenshotModel, ProductPageOpponentModel, ProductLiveMatchModel } from '../modules/directory/product-page-mappers.ts';
+import type { LaunchCommentModel } from '../modules/engagement/engagement-views.ts';
 import type { HelpArticleAuthorSource } from '../modules/help/author-fields.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
@@ -409,6 +410,14 @@ export type CheckoutSummary = {
   serviceTiming: Scalars['String']['output'];
 };
 
+/** コメントの投稿と編集の結果 */
+export type CommentMutationResult = {
+  __typename?: 'CommentMutationResult';
+  comment: LaunchComment;
+  /** 評価を添えなければnull */
+  rating?: Maybe<ProductRating>;
+};
+
 export type CompleteSecondFactorLoginInput = {
   challenge: Scalars['String']['input'];
   secondFactor: SecondFactorInput;
@@ -751,6 +760,51 @@ export type InquiryStatus =
   | 'OPEN'
   | 'REJECTED'
   | 'RESOLVED';
+
+export type LaunchComment = {
+  __typename?: 'LaunchComment';
+  /** REMOVEDと、投稿者を表示できなくなった競合はnull */
+  author?: Maybe<UserSummary>;
+  /** マークダウンの本文。REMOVEDはnull */
+  body?: Maybe<Scalars['String']['output']>;
+  /** 投稿者がプロダクトの投稿者本人か。REMOVEDは偽 */
+  byProductOwner: Scalars['Boolean']['output'];
+  /** REMOVEDはnull */
+  createdAt?: Maybe<Scalars['DateTime']['output']>;
+  depth: Scalars['Int']['output'];
+  /** REMOVEDは偽 */
+  edited: Scalars['Boolean']['output'];
+  id: Scalars['ID']['output'];
+  /** トップレベルはnull */
+  parentId?: Maybe<Scalars['ID']['output']>;
+  state: LaunchCommentState;
+  /** 投稿者が閲覧者自身か。REMOVEDは偽 */
+  viewerIsAuthor: Scalars['Boolean']['output'];
+};
+
+export type LaunchCommentConnection = {
+  __typename?: 'LaunchCommentConnection';
+  nodes: Array<LaunchCommentThread>;
+  pageInfo: PageInfo;
+};
+
+export type LaunchCommentCount = {
+  __typename?: 'LaunchCommentCount';
+  count: Scalars['Int']['output'];
+  launchId: Scalars['ID']['output'];
+};
+
+/** コメントの表示の状態。REMOVEDは削除・非公開化・匿名化・投稿者の退会や停止を区別しない置き換え表示 */
+export type LaunchCommentState =
+  | 'REMOVED'
+  | 'SHOWN';
+
+/** トップレベルのコメントと、その全ての返信を同じ親の中で古い順に平たく並べた一覧 */
+export type LaunchCommentThread = {
+  __typename?: 'LaunchCommentThread';
+  comment: LaunchComment;
+  replies: Array<LaunchComment>;
+};
 
 /** 選べない日の範囲(両端を含む業務日付) */
 export type LaunchDateRange = {
@@ -1978,6 +2032,17 @@ export type ProductPageScreenshot = {
   image?: Maybe<MediaImage>;
 };
 
+/** プロダクトの評価欄の値 */
+export type ProductRating = {
+  __typename?: 'ProductRating';
+  /** 丸めない平均値。有効な評価が無ければnull */
+  average?: Maybe<Scalars['Float']['output']>;
+  count: Scalars['Int']['output'];
+  productId: Scalars['ID']['output'];
+  /** 閲覧者の評価。未ログイン・投稿者本人・未評価はnull、管理者に無効化された評価も返す */
+  viewerScore?: Maybe<Scalars['Int']['output']>;
+};
+
 export type ProductScreenshot = {
   __typename?: 'ProductScreenshot';
   /** 画像のバイト数。編集画面で保存済みの合計を数えるのに使う。画像の記録が無ければ0 */
@@ -2127,6 +2192,10 @@ export type Query = {
   inquiryCategories: Array<InquiryCategory>;
   /** 問い合わせフォームに表示する送信者。停止していないログイン中の利用者だけ値を返す */
   inquiryComposer?: Maybe<InquiryComposer>;
+  /** 取消を除くローンチごとの表示できるコメントの数。閲覧できないプロダクトはnull */
+  launchCommentCounts?: Maybe<Array<LaunchCommentCount>>;
+  /** ローンチへのコメントのページ。閲覧できないプロダクトと、別のプロダクト・取消・存在しないローンチはnull */
+  launchComments?: Maybe<LaunchCommentConnection>;
   /** 公開プロフィールのローンチ履歴。他人には掲載済みの、本人には論理削除していない自分のプロダクトを、いずれも非公開化中を除いて最新のローンチ日の新しい順に返す。利用者を表示できなければnull。firstは1〜20 */
   launchHistory?: Maybe<LaunchHistoryConnection>;
   /** 法務文書の最新版と改訂履歴 */
@@ -2255,6 +2324,18 @@ export type QueryHelpArticleHandleAvailabilityArgs = {
 
 export type QueryHelpArticleSearchArgs = {
   query: Scalars['String']['input'];
+};
+
+
+export type QueryLaunchCommentCountsArgs = {
+  productId: Scalars['ID']['input'];
+};
+
+
+export type QueryLaunchCommentsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  launchId: Scalars['ID']['input'];
+  productId: Scalars['ID']['input'];
 };
 
 
@@ -2808,6 +2889,7 @@ export type ResolversTypes = {
   CheckoutStart: ResolverTypeWrapper<CheckoutStart>;
   CheckoutStatus: CheckoutStatus;
   CheckoutSummary: ResolverTypeWrapper<CheckoutSummary>;
+  CommentMutationResult: ResolverTypeWrapper<Omit<CommentMutationResult, 'comment'> & { comment: ResolversTypes['LaunchComment'] }>;
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
   CreateHelpArticleInput: CreateHelpArticleInput;
@@ -2825,6 +2907,7 @@ export type ResolversTypes = {
   DirectoryWin: ResolverTypeWrapper<DirectoryWin>;
   DirectoryWinKind: DirectoryWinKind;
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
+  Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   FollowEntry: ResolverTypeWrapper<Omit<FollowEntry, 'user'> & { user: ResolversTypes['UserSummary'] }>;
   FollowEntryConnection: ResolverTypeWrapper<Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversTypes['FollowEntry']> }>;
   FollowState: ResolverTypeWrapper<FollowState>;
@@ -2853,6 +2936,11 @@ export type ResolversTypes = {
   InquirySender: InquirySender;
   InquiryStatus: InquiryStatus;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  LaunchComment: ResolverTypeWrapper<LaunchCommentModel>;
+  LaunchCommentConnection: ResolverTypeWrapper<Omit<LaunchCommentConnection, 'nodes'> & { nodes: Array<ResolversTypes['LaunchCommentThread']> }>;
+  LaunchCommentCount: ResolverTypeWrapper<LaunchCommentCount>;
+  LaunchCommentState: LaunchCommentState;
+  LaunchCommentThread: ResolverTypeWrapper<Omit<LaunchCommentThread, 'comment' | 'replies'> & { comment: ResolversTypes['LaunchComment'], replies: Array<ResolversTypes['LaunchComment']> }>;
   LaunchDateRange: ResolverTypeWrapper<LaunchDateRange>;
   LaunchDateUnavailableReason: LaunchDateUnavailableReason;
   LaunchDateWindow: ResolverTypeWrapper<LaunchDateWindow>;
@@ -2924,6 +3012,7 @@ export type ResolversTypes = {
   ProductPageRedirect: ResolverTypeWrapper<ProductPageRedirectModel>;
   ProductPageResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['ProductPageResult']>;
   ProductPageScreenshot: ResolverTypeWrapper<ProductPageScreenshotModel>;
+  ProductRating: ResolverTypeWrapper<ProductRating>;
   ProductScreenshot: ResolverTypeWrapper<ProductScreenshotModel>;
   ProfileViewerRelation: ProfileViewerRelation;
   ProfileWebsite: ResolverTypeWrapper<ProfileWebsite>;
@@ -3009,6 +3098,7 @@ export type ResolversParentTypes = {
   CheckoutReturnResult: CheckoutReturnResult;
   CheckoutStart: CheckoutStart;
   CheckoutSummary: CheckoutSummary;
+  CommentMutationResult: Omit<CommentMutationResult, 'comment'> & { comment: ResolversParentTypes['LaunchComment'] };
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
   CreateHelpArticleInput: CreateHelpArticleInput;
@@ -3023,6 +3113,7 @@ export type ResolversParentTypes = {
   DirectoryPage: Omit<DirectoryPage, 'items'> & { items: Array<ResolversParentTypes['DirectoryItem']> };
   DirectoryWin: DirectoryWin;
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
+  Float: Scalars['Float']['output'];
   FollowEntry: Omit<FollowEntry, 'user'> & { user: ResolversParentTypes['UserSummary'] };
   FollowEntryConnection: Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['FollowEntry']> };
   FollowState: FollowState;
@@ -3045,6 +3136,10 @@ export type ResolversParentTypes = {
   InquiryReplyAuthor: InquiryReplyAuthorModel;
   InquiryReplyResult: Omit<InquiryReplyResult, 'message'> & { message: ResolversParentTypes['InquiryMessage'] };
   Int: Scalars['Int']['output'];
+  LaunchComment: LaunchCommentModel;
+  LaunchCommentConnection: Omit<LaunchCommentConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['LaunchCommentThread']> };
+  LaunchCommentCount: LaunchCommentCount;
+  LaunchCommentThread: Omit<LaunchCommentThread, 'comment' | 'replies'> & { comment: ResolversParentTypes['LaunchComment'], replies: Array<ResolversParentTypes['LaunchComment']> };
   LaunchDateRange: LaunchDateRange;
   LaunchDateWindow: LaunchDateWindow;
   LaunchHistoryConnection: Omit<LaunchHistoryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['LaunchHistoryItem']> };
@@ -3101,6 +3196,7 @@ export type ResolversParentTypes = {
   ProductPageRedirect: ProductPageRedirectModel;
   ProductPageResult: ResolversUnionTypes<ResolversParentTypes>['ProductPageResult'];
   ProductPageScreenshot: ProductPageScreenshotModel;
+  ProductRating: ProductRating;
   ProductScreenshot: ProductScreenshotModel;
   ProfileWebsite: ProfileWebsite;
   ProfileWebsiteInput: ProfileWebsiteInput;
@@ -3364,6 +3460,11 @@ export type CheckoutSummaryResolvers<ContextType = GraphQLContext, ParentType ex
   serviceTiming?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
+export type CommentMutationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['CommentMutationResult'] = ResolversParentTypes['CommentMutationResult']> = {
+  comment?: Resolver<ResolversTypes['LaunchComment'], ParentType, ContextType>;
+  rating?: Resolver<Maybe<ResolversTypes['ProductRating']>, ParentType, ContextType>;
+};
+
 export type ConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ConfirmationResult'] = ResolversParentTypes['ConfirmationResult']> = {
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
 };
@@ -3534,6 +3635,34 @@ export type InquiryReplyAuthorResolvers<ContextType = GraphQLContext, ParentType
 export type InquiryReplyResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryReplyResult'] = ResolversParentTypes['InquiryReplyResult']> = {
   message?: Resolver<ResolversTypes['InquiryMessage'], ParentType, ContextType>;
   notificationQueued?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type LaunchCommentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchComment'] = ResolversParentTypes['LaunchComment']> = {
+  author?: Resolver<Maybe<ResolversTypes['UserSummary']>, ParentType, ContextType>;
+  body?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  byProductOwner?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  createdAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  depth?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  edited?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  parentId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  state?: Resolver<ResolversTypes['LaunchCommentState'], ParentType, ContextType>;
+  viewerIsAuthor?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type LaunchCommentConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchCommentConnection'] = ResolversParentTypes['LaunchCommentConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['LaunchCommentThread']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type LaunchCommentCountResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchCommentCount'] = ResolversParentTypes['LaunchCommentCount']> = {
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  launchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+};
+
+export type LaunchCommentThreadResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchCommentThread'] = ResolversParentTypes['LaunchCommentThread']> = {
+  comment?: Resolver<ResolversTypes['LaunchComment'], ParentType, ContextType>;
+  replies?: Resolver<Array<ResolversTypes['LaunchComment']>, ParentType, ContextType>;
 };
 
 export type LaunchDateRangeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchDateRange'] = ResolversParentTypes['LaunchDateRange']> = {
@@ -4003,6 +4132,13 @@ export type ProductPageScreenshotResolvers<ContextType = GraphQLContext, ParentT
   image?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
 };
 
+export type ProductRatingResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductRating'] = ResolversParentTypes['ProductRating']> = {
+  average?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  productId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  viewerScore?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+};
+
 export type ProductScreenshotResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ProductScreenshot'] = ResolversParentTypes['ProductScreenshot']> = {
   byteSize?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   fileId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
@@ -4074,6 +4210,8 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   helpCenter?: Resolver<Array<ResolversTypes['HelpCenterCategory']>, ParentType, ContextType>;
   inquiryCategories?: Resolver<Array<ResolversTypes['InquiryCategory']>, ParentType, ContextType>;
   inquiryComposer?: Resolver<Maybe<ResolversTypes['InquiryComposer']>, ParentType, ContextType>;
+  launchCommentCounts?: Resolver<Maybe<Array<ResolversTypes['LaunchCommentCount']>>, ParentType, ContextType, RequireFields<QueryLaunchCommentCountsArgs, 'productId'>>;
+  launchComments?: Resolver<Maybe<ResolversTypes['LaunchCommentConnection']>, ParentType, ContextType, RequireFields<QueryLaunchCommentsArgs, 'launchId' | 'productId'>>;
   launchHistory?: Resolver<Maybe<ResolversTypes['LaunchHistoryConnection']>, ParentType, ContextType, RequireFields<QueryLaunchHistoryArgs, 'first' | 'userHandle'>>;
   legalDocument?: Resolver<ResolversTypes['LegalDocument'], ParentType, ContextType, RequireFields<QueryLegalDocumentArgs, 'kind'>>;
   legalDocumentVersion?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
@@ -4249,6 +4387,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   CheckoutReturnResult?: CheckoutReturnResultResolvers<ContextType>;
   CheckoutStart?: CheckoutStartResolvers<ContextType>;
   CheckoutSummary?: CheckoutSummaryResolvers<ContextType>;
+  CommentMutationResult?: CommentMutationResultResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   DeleteHelpArticlePayload?: DeleteHelpArticlePayloadResolvers<ContextType>;
@@ -4276,6 +4415,10 @@ export type Resolvers<ContextType = GraphQLContext> = {
   InquiryMessage?: InquiryMessageResolvers<ContextType>;
   InquiryReplyAuthor?: InquiryReplyAuthorResolvers<ContextType>;
   InquiryReplyResult?: InquiryReplyResultResolvers<ContextType>;
+  LaunchComment?: LaunchCommentResolvers<ContextType>;
+  LaunchCommentConnection?: LaunchCommentConnectionResolvers<ContextType>;
+  LaunchCommentCount?: LaunchCommentCountResolvers<ContextType>;
+  LaunchCommentThread?: LaunchCommentThreadResolvers<ContextType>;
   LaunchDateRange?: LaunchDateRangeResolvers<ContextType>;
   LaunchDateWindow?: LaunchDateWindowResolvers<ContextType>;
   LaunchHistoryConnection?: LaunchHistoryConnectionResolvers<ContextType>;
@@ -4328,6 +4471,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   ProductPageRedirect?: ProductPageRedirectResolvers<ContextType>;
   ProductPageResult?: ProductPageResultResolvers<ContextType>;
   ProductPageScreenshot?: ProductPageScreenshotResolvers<ContextType>;
+  ProductRating?: ProductRatingResolvers<ContextType>;
   ProductScreenshot?: ProductScreenshotResolvers<ContextType>;
   ProfileWebsite?: ProfileWebsiteResolvers<ContextType>;
   PublicProfile?: PublicProfileResolvers<ContextType>;

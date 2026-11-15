@@ -121,3 +121,25 @@ describe('GRAPHQL_SCHEMA_MODULES(プロフィール)', () => {
     ).toBe('MediaImage');
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(コメントと評価)', () => {
+  test('コメントの照会と、後続の操作が返す評価欄の値と操作の結果の型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+
+    expect(String(query?.['launchComments']?.type)).toBe(
+      'LaunchCommentConnection',
+    );
+    expect(String(query?.['launchCommentCounts']?.type)).toBe(
+      '[LaunchCommentCount!]',
+    );
+    expect(String(schema.getType('LaunchCommentState'))).toBe(
+      'LaunchCommentState',
+    );
+    expect(String(schema.getType('ProductRating'))).toBe('ProductRating');
+    expect(String(schema.getType('CommentMutationResult'))).toBe(
+      'CommentMutationResult',
+    );
+  });
+});
