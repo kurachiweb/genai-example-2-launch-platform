@@ -48,8 +48,31 @@ export interface CommentPostResult {
   readonly rating: ProductRatingView | undefined;
 }
 
+// 本文の検証と利用者の状態は呼び出し元のリゾルバが先に行う
+export interface CommentUpdateInput {
+  readonly user: CurrentUser;
+  readonly commentId: string;
+  readonly body: string;
+  // トップレベルの編集だけに添えられる。添えなければ既存の評価を変えない
+  readonly rating: RatingScore | undefined;
+  readonly now: Date;
+}
+
+export type CommentUpdateResult = CommentPostResult;
+
+// 利用者の状態は呼び出し元のリゾルバが先に行う。メールアドレスの確認は求めない
+export interface CommentRemoveInput {
+  readonly user: CurrentUser;
+  readonly commentId: string;
+  readonly now: Date;
+}
+
+export type RemovedCommentView = Extract<CommentView, { kind: 'removed' }>;
+
 export interface CommentService {
   post(input: CommentPostInput): Promise<CommentPostResult>;
+  update(input: CommentUpdateInput): Promise<CommentUpdateResult>;
+  remove(input: CommentRemoveInput): Promise<RemovedCommentView>;
 }
 
 type RepliableParent = CommentRecord & {
@@ -78,6 +101,27 @@ function replyDepthOf(parent: CommentInsert['parent']): CommentDepth {
     return 1;
   }
   return parent.depth === 1 ? 2 : 3;
+}
+
+type OwnShownComment = CommentRecord & { readonly authorUserId: string };
+
+// 投稿者自身が利用できることは呼び出し元が確かめている
+function isOwnShownComment(
+  comment: CommentRecord | undefined,
+  userId: string,
+): comment is OwnShownComment {
+  return (
+    comment !== undefined &&
+    comment.authorUserId === userId &&
+    comment.deletedAt === null &&
+    comment.hiddenAt === null &&
+    comment.anonymizedAt === null
+  );
+}
+
+interface Editable {
+  readonly comment: OwnShownComment;
+  readonly target: EngagementTarget;
 }
 
 interface Postable {
@@ -156,6 +200,110 @@ export class StoreCommentService implements CommentService {
               viewerUserId: authorUserId,
             }),
     };
+  }
+
+  // 投稿からの経過時間とローンチの状態では制限しない
+  async update(input: CommentUpdateInput): Promise<CommentUpdateResult> {
+    const { user, commentId, body, rating, now } = input;
+    const userId = user.user.id;
+    const { comment, target } = await this.#editable(input);
+    if (rating !== undefined && comment.depth !== 1) {
+      throw ratingOnReplyError();
+    }
+    if (rating !== undefined && target.viewerIsOwner) {
+      throw engagementError('rating_own_product');
+    }
+    const outcome = await this.writer.update({
+      body: {
+        commentId,
+        authorUserId: userId,
+        bodyMarkdown: body,
+        requireListed: !target.viewerIsOwner,
+        at: now,
+      },
+      rating:
+        rating === undefined
+          ? undefined
+          : {
+              ratingId: this.ids.generate(),
+              productId: comment.productId,
+              userId,
+              score: rating,
+              at: now,
+            },
+    });
+    if (outcome === 'not-found') {
+      throw engagementError('comment_not_found');
+    }
+    if (outcome === 'rejected') {
+      // 読み直してコメントと投稿先に変化が無ければ、残る条件は利用者の状態である
+      await this.#editable(input);
+      throw engagementError('account_unavailable');
+    }
+    return {
+      comment: {
+        kind: 'shown',
+        id: commentId,
+        parentId: comment.parentId,
+        depth: comment.depth,
+        authorUserId: userId,
+        bodyMarkdown: body,
+        createdAt: comment.createdAt,
+        edited: true,
+        byProductOwner: target.viewerIsOwner,
+        viewerIsAuthor: true,
+      },
+      rating:
+        rating === undefined
+          ? undefined
+          : await readProductRatingView(this.ratings, {
+              productId: comment.productId,
+              viewerUserId: userId,
+            }),
+    };
+  }
+
+  // 削除の書き込みはプロダクトの閲覧の可否を条件に持たないため、ここで判定する
+  async remove(input: CommentRemoveInput): Promise<RemovedCommentView> {
+    const { user, commentId, now } = input;
+    const { comment } = await this.#editable(input);
+    const outcome = await this.writer.remove({
+      commentId,
+      authorUserId: user.user.id,
+      at: now,
+    });
+    if (outcome === 'not-found') {
+      throw engagementError('comment_not_found');
+    }
+    return {
+      kind: 'removed',
+      id: commentId,
+      parentId: comment.parentId,
+      depth: comment.depth,
+    };
+  }
+
+  // 他者・置き換え表示・閲覧できないプロダクトのコメントを区別せずに見つからないとする
+  async #editable(input: {
+    readonly user: CurrentUser;
+    readonly commentId: string;
+    readonly now: Date;
+  }): Promise<Editable> {
+    const userId = input.user.user.id;
+    const comments = await this.comments.findByIds([input.commentId]);
+    const comment = comments.get(input.commentId);
+    if (!isOwnShownComment(comment, userId)) {
+      throw engagementError('comment_not_found');
+    }
+    const target = await this.targets.resolve({
+      productId: comment.productId,
+      viewerUserId: userId,
+      now: input.now,
+    });
+    if (target === undefined) {
+      throw engagementError('comment_not_found');
+    }
+    return { comment, target };
   }
 
   // 投稿先・ローンチの状態・親の順に判定し、最初に当たった理由で拒否する

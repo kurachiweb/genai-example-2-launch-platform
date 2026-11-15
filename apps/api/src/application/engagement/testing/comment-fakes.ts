@@ -1,6 +1,7 @@
 import type { RatingScore } from '../../../../common-lib/engagement/engagement-rules.ts';
 import type {
   CommentRecord,
+  CommentSoftDelete,
   CommentStore,
   RatingStore,
   RatingSummary,
@@ -12,6 +13,8 @@ import type {
 import type { IdGenerator } from '../../../../lib/core/ids/id-generator.ts';
 import type {
   CommentPostWrite,
+  CommentUpdateOutcome,
+  CommentUpdateWrite,
   CommentWriter,
   WriteOutcome,
 } from '../ports.ts';
@@ -81,19 +84,37 @@ export function createSequentialIds(ids: readonly string[]): IdGenerator {
 export interface FakeCommentWriter {
   readonly writer: CommentWriter;
   readonly posts: CommentPostWrite[];
+  readonly updates: CommentUpdateWrite[];
+  readonly removes: CommentSoftDelete[];
 }
 
 // 書き込みの時点の状態の変化を再現するため、呼ばれたときに状態を変えて結果を返す関数を渡せる
 export function createFakeCommentWriter(
-  onPost: (input: CommentPostWrite) => WriteOutcome = () => 'committed',
+  handlers: {
+    readonly onPost?: (input: CommentPostWrite) => WriteOutcome;
+    readonly onUpdate?: (input: CommentUpdateWrite) => CommentUpdateOutcome;
+    readonly onRemove?: (input: CommentSoftDelete) => 'deleted' | 'not-found';
+  } = {},
 ): FakeCommentWriter {
   const posts: CommentPostWrite[] = [];
+  const updates: CommentUpdateWrite[] = [];
+  const removes: CommentSoftDelete[] = [];
   return {
     posts,
+    updates,
+    removes,
     writer: {
       post(input) {
         posts.push(input);
-        return Promise.resolve(onPost(input));
+        return Promise.resolve(handlers.onPost?.(input) ?? 'committed');
+      },
+      update(input) {
+        updates.push(input);
+        return Promise.resolve(handlers.onUpdate?.(input) ?? 'committed');
+      },
+      remove(input) {
+        removes.push(input);
+        return Promise.resolve(handlers.onRemove?.(input) ?? 'deleted');
       },
     },
   };

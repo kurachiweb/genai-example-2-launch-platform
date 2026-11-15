@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test } from 'vitest';
 
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
+  SAMPLE_COMMENT_ID,
   SAMPLE_LAUNCH_ID,
   SAMPLE_MEMBER_ID,
   SAMPLE_OWNER_ID,
@@ -26,6 +27,7 @@ import { D1CommentWriter } from '../infrastructure/engagement/d1-comment-writer.
 import {
   countComments,
   insertLaunch,
+  readComment,
   readRatingsOf,
   T0,
 } from '../../lib/workers/engagement/testing/engagement-fixtures.ts';
@@ -157,5 +159,52 @@ describe('APIサーバーのコメントの投稿の束縛', () => {
     expect(await readRatingsOf(1)).toEqual([
       expect.objectContaining({ userId: SAMPLE_MEMBER_ID, score: 2 }),
     ]);
+  });
+});
+
+describe('APIサーバーのコメントの編集と削除の束縛', () => {
+  test('解決したユースケースは、掲載中のプロダクトの自分のコメントの本文と評価をD1で更新し、削除で置き換え表示にする', async () => {
+    await insertLaunch(2, 1, {
+      launchDate: '2026-11-10',
+      outcome: 'won',
+      decidedAt: T0,
+    });
+    const service = createContainer().get<CommentService>(
+      ENGAGEMENT_TYPES.CommentService,
+    );
+    const user = currentUserOf(SAMPLE_MEMBER_ID);
+
+    const updated = await service.update({
+      user,
+      commentId: SAMPLE_COMMENT_ID,
+      body: '直した本文',
+      rating: 5,
+      now: LAUNCH_DAY_NOON,
+    });
+    const removed = await service.remove({
+      user,
+      commentId: SAMPLE_COMMENT_ID,
+      now: LAUNCH_DAY_NOON,
+    });
+
+    expect(updated.comment).toMatchObject({
+      kind: 'shown',
+      bodyMarkdown: '直した本文',
+      edited: true,
+    });
+    expect(await readRatingsOf(1)).toEqual([
+      expect.objectContaining({ userId: SAMPLE_MEMBER_ID, score: 5 }),
+    ]);
+    expect(removed).toEqual({
+      kind: 'removed',
+      id: SAMPLE_COMMENT_ID,
+      parentId: null,
+      depth: 1,
+    });
+    expect(await readComment(1)).toMatchObject({
+      body: '直した本文',
+      editedAt: LAUNCH_DAY_NOON,
+      deletedAt: LAUNCH_DAY_NOON,
+    });
   });
 });

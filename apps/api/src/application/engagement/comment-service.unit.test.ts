@@ -80,11 +80,12 @@ function setup(options: SetupOptions = {}) {
     scores: options.scores,
   });
   const onPost = options.onPost;
-  const writer = createFakeCommentWriter(
-    onPost === undefined
-      ? undefined
-      : (input) => onPost(input, { state, comments: comments.records }),
-  );
+  const writer = createFakeCommentWriter({
+    onPost:
+      onPost === undefined
+        ? undefined
+        : (input) => onPost(input, { state, comments: comments.records }),
+  });
   const service = new StoreCommentService(
     new DirectoryEngagementTargetResolver(targets.directory),
     comments.store,

@@ -29,6 +29,10 @@ export const ENGAGEMENT_ERRORS = Object.freeze({
     message:
       '返信先のコメントには返信できません。ページを再読み込みしてください。',
   },
+  comment_not_found: {
+    kind: 'not_found',
+    message: 'コメントが見つかりません。削除された可能性があります。',
+  },
   rating_own_product: {
     kind: 'unprocessable',
     message: OWN_PRODUCT_RATING_MESSAGE,
