@@ -1,0 +1,5 @@
+mutation ClientRateProduct($productId: ID!, $score: Int!) {
+  rateProduct(productId: $productId, score: $score) {
+    ...ProductRating
+  }
+}

@@ -1,0 +1,10 @@
+mutation ClientPostComment($input: PostCommentInput!) {
+  postComment(input: $input) {
+    comment {
+      ...LaunchComment
+    }
+    rating {
+      ...ProductRating
+    }
+  }
+}

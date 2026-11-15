@@ -1,0 +1,6 @@
+query ClientLaunchCommentCounts($productId: ID!) {
+  launchCommentCounts(productId: $productId) {
+    launchId
+    count
+  }
+}

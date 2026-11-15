@@ -114,6 +114,11 @@ export type InquiryStatus =
   | 'REJECTED'
   | 'RESOLVED';
 
+/** コメントの表示の状態。REMOVEDは削除・非公開化・匿名化・投稿者の退会や停止を区別しない置き換え表示 */
+export type LaunchCommentState =
+  | 'REMOVED'
+  | 'SHOWN';
+
 /** ローンチ日を選べない理由 */
 export type LaunchDateUnavailableReason =
   | 'OUT_OF_RANGE'
@@ -221,6 +226,18 @@ export type PaymentRecordStatus =
   | 'FAILED'
   | 'PENDING'
   | 'SUCCEEDED';
+
+/** トップレベルのコメントか返信の投稿。評価はトップレベルにだけ添えられ、添えなければ既存の評価を変えない */
+export type PostCommentInput = {
+  /** マークダウンの本文 */
+  body: string;
+  launchId: string | number;
+  /** トップレベルはnull */
+  parentId?: string | number | null | undefined;
+  productId: string | number;
+  /** 1〜5の評価 */
+  rating?: number | null | undefined;
+};
 
 export type ProductAwardKind =
   | 'WEEK'
@@ -338,6 +355,15 @@ export type UltrasPlanStatus =
   /** 支払いの再試行中 */
   | 'PAST_DUE';
 
+/** 自分の表示できるコメントの編集。評価はトップレベルにだけ添えられ、添えなければ既存の評価を変えない */
+export type UpdateCommentInput = {
+  /** マークダウンの本文 */
+  body: string;
+  commentId: string | number;
+  /** 1〜5の評価 */
+  rating?: number | null | undefined;
+};
+
 export type UpdateMyProfileInput = {
   /** 保存後の画像。現在の画像のIDなら維持し、nullなら削除する */
   avatarFileId?: string | number | null | undefined;
@@ -379,6 +405,10 @@ export type UpvoteRestriction =
   | 'GUEST'
   | 'NOT_ACCEPTING'
   | 'OWN_MATCH';
+
+export type LaunchCommentFragment = { id: string, parentId: string | null, depth: number, state: LaunchCommentState, body: string | null, createdAt: string | null, edited: boolean, byProductOwner: boolean, viewerIsAuthor: boolean, author: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
+
+export type ProductRatingFragment = { productId: string, average: number | null, count: number, viewerScore: number | null };
 
 export type MatchByeFragment = { reason: ByeReason, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, endedEarly: boolean }, entry: { id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } };
 
@@ -444,6 +474,70 @@ export type ClientProductPageQuery = { productPage:
     | { __typename: 'ProductPage', id: string, handle: string, name: string, tagline: string, websiteUrl: string, description: string, viewerIsOwner: boolean, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, screenshots: Array<{ fileId: string, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }>, owner: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }, awards: Array<{ kind: ProductAwardKind, count: number, labels: Array<string> }>, record: { firstLaunchDate: string | null, launchCount: number, wins: number, losses: number }, launches: Array<{ id: string, number: number, launchDate: string, kickoffAt: string, status: LaunchStatus, kickedOff: boolean, latestKickedOff: boolean, summary: { label: string, inMatch: boolean }, matches: Array<{ id: string, entryId: string, kind: MatchKind, round: number | null, stage: MatchStage | null, date: string, result: MatchEntryResult, decision: MatchDecision, endedEarly: boolean, ownUpvoteCount: number, opponentUpvoteCount: number | null, opponent: { kind: ProductPageOpponentKind, handle: string | null, name: string | null, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } }> }> }
     | { __typename: 'ProductPageRedirect', handle: string }
    | null };
+
+export type ClientCancelProductRatingMutationVariables = Exact<{
+  productId: string | number;
+}>;
+
+
+export type ClientCancelProductRatingMutation = { cancelProductRating: { productId: string, average: number | null, count: number, viewerScore: number | null } };
+
+export type ClientDeleteCommentMutationVariables = Exact<{
+  commentId: string | number;
+}>;
+
+
+export type ClientDeleteCommentMutation = { deleteComment: { id: string, parentId: string | null, depth: number, state: LaunchCommentState, body: string | null, createdAt: string | null, edited: boolean, byProductOwner: boolean, viewerIsAuthor: boolean, author: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } };
+
+export type ClientLaunchCommentCountsQueryVariables = Exact<{
+  productId: string | number;
+}>;
+
+
+export type ClientLaunchCommentCountsQuery = { launchCommentCounts: Array<{ launchId: string, count: number }> | null };
+
+export type ClientLaunchCommentsQueryVariables = Exact<{
+  productId: string | number;
+  launchId: string | number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientLaunchCommentsQuery = { launchComments: { nodes: Array<{ comment: { id: string, parentId: string | null, depth: number, state: LaunchCommentState, body: string | null, createdAt: string | null, edited: boolean, byProductOwner: boolean, viewerIsAuthor: boolean, author: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }, replies: Array<{ id: string, parentId: string | null, depth: number, state: LaunchCommentState, body: string | null, createdAt: string | null, edited: boolean, byProductOwner: boolean, viewerIsAuthor: boolean, author: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> }>, pageInfo: { endCursor: string | null, hasNextPage: boolean } } | null };
+
+export type ClientPostCommentMutationVariables = Exact<{
+  input: PostCommentInput;
+}>;
+
+
+export type ClientPostCommentMutation = { postComment: { comment: { id: string, parentId: string | null, depth: number, state: LaunchCommentState, body: string | null, createdAt: string | null, edited: boolean, byProductOwner: boolean, viewerIsAuthor: boolean, author: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }, rating: { productId: string, average: number | null, count: number, viewerScore: number | null } | null } };
+
+export type ClientProductRatingQueryVariables = Exact<{
+  productId: string | number;
+}>;
+
+
+export type ClientProductRatingQuery = { productRating: { productId: string, average: number | null, count: number, viewerScore: number | null } | null };
+
+export type ClientRateProductMutationVariables = Exact<{
+  productId: string | number;
+  score: number;
+}>;
+
+
+export type ClientRateProductMutation = { rateProduct: { productId: string, average: number | null, count: number, viewerScore: number | null } };
+
+export type ClientEngagementResendVerificationEmailMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientEngagementResendVerificationEmailMutation = { resendVerificationEmail: ResendVerificationResult };
+
+export type ClientUpdateCommentMutationVariables = Exact<{
+  input: UpdateCommentInput;
+}>;
+
+
+export type ClientUpdateCommentMutation = { updateComment: { comment: { id: string, parentId: string | null, depth: number, state: LaunchCommentState, body: string | null, createdAt: string | null, edited: boolean, byProductOwner: boolean, viewerIsAuthor: boolean, author: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }, rating: { productId: string, average: number | null, count: number, viewerScore: number | null } | null } };
 
 export type ClientHelpArticleSearchQueryVariables = Exact<{
   query: string;
@@ -914,6 +1008,8 @@ export type ClientViewerUltrasQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type ClientViewerUltrasQuery = { viewerUltras: { entitled: boolean, canOpenPortal: boolean, plan: { status: UltrasPlanStatus, startedAt: string, currentPeriodEndsAt: string | null, canceledAt: string | null, benefitEndsAt: string | null } | null } | null };
 
+export const LaunchCommentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"LaunchComment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"LaunchComment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"parentId"}},{"kind":"Field","name":{"kind":"Name","value":"depth"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"author"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"edited"}},{"kind":"Field","name":{"kind":"Name","value":"byProductOwner"}},{"kind":"Field","name":{"kind":"Name","value":"viewerIsAuthor"}}]}}]} as unknown as DocumentNode<LaunchCommentFragment, unknown>;
+export const ProductRatingFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProductRating"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ProductRating"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productId"}},{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"viewerScore"}}]}}]} as unknown as DocumentNode<ProductRatingFragment, unknown>;
 export const MatchByeFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MatchBye"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchBye"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}}]}},{"kind":"Field","name":{"kind":"Name","value":"entry"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchByeFragment, unknown>;
 export const MatchFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Match"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Match"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}},{"kind":"Field","name":{"kind":"Name","value":"viewerRestriction"}},{"kind":"Field","name":{"kind":"Name","value":"viewerUpvotedEntryId"}},{"kind":"Field","name":{"kind":"Name","value":"entries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchFragment, unknown>;
 export const NotificationSettingsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationSettings"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"preferences"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"topic"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}},{"kind":"Field","name":{"kind":"Name","value":"suppression"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"until"}}]}},{"kind":"Field","name":{"kind":"Name","value":"deliveryStatusAvailable"}},{"kind":"Field","name":{"kind":"Name","value":"emailVerified"}},{"kind":"Field","name":{"kind":"Name","value":"editable"}}]}}]} as unknown as DocumentNode<NotificationSettingsFragment, unknown>;
@@ -925,6 +1021,15 @@ export const ClientOwnerFollowStatusDocument = {"__meta__":{"hash":"sha256:03009
 export const ClientProductLiveMatchDocument = {"__meta__":{"hash":"sha256:92342f5c738115984b0046edc048dac373e356d45cb24476b78fb16205607640"}} as unknown as DocumentNode<ClientProductLiveMatchQuery, ClientProductLiveMatchQueryVariables>;
 export const ClientProductOwnerStatusDocument = {"__meta__":{"hash":"sha256:9421f04de8a663379f0729e296406d84ab07ad3a1e9829bdd9bd994914f1aea6"}} as unknown as DocumentNode<ClientProductOwnerStatusQuery, ClientProductOwnerStatusQueryVariables>;
 export const ClientProductPageDocument = {"__meta__":{"hash":"sha256:64811745ada8f0c5f555bda41d5b916026763167c37fe22f27ce84723b3ff351"}} as unknown as DocumentNode<ClientProductPageQuery, ClientProductPageQueryVariables>;
+export const ClientCancelProductRatingDocument = {"__meta__":{"hash":"sha256:08d41bc2f163ec3c7f23f9c6dbd09014796d836427806d6b99cef4aa775b1e01"}} as unknown as DocumentNode<ClientCancelProductRatingMutation, ClientCancelProductRatingMutationVariables>;
+export const ClientDeleteCommentDocument = {"__meta__":{"hash":"sha256:4783197e394558307a11a5cd9764cbe756d6ca270883617a990af77d21530351"}} as unknown as DocumentNode<ClientDeleteCommentMutation, ClientDeleteCommentMutationVariables>;
+export const ClientLaunchCommentCountsDocument = {"__meta__":{"hash":"sha256:96ec5518d9dc84a44e15ca8d5fa0c4eba2f03e2ccc4192e735f9f2c86711e5ea"}} as unknown as DocumentNode<ClientLaunchCommentCountsQuery, ClientLaunchCommentCountsQueryVariables>;
+export const ClientLaunchCommentsDocument = {"__meta__":{"hash":"sha256:b5355a0827bebf2e6ac9b86f925f2f811da12f11a95da1de993c9cf658a92bde"}} as unknown as DocumentNode<ClientLaunchCommentsQuery, ClientLaunchCommentsQueryVariables>;
+export const ClientPostCommentDocument = {"__meta__":{"hash":"sha256:5a51ffb3cbd643174b41931800e710496fa8680b27877938bcd721a1b0cc946c"}} as unknown as DocumentNode<ClientPostCommentMutation, ClientPostCommentMutationVariables>;
+export const ClientProductRatingDocument = {"__meta__":{"hash":"sha256:33fa5cd7015d63dde69a4f6173e819369e4847f2ef94bc237df92b01e2d54fb0"}} as unknown as DocumentNode<ClientProductRatingQuery, ClientProductRatingQueryVariables>;
+export const ClientRateProductDocument = {"__meta__":{"hash":"sha256:b5d84d0f75c0d2b5d8642b47b42f04e2ba916a789778ed9a64209820478b2046"}} as unknown as DocumentNode<ClientRateProductMutation, ClientRateProductMutationVariables>;
+export const ClientEngagementResendVerificationEmailDocument = {"__meta__":{"hash":"sha256:0c3e0beffb58d8d3cb62efcbf51105ed2f88fbb02ef333b64ecac1c4e84d21a1"}} as unknown as DocumentNode<ClientEngagementResendVerificationEmailMutation, ClientEngagementResendVerificationEmailMutationVariables>;
+export const ClientUpdateCommentDocument = {"__meta__":{"hash":"sha256:c759c7bb6e35047d577e5ece10269724d91705c820cab9ac4efca5c0077adc2c"}} as unknown as DocumentNode<ClientUpdateCommentMutation, ClientUpdateCommentMutationVariables>;
 export const ClientHelpArticleSearchDocument = {"__meta__":{"hash":"sha256:18bc6acd31f0e63f195cbc824ca531b586b43a7331473c55cb9e48bd037a30db"}} as unknown as DocumentNode<ClientHelpArticleSearchQuery, ClientHelpArticleSearchQueryVariables>;
 export const ClientHelpArticleDocument = {"__meta__":{"hash":"sha256:e1738bce2edec858e8d8c31d1f3f33e88ce73c7ea2b4cada18ecbecb2debdfd6"}} as unknown as DocumentNode<ClientHelpArticleQuery, ClientHelpArticleQueryVariables>;
 export const ClientHelpCenterDocument = {"__meta__":{"hash":"sha256:5e029413c0c816e81ed4fc20bce7bdd6bdf39f9e20d9aa3b0e4847eb13a0dd93"}} as unknown as DocumentNode<ClientHelpCenterQuery, ClientHelpCenterQueryVariables>;

@@ -1,0 +1,10 @@
+mutation ClientUpdateComment($input: UpdateCommentInput!) {
+  updateComment(input: $input) {
+    comment {
+      ...LaunchComment
+    }
+    rating {
+      ...ProductRating
+    }
+  }
+}
