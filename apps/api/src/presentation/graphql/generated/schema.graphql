@@ -1209,6 +1209,9 @@ type Mutation {
 
   """管理者の削除"""
   deleteAdmin(id: ID!, reason: String): Boolean!
+
+  """自分の表示できるコメントを置き換え表示にし、返信は残す"""
+  deleteComment(commentId: ID!): LaunchComment!
   deleteHelpArticle(id: ID!, reason: String): DeleteHelpArticlePayload!
   deleteHelpCategory(id: ID!): DeleteHelpCategoryPayload!
 
@@ -1241,6 +1244,9 @@ type Mutation {
 
   """この端末のログアウト"""
   logout: Boolean!
+
+  """コメントとそれに添えた評価を1回の書き込みで保存する"""
+  postComment(input: PostCommentInput!): CommentMutationResult!
 
   """本人の問い合わせへの追加メッセージ"""
   postInquiryMessage(input: InquiryMessageInput!, inquiryId: ID!): InquiryMessage!
@@ -1348,6 +1354,9 @@ type Mutation {
 
   """プロフィールの更新。avatarFileIdの省略は画像を取り除く"""
   updateAdminProfile(avatarFileId: ID, id: ID!, nickname: String!, title: String): AdminAccount!
+
+  """本文と、それに添えた評価を1回の書き込みで保存する"""
+  updateComment(input: UpdateCommentInput!): CommentMutationResult!
   updateHelpArticle(input: UpdateHelpArticleInput!): AdminHelpArticle!
 
   """メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない"""
@@ -1561,6 +1570,20 @@ enum PaymentRecordStatus {
   FAILED
   PENDING
   SUCCEEDED
+}
+
+"""トップレベルのコメントか返信の投稿。評価はトップレベルにだけ添えられ、添えなければ既存の評価を変えない"""
+input PostCommentInput {
+  """マークダウンの本文"""
+  body: String!
+  launchId: ID!
+
+  """トップレベルはnull"""
+  parentId: ID
+  productId: ID!
+
+  """1〜5の評価"""
+  rating: Int
 }
 
 """賞の種類ごとの受賞"""
@@ -2276,6 +2299,16 @@ type UltrasPromotionSetting {
 
   """変更のたびに1つ進む版。変更の入力にそのまま渡す"""
   version: Int!
+}
+
+"""自分の表示できるコメントの編集。評価はトップレベルにだけ添えられ、添えなければ既存の評価を変えない"""
+input UpdateCommentInput {
+  """マークダウンの本文"""
+  body: String!
+  commentId: ID!
+
+  """1〜5の評価"""
+  rating: Int
 }
 
 input UpdateHelpArticleInput {

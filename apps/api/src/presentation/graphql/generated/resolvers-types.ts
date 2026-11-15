@@ -1157,6 +1157,8 @@ export type Mutation = {
   createUltrasPortalSession: UltrasPortalSession;
   /** 管理者の削除 */
   deleteAdmin: Scalars['Boolean']['output'];
+  /** 自分の表示できるコメントを置き換え表示にし、返信は残す */
+  deleteComment: LaunchComment;
   deleteHelpArticle: DeleteHelpArticlePayload;
   deleteHelpCategory: DeleteHelpCategoryPayload;
   /** カテゴリの削除。紐付く問い合わせを標準カテゴリへ付け替える。モデレーター以上 */
@@ -1179,6 +1181,8 @@ export type Mutation = {
   login: LoginResult;
   /** この端末のログアウト */
   logout: Scalars['Boolean']['output'];
+  /** コメントとそれに添えた評価を1回の書き込みで保存する */
+  postComment: CommentMutationResult;
   /** 本人の問い合わせへの追加メッセージ */
   postInquiryMessage: InquiryMessage;
   /** 下書きの公開。最上位管理者 */
@@ -1244,6 +1248,8 @@ export type Mutation = {
   unfollowUser: FollowState;
   /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
   updateAdminProfile: AdminAccount;
+  /** 本文と、それに添えた評価を1回の書き込みで保存する */
+  updateComment: CommentMutationResult;
   updateHelpArticle: AdminHelpArticle;
   /** メールアドレスが未確認の利用者も保存できる。停止中の利用者は保存できない */
   updateMyProfile: MyProfile;
@@ -1372,6 +1378,11 @@ export type MutationDeleteAdminArgs = {
 };
 
 
+export type MutationDeleteCommentArgs = {
+  commentId: Scalars['ID']['input'];
+};
+
+
 export type MutationDeleteHelpArticleArgs = {
   id: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
@@ -1429,6 +1440,11 @@ export type MutationInviteAdminArgs = {
 
 export type MutationLoginArgs = {
   input: LoginInput;
+};
+
+
+export type MutationPostCommentArgs = {
+  input: PostCommentInput;
 };
 
 
@@ -1589,6 +1605,11 @@ export type MutationUpdateAdminProfileArgs = {
   id: Scalars['ID']['input'];
   nickname: Scalars['String']['input'];
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationUpdateCommentArgs = {
+  input: UpdateCommentInput;
 };
 
 
@@ -1813,6 +1834,18 @@ export type PaymentRecordStatus =
   | 'FAILED'
   | 'PENDING'
   | 'SUCCEEDED';
+
+/** トップレベルのコメントか返信の投稿。評価はトップレベルにだけ添えられ、添えなければ既存の評価を変えない */
+export type PostCommentInput = {
+  /** マークダウンの本文 */
+  body: Scalars['String']['input'];
+  launchId: Scalars['ID']['input'];
+  /** トップレベルはnull */
+  parentId?: InputMaybe<Scalars['ID']['input']>;
+  productId: Scalars['ID']['input'];
+  /** 1〜5の評価 */
+  rating?: InputMaybe<Scalars['Int']['input']>;
+};
 
 /** 賞の種類ごとの受賞 */
 export type ProductAward = {
@@ -2602,6 +2635,15 @@ export type UltrasPromotionSetting = {
   version: Scalars['Int']['output'];
 };
 
+/** 自分の表示できるコメントの編集。評価はトップレベルにだけ添えられ、添えなければ既存の評価を変えない */
+export type UpdateCommentInput = {
+  /** マークダウンの本文 */
+  body: Scalars['String']['input'];
+  commentId: Scalars['ID']['input'];
+  /** 1〜5の評価 */
+  rating?: InputMaybe<Scalars['Int']['input']>;
+};
+
 export type UpdateHelpArticleInput = {
   expectedRevision: Scalars['Int']['input'];
   fields: HelpArticleFields;
@@ -2993,6 +3035,7 @@ export type ResolversTypes = {
   PaymentRecordConnection: ResolverTypeWrapper<PaymentRecordConnection>;
   PaymentRecordKind: PaymentRecordKind;
   PaymentRecordStatus: PaymentRecordStatus;
+  PostCommentInput: PostCommentInput;
   ProductAward: ResolverTypeWrapper<ProductAward>;
   ProductAwardKind: ProductAwardKind;
   ProductCategory: ResolverTypeWrapper<ProductCategory>;
@@ -3047,6 +3090,7 @@ export type ResolversTypes = {
   UltrasPlanStatus: UltrasPlanStatus;
   UltrasPortalSession: ResolverTypeWrapper<UltrasPortalSession>;
   UltrasPromotionSetting: ResolverTypeWrapper<UltrasPromotionSetting>;
+  UpdateCommentInput: UpdateCommentInput;
   UpdateHelpArticleInput: UpdateHelpArticleInput;
   UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateNotificationPreferenceInput: UpdateNotificationPreferenceInput;
@@ -3179,6 +3223,7 @@ export type ResolversParentTypes = {
   PageInfo: PageInfo;
   PaymentRecord: PaymentRecord;
   PaymentRecordConnection: PaymentRecordConnection;
+  PostCommentInput: PostCommentInput;
   ProductAward: ProductAward;
   ProductCategory: ProductCategory;
   ProductCategoryInput: ProductCategoryInput;
@@ -3225,6 +3270,7 @@ export type ResolversParentTypes = {
   UltrasPlan: UltrasPlan;
   UltrasPortalSession: UltrasPortalSession;
   UltrasPromotionSetting: UltrasPromotionSetting;
+  UpdateCommentInput: UpdateCommentInput;
   UpdateHelpArticleInput: UpdateHelpArticleInput;
   UpdateMyProfileInput: UpdateMyProfileInput;
   UpdateNotificationPreferenceInput: UpdateNotificationPreferenceInput;
@@ -3849,6 +3895,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   createProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationCreateProductCategoryArgs, 'input'>>;
   createUltrasPortalSession?: Resolver<ResolversTypes['UltrasPortalSession'], ParentType, ContextType>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
+  deleteComment?: Resolver<ResolversTypes['LaunchComment'], ParentType, ContextType, RequireFields<MutationDeleteCommentArgs, 'commentId'>>;
   deleteHelpArticle?: Resolver<ResolversTypes['DeleteHelpArticlePayload'], ParentType, ContextType, RequireFields<MutationDeleteHelpArticleArgs, 'id'>>;
   deleteHelpCategory?: Resolver<ResolversTypes['DeleteHelpCategoryPayload'], ParentType, ContextType, RequireFields<MutationDeleteHelpCategoryArgs, 'id'>>;
   deleteInquiryCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteInquiryCategoryArgs, 'id'>>;
@@ -3861,6 +3908,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   inviteAdmin?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationInviteAdminArgs, 'email'>>;
   login?: Resolver<ResolversTypes['LoginResult'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'input'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  postComment?: Resolver<ResolversTypes['CommentMutationResult'], ParentType, ContextType, RequireFields<MutationPostCommentArgs, 'input'>>;
   postInquiryMessage?: Resolver<ResolversTypes['InquiryMessage'], ParentType, ContextType, RequireFields<MutationPostInquiryMessageArgs, 'input' | 'inquiryId'>>;
   publishLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationPublishLegalDocumentArgs, 'input'>>;
   recordCheckoutConsent?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<MutationRecordCheckoutConsentArgs, 'purchaseId'>>;
@@ -3894,6 +3942,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
   unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
+  updateComment?: Resolver<ResolversTypes['CommentMutationResult'], ParentType, ContextType, RequireFields<MutationUpdateCommentArgs, 'input'>>;
   updateHelpArticle?: Resolver<ResolversTypes['AdminHelpArticle'], ParentType, ContextType, RequireFields<MutationUpdateHelpArticleArgs, 'input'>>;
   updateMyProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType, RequireFields<MutationUpdateMyProfileArgs, 'input'>>;
   updateNotificationPreference?: Resolver<ResolversTypes['NotificationSettings'], ParentType, ContextType, RequireFields<MutationUpdateNotificationPreferenceArgs, 'input'>>;

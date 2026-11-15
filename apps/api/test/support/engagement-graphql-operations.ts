@@ -130,6 +130,42 @@ export const LAUNCH_COMMENT_COUNTS = /* GraphQL */ `
   }
 `;
 
+const COMMENT_MUTATION_RESULT_SELECTION = /* GraphQL */ `
+  comment {
+    ${LAUNCH_COMMENT_SELECTION}
+  }
+  rating {
+    productId
+    average
+    count
+    viewerScore
+  }
+`;
+
+export const POST_COMMENT = /* GraphQL */ `
+  mutation PostComment($input: PostCommentInput!) {
+    postComment(input: $input) {
+      ${COMMENT_MUTATION_RESULT_SELECTION}
+    }
+  }
+`;
+
+export const UPDATE_COMMENT = /* GraphQL */ `
+  mutation UpdateComment($input: UpdateCommentInput!) {
+    updateComment(input: $input) {
+      ${COMMENT_MUTATION_RESULT_SELECTION}
+    }
+  }
+`;
+
+export const DELETE_COMMENT = /* GraphQL */ `
+  mutation DeleteComment($commentId: ID!) {
+    deleteComment(commentId: $commentId) {
+      ${LAUNCH_COMMENT_SELECTION}
+    }
+  }
+`;
+
 export interface LaunchCommentFields {
   readonly id: string;
   readonly parentId: string | null;
@@ -166,8 +202,26 @@ export interface LaunchCommentCountFields {
   readonly count: number;
 }
 
+export interface ProductRatingFields {
+  readonly productId: string;
+  readonly average: number | null;
+  readonly count: number;
+  readonly viewerScore: number | null;
+}
+
+export interface CommentMutationResultFields {
+  readonly comment: LaunchCommentFields;
+  readonly rating: ProductRatingFields | null;
+}
+
 const engagementGateway = createGraphQLGateway({
-  documents: [LAUNCH_COMMENTS, LAUNCH_COMMENT_COUNTS],
+  documents: [
+    LAUNCH_COMMENTS,
+    LAUNCH_COMMENT_COUNTS,
+    POST_COMMENT,
+    UPDATE_COMMENT,
+    DELETE_COMMENT,
+  ],
   schemaModules: [
     mediaSchemaModule,
     profileSchemaModule,
@@ -235,4 +289,43 @@ export function fetchLaunchCommentCounts(
   return engagementGateway.call<{
     launchCommentCounts: readonly LaunchCommentCountFields[] | null;
   }>(LAUNCH_COMMENT_COUNTS, { productId }, options);
+}
+
+// 省略できる項目を送らないことと明示したnullを送ることを区別して確かめるため、渡した項目だけを送る
+export interface PostCommentVariables {
+  readonly productId: string;
+  readonly launchId: string;
+  readonly parentId?: string | null;
+  readonly body: string;
+  readonly rating?: number | null;
+}
+
+export interface UpdateCommentVariables {
+  readonly commentId: string;
+  readonly body: string;
+  readonly rating?: number | null;
+}
+
+export function postComment(
+  input: PostCommentVariables,
+  options?: GatewayCallOptions,
+) {
+  return engagementGateway.call<{
+    postComment: CommentMutationResultFields | null;
+  }>(POST_COMMENT, { input }, options);
+}
+
+export function updateComment(
+  input: UpdateCommentVariables,
+  options?: GatewayCallOptions,
+) {
+  return engagementGateway.call<{
+    updateComment: CommentMutationResultFields | null;
+  }>(UPDATE_COMMENT, { input }, options);
+}
+
+export function deleteComment(commentId: string, options?: GatewayCallOptions) {
+  return engagementGateway.call<{
+    deleteComment: LaunchCommentFields | null;
+  }>(DELETE_COMMENT, { commentId }, options);
 }

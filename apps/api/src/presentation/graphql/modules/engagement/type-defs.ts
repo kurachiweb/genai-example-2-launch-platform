@@ -62,6 +62,36 @@ export const ENGAGEMENT_TYPE_DEFS = /* GraphQL */ `
     viewerScore: Int
   }
 
+  "トップレベルのコメントか返信の投稿。評価はトップレベルにだけ添えられ、添えなければ既存の評価を変えない"
+  input PostCommentInput {
+    productId: ID!
+    launchId: ID!
+    "トップレベルはnull"
+    parentId: ID
+    "マークダウンの本文"
+    body: String!
+    "1〜5の評価"
+    rating: Int
+  }
+
+  "自分の表示できるコメントの編集。評価はトップレベルにだけ添えられ、添えなければ既存の評価を変えない"
+  input UpdateCommentInput {
+    commentId: ID!
+    "マークダウンの本文"
+    body: String!
+    "1〜5の評価"
+    rating: Int
+  }
+
+  type Mutation {
+    "コメントとそれに添えた評価を1回の書き込みで保存する"
+    postComment(input: PostCommentInput!): CommentMutationResult!
+    "本文と、それに添えた評価を1回の書き込みで保存する"
+    updateComment(input: UpdateCommentInput!): CommentMutationResult!
+    "自分の表示できるコメントを置き換え表示にし、返信は残す"
+    deleteComment(commentId: ID!): LaunchComment!
+  }
+
   "コメントの投稿と編集の結果"
   type CommentMutationResult {
     comment: LaunchComment!

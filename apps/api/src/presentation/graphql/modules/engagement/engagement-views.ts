@@ -1,9 +1,15 @@
 import type { CommentPage } from '../../../../application/engagement/comment-reader.ts';
+import type { ProductRatingView } from '../../../../application/engagement/product-rating-view.ts';
 import type { CommentView } from '../../../../domain/engagement/comment-threads.ts';
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import { userSummaryLoader } from '../profile/user-summary.ts';
 
 export type LaunchCommentModel = CommentView;
+
+export interface CommentMutationResultModel {
+  readonly comment: LaunchCommentModel;
+  readonly rating: ProductRatingView | null;
+}
 
 export interface LaunchCommentThreadModel {
   readonly comment: LaunchCommentModel;

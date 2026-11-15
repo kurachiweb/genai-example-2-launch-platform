@@ -7,6 +7,7 @@ import { ENGAGEMENT_TYPE_DEFS } from './type-defs.ts';
 const engagementResolvers = {
   ...engagementViewResolvers,
   Query: { ...commentResolvers.Query },
+  Mutation: { ...commentResolvers.Mutation },
 } satisfies Resolvers;
 
 export const engagementSchemaModule = defineSchemaModule({
