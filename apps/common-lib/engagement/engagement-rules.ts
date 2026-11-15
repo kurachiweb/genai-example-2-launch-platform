@@ -21,15 +21,13 @@ export const COMMENT_BODY_RULE: MarkdownTextRule = Object.freeze({
   required: true,
 });
 
-export const commentBodySchema: z.ZodType<string> =
+export const commentBodySchema = (): z.ZodType<string> =>
   markdownTextSchema(COMMENT_BODY_RULE);
 
 const RATING_SCORE_MESSAGE = '評価は1〜5で選んでください。';
 
-export const ratingScoreSchema: z.ZodType<RatingScore> = z.literal(
-  RATING_SCORES,
-  { error: RATING_SCORE_MESSAGE },
-);
+export const ratingScoreSchema = (): z.ZodType<RatingScore> =>
+  z.literal(RATING_SCORES, { error: RATING_SCORE_MESSAGE });
 
 export const COMMENT_BOT_ACTIONS = Object.freeze({
   post: 'comment_post',

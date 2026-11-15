@@ -51,16 +51,16 @@ export const POST_COMMENT_ARGS = z.object({
     productId: commentTargetId,
     launchId: commentTargetId,
     parentId: optional(parentCommentId),
-    body: commentBodySchema,
-    rating: optional(ratingScoreSchema),
+    body: commentBodySchema(),
+    rating: optional(ratingScoreSchema()),
   }),
 });
 
 export const UPDATE_COMMENT_ARGS = z.object({
   input: z.object({
     commentId: ownCommentId,
-    body: commentBodySchema,
-    rating: optional(ratingScoreSchema),
+    body: commentBodySchema(),
+    rating: optional(ratingScoreSchema()),
   }),
 });
 
@@ -74,7 +74,7 @@ export const PRODUCT_RATING_ARGS = z.object({
 
 export const RATE_PRODUCT_ARGS = z.object({
   productId: ratingTargetId,
-  score: ratingScoreSchema,
+  score: ratingScoreSchema(),
 });
 
 export const CANCEL_PRODUCT_RATING_ARGS = PRODUCT_RATING_ARGS;

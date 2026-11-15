@@ -41,8 +41,8 @@ const COMMENT_IDS = [
 
 const issueMessagesOf = (
   result:
-    | ReturnType<typeof commentBodySchema.safeParse>
-    | ReturnType<typeof ratingScoreSchema.safeParse>,
+    | ReturnType<ReturnType<typeof commentBodySchema>['safeParse']>
+    | ReturnType<ReturnType<typeof ratingScoreSchema>['safeParse']>,
 ): readonly string[] =>
   result.success ? [] : result.error.issues.map(({ message }) => message);
 
@@ -88,7 +88,7 @@ describe('commentBodySchema', () => {
       ],
     ])('%sの本文を受け付ける', (_, text) => {
       expect(countGraphemes(text)).toBe(COMMENT_MAX_GRAPHEMES);
-      expect(commentBodySchema.safeParse(text)).toEqual({
+      expect(commentBodySchema().safeParse(text)).toEqual({
         success: true,
         data: text,
       });
@@ -101,7 +101,7 @@ describe('commentBodySchema', () => {
         FAMILY_EMOJI.repeat(COMMENT_MAX_GRAPHEMES + 1),
       ],
     ])('%sの本文を上限の文言で拒否する', (_, text) => {
-      expect(issueMessagesOf(commentBodySchema.safeParse(text))).toEqual([
+      expect(issueMessagesOf(commentBodySchema().safeParse(text))).toEqual([
         TOO_LONG_MESSAGE,
       ]);
     });
@@ -113,7 +113,7 @@ describe('commentBodySchema', () => {
       ['半角空白・全角空白・タブ・改行だけ', ' 　\t\r\n'],
       ['ノーブレークスペースだけ', '\u00a0\u00a0'],
     ])('%sの本文を必須の文言で拒否する', (_, text) => {
-      expect(issueMessagesOf(commentBodySchema.safeParse(text))).toEqual([
+      expect(issueMessagesOf(commentBodySchema().safeParse(text))).toEqual([
         REQUIRED_MESSAGE,
       ]);
     });
@@ -121,7 +121,7 @@ describe('commentBodySchema', () => {
     test('上限を超える空白だけの本文も必須の文言だけで拒否する', () => {
       expect(
         issueMessagesOf(
-          commentBodySchema.safeParse(' '.repeat(COMMENT_MAX_GRAPHEMES + 1)),
+          commentBodySchema().safeParse(' '.repeat(COMMENT_MAX_GRAPHEMES + 1)),
         ),
       ).toEqual([REQUIRED_MESSAGE]);
     });
@@ -133,21 +133,21 @@ describe('commentBodySchema', () => {
       ['NUL', 'あ\u0000い'],
       ['ESC', 'あ\u001bい'],
     ])('%sを含む本文を使用できない文字の文言で拒否する', (_, text) => {
-      expect(issueMessagesOf(commentBodySchema.safeParse(text))).toEqual([
+      expect(issueMessagesOf(commentBodySchema().safeParse(text))).toEqual([
         FORBIDDEN_CHARACTERS_MESSAGE,
       ]);
     });
 
     test('使用できない文字と空白だけを、必須より先に使用できない文字の文言だけで拒否する', () => {
-      expect(issueMessagesOf(commentBodySchema.safeParse(' \u0000 '))).toEqual([
-        FORBIDDEN_CHARACTERS_MESSAGE,
-      ]);
+      expect(
+        issueMessagesOf(commentBodySchema().safeParse(' \u0000 ')),
+      ).toEqual([FORBIDDEN_CHARACTERS_MESSAGE]);
     });
 
     test('使用できない文字を含む上限超過の本文を、上限より先に使用できない文字の文言だけで拒否する', () => {
       expect(
         issueMessagesOf(
-          commentBodySchema.safeParse(
+          commentBodySchema().safeParse(
             `${'a'.repeat(COMMENT_MAX_GRAPHEMES)}\u0000`,
           ),
         ),
@@ -158,7 +158,7 @@ describe('commentBodySchema', () => {
   test('マークダウンの原文を変えずに返す', () => {
     const markdown = '## 質問\n\n**どの言語**で作りましたか?\n';
 
-    expect(commentBodySchema.safeParse(markdown)).toEqual({
+    expect(commentBodySchema().safeParse(markdown)).toEqual({
       success: true,
       data: markdown,
     });
@@ -169,7 +169,7 @@ describe('ratingScoreSchema', () => {
   test.each(RATING_SCORES.map((score) => [score]))(
     '評価の値%iを受け付ける',
     (score) => {
-      expect(ratingScoreSchema.safeParse(score)).toEqual({
+      expect(ratingScoreSchema().safeParse(score)).toEqual({
         success: true,
         data: score,
       });
@@ -186,7 +186,7 @@ describe('ratingScoreSchema', () => {
     ['null', null],
     ['未指定', undefined],
   ])('%sの評価の値を評価の文言で拒否する', (_, value) => {
-    expect(issueMessagesOf(ratingScoreSchema.safeParse(value))).toEqual([
+    expect(issueMessagesOf(ratingScoreSchema().safeParse(value))).toEqual([
       RATING_SCORE_MESSAGE,
     ]);
   });

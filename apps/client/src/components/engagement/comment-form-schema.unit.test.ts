@@ -19,10 +19,10 @@ const messagesOf = (result: {
   result.error?.issues.map(({ message }) => message) ?? [];
 
 const sharedBodyMessageOf = (body: string): string | undefined =>
-  commentBodySchema.safeParse(body).error?.issues[0]?.message;
+  commentBodySchema().safeParse(body).error?.issues[0]?.message;
 
 const sharedRatingMessageOf = (rating: number): string | undefined =>
-  ratingScoreSchema.safeParse(rating).error?.issues[0]?.message;
+  ratingScoreSchema().safeParse(rating).error?.issues[0]?.message;
 
 const INVALID_BODIES = Object.freeze([
   ['空', ''],

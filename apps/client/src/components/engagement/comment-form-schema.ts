@@ -5,9 +5,13 @@ import {
 } from '../../../common-lib/engagement/engagement-rules.ts';
 import { z } from '../../../lib/utilities/validation/zod.ts';
 
+const BODY_RULE = commentBodySchema();
+
+const RATING_RULE = ratingScoreSchema();
+
 // マークダウンは空白や改行に意味があるため値を変えない。共用の検証規則は入力の型が未指定のため、文字列の入力として包む
 const body = z.string().superRefine((value, context) => {
-  const message = commentBodySchema.safeParse(value).error?.issues[0]?.message;
+  const message = BODY_RULE.safeParse(value).error?.issues[0]?.message;
   if (message !== undefined) {
     context.addIssue({ code: 'custom', message });
   }
@@ -21,7 +25,7 @@ const rating = z
     if (value === null) {
       return null;
     }
-    const result = ratingScoreSchema.safeParse(value);
+    const result = RATING_RULE.safeParse(value);
     if (!result.success) {
       context.addIssue({
         code: 'custom',

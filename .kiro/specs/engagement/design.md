@@ -467,8 +467,8 @@ export declare const COMMENT_MAX_DEPTH: 3;
 export declare const RATING_SCORES: readonly [1, 2, 3, 4, 5];
 export type RatingScore = (typeof RATING_SCORES)[number];
 export declare const COMMENT_BODY_RULE: MarkdownTextRule; // { label: 'コメント', maxGraphemes: 2000, required: true }
-export declare const commentBodySchema: z.ZodType<string>; // markdownTextSchema(COMMENT_BODY_RULE)
-export declare const ratingScoreSchema: z.ZodType<RatingScore>; // 1〜5の整数、違反は「評価は1〜5で選んでください。」
+export declare const commentBodySchema: () => z.ZodType<string>; // markdownTextSchema(COMMENT_BODY_RULE)。呼ばれた時に作る(coding/005)
+export declare const ratingScoreSchema: () => z.ZodType<RatingScore>; // 1〜5の整数、違反は「評価は1〜5で選んでください。」。呼ばれた時に作る(coding/005)
 export declare const COMMENT_BOT_ACTIONS: {
   readonly post: 'comment_post';
   readonly edit: 'comment_edit';
