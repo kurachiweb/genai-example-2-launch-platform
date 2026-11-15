@@ -148,7 +148,7 @@
   - 完了状態: テストが成功し、apiのDIの解決とユーザーライフサイクルの同期の登録口の検証を通る
   - _Requirements: 13.1, 13.7_
 
-- [ ] 5.2 4:21の匿名化のジョブを作り、日次のジョブへ登録する
+- [x] 5.2 4:21の匿名化のジョブを作り、日次のジョブへ登録する
   - 先に、単体テストで、業務日付の切り替わりの前後の閾値の計算、500件ずつ最大10回で500件未満になったら止まること、期限を過ぎた残りがあれば件数だけの`error`のログになること、同じ日の再実行で結果が変わらないこと、ジョブの定義の名前・時刻・`order`を確かめる
   - ジョブのファイルが`COMMENT_ANONYMIZATION_JOB_DEFINITION`(`engagement.comment-anonymization`・4:21・`order` 1400を凍結した値)を輸出し、apiの`SCHEDULED_JOBS`に並べ(product-launch・match-engine・notificationsのジョブの定義と同じ形)、apiの束縛に追記する。4:21の起動の時間の予算(`SCHEDULED_RUN_BUDGETS`の合計300秒)の値は変えない
   - 完了状態: 単体テストとcronの登録の検証が成功する(ローカルでの4:21の起動による匿名化の確かめは9.1のE2Eで行い、本タスクでは起動の補助を作らない)
@@ -304,3 +304,4 @@
 - 4.2: 操作のリゾルバの順は呼び出し元→入力の検証→利用者の状態(投稿・編集は`requireVerifiedUser`、削除は`requireWritableUser`)→`context.assertHuman(COMMENT_BOT_ACTIONS.*)`→ユースケース(`backend/004`と`upvote`の前例)。返信への評価の`validation_error`は`withInputPath('input', …)`で`input.rating`になる(clientは`serverFieldPrefix="input"`で`rating`)。形式違反の`parentId`は`comment_parent_unavailable`、`commentId`は`comment_not_found`の文言。評価を添えない結果の`rating`はnull。テストは設計のファイル構成に無い`comment-mutations.worker.test.ts`。許可リストの再生成は6.1。
 - 4.3: 評価のリゾルバは`rating-resolvers.ts`(照会`productRating`は`currentUser`、`rateProduct`は`requireVerifiedUser`、`cancelProductRating`は`requireWritableUser`。どれも`assertHuman`を呼ばない、仮4)。評価の値の違反は`field` `score`(トップレベルの引数のため。clientの評価欄は`AppForm`を使わずエラーの`code`で文言を選ぶ)。引数の検証は利用者の判定より先に走るため、未ログインの不正な値は`validation_error`になる。テストは設計のファイル構成に無い`rating-resolvers.worker.test.ts`。clientの操作は`productId`・`score`の引数に合わせる。
 - 5.1: 退会の同期の処理は`apps/api/src/infrastructure/engagement/engagement-withdrawal-sync-handler.ts`(DBの型を扱うため前例どおりinfrastructure)、`USER_LIFECYCLE_SYNC_HANDLERS`の末尾に`engagement.withdrawal`(`withdrawn`だけ、同期の登録口は`order`を持たない)。`deleted_at IS NULL`の行だけに`deleted_at`・`updated_at`を退会の日時で入れ、本人が先に削除した日時は上書きしない(匿名化の期限を保つ)。`docs/onboardings/project-values.md`の「同期の波及処理の登録」の行(7件)は8.2で`engagement.withdrawal`を加えて8件にする。テストの補助は設計のファイル構成に無い`infrastructure/engagement/testing/withdrawal-fixtures.ts`。
+- 5.2(差し戻し1回): 4:21の匿名化のジョブは`apps/api/src/application/engagement/comment-anonymization-job.ts`(`COMMENT_ANONYMIZATION_JOB_DEFINITION`、`SCHEDULED_JOBS`の`NOTIFICATION_MAINTENANCE_JOB_DEFINITION`の直後)。期限を過ぎた残りは、設計のファイル構成に無い`EngagementIncidentReporter`(`ports.ts`、種類`comment-anonymization-overdue`と件数)と`infrastructure/engagement/sentry-engagement-incident-reporter.ts`で`logger.error`と`captureEvent`へ送る(前例のincident reporterと同じ形、`try/finally`で匿名化の失敗でも報告)。design.mdの「`error`のログ(Sentryへ送られる)」はログの出力先がコンソールだけであることと食い違う(最終報告で挙げる)。`infra/004`の送信対象の表は汎用の行が覆うため追記していない。`ENGAGEMENT_TYPES`は12個になった。4:21の並びの検査(`notifications-scheduled-jobs.unit.test.ts`・`search-module*.worker.test.ts`)の期待値を更新した。`docs/onboardings/project-values.md`のジョブの表への追記は8.2。

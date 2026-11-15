@@ -2,8 +2,10 @@ import type { Hono } from 'hono';
 import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import type { DirectoryItemMetricSource } from '../application/directory/item-metric-sources.ts';
+import { CommentAnonymizationJob } from '../application/engagement/comment-anonymization-job.ts';
 import { ThreadQueryCommentCountMetricSource } from '../application/engagement/comment-count-metric-source.ts';
 import {
   type CommentReader,
@@ -20,6 +22,7 @@ import {
 import { ENGAGEMENT_TYPES } from '../application/engagement/engagement-types.ts';
 import type {
   CommentWriter,
+  EngagementIncidentReporter,
   RatingWriter,
 } from '../application/engagement/ports.ts';
 import {
@@ -32,6 +35,7 @@ import {
 } from '../infrastructure/engagement/comment-moderation-control.ts';
 import { D1CommentWriter } from '../infrastructure/engagement/d1-comment-writer.ts';
 import { D1RatingWriter } from '../infrastructure/engagement/d1-rating-writer.ts';
+import { SentryEngagementIncidentReporter } from '../infrastructure/engagement/sentry-engagement-incident-reporter.ts';
 import { EngagementWithdrawalSyncHandler } from '../infrastructure/engagement/engagement-withdrawal-sync-handler.ts';
 import {
   D1RatingModerationControl,
@@ -65,5 +69,11 @@ export const ENGAGEMENT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<UserLifecycleSyncHandler>(
       ENGAGEMENT_TYPES.EngagementWithdrawalSyncHandler,
     ).to(EngagementWithdrawalSyncHandler);
+    bind<ScheduledJobHandler>(ENGAGEMENT_TYPES.CommentAnonymizationJob).to(
+      CommentAnonymizationJob,
+    );
+    bind<EngagementIncidentReporter>(
+      ENGAGEMENT_TYPES.EngagementIncidentReporter,
+    ).to(SentryEngagementIncidentReporter);
   }),
 };

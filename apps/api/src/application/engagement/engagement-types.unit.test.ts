@@ -15,10 +15,11 @@ const EXPECTED_NAMES = [
   'CommentCountMetricSource',
   'EngagementWithdrawalSyncHandler',
   'CommentAnonymizationJob',
+  'EngagementIncidentReporter',
 ] as const;
 
 describe('ENGAGEMENT_TYPES', () => {
-  test('apiの投稿先の解決・ユースケース・書き込みの単位・読み取り・管理の操作口・供給元・同期の処理・ジョブの識別子だけを持つ', () => {
+  test('apiの投稿先の解決・ユースケース・書き込みの単位・読み取り・管理の操作口・供給元・同期の処理・ジョブ・異常の報告の識別子だけを持つ', () => {
     expect(Object.keys(ENGAGEMENT_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

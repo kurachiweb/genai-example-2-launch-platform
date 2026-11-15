@@ -36,3 +36,15 @@ export interface RatingWriter {
   // 同じ利用者とプロダクトの評価があれば値を上書きし、無効化の印を保つ
   upsert(input: RatingUpsert): Promise<WriteOutcome>;
 }
+
+export interface EngagementIncident {
+  // 削除から匿名化の期限を過ぎても匿名化されていないコメントの数
+  readonly kind: 'comment-anonymization-overdue';
+  readonly count: number;
+}
+
+// application層はSentryの送信部品を読み込めないため、運用者が検知すべき出来事をこの形で受け取る
+export interface EngagementIncidentReporter {
+  // 運用者が検知できるようログとエラートラッキングへ送る。個人情報を含めない
+  report(incident: EngagementIncident): void;
+}

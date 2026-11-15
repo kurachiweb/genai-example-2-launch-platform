@@ -29,6 +29,7 @@ import {
 } from '../application/engagement/engagement-target-resolver.ts';
 import type {
   CommentWriter,
+  EngagementIncidentReporter,
   RatingWriter,
 } from '../application/engagement/ports.ts';
 import {
@@ -37,6 +38,7 @@ import {
 } from '../application/engagement/rating-service.ts';
 import { currentUserOf } from '../application/engagement/testing/comment-fakes.ts';
 import type { DirectoryItemMetricSource } from '../application/directory/item-metric-sources.ts';
+import { CommentAnonymizationJob } from '../application/engagement/comment-anonymization-job.ts';
 import { ThreadQueryCommentCountMetricSource } from '../application/engagement/comment-count-metric-source.ts';
 import {
   type CommentModerationControl,
@@ -48,6 +50,7 @@ import {
 } from '../infrastructure/engagement/rating-moderation-control.ts';
 import { D1CommentWriter } from '../infrastructure/engagement/d1-comment-writer.ts';
 import { D1RatingWriter } from '../infrastructure/engagement/d1-rating-writer.ts';
+import { SentryEngagementIncidentReporter } from '../infrastructure/engagement/sentry-engagement-incident-reporter.ts';
 import {
   after,
   commentIdOf,
@@ -63,9 +66,15 @@ import {
   productIdOf,
   T0,
 } from '../../lib/workers/engagement/testing/engagement-fixtures.ts';
+import type {
+  ScheduledJobContext,
+  ScheduledJobHandler,
+} from '../../lib/core/scheduling/cron-registry.ts';
 import {
   fromBusinessDateTime,
   parseBusinessDate,
+  toBusinessDateTime,
+  toUtcCronExpression,
 } from '../../lib/core/time/business-time.ts';
 import { MODULES } from './modules.ts';
 
@@ -559,5 +568,101 @@ describe('APIサーバーの管理の操作口とコメント数の供給元の�
       [SAMPLE_PRODUCT_ID, 1],
       [productIdOf(2), 0],
     ]);
+  });
+});
+
+describe('APIサーバーのコメントの匿名化のジョブの束縛', () => {
+  const JOB_DATE = parseBusinessDate('2026-11-20');
+  const MAINTENANCE_TIME = { hour: 4, minute: 21 } as const;
+  const THRESHOLD = fromBusinessDateTime(parseBusinessDate('2026-11-08'), {
+    hour: 0,
+    minute: 0,
+  });
+
+  function createScheduledContainer(): Container {
+    return createInvocationContainer(
+      {
+        env,
+        executionCtx: createExecutionContext(),
+        info: {
+          kind: 'scheduled',
+          correlationId: crypto.randomUUID(),
+          clientIp: undefined,
+        },
+      },
+      MODULES,
+    );
+  }
+
+  function contextOf(): ScheduledJobContext {
+    const scheduledTime = fromBusinessDateTime(JOB_DATE, MAINTENANCE_TIME);
+    return {
+      scheduledTime,
+      cron: toUtcCronExpression(MAINTENANCE_TIME),
+      business: toBusinessDateTime(scheduledTime),
+    };
+  }
+
+  test('匿名化のジョブと異常の報告を定期実行の処理単位のコンテナから解決する', () => {
+    const container = createScheduledContainer();
+
+    expect(
+      container.get<ScheduledJobHandler>(
+        ENGAGEMENT_TYPES.CommentAnonymizationJob,
+      ),
+    ).toBeInstanceOf(CommentAnonymizationJob);
+    expect(
+      container.get<EngagementIncidentReporter>(
+        ENGAGEMENT_TYPES.EngagementIncidentReporter,
+      ),
+    ).toBeInstanceOf(SentryEngagementIncidentReporter);
+  });
+
+  test('解決したジョブは、業務日付の12日前の0:00より前に削除したD1のコメントだけを匿名化し、同じ日の再実行で変えない', async () => {
+    await insertComments([
+      {
+        index: 2,
+        product: 1,
+        launch: 1,
+        author: 2,
+        columns: { deletedAt: new Date(THRESHOLD.getTime() - 1) },
+      },
+      {
+        index: 3,
+        product: 1,
+        launch: 1,
+        author: 2,
+        columns: { deletedAt: THRESHOLD },
+      },
+      {
+        index: 4,
+        product: 1,
+        launch: 1,
+        author: 2,
+        columns: { hiddenAt: new Date(THRESHOLD.getTime() - 60_000) },
+      },
+    ]);
+    const job = createScheduledContainer().get<ScheduledJobHandler>(
+      ENGAGEMENT_TYPES.CommentAnonymizationJob,
+    );
+
+    await job.run(contextOf());
+    const anonymized = await readComment(2);
+    await createScheduledContainer()
+      .get<ScheduledJobHandler>(ENGAGEMENT_TYPES.CommentAnonymizationJob)
+      .run(contextOf());
+
+    expect(anonymized).toMatchObject({ body: '', authorUserId: null });
+    expect(anonymized?.anonymizedAt).toBeInstanceOf(Date);
+    expect(await readComment(2)).toEqual(anonymized);
+    expect(await readComment(3)).toMatchObject({
+      body: 'コメント3',
+      anonymizedAt: null,
+    });
+    expect(await readComment(4)).toMatchObject({
+      body: 'コメント4',
+      anonymizedAt: null,
+    });
+    expect(await readComment(1)).toMatchObject({ anonymizedAt: null });
   });
 });

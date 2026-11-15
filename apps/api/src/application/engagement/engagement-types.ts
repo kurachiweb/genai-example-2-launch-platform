@@ -33,6 +33,10 @@ const CommentAnonymizationJob: unique symbol = Symbol.for(
   'engagement.CommentAnonymizationJob',
 );
 
+const EngagementIncidentReporter: unique symbol = Symbol.for(
+  'engagement.EngagementIncidentReporter',
+);
+
 export const ENGAGEMENT_TYPES = Object.freeze({
   EngagementTargetResolver,
   CommentService,
@@ -45,4 +49,5 @@ export const ENGAGEMENT_TYPES = Object.freeze({
   CommentCountMetricSource,
   EngagementWithdrawalSyncHandler,
   CommentAnonymizationJob,
+  EngagementIncidentReporter,
 });
