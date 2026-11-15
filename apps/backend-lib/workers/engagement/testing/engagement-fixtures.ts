@@ -29,9 +29,13 @@ export {
 };
 
 type CommentRow = typeof launchComments.$inferInsert;
+type RatingRow = typeof productRatings.$inferInsert;
 
 export const COMMENT_GUARD_VIOLATION =
   /NOT NULL constraint failed: launch_comments\.product_id/u;
+
+export const RATING_GUARD_VIOLATION =
+  /NOT NULL constraint failed: product_ratings\.product_id/u;
 
 export async function runBatch(
   items: readonly [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]],
@@ -97,6 +101,49 @@ export async function readComment(index: number) {
 
 export async function countComments(): Promise<number> {
   return db.$count(launchComments);
+}
+
+export function ratingIdOf(index: number): string {
+  return `01JD0RATE${String(index).padStart(17, '0')}`;
+}
+
+export interface RatingFixture {
+  readonly index: number;
+  readonly product: number;
+  readonly user: number;
+  readonly score?: 1 | 2 | 3 | 4 | 5;
+  readonly columns?: Partial<RatingRow>;
+}
+
+export async function insertRating(fixture: RatingFixture): Promise<void> {
+  await db.insert(productRatings).values({
+    id: ratingIdOf(fixture.index),
+    productId: productIdOf(fixture.product),
+    userId: userIdOf(fixture.user),
+    score: fixture.score ?? 3,
+    createdAt: T0,
+    updatedAt: T0,
+    ...fixture.columns,
+  });
+}
+
+export async function readRating(index: number) {
+  const [row] = await db
+    .select()
+    .from(productRatings)
+    .where(eq(productRatings.id, ratingIdOf(index)));
+  return row;
+}
+
+export async function readRatingsOf(product: number) {
+  return db
+    .select()
+    .from(productRatings)
+    .where(eq(productRatings.productId, productIdOf(product)));
+}
+
+export async function countRatings(): Promise<number> {
+  return db.$count(productRatings);
 }
 
 export async function clearEngagementTables(): Promise<void> {
