@@ -28,3 +28,14 @@ export const COMMENT_CANCEL_LABEL = 'キャンセル';
 export const COMMENT_RATING_ROW_LABEL = '評価(任意)';
 
 export const COMMENT_RATING_INPUT_LABEL = 'このプロダクトの評価(任意)';
+
+export const COMMENT_ACTIONS_MENU_LABEL = 'コメントの操作';
+
+export const COMMENT_EDIT_LABEL = '編集';
+
+export const COMMENT_DELETE_LABEL = '削除';
+
+export const COMMENT_DELETE_CONFIRM_TITLE = 'コメントを削除しますか?';
+
+export const COMMENT_DELETE_CONFIRM_DESCRIPTION =
+  '削除したコメントは「このコメントは削除されました。」と表示され、付いている返信はそのまま残ります。';
