@@ -4,6 +4,10 @@ import { ContainerModule } from 'inversify';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
+  type CommentReader,
+  StoreCommentReader,
+} from '../application/engagement/comment-reader.ts';
+import {
   type CommentService,
   StoreCommentService,
 } from '../application/engagement/comment-service.ts';
@@ -26,5 +30,6 @@ export const ENGAGEMENT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<CommentService>(ENGAGEMENT_TYPES.CommentService).to(
       StoreCommentService,
     );
+    bind<CommentReader>(ENGAGEMENT_TYPES.CommentReader).to(StoreCommentReader);
   }),
 };
