@@ -257,7 +257,7 @@
   - _Boundary: `docs/GUIDES/tech/backend/015-tombstoned-comment-threads.md`・`frontend/015-star-rating-and-threaded-composer.md`・`backend/README.md`・`frontend/README.md`・`CLAUDE.md`_
   - _Requirements: 15.4_
 
-- [ ] 8.2 (P) オンボーディングに本specの固有の値を記録する
+- [x] 8.2 (P) オンボーディングに本specの固有の値を記録する
   - `docs/onboardings/project-values.md`に、処理とジョブの名前と`order`、bot対策の操作名、区画と項目の値の登録の`order`、上限の値を加える
   - 完了状態: 文書が整形の検査を通り、3・5・6・7のタスクの登録の値と一致する
   - _Depends: 5.3, 7.9_
@@ -320,3 +320,4 @@
 - 7.8: ローンチのコメント欄は`launch-comments-section.tsx`の`LaunchCommentsSection`で、`PRODUCT_LAUNCH_SECTIONS`に`engagement.comments`(10)を登録した。件数は区画ごとに`launchCommentCountsQueryOptions`の`select: countOf(launch.id)`で取り出し全ブロックで1回の取得を共有し、`enabled: launch.kickedOff`。開閉の矢印は遷移を付けずに切り替え(前例のサポーターの開閉の`transition-transform`と揃っていない。テストは区画の中のボタン以外のアニメーションを0件とする)。ボタンの名前は「コメント 1,234件」。`docs/onboardings/project-values.md`の区画の登録の行は`PRODUCT_LAUNCH_SECTIONS`を「登録0件」、`PRODUCT_PAGE_SECTIONS`を「4件」と書いて実態と食い違うため、8.2で`engagement.comments`(10)と`engagement.rating`(`aside` 20)を反映する。
 - 7.9: ディレクトリの項目のコメント数は`comment-count-metric.tsx`の`CommentCountMetric`(`/p/<handle>#launches-heading`、`MATCH_HISTORY_HEADING_ID`を再利用)で、clientの`DIRECTORY_ITEM_METRICS`に`comments`(10)を登録した(apiの3.7の`key`と手で揃えた)。読み上げは数を`aria-hidden`にし`sr-only`の1つの文「コメント{n}件」にした(前例の分割の形ではChromeが語の間に空白を入れるため。前例`win-summary.tsx`・7.8のボタンの名前と形が揃っていないので8.1で指針を書く)。登録箇所が部品を読み込むため`components/directory/directory-sections.unit.test.ts`を`.browser.test.ts`へ移した(directory-discoveryの前例)。`project-values.md`の「ディレクトリの登録箇所」の行は8.2で直す。
 - 8.1(差し戻し1回): 技術文書は`docs/GUIDES/tech/backend/015-tombstoned-comment-threads.md`・`frontend/015-star-rating-and-threaded-composer.md`。CLAUDE.mdの参照先にはbackend/015だけを加えた(設計とタスクの指定どおり。frontend/013・014は参照先にあり、frontend/015も加えると揃う)。frontend/015に、星の入力の自作(`004`のRadixに任せる規則の例外)・続きの失敗で再試行のボタンへ置き換える(`006`・`004`の例外)・理由をツールチップでだけ示す`aria-disabled`(`004`の`disabled`の例外)・本文のラベルを隠す(`008`の例外)・`PartialErrorState`の固定の文言(`006`の例外)と、登録口の項目のダイアログがメニューが閉じると外れる既知の限界を書いた。`004`・`005`・`006`・`008`の側からfrontend/015の例外への参照は加えていない。8.2はプレースホルダー(backend/015の`<階層の上限>`など、frontend/015の`<段階の数>`など)と、例の`aggregate_id`→`product_id`・`target_id`→`launch_id`の対応を`project-values.md`へ写す。
+- 8.2(差し戻し1回): `docs/onboardings/project-values.md`に本specの固有の値(処理とジョブの名前と`order`、bot対策の操作名、区画と項目の値の登録、上限、技術文書のプレースホルダー、新しい節「コメントと評価」)を加え、7.8・7.9で食い違っていた登録の行とフラグメントの一覧を直した。期限超過の報告の文言を、コードの判定(論理削除の業務日付が実行日の14日前以前、つまり前日までの実行で匿名化するはずだった行が残れば「期限を過ぎるおそれ」として報告する)に合わせて、`007-daily-timeline.md`・design.mdの匿名化と物理削除の表・`project-values.md`で直した。コードの報告の文言(`sentry-engagement-incident-reporter.ts`の「削除から匿名化の期限を過ぎても…」)は変えていない(最終報告で挙げる)。
