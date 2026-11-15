@@ -42,7 +42,7 @@ GitHub Actionsで検査・デプロイ・リリースを行うときの、ワー
 
 | ワークフロー     | ジョブと上限時間(分)                                                              |
 | ---------------- | --------------------------------------------------------------------------------- |
-| `checks.yml`     | `secret-scan` 15、`quality` 30、`tests` 30、`e2e` 45、`rehearsal` 30、`ci-gate` 5 |
+| `checks.yml`     | `secret-scan` 15、`quality` 30、`tests` 60、`e2e` 60、`rehearsal` 30、`ci-gate` 5 |
 | `deploy.yml`     | `deploy` 60                                                                       |
 | `release-pr.yml` | `release-pr` 10                                                                   |
 
