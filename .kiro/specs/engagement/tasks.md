@@ -38,7 +38,7 @@
   - _Boundary: CommentStatements_
   - _Requirements: 4.1, 4.3, 12.2, 12.4_
 
-- [ ] 2.3 (P) スレッドのページとローンチごと・プロダクトごとの件数の照会を作る
+- [x] 2.3 (P) スレッドのページとローンチごと・プロダクトごとの件数の照会を作る
   - 先に、Workers統合テストで、トップレベルの新しい順の10件と11件目の境界、カーソルの続きが間の投稿で重複・欠落しないこと、各ルートの全ての返信が古い順に1回の一括の読み取りで返ること、退会・本人の削除・停止・非公開化・匿名化の5つの事情で本文・投稿者・日時を返さず同じ形になること、返信の無い置き換え表示のトップレベルも返ること、停止の解除と非公開化の取消で再び表示されること、件数が置き換え表示を数えないことを確かめる
   - 完了状態: Workers統合テストが成功する
   - _Depends: 2.1_
@@ -288,3 +288,4 @@
 - 1.3(差し戻し1回): 設計に文言が無くモックアップから決めた文言(0件の一言4つ・ログインの案内のダイアログの題名と説明・「このプロダクトの評価(任意)」・「コメントを読み込み中」「評価を読み込み中」)を文言規則に置いた。6・7は`003-text-and-copy-rules.md`の「コメントと評価の画面の文言」節の文字列をそのまま使う。評価を添えた編集のトーストは「コメントを更新しました。」、未確認でも評価済みなら「取り消す」を使える(6.3で確かめる)、30日以上前の投稿日時は`dateWeekday`で年を付けない(ローンチ・マッチの日付の「今年なら年を省く」と違う。最終報告で開発者へ挙げる)。IDの形式違反(`validation_error`)の文言は未定(3.x・4.xで既存の前例に従う)。
 - 2.1: 契約と型は`apps/backend-lib/core/engagement/ports.ts`、識別子は`identifiers.ts`(10種、`Symbol.for('engagement.<名前>')`)。`CommentStatements`(`workers/engagement/comment-statements.ts`)の型は`insertStatement`だけで、2.2が編集・削除・非公開化を足す。`RatingStatements`の型は2.4で作る。投稿の文は条件が成り立たないと`product_id`にNULLを入れて一括ごと失敗させる(違反の判定は`NOT NULL constraint failed: launch_comments.product_id`)。設計のCASEに加え「ローンチがそのプロダクトのものであること」「渡した親のルートと階層が親の行と一致し親が第3階層でないこと」を条件に足した。`requireListed`は呼び出し側(3.2・3.3)が`ownerUserId`との比較から導く。ローンチのキックオフ前・取消は書き込みの条件に無く3.2・3.3で判定する。テストの補助は`workers/engagement/testing/engagement-fixtures.ts`(`commentIdOf`・`insertComment`・`readComment`・`countComments`・`clearEngagementTables`)。Workers統合テストはapiの`vitest.worker.config.ts`から`lib/workers/engagement`で実行する。
 - 2.2: 編集の文は条件の違反で`product_id`をNULLにする(design.mdのCommentStatementsの箇条は`body`をCASEにするとしており、実装と食い違う)。投稿と同じ`NOT NULL constraint failed: launch_comments.product_id`で一括ごと失敗するため、3.3・3.4の`D1CommentWriter`は1つの判定で`rejected`にできる(判定の正規表現は`comment-statements.ts`の外へ出していない。3.3でエクスポートして再利用し、写しを作らない)。存在しないコメントの編集は失敗せず変更0行になり同じ一括の評価の文は確定するため、3.4は先に`findByIds`で確かめるか`meta.changes`を見る。削除の文はプロダクトの閲覧の可否と停止を条件に持たない(3.4が判定する)。`setHidden`は先に読み、`not-found`・`unchanged`では渡した文を流さない(ugc-moderationの設計に合う)。読みの後の物理削除は捕まえられない(既知の限界)。D1の結果の`meta.changes`は`engagement-fixtures.ts`の`changesOf`と同じ形で絞る(lintの`no-unsafe-*`)。
+- 2.3(差し戻し1回、テストの不足): スレッドの照会は`workers/engagement/d1-comment-thread-query.ts`の`D1CommentThreadQuery`。`page`は1回の`db.batch`に2文(トップレベル11件と、ページのルート10件を別名`page_roots`の副問い合わせで選び直した返信`depth > 1`)。置き換え表示は`CASE`で投稿者・本文・日時・編集の印をDBから返さない。`countsByLaunch`・`countsByProduct`は件数0のキーを返さない(0の補いは3.5の呼び出し側・clientと3.7の`CommentCountMetricSource`)。カーソルの符号化は3.5、`after.createdAt`はミリ秒。閲覧の可否・ローンチの所属・取消のローンチの除外はこの層でせず3.5が判定する。テストの補助`recordingDatabase()`(文ごとの読んだ行数の記録)はこのテストのファイル内にある。
