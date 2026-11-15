@@ -195,7 +195,7 @@
   - _Boundary: CommentTree、CommentFormSchema_
   - _Requirements: 1.3, 8.15_
 
-- [ ] 7.2 投稿日時の表示・読み込み中の表示・未ログインと未確認の案内を作る
+- [x] 7.2 投稿日時の表示・読み込み中の表示・未ログインと未確認の案内を作る
   - 先に、ブラウザテスト(`runAxe`の違反0件)で、経過の表現と30日以上前の日付、ホバーとフォーカスで完全な日時が出ること、未ログインの案内のログインへの導線(現在のページへ戻る)、未確認の案内と確認メールの再送の成功・429の通知、スケルトンの名前を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Requirements: 8.4, 8.5, 8.7_
@@ -311,3 +311,4 @@
 - 6.3: 評価欄の値のキャッシュは`apps/client/src/graphql/engagement.ts`(設計のファイル構成に無い。前例の`graphql/<ドメイン>.ts`)の`productRatingQueryOptions(viewerId, productId)`(キーの末尾に閲覧者のID、未ログインは`guest`)と`replaceProductRating(queryClient, viewerId, rating)`で、7.3の評価の初期値と7.5・7.6の評価欄の値の更新はこれを使う。評価欄は`rating-section.tsx`(`Card`、見出し「5段階評価」、`kind`より先に`isOwner`を見る、`reportAutoUpdating`を呼ばない)、操作は`use-rating-mutations.ts`(選んだ値を先にキャッシュへ入れ`cancelQueries`、失敗で最後に確定した値へ戻す。送信中に選んだ値は保留して最後の値だけを送り、トーストは1回)。取得の失敗は欄の中の`PartialErrorState`。文言の定数は`rating-messages.ts`(未確認の理由の写しを持つ前例)。PRODUCT_PAGE_SECTIONSの`aside`に`engagement.rating`(20)を登録した。「取り消す」の送信中は`aria-busy`だけで文言は変えない(文言規則に処理中の文言が無い)。
 - 7.1: 木は`comment-tree.ts`の`buildTree(thread)`が返す`CommentTreeNode { comment, replies }`の再帰の形で、7.6は第3階層を`comment.depth`で判定する。キャッシュの更新は`prependThread`・`appendReply`・`replaceComment`・`markCommentRemoved`(型`LaunchCommentsData = InfiniteData<ClientLaunchCommentsQuery, string | null>`、何も変わらなければ同じ参照を返し、既にあるIDは重ねない)で、7.5の無限の取得は`initialPageParam: null`にする。削除は返り値の`REMOVED`を`replaceComment`で反映してもよい。投稿欄のスキーマは`comment-form-schema.ts`の`commentFormSchema`・`commentWithRatingFormSchema`(評価の入力は`number | null`)。
 - 1.1の修正(7.1の後): `commentBodySchema`・`ratingScoreSchema`を`coding/005`の「共用部品の検証規則は呼ばれた時に作る関数にする」に合わせて関数(`commentBodySchema()`・`ratingScoreSchema()`)に直し、api・clientの呼び出し側とdesign.mdのEngagementRulesの宣言を直した。後続のタスクは関数の形で呼ぶ。
+- 7.2: `CommentTime`(`comment-time.tsx`)は設計の`<time tabIndex=0>`ではなく`<button type="button">`の中の`<time>`(lintの`jsx-a11y-x/no-noninteractive-tabindex`。前例`award-badge-list.tsx`)で、ツールチップが閉じている間も隠した要素を`aria-describedby`に結び完全な日時を伝える。利用する側は`TooltipProvider`の内側に置く。ハイドレーションの前は月日と曜日で示す。frontend-libに`components/datetime/use-now.ts`(`useNow()`、`RelativeTime`の共有タイマーを取り出した)を作り`005-shared-components.md`へ追記した。identity-authの`useResendVerification`に再送の文書の引数(既定は従来)を足し、`CommentGate`(`kind`は`'guest' | 'unverified'`)は`ClientEngagementResendVerificationEmailDocument`を渡す。`CommentListSkeleton`は`loadingMore`で「続きを読み込み中」(7.7が使う)。文言の定数は`comment-messages.ts`。design.mdの「Modified Files」にはfrontend-libの`use-now.ts`・`relative-time.tsx`、identity-authの`use-resend-verification.ts`、`005`が載っていない。

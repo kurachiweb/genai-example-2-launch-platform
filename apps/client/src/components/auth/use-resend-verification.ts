@@ -3,8 +3,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { notify } from '../../../lib/components/feedback/notify.ts';
 import { graphqlMutationOptions } from '../../../lib/start/graphql/graphql-query-options.ts';
 import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
+import type { PersistedDocument } from '../../../lib/utilities/graphql/persisted-document.ts';
 import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
-import { ClientResendVerificationEmailDocument } from '../../graphql/generated/graphql.ts';
+import {
+  ClientResendVerificationEmailDocument,
+  type ClientResendVerificationEmailMutation,
+  type ClientResendVerificationEmailMutationVariables,
+} from '../../graphql/generated/graphql.ts';
 import { viewerQueryOptions } from '../../graphql/viewer.ts';
 import {
   EMAIL_ALREADY_VERIFIED_MESSAGE,
@@ -17,11 +22,18 @@ export interface ResendVerification {
   readonly pending: boolean;
 }
 
-// 確認メールの再送の結果をトーストで示す。既に確認済みなら、確認の状態を画面へ反映するためログイン中の利用者を取り直す
-export function useResendVerification(): ResendVerification {
+type ResendVerificationDocument = PersistedDocument<
+  ClientResendVerificationEmailMutation,
+  ClientResendVerificationEmailMutationVariables
+>;
+
+// 確認メールの再送の結果をトーストで示す。既に確認済みなら、確認の状態を画面へ反映するためログイン中の利用者を取り直す。機能ごとに操作名を分けた再送の文書を渡せる
+export function useResendVerification(
+  document: ResendVerificationDocument = ClientResendVerificationEmailDocument,
+): ResendVerification {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    ...graphqlMutationOptions(ClientResendVerificationEmailDocument),
+    ...graphqlMutationOptions(document),
     onSuccess: async ({ resendVerificationEmail }) => {
       if (resendVerificationEmail === 'SENT') {
         notify.success(VERIFICATION_RESENT_MESSAGE);
