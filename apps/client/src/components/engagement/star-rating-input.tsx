@@ -1,6 +1,7 @@
 import { StarIcon } from 'lucide-react';
 import { type KeyboardEvent, useState } from 'react';
 
+import { RATING_SCORES } from '../../../common-lib/engagement/engagement-rules.ts';
 import { cn } from '../../../lib/utilities/class-names.ts';
 
 export interface StarRatingInputProps {
@@ -12,11 +13,9 @@ export interface StarRatingInputProps {
   readonly describedBy?: string;
 }
 
-const STARS = [1, 2, 3, 4, 5] as const;
+const MIN_STAR = Math.min(...RATING_SCORES);
 
-const MIN_STAR = 1;
-
-const MAX_STAR = 5;
+const MAX_STAR = Math.max(...RATING_SCORES);
 
 const STEP_BY_KEY: Readonly<Record<string, number>> = {
   ArrowRight: 1,
@@ -74,7 +73,7 @@ export function StarRatingInput({
         setHovered(null);
       }}
     >
-      {STARS.map((star) => (
+      {RATING_SCORES.map((star) => (
         <button
           key={star}
           type="button"

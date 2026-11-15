@@ -8,7 +8,10 @@ import {
   useState,
 } from 'react';
 
-import { commentIdScope } from '../../../common-lib/engagement/engagement-rules.ts';
+import {
+  COMMENT_MAX_DEPTH,
+  commentIdScope,
+} from '../../../common-lib/engagement/engagement-rules.ts';
 import { MarkdownContent } from '../../../lib/components/markdown/markdown-content.tsx';
 import { useMarkdownOptions } from '../../../lib/components/markdown/use-markdown-options.ts';
 import { useRenderedMarkdown } from '../../../lib/components/markdown/use-rendered-markdown.ts';
@@ -56,9 +59,6 @@ export interface CommentItemProps {
   // 他者のコメントの操作の登録口(COMMENT_ACTIONS)
   readonly actions?: readonly CommentAction[];
 }
-
-// 返信は3階層まで
-const MAX_DEPTH = 3;
 
 const ARTICLE_CLASS = 'flex gap-3 rounded-md';
 
@@ -273,7 +273,7 @@ export function CommentItem({
 
   const canReply =
     shown !== null &&
-    comment.depth < MAX_DEPTH &&
+    comment.depth < COMMENT_MAX_DEPTH &&
     (kind === 'guest' || signedInMutations !== null);
 
   const renderShown = (current: ShownComment) => (

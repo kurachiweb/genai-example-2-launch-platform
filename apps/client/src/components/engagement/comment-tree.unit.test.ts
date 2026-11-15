@@ -6,7 +6,6 @@ import {
   buildTree,
   type LaunchCommentsData,
   type LaunchCommentThread,
-  markCommentRemoved,
   prependThread,
   replaceComment,
 } from './comment-tree.ts';
@@ -299,7 +298,7 @@ describe('appendReply(返信)', () => {
   });
 });
 
-describe('replaceComment(編集)', () => {
+describe('replaceComment(編集・削除)', () => {
   test('トップレベルのコメントを返り値で置き換え、返信と他のページを保つ', () => {
     const edited = commentOf(ROOT_A, { body: '直した本文', edited: true });
     const data = frozenData();
@@ -333,83 +332,20 @@ describe('replaceComment(編集)', () => {
     ]);
   });
 
-  test('一覧に無いコメントなら変えない', () => {
-    const data = frozenData();
-
-    expect(replaceComment(data, commentOf('E0000000000000000000000000'))).toBe(
-      data,
-    );
-    expect(replaceComment(undefined, commentOf(ROOT_A))).toBeUndefined();
-  });
-});
-
-describe('markCommentRemoved(削除)', () => {
-  const removedOf = (
-    comment: LaunchCommentFragment,
-  ): LaunchCommentFragment => ({
-    ...comment,
-    state: 'REMOVED',
-    author: null,
-    body: null,
-    createdAt: null,
-    edited: false,
-    byProductOwner: false,
-    viewerIsAuthor: false,
-  });
-
-  test('トップレベルのコメントを置き換え表示にし、IDと階層と返信を残す', () => {
-    const data = frozenData();
-
-    const updated = markCommentRemoved(data, ROOT_A);
-    const thread = updated?.pages[0]?.launchComments?.nodes[0];
-
-    expect(thread?.comment).toEqual(removedOf(commentOf(ROOT_A)));
-    expect(thread?.replies).toBe(
-      data.pages[0]?.launchComments?.nodes[0]?.replies,
-    );
-    expect(data).toEqual(dataOf());
-  });
-
-  test('作者・本文・日時を消し、編集済みとバッジの印を偽にする', () => {
-    const own = commentOf(ROOT_A, {
-      edited: true,
-      byProductOwner: true,
-      viewerIsAuthor: true,
-    });
-    const data = deepFreeze<LaunchCommentsData>({
-      pages: [
-        {
-          launchComments: {
-            nodes: [{ comment: own, replies: [] }],
-            pageInfo: { endCursor: null, hasNextPage: false },
-          },
-        },
-      ],
-      pageParams: [null],
-    });
-
-    expect(
-      markCommentRemoved(data, ROOT_A)?.pages[0]?.launchComments?.nodes[0]
-        ?.comment,
-    ).toEqual({
-      id: ROOT_A,
-      parentId: null,
-      depth: 1,
+  test('削除の返り値の置き換え表示で置き換え、親子の関係と子の返信を残す', () => {
+    const removed = commentOf(REPLY_A1, {
+      parentId: ROOT_A,
+      depth: 2,
       state: 'REMOVED',
       author: null,
       body: null,
       createdAt: null,
-      edited: false,
-      byProductOwner: false,
-      viewerIsAuthor: false,
     });
-  });
 
-  test('返信を置き換え表示にし、親子の関係と子の返信を残す', () => {
-    const updated = markCommentRemoved(frozenData(), REPLY_A1);
+    const updated = replaceComment(frozenData(), removed);
     const thread = updated?.pages[0]?.launchComments?.nodes[0];
 
-    expect(thread?.replies[0]).toEqual(removedOf(replyOf(REPLY_A1, ROOT_A, 2)));
+    expect(thread?.replies[0]).toEqual(removed);
     expect(
       buildTree(thread ?? threadA()).replies[0]?.replies.map(
         ({ comment }) => comment.id,
@@ -420,7 +356,9 @@ describe('markCommentRemoved(削除)', () => {
   test('一覧に無いコメントなら変えない', () => {
     const data = frozenData();
 
-    expect(markCommentRemoved(data, 'E0000000000000000000000000')).toBe(data);
-    expect(markCommentRemoved(undefined, ROOT_A)).toBeUndefined();
+    expect(replaceComment(data, commentOf('E0000000000000000000000000'))).toBe(
+      data,
+    );
+    expect(replaceComment(undefined, commentOf(ROOT_A))).toBeUndefined();
   });
 });

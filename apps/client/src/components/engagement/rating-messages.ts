@@ -19,6 +19,7 @@ export const RATING_CANCEL_LABEL = '取り消す';
 
 export const RATING_GUEST_NOTICE = '星を選ぶとログインして評価できます。';
 
+// APIサーバーが同じ理由で拒否するときの文言(apps/apiのsrc/application/identity/identity-errors.tsのIDENTITY_ERRORSのemail_not_verified)と同じにする。一致はルートのconfig/engagement-contract-copies.unit.test.tsが確かめる
 export const RATING_EMAIL_UNVERIFIED_REASON =
   'この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。';
 

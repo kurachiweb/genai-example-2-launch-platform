@@ -1,5 +1,6 @@
 import { StarIcon } from 'lucide-react';
 
+import { RATING_SCORES } from '../../../common-lib/engagement/engagement-rules.ts';
 import {
   RATING_EMPTY_MESSAGE,
   RATING_FIRST_INVITE,
@@ -21,9 +22,7 @@ const AVERAGE_FORMAT = new Intl.NumberFormat('ja-JP', {
 
 const COUNT_FORMAT = new Intl.NumberFormat('ja-JP');
 
-const MAX_SCORE = 5;
-
-const METER_STARS = [1, 2, 3, 4, 5] as const;
+const MAX_SCORE = Math.max(...RATING_SCORES);
 
 // 平均値を星5つの塗りの割合で示す。読み上げは平均値の数字で行う
 function RatingMeter({ average }: { readonly average: number }) {
@@ -35,7 +34,7 @@ function RatingMeter({ average }: { readonly average: number }) {
       className="relative inline-flex"
     >
       <span className="flex">
-        {METER_STARS.map((star) => (
+        {RATING_SCORES.map((star) => (
           <StarIcon key={star} className="size-5 text-muted-foreground/40" />
         ))}
       </span>
@@ -43,7 +42,7 @@ function RatingMeter({ average }: { readonly average: number }) {
         className="absolute inset-y-0 left-0 flex overflow-hidden"
         style={{ width: `${String(ratio * 100)}%` }}
       >
-        {METER_STARS.map((star) => (
+        {RATING_SCORES.map((star) => (
           <StarIcon
             key={star}
             className="size-5 shrink-0 fill-primary text-primary"

@@ -10,6 +10,12 @@ const COMMON_ENGAGEMENT_RULES =
   'apps/common-lib/engagement/engagement-rules.ts';
 const DB_LAUNCH_COMMENTS = 'apps/db/schema/engagement/launch-comments.ts';
 const DB_PRODUCT_RATINGS = 'apps/db/schema/engagement/product-ratings.ts';
+const API_IDENTITY_ERRORS =
+  'apps/api/src/application/identity/identity-errors.ts';
+const CLIENT_COMMENT_MESSAGES =
+  'apps/client/src/components/engagement/comment-messages.ts';
+const CLIENT_RATING_MESSAGES =
+  'apps/client/src/components/engagement/rating-messages.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
   ts.createSourceFile(
@@ -92,6 +98,54 @@ const readNumberArray = (path: string, name: string): readonly number[] => {
   );
 };
 
+const stringOf = (expression: ts.Expression, description: string): string => {
+  if (!ts.isStringLiteral(expression)) {
+    throw new Error(
+      `${description}が文字列リテラルではありません: ${expression.getText()}`,
+    );
+  }
+  return expression.text;
+};
+
+const readString = (path: string, name: string): string =>
+  stringOf(readInitializer(path, name), `${path}の${name}の初期化子`);
+
+const propertyInitializerOf = (
+  object: ts.Expression,
+  property: string,
+  description: string,
+): ts.Expression => {
+  if (!ts.isObjectLiteralExpression(object)) {
+    throw new Error(
+      `${description}がオブジェクトリテラルではありません: ${object.getText()}`,
+    );
+  }
+  const assignment = onlyOne(
+    object.properties.filter(
+      (element): element is ts.PropertyAssignment =>
+        ts.isPropertyAssignment(element) &&
+        (ts.isIdentifier(element.name) || ts.isStringLiteral(element.name)) &&
+        element.name.text === property,
+    ),
+    `${description}の${property}の項目`,
+  );
+  return unwrapExpression(assignment.initializer);
+};
+
+// エラーの定義の一覧(コードごとの{ kind, message })から、指定したコードの文言を読む
+const readErrorMessage = (path: string, name: string, code: string): string => {
+  const description = `${path}の${name}`;
+  const definition = propertyInitializerOf(
+    readInitializer(path, name),
+    code,
+    description,
+  );
+  return stringOf(
+    propertyInitializerOf(definition, 'message', `${description}の${code}`),
+    `${description}の${code}の文言`,
+  );
+};
+
 describe('コメントの階層の上限の写し(apps/db/schema/engagement/launch-comments.ts)', () => {
   test('CHECK制約に使う階層の上限がcommon-libのCOMMENT_MAX_DEPTHと一致する', () => {
     const shared = readNumber(COMMON_ENGAGEMENT_RULES, 'COMMENT_MAX_DEPTH');
@@ -109,5 +163,23 @@ describe('評価の値の写し(apps/db/schema/engagement/product-ratings.ts)', 
     expect(readNumberArray(DB_PRODUCT_RATINGS, 'RATING_SCORES')).toEqual(
       shared,
     );
+  });
+});
+
+describe('メールアドレス未確認の理由の文言の写し(apps/client/src/components/engagement)', () => {
+  test('コメント欄と評価欄の無効の理由がAPIサーバーのemail_not_verifiedの文言と一致する', () => {
+    const shared = readErrorMessage(
+      API_IDENTITY_ERRORS,
+      'IDENTITY_ERRORS',
+      'email_not_verified',
+    );
+
+    expect(shared).toContain('メールアドレスの確認');
+    expect(
+      readString(CLIENT_COMMENT_MESSAGES, 'COMMENT_EMAIL_UNVERIFIED_REASON'),
+    ).toBe(shared);
+    expect(
+      readString(CLIENT_RATING_MESSAGES, 'RATING_EMAIL_UNVERIFIED_REASON'),
+    ).toBe(shared);
   });
 });

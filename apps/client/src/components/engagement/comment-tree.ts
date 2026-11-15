@@ -149,20 +149,3 @@ export function replaceComment(
 ): LaunchCommentsData | undefined {
   return mapComment(data, comment.id, () => comment);
 }
-
-// 置き換え表示はAPIサーバーのREMOVEDと同じく作者・本文・日時を持たず、返信の木を保つためIDと親と階層だけを残す
-export function markCommentRemoved(
-  data: LaunchCommentsData | undefined,
-  commentId: string,
-): LaunchCommentsData | undefined {
-  return mapComment(data, commentId, (comment) => ({
-    ...comment,
-    state: 'REMOVED',
-    author: null,
-    body: null,
-    createdAt: null,
-    edited: false,
-    byProductOwner: false,
-    viewerIsAuthor: false,
-  }));
-}

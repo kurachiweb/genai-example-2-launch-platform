@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 入力の規則・テーブル・サービス仕様
+- [x] 1. 基盤: 入力の規則・テーブル・サービス仕様
 - [x] 1.1 コメントと評価の入力の規則を、4アプリが読み込める共有の定義として作る
   - 前提: dev-tooling〜notificationsの20specの全タスクが完了していること(directory-discoveryの`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS`と区画の文脈の型・E2Eの`e2e/support/directory-fixtures.ts`、product-launchの`core/product`の`ProductDirectory`・`PRODUCT_PLATFORM_TYPES`・`visibleProducts()`・`wonLaunchExists()`・プロダクトライフサイクルの登録口、identity-authの`AccountGuard`・`visibleUsers()`・`verifiedUsers()`・ユーザーライフサイクルの登録口・`LoginRequiredDialog`・`resendVerificationEmail`、content-processingの`markdownTextSchema`・`MarkdownEditor`・`useMarkdownOptions`、user-profile-socialの`UserSummary`・`userSummaryLoader`・`UserAvatar`、backend-platformの`SCHEDULED_JOBS`と改訂2のE2Eの共有の補助`triggerScheduled`(`e2e/support/scheduled-trigger.ts`)、admin-foundationのE2Eの`executeLocalD1`。2026-11-15のギャップ分析で全タスクの完了と契約の実在を確かめた)。無ければ該当するタスクを保留して開発者へ報告する(`triggerScheduled`が無い場合は9.1の4:21の匿名化の確かめだけを保留する)
   - 先に、単体テストで、本文の2,000書記素の境界(結合文字を含む絵文字)・空白だけ・使用できない文字の文言と順、評価の0・6・小数・文字列の拒否、1ページ10件と3階層の定数、bot対策の操作名3つ、見出しのアンカーの接頭辞がコメントのIDごとに異なり英小文字と数字の32文字以内になること、キックオフ前のローンチと自身のプロダクトの評価の文言の定数(`LAUNCH_NOT_COMMENTABLE_MESSAGE`・`OWN_PRODUCT_RATING_MESSAGE`)が文言規則(設計のError Handling)の文言と一致することを確かめる
@@ -23,7 +23,7 @@
   - _Boundary: `docs/GUIDES/service/design/002-page-layouts.md`・`003-text-and-copy-rules.md`・`docs/GUIDES/service/overview/007-daily-timeline.md`_
   - _Requirements: 15.5_
 
-- [ ] 2. 共有部品
+- [x] 2. 共有部品
 - [x] 2.1 共有部品の契約とDIの識別子を一括で作り、コメントのストアの照会と投稿・返信の条件付きの書き込みの文を作る
   - 先に、単体テストで、識別子`ENGAGEMENT_PLATFORM_TYPES`が`Symbol.for('engagement.<名前>')`の値を持ち凍結されていることを確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
   - 先に、ローカルD1のWorkers統合テストで、投稿の文がプロダクトの非公開化・論理削除・投稿者の停止・未掲載の他者のプロダクト・投稿者の未確認のいずれかで一括の書き込みごと失敗し、投稿者本人なら未掲載のプロダクトでも書き込めること、返信の文が親の第3階層・置き換え表示・別のローンチで失敗し、返信のルートと階層が親から決まること、本文をマークダウンの原文のまま保存すること、識別子からの照会が状態の印と投稿者とプロダクトとローンチを返すことを確かめる
@@ -75,7 +75,7 @@
   - _Boundary: AdminCommentDirectory、AdminRatingDirectory_
   - _Requirements: 12.6, 14.5_
 
-- [ ] 3. APIサーバーのユースケース
+- [x] 3. APIサーバーのユースケース
 - [x] 3.1 (P) 閲覧の可否・コメントできるローンチ・スレッドの組み立ての純粋な規則を作る
   - 先に、単体テストで、閲覧の可否(不在・可視でない・掲載中・未掲載の他者と本人)、コメントできるローンチ(予定・組み合わせ済み・当日・終了・取消・不在)、スレッドの照会の行からスレッドへの組み立て、投稿者本人と閲覧者自身の判定、置き換え表示でバッジと作者の判定が常に偽になることを確かめる
   - 閲覧の可否は、directory-discoveryの`decideProductPageAccess`(ハンドルの解決が入力)と共有せず、同じ規則(可視かつ、掲載中か投稿者本人)を本specに持ち、同じ真理値表の単体テストで揃える。可視でないプロダクトは`findSummaries(ids, 'visible')`の結果に無いため、照会に無いことを閲覧できないとする
@@ -124,7 +124,7 @@
   - 完了状態: テストが成功し、directory-discoveryの登録口の検証を通る
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 14.1_
 
-- [ ] 4. APIサーバーのGraphQL
+- [x] 4. APIサーバーのGraphQL
 - [x] 4.1 スキーマモジュールの型とコメントの照会を作り、組み込む
   - 先に、Workers統合テストで、呼び出し元が利用者側でなければ拒否、IDとカーソルの検証、置き換え表示の項目のnull、投稿者を利用者の表示用のローダーで解決し、ローダーがnullを返せばnullのまま返すこと、閲覧できない照会がnullになることを確かめる
   - コメント・スレッド・接続・件数・評価欄の値(`ProductRating`)・操作の結果の型と、スレッドのページ・ローンチごとの件数の照会と、コメントの投稿者のリゾルバを作り、スキーマモジュールの一覧へ加え、スキーマと型を生成する。リゾルバは利用者の状態の判定を`IDENTITY_PLATFORM_TYPES.AccountGuard`(`core/identity/identifiers.ts`)で解決する
@@ -141,7 +141,7 @@
   - 完了状態: Workers統合テストとスキーマの合成の検査が成功する
   - _Requirements: 9.5, 9.7, 9.8, 9.9, 11.11_
 
-- [ ] 5. ライフサイクルの処理と日次のジョブ
+- [x] 5. ライフサイクルの処理と日次のジョブ
 - [x] 5.1 退会の確定と同じ書き込みでコメントと評価を論理削除する同期の処理を作り、登録する
   - 先に、Workers統合テストで、identity-authの退会の確定でその利用者のコメントと評価に論理削除の印が入り、確定の失敗で取り消されること、他の利用者の行が変わらないこと、返す文が利用者で絞った集合の更新だけであることを確かめる
   - apiの束縛に追記し、ユーザーライフサイクルの同期の登録口へ加える
@@ -162,7 +162,7 @@
   - _Boundary: AccountErasureHandler、ProductErasureHandler、eventの束縛_
   - _Requirements: 6.2, 13.5, 13.6, 13.7, 13.8_
 
-- [ ] 6. 利用者側の画面: 評価欄
+- [x] 6. 利用者側の画面: 評価欄
 - [x] 6.1 評価・コメント・確認メールの再送のGraphQLの操作の文書を作り、許可リストを再生成する
   - 評価欄の値・評価・取消、スレッドのページ・ローンチごとの件数・投稿・編集・削除、確認メールの再送の操作の文書を、clientの`src/graphql/operations/engagement/`に1ファイル1操作の`.graphql`(操作名は`Client`で始める)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して型とpersisted operations(`src/graphql/generated/`)を生成し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する(返信は平たい一覧として読む)。部品は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
   - 確認メールの再送の文書はidentity-authの文書と異なる一意の操作名(例: `ClientEngagementResendVerificationEmail`)にする
@@ -186,7 +186,7 @@
   - _Depends: 6.1_
   - _Requirements: 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 11.10, 11.12_
 
-- [ ] 7. 利用者側の画面: コメント欄
+- [x] 7. 利用者側の画面: コメント欄
 - [x] 7.1 (P) スレッドの木の組み立てとキャッシュの更新、投稿欄の検証を作る
   - 投稿欄の検証のスキーマは、Zodの値を`lib/utilities/validation/zod.ts`の`z`から読んで組み立てる(`zod`からは型だけを読む)
   - 先に、単体テストで、平たい返信の一覧から親ごとの木を組むこと(返信は古い順)、スレッドのページの無限の取得のデータに対する投稿の先頭への追加・返信の親の末尾への追加・編集の置き換え・削除の置き換え表示への変更が元のデータを変えないこと、投稿欄の検証が共有の本文の規則と同じ文言を返すことを確かめる
@@ -249,7 +249,7 @@
   - _Boundary: CommentCountMetric、clientの`DIRECTORY_ITEM_METRICS`への登録_
   - _Requirements: 14.1_
 
-- [ ] 8. 文書
+- [x] 8. 文書
 - [x] 8.1 (P) 技術ドキュメントを書き、CLAUDE.mdから参照する
   - `backend/015-tombstoned-comment-threads.md`・`frontend/015-star-rating-and-threaded-composer.md`を設計のEngagementTechDocsの内容で、本プロジェクト固有の値を含めずに書き、`backend`・`frontend`のREADMEの文書一覧に行を加える
   - CLAUDE.mdの「技術規則の参照先」に「削除しても返信を残すコメントや保持期間後の匿名化を設計する前に: `backend/015`」を、作った見出しへのリンクで加える
@@ -324,3 +324,4 @@
 - 8.2(差し戻し1回): `docs/onboardings/project-values.md`に本specの固有の値(処理とジョブの名前と`order`、bot対策の操作名、区画と項目の値の登録、上限、技術文書のプレースホルダー、新しい節「コメントと評価」)を加え、7.8・7.9で食い違っていた登録の行とフラグメントの一覧を直した。期限超過の報告の文言を、コードの判定(論理削除の業務日付が実行日の14日前以前、つまり前日までの実行で匿名化するはずだった行が残れば「期限を過ぎるおそれ」として報告する)に合わせて、`007-daily-timeline.md`・design.mdの匿名化と物理削除の表・`project-values.md`で直した。コードの報告の文言(`sentry-engagement-incident-reporter.ts`の「削除から匿名化の期限を過ぎても…」)は変えていない(最終報告で挙げる)。
 - 9.1(差し戻し1回): E2Eは`e2e/client/engagement.e2e.test.ts`(2つのテスト)と手順`e2e/client/engagement-steps.ts`。`createListedProducts`の投稿者はログインできないため、`transferProductOwnership`で`products.user_id`・`match_entries.owner_user_id`を確認済みの利用者へ付け替える(前例`match-steps.ts`)。コメント項目はハイドレーションの後に取得・描画されるため「返信」「…」は1回の押下で効果を待つ(押し直さない。編集の部品は開いた時に読み込むので入力欄を`RETRY_TIMEOUT_MS`で待つ)。4:21の結果は`expect.poll`で待つ(`triggerScheduled`はジョブが失敗しても成功を返す)。ディレクトリのコメント数は索引を持たないため実施日の期間の一覧の項目で確かめる。`docs/onboardings/README.md`の「ローカルでのE2Eテスト」に段落を加えた。押し直しを外した後の版は、Infisicalのログインが切れてサーバーを起動できず未実行(`_Blocked:_`、開発者の作業)。ルートの`scripts/tooling/run-all.unit.test.ts`の`check:contract-copies`の期待値の直し漏れ(1.2)は別のコミットで直した。
 - 9.2: 一括の検査(`bun run check`)・写しの照合・単体・Workers統合(api 5,663件・event 1,187件)・ブラウザテスト(frontend-lib 1,218件・admin 747件・client 2,481件)がすべて成功し、本specの計測される90ファイルは行・関数とも80%以上(最低は`comment-tree.ts`の行85.0%、表はscratchpadの`92-cov-compact.md`)。最初の実行で本specの回帰が2つ見つかり直した: clientの`src/graphql/engagement.ts`の取得処理が単体テストで呼ばれず閾値を下回っていた(取得処理のテストを3件足した)、詳細ページの経路のブラウザテスト(`test/product-page-route.browser.test.tsx`)が評価欄とコメント欄の取得の失敗で警告の要素が増えて2件落ちていた(6.3・7.8で区画を登録した時にこの経路のテストを流していなかった。共通の補助`test/product-page-route-fixtures.ts`に`respondOtherSections`を足した)。api・eventのapplication層に`lib/workers`の読み込みは無く、`core/engagement`は`workers`・`apps/db`を読み込まない(静的解析の規則で禁止され成功)。ログとSentryへの送信は`comment-anonymization-job.ts`の`logger.info`(件数)・`sentry-engagement-incident-reporter.ts`の`logger.error`と`captureEvent`(種類と件数)だけで、本文・ニックネーム・ハンドルを含まない。roadmapの帯の割り当ての表(`.kiro/steering/roadmap.md`の101行)に本specの「4:21は1400、波及処理は1400」が使用中として載りコードと一致する。ugc-moderationは本specの`AdminCommentDirectory`・`AdminRatingDirectory`(仮6、2.7で実装し`ENGAGEMENT_PLATFORM_MODULE`に束縛)を使う(同specのdesign.mdに記載、同specはこれらを作らない)。仮1〜仮6は2026-10-24に開発者が確定済み。E2Eは9.1の保留のとおり未実行。
+- 最終検証(2026-11-15、1回目): `kiro-validate-impl`はMANUAL_VERIFY_REQUIRED(静的な検査と単体・Workers統合・ブラウザテストは全て成功、要件114件すべてに実装とテスト。9.1のE2Eの最終版と実際のサーバーでの起動確認が、Infisicalのログイン切れで未実施)。指摘のうち次を直した: 文言規則に`rating_not_found`(404)「評価が見つかりません。」を追記、テストからしか使われない7.1の`markCommentRemoved`を削除(削除は返り値の置き換え表示を`replaceComment`で反映する)、clientの写した階層の上限と星の配列を共用部品の`COMMENT_MAX_DEPTH`・`RATING_SCORES`の読み込みに置き換え、clientの`email_not_verified`の文言の写し2件を`config/engagement-contract-copies.unit.test.ts`の照合に追加(identity-authの`IDENTITY_ERRORS`と比べる)。残る所見(最終報告で開発者へ挙げる): `COMMENT_ACTIONS`の登録した部品のダイアログがメニューが閉じると外れ、`CommentActionContext`に「…」へフォーカスを戻す手段が無い(content-reportingの実装の前に登録口の契約を直すspecを決める)、13.3・13.4の読み取り側を実際のD1で確かめる結合テストが無い、data-exportの`research.md`の227行が存在しない`workers/engagement/engagement-export.ts`を参照(上流の文書)。
