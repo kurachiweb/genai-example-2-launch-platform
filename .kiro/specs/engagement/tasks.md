@@ -7,7 +7,7 @@
   - 完了状態: 単体テストが成功し、apiとclientの型検査で規則を読み込める
   - _Requirements: 1.2, 1.3, 2.2, 3.1, 7.3, 8.1, 9.5, 11.6_
 
-- [ ] 1.2 コメントと評価のテーブル、表示できるコメントと有効な評価の条件、マイグレーションを作る
+- [x] 1.2 コメントと評価のテーブル、表示できるコメントと有効な評価の条件、マイグレーションを作る
   - 先に、テーブルの定義の単体テストで、階層の1〜3と評価の1〜5の制約、利用者とプロダクトの組の一意、外部キー(プロダクト・ローンチ・親のコメント・利用者)に削除時の動作の指定が無いこと、コメントのトップレベルのページ・返信のまとめ読み・投稿者・プロダクト・削除の日時の索引と、評価の評価者の索引を確かめる
   - 表示できるコメントの条件(削除・非公開化・匿名化の印が無く、投稿者が紐付いていて可視)と有効な評価の条件(無効化・論理削除の印が無く、評価者が可視)を、利用者のテーブルとの結合で使う条件の部品として作る
   - 階層の1〜3と評価の1〜5の制約は、`apps/db`が`common-lib`を読み込めないためテーブル定義のファイルに`COMMENT_MAX_DEPTH`・`RATING_SCORES`の写しの名前付きのリテラルの定数を置いてCHECKをそこから組み立て(値は文に埋め込む)、写しの側に元の場所と照合のテストのファイル名をコメントで示す。ルートの`config/engagement-contract-copies.unit.test.ts`で写しの定数と元の値との一致を確かめ(他のアプリのファイルを`import`せず、ソースを構文解析して定数の初期化子を比べる)、ルートの`package.json`の`check:contract-copies`の引数に加える
@@ -284,3 +284,4 @@
 ## Implementation Notes
 
 - 1.1: 規則は`apps/common-lib/engagement/engagement-rules.ts`。本文は`markdownTextSchema(COMMENT_BODY_RULE)`(名前「コメント」)、評価の文言「評価は1〜5で選んでください。」は非公開の定数で`ratingScoreSchema`の文言として読む(clientのフォームで要るなら`ratingScoreSchema`を使う)。`commentIdScope(id)`は`c`+小文字のIDで入力のULIDを検証しない(7.xの呼び出し側は26文字のULIDを渡す。不正なら`idPrefixFor`が例外を投げる)。
+- 1.2: テーブルは`apps/db/schema/engagement/`の`launchComments`・`productRatings`、条件の部品は`displayableComment()`(`users`を`author_user_id`で外部結合する前提)・`validRating()`(`users`を`user_id`で内部結合する前提)。マイグレーションは`20261115074652_engagement`。トップレベルの`root_id`は自身のIDで、返信のまとめ読みの索引`(root_id, created_at, id)`にトップレベル自身も入るため、2.3の返信の照会は`depth > 1`で除く。`depth = 1`と`parent_id`のNULLの整合はDBの制約に無く、2.1の書き込みの文で保つ。階層のCHECKは`between 1 and 3`(整数でない値は書き込みの文が作らない)。

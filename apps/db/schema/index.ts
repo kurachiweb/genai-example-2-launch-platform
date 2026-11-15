@@ -4,6 +4,7 @@ export * from './email/email-alert-throttles.ts';
 export * from './email/email-cleanup-cursors.ts';
 export * from './email/email-send-records.ts';
 export * from './email/email-suppressions.ts';
+export * from './engagement/index.ts';
 export * from './follow/index.ts';
 export * from './help/index.ts';
 export * from './identity/index.ts';

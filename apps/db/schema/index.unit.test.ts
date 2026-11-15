@@ -79,6 +79,8 @@ describe('スキーマの集約点', () => {
     'notification_slots',
     'notification_slot_ready_marks',
     'notification_notices',
+    'launch_comments',
+    'product_ratings',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
