@@ -14,6 +14,8 @@ import type {
 } from '../../lib/core/engagement/ports.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { D1CommentStatements } from '../../lib/workers/engagement/comment-statements.ts';
+import { D1AdminCommentDirectory } from '../../lib/workers/engagement/d1-admin-comment-directory.ts';
+import { D1AdminRatingDirectory } from '../../lib/workers/engagement/d1-admin-rating-directory.ts';
 import { D1CommentStore } from '../../lib/workers/engagement/d1-comment-store.ts';
 import { D1CommentThreadQuery } from '../../lib/workers/engagement/d1-comment-thread-query.ts';
 import { D1EngagementErasureStore } from '../../lib/workers/engagement/d1-engagement-erasure-store.ts';
@@ -48,6 +50,8 @@ const IMPLEMENTATIONS: readonly (readonly [
   [ENGAGEMENT_PLATFORM_TYPES.EngagementErasureStore, D1EngagementErasureStore],
   [ENGAGEMENT_PLATFORM_TYPES.CommentExport, D1CommentExport],
   [ENGAGEMENT_PLATFORM_TYPES.RatingExport, D1RatingExport],
+  [ENGAGEMENT_PLATFORM_TYPES.AdminCommentDirectory, D1AdminCommentDirectory],
+  [ENGAGEMENT_PLATFORM_TYPES.AdminRatingDirectory, D1AdminRatingDirectory],
 ];
 
 function createContainer(kind: (typeof INVOCATION_KINDS)[number]): Container {
@@ -83,9 +87,10 @@ describe('イベントサーバーのモジュールの一覧へのエンゲー�
 describe.each(INVOCATION_KINDS)(
   'イベントサーバーのエンゲージメントの共通の束縛(%s)',
   (kind) => {
-    test('処理単位のコンテナから束縛した8つの識別子をD1の実装に解決する', () => {
+    test('処理単位のコンテナから束縛した10個の識別子をD1の実装に解決する', () => {
       const container = createContainer(kind);
 
+      expect(IMPLEMENTATIONS).toHaveLength(10);
       for (const [identifier, implementation] of IMPLEMENTATIONS) {
         expect(container.get(identifier)).toBeInstanceOf(implementation);
       }

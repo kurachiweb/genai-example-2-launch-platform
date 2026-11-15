@@ -9,6 +9,7 @@ import {
   insertUser,
   launchIdOf,
   productIdOf,
+  ratingIdOf,
   T0,
   userIdOf,
 } from './engagement-fixtures.ts';
@@ -18,6 +19,7 @@ export const SAMPLE_MEMBER_ID = userIdOf(2);
 export const SAMPLE_PRODUCT_ID = productIdOf(1);
 export const SAMPLE_LAUNCH_ID = launchIdOf(1);
 export const SAMPLE_COMMENT_ID = commentIdOf(1);
+export const SAMPLE_RATING_ID = ratingIdOf(1);
 export const SAMPLE_RATING_SCORE = 4;
 
 // 投稿者のプロダクトとローンチに、別の利用者のコメント1件と無効化した評価1件を作る

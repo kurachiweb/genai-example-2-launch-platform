@@ -8,6 +8,8 @@ import type { AppModule } from '../../core/di/app-module.ts';
 import type { InvocationScopeInfo } from '../../core/di/identifiers.ts';
 import { ENGAGEMENT_PLATFORM_TYPES } from '../../core/engagement/identifiers.ts';
 import type {
+  AdminCommentDirectory,
+  AdminRatingDirectory,
   CommentExport,
   CommentStore,
   CommentThreadQuery,
@@ -17,6 +19,8 @@ import type {
 import { createInvocationContainer } from '../di/invocation-container.ts';
 import type { PlatformHonoEnv } from '../http/hono-env.ts';
 import { D1CommentStatements } from './comment-statements.ts';
+import { D1AdminCommentDirectory } from './d1-admin-comment-directory.ts';
+import { D1AdminRatingDirectory } from './d1-admin-rating-directory.ts';
 import { D1CommentStore } from './d1-comment-store.ts';
 import { D1CommentThreadQuery } from './d1-comment-thread-query.ts';
 import { D1EngagementErasureStore } from './d1-engagement-erasure-store.ts';
@@ -29,6 +33,7 @@ import {
   SAMPLE_LAUNCH_ID,
   SAMPLE_MEMBER_ID,
   SAMPLE_PRODUCT_ID,
+  SAMPLE_RATING_ID,
   SAMPLE_RATING_SCORE,
   seedEngagementPlatformSample,
 } from './testing/engagement-platform-fixtures.ts';
@@ -45,6 +50,8 @@ const IMPLEMENTATIONS: readonly (readonly [
   [ENGAGEMENT_PLATFORM_TYPES.EngagementErasureStore, D1EngagementErasureStore],
   [ENGAGEMENT_PLATFORM_TYPES.CommentExport, D1CommentExport],
   [ENGAGEMENT_PLATFORM_TYPES.RatingExport, D1RatingExport],
+  [ENGAGEMENT_PLATFORM_TYPES.AdminCommentDirectory, D1AdminCommentDirectory],
+  [ENGAGEMENT_PLATFORM_TYPES.AdminRatingDirectory, D1AdminRatingDirectory],
 ];
 
 function createContainer(
@@ -80,11 +87,11 @@ describe('ENGAGEMENT_PLATFORM_MODULE', () => {
   });
 
   test.each(['fetch', 'queue', 'scheduled'] as const)(
-    '%sの処理単位でも束縛した8つの識別子をD1の実装に解決する',
+    '%sの処理単位でも束縛した10個の識別子をD1の実装に解決する',
     (kind) => {
       const container = createContainer(kind);
 
-      expect(IMPLEMENTATIONS).toHaveLength(8);
+      expect(IMPLEMENTATIONS).toHaveLength(10);
       for (const [identifier, implementation] of IMPLEMENTATIONS) {
         expect(container.get(identifier)).toBeInstanceOf(implementation);
       }
@@ -150,5 +157,42 @@ describe('ENGAGEMENT_PLATFORM_MODULE', () => {
         invalidatedByAdmin: true,
       }),
     ]);
+  });
+
+  test('解決した管理画面の照会で、コメントの一覧と無効化した評価を引ける', async () => {
+    const container = createContainer();
+    const comments = container.get<AdminCommentDirectory>(
+      ENGAGEMENT_PLATFORM_TYPES.AdminCommentDirectory,
+    );
+    const ratings = container.get<AdminRatingDirectory>(
+      ENGAGEMENT_PLATFORM_TYPES.AdminRatingDirectory,
+    );
+
+    await expect(
+      comments.search({ productId: SAMPLE_PRODUCT_ID }, { limit: 10 }),
+    ).resolves.toEqual({
+      comments: [
+        expect.objectContaining({
+          commentId: SAMPLE_COMMENT_ID,
+          authorUserId: SAMPLE_MEMBER_ID,
+          state: 'shown',
+        }),
+      ],
+      nextCursor: null,
+    });
+    await expect(
+      ratings.search({ state: 'invalidated' }, { limit: 10 }),
+    ).resolves.toEqual({
+      ratings: [expect.objectContaining({ ratingId: SAMPLE_RATING_ID })],
+      nextCursor: null,
+    });
+    await expect(ratings.findByIds([SAMPLE_RATING_ID])).resolves.toEqual(
+      new Map([
+        [
+          SAMPLE_RATING_ID,
+          expect.objectContaining({ score: SAMPLE_RATING_SCORE }),
+        ],
+      ]),
+    );
   });
 });

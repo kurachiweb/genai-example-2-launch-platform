@@ -3,6 +3,8 @@ import { ContainerModule } from 'inversify';
 import type { AppModule } from '../../core/di/app-module.ts';
 import { ENGAGEMENT_PLATFORM_TYPES } from '../../core/engagement/identifiers.ts';
 import type {
+  AdminCommentDirectory,
+  AdminRatingDirectory,
   CommentExport,
   CommentStore,
   CommentThreadQuery,
@@ -14,6 +16,8 @@ import {
   type CommentStatements,
   D1CommentStatements,
 } from './comment-statements.ts';
+import { D1AdminCommentDirectory } from './d1-admin-comment-directory.ts';
+import { D1AdminRatingDirectory } from './d1-admin-rating-directory.ts';
 import { D1CommentStore } from './d1-comment-store.ts';
 import { D1CommentThreadQuery } from './d1-comment-thread-query.ts';
 import { D1EngagementErasureStore } from './d1-engagement-erasure-store.ts';
@@ -53,6 +57,12 @@ export const ENGAGEMENT_PLATFORM_MODULE: Omit<AppModule, 'routes'> = {
       .inSingletonScope();
     bind<RatingExport>(ENGAGEMENT_PLATFORM_TYPES.RatingExport)
       .to(D1RatingExport)
+      .inSingletonScope();
+    bind<AdminCommentDirectory>(ENGAGEMENT_PLATFORM_TYPES.AdminCommentDirectory)
+      .to(D1AdminCommentDirectory)
+      .inSingletonScope();
+    bind<AdminRatingDirectory>(ENGAGEMENT_PLATFORM_TYPES.AdminRatingDirectory)
+      .to(D1AdminRatingDirectory)
       .inSingletonScope();
   }),
 };
