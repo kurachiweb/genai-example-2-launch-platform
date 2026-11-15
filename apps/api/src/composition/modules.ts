@@ -10,6 +10,7 @@ import {
 } from '../../lib/workers/bot-protection/turnstile-verifier.ts';
 import { DIRECTORY_PLATFORM_MODULE } from '../../lib/workers/directory/directory-platform-module.ts';
 import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-module.ts';
+import { ENGAGEMENT_PLATFORM_MODULE } from '../../lib/workers/engagement/engagement-platform-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-platform-module.ts';
 import { PRODUCT_PLATFORM_MODULE } from '../../lib/workers/product/product-platform-module.ts';
@@ -124,6 +125,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_MATCH_PLATFORM_MODULE,
   DIRECTORY_PLATFORM_MODULE,
   API_NOTIFICATIONS_PLATFORM_MODULE,
+  ENGAGEMENT_PLATFORM_MODULE,
   ADMIN_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,
