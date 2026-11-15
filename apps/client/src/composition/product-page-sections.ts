@@ -1,3 +1,4 @@
+import { RatingSection } from '../components/engagement/rating-section.tsx';
 import { matchHistorySectionOf } from '../components/product-page/match-history-section.tsx';
 import { ownerCardSectionOf } from '../components/product-page/owner-card.tsx';
 import { ProductDescriptionSection } from '../components/product-page/product-description-section.tsx';
@@ -43,5 +44,11 @@ export const PRODUCT_PAGE_SECTIONS: readonly ProductPageSection[] =
       placement: 'aside',
       order: 10,
       component: ownerCardSectionOf(PRODUCT_OWNER_ACTIONS),
+    },
+    {
+      id: 'engagement.rating',
+      placement: 'aside',
+      order: 20,
+      component: RatingSection,
     },
   ]);
