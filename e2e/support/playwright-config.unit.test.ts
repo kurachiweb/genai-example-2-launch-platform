@@ -121,20 +121,20 @@ describe('createPlaywrightConfig', () => {
       createPlaywrightConfig([], SHARED_CHROMIUM, WORKERS).use,
     ).toStrictEqual({
       launchOptions: SHARED_CHROMIUM,
-      trace: 'on-first-retry',
+      trace: 'on-all-retries',
     });
   });
 
   test('共有Chromiumの指定が無ければ、空の起動オプションのままにする', () => {
     expect(createPlaywrightConfig([], {}, WORKERS).use).toStrictEqual({
       launchOptions: {},
-      trace: 'on-first-retry',
+      trace: 'on-all-retries',
     });
   });
 
-  test('再試行の1回目に限りトレースを記録し、再試行しないローカルの実行では記録しない', () => {
+  test('再試行のたびにトレースを記録し、再試行しないローカルの実行では記録しない', () => {
     expect(createPlaywrightConfig([], {}, WORKERS).use?.trace).toBe(
-      'on-first-retry',
+      'on-all-retries',
     );
   });
 
@@ -398,8 +398,8 @@ describe('resolveE2EWorkers', () => {
 });
 
 describe('resolveE2ERetries', () => {
-  test('CIでは、失敗したテストを1回だけ再試行する', () => {
-    expect(resolveE2ERetries({ CI: 'true' })).toBe(1);
+  test('CIでは、失敗したテストを2回まで再試行する', () => {
+    expect(resolveE2ERetries({ CI: 'true' })).toBe(2);
   });
 
   test.each([

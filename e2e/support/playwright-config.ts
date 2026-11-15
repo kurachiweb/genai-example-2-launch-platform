@@ -33,9 +33,10 @@ export function resolveE2EWorkers(
   return Number.parseInt(value, 10);
 }
 
-// CIのランナーでは、同じローカルのDBを書くAPIサーバーとイベントサーバーの書き込みの競合など、テストの手順と関係の無い一時的な失敗が起き得る。
+// CIのランナーでは、同じローカルのDBを開くAPIサーバーとイベントサーバーのロックの競合など、テストの手順と関係の無い一時的な失敗が起き得る。
+// 競合は要求の失敗とサーバーの停止のどちらにもなり、1つのテストの初回と再試行の両方で起きることもあるため、2回まで再試行する。
 // ローカルでは失敗をそのまま見せて原因を調べられるよう再試行しない
-const CI_E2E_RETRIES = 1;
+const CI_E2E_RETRIES = 2;
 
 export function resolveE2ERetries(
   env: Readonly<Record<string, string | undefined>>,
@@ -172,8 +173,8 @@ export function createPlaywrightConfig(
       ['html', { outputFolder: HTML_REPORT_DIR, open: 'never' }],
       [ZERO_TESTS_REPORTER_PATH],
     ],
-    // CIの成果物から失敗の時の画面と操作を調べられるようにする。ローカルは再試行しないため記録せず、実行を重くしない
-    use: { launchOptions, trace: 'on-first-retry' },
+    // CIの成果物から失敗の時の画面と操作を調べられるよう、最後の再試行まで記録する。ローカルは再試行しないため記録せず、実行を重くしない
+    use: { launchOptions, trace: 'on-all-retries' },
     projects: [
       ...plans.flatMap((plan) => toProjects(plan, serialGroups)),
       ...serialGroups.flatMap((group) =>
