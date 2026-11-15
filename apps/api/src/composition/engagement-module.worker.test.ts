@@ -36,6 +36,16 @@ import {
   StoreRatingService,
 } from '../application/engagement/rating-service.ts';
 import { currentUserOf } from '../application/engagement/testing/comment-fakes.ts';
+import type { DirectoryItemMetricSource } from '../application/directory/item-metric-sources.ts';
+import { ThreadQueryCommentCountMetricSource } from '../application/engagement/comment-count-metric-source.ts';
+import {
+  type CommentModerationControl,
+  D1CommentModerationControl,
+} from '../infrastructure/engagement/comment-moderation-control.ts';
+import {
+  D1RatingModerationControl,
+  type RatingModerationControl,
+} from '../infrastructure/engagement/rating-moderation-control.ts';
 import { D1CommentWriter } from '../infrastructure/engagement/d1-comment-writer.ts';
 import { D1RatingWriter } from '../infrastructure/engagement/d1-rating-writer.ts';
 import {
@@ -50,6 +60,7 @@ import {
   readComment,
   readRating,
   readRatingsOf,
+  productIdOf,
   T0,
 } from '../../lib/workers/engagement/testing/engagement-fixtures.ts';
 import {
@@ -480,6 +491,73 @@ describe('APIサーバーの評価の束縛', () => {
         id: SAMPLE_RATING_ID,
         score: SAMPLE_RATING_SCORE,
       }),
+    ]);
+  });
+});
+
+describe('APIサーバーの管理の操作口とコメント数の供給元の束縛', () => {
+  test('2つの管理の操作口とコメント数の供給元を処理単位のコンテナから解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<CommentModerationControl>(
+        ENGAGEMENT_TYPES.CommentModerationControl,
+      ),
+    ).toBeInstanceOf(D1CommentModerationControl);
+    expect(
+      container.get<RatingModerationControl>(
+        ENGAGEMENT_TYPES.RatingModerationControl,
+      ),
+    ).toBeInstanceOf(D1RatingModerationControl);
+    expect(
+      container.get<DirectoryItemMetricSource>(
+        ENGAGEMENT_TYPES.CommentCountMetricSource,
+      ),
+    ).toBeInstanceOf(ThreadQueryCommentCountMetricSource);
+  });
+
+  test('解決した操作口は、D1のコメントを非公開化・復元し、無効化した評価の無効化を取り消す', async () => {
+    const container = createContainer();
+    const comments = container.get<CommentModerationControl>(
+      ENGAGEMENT_TYPES.CommentModerationControl,
+    );
+    const ratings = container.get<RatingModerationControl>(
+      ENGAGEMENT_TYPES.RatingModerationControl,
+    );
+    const at = after(60_000);
+
+    const hidden = await comments.hide({ commentId: SAMPLE_COMMENT_ID, at });
+    const hiddenRow = await readComment(1);
+    const unhidden = await comments.unhide({
+      commentId: SAMPLE_COMMENT_ID,
+      at,
+    });
+    const revalidated = await ratings.revalidate({
+      ratingId: SAMPLE_RATING_ID,
+      at,
+    });
+
+    expect([hidden, unhidden, revalidated]).toEqual([
+      'changed',
+      'changed',
+      'changed',
+    ]);
+    expect(hiddenRow).toMatchObject({ hiddenAt: at });
+    expect(await readComment(1)).toMatchObject({ hiddenAt: null });
+    expect(await readRating(1)).toMatchObject({ invalidatedAt: null });
+  });
+
+  test('解決したコメント数の供給元は、D1のプロダクトごとの表示できるコメントの数を返し、コメントの無いプロダクトを0で補う', async () => {
+    await insertProduct(2, 1);
+    await insertLaunch(2, 2);
+
+    const metrics = await createContainer()
+      .get<DirectoryItemMetricSource>(ENGAGEMENT_TYPES.CommentCountMetricSource)
+      .metrics({ productIds: [SAMPLE_PRODUCT_ID, productIdOf(2)], at: NOW });
+
+    expect([...metrics]).toEqual([
+      [SAMPLE_PRODUCT_ID, 1],
+      [productIdOf(2), 0],
     ]);
   });
 });

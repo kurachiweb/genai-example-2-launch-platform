@@ -42,6 +42,10 @@ export const ENGAGEMENT_ERRORS = Object.freeze({
     kind: 'unprocessable',
     message: OWN_PRODUCT_RATING_MESSAGE,
   },
+  rating_not_found: {
+    kind: 'not_found',
+    message: '評価が見つかりません。',
+  },
   account_unavailable: IDENTITY_ERRORS.account_unavailable,
 } satisfies Readonly<Record<string, EngagementErrorDefinition>>);
 

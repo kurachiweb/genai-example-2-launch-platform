@@ -3,6 +3,8 @@ import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
+import type { DirectoryItemMetricSource } from '../application/directory/item-metric-sources.ts';
+import { ThreadQueryCommentCountMetricSource } from '../application/engagement/comment-count-metric-source.ts';
 import {
   type CommentReader,
   StoreCommentReader,
@@ -24,8 +26,16 @@ import {
   type RatingService,
   StoreRatingService,
 } from '../application/engagement/rating-service.ts';
+import {
+  type CommentModerationControl,
+  D1CommentModerationControl,
+} from '../infrastructure/engagement/comment-moderation-control.ts';
 import { D1CommentWriter } from '../infrastructure/engagement/d1-comment-writer.ts';
 import { D1RatingWriter } from '../infrastructure/engagement/d1-rating-writer.ts';
+import {
+  D1RatingModerationControl,
+  type RatingModerationControl,
+} from '../infrastructure/engagement/rating-moderation-control.ts';
 
 // コメントと評価のストア・文の部品(ENGAGEMENT_PLATFORM_MODULE)とプロダクトの照会(PRODUCT_PLATFORM_MODULE)は各モジュールの束縛を使う
 export const ENGAGEMENT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
@@ -41,5 +51,14 @@ export const ENGAGEMENT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<CommentReader>(ENGAGEMENT_TYPES.CommentReader).to(StoreCommentReader);
     bind<RatingWriter>(ENGAGEMENT_TYPES.RatingWriter).to(D1RatingWriter);
     bind<RatingService>(ENGAGEMENT_TYPES.RatingService).to(StoreRatingService);
+    bind<CommentModerationControl>(
+      ENGAGEMENT_TYPES.CommentModerationControl,
+    ).to(D1CommentModerationControl);
+    bind<RatingModerationControl>(ENGAGEMENT_TYPES.RatingModerationControl).to(
+      D1RatingModerationControl,
+    );
+    bind<DirectoryItemMetricSource>(
+      ENGAGEMENT_TYPES.CommentCountMetricSource,
+    ).to(ThreadQueryCommentCountMetricSource);
   }),
 };
