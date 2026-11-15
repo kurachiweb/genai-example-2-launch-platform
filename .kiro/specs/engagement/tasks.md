@@ -241,7 +241,7 @@
   - 完了状態: ブラウザテストが成功し、ローカルの詳細ページのローンチのブロックにコメント欄が出る
   - _Requirements: 8.1, 8.2, 8.18_
 
-- [ ] 7.9 (P) ディレクトリの項目のコメント数の部品を作り、clientの項目の値の登録口へ登録する
+- [x] 7.9 (P) ディレクトリの項目のコメント数の部品を作り、clientの項目の値の登録口へ登録する
   - 先に、ブラウザテスト(`runAxe`の違反0件)で、数が詳細ページのマッチ履歴とコメントの見出しへのリンクになり、「コメント{n}件」が支援技術に伝わることを確かめる
   - clientの`DIRECTORY_ITEM_METRICS`に`comments`(`order` 10)で登録する
   - 完了状態: ブラウザテストが成功し、ローカルのディレクトリの項目にコメント数が出る
@@ -318,3 +318,4 @@
 - 7.6(差し戻し1回、テストの不足): コメントの項目は`comment-item.tsx`の`CommentItem`(`mutations: CommentItemMutations | null`、未ログインはnull。`actions?`の既定は`COMMENT_ACTIONS`)。7.7は項目を`<ol>`の中に置き、削除の後のフォーカスは項目自身が置き換え表示の`<article tabIndex=-1>`へ移すため重ねて移さない。返信の一覧は入れ子の`<ol aria-label="返信">`。未確認の「返信」は`aria-disabled`と理由の説明とツールチップ(upvoteの前例。`frontend/004`の「条件を満たすまで押せない→`disabled`」と食い違い、前例も揃っていない)。アバターは`SquareDisplaySize`に36が無いため`size={32}`を36pxで描画(設計は`UserAvatar(36)`)。7.3の`comment-composer.tsx`を変えた: 返信・編集の欄を開いた時に本文へフォーカスを移し、「キャンセル」は`onMouseDown`で`preventDefault`する(空の本文のフォーカスアウトの検証でボタンがずれ押下が外れる不具合の修正)。テストは`DisplayPreferencesProvider`と`TooltipProvider`で包む。
 - 7.7: スレッドの一覧は`comment-thread.tsx`の`CommentThread({ product: {id, handle}, launch: {id}, viewerIsOwner })`(`launchComments`がnullなら欄全体を描かない。`useCommentMutations`はログイン中の内側の部品の中だけで呼ぶ)。7.8は開いている間だけ描く。続きの失敗は「さらに読み込む」を`PartialErrorState`の「再試行」に置き換え、フォーカスを新しい再試行のボタンへ移す(`002-page-layouts.md`・`003`のコメント欄の定めと前例`supporters-panel.tsx`に従い、`frontend/006`の「同じボタンで読み込み直す」と`frontend/004`の「読み込みの失敗ではボタンに残す」と食い違う。8.1の`frontend/015`に例外として記し、最終報告で挙げる)。`PartialErrorState`の文言は固定(`frontend/006`の`errorMessageOf`と食い違うが前例どおり)。最初の再試行のフォーカスは欄の外枠(`data-slot="comment-thread"`、`tabIndex=-1`)。件数の取り直しの確認は7.8。テストの補助は設計のファイル構成に無い`comment-thread-testing.tsx`。
 - 7.8: ローンチのコメント欄は`launch-comments-section.tsx`の`LaunchCommentsSection`で、`PRODUCT_LAUNCH_SECTIONS`に`engagement.comments`(10)を登録した。件数は区画ごとに`launchCommentCountsQueryOptions`の`select: countOf(launch.id)`で取り出し全ブロックで1回の取得を共有し、`enabled: launch.kickedOff`。開閉の矢印は遷移を付けずに切り替え(前例のサポーターの開閉の`transition-transform`と揃っていない。テストは区画の中のボタン以外のアニメーションを0件とする)。ボタンの名前は「コメント 1,234件」。`docs/onboardings/project-values.md`の区画の登録の行は`PRODUCT_LAUNCH_SECTIONS`を「登録0件」、`PRODUCT_PAGE_SECTIONS`を「4件」と書いて実態と食い違うため、8.2で`engagement.comments`(10)と`engagement.rating`(`aside` 20)を反映する。
+- 7.9: ディレクトリの項目のコメント数は`comment-count-metric.tsx`の`CommentCountMetric`(`/p/<handle>#launches-heading`、`MATCH_HISTORY_HEADING_ID`を再利用)で、clientの`DIRECTORY_ITEM_METRICS`に`comments`(10)を登録した(apiの3.7の`key`と手で揃えた)。読み上げは数を`aria-hidden`にし`sr-only`の1つの文「コメント{n}件」にした(前例の分割の形ではChromeが語の間に空白を入れるため。前例`win-summary.tsx`・7.8のボタンの名前と形が揃っていないので8.1で指針を書く)。登録箇所が部品を読み込むため`components/directory/directory-sections.unit.test.ts`を`.browser.test.ts`へ移した(directory-discoveryの前例)。`project-values.md`の「ディレクトリの登録箇所」の行は8.2で直す。

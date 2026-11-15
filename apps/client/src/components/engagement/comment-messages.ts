@@ -98,3 +98,7 @@ export const COMMENTS_EMPTY_HINTS: Readonly<
   owner: 'ローンチの背景や近況を書いて、サポーターに伝えましょう。',
   member: '感想や質問を最初に書いてみましょう。',
 });
+
+// ディレクトリの一覧の項目のコメント数の支援技術への読み上げ。数は表示設定で整えた文字列を受ける
+export const commentCountMetricLabel = (count: string): string =>
+  `コメント${count}件`;

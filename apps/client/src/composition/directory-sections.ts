@@ -1,3 +1,4 @@
+import { CommentCountMetric } from '../components/engagement/comment-count-metric.tsx';
 import type {
   DirectoryItemMetric,
   DirectoryListInsert,
@@ -14,4 +15,6 @@ export const DIRECTORY_LIST_INSERTS: readonly DirectoryListInsert[] =
 
 // ディレクトリの一覧の項目に添えるプロダクトごとの値の登録箇所。各specが自分の値を追記する
 export const DIRECTORY_ITEM_METRICS: readonly DirectoryItemMetric[] =
-  Object.freeze([]);
+  Object.freeze([
+    { key: 'comments', order: 10, component: CommentCountMetric },
+  ]);

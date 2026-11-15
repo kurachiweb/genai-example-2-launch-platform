@@ -1,10 +1,11 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 
 import {
   DIRECTORY_ITEM_METRICS,
   DIRECTORY_LIST_INSERTS,
   DIRECTORY_PAGE_SECTIONS,
 } from '../../composition/directory-sections.ts';
+import { CommentCountMetric } from '../engagement/comment-count-metric.tsx';
 import { DIRECTORY_PLACEMENTS } from './directory-section-order.ts';
 import type { DirectoryPlacement } from './directory-section-types.ts';
 
@@ -16,10 +17,16 @@ const METRIC_KEY_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
 const PLACEMENTS: readonly DirectoryPlacement[] = DIRECTORY_PLACEMENTS;
 
 describe('ディレクトリの登録箇所', () => {
-  test('初版の区画・一覧の差し込み・項目の値の3つの登録箇所は空である', () => {
+  test('初版の区画と一覧の差し込みの登録箇所は空である', () => {
     expect(DIRECTORY_PAGE_SECTIONS).toStrictEqual([]);
     expect(DIRECTORY_LIST_INSERTS).toStrictEqual([]);
-    expect(DIRECTORY_ITEM_METRICS).toStrictEqual([]);
+  });
+
+  test('項目の値にはengagementのコメント数(10)を、APIサーバーの供給元の登録と同じkeyで登録する', () => {
+    expect(
+      DIRECTORY_ITEM_METRICS.map(({ key, order }) => ({ key, order })),
+    ).toStrictEqual([{ key: 'comments', order: 10 }]);
+    expect(DIRECTORY_ITEM_METRICS[0]?.component).toBe(CommentCountMetric);
   });
 
   test.each([
