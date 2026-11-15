@@ -2,16 +2,17 @@
 
 - [ ] 1. 基盤: 入力の規則・テーブル・サービス仕様
 - [ ] 1.1 コメントと評価の入力の規則を、4アプリが読み込める共有の定義として作る
-  - 前提: dev-tooling〜notificationsの20specの全タスクが完了していること(directory-discoveryの`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS`と区画の文脈の型・E2Eの`e2e/support/directory-fixtures.ts`、product-launchの`core/product`の`ProductDirectory`・`PRODUCT_PLATFORM_TYPES`・`visibleProducts()`・`wonLaunchExists()`・プロダクトライフサイクルの登録口、identity-authの`AccountGuard`・`visibleUsers()`・`verifiedUsers()`・ユーザーライフサイクルの登録口・`LoginRequiredDialog`・`resendVerificationEmail`、content-processingの`markdownTextSchema`・`MarkdownEditor`・`useMarkdownOptions`、user-profile-socialの`UserSummary`・`userSummaryLoader`・`UserAvatar`、backend-platformの`SCHEDULED_JOBS`と改訂2のE2Eの共有の補助`triggerScheduled`(`e2e/support/scheduled-trigger.ts`)、admin-foundationのE2Eの`executeLocalD1`)。無ければ該当するタスクを保留して開発者へ報告する(`triggerScheduled`が無い場合は9.1の4:21の匿名化の確かめだけを保留する)
-  - 先に、単体テストで、本文の2,000書記素の境界(結合文字を含む絵文字)・空白だけ・使用できない文字の文言と順、評価の0・6・小数・文字列の拒否、1ページ10件と3階層の定数、bot対策の操作名3つ、見出しのアンカーの接頭辞がコメントのIDごとに異なり英小文字と数字の32文字以内になることを確かめる
+  - 前提: dev-tooling〜notificationsの20specの全タスクが完了していること(directory-discoveryの`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS`と区画の文脈の型・E2Eの`e2e/support/directory-fixtures.ts`、product-launchの`core/product`の`ProductDirectory`・`PRODUCT_PLATFORM_TYPES`・`visibleProducts()`・`wonLaunchExists()`・プロダクトライフサイクルの登録口、identity-authの`AccountGuard`・`visibleUsers()`・`verifiedUsers()`・ユーザーライフサイクルの登録口・`LoginRequiredDialog`・`resendVerificationEmail`、content-processingの`markdownTextSchema`・`MarkdownEditor`・`useMarkdownOptions`、user-profile-socialの`UserSummary`・`userSummaryLoader`・`UserAvatar`、backend-platformの`SCHEDULED_JOBS`と改訂2のE2Eの共有の補助`triggerScheduled`(`e2e/support/scheduled-trigger.ts`)、admin-foundationのE2Eの`executeLocalD1`。2026-11-15のギャップ分析で全タスクの完了と契約の実在を確かめた)。無ければ該当するタスクを保留して開発者へ報告する(`triggerScheduled`が無い場合は9.1の4:21の匿名化の確かめだけを保留する)
+  - 先に、単体テストで、本文の2,000書記素の境界(結合文字を含む絵文字)・空白だけ・使用できない文字の文言と順、評価の0・6・小数・文字列の拒否、1ページ10件と3階層の定数、bot対策の操作名3つ、見出しのアンカーの接頭辞がコメントのIDごとに異なり英小文字と数字の32文字以内になること、キックオフ前のローンチと自身のプロダクトの評価の文言の定数(`LAUNCH_NOT_COMMENTABLE_MESSAGE`・`OWN_PRODUCT_RATING_MESSAGE`)が文言規則(設計のError Handling)の文言と一致することを確かめる
   - 完了状態: 単体テストが成功し、apiとclientの型検査で規則を読み込める
-  - _Requirements: 1.2, 1.3, 2.2, 3.1, 7.3, 9.5_
+  - _Requirements: 1.2, 1.3, 2.2, 3.1, 7.3, 8.1, 9.5, 11.6_
 
 - [ ] 1.2 コメントと評価のテーブル、表示できるコメントと有効な評価の条件、マイグレーションを作る
   - 先に、テーブルの定義の単体テストで、階層の1〜3と評価の1〜5の制約、利用者とプロダクトの組の一意、外部キー(プロダクト・ローンチ・親のコメント・利用者)に削除時の動作の指定が無いこと、コメントのトップレベルのページ・返信のまとめ読み・投稿者・プロダクト・削除の日時の索引と、評価の評価者の索引を確かめる
   - 表示できるコメントの条件(削除・非公開化・匿名化の印が無く、投稿者が紐付いていて可視)と有効な評価の条件(無効化・論理削除の印が無く、評価者が可視)を、利用者のテーブルとの結合で使う条件の部品として作る
+  - 階層の1〜3と評価の1〜5の制約は、`apps/db`が`common-lib`を読み込めないためテーブル定義のファイルに`COMMENT_MAX_DEPTH`・`RATING_SCORES`の写しの名前付きのリテラルの定数を置いてCHECKをそこから組み立て(値は文に埋め込む)、写しの側に元の場所と照合のテストのファイル名をコメントで示す。ルートの`config/engagement-contract-copies.unit.test.ts`で写しの定数と元の値との一致を確かめ(他のアプリのファイルを`import`せず、ソースを構文解析して定数の初期化子を比べる)、ルートの`package.json`の`check:contract-copies`の引数に加える
   - mainの最新を取り込んでからマイグレーションを生成する
-  - 完了状態: 単体テストが成功し、マイグレーションをローカルに適用できる
+  - 完了状態: 単体テストと`bun run check:contract-copies`が成功し、マイグレーションをローカルに適用できる
   - _Requirements: 2.2, 5.1, 9.2, 11.1, 14.4_
 
 - [ ] 1.3 (P) ページ配置・文言規則・日次タイムラインに、本specの決定と画面と文言を先に書く
@@ -77,6 +78,7 @@
 - [ ] 3. APIサーバーのユースケース
 - [ ] 3.1 (P) 閲覧の可否・コメントできるローンチ・スレッドの組み立ての純粋な規則を作る
   - 先に、単体テストで、閲覧の可否(不在・可視でない・掲載中・未掲載の他者と本人)、コメントできるローンチ(予定・組み合わせ済み・当日・終了・取消・不在)、スレッドの照会の行からスレッドへの組み立て、投稿者本人と閲覧者自身の判定、置き換え表示でバッジと作者の判定が常に偽になることを確かめる
+  - 閲覧の可否は、directory-discoveryの`decideProductPageAccess`(ハンドルの解決が入力)と共有せず、同じ規則(可視かつ、掲載中か投稿者本人)を本specに持ち、同じ真理値表の単体テストで揃える。可視でないプロダクトは`findSummaries(ids, 'visible')`の結果に無いため、照会に無いことを閲覧できないとする
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
   - _Depends: 2.3_
   - _Boundary: EngagementAccess、CommentThreads_
@@ -92,6 +94,7 @@
 - [ ] 3.3 コメントの投稿と返信のユースケースを作る(評価の同時保存を含む)
   - 先に、単体テスト(偽の`CommentWriter`・`CommentStore`・`ProductDirectory`などの模擬のポート)で、判定の順(投稿先→ローンチの状態→親→評価)と各エラー、投稿者本人のコメントを受け付けること、返信への評価と投稿者本人の評価の拒否、評価を添えた投稿でコメントと評価が1回の書き込みの単位に渡ること、書き込みの単位が`rejected`を返したら読み直しで理由が分類されることを確かめる
   - 同じく先に、Workers統合テストで、書き込みの単位の実装`D1CommentWriter`が評価を添えた投稿でコメントと評価を1回の一括の書き込みで保存し、評価の違反でコメントも残らず`rejected`を返すこと、評価を添えない投稿で既存の評価が変わらないこと、判定の後の非公開化・停止・親の削除で書き込まれず`rejected`になること、条件の違反以外のD1の例外を投げることを確かめる
+  - `launch_not_commentable`の文言は`common-lib/engagement`の`LAUNCH_NOT_COMMENTABLE_MESSAGE`を使う
   - application層に書き込みの単位のポート`CommentWriter`(`apps/api/src/application/engagement/ports.ts`)を定義し、文の部品`CommentStatements`・`RatingStatements`から文を組み立てて`db.batch()`を実行する実装`D1CommentWriter`をinfrastructure層に作る。application層はデータベースの接続・SQLの文・一括の書き込みを扱わない
   - 完了状態: テストが成功し、apiの束縛に追記したユースケースと書き込みの単位を解決でき、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Requirements: 1.1, 1.5, 1.8, 1.9, 2.1, 2.3, 2.4, 2.5, 7.4, 10.1, 10.2, 10.3, 10.4_
@@ -109,6 +112,7 @@
 
 - [ ] 3.6 評価のユースケースを作る
   - 先に、単体テスト(偽の`RatingWriter`・`RatingStore`などの模擬のポート)とWorkers統合テスト(`D1RatingWriter`を含む)で、閲覧できないプロダクトの評価と取消の拒否、自身のプロダクトの拒否、初回と上書きと取消の後の平均値・件数・自分の評価、評価の無い取消の成功、無効化された自分の評価を返すこと、投稿者本人と未ログインの自分の評価がnullであること、判定の後の非公開化で書き込まれず`rejected`になることを確かめる
+  - `rating_own_product`の文言は`common-lib/engagement`の`OWN_PRODUCT_RATING_MESSAGE`を使う
   - application層に書き込みの単位のポート`RatingWriter`を定義し、`RatingStatements`の上書きの文を実行する実装`D1RatingWriter`をinfrastructure層に作る
   - 完了状態: テストが成功し、apiの束縛に追記したユースケースと書き込みの単位を解決でき、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.6, 9.10, 11.9, 11.11_
@@ -123,7 +127,7 @@
 - [ ] 4. APIサーバーのGraphQL
 - [ ] 4.1 スキーマモジュールの型とコメントの照会を作り、組み込む
   - 先に、Workers統合テストで、呼び出し元が利用者側でなければ拒否、IDとカーソルの検証、置き換え表示の項目のnull、投稿者を利用者の表示用のローダーで解決し、ローダーがnullを返せばnullのまま返すこと、閲覧できない照会がnullになることを確かめる
-  - コメント・スレッド・接続・件数・評価欄の値(`ProductRating`)・操作の結果の型と、スレッドのページ・ローンチごとの件数の照会と、コメントの投稿者のリゾルバを作り、スキーマモジュールの一覧へ加え、スキーマと型を生成する
+  - コメント・スレッド・接続・件数・評価欄の値(`ProductRating`)・操作の結果の型と、スレッドのページ・ローンチごとの件数の照会と、コメントの投稿者のリゾルバを作り、スキーマモジュールの一覧へ加え、スキーマと型を生成する。リゾルバは利用者の状態の判定を`IDENTITY_PLATFORM_TYPES.AccountGuard`(`core/identity/identifiers.ts`)で解決する
   - 完了状態: Workers統合テストとスキーマの合成の検査が成功する
   - _Requirements: 3.1, 3.3, 3.5, 5.2_
 
@@ -145,8 +149,8 @@
   - _Requirements: 13.1, 13.7_
 
 - [ ] 5.2 4:21の匿名化のジョブを作り、日次のジョブへ登録する
-  - 先に、単体テストで、業務日付の切り替わりの前後の閾値の計算、500件ずつ最大10回で500件未満になったら止まること、期限を過ぎた残りがあれば件数だけの`error`のログになること、同じ日の再実行で結果が変わらないことを確かめる
-  - 4:21・`order` 1400で日次のジョブの一覧へ加え、apiの束縛に追記する
+  - 先に、単体テストで、業務日付の切り替わりの前後の閾値の計算、500件ずつ最大10回で500件未満になったら止まること、期限を過ぎた残りがあれば件数だけの`error`のログになること、同じ日の再実行で結果が変わらないこと、ジョブの定義の名前・時刻・`order`を確かめる
+  - ジョブのファイルが`COMMENT_ANONYMIZATION_JOB_DEFINITION`(`engagement.comment-anonymization`・4:21・`order` 1400を凍結した値)を輸出し、apiの`SCHEDULED_JOBS`に並べ(product-launch・match-engine・notificationsのジョブの定義と同じ形)、apiの束縛に追記する。4:21の起動の時間の予算(`SCHEDULED_RUN_BUDGETS`の合計300秒)の値は変えない
   - 完了状態: 単体テストとcronの登録の検証が成功する(ローカルでの4:21の起動による匿名化の確かめは9.1のE2Eで行い、本タスクでは起動の補助を作らない)
   - _Requirements: 6.1, 6.4, 6.5, 6.6, 13.8_
 
@@ -168,6 +172,7 @@
 
 - [ ] 6.2 (P) 閲覧者の状態の判定と星の評価の入力を作る
   - 先に、単体テストで、閲覧者の状態の判定(未ログイン・未確認・本人・それ以外の順、未確認の本人)を、ブラウザテスト(`runAxe`の違反0件)で、星の入力が5つの選択肢の1つを選ぶ操作として矢印キーで選べ、各星に「5段階中{n}」の名前があり、無効の理由が支援技術に伝わり、プライマリの色で塗られることを確かめる
+  - 星の入力はモックアップの`star-rating-input.tsx`を移植して自作し、frontend-libの`RadioGroup`は使わない
   - 完了状態: テストが成功する
   - _Boundary: EngagementViewer、StarRatingInput_
   - _Requirements: 11.7, 11.8, 11.13_
@@ -175,6 +180,7 @@
 - [ ] 6.3 評価欄と評価の操作の呼び出しを作り、詳細ページのサイドバーへ登録する
   - 評価欄の値の照会の設定(キャッシュのキー)と、評価・取消の呼び出しとキャッシュの置き換えをここで作る(7.3の評価の初期値と7.6の評価欄の値の更新が同じキーを使う)
   - 先に、ブラウザテスト(`runAxe`の違反0件)で、平均値の小数第1位と件数、0件の文言と評価できる閲覧者への一言、ログイン中の入力と評価済みの「取り消す」、本人の文言、未ログインの案内とログインのダイアログ、未確認の無効、評価・変更・取消の成功の通知と値の更新、失敗で表示が戻ること、取得の失敗が欄の中に閉じ込められることを確かめる
+  - 評価欄はfrontend-libの`Card`(投稿者本人向けの操作の`owner-card.tsx`と同じ枠)で描き、本人の文言は`OWN_PRODUCT_RATING_MESSAGE`を使う。定期の取り直しを持たないため、区画の文脈の`reportAutoUpdating`で申告しない
   - 詳細ページの区画の登録口のサイドバーに`order` 20で登録する
   - 完了状態: ブラウザテストが成功し、ローカルの詳細ページのサイドバーに評価欄が出る
   - _Depends: 6.1_
@@ -230,6 +236,7 @@
 
 - [ ] 7.8 ローンチのコメント欄を作り、詳細ページのローンチのブロックへ登録する
   - 先に、ブラウザテスト(`runAxe`の違反0件)で、キックオフ前の文言、件数を添えた開閉のボタンと開閉状態の伝達、最も新しいキックオフ済みのローンチだけが既定で開くこと、件数の取得が同じプロダクトのブロックで1回に共有されること、件数の取得の失敗でもボタンが出ること、演出のアニメーションが無いことを確かめる
+  - キックオフ前の文言は`LAUNCH_NOT_COMMENTABLE_MESSAGE`を使う
   - 詳細ページのローンチのブロックの区画の登録口に`order` 10で登録する
   - 完了状態: ブラウザテストが成功し、ローカルの詳細ページのローンチのブロックにコメント欄が出る
   - _Requirements: 8.1, 8.2, 8.18_
@@ -259,6 +266,7 @@
 
 - [ ] 9. 検証
 - [ ] 9.1 E2Eテストでコメントと評価の流れを確かめる
+  - コメント欄の開閉・投稿・返信・編集・削除と評価欄の操作は、画面の操作の手順`e2e/client/engagement-steps.ts`に置き、テストの本体`e2e/client/engagement.e2e.test.ts`から呼ぶ。マークダウンの入力欄はproduct-launchの`e2e/client/markdown-steps.ts`の`markdownEditable`で取り、書式のツールの有効化を待って本文を打つ手順は`engagement-steps.ts`に置く(上流の手順のファイルは変えない)。詳細ページの経路はdirectory-discoveryの`e2e/client/directory-steps.ts`の`productPagePath`を使う
   - `e2e/client/engagement.e2e.test.ts`: directory-discoveryの`e2e/support/directory-fixtures.ts`で掲載中のプロダクトと確定した予選のローンチを作り、identity-authの`e2e/support/mailpit.ts`で確認済みの利用者2人を登録する(メールアドレスのドメインは`.example`)
   - 利用者がコメントに評価を添えて投稿し、もう1人が第3階層まで返信して第3階層に「返信」が無いこと、編集で「(編集済み)」、削除で置き換え表示と返信の維持、評価欄の変更と取消で平均値と件数が変わること、投稿者本人に「自身のプロダクトは評価できません。」が出ること、ログアウトした閲覧者にログインへの導線が出ること、ディレクトリの項目にコメント数が出ることを確かめる。Ultrasの機能フラグで結果が変わる表示は確かめない
   - 4:21の匿名化: 画面からコメントを2件投稿して削除し、当日の業務日付Dを`BusinessTime`で求め、Dの13日前と12日前の0:00(業務時間)を`fromBusinessDateTime`で日時にしてエポックミリ秒の整数とし、admin-foundationの`executeLocalD1`(値は`sqlStringLiteral`)で2件の削除の日時をその値に書き換え、backend-platformの改訂2の`triggerScheduled({ worker: 'api', businessDate: <当日の業務日付>, businessTime: '04:21' })`(`e2e/support/scheduled-trigger.ts`)で4:21のジョブを動かし、`executeLocalD1`の読み取りで13日前の行だけ本文と投稿者の紐付けが消え、12日前の行が変わらないことを確かめる。独自の起動の補助を作らない(4:21の他のジョブも動くが、ローカルのD1だけに影響する)
@@ -268,7 +276,7 @@
   - _Requirements: 6.1, 15.3_
 
 - [ ] 9.2 全体の検査とカバレッジを確かめ、決定と運用の事項を報告する
-  - 整形の検査・静的解析・型検査と、単体テスト・Workers統合テスト・ブラウザテストを一括で実行し、本specが追加・変更したファイルのカバレッジが80%以上であることを確かめる。静的解析で、api・eventのapplication層に`**/lib/workers/**`の読み込みが無く、`core/engagement`が`workers`・`apps/db`を読み込まないことを確かめる。ログとSentryへの送信にコメントの本文・利用者のニックネームとハンドルが含まれないことを検索で確かめる
+  - 整形の検査・静的解析・型検査・写しの照合(`check:contract-copies`)と、単体テスト・Workers統合テスト・ブラウザテストを一括で実行し、本specが追加・変更したファイルのカバレッジが80%以上であることを確かめる。静的解析で、api・eventのapplication層に`**/lib/workers/**`の読み込みが無く、`core/engagement`が`workers`・`apps/db`を読み込まないことを確かめる。ログとSentryへの送信にコメントの本文・利用者のニックネームとハンドルが含まれないことを検索で確かめる
   - roadmapの帯の割り当ての表の本specの「使用中の値」(4:21は1400、波及処理は1400)と、ugc-moderationが本specの管理画面の一覧の照会(`AdminCommentDirectory`・`AdminRatingDirectory`、仮6)を使う旨を作業の報告に記録する(仮1〜仮6は2026-10-24に開発者が確定済み)
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に帯の値と照会の利用者が載っている
   - _Requirements: 14.5, 14.6, 15.1, 15.2_
