@@ -1121,6 +1121,8 @@ export type Mutation = {
   adminLogin: AdminSecondFactorRequired;
   /** この端末のログアウト */
   adminLogout: Scalars['Boolean']['output'];
+  /** 閲覧者のプロダクトへの評価を物理削除する。評価が無くても成功する */
+  cancelProductRating: ProductRating;
   /** メールアドレスが確認済みの利用者がマッチ中のマッチのUpvoteを取り消す。Upvoteしていなくても成功する。更新後のマッチを返す */
   cancelUpvote: Match;
   /** パスワードの変更。操作した端末へ新しいセッションを発行する */
@@ -1187,6 +1189,8 @@ export type Mutation = {
   postInquiryMessage: InquiryMessage;
   /** 下書きの公開。最上位管理者 */
   publishLegalDocument: AdminLegalDocument;
+  /** 閲覧者のプロダクトへの評価を保存し、評価済みなら上書きする */
+  rateProduct: ProductRating;
   /** 支払いの確定の前の同意の記録。支払える状態の本人の購入だけに記録し、同じ購入の再記録は最新の日時で上書きする */
   recordCheckoutConsent: Checkout;
   /** リカバリコードの再発行。操作した端末へ新しいセッションを発行する */
@@ -1275,6 +1279,11 @@ export type Mutation = {
 export type MutationAdminLoginArgs = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
+};
+
+
+export type MutationCancelProductRatingArgs = {
+  productId: Scalars['ID']['input'];
 };
 
 
@@ -1456,6 +1465,12 @@ export type MutationPostInquiryMessageArgs = {
 
 export type MutationPublishLegalDocumentArgs = {
   input: PublishLegalDocumentInput;
+};
+
+
+export type MutationRateProductArgs = {
+  productId: Scalars['ID']['input'];
+  score: Scalars['Int']['input'];
 };
 
 
@@ -2273,6 +2288,8 @@ export type Query = {
   productOwnerStatus?: Maybe<ProductOwnerStatus>;
   /** ログイン不要。ハンドルは大文字小文字を区別しない。存在しない・未掲載の他者・閲覧できないプロダクトはnull(404)、表示できる旧ハンドルは転送先を返す */
   productPage?: Maybe<ProductPageResult>;
+  /** プロダクトの評価欄の値。閲覧できないプロダクトはnull */
+  productRating?: Maybe<ProductRating>;
   /** 公開プロフィールの受賞バッジ。launchHistoryと同じ対象のプロダクトの受賞を、Yearを先頭に種類ごとにまとめて返す。ラベルの先頭に受賞したプロダクトの名称を付ける。利用者を表示できなければnull */
   profileAwards?: Maybe<Array<ProductAward>>;
   /** 見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す */
@@ -2461,6 +2478,11 @@ export type QueryProductOwnerStatusArgs = {
 
 export type QueryProductPageArgs = {
   handle: Scalars['String']['input'];
+};
+
+
+export type QueryProductRatingArgs = {
+  productId: Scalars['ID']['input'];
 };
 
 
@@ -3876,6 +3898,7 @@ export type MoneyResolvers<ContextType = GraphQLContext, ParentType extends Reso
 export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   adminLogin?: Resolver<ResolversTypes['AdminSecondFactorRequired'], ParentType, ContextType, RequireFields<MutationAdminLoginArgs, 'email' | 'password'>>;
   adminLogout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  cancelProductRating?: Resolver<ResolversTypes['ProductRating'], ParentType, ContextType, RequireFields<MutationCancelProductRatingArgs, 'productId'>>;
   cancelUpvote?: Resolver<ResolversTypes['Match'], ParentType, ContextType, RequireFields<MutationCancelUpvoteArgs, 'matchId'>>;
   changeAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationChangeAdminPasswordArgs, 'newPassword' | 'reAuthentication'>>;
   changeAdminRole?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationChangeAdminRoleArgs, 'id' | 'role'>>;
@@ -3911,6 +3934,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   postComment?: Resolver<ResolversTypes['CommentMutationResult'], ParentType, ContextType, RequireFields<MutationPostCommentArgs, 'input'>>;
   postInquiryMessage?: Resolver<ResolversTypes['InquiryMessage'], ParentType, ContextType, RequireFields<MutationPostInquiryMessageArgs, 'input' | 'inquiryId'>>;
   publishLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationPublishLegalDocumentArgs, 'input'>>;
+  rateProduct?: Resolver<ResolversTypes['ProductRating'], ParentType, ContextType, RequireFields<MutationRateProductArgs, 'productId' | 'score'>>;
   recordCheckoutConsent?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<MutationRecordCheckoutConsentArgs, 'purchaseId'>>;
   regenerateAdminRecoveryCodes?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateAdminRecoveryCodesArgs, 'reAuthentication'>>;
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
@@ -4283,6 +4307,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   productLiveMatch?: Resolver<Maybe<ResolversTypes['ProductLiveMatch']>, ParentType, ContextType, RequireFields<QueryProductLiveMatchArgs, 'productHandle'>>;
   productOwnerStatus?: Resolver<Maybe<ResolversTypes['ProductOwnerStatus']>, ParentType, ContextType, RequireFields<QueryProductOwnerStatusArgs, 'productHandle'>>;
   productPage?: Resolver<Maybe<ResolversTypes['ProductPageResult']>, ParentType, ContextType, RequireFields<QueryProductPageArgs, 'handle'>>;
+  productRating?: Resolver<Maybe<ResolversTypes['ProductRating']>, ParentType, ContextType, RequireFields<QueryProductRatingArgs, 'productId'>>;
   profileAwards?: Resolver<Maybe<Array<ResolversTypes['ProductAward']>>, ParentType, ContextType, RequireFields<QueryProfileAwardsArgs, 'userHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
   qualifierBoard?: Resolver<ResolversTypes['QualifierBoard'], ParentType, ContextType>;

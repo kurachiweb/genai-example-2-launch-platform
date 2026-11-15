@@ -26,6 +26,10 @@ const parentCommentId = resourceIdOf(
 
 const ownCommentId = resourceIdOf(ENGAGEMENT_ERRORS.comment_not_found.message);
 
+const ratingTargetId = resourceIdOf(
+  ENGAGEMENT_ERRORS.rating_target_not_found.message,
+);
+
 // GraphQLの省略可能な引数は明示したnullでも届くため、未指定と同じ扱いにそろえる
 const optional = <T extends z.ZodType>(schema: T) =>
   schema.nullish().transform((value) => value ?? undefined);
@@ -63,3 +67,14 @@ export const UPDATE_COMMENT_ARGS = z.object({
 export const DELETE_COMMENT_ARGS = z.object({
   commentId: ownCommentId,
 });
+
+export const PRODUCT_RATING_ARGS = z.object({
+  productId: ratingTargetId,
+});
+
+export const RATE_PRODUCT_ARGS = z.object({
+  productId: ratingTargetId,
+  score: ratingScoreSchema,
+});
+
+export const CANCEL_PRODUCT_RATING_ARGS = PRODUCT_RATING_ARGS;

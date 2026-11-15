@@ -130,15 +130,19 @@ export const LAUNCH_COMMENT_COUNTS = /* GraphQL */ `
   }
 `;
 
+const PRODUCT_RATING_SELECTION = /* GraphQL */ `
+  productId
+  average
+  count
+  viewerScore
+`;
+
 const COMMENT_MUTATION_RESULT_SELECTION = /* GraphQL */ `
   comment {
     ${LAUNCH_COMMENT_SELECTION}
   }
   rating {
-    productId
-    average
-    count
-    viewerScore
+    ${PRODUCT_RATING_SELECTION}
   }
 `;
 
@@ -162,6 +166,30 @@ export const DELETE_COMMENT = /* GraphQL */ `
   mutation DeleteComment($commentId: ID!) {
     deleteComment(commentId: $commentId) {
       ${LAUNCH_COMMENT_SELECTION}
+    }
+  }
+`;
+
+export const PRODUCT_RATING = /* GraphQL */ `
+  query ProductRating($productId: ID!) {
+    productRating(productId: $productId) {
+      ${PRODUCT_RATING_SELECTION}
+    }
+  }
+`;
+
+export const RATE_PRODUCT = /* GraphQL */ `
+  mutation RateProduct($productId: ID!, $score: Int!) {
+    rateProduct(productId: $productId, score: $score) {
+      ${PRODUCT_RATING_SELECTION}
+    }
+  }
+`;
+
+export const CANCEL_PRODUCT_RATING = /* GraphQL */ `
+  mutation CancelProductRating($productId: ID!) {
+    cancelProductRating(productId: $productId) {
+      ${PRODUCT_RATING_SELECTION}
     }
   }
 `;
@@ -221,6 +249,9 @@ const engagementGateway = createGraphQLGateway({
     POST_COMMENT,
     UPDATE_COMMENT,
     DELETE_COMMENT,
+    PRODUCT_RATING,
+    RATE_PRODUCT,
+    CANCEL_PRODUCT_RATING,
   ],
   schemaModules: [
     mediaSchemaModule,
@@ -328,4 +359,31 @@ export function deleteComment(commentId: string, options?: GatewayCallOptions) {
   return engagementGateway.call<{
     deleteComment: LaunchCommentFields | null;
   }>(DELETE_COMMENT, { commentId }, options);
+}
+
+export function fetchProductRating(
+  productId: string,
+  options?: GatewayCallOptions,
+) {
+  return engagementGateway.call<{
+    productRating: ProductRatingFields | null;
+  }>(PRODUCT_RATING, { productId }, options);
+}
+
+export function rateProduct(
+  variables: { readonly productId: string; readonly score: number },
+  options?: GatewayCallOptions,
+) {
+  return engagementGateway.call<{
+    rateProduct: ProductRatingFields | null;
+  }>(RATE_PRODUCT, variables, options);
+}
+
+export function cancelProductRating(
+  productId: string,
+  options?: GatewayCallOptions,
+) {
+  return engagementGateway.call<{
+    cancelProductRating: ProductRatingFields | null;
+  }>(CANCEL_PRODUCT_RATING, { productId }, options);
 }

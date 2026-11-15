@@ -1151,6 +1151,9 @@ type Mutation {
   """この端末のログアウト"""
   adminLogout: Boolean!
 
+  """閲覧者のプロダクトへの評価を物理削除する。評価が無くても成功する"""
+  cancelProductRating(productId: ID!): ProductRating!
+
   """メールアドレスが確認済みの利用者がマッチ中のマッチのUpvoteを取り消す。Upvoteしていなくても成功する。更新後のマッチを返す"""
   cancelUpvote(matchId: ID!): Match!
 
@@ -1253,6 +1256,9 @@ type Mutation {
 
   """下書きの公開。最上位管理者"""
   publishLegalDocument(input: PublishLegalDocumentInput!): AdminLegalDocument!
+
+  """閲覧者のプロダクトへの評価を保存し、評価済みなら上書きする"""
+  rateProduct(productId: ID!, score: Int!): ProductRating!
 
   """支払いの確定の前の同意の記録。支払える状態の本人の購入だけに記録し、同じ購入の再記録は最新の日時で上書きする"""
   recordCheckoutConsent(purchaseId: ID!): Checkout!
@@ -2103,6 +2109,9 @@ type Query {
   ログイン不要。ハンドルは大文字小文字を区別しない。存在しない・未掲載の他者・閲覧できないプロダクトはnull(404)、表示できる旧ハンドルは転送先を返す
   """
   productPage(handle: String!): ProductPageResult
+
+  """プロダクトの評価欄の値。閲覧できないプロダクトはnull"""
+  productRating(productId: ID!): ProductRating
 
   """
   公開プロフィールの受賞バッジ。launchHistoryと同じ対象のプロダクトの受賞を、Yearを先頭に種類ごとにまとめて返す。ラベルの先頭に受賞したプロダクトの名称を付ける。利用者を表示できなければnull

@@ -8,6 +8,8 @@ export const ENGAGEMENT_TYPE_DEFS = /* GraphQL */ `
     ): LaunchCommentConnection
     "取消を除くローンチごとの表示できるコメントの数。閲覧できないプロダクトはnull"
     launchCommentCounts(productId: ID!): [LaunchCommentCount!]
+    "プロダクトの評価欄の値。閲覧できないプロダクトはnull"
+    productRating(productId: ID!): ProductRating
   }
 
   "コメントの表示の状態。REMOVEDは削除・非公開化・匿名化・投稿者の退会や停止を区別しない置き換え表示"
@@ -90,6 +92,10 @@ export const ENGAGEMENT_TYPE_DEFS = /* GraphQL */ `
     updateComment(input: UpdateCommentInput!): CommentMutationResult!
     "自分の表示できるコメントを置き換え表示にし、返信は残す"
     deleteComment(commentId: ID!): LaunchComment!
+    "閲覧者のプロダクトへの評価を保存し、評価済みなら上書きする"
+    rateProduct(productId: ID!, score: Int!): ProductRating!
+    "閲覧者のプロダクトへの評価を物理削除する。評価が無くても成功する"
+    cancelProductRating(productId: ID!): ProductRating!
   }
 
   "コメントの投稿と編集の結果"
