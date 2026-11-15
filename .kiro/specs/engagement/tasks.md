@@ -24,7 +24,7 @@
   - _Requirements: 15.5_
 
 - [ ] 2. 共有部品
-- [ ] 2.1 共有部品の契約とDIの識別子を一括で作り、コメントのストアの照会と投稿・返信の条件付きの書き込みの文を作る
+- [x] 2.1 共有部品の契約とDIの識別子を一括で作り、コメントのストアの照会と投稿・返信の条件付きの書き込みの文を作る
   - 先に、単体テストで、識別子`ENGAGEMENT_PLATFORM_TYPES`が`Symbol.for('engagement.<名前>')`の値を持ち凍結されていることを確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
   - 先に、ローカルD1のWorkers統合テストで、投稿の文がプロダクトの非公開化・論理削除・投稿者の停止・未掲載の他者のプロダクト・投稿者の未確認のいずれかで一括の書き込みごと失敗し、投稿者本人なら未掲載のプロダクトでも書き込めること、返信の文が親の第3階層・置き換え表示・別のローンチで失敗し、返信のルートと階層が親から決まること、本文をマークダウンの原文のまま保存すること、識別子からの照会が状態の印と投稿者とプロダクトとローンチを返すことを確かめる
   - 共有部品(コメントのストア・スレッドの照会・評価のストア・匿名化と物理削除のストア・コメントと評価の出力・管理画面のコメントと評価の一覧の照会)の契約と入出力の型を`apps/backend-lib/core/engagement/ports.ts`に、コメントと評価の文の部品を加えたDIの識別子を`core/engagement/identifiers.ts`に、ここで一括で作る(2.2〜2.7は識別子を作らない)。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層と後続specが受け取る契約と識別子は`core`に置き、`workers/engagement`には実装と束縛だけを置く
@@ -286,3 +286,4 @@
 - 1.1: 規則は`apps/common-lib/engagement/engagement-rules.ts`。本文は`markdownTextSchema(COMMENT_BODY_RULE)`(名前「コメント」)、評価の文言「評価は1〜5で選んでください。」は非公開の定数で`ratingScoreSchema`の文言として読む(clientのフォームで要るなら`ratingScoreSchema`を使う)。`commentIdScope(id)`は`c`+小文字のIDで入力のULIDを検証しない(7.xの呼び出し側は26文字のULIDを渡す。不正なら`idPrefixFor`が例外を投げる)。
 - 1.2: テーブルは`apps/db/schema/engagement/`の`launchComments`・`productRatings`、条件の部品は`displayableComment()`(`users`を`author_user_id`で外部結合する前提)・`validRating()`(`users`を`user_id`で内部結合する前提)。マイグレーションは`20261115074652_engagement`。トップレベルの`root_id`は自身のIDで、返信のまとめ読みの索引`(root_id, created_at, id)`にトップレベル自身も入るため、2.3の返信の照会は`depth > 1`で除く。`depth = 1`と`parent_id`のNULLの整合はDBの制約に無く、2.1の書き込みの文で保つ。階層のCHECKは`between 1 and 3`(整数でない値は書き込みの文が作らない)。
 - 1.3(差し戻し1回): 設計に文言が無くモックアップから決めた文言(0件の一言4つ・ログインの案内のダイアログの題名と説明・「このプロダクトの評価(任意)」・「コメントを読み込み中」「評価を読み込み中」)を文言規則に置いた。6・7は`003-text-and-copy-rules.md`の「コメントと評価の画面の文言」節の文字列をそのまま使う。評価を添えた編集のトーストは「コメントを更新しました。」、未確認でも評価済みなら「取り消す」を使える(6.3で確かめる)、30日以上前の投稿日時は`dateWeekday`で年を付けない(ローンチ・マッチの日付の「今年なら年を省く」と違う。最終報告で開発者へ挙げる)。IDの形式違反(`validation_error`)の文言は未定(3.x・4.xで既存の前例に従う)。
+- 2.1: 契約と型は`apps/backend-lib/core/engagement/ports.ts`、識別子は`identifiers.ts`(10種、`Symbol.for('engagement.<名前>')`)。`CommentStatements`(`workers/engagement/comment-statements.ts`)の型は`insertStatement`だけで、2.2が編集・削除・非公開化を足す。`RatingStatements`の型は2.4で作る。投稿の文は条件が成り立たないと`product_id`にNULLを入れて一括ごと失敗させる(違反の判定は`NOT NULL constraint failed: launch_comments.product_id`)。設計のCASEに加え「ローンチがそのプロダクトのものであること」「渡した親のルートと階層が親の行と一致し親が第3階層でないこと」を条件に足した。`requireListed`は呼び出し側(3.2・3.3)が`ownerUserId`との比較から導く。ローンチのキックオフ前・取消は書き込みの条件に無く3.2・3.3で判定する。テストの補助は`workers/engagement/testing/engagement-fixtures.ts`(`commentIdOf`・`insertComment`・`readComment`・`countComments`・`clearEngagementTables`)。Workers統合テストはapiの`vitest.worker.config.ts`から`lib/workers/engagement`で実行する。
