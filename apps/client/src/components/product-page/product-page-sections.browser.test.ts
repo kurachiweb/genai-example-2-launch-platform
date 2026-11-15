@@ -5,6 +5,7 @@ import {
   PRODUCT_OWNER_ACTIONS,
   PRODUCT_PAGE_SECTIONS,
 } from '../../composition/product-page-sections.ts';
+import { LaunchCommentsSection } from '../engagement/launch-comments-section.tsx';
 import { RatingSection } from '../engagement/rating-section.tsx';
 import { ProductDescriptionSection } from './product-description-section.tsx';
 import { PRODUCT_PAGE_PLACEMENTS } from './product-page-section-order.ts';
@@ -44,8 +45,14 @@ describe('プロダクト詳細ページの登録箇所', () => {
     expect(PRODUCT_PAGE_SECTIONS[4]?.component).toBe(RatingSection);
   });
 
-  test('ローンチの区画と投稿者本人向けの操作の登録箇所は初版では空である', () => {
-    expect(PRODUCT_LAUNCH_SECTIONS).toStrictEqual([]);
+  test('ローンチの区画にはengagementのコメント欄(10)を登録する', () => {
+    expect(
+      PRODUCT_LAUNCH_SECTIONS.map(({ id, order }) => ({ id, order })),
+    ).toStrictEqual([{ id: 'engagement.comments', order: 10 }]);
+    expect(PRODUCT_LAUNCH_SECTIONS[0]?.component).toBe(LaunchCommentsSection);
+  });
+
+  test('投稿者本人向けの操作の登録箇所は初版では空である', () => {
     expect(PRODUCT_OWNER_ACTIONS).toStrictEqual([]);
   });
 

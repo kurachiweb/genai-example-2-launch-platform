@@ -1,3 +1,4 @@
+import { LaunchCommentsSection } from '../components/engagement/launch-comments-section.tsx';
 import { RatingSection } from '../components/engagement/rating-section.tsx';
 import { matchHistorySectionOf } from '../components/product-page/match-history-section.tsx';
 import { ownerCardSectionOf } from '../components/product-page/owner-card.tsx';
@@ -11,7 +12,13 @@ import { ScreenshotGallerySection } from '../components/product-page/screenshot-
 
 // マッチ履歴の各ローンチのブロックに並べる区画の登録箇所。各specが自分の区画を追記する
 export const PRODUCT_LAUNCH_SECTIONS: readonly ProductLaunchSection[] =
-  Object.freeze([]);
+  Object.freeze([
+    {
+      id: 'engagement.comments',
+      order: 10,
+      component: LaunchCommentsSection,
+    },
+  ]);
 
 // 投稿者本人向けの操作に並べる操作の登録箇所。各specが自分の操作を追記する
 export const PRODUCT_OWNER_ACTIONS: readonly ProductOwnerAction[] =

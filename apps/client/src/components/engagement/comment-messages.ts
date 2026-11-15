@@ -81,6 +81,14 @@ export const COMMENTS_LOAD_MORE_LABEL = 'さらに読み込む';
 
 export const COMMENTS_EMPTY_TITLE = 'まだコメントはありません。';
 
+export const launchCommentsLabel = (number: number): string =>
+  `第${number.toString()}回ローンチへのコメント`;
+
+export const COMMENTS_TOGGLE_LABEL = 'コメント';
+
+// 数は表示設定で整えた文字列を受ける
+export const commentCountLabel = (count: string): string => `${count}件`;
+
 // 閲覧者の状態ごとに、最初のコメントへ促す一言
 export const COMMENTS_EMPTY_HINTS: Readonly<
   Record<EngagementViewerKind, string>
