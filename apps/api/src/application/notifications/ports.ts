@@ -51,4 +51,9 @@ export interface NotificationMaintenanceStore {
   // 未送信の通知が残る枠は消さない。枠の準備の完了の記録も同じ一括の書き込みで消す
   deleteCompletedSlotsBefore(cutoff: Date, limit: number): Promise<number>;
   deleteExpandedEventsBefore(cutoff: Date, limit: number): Promise<number>;
+  // 作成がcutoffより前で展開を終えていない通知イベントを、送らずに消す
+  deletePendingEventsCreatedBefore(
+    cutoff: Date,
+    limit: number,
+  ): Promise<number>;
 }

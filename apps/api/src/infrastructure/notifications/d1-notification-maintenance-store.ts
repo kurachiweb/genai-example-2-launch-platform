@@ -159,4 +159,20 @@ export class D1NotificationMaintenanceStore implements NotificationMaintenanceSt
       .where(inArray(events.id, targets));
     return result.meta.changes;
   }
+
+  async deletePendingEventsCreatedBefore(
+    cutoff: Date,
+    limit: number,
+  ): Promise<number> {
+    const targets = this.db
+      .select({ id: events.id })
+      .from(events)
+      .where(and(eq(events.status, 'pending'), lt(events.createdAt, cutoff)))
+      .orderBy(asc(events.createdAt), asc(events.id))
+      .limit(limit);
+    const result = await this.db
+      .delete(events)
+      .where(inArray(events.id, targets));
+    return result.meta.changes;
+  }
 }

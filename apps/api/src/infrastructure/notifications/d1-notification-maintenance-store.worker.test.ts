@@ -410,4 +410,59 @@ describe('D1NotificationMaintenanceStore', () => {
       ]);
     });
   });
+
+  describe('deletePendingEventsCreatedBefore', () => {
+    const RECENT = at('2026-11-30T00:00:00.000Z');
+
+    beforeEach(async () => {
+      await insertEvent(1, { createdAt: at('2026-10-02T00:00:00.000Z') });
+      await insertEvent(2, { createdAt: BEFORE_CUTOFF });
+      await insertEvent(3, { createdAt: at('2026-10-01T00:00:00.000Z') });
+      await insertEvent(4, { createdAt: CUTOFF });
+      await insertEvent(5, { createdAt: RECENT });
+      await insertEvent(6, {
+        status: 'expanded',
+        expandedAt: RECENT,
+        createdAt: at('2026-10-01T00:00:00.000Z'),
+      });
+      await insertNotice(1, 'evening:2026-10-01', {
+        status: 'pending',
+        eventId: maintenanceEventIdOf(2),
+      });
+    });
+
+    test('作成が基準より前の未展開の通知イベントを作成の古い順に上限まで消し、消した件数を返す', async () => {
+      await expect(
+        store.deletePendingEventsCreatedBefore(CUTOFF, 2),
+      ).resolves.toBe(2);
+
+      await expect(readEventIds()).resolves.toEqual([
+        maintenanceEventIdOf(2),
+        maintenanceEventIdOf(4),
+        maintenanceEventIdOf(5),
+        maintenanceEventIdOf(6),
+      ]);
+    });
+
+    test('繰り返すと対象を消し切って0件を返し、基準ちょうどと基準より後の未展開の通知イベント・展開済みの通知イベント・消した通知イベントから記録した通知を残す', async () => {
+      await expect(
+        store.deletePendingEventsCreatedBefore(CUTOFF, 2),
+      ).resolves.toBe(2);
+      await expect(
+        store.deletePendingEventsCreatedBefore(CUTOFF, 2),
+      ).resolves.toBe(1);
+      await expect(
+        store.deletePendingEventsCreatedBefore(CUTOFF, 2),
+      ).resolves.toBe(0);
+
+      await expect(readEventIds()).resolves.toEqual([
+        maintenanceEventIdOf(4),
+        maintenanceEventIdOf(5),
+        maintenanceEventIdOf(6),
+      ]);
+      await expect(readNoticeIds()).resolves.toEqual([
+        maintenanceNoticeIdOf(1),
+      ]);
+    });
+  });
 });

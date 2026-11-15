@@ -178,6 +178,7 @@ export class NotificationMaintenanceJob implements ScheduledJobHandler {
   async run({ business }: ScheduledJobContext): Promise<void> {
     const now = this.clock.now();
     const slots = await this.recoverSlots(business.date, now);
+    const abandoned = await this.deleteAbandonedEvents(now);
     const events = await this.redispatchStaleEvents(now);
     const expiredNotices = await this.maintenance.expirePending(
       new Date(now.getTime() - NOTICE_EXPIRE_AFTER_MS),
@@ -186,9 +187,12 @@ export class NotificationMaintenanceJob implements ScheduledJobHandler {
     const cleanup = await this.deleteExpiredRecords(now);
     logger.info('通知の日次の保守を行いました', {
       ...slots,
+      deletedPendingEvents: abandoned.deleted,
       ...events,
       expiredNotices,
       ...cleanup,
+      cleanupLimitReached:
+        cleanup.cleanupLimitReached || abandoned.limitReached,
     });
   }
 
@@ -237,6 +241,21 @@ export class NotificationMaintenanceJob implements ScheduledJobHandler {
       this.reporter.report({ kind: 'slot-overdue', slotKey: key });
     }
     return { requestedSlots: requested.size, overdueSlots: overdue.length };
+  }
+
+  // 送り直しの前に消すため、消す通知イベントへ展開を依頼せず、依頼したメッセージが削除より先に展開して送ることもない
+  private async deleteAbandonedEvents(now: Date): Promise<CleanupResult> {
+    const cutoff = new Date(now.getTime() - NOTIFICATION_RETENTION_MS);
+    const result = await deleteInBatches((limit) =>
+      this.maintenance.deletePendingEventsCreatedBefore(cutoff, limit),
+    );
+    if (result.deleted > 0) {
+      logger.warning(
+        '展開されないまま保持期間を過ぎた通知イベントを、通知を送らずに削除しました',
+        { deleted: result.deleted },
+      );
+    }
+    return result;
   }
 
   // 依頼の回数を進める前に依頼するため、依頼の途中で失敗しても翌日の起動が同じ通知イベントを拾う

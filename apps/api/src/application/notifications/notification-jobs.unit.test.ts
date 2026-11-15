@@ -316,6 +316,79 @@ describe('NotificationMaintenanceJob(4:21)の遅れた枠', () => {
   });
 });
 
+describe('NotificationMaintenanceJob(4:21)の展開されないまま古くなった通知イベント', () => {
+  test('作成から30日を過ぎた未展開の通知イベントを、滞った通知イベントの送り直しの前に500件ずつ消し、500件未満の回で打ち切る', async () => {
+    const { job, log, maintenance } = maintenanceJobOf(MAINTENANCE_NOW, {
+      slots: ALL_DONE,
+      maintenance: { deletedPendingEvents: [500, 500, 3] },
+    });
+
+    await job.run(jobContextOf(MAINTENANCE_AT));
+
+    const call = {
+      cutoff: new Date(MAINTENANCE_NOW.getTime() - 30 * ONE_DAY_MS),
+      limit: 500,
+    };
+    expect(maintenance.pendingEventDeletions).toEqual([call, call, call]);
+    expect(
+      log.filter(
+        (entry) =>
+          entry === 'deletePendingEventsCreatedBefore' ||
+          entry === 'listStalePendingEvents',
+      ),
+    ).toEqual([
+      'deletePendingEventsCreatedBefore',
+      'deletePendingEventsCreatedBefore',
+      'deletePendingEventsCreatedBefore',
+      'listStalePendingEvents',
+    ]);
+  });
+
+  test('消した件数が1件以上なら、送らずに消したことを件数とともにwarningのログに出す', async () => {
+    const { job } = maintenanceJobOf(MAINTENANCE_NOW, {
+      slots: ALL_DONE,
+      maintenance: { deletedPendingEvents: [3] },
+    });
+
+    await job.run(jobContextOf(MAINTENANCE_AT));
+
+    expect(
+      notificationLogs().filter(({ level }) => level === 'warning'),
+    ).toEqual([{ level: 'warning', properties: { deleted: 3 } }]);
+  });
+
+  test('消した通知イベントが無ければwarningのログを出さない', async () => {
+    const { job } = maintenanceJobOf(MAINTENANCE_NOW, { slots: ALL_DONE });
+
+    await job.run(jobContextOf(MAINTENANCE_AT));
+
+    expect(notificationLogs().map(({ level }) => level)).toEqual(['info']);
+  });
+
+  test('最大の10回で打ち切られたら、打ち切りをログに出す', async () => {
+    const { job, maintenance } = maintenanceJobOf(MAINTENANCE_NOW, {
+      slots: ALL_DONE,
+      maintenance: {
+        deletedPendingEvents: Array.from({ length: 11 }, () => 500),
+      },
+    });
+
+    await job.run(jobContextOf(MAINTENANCE_AT));
+
+    expect(maintenance.pendingEventDeletions).toHaveLength(10);
+    expect(
+      notificationLogs()
+        .filter(({ level }) => level === 'info')
+        .map(({ properties }) => properties),
+    ).toEqual([
+      expect.objectContaining({
+        deletedPendingEvents: 5000,
+        cleanupLimitReached: true,
+      }) as Record<string, unknown>,
+    ]);
+  });
+});
+
 describe('NotificationMaintenanceJob(4:21)の滞った通知イベント', () => {
   const EVENT_A = '01JF0EVENT0000000000000001';
   const EVENT_B = '01JF0EVENT0000000000000002';
@@ -445,7 +518,7 @@ describe('NotificationMaintenanceJob(4:21)の期限切れと削除', () => {
     expect(maintenance.eventDeletions).toHaveLength(10);
   });
 
-  test('枠の確かめ・遅れた枠・滞った通知イベント・期限切れ・削除(通知→枠→通知イベント)の順に行い、件数をinfoのログに出す', async () => {
+  test('枠の確かめ・遅れた枠・古くなった未展開の通知イベントの削除・滞った通知イベント・期限切れ・削除(通知→枠→通知イベント)の順に行い、件数をinfoのログに出す', async () => {
     const { job, log } = maintenanceJobOf(MAINTENANCE_NOW, {
       slots: {
         overdue: [
@@ -460,6 +533,7 @@ describe('NotificationMaintenanceJob(4:21)の期限切れと削除', () => {
         deletedNotices: [7],
         deletedSlots: [500, 2],
         deletedEvents: [1],
+        deletedPendingEvents: [2],
       },
     });
 
@@ -473,6 +547,7 @@ describe('NotificationMaintenanceJob(4:21)の期限切れと削除', () => {
       `ensure:${TODAY_MORNING.key}`,
       'listOverdue',
       'listDoneWithPending',
+      'deletePendingEventsCreatedBefore',
       'listStalePendingEvents',
       'expand:01JF0EVENT0000000000000001',
       'markEventsRedispatched',
@@ -483,11 +558,13 @@ describe('NotificationMaintenanceJob(4:21)の期限切れと削除', () => {
       'deleteExpandedEventsBefore',
     ]);
     expect(notificationLogs()).toEqual([
+      { level: 'warning', properties: { deleted: 2 } },
       {
         level: 'info',
         properties: {
           requestedSlots: 3,
           overdueSlots: 1,
+          deletedPendingEvents: 2,
           redispatchedEvents: 1,
           stalledEvents: 1,
           expiredNotices: 4,

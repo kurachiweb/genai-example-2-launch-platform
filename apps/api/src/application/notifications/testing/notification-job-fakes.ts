@@ -199,6 +199,7 @@ export interface FakeMaintenanceStoreOptions {
   readonly deletedNotices?: readonly number[];
   readonly deletedSlots?: readonly number[];
   readonly deletedEvents?: readonly number[];
+  readonly deletedPendingEvents?: readonly number[];
 }
 
 export interface DeletionCall {
@@ -219,6 +220,7 @@ export interface FakeMaintenanceStore extends NotificationMaintenanceStore {
   readonly noticeDeletions: DeletionCall[];
   readonly slotDeletions: DeletionCall[];
   readonly eventDeletions: DeletionCall[];
+  readonly pendingEventDeletions: DeletionCall[];
 }
 
 function countsFrom(counts: readonly number[] | undefined) {
@@ -246,9 +248,11 @@ export function createFakeMaintenanceStore(
   const noticeDeletions: DeletionCall[] = [];
   const slotDeletions: DeletionCall[] = [];
   const eventDeletions: DeletionCall[] = [];
+  const pendingEventDeletions: DeletionCall[] = [];
   const nextNotices = countsFrom(options.deletedNotices);
   const nextSlots = countsFrom(options.deletedSlots);
   const nextEvents = countsFrom(options.deletedEvents);
+  const nextPendingEvents = countsFrom(options.deletedPendingEvents);
   return {
     staleQueries,
     redispatched,
@@ -256,6 +260,7 @@ export function createFakeMaintenanceStore(
     noticeDeletions,
     slotDeletions,
     eventDeletions,
+    pendingEventDeletions,
     listStalePendingEvents(dispatchedBefore, limit) {
       log.push('listStalePendingEvents');
       staleQueries.push({ dispatchedBefore, limit });
@@ -285,6 +290,11 @@ export function createFakeMaintenanceStore(
       log.push('deleteExpandedEventsBefore');
       eventDeletions.push({ cutoff, limit });
       return Promise.resolve(nextEvents());
+    },
+    deletePendingEventsCreatedBefore(cutoff, limit) {
+      log.push('deletePendingEventsCreatedBefore');
+      pendingEventDeletions.push({ cutoff, limit });
+      return Promise.resolve(nextPendingEvents());
     },
   };
 }
