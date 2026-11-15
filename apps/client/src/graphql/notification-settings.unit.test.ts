@@ -27,6 +27,7 @@ import {
   notificationTopicValueOf,
   notificationUnsubscribeLinkQueryOptions,
   toNotificationSettingsView,
+  withSavedNotificationPreference,
 } from './notification-settings.ts';
 
 const VIEWER_ID = '01JC0VIEWER0000000000000000';
@@ -247,6 +248,89 @@ describe('toNotificationSettingsView', () => {
         settingsOf({ suppression: { reason: 'REJECTED', until: null } }),
       ).suppression,
     ).toStrictEqual({ reason: 'BOUNCE' });
+  });
+});
+
+describe('withSavedNotificationPreference', () => {
+  test('今のキャッシュのうち保存した種別の受信可否だけを応答の値にし、他の種別と配信の状態などは今のキャッシュのまま保つ', () => {
+    const current = settingsOf({
+      suppression: { reason: 'BOUNCE', until: null },
+    });
+    const saved = settingsOf({
+      preferences: [
+        { topic: 'MATCH_PREVIEW', enabled: true },
+        { topic: 'MATCH_RESULT', enabled: false },
+        { topic: 'FOLLOWED_USER_MATCH', enabled: true },
+        { topic: 'FOLLOWED_USER_AWARD', enabled: false },
+      ],
+      deliveryStatusAvailable: false,
+    });
+
+    expect(
+      withSavedNotificationPreference(current, saved, 'match_preview'),
+    ).toStrictEqual(
+      settingsOf({
+        preferences: [
+          { topic: 'MATCH_PREVIEW', enabled: true },
+          { topic: 'MATCH_RESULT', enabled: true },
+          { topic: 'FOLLOWED_USER_MATCH', enabled: false },
+          { topic: 'FOLLOWED_USER_AWARD', enabled: true },
+        ],
+        suppression: { reason: 'BOUNCE', until: null },
+      }),
+    );
+  });
+
+  test('今のキャッシュを書き換えず、新しい値を返す', () => {
+    const current = settingsOf();
+    const before = structuredClone(current);
+
+    withSavedNotificationPreference(
+      current,
+      settingsOf({
+        preferences: [{ topic: 'MATCH_RESULT', enabled: false }],
+      }),
+      'match_result',
+    );
+
+    expect(current).toStrictEqual(before);
+  });
+
+  test('今のキャッシュに保存した種別が無ければ、応答の値で加える', () => {
+    expect(
+      withSavedNotificationPreference(
+        settingsOf({ preferences: [{ topic: 'MATCH_RESULT', enabled: true }] }),
+        settingsOf(),
+        'followed_user_award',
+      ).preferences,
+    ).toStrictEqual([
+      { topic: 'MATCH_RESULT', enabled: true },
+      { topic: 'FOLLOWED_USER_AWARD', enabled: true },
+    ]);
+  });
+
+  test('応答に保存した種別が無ければ、受け取らない設定にする', () => {
+    expect(
+      withSavedNotificationPreference(
+        settingsOf(),
+        settingsOf({ preferences: [] }),
+        'match_result',
+      ).preferences,
+    ).toStrictEqual(
+      settingsOf().preferences.map((preference) =>
+        preference.topic === 'MATCH_RESULT'
+          ? { ...preference, enabled: false }
+          : preference,
+      ),
+    );
+  });
+
+  test('キャッシュが無ければ応答の全体を使う', () => {
+    const saved = settingsOf({ emailVerified: false });
+
+    expect(
+      withSavedNotificationPreference(undefined, saved, 'match_result'),
+    ).toBe(saved);
   });
 });
 

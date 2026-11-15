@@ -43,6 +43,8 @@ const VIEWER_ID = '01JC0VIEWER0000000000000000';
 
 const RESULT_LABEL = '勝敗結果';
 
+const AWARD_LABEL = 'フォロー中ユーザーの受賞結果';
+
 const RESULT_DESCRIPTION =
   '自分のプロダクトのマッチの当日の夜に、結果をお知らせします。勝ち進んだ場合は翌日のマッチの予告もまとめてお送りします。';
 
@@ -66,7 +68,8 @@ function SwitchFromCache({ topic }: { readonly topic: NotificationTopic }) {
   );
 }
 
-const renderSwitch = async (
+const renderSwitches = async (
+  topics: readonly NotificationTopic[],
   settings: NotificationSettingsFragment = notificationSettings(),
 ) => {
   const context = createPageRouterContext('local');
@@ -76,7 +79,9 @@ const renderSwitch = async (
   );
   await renderInRouter(
     <>
-      <SwitchFromCache topic="match_result" />
+      {topics.map((topic) => (
+        <SwitchFromCache key={topic} topic={topic} />
+      ))}
       <Toaster />
     </>,
     { context, cachedViewer: signedInViewerQuery() },
@@ -84,7 +89,13 @@ const renderSwitch = async (
   return context;
 };
 
+const renderSwitch = async (
+  settings: NotificationSettingsFragment = notificationSettings(),
+) => renderSwitches(['match_result'], settings);
+
 const resultSwitch = () => page.getByRole('switch', { name: RESULT_LABEL });
+
+const awardSwitch = () => page.getByRole('switch', { name: AWARD_LABEL });
 
 const deferred = <T,>() => {
   let resolve: (value: T) => void = () => undefined;
@@ -119,11 +130,15 @@ describe('NotificationTopicSwitch', () => {
     await expect.element(resultSwitch()).not.toHaveAttribute('aria-busy');
   });
 
-  test('切り替えるとその通知種別の受信可否だけを送り、成功でサーバーの値をスイッチとキャッシュに反映して保存した旨を通知する', async () => {
-    const saved = notificationSettings({
-      enabledTopics: ['MATCH_RESULT', 'FOLLOWED_USER_AWARD'],
-    });
-    executeGraphQL.mockResolvedValue(updatedNotificationSettingsResult(saved));
+  test('切り替えるとその通知種別の受信可否だけを送り、成功でサーバーのその種別の値をスイッチとキャッシュに反映して保存した旨を通知する', async () => {
+    executeGraphQL.mockResolvedValue(
+      updatedNotificationSettingsResult(
+        notificationSettings({
+          enabledTopics: ['MATCH_RESULT', 'FOLLOWED_USER_AWARD'],
+          emailVerified: false,
+        }),
+      ),
+    );
     const context = await renderSwitch();
 
     await userEvent.click(resultSwitch());
@@ -141,7 +156,50 @@ describe('NotificationTopicSwitch', () => {
       context.queryClient.getQueryData(
         notificationSettingsQueryOptions(VIEWER_ID).queryKey,
       ),
-    ).toStrictEqual(saved);
+    ).toStrictEqual(notificationSettings({ enabledTopics: ['MATCH_RESULT'] }));
+  });
+
+  test('2つの通知種別を同時に保存し、後から届いた応答に先の種別の古い値があっても、両方のスイッチとキャッシュが保存した値を示す', async () => {
+    const resultSaved = deferred<unknown>();
+    const awardSaved = deferred<unknown>();
+    executeGraphQL
+      .mockReturnValueOnce(resultSaved.promise)
+      .mockReturnValueOnce(awardSaved.promise);
+    const context = await renderSwitches(
+      ['match_result', 'followed_user_award'],
+      notificationSettings({ suppression: { reason: 'BOUNCE', until: null } }),
+    );
+
+    await userEvent.click(resultSwitch());
+    await userEvent.click(awardSwitch());
+    await expect.element(awardSwitch()).toHaveAttribute('aria-busy', 'true');
+    resultSaved.resolve(
+      updatedNotificationSettingsResult(
+        notificationSettings({ enabledTopics: ['MATCH_RESULT'] }),
+      ),
+    );
+    await expect.element(resultSwitch()).not.toHaveAttribute('aria-busy');
+    awardSaved.resolve(
+      updatedNotificationSettingsResult(
+        notificationSettings({ enabledTopics: ['FOLLOWED_USER_AWARD'] }),
+      ),
+    );
+
+    await expect.element(awardSwitch()).not.toHaveAttribute('aria-busy');
+    await expect.element(awardSwitch()).toHaveAttribute('aria-checked', 'true');
+    await expect
+      .element(resultSwitch())
+      .toHaveAttribute('aria-checked', 'true');
+    expect(
+      context.queryClient.getQueryData(
+        notificationSettingsQueryOptions(VIEWER_ID).queryKey,
+      ),
+    ).toStrictEqual(
+      notificationSettings({
+        enabledTopics: ['MATCH_RESULT', 'FOLLOWED_USER_AWARD'],
+        suppression: { reason: 'BOUNCE', until: null },
+      }),
+    );
   });
 
   test('送信中は`disabled`にせず`aria-disabled`と`aria-busy`にし、フォーカスを保ったまま重ねての押下を無視する', async () => {

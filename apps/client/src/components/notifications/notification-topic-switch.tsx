@@ -19,6 +19,7 @@ import {
   notificationSettingsQueryOptions,
   notificationTopicValueOf,
   toNotificationSettingsView,
+  withSavedNotificationPreference,
 } from '../../graphql/notification-settings.ts';
 import { NOTIFICATION_PREFERENCE_SAVED_MESSAGE } from './notification-messages.ts';
 
@@ -77,7 +78,7 @@ function useTopicPreference({
     );
     queryClient.setQueryData(
       notificationSettingsQueryOptions(viewerId).queryKey,
-      saved,
+      (current) => withSavedNotificationPreference(current, saved, topic),
     );
     notify.success(NOTIFICATION_PREFERENCE_SAVED_MESSAGE);
   };

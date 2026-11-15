@@ -92,7 +92,30 @@ export const toNotificationSettingsView = (
   editable: settings.editable,
 });
 
-// 受信可否の変更の結果も同じ形のため、そのままこのキーのキャッシュへ書ける。本人の設定のため、同じタブでログインし直した別の利用者に前の利用者の設定を見せないよう、共通の取得の補助のキーの後に閲覧者のIDを加える
+// 複数の種別の保存が並ぶと、後から届いた応答の全体には先に保存した種別の古い値が残り得るため、保存した種別の受信可否だけを今のキャッシュへ写す
+export const withSavedNotificationPreference = (
+  current: NotificationSettingsFragment | undefined,
+  saved: NotificationSettingsFragment,
+  topic: NotificationTopic,
+): NotificationSettingsFragment => {
+  if (current === undefined) {
+    return saved;
+  }
+  const value = TOPIC_VALUES[topic];
+  const enabled = saved.preferences.some(
+    (preference) => preference.topic === value && preference.enabled,
+  );
+  const preferences = current.preferences.some(
+    (preference) => preference.topic === value,
+  )
+    ? current.preferences.map((preference) =>
+        preference.topic === value ? { ...preference, enabled } : preference,
+      )
+    : [...current.preferences, { topic: value, enabled }];
+  return { ...current, preferences };
+};
+
+// 受信可否の変更の結果も同じ形のため、このキーのキャッシュへ書ける。本人の設定のため、同じタブでログインし直した別の利用者に前の利用者の設定を見せないよう、共通の取得の補助のキーの後に閲覧者のIDを加える
 export const notificationSettingsQueryOptions = (viewerId: string) =>
   queryOptions({
     queryKey: [
