@@ -515,6 +515,33 @@ describe('CommentComposer', () => {
 
     expect(page.getByRole('button', { name: 'キャンセル' }).query()).toBeNull();
   });
+
+  test('本文の欄にフォーカスがある空の返信の投稿欄でも、「キャンセル」は1回の押下で呼び出し元へ伝える', async () => {
+    const onCancel = vi.fn();
+    await renderComposer({ target: replyTarget(onCancel) });
+    await waitForEditor(REPLY_PLACEHOLDER);
+    await userEvent.click(editor(REPLY_PLACEHOLDER));
+
+    await userEvent.click(page.getByRole('button', { name: 'キャンセル' }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  test.each<[string, () => CommentComposerTarget, string]>([
+    ['返信の投稿欄', () => replyTarget(), REPLY_PLACEHOLDER],
+    ['編集欄', () => editTarget(), EDIT_PLACEHOLDER],
+  ])('%sは開いた時に本文の欄へフォーカスを移す', async (_, targetOf, name) => {
+    await renderComposer({ target: targetOf() });
+
+    await expect.element(editor(name)).toHaveFocus();
+  });
+
+  test('トップレベルの投稿欄は開いた時にフォーカスを移さない', async () => {
+    await renderComposer();
+    await waitForEditor();
+
+    await expect.element(editor()).not.toHaveFocus();
+  });
 });
 
 describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {

@@ -50,3 +50,25 @@ export const COMMENT_REPLIED_MESSAGE = '返信しました。';
 export const COMMENT_UPDATED_MESSAGE = 'コメントを更新しました。';
 
 export const COMMENT_DELETED_MESSAGE = 'コメントを削除しました。';
+
+export const commentLabelOf = (nickname: string): string =>
+  `${nickname}さんのコメント`;
+
+export const REMOVED_COMMENT_LABEL = '削除されたコメント';
+
+export const REMOVED_COMMENT_MESSAGE = 'このコメントは削除されました。';
+
+export const COMMENT_PRODUCT_OWNER_BADGE = '投稿者';
+
+export const COMMENT_VIEWER_BADGE = 'あなた';
+
+export const COMMENT_EDITED_MARK = '(編集済み)';
+
+export const COMMENT_REPLY_LABEL = '返信';
+
+export const COMMENT_REPLIES_LABEL = '返信';
+
+export const COMMENT_LOGIN_REQUIRED_TITLE = 'コメントにはログインが必要です';
+
+export const COMMENT_LOGIN_REQUIRED_DESCRIPTION =
+  'ログインすると、ローンチごとにコメントや返信を投稿できます。';

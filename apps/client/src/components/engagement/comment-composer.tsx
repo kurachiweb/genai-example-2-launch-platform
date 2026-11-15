@@ -206,13 +206,16 @@ function ComposerForm<TInput extends CommentFormInput, TOutput>({
   const [submitError, setSubmitError] = useState<string>();
   const [tokenUnavailable, setTokenUnavailable] = useState(false);
   const [submitFocused, setSubmitFocused] = useState(false);
-  const [bodyFocusRequest, setBodyFocusRequest] = useState(0);
+  // 返信と編集の欄は利用者の操作でその場に開き、開いた元の操作(メニューの項目など)が消えることがあるため、開いた時に本文へフォーカスを移す
+  const [bodyFocusRequest, setBodyFocusRequest] = useState(
+    target.mode === 'post' ? 0 : 1,
+  );
   const copy = COPY_BY_MODE[target.mode];
   const tokenPending = turnstile.token === undefined;
   // トークンの用意を待つ間は押せなくする。フォーカスのあるボタンを無効にするとフォーカスを失うため、フォーカスが離れるまでaria-disabledにし、その間の送信はトークンを待ってから送る
   const pendingWhileFocused = tokenPending && submitFocused;
 
-  // 空にした本文で送信ボタンが無効になりフォーカスを失うため、開いたまま残るトップレベルの投稿欄は本文へフォーカスを移す。resetは欄の登録を外し、描き直しで登録し直されるため、描き直しの後に移す
+  // 空にした本文で送信ボタンが無効になりフォーカスを失うため、開いたまま残るトップレベルの投稿欄も本文へフォーカスを移す。resetは欄の登録を外し、描き直しで登録し直されるため、描き直しの後に移す
   useEffect(() => {
     if (bodyFocusRequest > 0) {
       form.setFocus('body' as FieldPath<TInput>);
@@ -254,10 +257,14 @@ function ComposerForm<TInput extends CommentFormInput, TOutput>({
         {ratingField}
         <div className="ml-auto flex gap-2">
           {target.mode === 'post' ? null : (
+            // 押し下げで本文の欄からフォーカスが外れると、空の本文の検証の文言が出てボタンの位置がずれ、押し上げが外れてキャンセルにならないため、押し下げではフォーカスを移さない
             <Button
               type="button"
               size="sm"
               variant="ghost"
+              onMouseDown={(event) => {
+                event.preventDefault();
+              }}
               onClick={target.onCancel}
             >
               {COMMENT_CANCEL_LABEL}
