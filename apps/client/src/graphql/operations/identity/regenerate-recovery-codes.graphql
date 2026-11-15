@@ -1,0 +1,5 @@
+mutation ClientRegenerateRecoveryCodes($input: ReAuthenticationInput!) {
+  regenerateRecoveryCodes(input: $input) {
+    codes
+  }
+}

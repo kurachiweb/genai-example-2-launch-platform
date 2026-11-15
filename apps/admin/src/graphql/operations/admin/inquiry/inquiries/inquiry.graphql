@@ -1,0 +1,53 @@
+query AdminInquiry($id: ID!) {
+  adminInquiry(id: $id) {
+    id
+    kind
+    category {
+      id
+      name
+    }
+    status
+    statusChangedAt
+    withdrawn
+    createdAt
+    lastMessageAt
+    member {
+      userId
+      nickname
+      handle
+      avatar {
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+    }
+    guest {
+      nickname
+      email
+      body
+    }
+    messages {
+      id
+      sender
+      body
+      attachments {
+        id
+        originalFileName
+        contentType
+        byteSize
+      }
+      admin {
+        nickname
+        avatar {
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+        deleted
+      }
+      createdAt
+    }
+  }
+}

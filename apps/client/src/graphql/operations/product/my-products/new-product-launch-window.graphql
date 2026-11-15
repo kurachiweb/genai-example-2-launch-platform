@@ -1,0 +1,12 @@
+query ClientNewProductLaunchWindow {
+  newProductLaunchWindow {
+    earliest
+    latest
+    unavailable {
+      from
+      to
+      reason
+    }
+    relaunchIntervalDays
+  }
+}

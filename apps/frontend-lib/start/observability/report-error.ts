@@ -1,0 +1,43 @@
+import { createIsomorphicFn } from '@tanstack/react-start';
+
+import { reportUnexpectedErrorInBrowser } from './browser-error-reporting.ts';
+import type { ReportSource } from './error-queue.ts';
+import { reportUnexpectedErrorOnServer } from './report-error.server.ts';
+
+export type { ReportSource };
+
+export { browserErrorQueue } from './browser-error-reporting.ts';
+
+// サーバーの分岐は、ブラウザ向けのビルドで分岐ごと消えてサーバー専用のファイルのimportも消えるよう、その場の関数で書く
+const reportIsomorphic = createIsomorphicFn()
+  .server((error: unknown, source: ReportSource): void => {
+    reportUnexpectedErrorOnServer(error, source);
+  })
+  .client(reportUnexpectedErrorInBrowser);
+
+export function reportUnexpectedError(
+  error: unknown,
+  source: ReportSource,
+): void {
+  reportIsomorphic(error, source);
+}
+
+export interface RenderErrorRouter {
+  readonly state: {
+    readonly matches: readonly { readonly error: unknown }[];
+  };
+}
+
+// ルーターのdefaultOnCatchから呼ぶ。TanStack Routerはmatchのloaderの失敗をそのまま投げ直して描画の境界で捕まえさせる。loaderの失敗は、ブラウザの遷移ではルートのonErrorが、ハイドレーションではサーバーが既に送っている。ハイドレーションで復元した失敗はサーバーで送った例外とは別のオブジェクトで、GraphQLClientError以外はメッセージだけのErrorになり想定内かどうかも判定できないため、matchの失敗と同じ例外は描画の例外として送らない
+export function reportRenderError(
+  router: RenderErrorRouter,
+  error: unknown,
+): void {
+  if (
+    error !== undefined &&
+    router.state.matches.some((match) => match.error === error)
+  ) {
+    return;
+  }
+  reportUnexpectedError(error, 'render');
+}

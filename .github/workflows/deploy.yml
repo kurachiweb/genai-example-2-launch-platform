@@ -1,0 +1,70 @@
+name: deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: デプロイ先の環境(stagingまたはprod)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  # 段階の手順だけに`id`を付け、`DEPLOY_STAGES`と同じ順に並べる。失敗した段階で止まり、前の版へは自動で戻さない
+  deploy:
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    timeout-minutes: 60
+    env:
+      DEPLOY_ENVIRONMENT: ${{ inputs.environment }}
+    steps:
+      # apiのデプロイが直前のリリースのコミットを履歴から確かめるため、全履歴を取り出す
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # 購読用のWranglerをランナーの既定のNodeでなく指定の版のNodeで動かすため、Nodeも導入する
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          node: 'true'
+          tofu: 'true'
+          infisical: 'true'
+          wrangler-tool: 'true'
+      - run: bun scripts/delivery/cli.ts install
+      # スモークテストを実行するのはstagingだけのため、Chromiumはstagingでだけ導入し、リビジョンを導入したルートの@playwright/testの版に合わせる
+      - if: inputs.environment == 'staging'
+        run: bunx playwright install --with-deps chromium
+      - run: bun run shared-dirs:place
+      # preflightは秘密値を使わないため、ログインより先に仮の値をまとめて案内してから止める
+      - id: preflight
+        run: bun scripts/delivery/cli.ts preflight --env "$DEPLOY_ENVIRONMENT"
+      - run: bun scripts/delivery/cli.ts infisical-login --scope "$DEPLOY_ENVIRONMENT"
+      - id: tofu-foundation
+        run: bun scripts/delivery/cli.ts tofu --env "$DEPLOY_ENVIRONMENT" --phase foundation
+      - id: reconcile-ids
+        run: bun scripts/delivery/cli.ts reconcile-ids --env "$DEPLOY_ENVIRONMENT"
+      - id: migrate
+        run: bun scripts/delivery/cli.ts migrate --env "$DEPLOY_ENVIRONMENT"
+      # clientのビルドがclientのディレクトリに残す転送先の設定は直前のリリースの特定を妨げるため、apiはclientより先にデプロイする
+      - id: deploy-api
+        run: bun scripts/delivery/cli.ts deploy-worker --env "$DEPLOY_ENVIRONMENT" --app api
+      - id: deploy-event
+        run: bun scripts/delivery/cli.ts deploy-worker --env "$DEPLOY_ENVIRONMENT" --app event
+      - id: deploy-client
+        run: bun scripts/delivery/cli.ts deploy-worker --env "$DEPLOY_ENVIRONMENT" --app client
+      - id: deploy-admin
+        run: bun scripts/delivery/cli.ts deploy-worker --env "$DEPLOY_ENVIRONMENT" --app admin
+      - id: tofu-routing
+        run: bun scripts/delivery/cli.ts tofu --env "$DEPLOY_ENVIRONMENT" --phase routing
+      - id: email-subscription
+        run: bun scripts/delivery/cli.ts ensure-email-subscription --env "$DEPLOY_ENVIRONMENT"
+      - id: verify
+        run: bun scripts/delivery/cli.ts verify --env "$DEPLOY_ENVIRONMENT"

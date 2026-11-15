@@ -1,0 +1,10 @@
+query ClientViewer {
+  viewer {
+    id
+    handle
+    nickname
+    emailVerified
+    status
+    totpEnabled
+  }
+}

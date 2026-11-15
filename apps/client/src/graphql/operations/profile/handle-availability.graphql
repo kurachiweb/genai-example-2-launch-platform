@@ -1,0 +1,3 @@
+query ClientHandleAvailability($handle: String!) {
+  handleAvailability(handle: $handle)
+}

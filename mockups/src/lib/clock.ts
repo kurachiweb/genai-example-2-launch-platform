@@ -89,7 +89,7 @@ export function yearFinalAfter(weekFinalDate: Date): Date {
   return found ?? YEAR_FINAL_DATES[YEAR_FINAL_DATES.length - 1];
 }
 
-// 参加数9〜16なら1回戦は決勝日の3日前(FR-TOURY-007)
+// 参加数9〜16なら1回戦は決勝日の3日前(FR-TOURY-014)
 export function yearRoundDate(finalDate: Date, roundIndex: number): Date {
   return addDays(finalDate, roundIndex - 3);
 }

@@ -1,0 +1,3 @@
+mutation AdminDeleteInquiryCategory($id: ID!) {
+  deleteInquiryCategory(id: $id)
+}

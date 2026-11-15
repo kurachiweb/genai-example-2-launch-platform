@@ -5,9 +5,12 @@ import { join } from 'node:path';
 
 import {
   ALL_DIRS,
+  APP_DIRS,
+  appResultsOf,
   callOf,
   createFakeWorkspace,
   createOutput,
+  DIR_CHECK_SCRIPTS,
   everyDirWith,
   failedWith,
   packageJsonOf,
@@ -38,7 +41,7 @@ import {
 
 const USAGE_MESSAGE = [
   '使い方: bun scripts/tooling/run-all.ts <check|lint|typecheck|test:unit|test:browser|test:worker> [引数...]',
-  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型検査を、失敗しても止めずにすべて実行する(引数は受け取らない)',
+  '  check: 共有ディレクトリの配置確認・テスト命名の検査・整形検査・静的解析・型生成の検査・GraphQLの生成物の検査・型検査・写しの照合を、失敗しても止めずにすべて実行する(引数は受け取らない)',
   '  それ以外: ルートと各アプリの同名スクリプトを、残りの引数付きで実行する',
   '',
 ].join('\n');
@@ -46,9 +49,9 @@ const USAGE_MESSAGE = [
 const { createDir, createRepositoryWithScript } = useRunAllFixtures();
 
 describe('runAggregate', () => {
-  test('checkは配置確認・命名検査・整形検査をルートで、静的解析と型検査をルートと各アプリで、この順に実行する', async () => {
+  test('checkは配置確認・命名検査・整形検査をルートで、静的解析と型検査をルートと各アプリで、型生成の検査とGraphQLの生成物の検査を各アプリで、型検査の後に写しの照合をルートで、この順に実行する', async () => {
     const { deps, calls } = createFakeWorkspace({
-      ...everyDirWith('lint', 'typecheck'),
+      ...everyDirWith(...DIR_CHECK_SCRIPTS),
       [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS),
     });
 
@@ -59,35 +62,57 @@ describe('runAggregate', () => {
       callOf(ROOT_DIR, 'bun', 'run', 'check:test-names'),
       callOf(ROOT_DIR, 'bun', 'run', 'format:check'),
       ...ALL_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'lint')),
+      ...APP_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'cf-typegen:check')),
+      ...APP_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'graphql:check')),
       ...ALL_DIRS.map((dir) => callOf(dir, 'bun', 'run', 'typecheck')),
+      callOf(ROOT_DIR, 'bun', 'run', 'check:contract-copies'),
     ]);
     expect(results).toEqual([
       { step: 'shared-dirs:verify', target: 'root', outcome: PASSED },
       { step: 'check:test-names', target: 'root', outcome: PASSED },
       { step: 'format:check', target: 'root', outcome: PASSED },
       ...resultsOf('lint', {}, PASSED),
+      ...appResultsOf('cf-typegen:check', {}, PASSED),
+      ...appResultsOf('graphql:check', {}, PASSED),
       ...resultsOf('typecheck', {}, PASSED),
+      { step: 'check:contract-copies', target: 'root', outcome: PASSED },
     ]);
   });
 
   test('checkは前段や他の対象が失敗しても後続の段階と対象をすべて実行し、失敗を終了コード付きで残す', async () => {
     const { deps, calls } = createFakeWorkspace(
       {
-        ...everyDirWith('lint', 'typecheck'),
+        ...everyDirWith(...DIR_CHECK_SCRIPTS),
         [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS),
       },
-      { '. shared-dirs:verify': 1, 'apps/api lint': 2, '. typecheck': 2 },
+      {
+        '. shared-dirs:verify': 1,
+        'apps/api lint': 2,
+        'apps/event cf-typegen:check': 1,
+        'apps/api graphql:check': 1,
+        '. typecheck': 2,
+        '. check:contract-copies': 1,
+      },
     );
 
     const results = await runAggregate('check', [], deps);
 
-    expect(calls).toHaveLength(3 + ALL_DIRS.length * 2);
+    expect(calls).toHaveLength(
+      3 + ALL_DIRS.length * 2 + APP_DIRS.length * 2 + 1,
+    );
     expect(results).toEqual([
       { step: 'shared-dirs:verify', target: 'root', outcome: failedWith(1) },
       { step: 'check:test-names', target: 'root', outcome: PASSED },
       { step: 'format:check', target: 'root', outcome: PASSED },
       ...resultsOf('lint', { api: failedWith(2) }, PASSED),
+      ...appResultsOf('cf-typegen:check', { event: failedWith(1) }, PASSED),
+      ...appResultsOf('graphql:check', { api: failedWith(1) }, PASSED),
       ...resultsOf('typecheck', { root: failedWith(2) }, PASSED),
+      {
+        step: 'check:contract-copies',
+        target: 'root',
+        outcome: failedWith(1),
+      },
     ]);
   });
 
@@ -115,11 +140,43 @@ describe('runAggregate', () => {
         { root: PASSED, api: PASSED, client: SCRIPT_MISSING },
         PROJECT_MISSING,
       ),
+      ...appResultsOf(
+        'cf-typegen:check',
+        { api: SCRIPT_MISSING, client: SCRIPT_MISSING },
+        PROJECT_MISSING,
+      ),
+      ...appResultsOf(
+        'graphql:check',
+        { api: SCRIPT_MISSING, client: SCRIPT_MISSING },
+        PROJECT_MISSING,
+      ),
       ...resultsOf(
         'typecheck',
         { root: SCRIPT_MISSING, api: SCRIPT_MISSING, client: SCRIPT_MISSING },
         PROJECT_MISSING,
       ),
+      {
+        step: 'check:contract-copies',
+        target: 'root',
+        outcome: SCRIPT_MISSING,
+      },
+    ]);
+  });
+
+  test('GraphQLの生成物の検査は、graphql:checkを持つアプリでだけ実行し、持たないアプリはスクリプト未定義として飛ばす', async () => {
+    const { deps, calls } = createFakeWorkspace({
+      ...everyDirWith('lint', 'cf-typegen:check', 'typecheck'),
+      [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS, 'graphql:check'),
+      'apps/api': scriptsOf(...DIR_CHECK_SCRIPTS),
+    });
+
+    const results = await runAggregate('check', [], deps);
+
+    expect(
+      calls.filter(({ command }) => command.includes('graphql:check')),
+    ).toEqual([callOf('apps/api', 'bun', 'run', 'graphql:check')]);
+    expect(results.filter(({ step }) => step === 'graphql:check')).toEqual([
+      ...appResultsOf('graphql:check', { api: PASSED }, SCRIPT_MISSING),
     ]);
   });
 
@@ -244,6 +301,18 @@ describe('formatSummary', () => {
     ]);
   });
 
+  test.each([
+    ['cf-typegen:check', '型生成の検査(cf-typegen:check)'],
+    ['graphql:check', 'GraphQLの生成物の検査(graphql:check)'],
+    ['check:contract-copies', '写しの照合(check:contract-copies)'],
+  ])('%sの段階を日本語の名前付きで表示する', (step, label) => {
+    const [, row = ''] = linesOf(
+      formatSummary([{ step, target: 'api', outcome: PASSED }]),
+    );
+
+    expect(row.split(/ {2,}/)).toEqual([label, 'api', '成功']);
+  });
+
   test('全角文字を含む列も表示幅で桁をそろえ、行末に空白を残さない', () => {
     const lines = tableLinesOf(formatSummary(RESULTS));
     const columnStartsOf = (line: string): readonly number[] => {
@@ -336,6 +405,73 @@ describe('createSpawnRunner', () => {
     },
     SPAWN_TIMEOUT_MS,
   );
+
+  test(
+    '中断を知らされると実行中のコマンドへSIGTERMを送り、その終了コードを返す',
+    async () => {
+      const repoRoot = await createDir('spawn-abort-');
+      const controller = new AbortController();
+      const runner = createSpawnRunner(repoRoot, createOutput(), {
+        signal: controller.signal,
+      });
+
+      const running = runner.run(['sleep', '30'], repoRoot);
+      await Bun.sleep(200);
+      controller.abort();
+
+      expect(await running).toBe(143);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  test(
+    'SIGTERMで終了しないコマンドには、猶予の後にSIGKILLを送る',
+    async () => {
+      const repoRoot = await createDir('spawn-kill-');
+      const controller = new AbortController();
+      const runner = createSpawnRunner(repoRoot, createOutput(), {
+        signal: controller.signal,
+        killGraceMs: 300,
+      });
+
+      const running = runner.run(
+        [
+          'sh',
+          '-c',
+          'trap "" TERM; touch ready; while true; do sleep 0.1; done',
+        ],
+        repoRoot,
+      );
+      while (!existsSync(join(repoRoot, 'ready'))) await Bun.sleep(20);
+      const abortedAt = performance.now();
+      controller.abort();
+
+      expect(await running).toBe(137);
+      expect(performance.now() - abortedAt).toBeGreaterThanOrEqual(250);
+    },
+    SPAWN_TIMEOUT_MS,
+  );
+
+  test(
+    '中断の後は、コマンドを起動せずに失敗する',
+    async () => {
+      const repoRoot = await createDir('spawn-aborted-');
+      const controller = new AbortController();
+      controller.abort();
+      const output = createOutput();
+      const runner = createSpawnRunner(repoRoot, output, {
+        signal: controller.signal,
+      });
+
+      expect(runner.run(['touch', 'ran-here'], repoRoot)).rejects.toThrow(
+        '中断したため、`touch ran-here`を実行しませんでした',
+      );
+      await Bun.sleep(200);
+      expect(existsSync(join(repoRoot, 'ran-here'))).toBe(false);
+      expect(output.text()).toBe('');
+    },
+    SPAWN_TIMEOUT_MS,
+  );
 });
 
 describe('runAggregateEntry', () => {
@@ -370,7 +506,10 @@ describe('runAggregateEntry', () => {
         { step: 'check:test-names', target: 'root', outcome: PASSED },
         { step: 'format:check', target: 'root', outcome: failedWith(1) },
         ...resultsOf('lint', { root: PASSED }, PROJECT_MISSING),
+        ...appResultsOf('cf-typegen:check', {}, PROJECT_MISSING),
+        ...appResultsOf('graphql:check', {}, PROJECT_MISSING),
         ...resultsOf('typecheck', { root: PASSED }, PROJECT_MISSING),
+        { step: 'check:contract-copies', target: 'root', outcome: PASSED },
       ])}`,
     );
     expect(stderr).toBe('');
@@ -451,16 +590,22 @@ describe('直接実行したときの入口', () => {
           'format:check': 'echo format',
           lint: 'echo lint-root',
           typecheck: 'echo typecheck-root',
+          'check:contract-copies': 'echo contract-copies',
         }),
         'apps/api/package.json': packageJsonOf({
           lint: 'exit 2',
+          'cf-typegen:check': 'echo typegen-api',
+          'graphql:check': 'echo graphql-api',
           typecheck: 'echo typecheck-api',
         }),
       });
 
       const { exitCode, stdout } = runEntry(repoRoot, ['check']);
 
+      expect(stdout).toContain('\ntypegen-api\n');
+      expect(stdout).toContain('\ngraphql-api\n');
       expect(stdout).toContain('\ntypecheck-api\n');
+      expect(stdout).toContain('\ncontract-copies\n');
       expect(stdout).toEndWith(
         formatSummary([
           { step: 'shared-dirs:verify', target: 'root', outcome: PASSED },
@@ -471,11 +616,14 @@ describe('直接実行したときの入口', () => {
             { root: PASSED, api: failedWith(2) },
             PROJECT_MISSING,
           ),
+          ...appResultsOf('cf-typegen:check', { api: PASSED }, PROJECT_MISSING),
+          ...appResultsOf('graphql:check', { api: PASSED }, PROJECT_MISSING),
           ...resultsOf(
             'typecheck',
             { root: PASSED, api: PASSED },
             PROJECT_MISSING,
           ),
+          { step: 'check:contract-copies', target: 'root', outcome: PASSED },
         ]),
       );
       expect(exitCode).toBe(1);
@@ -485,9 +633,11 @@ describe('直接実行したときの入口', () => {
 });
 
 describe('ルートのpackage.json', () => {
-  test('一括検査・命名検査・テスト種別ごとの一括実行・共有ディレクトリの確認とコピー配置のスクリプトが、それぞれの入口を呼び出す', () => {
+  test('一括検査・命名検査・写しの照合・テスト種別ごとの一括実行・共有ディレクトリの確認とコピー配置のスクリプトが、それぞれの入口を呼び出す', () => {
     expect(readPackageScripts(REPO_ROOT)).toMatchObject({
       check: 'bun ./scripts/tooling/run-all.ts check',
+      'check:contract-copies':
+        'bun test ./config/contract-copies.unit.test.ts ./config/launch-time-contract-copies.unit.test.ts ./config/product-contract-copies.unit.test.ts ./config/match-contract-copies.unit.test.ts ./config/help-contract-copies.unit.test.ts',
       'check:test-names': 'bun ./scripts/tooling/check-test-names.ts',
       'test:all:unit': 'bun ./scripts/tooling/run-all.ts test:unit',
       'test:all:browser': 'bun ./scripts/tooling/run-all.ts test:browser',

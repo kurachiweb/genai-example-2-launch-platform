@@ -29,7 +29,7 @@ function isValid(from: string, to: string): boolean {
   return Boolean(from || to) && errorOf(from, to) === null;
 }
 
-// 開始日・終了日の片方だけでも指定できる。エラーはフォーカスを外した時に示す(UI-004)
+// 開始日・終了日の片方だけでも指定できる。エラーはフォーカスを外した時に示す(UI-005)
 export function PeriodRangeForm({
   initial,
   onApply,

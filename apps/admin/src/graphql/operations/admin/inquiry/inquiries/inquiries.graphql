@@ -1,0 +1,18 @@
+query AdminInquiries($filter: AdminInquiryFilterInput, $after: String) {
+  adminInquiries(filter: $filter, after: $after) {
+    entries {
+      id
+      kind
+      category {
+        id
+        name
+      }
+      status
+      senderName
+      withdrawn
+      createdAt
+      lastMessageAt
+    }
+    nextCursor
+  }
+}

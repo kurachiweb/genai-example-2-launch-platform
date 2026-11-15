@@ -1,0 +1,533 @@
+# Research & Design Decisions
+
+## Summary
+
+- **Feature**: `content-processing`
+- **Discovery Scope**: New Feature(`apps`配下は未実装で、上流のdev-toolingだけが実装済み、backend-platform・api-gateway・email-delivery・frontend-platformは設計まで承認済み・実装前である。新しい共有ディレクトリ`apps/common-lib`を加え、上流の骨格の上に描画・入力・検索の基盤を新設する)
+- **Key Findings**:
+  - Crepe 7.22.2のbuilderで、固定ツールバーを除き選択時のツールバー・リスト・プレースホルダー・カーソル・表だけを組み込んだ場合、`bun build --minify`で約786KB(gzip約250KB)だった。KaTeX・CodeMirrorは含まれず、`eval`・`new Function`も無い。内部のUIはVueのランタイムで描かれる。
+  - Crepeの固定ツールバー(top-bar)と表の操作UIのボタンは、アクセシブルな名前を持たず、`pointerdown`だけで動く(キーボードの操作では発火しない)。選択時のツールバーのボタンは`aria-label`を持つ。CrepeBuilderの基本構成はアップロード(ファイルの貼り付け・ドロップで画像を挿入する)とインデント(Tabキーで字下げする)のプラグインを含み、リストと表もTabキーを使う。
+  - remark-rehypeは既定でRaw HTMLを捨て、rehype-sanitizeの既定のスキーマは相対URL・プロトコル相対URLのリンクを残す。どちらもFR-MDOWN-005・012を満たさないため、構文木の段階で文字列への置き換えと参照先の検査が要る。20,000文字の文書の描画はBunで平均約124ms、2,000文字で約9msだった。
+  - SQLite 3.53.2(bun:sqlite)で、external contentのFTS5とトリガーの同期、前方一致の`"語"*`、二重引用符のエスケープ、演算子や列の指定に当たる語の無害化、版の条件付きの`ON CONFLICT DO UPDATE ... WHERE`、`INSERT ... SELECT ... WHERE EXISTS`による元データの存在の条件付きの追加が、いずれも意図どおりに動いた。
+  - Google Cloud Natural Language v2の`documents:analyzeEntities`は、応答に`languageCode`と`languageSupported`を持ち、非対応の言語の指定は`INVALID_ARGUMENT`になる。v2のEntityは`name`・`type`・`metadata`・`mentions[].probability`を持ち、v1の`salience`は無い。1要求の上限は1,000,000バイト、既定の割り当ては毎分600要求である。
+
+## 要件フェーズ前の確認事項(2026-10-18)
+
+開発者の判断を要する論点を、要件の作成前に一括で確認した。決定は`requirements.md`の「要件フェーズでの決定事項」にも記録する。
+
+| #   | 論点                                                     | 根拠                                                                                                                                                                                 | 回答(2026-10-18)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Q1  | 描画パイプラインと文字数・検索語の処理をどこに置くか     | briefのApproach・Desired Outcome(「1つのパイプライン定義」「SSRとクライアントで共用」)、`config/workspace-layout.ts`の`SHARED_DIRS`、`design/003-text-and-copy-rules.md`、FR-FTS-002 | 開発者の回答。新しい共有ディレクトリ`apps/common-lib`を作り、client・admin・api・eventの4アプリに配置する(推奨案の新規共有ディレクトリ案で、名前を`apps/common-lib`に指定)。置くものは描画パイプライン・書記素での文字数計算・検索語の正規化・強調表示用の正規化で、画面部品(Reactコンポーネント)は`apps/frontend-lib`に置く。dev-toolingの配置定義(`config/workspace-layout.ts`・`compose.yaml`)、`coding/002`・`coding/003`、CLAUDE.mdのディレクトリ構成、4アプリでの依存の版の宣言の更新を本specのタスクに含める                  |
+| Q2  | マークダウンの入力欄をCrepeとtextareaのどちらで作るか    | tech-stack.mdの「マークダウンエディタ」、briefの実現性チェック、`mockups/.../comment-composer.tsx`、`design/002-page-layouts.md`の「コメント」、roadmapの「モックアップを正とする」  | 推奨案ではなく「Crepeを必要機能だけ遅延読み込み」を採用。`@milkdown/crepe/builder`と機能ごとの入口で絞り込み、`<ClientOnly>`と`React.lazy`で別チャンクにする(実測約0.8MB、gzip約250KB)。版は2週間以上経ったものに固定する(7.22.3は2026-10-10公開のため7.22.2)。「書く/プレビュー」との関係(役割の重なり・SSR時の仮表示)は設計で決め、モックアップとの差を記録する。見出しレベル1の入力ルールと貼り付けを止め、Milkdown側にもremark-cjk-friendlyを登録し、`@milkdown/*`のimportを遅延読み込みのモジュールに限る静的解析の規則を入れる |
+| Q3  | キーワード抽出が失敗し続けた場合・非対応言語の場合の索引 | briefのConstraints、NFR-AVAIL-002、FR-FTS-003〜006、backend-platformの再試行(30・60・120・240秒)とデッドレターの方針(Q7)                                                             | 推奨案。再試行の上限まで待ち、それでも失敗した時(非対応言語ならすぐに)、構文の除去とNFKC正規化だけのテキストで索引する。「未抽出」の印を付け、日次の定期実行で抽出をやり直す                                                                                                                                                                                                                                                                                                                                                         |
+| Q4  | 検索語の各語を完全一致と前方一致のどちらで照合するか     | FR-FTS-001・002・006、scratchpadのFTS5での確認(`"タスク管理"`は一致せず`"タスク管理"*`は一致)                                                                                        | 推奨案。各語を前方一致(`"語"*`)にする。FR-FTS-002との差は要件定義書の改訂が必要な事項として報告する                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Q5  | 見出しのアンカーIDに接頭辞を付けるか                     | FR-MDOWN-006、FR-COMNT-001、FR-HELP-010、frontend-platformのスキップリンク(`#main`)、DOM clobbering、rehype-sanitizeの`user-content-`                                                | 推奨案。既定は`user-content-`と変換文字列をつなげたものにし、1ページに複数並ぶ本文では呼び出し側が本文ごとの接頭辞を指定できる。本文中の`#`リンクも同じ接頭辞に書き換える。FR-MDOWN-006との差は要件定義書の改訂が必要な事項として報告する                                                                                                                                                                                                                                                                                            |
+| Q6  | 本文の表示装飾に`@tailwindcss/typography`を採用するか    | `mockups/src/components/client/markdown.tsx`の`prose`、frontend-platformのQ5、CLAUDE.md(新規パッケージ)                                                                              | 推奨案。`@tailwindcss/typography` 0.5.20(2026-06-08公開、Tailwind公式、相手依存にTailwind 4を含む)を採用し、frontend-lib・client・adminで版をそろえて宣言する                                                                                                                                                                                                                                                                                                                                                                        |
+
+- 採用したパッケージのtech-stack.mdへの追記は、spec段階では行わず、導入する実装タスクの中で行う(frontend-platformの慣行)。
+- 要件定義書の改訂が必要な箇所: FR-FTS-002(Q4)、FR-MDOWN-006(Q5)、FR-FTS-006(Q3の縮退運転と再抽出)。roadmapにより要件定義書そのものは改訂しない。(2026-10-25に要件定義書へ適用済み)
+- Google Cloud Natural LanguageのAPIキーはInfisicalで管理する。staging・prodのイベントサーバーへのシークレットの反映は、infra-deliveryのInfisicalのキーの表に`GOOGLE_NL_API_KEY`を加えて行う(横断レビューI-3)。キーの一覧の正は`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節とし、本specが行を加える(横断レビューN-5)。stagingの値はキーを必須にする変更をmainへマージする前に開発者が登録し、prodの値の登録はlaunch-readinessへ引き継ぐ。
+
+### 提示した選択肢(記録)
+
+- Q1: 新しい共有ディレクトリ(採用、名前は`apps/common-lib`) / frontend-libをeventにも配置 / 描画をAPIに集約 / フロントとバックに別々に実装
+- Q2: モックアップどおりtextarea / Crepeを必要機能だけ遅延読み込み(採用) / Crepe全機能を遅延読み込み
+- Q3: 抽出なしで索引し後で再抽出(採用) / 回復まで待ち続ける / 抽出なしで索引して終わり
+- Q4: 各語を前方一致(採用) / 要件どおり完全一致
+- Q5: 接頭辞を付け本文ごとに指定可能にする(採用) / 固定の接頭辞だけ / 要件どおり接頭辞なし
+- Q6: `@tailwindcss/typography` 0.5.20を採用(採用) / 自前のスタイル
+
+### 確認済みのため質問しない事項
+
+- roadmapのRequirement Ambiguities: 担当specがcontent-processingの行は無い。
+- 日本語の分割方式: FR-FTS-001がunicode61と`remove_diacritics 2`に固定しており、日本語の分割はFR-FTS-006のキーワード抽出が担う。一致の広さだけをQ4で確認した。
+- 索引を更新するタイミング: FR-FTS-003(作成・編集時にQueuesで非同期)とFR-FTS-009(削除時は即時)で決まっている。
+- 後続specとの責任分担: briefのScope(Out)とOut of Boundaryで決まっている。ドメインごとのFTSテーブルと検索画面はdirectory-discovery・help-center、入力上限値は各ドメインが持つ。全文検索用のテーブルの主キーを連番にする規約はbackend-platformが文書だけで定めており(部品は提供しない)、部品とひな形は本specが作る。
+- 文字数の数え方: `design/003-text-and-copy-rules.md`が「書記素で数え、フロントのフォーカスアウト時とサーバーで同じ値で検証する」と定める。モックアップは記法を含む原文を`Intl.Segmenter`で数える。workerd・ブラウザ・Bunの標準APIで足り、NFKCも`String.prototype.normalize`で足りる。
+- プレビューの形: `design/002-page-layouts.md`とモックアップの「書く/プレビュー」タブで決まっている(WYSIWYGとの関係はQ2の回答により設計で決める)。
+- 見出しレベル1と画像の「通常の文字列として描画」(FR-MDOWN-010)の解釈: モックアップの`markdown.tsx`が、見出しレベル1は`<p># 本文</p>`、画像は`![alt](src)`の文字列として描画しており、これを正とする。
+- Raw HTML: FR-MDOWN-005とモックアップのコメントにより、文字列として表示する(削除しない)。
+- リンクの`rel`: `design/002-page-layouts.md`の「外部Webサイトへのリンク」の表で表示場所ごとに決まっている。描画部品は`rel`を指定できるようにするだけでよい。`noreferrer`はfrontend-platformが`Referrer-Policy: same-origin`を付けるため不要である。
+- 表示部品の生HTMLの挿入: NFR-SECUR-040と、frontend-platformの`frontend/003`(本specのサニタイズ済みHTMLの部品だけが、理由のコメント付きで1行だけ規則を無効化できる)で決まっている。`hast-util-to-jsx-runtime`は導入しない。
+- 相対URL: FR-MDOWN-012が`http`・`https`・`mailto`と`#`だけを許可するため除去する。ヘルプ記事の内部リンクは絶対URLで書く。
+- 入力の検証で拒否するもの: 見出しレベル1・画像・Raw HTMLは描画時に文字列にする要件のため、サーバー側で拒否するのは文字数など形式の違反だけである。
+- 保存形式: `features/001-user-data-export.md`がマークダウンの原文を`.md`で出力するため、DBにはマークダウンの原文を保存し、HTMLは保存しない。
+- マークダウン処理のパッケージ: tech-stack.mdで選定済み(unified 11.0.5、remark-parse 11.0.0、remark-gfm 4.0.1、remark-rehype 11.1.2、rehype-sanitize 6.0.0、rehype-stringify 10.0.1、hast-util-to-text 4.0.2、remark-cjk-friendly 2.3.2(2026-09-30公開)、remark-cjk-friendly-gfm-strikethrough 2.3.1)。いずれも公開から2週間以上経っている。rehype-slugの扱いは仮決定P2を参照。
+- キーワード抽出のAPI: tech-stack.mdで、APIキー認証のGoogle Cloud Natural Languageに決まっている。gRPCのSDKは使わず`fetch`でRESTのv2の`analyzeEntities`を呼ぶ。料金は1,000文字を1単位とし、毎月5,000単位まで無料、それ以降は1,000単位あたり1ドル。送信する内容は`legal/003-privacy-policy-outline.md`の委託先の一覧(プロダクト名・タグライン・説明文、ヘルプ記事、一時送信)と一致している。
+- バックアップ: NFR-AVAIL-008と`db/002`により、Time Travelで行う。
+- CSP: スクリプトはnonceに加えて同一オリジン(`'self'`)の読み込みが許可され、スタイルは`'unsafe-inline'`が許可されている。Crepeの別チャンクとCSSは同一オリジンから読み込まれ、許可先の追加は要らない(Research Log「CSPへの影響」)。
+
+### 仮決定(2026-10-18に開発者が承認)
+
+設計の途中で見つかった、開発者の判断を要する論点である。回答と上流specに最も整合する案を選んで設計を進め、2026-10-18に開発者が全件を承認した。P1はQ&Aで個別に、P2〜P8は一括で承認した。
+
+| #   | 論点                                                    | 仮決定(選んだ案)                                                                                                                                                                                                                                                                                                               | 他の選択肢                                                                                                                                                              | 理由                                                                                                                                                                                                                                                                                   |
+| --- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P1  | Crepeの部品のうちアクセシビリティを満たさないものの扱い | Crepeの固定ツールバー(top-bar)・表の操作UI(table)・リンクのツールチップ(link-tooltip)は組み込まず、同じMilkdownのコマンドを呼ぶ自前の固定ツールバー・リンクのダイアログ・表の挿入ボタンを共通部品に作る。Crepeからは編集領域・リスト(list-item)・選択時のツールバー(toolbar、日本語のラベル)・プレースホルダー・カーソルを使う | (a) Crepeの部品を使い、描画されたDOMへ名前とキー操作を後付けする補正を入れる (b) Crepeの部品をそのまま使い、入力欄だけアクセシビリティの自動検査の違反0件の対象から外す | top-barと表の操作UIのボタンは名前を持たず`pointerdown`だけで動くため、axeの`button-name`の違反とキーボードで操作できない問題(WCAG 2.1.1・4.1.2)があり、UI-003とfrontend-platformの「部品ごとのテストで違反0件」(Q8)を満たせない。(a)はCrepeの内部のDOMに依存し、版の更新で黙って壊れる |
+| P2  | rehype-slugの扱い                                       | rehype-slugを使わず、FR-MDOWN-006の変換と連番を自前のrehypeの処理で実装し、tech-stack.mdから外す                                                                                                                                                                                                                               | rehype-slugで付けたIDを後から書き換える                                                                                                                                 | rehype-slugはgithub-sluggerで記号を削除しCJK文字を残すため、FR-MDOWN-006の「記号とCJK文字のURLエンコード」と食い違い、削除された記号は後から復元できない。接頭辞と連番も自前の処理で決めるため、依存を減らせる                                                                         |
+| P3  | `@milkdown/kit`の宣言                                   | Crepeが完全固定で依存する`@milkdown/kit` 7.22.2を、エディタを使う3つのアプリ(frontend-lib・client・admin)で明示的に宣言する                                                                                                                                                                                                    | 推移的な依存に任せてimportする                                                                                                                                          | 見出しの入力規則の除去・アップロードの除外・コマンドの呼び出し・remarkのプラグインの登録に`@milkdown/kit`を直接importする。宣言しないimportは版の固定と配置方式の規約(利用側アプリが宣言する)に反する                                                                                  |
+| P4  | frontend-libからcommon-libを参照する方法                | frontend-libへは配置せず、配置先の名前を配置元と同じ`common-lib`にして、frontend-libのコードは兄弟の相対パス(`../common-lib`)で参照する。frontend-libの位置の検査では配置元を直接読み込み、client・adminに配置された後は各アプリの配置先を読み込む                                                                             | (a) frontend-libにも配置し、client・adminでは`lib/common-lib`へ入れ子に配置する (b) 描画の関数を利用側アプリから画面部品へ注入する                                      | (a)はbind mountの入れ子が要り、dev-toolingの配置確認が入れ子を検出しない(`coding/003`の制約)。(b)は全ての呼び出し箇所が注入を書く必要があり、サニタイズ済みの型の保証も弱まる。兄弟の相対パスならdev-toolingの仕組みを変えずに、回答どおり4アプリへの配置で済む                        |
+| P5  | 同一オリジンの判定の基準(FR-MDOWN-009)                  | client・adminの両方に変数`CLIENT_SITE_ORIGIN`(利用者側のオリジン)を加え、frontend-platformの環境の検証とブラウザへ渡す設定に含める                                                                                                                                                                                             | 要求のURLのオリジンを使う                                                                                                                                               | 管理者側のプレビューでは要求のURLが管理者側のオリジンになり、利用者側への絶対URLのリンクを別オリジンと誤判定する。値はREADMEの配信URLから決まる                                                                                                                                        |
+| P6  | 再抽出の定期実行の時刻                                  | 業務時刻4:21の日次バッチの最後(順序950)に組み込み、日次タイムラインの「日次バッチの内容」に追記する                                                                                                                                                                                                                            | 独立した時刻(例: 4:31)を新設してタイムラインに行を加える                                                                                                                | 既存のcron式(`21 12 * * *`、email-deliveryが追加)を再利用でき、Cron Triggersを増やさない。削除系の処理の後に置くため、削除済みの元データの再抽出を要求しない                                                                                                                           |
+| P7  | ローカル環境のキーワード抽出                            | ローカル環境では既定で無効(変数`KEYWORD_EXTRACTOR`を`disabled`、シークレット不要)にし、正規化テキストで索引する。実際のAPIへの疎通は、Infisicalから注入したキーで手元から確かめるスクリプトで確かめる                                                                                                                          | Infisicalの`dev`にもキーを登録し、ローカルでも常に実際のAPIを呼ぶ                                                                                                       | キーを持たない開発者でもイベントサーバーが起動でき(キーが必須だと環境の検証で全要求が失敗する)、ローカルの試行で料金が発生しない。staging・prodは必ず実際のAPIを呼ぶ                                                                                                                   |
+| P8  | キーワードから除くエンティティの種類                    | `PHONE_NUMBER`・`ADDRESS`・`DATE`・`NUMBER`・`PRICE`を除き、名前を正規化して重複を除く                                                                                                                                                                                                                                         | 全ての種類を使う                                                                                                                                                        | これらは検索語として使われにくく、電話番号と住所は個人に関する情報になり得る(DR-001)。v2のEntityは重要度(salience)を持たないため、種類で絞る                                                                                                                                           |
+
+## Wave 1の横断レビューの反映(2026-10-18)
+
+infra-delivery・content-processing・media-pipeline・identity-authとroadmapの横断レビュー(1回目のC・I・M、2回目のN)の指摘と、開発者の決定のうち、本specに関係するものである。
+
+| ID  | 指摘                                                                                                    | 本specへの反映                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C-1 | `apps/common-lib`への依存がroadmapに無く、media-pipeline・identity-authが本specのタスクを前提にしている | `apps/common-lib`の新設は本specに残す(S-1の決定)。roadmapは依存と順序(infra-delivery→content-processing→media-pipeline→identity-auth)を直す。design.mdのUsersとRevalidation Triggersにmedia-pipeline・identity-authを加え、共用部品の新設のタスク(1.1・1.2・4.1・4.2、identity-authは2.1も)が下流の前提であることを設計とタスクに書いた                                                                                                                                                         |
+| I-3 | Workerのシークレットの一覧がWave 1のキーを含まず、prodの登録時期が食い違う                              | `GOOGLE_NL_API_KEY`はinfra-deliveryのInfisicalの表とWorkerのシークレットの一覧に載る。stagingの値は、キーを必須にする変更(タスク9.1)をmainへマージする前に開発者が登録する。prodの値の登録はlaunch-readinessへ引き継ぐ                                                                                                                                                                                                                                                                          |
+| I-4 | 技術ドキュメントの番号`security/003`がinfra-deliveryと衝突する                                          | 番号をroadmapの順で固定し、本specは`external/002`・`db/004`・`frontend/008`・`security/004-markdown-sanitization.md`を使う。CLAUDE.mdの「技術規則の参照先」とfrontend-platformの`frontend/003`からのリンクも同じ番号にする                                                                                                                                                                                                                                                                      |
+| M-1 | `CLIENT_SITE_ORIGIN`の所有が2specに分かれている                                                         | client・adminの変数は本spec、apiの変数はidentity-authが所有し、名前と値を同じにする。互いの再検証の対象に加え、3環境の値はinfra-deliveryの一覧と一致させる                                                                                                                                                                                                                                                                                                                                      |
+| M-2 | frontend-libの`server/**`からcommon-libを読む許可が無い                                                 | `server/**`も`../common-lib/**`を読み込めるようにし、`components/**`と同じくZodを使う`validation/**`の読み込みを禁止する。media-pipelineの`server/media`はこれを前提にする                                                                                                                                                                                                                                                                                                                      |
+| M-4 | 4:21のジョブの順序を日次タイムラインへ書くspecが偏っている                                              | 4:21にジョブを足す各specが日次タイムラインへ追記する。本specは、日次バッチのジョブの順序の表が無ければ作り(上流のemail-deliveryの`email-delivery.cleanup`・900を含める)、自分のジョブの行を加える                                                                                                                                                                                                                                                                                               |
+| M-9 | ジョブ・波及処理の名前の接頭辞がそろっていない                                                          | ジョブの名前は`<spec名>.<名詞句>`(email-deliveryの`email-delivery.cleanup`と同じ)、メッセージ種別は`<ドメイン>.<動詞句>`(backend-platform)にそろえる。再抽出のジョブの名前は`content-processing.keyword-reextraction`とし、メッセージ`search-index.refresh`はそのままとする                                                                                                                                                                                                                     |
+| N-1 | Cloudflareの資源の国外移転の根拠を書くspecが無い                                                        | 国外移転の記載事項は委託先単位で分担し、Cloudflareの項をinfra-delivery、AWS(Rekognition)の項をmedia-pipeline、本specが使う委託先Google Cloud(Natural Language API)の項を本specが書く(開発者の決定の委託先単位の分担を当てはめた追加の決定)。受け入れ基準16.9とタスク11.4を加えた。項の形は「移転先・移転の根拠・委託先が講じる措置」、根拠はDPFを主とし、無効になった場合は委託先のDPAに含まれるSCCに拠る。共通の「移転先の国」の行はGoogle Cloudの記述だけを改め、他の委託先の項は書き換えない |
+| N-2 | 「無ければ止める」前提に、roadmapに無い依存(email-deliveryの実装)が含まれる                             | タスク1.1の前提からemail-deliveryを外し、実装(4:21のcron式と`email-delivery.cleanup`)の有無を確かめ、無ければ開発者へ報告して続ける形にした。cron式が無ければタスク10で加える。roadmapの依存には加えない                                                                                                                                                                                                                                                                                        |
+| N-3 | 下流が前提にするタスクの区切りに`server/**`の許可と日次タイムラインの表が入っていない                   | design.mdの「本specのタスクを前提にする下流spec」の区切りに、6.1・11.3のうち`coding/003`への`server/**`の許可の記述・11.4のうち日次タイムラインの表の作成を加え、許可の確かめ方を注記した。表は最初に4:21のジョブを足すspecが作り、後のspecは行を足す。下流specは表が無いことを理由に止めない                                                                                                                                                                                                   |
+| N-4 | ジョブ名の規約の置き場所が無い                                                                          | 受け入れ基準16.8とタスク11.5を加え、backend-platformの`infra/003-async-processing.md`(backend-platform/design.mdで定期実行を説明する文書として割り当てられた番号)へ、ジョブ・波及処理`<spec名>.<名詞句>`とメッセージ種別`<ドメイン>.<動詞句>`の規約を追記する                                                                                                                                                                                                                                   |
+| N-5 | 技術ドキュメントへシークレットのキーの一覧を写す設計                                                    | キーの一覧の正を`docs/onboardings/project-values.md`のWorkerのシークレットのキーの一覧の節(infra-deliveryが作る)とし、本specはキーを必須にする変更と同じ変更で`GOOGLE_NL_API_KEY`の行を加える(タスク9.1)。`external/002`はキーと変数の名前を列挙せず、プレースホルダーとリンクにする(タスク11.1)                                                                                                                                                                                                |
+| N-6 | 運営者による代理の退会                                                                                  | 本specは関係しない(identity-auth・ugc-moderation)                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| N-7 | 停止中の利用者のアップロードの拒否                                                                      | 本specは関係しない(media-pipeline・identity-auth)                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+
+- M-5(4:21の1回の起動の時間の予算)とM-7(同じファイルへの追記によるマージの衝突)は、開発者とbackend-platformの判断に委ね、本specでは扱わない。
+
+## Research Log
+
+### Crepe 7.22.2の構成と容量
+
+- **Context**: Q2の回答(builderで必要な機能だけを遅延読み込み、7.22.2に固定)。
+- **Sources Consulted**: npmの`@milkdown/crepe`の公開日時(7.22.2は2026-09-23、7.22.3は2026-10-10)、scratchpadへ`@milkdown/crepe`・`@milkdown/kit`・`@milkdown/react`の7.22.2を導入して型定義と配布物を確認し、`bun build --minify --target=browser`(Reactは外部)で容量を計測した。
+- **Findings**:
+  - `@milkdown/crepe/builder`の`CrepeBuilder`は`addFeature(feature, config)`・`create()`・`destroy()`・`editor`(Milkdownの`Editor`)・`setReadonly`・`getMarkdown`・`on(listener)`を持つ。機能ごとの入口は`./feature/{toolbar,list-item,link-tooltip,placeholder,cursor,table,top-bar,block-edit,image-block,latex,code-mirror,ai}`である。
+  - builderの基本構成は`commonmark`・`gfm`・`listener`・`history`・`indent`・`trailing`・`clipboard`・`upload`のプラグインを常に読み込む。
+  - 容量(gzip後): 選択時のツールバー・リスト・リンクのツールチップ・プレースホルダー・カーソル・表とremark-cjk-friendlyで約786KB(約250KB)、固定ツールバーを加えると約807KB(約257KB)。描画パイプラインだけでは約220KB(約66KB)。KaTeX・CodeMirrorは含まれず、`eval(`・`new Function`の出現は0件だった。
+  - 内部のUIはVue 3(`createApp`・`h`)で描かれる。描画関数を使うため、テンプレートのコンパイラ(実行時のコード生成)は要らない。Vueのesm-bundler版はビルド時の機能フラグ(`__VUE_OPTIONS_API__`など)が未定義だと開発時に警告する。
+  - `@milkdown/react` 7.22.2の`useEditor(getEditor)`は、`Editor`か`CrepeBuilder`を返す関数を受け取り、`Milkdown`・`MilkdownProvider`と組み合わせてマウントと破棄を行う。
+- **Implications**: 組み込む機能は仮決定P1の範囲に絞る。`<ClientOnly>`で囲んだ`React.lazy`の別チャンクに閉じ込め、サーバー側の描画では読み込まない(TanStack Startのルール`ssr-hydration-safety`)。client・admin・frontend-libのVite設定でVueの機能フラグを`false`に定義する。
+
+### Crepeの部品のアクセシビリティ
+
+- **Context**: UI-003(WCAG 2.2 AA)と、frontend-platformの「共通部品のブラウザテストでaxeの違反0件」(Q8)。
+- **Sources Consulted**: 7.22.2の`feature/top-bar/index.js`・`feature/toolbar/index.js`・`@milkdown/components`の`table-block`・`link-tooltip`の配布物、テーマのCSS(`table.css`)。
+- **Findings**:
+  - 固定ツールバー: ボタンは`aria-label`・`title`を持たず、アイコン(SVG)だけを内容に持つ。押下の処理は`onPointerdown`だけで、Enter・Spaceキーで発火しない。見出しの選択肢は`headingOptions`で、画像の挿入は`ImageBlock`の機能が有効な場合だけ表示される。
+  - 選択時のツールバー: ボタンは`aria-label`・`title`・`aria-keyshortcuts`を持ち、ラベルは設定(`boldLabel`など)と`buildToolbar`で変えられる。押下は`onPointerdown`である。
+  - 表の操作UI: 行・列のハンドルの各ボタン(配置・削除・追加)は名前を持たず、`opacity`で隠すだけでアクセシビリティツリーに残る。
+  - リンクのツールチップ: 確認・削除などのボタンに名前が無い。
+  - アイコンは`DOMPurify.sanitize`を通した固定のSVG文字列を`innerHTML`で挿入している(ライブラリ内部で、利用者の入力ではない)。
+- **Implications**: 仮決定P1のとおり、固定ツールバー・表の操作UI・リンクのツールチップは自前の部品で置き換え、選択時のツールバーは日本語のラベルを設定して補助として残す(キーボードの利用者は固定ツールバーとショートカットで同じ操作ができる)。
+
+### Crepeの入力経路と見出しレベル1・画像・Tabキー
+
+- **Context**: Q2の回答(見出しレベル1の入力ルールと貼り付けを止める)、FR-MDOWN-002、UI-003(キーボードの罠)。
+- **Sources Consulted**: `@milkdown/preset-commonmark`・`@milkdown/preset-gfm`・`@milkdown/plugin-indent`・`@milkdown/core`・`@milkdown/utils`の7.22.2の型定義と配布物。
+- **Findings**:
+  - 見出しの入力規則`wrapInHeadingInputRule`は`#`1〜6個に一致し、`headingKeymap`は`TurnIntoH1`(`Mod-Alt-1`)を持つ。キーマップは`$UserKeymap`で、設定から割り当てを変えられる。
+  - 画像の入力規則`insertImageInputRule`があり、コアのプリセットは画像のノードを持つ。`upload`のプラグインはファイルの貼り付け・ドロップで画像のノードを挿入する。
+  - `Editor.remove(plugins)`で読み込み済み・読み込み予定のプラグインを外せる。
+  - Tabキーは、`indent`のプラグイン(字下げ)、commonmarkのリストの`SinkListItem`(`Tab`・`Mod-]`)、gfmの表のセル移動(`Tab`・`Mod-]`)に割り当てられている。
+  - `$remark(id, () => plugin)`でremarkのプラグインを登録でき、Milkdownの`@milkdown/transformer`はremark 15系(unified 11)を使う。remark-cjk-friendly 2.3.2と同じ系列である。
+- **Implications**: 見出しレベル1の入力規則・画像の入力規則・アップロードのプラグイン・インデントのプラグインを外し、見出しレベル1の割り当てを外す。見出しの入力規則はレベル2〜6だけのものを加える。貼り付け・既存の値の読み込みで入る見出しレベル1と画像は、ProseMirrorのプラグインで描画時と同じ文字列に置き換える。リストの階層と表のセル移動は`Mod-]`・`Mod-[`と矢印キーに限り、Tabキーで編集領域から出られるようにする。
+
+### Crepeのテーマとフォント
+
+- **Sources Consulted**: `@milkdown/crepe/lib/theme`のCSS。
+- **Findings**: `theme/common/style.css`は全機能のCSSを`@import`し、`latex.css`経由でKaTeXのCSSとフォントを取り込む。`frame`などのテーマはNoto Sans・Noto Serif・Space Monoを指定する。各CSSは`--crepe-color-*`・`--crepe-font-*`の変数で色とフォントを受け取る。
+- **Implications**: `theme/common/*`から使う機能のCSSだけを取り込み、テーマのCSSは使わず、`--crepe-*`の変数をデザイントークン(ライト・ダーク)とOSのフォントの並びに対応付ける(frontend-platformの「Webフォントを読み込まない」)。
+
+### 描画パイプラインの挙動
+
+- **Context**: FR-MDOWN-004〜006・009〜012、Q5。
+- **Sources Consulted**: scratchpadでunified 11.0.5・remark-parse 11.0.0・remark-gfm 4.0.1・remark-cjk-friendly 2.3.2・remark-cjk-friendly-gfm-strikethrough 2.3.1・remark-rehype 11.1.2・rehype-sanitize 6.0.0・rehype-stringify 10.0.1・hast-util-to-text 4.0.2で試作した。
+- **Findings**:
+  - remark-rehypeは既定(`allowDangerousHtml: false`)でRaw HTMLの節点を捨てる。構文木(mdast)の段階で`html`の節点を文字列の節点に置き換えると、ブロックの位置のRaw HTMLは段落に包まれずに出力されるため、ブロックの位置では段落で包む必要がある。
+  - rehype-sanitizeの既定のスキーマは、`href`の許可スキームに`http`・`https`・`irc`・`ircs`・`mailto`・`xmpp`を持ち、スキームの無い参照(`/help/x`・`foo`・`//evil.example`)を残す。`javascript:`の参照は属性ごと消え、`<a>`だけが残る。
+  - 既定の`clobber`は`id`・`name`・`ariaDescribedBy`・`ariaLabelledBy`で、`clobberPrefix`を値の前に付ける。`href`の`#…`は書き換えない。remark-rehypeは脚注のIDと参照に自身の`clobberPrefix`(既定`user-content-`)を付けるため、両方を既定のままにすると接頭辞が二重になる。remark-rehypeの`clobberPrefix`を空にすると、脚注のIDはサニタイズで接頭辞が付き、参照の`#fn-1`は接頭辞が付かないまま残る。
+  - 脚注の見出しは`<h2 class="sr-only" id="footnote-label">`で、文言の既定は英語(「Footnotes」「Back to reference 1」)である。`footnoteLabel`・`footnoteBackLabel`で変えられる。
+  - 見出しレベル1と画像は、構文木の段階で段落と文字列に置き換えれば、表示がモックアップと一致した。remark-cjk-friendlyにより`**太字。**の`が強調になった。
+  - 表の配置は`align`属性で出力され、既定のスキーマで残る。
+  - 性能: 20,000文字(見出し・強調・リンク・リスト・表を含む)の文書の描画はBunで平均約124ms、2,000文字で約9msだった。
+- **Implications**: 処理の順序は「解析→構文木での文字列化(Raw HTML・見出しレベル1・画像)→HTMLの構文木への変換→見出しのID→サニタイズ→サニタイズ後の信頼できる変換(`#`の参照の書き換え・リンクの方針・表の枠)」とする。許可リストはremarkとremark-rehypeが出力する要素だけに絞る。描画の結果は入力と指定でメモ化し、性能はテストで計測して劣化を検出する。
+
+### FR-MDOWN-006のスラッグとアンカーリンク
+
+- **Context**: FR-MDOWN-006、Q5。
+- **Sources Consulted**: WHATWG HTML Standardの「scroll to the fragment」(素のフラグメントで要素を探した後、パーセントデコードした値でも探す)、micromarkのURLの正規化(英数字と一部の記号を残し、非ASCIIと空白をエンコードする)、scratchpadでの試作。
+- **Findings**:
+  - 「概要 Hello World!」はFR-MDOWN-006の規則で`%E6%A6%82%E8%A6%81-hello-world%21`になる。利用者が`[x](#概要-hello-world!)`と書くと、参照は`#%E6%A6%82%E8%A6%81-hello-world!`に正規化され、`!`がエンコードされずにIDと一致しない。
+  - IDに`%`を含めても、ブラウザは素のフラグメントでIDを探すため、アドレスバーで`#概要`と入力した場合(ブラウザがエンコードする)も一致する。
+- **Implications**: 本文中の`#`の参照は、フラグメントをパーセントデコードしてから見出しと同じ変換を通し、接頭辞を付けて書き換える。デコードできない場合はそのまま変換する。
+
+### FTS5の動作確認
+
+- **Context**: FR-FTS-001・002・009、Q4、DR-014、`db/002`のexternal contentとトリガーの例。
+- **Sources Consulted**: scratchpadのbun:sqlite(SQLite 3.53.2)。
+- **Findings**:
+
+  | 確認                                                                                        | 結果                                                       |
+  | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+  | external content(`content_rowid`に`INTEGER PRIMARY KEY`)と追加・更新・削除のトリガー        | 同期し、`integrity-check`が成功した                        |
+  | `"タスク管理"` / `"タスク管理"*` / `"管理"*`(索引語は「タスク管理ツール」)                  | 一致しない / 一致する / 一致しない(キーワード列でのみ一致) |
+  | `"cafe"*`・`"CAFE"*`・`"resume"`(元は「Café résumé」)                                       | 一致する(大文字小文字と発音区別符号を無視)                 |
+  | `"!!!"*`・`"a""b"*`・`"NOT"*`・`"name:x"*`                                                  | 構文の誤りにならず、0件                                    |
+  | `bm25(fts, 10.0, 5.0, 1.0)`の列ごとの重み                                                   | 列ごとの重みで並んだ                                       |
+  | `ON CONFLICT(source_id) DO UPDATE ... WHERE excluded.source_version >= docs.source_version` | 古い版の更新が無視された                                   |
+  | `INSERT ... SELECT ?, ? WHERE EXISTS (SELECT 1 FROM 元のテーブル WHERE ...)`                | 元データが無い・論理削除済みの場合に追加されなかった       |
+  - `prefix='2 3'`を付けた索引も作成・照合できた。
+
+- **Implications**: 索引文書のテーブルを`INTEGER PRIMARY KEY`の連番にしてexternal contentの`content_rowid`に指定し、トリガーで同期する。索引の更新は、版と元データの存在を条件にした1文で行う。D1(Workers統合テスト)でも同じ確認を行う。
+
+### Google Cloud Natural Language v2
+
+- **Context**: SW-024、FR-FTS-006、Q3。
+- **Sources Consulted**: [documents.analyzeEntities(v2)](https://docs.cloud.google.com/natural-language/docs/reference/rest/v2/documents/analyzeEntities)、[Document(v2)](https://docs.cloud.google.com/natural-language/docs/reference/rest/v2/documents)、[Entity(v2)](https://docs.cloud.google.com/natural-language/docs/reference/rest/v2/Entity)、[Language support](https://docs.cloud.google.com/natural-language/docs/languages)、[Quotas and limits](https://docs.cloud.google.com/natural-language/quotas)、[Pricing](https://cloud.google.com/natural-language/pricing)(料金は調査担当の確認値)。
+- **Findings**:
+  - 要求: `POST https://language.googleapis.com/v2/documents:analyzeEntities`、本文は`{ document: { type: 'PLAIN_TEXT', content, languageCode? }, encodingType: 'UTF8' }`。`languageCode`を省くと自動判定する。APIキーは`x-goog-api-key`ヘッダーで渡せる。
+  - 応答: `entities[]`(`name`・`type`・`metadata`・`mentions[]`(`text`・`type`・`probability`))、`languageCode`、`languageSupported`(公式に対応していない言語でも最善努力で応答し得る)。
+  - Entityの`type`は`UNKNOWN`・`PERSON`・`LOCATION`・`ORGANIZATION`・`EVENT`・`WORK_OF_ART`・`CONSUMER_GOOD`・`OTHER`・`PHONE_NUMBER`・`ADDRESS`・`DATE`・`NUMBER`・`PRICE`。
+  - 非対応の言語は`INVALID_ARGUMENT`(HTTP 400)になる。エンティティ分析の対応言語はzh・zh-Hant・en・fr・de・it・ja・ko・pt・ru・es。
+  - 上限: 1要求1,000,000バイト、トークン100,000(超過分は無視)、毎分600要求・毎日800,000要求(プロジェクト単位)。
+  - 料金: 1,000文字を1単位、毎月5,000単位まで無料、以降1,000単位あたり1ドル。
+- **処理する場所とデータの扱い(N-1の追加の決定で確認)**:
+  - [Locations](https://docs.cloud.google.com/natural-language/docs/locations): 既定のグローバルのエンドポイント(`language.googleapis.com`)では、Googleは処理する場所を特定のリージョンに限ることを保証しない。複数リージョンのエンドポイント`us-language.googleapis.com`・`eu-language.googleapis.com`を使うと、機械学習の処理をそれぞれ米国・EUの中だけで行う。同じ文書はv2(`documents:analyzeEntities`)が複数リージョンのエンドポイントで使えるかを明記していない。
+  - [Data Usage FAQ](https://cloud.google.com/natural-language/docs/data_usage): 送ったテキストはメモリ上で処理されて保存されず、サービスの提供以外に使われず、現在は学習に使われない。要求の時刻や大きさなどのメタデータは、サービスの改善と不正利用の対策のため一時的に記録される。
+  - 本specはグローバルのエンドポイントを使う(`ANALYZE_ENTITIES_ENDPOINT`)ため、国外移転の記載事項のGoogle Cloudの項には「処理する場所は保証されない」と書く。
+- **Implications**: 応答の`languageSupported: false`と、言語を理由とする400を「非対応言語」とする。それ以外の400と401・403は設定の誤り、429・5xx・通信の失敗・時間切れは一時的な失敗とする。キーワードは種類で絞り(仮決定P8)、名前を正規化して重複を除く。抽出の入力が前回と同じなら呼ばない(料金の抑制)。
+
+### CSPへの影響
+
+- **Context**: frontend-platformのnonce付きCSP(スクリプトはnonceと`'self'`、スタイルは`'unsafe-inline'`、接続・画像・フォントは個別の許可)。
+- **Findings**:
+  - Crepeの別チャンクとCSSは、ビルド結果として同一オリジンの`/assets/*`から読み込まれ、`'self'`で許可される。Viteの`modulepreload`にもnonceが付く(frontend-platformのResearch Log)。
+  - `eval`・`new Function`を使わないため`'unsafe-eval'`は不要である。
+  - インラインのスタイル(Vue・ProseMirrorが要素の`style`を操作)はCSSOM経由で、`style-src`の対象外である。
+  - KaTeXとテーマのWebフォントを取り込まないため、`font-src`の追加は要らない。外部への接続も無い。
+- **Implications**: CSPと`SecurityPolicySources`の変更は無い。frontend-platformへの影響は、静的解析の規則と生のHTMLの例外の1箇所、Vite設定の機能フラグ、変数`CLIENT_SITE_ORIGIN`に限られる。
+
+### 共有ディレクトリの参照
+
+- **Context**: Q1(4アプリへの配置)と、frontend-libの画面部品がcommon-libを使うこと。
+- **Sources Consulted**: `config/workspace-layout.ts`・`scripts/tooling/shared-dirs.ts`・`compose.yaml`・`coding/003-shared-directories.md`・frontend-platformのresearch.md(「共有ディレクトリ(検査担当が自分自身)の型検査設定」)。
+- **Findings**:
+  - frontend-libのファイル(`apps/frontend-lib/components/x/y.tsx`)から`../../../common-lib/…`は配置元の`apps/common-lib/…`を、clientに配置された同じファイル(`apps/client/lib/components/x/y.tsx`)からは配置先の`apps/client/common-lib/…`を指す。backend-libからも同じ書き方で、api・eventの配置先を指す。
+  - 入れ子の配置(`apps/client/lib/common-lib`)は、bind mountの入れ子と、配置確認が入れ子のマウントを検出しない制約(`coding/003`)に当たる。
+  - frontend-libの位置の検査(型検査・ブラウザテスト・Storybook)では、common-libのbare importはcommon-libのnode_modulesから解決される。Viteの開発サーバーは既定でプロジェクトの外のファイルを配信しないため、`server.fs.allow`に配置元を加える必要がある。
+  - 検査担当が`self`の共有ディレクトリの`tsconfig.json`は、配置先で相対パスの`extends`を解決できずViteのビルドが失敗するため、自己完結にする必要がある(frontend-platformの確認)。WranglerのesbuildもファイルごとにWranglerが最も近い`tsconfig.json`を探す。
+- **Implications**: 仮決定P4のとおり兄弟の相対パスで参照する。common-libの`tsconfig.json`は自己完結にし、基底設定との一致を単体テストで確かめる。frontend-libの位置では同じパッケージが2つの実体になり得るため(frontend-libとcommon-libのzodなど)、frontend-libの部品はcommon-libのZodを使うモジュールを読み込まない規約を`coding/003`に書く。
+
+### 参照したスキル
+
+- `tanstack-start`の`ssr-hydration-safety`: ブラウザだけで動く部品は`React.lazy`と`Suspense`で分け、サーバー側の描画では仮の表示にする。TanStack Routerの`ClientOnly`で、サーバー側の描画と初期化の間は代わりの表示を出す。
+- `ecc:security-review`: 利用者が入力したHTMLは必ずサニタイズしてから挿入する。サニタイズは許可リスト方式とし、攻撃パターンでテストする。
+- `ecc:frontend-a11y`・`ecc:accessibility`: アイコンだけのボタンの名前、ラベル・説明・エラーの`aria-*`による関連付け、ダイアログのフォーカスの移動と戻り、キーボードの罠を作らないこと。
+- `ecc:content-hash-cache-pattern`: 内容のハッシュを再計算の要否の鍵にし、内容が変わった時だけ高い処理(外部API)を行う。
+- `ecc:error-handling`: 想定内の失敗を判別可能なユニオンの`kind`で表し、例外を再試行の合図にだけ使う。
+- `ecc:react-testing`: 部品のテストは`vitest-browser-react`で描画し、役割とラベルで要素を探す。
+- `cloudflare:workers-best-practices`: 外部APIの呼び出しは時間切れを設け、グローバルスコープで通信しない。
+
+## Architecture Pattern Evaluation
+
+| Option                                       | Description                                                                                                  | Strengths                                                                            | Risks / Limitations                                                                | Notes  |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | ------ |
+| 共用部品+画面部品+ポートとアダプタの検索基盤 | 純粋な描画・文字数・検索語の処理を共用部品に、画面部品を共通部品に、索引の判断をcoreの純粋関数とポートに置く | 1つの定義を全アプリで使える。判断を単体テストで、D1と外部APIを統合テストで検査できる | 共有ディレクトリが4つになり、配置と依存の版の管理が増える                          | 採用   |
+| 描画をAPIサーバーに集約                      | GraphQLでサニタイズ済みHTMLを返し、プレビューもAPIへ問い合わせる                                             | フロントの依存が減る                                                                 | プレビューのたびに通信とレート制限が掛かり、Q1で不採用                             | 不採用 |
+| 検索対象ごとのDIの読み取りポート             | 元データの読み取りをドメインの`ContainerModule`で束縛する                                                    | Inversifyの慣行に沿う                                                                | api(再抽出の対象の列挙)とevent(読み取り)で登録が二重になり、食い違いを検出しにくい | 不採用 |
+| 登録データとしての検索対象(`SEARCH_TARGETS`) | 索引の定義・項目・読み取りの関数・対象の条件を1つの定義にまとめ、集約点に並べる                              | 両アプリが同じ定義を読み、単体テストで登録の誤りを検出できる                         | 読み取りの関数がDrizzleに依存するため、workersの層に置く必要がある                 | 採用   |
+
+## Design Decisions
+
+### Decision: 描画はサニタイズの後に信頼できる変換だけを行う
+
+- **Context**: FR-MDOWN-005・006・009〜012、Q5。
+- **Alternatives Considered**:
+  1. rehype-sanitizeを最後に置き、リンクの`target`・`rel`や表の枠もスキーマで許可する — 利用者の入力に由来しない属性まで許可リストに入り、許可の範囲が広がる。
+  2. サニタイズを先に行い、その後に本specのコードだけが属性を加える — 許可リストは入力に由来する要素だけに絞れる。
+- **Selected Approach**: 2。サニタイズの後に、`#`の参照の書き換え(接頭辞)・許可外の参照のリンクの解除・`target`と`rel`・表の横スクロールの枠を加える。見出しのIDはサニタイズの前に付け、サニタイズの`clobberPrefix`で接頭辞を付ける(脚注のIDも同じ経路で付く)。
+- **Trade-offs**: サニタイズ後の変換に誤りがあると安全性を損ねるため、変換は既に許可された要素への属性の追加と、要素の除去・包みに限り、攻撃パターン集の全件の出力を許可リストで検査する。
+
+### Decision: 「書く/プレビュー」を残し、書く側をWYSIWYGにする
+
+- **Context**: Q2の回答(役割の重なりとSSR時の仮表示を設計で決める)、FR-MDOWN-003、`design/002-page-layouts.md`の「書く/プレビュー」。
+- **Alternatives Considered**:
+  1. タブを残し、「書く」をWYSIWYGの編集領域、「プレビュー」を表示部品と同じ描画にする
+  2. タブを無くし、WYSIWYGをリアルタイムのプレビューとみなす
+  3. 編集領域とプレビューを横に並べる
+- **Selected Approach**: 1。WYSIWYGの見た目は公開時の表示と一致しない(許可外のリンクの解除、見出しのIDと接頭辞、`target`と`rel`、表の横スクロール、本文の文字組み、見出しレベル1と画像の文字列化)。プレビューは公開時と同じ描画部品と表示部品で、表示場所と同じ指定で描く。ページ構成の記述と画面の構成を変えずに済む。
+- **Trade-offs**: 書く側も書式を表示するため、プレビューは確認のための補助になる。モックアップとの差は「モックアップとの差」の表に記録する。
+
+### Decision: 入力欄の外枠は常に描き、編集領域だけを遅延読み込みにする
+
+- **Context**: briefの実現性チェック(静的importでSSRバンドルが肥大化)、NFR-PERF-001、Q2。
+- **Selected Approach**: 外枠(タブ・固定ツールバー・カウンター・ラベルとの関連付け)は通常のコンポーネントとしてサーバー側でも描く。編集領域は`<ClientOnly>`の中の`React.lazy`で読み込み、それまでは同じ大きさの仮の表示(現在の値の描画結果と「エディタを読み込んでいます」、`aria-busy`)と、操作できない状態のツールバーを出す。`@milkdown/*`をimportできるのは`components/markdown-editor/crepe/`だけとし、外からは1つの読み込み関数の`import()`でだけ参照する。
+- **Rationale**: 読み込みの前後で配置が変わらず、ツールバーの操作は編集領域の読み込み後に有効になる。Milkdownの型は外枠へ漏らさず、外枠と編集領域は`EditorController`の契約で結ぶ。
+
+### Decision: 文字数のカウンターは保存されるマークダウンの原文を数える
+
+- **Context**: 文言・文字数規則(フロントとサーバーで同じ値)、モックアップのカウンター。
+- **Selected Approach**: 編集領域が出力するマークダウンの原文(記法を含む)を書記素で数える。サーバー側の検証と同じ値になる。WYSIWYGでは記法が見えないため、表示される文字数より大きくなる場合がある点を技術ドキュメントに記載する。
+- **Trade-offs**: 利用者の見た目の文字数とずれる。見た目の文字数で数えると、サーバーが拒否する入力をフロントが通してしまう。
+
+### Decision: 索引の書き込みは版と元データの存在を条件にした1文で行う
+
+- **Context**: Queuesは少なくとも1回の配送で順序を保証しない(backend-platform)。FR-FTS-009、要件9.7・9.8・11.3。
+- **Alternatives Considered**:
+  1. 読み直した元データで無条件に上書きする — 古い版の後着や、削除との競合で索引が復活する。
+  2. 版(元データが返す単調増加の値)と、元データの存在と対象の条件を、1文の`INSERT ... SELECT ... WHERE EXISTS ... ON CONFLICT DO UPDATE ... WHERE`で同時に判定する。
+- **Selected Approach**: 2。D1は文を直列に実行するため、ドメインの削除の一括の書き込みと索引の書き込みが入り交じらない。
+- **Follow-up**: D1上のWorkers統合テストで、古い版・削除済み・対象外の元データの書き込みが無視されることを確かめる。
+
+### Decision: ドメインの書き込みに「更新待ち」の印を含め、要求の送信は失敗させない
+
+- **Context**: 要件9.1・9.10、briefの「GCP NLの障害時も書き込み系の処理を止めない」、backend-platformのデッドレターの破棄(Q7)。
+- **Selected Approach**: ドメインは作成・編集の一括の書き込みに索引の「更新待ち」の印(索引文書が無ければ空の行、あれば状態だけを変える)を含め、書き込みの後に更新の要求を送る。要求の送信の失敗はログとSentryに送り、ドメインへは失敗を返さない。日次の再抽出が、1時間以上「更新待ち」のままの索引文書の更新を要求し直す。
+- **Trade-offs**: 索引文書が空の行で先に作られるが、空の列は検索に一致しない。デッドレターに移ったメッセージも日次で回復する。
+
+### Decision: キーワード抽出の状態を5つに分ける
+
+- **Context**: Q3、要件10。
+- **Selected Approach**: `pending`(更新待ち・抽出の試行中)、`extracted`(抽出済み)、`fallback`(失敗が続いたか設定の誤りで正規化テキストを使用、日次で再抽出)、`unsupported`(非対応言語で正規化テキストを使用、再抽出しない)、`disabled`(抽出を無効にした環境で正規化テキストを使用、再抽出しない)。
+- **Rationale**: 再抽出の対象(`fallback`と古い`pending`)を1つの条件で選べる。非対応言語を毎日再試行して料金を使うことを避ける。
+
+### Decision: 表示はページの描画とブラウザの両方で同じ描画部品を使う
+
+- **Context**: Q1(SSRとクライアントで共用)、要件4.15。
+- **Alternatives Considered**:
+  1. ページのサーバー側の描画とブラウザの初期化の両方で描画部品を呼び、入力と指定でメモ化する
+  2. サーバー側だけで描画し、HTMLをローダーのデータでブラウザへ渡す — HTMLがページ内に2回入り、転送量が増える。
+- **Selected Approach**: 1。描画は純粋な関数で、同じ入力と指定から同じHTMLを返す。表示部品は`RenderedMarkdown`を受け取り、目次(help-center)も同じ結果の見出しの一覧を使う。
+- **Trade-offs**: 長い本文(20,000文字)ではブラウザの初期化に描画の時間(Bunで約124ms)が加わる。計測を単体テストに置き、劣化を検出する。
+
+### Decision: 強調表示は全文検索の語の区切りに合わせた前方一致にする
+
+- **Context**: `design/002-page-layouts.md`の「説明文やキーワード抽出結果のみで一致したプロダクトには強調が付かない」、Q4。
+- **Selected Approach**: 文字列を書記素ごとに折りたたみ(NFKC→NFD→結合文字の除去→小文字化)、文字・数字の連続を語とみなして、各検索語が語の先頭から一致する範囲だけを返す。unicode61も文字・数字以外で区切るため、全文検索で名称が一致しない語の途中(例: 「タスク管理ツール」の「管理」)を強調しない。
+
+### Decision: common-libの`tsconfig.json`を自己完結にする
+
+- **Context**: frontend-platformの確認(検査担当が`self`の共有ディレクトリは配置先で`extends`を解決できない)。
+- **Selected Approach**: `extends`を持たず、基底設定の値を書き写す。差分は`lib: ["ES2024"]`(DOMの型を持たない)と`types: ["bun"]`と`include`だけとし、基底設定との一致を単体テストで確かめる。
+
+### Generalization・Build vs Adopt・Simplification
+
+- **Generalization**:
+  - 描画の処理(解析からサニタイズまで)を1つにし、表示用(HTML・見出し)と索引用(プレーンテキスト)はその後段だけを変える。
+  - 検索対象の登録は、プロダクトとヘルプ記事に共通する「項目の形式と用途・読み取り・版・対象の条件」の組として表し、後続の検索対象も同じ形で加えられる。
+  - 抽出のアダプタは`KeywordExtractor`の1つの契約に揃え、無効化した環境の実装も同じ契約で差し替える。
+- **Build vs Adopt**:
+  - 採用: unified系(解析・変換・サニタイズ・文字列化・テキスト抽出)、CrepeとMilkdownのコマンド(編集領域)、`@tailwindcss/typography`(本文の文字組み)、FTS5(索引と照合とBM25)、Zod(検証規則)、`Intl.Segmenter`・`String.prototype.normalize`・Web Crypto(書記素・NFKC・ハッシュ)。
+  - 自作: FR-MDOWN-006のスラッグ(既製品は記号を削除する)、リンクの方針と`#`の参照の書き換え、見出しレベル1・画像・Raw HTMLの文字列化、Crepeの代わりの固定ツールバーとリンクのダイアログ(仮決定P1)、FTS5のSQLのひな形と検索式、強調表示の照合、自然言語APIの`fetch`のアダプタ(公式SDKはgRPCでWorkersに向かない)。
+  - 不採用: rehype-slug(仮決定P2)、`hast-util-to-jsx-runtime`(確認済み事項)、hast・mdastの型パッケージの直接の宣言(変換で触る節点だけの構造的な型を共用部品に置く)。
+- **Simplification**:
+  - 索引の状態の記録は索引文書のテーブルの列に持ち、別の管理テーブルを作らない。
+  - 全件の再索引の仕組みは作らない(初回のデータはリリース前に無く、全文検索の索引の作り直しはSQLの`rebuild`で足りる)。
+  - 抽出結果の別のキャッシュは作らず、索引文書のハッシュとキーワードを再利用する。
+  - E2Eテストは、入力欄と検索を使う画面を持つ後続spec(engagement・directory-discovery・help-center)が書く。本specは部品のブラウザテストとWorkers統合テストで確かめる。
+
+### モックアップとの差
+
+| 項目               | モックアップ(`comment-composer.tsx`・`markdown.tsx`・`collapsible-markdown.tsx`)        | 本設計                                                                                        | 理由                                  |
+| ------------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 「書く」の入力欄   | textareaに記法を挿入する                                                                | 書式を適用した見た目のまま編集する編集領域(Crepe)                                             | Q2                                    |
+| 書式のツールバー   | 9つ(見出し・太字・斜体・リンク・箇条書き・番号付きリスト・引用・コード・コードブロック) | 9つに「表」を加えた10個。選択時のツールバー(太字・斜体・取り消し線・コード・リンク)も表示する | Q2(表を機能に含める)、仮決定P1        |
+| リンクの挿入       | `[リンク](https://)`の文字列を挿入する                                                  | URLを入力するダイアログ                                                                       | WYSIWYGでは記法を直接入力しないため   |
+| SSR時の表示        | textareaを描く                                                                          | 同じ大きさの仮の表示(現在の値の描画結果)と操作できない状態のツールバー                        | 編集領域はブラウザでだけ動く(Q2)      |
+| 文字数の読み上げ   | カウンター全体を`aria-live="polite"`にする                                              | 上限の超過と戻りの時だけ読み上げる                                                            | 入力のたびの読み上げを避ける(要件3.5) |
+| 同一オリジンの判定 | `https?://`で始まれば外部とする                                                         | サイトのオリジンと比べる                                                                      | FR-MDOWN-009                          |
+| 表の横スクロール   | `overflow-x-auto`の枠                                                                   | 同じ枠に`tabindex="0"`・`role="region"`・名前を付ける                                         | キーボードでのスクロール(要件4.13)    |
+| 折りたたみ         | マウント後に高さを測って折りたたむ                                                      | 初めから指定の高さで折りたたみ、測定後にあふれる場合だけ「続きを読む」を出す                  | 初期化後のレイアウトのずれを減らす    |
+
+## Risks & Mitigations
+
+- Milkdownの文字列化が利用者の記法を書き換える(強調の記号の統一、`1.`などの先頭の記号のエスケープ)ため、保存される原文と文字数が見た目と異なり得る — カウンターは保存される原文を数え、技術ドキュメントに注意を書く。代表的な記法の往復をブラウザテストで確かめる。
+- 20,000文字の本文の描画(Bunで約124ms)が、遅い端末のブラウザの初期化を遅らせる — 入力と指定でメモ化し、単体テストで処理時間の上限を確かめる。劣化した場合は、表示場所の側でサーバーだけの描画に切り替えられるよう、表示部品は描画結果を受け取る形にする。
+- 索引文書のテーブルの列を変えると、drizzle-kitがテーブルを作り直してトリガーが消える — 列を変えた後にトリガーを作り直すSQL(`renderSearchIndexTriggersSql`)と`rebuild`を手順に含め、マイグレーションとの突き合わせの単体テストでトリガーの欠落を検出する。
+- D1のFTS5が`prefix`の指定・`bm25`の重み・トリガーをbun:sqliteと同じに扱うか — D1上のWorkers統合テストで、`prefix='2 3'`・bm25の列の重み・external contentのトリガーの同期・`integrity-check`が使えることを確かめた(`docs/GUIDES/tech/db/002`に記録)。
+- 自然言語APIをグローバルのエンドポイントで呼ぶため、処理する場所が保証されない — プライバシーポリシーの大枠のGoogle Cloudの項にその旨と移転の根拠(DPFを主、DPAのSCCを予備)を書く。米国だけでの処理を保証したい場合は、`us-language.googleapis.com`がv2の`analyzeEntities`に対応するかを疎通確認のスクリプトで確かめてから接続先を変え、同じ変更で項を改める(開発者の判断)。
+- 自然言語APIの応答の形は文書から決めた(実際のキーでの確認はしていない) — 応答をZodで検証し、合わなければ設定の誤りとしてSentryへ送る。開発者が疎通確認のスクリプトで実際の応答を確かめる。
+- 同じ時期に作るspec(infra-delivery・media-pipeline・identity-auth)も`docs/GUIDES/tech`へ文書を加えるため、文書の番号が衝突し得る — 番号をroadmapの順で先に割り当てて固定した(横断レビューI-4)。本specは`external/002`・`db/004`・`frontend/008`・`security/004`を使う。
+- frontend-libの位置の検査では、frontend-libとcommon-libで同じパッケージ(zodなど)が2つの実体になり得る — frontend-libの部品はcommon-libのZodを使うモジュールを読み込まない規約を置き、利用側アプリでは1つの実体になることをclient・adminの型検査とビルドで確かめる。
+- `Intl.Segmenter`の書記素の境界は、ブラウザとWorkersのICUの版の差で、新しい絵文字の並びだけ異なり得る — 代表的な絵文字・結合文字・国旗で両方の結果が一致することをテストし、差は技術ドキュメントに記す。
+- Crepeの版の更新で、組み込んだ機能のDOMや入力規則の名前が変わる — 版を完全に固定し、更新時はブラウザテスト(見出しレベル1・画像・Tabキー・アクセシビリティ)とバンドルの分離の検査を必ず実行する。
+
+## email-deliveryの実装の反映(2026-10-27、開発者の決定)
+
+- テーブル定義の配置の規約(技術ドキュメント`db/003`の「テーブル定義の配置」)が、ドメインごとのディレクトリに1テーブル1ファイルで置く`schema/<ドメイン>/<テーブル>.ts`になっている(email-deliveryの1.2で、全下流specの設計に合わせて改めた)。開発者の決定で、design.mdのOut of Boundaryの索引文書のテーブルの置き場所を`apps/db/schema/<ドメイン>.ts`から`apps/db/schema/<ドメイン>/<テーブル>.ts`に改めた。本specが置く共通の列の部品`schema/_shared/search-documents.ts`は規約どおりで変えていない。要件・タスクは変えていない。
+
+## frontend-platformの実装で確定した契約の反映(2026-10-28、開発者の決定)
+
+- frontend-platformの実装と最終検証の後、開発者の決定(frontend-platformのタスク10.4)で、設計をfrontend-platformの設計の「実装で確定した契約による発火と影響を受ける下流spec」の表に照らした。振る舞いを変えない整合の修正のため、改訂の番号は付けない。要件・タスクは変えていない。
+- Zodの値の読み込み元: frontend-platformは、frontend-lib・client・adminのファイルが`zod`の値を`utilities/validation/zod.ts`(`z.config({ jitless: true })`の後の`z`)からだけ読む規則`ZOD_VALUE_RESTRICTION`を`frontend-lint.ts`に置いた。design.mdのDependency Direction・File Structure Plan・Components and Interfacesの表・MarkdownTextSchemaの`zod`の直接の読み込みは、どれも`apps/common-lib`の記述で、この規則の対象(フロントエンドのアプリと共通部品)ではないため変えていない。common-libは自身の`eslint.config.ts`で検査し、api・eventでも動く。client・adminでは利用側のアプリの依存として`zod`が1つの実体になるため(Risks & Mitigations)、`zod.ts`の`jitless`の設定はcommon-libのスキーマにも及ぶ。ZodはJITを使うかをスキーマを作る時点で判定するため、client・adminのブラウザとサーバーのエントリが先頭で`zod.ts`を副作用として読み込み(frontend-platformの決定事項)、common-libのスキーマが作られる前に設定を済ませる。
+- 静的解析の規則の統合: `frontend-lint.ts`の依存の方向の規則は`no-restricted-imports`と`@typescript-eslint/no-restricted-imports`に分かれ、後者は`restrictValueImports`で常に`ZOD_VALUE_RESTRICTION`を含める。design.mdのMarkdownLintRulesに、本specの制限を後者へ加える場合も`restrictValueImports`を通してZodの制限を落とさないことを加えた。
+- 規則の名前: 実装された生のHTMLの規則の名前は`@eslint-react/dom-no-dangerously-set-innerhtml`である。design.mdの3箇所(Existing Architecture Analysis、MarkdownContent、RawHtmlExceptionCheck)の`@eslint-react/dom/no-dangerously-set-innerhtml`を改めた。
+
+## References
+
+- [FTS5 External Content Tables](https://sqlite.org/fts5.html#external_content_tables) — 外部コンテンツとトリガーの同期、`rebuild`
+- [FTS5 Prefix Queries・The bm25() function](https://sqlite.org/fts5.html) — 前方一致と列ごとの重み
+- [Cloud Natural Language API v2 reference](https://docs.cloud.google.com/natural-language/docs/reference/rest/v2/documents) — 要求と応答
+- [Cloud Natural Language quotas](https://docs.cloud.google.com/natural-language/quotas) — 上限と割り当て
+- [Cloud Natural Language locations](https://docs.cloud.google.com/natural-language/docs/locations) — グローバルと複数リージョンのエンドポイント、処理する場所の保証
+- [Cloud Natural Language Data Usage FAQ](https://cloud.google.com/natural-language/docs/data_usage) — 送ったテキストの保存・利用・メタデータの記録
+- [rehype-sanitize](https://github.com/rehypejs/rehype-sanitize) — 許可リストと`clobberPrefix`
+- [remark-rehype](https://github.com/remarkjs/remark-rehype) — Raw HTMLの扱いと脚注の文言
+- [Milkdown Crepe](https://milkdown.dev/docs/guide/using-crepe) — builderと機能
+- [WCAG 2.2 2.1.2 No Keyboard Trap](https://www.w3.org/TR/WCAG22/#no-keyboard-trap) — Tabキーの扱い
+
+## フォームの描かない値と無効の欄の扱いの反映(2026-10-28、開発者の判断)
+
+- **状態**: frontend-platformの最終検証の後の第2回の判断16・25〜28・30〜36(2026-10-28〜29)を、frontend-platformのタスク11.8として本specの設計とタスクへ反映した。受け入れ基準は変えていない。
+- **Context**: frontend-platformの`SubmitButton`は、`root`以外の欄のエラー(サーバーの欄のエラーを含む)が1つでも残る間は無効になる。入力欄を描かない値をフォームのスキーマの入力に含めると、その値へのサーバーの詳細が利用者の直せない欄のエラーになり、送信ボタンが無効のまま残る。`applyServerFieldErrors`は、欄をまとめた値(配列でないオブジェクト)の経路と、`FormField`の`disabled`で無効にした欄の詳細を欄に付けず`onSubmitError`の`unmatched`へ渡し、`useAppForm`は検証の前に無効の欄の値を除く。無効の欄の値は`onSubmit`へ渡す値から外れ、無効になり得る欄はスキーマで任意(`.optional()`)にする。`FormField`は後から無効にした欄のエラーを消し、`useAppForm`は渡されたスキーマが変わると検証し直し、`applyServerFieldErrors`は描かれていない欄の詳細もフォーム全体の失敗にする。全欄が無効のフォームは`SubmitButton`の`disabled`で送信ボタンを無効にする。
+- **決定**: frontend-platformの影響の表の水平展開として確かめた。`MarkdownEditor`の利用側の結合の記述に、欄を無効にする時は`FormField`の`disabled`で無効にし、子へ渡る`disabled`を`MarkdownEditor`の`disabled`へ渡すことを加えた(`MarkdownEditor`の`disabled`だけではReact Hook Formが欄を無効と扱わないため)。あわせて、`FormField`を`AppForm`の中でだけ使うことを利用側の結合の記述とカタログの例のタスクに書いた。
+- **変えた箇所**: design.mdの`MarkdownEditor`の利用側の結合の記述、tasks.mdの6.5のカタログの例の項目。
+
+---
+
+## 実装済みの上流specとの差分の分析(2026-10-30)
+
+### 分析の範囲と方法
+
+- **状態**: 上流のdev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-deliveryは全タスクが完了している(`ready_for_implementation: true`)。本specは要件・設計・タスクが承認済みで、`apps/common-lib`を含む本spec固有のファイルは未実装である。
+- **目的**: design.mdは上流が設計段階の時点で書かれた。email-delivery(2026-10-27)とfrontend-platform(2026-10-28)の実装の反映は済んでいるため、今回はbackend-platform・api-gateway・dev-tooling・infra-deliveryの実装と、frontend-platformの未反映の箇所を、設計が前提にする契約と照合した。
+- **方法**: Allowed Dependencies・Modified Files・Components and Interfacesに挙がる識別子・登録箇所・設定ファイルを、実装のコードと技術ドキュメントで1つずつ確かめた。新しいパッケージは、npmの公開日時(2026-10-30時点)を確かめた。
+- **注意**: `.kiro/steering`には`roadmap.md`だけがあり、中核のsteering(`product.md`・`tech.md`・`structure.md`)が無い。プロジェクトの文脈はCLAUDE.md・`docs/onboardings`・技術ドキュメントで補った。
+
+### 設計の前提どおりに実装されている契約
+
+| 設計の前提                                                                                                              | 実装の場所                                                                                               | 照合の結果                                                                                                                                                                                                                                                               |
+| ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AppName`・`APPS`・`SHARED_DIRS`(共有ディレクトリ3つ、検査担当`self`の形)                                               | `config/workspace-layout.ts`                                                                             | 一致。CIの依存の導入(`install-targets.ts`)・一括実行(`run-all.ts`)・コミット時の振り分け(`staged-tasks.ts`)・網羅(`lcov.ts`)は`APPS`から導くため、共用部品を加えるだけで参加する。共用部品に無いスクリプト(`cf-typegen:check`など)は「スクリプト未定義」として飛ばされる |
+| bind mountと名前付きボリューム、`.gitignore`の「共通ディレクトリのエイリアス」                                          | `compose.yaml`・`.gitignore`                                                                             | 一致。共有ディレクトリのnode_modulesを利用側アプリへマウントしない方針(compose.yamlの注記)も設計の解決順序の前提と同じ                                                                                                                                                   |
+| `defineMessageContract`・`MessageHandlerRegistration`・`retry`は`Partial<RetryPolicy>`                                  | `backend-lib/core/messaging`                                                                             | 一致。`search-index.refresh`は種別の形(`<ドメイン>.<動詞句>`、ハイフン可)を満たす。試行回数の上限は`QUEUE_MAX_RETRIES`(6)以下で、設計の5回は通る                                                                                                                         |
+| 処理の例外は`warn`ログと再試行だけで、エラートラッキングへ送らない                                                      | `backend-lib/workers/messaging/queue-consumer.ts`の`handleFailure`                                       | 一致。`SearchKeywordExtractionRetryError`を投げる設計で、一時的な失敗がSentryへ送られない(設計の「一時的な失敗はwarningログだけ」)                                                                                                                                       |
+| `ScheduledJobDefinition`・`createCronRegistry`、`email-delivery.cleanup`(4:21・`order` 900)                             | `backend-lib/core/scheduling/cron-registry.ts`・`api/src/composition/scheduled-jobs.ts`                  | 一致。email-deliveryの実装はあるため、タスク1.1・10の「cron式が無ければ加える」の分岐は通らない                                                                                                                                                                          |
+| 4:21の時間の予算                                                                                                        | `SCHEDULED_RUN_BUDGETS`(300,000ms)、`project-values.md`の「定期実行の時間の予算」(各ジョブの目安30秒)    | 設計に記載は無いが矛盾しない。再抽出のジョブは検索対象ごとに最大200件を順に送るため、目安の30秒に収まるかをタスク10で要約のログから確かめる                                                                                                                              |
+| `AppModule`・`PLATFORM_TYPES`・束縛の形                                                                                 | `backend-lib/core/di`・`workers/email/email-platform-module.ts`・`event/src/composition/email-module.ts` | 一致。経路を持たない共通の束縛は`Omit<AppModule, 'routes'>`、アプリの束縛は`composition/<機能>-module.ts`という先例に`createSearchPlatformModule`・`composition/search-module.ts`が沿う                                                                                  |
+| eventの環境の検証の条件付きの必須キー                                                                                   | `event/src/composition/env-schema.ts`の`requiredConditionalKeys`と`.check(z.superRefine(...))`           | 設計の`KEYWORD_EXTRACTOR`が`google-natural-language`のとき`GOOGLE_NL_API_KEY`を必須にする規則は、この関数へ条件を足す形で入る                                                                                                                                            |
+| `Database`・`createDatabase`・`snakeCase.table`・`BatchItem`(`drizzle-orm/batch`)                                       | `apps/db/client.ts`・drizzle-orm 1.0.0-rc.5                                                              | 一致                                                                                                                                                                                                                                                                     |
+| マイグレーションのフォルダの形(`migrations/<時刻>_<名前>/migration.sql`)と`drizzle-kit generate --custom`               | `apps/db/migrations`・`db/001`                                                                           | 一致。設計の突き合わせの検査が読む形と同じ                                                                                                                                                                                                                               |
+| 層の静的解析(`lib/core/**`は`**/db/**`・`**/workers/**`を読めない、`src/application/**`は`**/lib/workers/**`を読めない) | `apps/api/eslint.config.ts`・`config/eslint/backend-layers.ts`                                           | 一致。`core/search`が`apps/db`を読まない設計、`application/search`がポートだけを読む設計と合う。`**/lib/**`・`**/db/**`の形は`common-lib`の名前に当たらない                                                                                                              |
+| `withValidatedArgs`                                                                                                     | `api/src/presentation/graphql/validated-args.ts`                                                         | 存在する                                                                                                                                                                                                                                                                 |
+| CSP(`script-src 'self' 'nonce-…'`・`style-src 'self' 'unsafe-inline'`)                                                  | `frontend-lib/server/http/security-policy.ts`                                                            | 一致。遅延読み込みの別チャンクは`'self'`で読める                                                                                                                                                                                                                         |
+| 環境の検証のオリジンの形(`isOrigin`)と`toPublicRuntimeConfig`                                                           | `frontend-lib/server/env/frontend-env.ts`(`IMAGES_ORIGIN`が先例)                                         | `CLIENT_SITE_ORIGIN`は同じ形で足せる。3環境の値はinfra-deliveryの資源一覧(`apps/infra/environments/*.json`のホスト名)・ローカルのポート48044と一致                                                                                                                       |
+| 技術ドキュメントの番号`external/002`・`db/004`・`frontend/008`・`security/004`                                          | `docs/GUIDES/tech`                                                                                       | いずれも未使用                                                                                                                                                                                                                                                           |
+| 日次タイムラインの4:21のジョブの表、`infra/003`のジョブの名前の規約                                                     | `docs/GUIDES/service/overview/007-daily-timeline.md`・`docs/GUIDES/tech/infra/003-async-processing.md`   | どちらもまだ無い。タスク11.4・11.5で作る前提どおり                                                                                                                                                                                                                       |
+
+### 要件と資産の対応
+
+| 要件                           | 主な資産(既存 → 新設)                                                                                                                            | 状態                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| 1(共用部品の配置)              | `workspace-layout.ts`・`compose.yaml`・`.gitignore`・CIの導入 → `apps/common-lib`                                                                | Missing(新設)。仕組みは既存で、定義の追記で足りる                                         |
+| 2・3(入力欄とアクセシビリティ) | `FormField`・`Label`・`Tabs`・`Dialog`・`runAxe` → `MarkdownEditor`と`crepe/`                                                                    | Missing。**Constraint**: G-1(ラベルのID)・G-2(`ref`)・G-3(事前バンドル)、**Unknown**: G-8 |
+| 4〜6(描画・サニタイズ・抽出)   | 生のHTMLの規則`frontend/no-raw-html` → `renderMarkdown`・`MarkdownContent`                                                                       | Missing。上流の制約との食い違いは無い                                                     |
+| 7(文字数と検証)                | `useAppForm`・`withValidatedArgs`・`zod.ts`の`jitless` → `markdownTextSchema`                                                                    | Missing。Zodの実体と`jitless`はfrontend-platformの反映(2026-10-28)で整理済み              |
+| 8・11・12(索引・削除・照合)    | `db/002`・`db/003`の全文検索の規約、`db.batch()` → `apps/db/search`・`workers/search`                                                            | Missing。上流の制約との食い違いは無い                                                     |
+| 9・10(正規化・縮退・再抽出)    | `QueueConsumer`・`MessagePublisher`・`createCronRegistry`・`SCHEDULED_RUN_BUDGETS` → `SearchIndexRefreshHandler`・再抽出のジョブ                 | Missing。**Constraint**: G-4(Sentryの送り方)・G-5(`fetchMock`)                            |
+| 13(強調表示)                   | → `findHighlightRanges`・`HighlightedText`                                                                                                       | Missing                                                                                   |
+| 14(検索対象の登録)             | → `SEARCH_TARGETS`・`SEARCH_INDEXES`                                                                                                             | Missing                                                                                   |
+| 15(運用と観測)                 | ログ・エラートラッキングの規約、`project-values.md`のシークレットの表、`OPTIONAL_WORKER_SECRETS`・`WORKER_SCOPED_SECRETS` → 疎通確認のスクリプト | Missing。**Constraint**: G-4・G-7                                                         |
+| 16(テストと文書)               | テストの命名・カバレッジ・版の管理(`coding/002`) → 4つの技術ドキュメント                                                                         | Missing。**Constraint**: G-6(版の表)                                                      |
+
+### 設計と実装済みの上流との食い違い
+
+#### G-1: `FormField`がラベルの要素のIDを子へ渡さない(Constraint、影響: 高)
+
+- **事実**: `components/form/form-field.tsx`は、子へ`ControllerRenderProps`と`id`(入力の要素のID)・`aria-invalid`・`aria-describedby`だけを渡す。`Label`は`htmlFor={controlId}`で関連付け、`id`を持たない。
+- **設計との差**: `MarkdownEditorProps.labelId`は「表示しているラベルの要素のID(FormFieldが持つ)」としているが、そのIDは`FormField`から得られない。編集領域は`contenteditable`の`div`(`role="textbox"`)で、HTMLの`<label for>`が関連付けられる要素ではないため、`htmlFor`だけでは名前が付かない(要件3.2)。ラベルを押しても編集領域へフォーカスが移らない。
+- **選択肢**:
+  - A: frontend-platformの`FormField`を改め、`Label`に`id`を付けて`FormControlProps`へ`labelId`を加える。既存の欄は使わない項目が1つ増えるだけで、振る舞いは変わらない。frontend-platformの`form-field`のブラウザテストとカタログの記述に波及する。
+  - B: `MarkdownEditor`が`FormControlProps.id`を受け取り、外枠の要素に置いてラベルのクリックを受け、編集領域には`aria-labelledby`の代わりにラベルの文字列を`aria-label`で渡す。`label`が`ReactNode`のため文字列を別に渡す必要があり、表示と読み上げが二重の定義になる。
+  - C: `FormField`を使わず、`MarkdownEditor`専用の欄の部品を作る。サーバーのエラーの対応・無効の欄のエラーの消去など`FormField`の振る舞いを写すことになり、2026-10-28の反映(`FormField`の`disabled`で無効にする)とも食い違う。
+
+#### G-2: 欄の部品に`FormField`の`ref`を付けないと、エラーの欄へフォーカスが移らない(Constraint、影響: 中)
+
+- **事実**: `frontend/004`の「処理の後のフォーカス」は、サーバーが欄ごとのエラーを返した時に`AppForm`が最初のエラーの欄へフォーカスを移し、欄の部品に`FormField`が渡す`ref`を付けないと移らないと定めている。
+- **設計との差**: `MarkdownEditorProps`に`ref`が無く、`EditorController.focus()`はあるが`FormField`の`ref`へつなぐ経路が無い。編集領域の読み込み前(仮の表示)のフォーカス先も決まっていない。
+- **Research Needed**: React Hook Formが`ref`の`focus`だけを呼ぶ(要素でなくてもよい)かを確かめ、`focus`を持つ値を`ref`へ渡して、読み込み前は仮の表示の要素、読み込み後は`EditorController.focus()`へ委ねる形で足りるかを設計で決める。
+
+#### G-3: ブラウザテストの依存の事前バンドルの一覧に新しいパッケージが無い(Constraint、影響: 中)
+
+- **事実**: frontend-lib・client・adminの`vitest.browser.config.ts`は、実行中に依存の事前バンドルをやり直すとページが再読み込みされReactが2つ読み込まれてフックが失敗するため、画面部品の依存を`optimizeDeps.include`(`PREBUNDLED_DEPENDENCIES`)に列挙している。
+- **設計との差**: design.md・tasks.mdに事前バンドルの記述が無い。描画の9パッケージ(表示部品とプレビュー)と、`@milkdown/*`・`vue`(遅延読み込みの編集領域)を一覧へ加えないと、テストの実行中に初めて読み込まれた時点で再読み込みが起き得る。Storybookの`.storybook/main.ts`にも同じ扱いが要るかは未確認である。
+- **対処の候補**: タスク4.2のVite設定の変更に、3つの`vitest.browser.config.ts`の一覧への追加(と必要ならStorybook)を含める。`check:editor-chunks`の分離の検査はビルドの検査で、事前バンドルの一覧はテストの実行環境だけに効くため、両立する。
+
+#### G-4: エラートラッキングへの定型の通知に`captureMessage`を使う設計になっている(Constraint、影響: 中)
+
+- **事実**: `infra/004`の「同じ文言を繰り返し送る通知」は、設定の誤りなど定型の文言で繰り返し起こり得る出来事を、`captureMessage`ではなく`captureEvent`で`logentry`に文言を、`fingerprint`に出来事の種類を入れて送ると定めている。`captureMessage`は`dedupeIntegration`により2件目以降が捨てられる。email-deliveryは、アプリケーション層のポート`EmailIncidentReporter`とインフラ層の`SentryEmailIncidentReporter`でこれを行い、`application`からSentryを直接呼ばない。
+- **設計との差**: `SearchIndexRefreshHandler`の手順1(未登録の検索対象)が`captureMessage`を使い、外部APIの設定の誤りの通知(10.5)の送り方も明示されていない。いずれも`application/search`に置く処理からSentryを呼ぶ形で、email-deliveryの先例と層の置き方が異なる(静的解析は`application`からの`@sentry/*`の読み込みを禁止していないため、検査では検出されない)。
+- **選択肢**:
+  - A: email-deliveryに合わせ、`application/search`に通知のポート(例: 未登録の検索対象・設定の誤り・要求の送信の失敗の種類を持つもの)を置き、`infrastructure/search`に`captureEvent`の実装を置く。
+  - B: 処理から`captureEvent`を直接呼び、`logentry`と`fingerprint`の規則だけを合わせる。
+- 送信の失敗を伝える`QueueSearchIndexRefreshRequester`は`workers`に置くため、`captureException`(例外の値を持ち、スタックトレースがあるため重複の除外の対象外)のままでよい。
+
+#### G-5: Workers統合テストの`fetchMock`が上流の版に無い(Constraint、影響: 中)
+
+- **事実**: `@cloudflare/vitest-pool-workers` 0.23.0の`cloudflare:test`の型定義に`fetchMock`は無い。eventの既存のテスト(`create-email-provider.worker.test.ts`など)は、`vi.fn`で作った`fetch`の代わりを部品へ注入している。
+- **設計との差**: design.mdのテストの方針(KeywordExtractorsのテストの行、環境の値の表の後の注記)が`fetchMock`で外部への通信を止めるとしている。`GoogleNaturalLanguageExtractor`のコンストラクタは既に`fetcher`を受け取るため、実装の形は変えず、テストの記述を「`fetcher`の注入で止める」に改めれば足りる。`createKeywordExtractor`を通す結合のテスト(Queueから送って処理する9.3)で外部へ出ないことの確かめ方は、`createKeywordExtractor`へ`fetch`を渡す引数を足すか、束縛を差し替えるかを決める必要がある。
+
+#### G-6: 版の表が上流の更新に追随していない(Constraint、影響: 低)
+
+- **事実**: 2026-10-28以降の依存の更新(コミット`68a605b5`)で、上流の版が`zod` 4.6.7・`vitest`系 4.1.12・`@cloudflare/vitest-pool-workers` 0.23.0・`axe-core` 4.14.0になった。design.mdのTechnology Stackの表は`zod` 4.6.5・`vitest` 4.1.11・`@cloudflare/vitest-pool-workers` 0.22.0・`axe-core` 4.13.0のままである。表は「上流と同じ版」を意図しているため、実装は現在の上流の版に従う。
+- **新しいパッケージの公開日時(2026-10-30時点、2週間の規則)**:
+
+  | パッケージ                                                                                                     | 設計の版   | 新しい版と公開日   | 2週間の規則              |
+  | -------------------------------------------------------------------------------------------------------------- | ---------- | ------------------ | ------------------------ |
+  | `@milkdown/crepe`・`kit`・`react`                                                                              | 7.22.2     | 7.22.3(2026-10-10) | 満たす(Q2の時点では未満) |
+  | 同上                                                                                                           | 7.22.2     | 7.23.0(2026-10-27) | 満たさない               |
+  | `remark-cjk-friendly`                                                                                          | 2.3.2      | 2.3.3(2026-10-21)  | 満たさない               |
+  | `remark-cjk-friendly-gfm-strikethrough`                                                                        | 2.3.1      | 2.3.2(2026-10-21)  | 満たさない               |
+  | `hast-util-to-text`                                                                                            | 4.0.2      | 4.0.3(2026-10-25)  | 満たさない               |
+  | unified・remark-parse・remark-gfm・remark-rehype・rehype-sanitize・rehype-stringify・`@tailwindcss/typography` | 設計どおり | 更新なし           | —                        |
+
+- **選択肢**: Crepeは、research.mdの容量・アクセシビリティ・入力経路の調査を行った7.22.2のままにするか、2週間の規則を満たした7.22.3へ上げて同じ調査(バンドルの分離・ブラウザテスト)をやり直すかを開発者が決める。他の新しいパッケージは設計の版のままにする。
+
+#### G-7: シークレットの宣言先が増えた(Constraint、影響: 低)
+
+- **事実**: infra-deliveryの実装で、Workerのシークレットのキーの一覧の正が`project-values.md`の節になり、キーを宣言する変更(Wrangler設定の`secrets.required`、`scripts/delivery/core/worker-secrets.ts`の`OPTIONAL_WORKER_SECRETS`、`scripts/delivery/core/secret-scope.ts`の`WORKER_SCOPED_SECRETS`)と同じ変更で表へ行を足す規則になった。表には下流のmedia-pipeline・identity-authの行が先に載っているが、`GOOGLE_NL_API_KEY`の行は無い。
+- **設計との差**: 設計(staging・prodの`secrets.required`に含め、`dev`には置かない、表への行の追加は9.1)は規則に沿う。必須のキーのため`OPTIONAL_WORKER_SECRETS`への追加は要らない。
+- **選択肢**: キーを使うのはeventだけのため、`/`(全Workerへ渡る)に置くか、`/workers/event`に置いて`WORKER_SCOPED_SECRETS`へ加え、APIサーバーへ渡さないようにするかを開発者が決める。後者は`dev`・`staging`の`/workers/event`の行と、`WORKER_SCOPED_SECRETS`の単体テストの更新が加わる。
+
+#### G-8: チャンクの読み込みの失敗時に、ページの再読み込みが入力欄の再試行より先に動き得る(Unknown、影響: 低)
+
+- **事実**: frontend-platformの`start/preload-recovery.ts`は、`vite:preloadError`を受けると、セッションで1回だけページを再読み込みする(デプロイ後の古いチャンクへの対処)。
+- **設計との差**: 設計は、編集領域の読み込みの失敗を`EditorLoadBoundary`で受けて「再試行」を表示し、それまでの値を失わない(要件2.12)としている。`React.lazy`の`import()`がViteの読み込みの補助を通り、失敗時に`vite:preloadError`が送られる場合、境界の表示より先にページが再読み込みされ、同じフォームの他の欄の未保存の値が失われ得る。
+- **Research Needed**: Vite 8.3の本番のビルドで、遅延読み込みの`import()`の失敗が`vite:preloadError`を送るかを確かめる。送る場合、再読み込みを受け入れる(デプロイ後の初回だけで、新しい版で再試行される)か、編集領域の読み込みだけ`preventDefault`で再読み込みを止めるかを決める。
+
+### 実装の進め方の選択肢
+
+- **A: 設計を改めてから実装する**: G-1〜G-5を、これまでの反映の節と同じ形でdesign.md・tasks.mdへ反映し(要件は変えない)、G-6〜G-8の判断を記録してから着手する。食い違いを残さずに実装へ渡せる。G-1のAを採るとfrontend-platformの部品を本specが改めることになり、「上流・並行specへの変更」の表に行が増える。
+- **B: 実装の中で吸収する**: 該当のタスク(G-1・G-2は6.2〜6.5、G-3は4.2、G-4は9.2、G-5は9.1・9.3)の実装の時に食い違いを直す。着手は早いが、design.mdと実装が食い違ったまま下流spec(共用部品の上に定義を置くmedia-pipeline・identity-authと、入力欄を使う全spec)が設計を参照する期間ができる。
+- **C: 組み合わせる**: 下流specが参照する契約の変更(G-1・G-2の`MarkdownEditorProps`の形、G-4の層の置き方)だけを先にdesign.mdへ反映し、テストと設定の記述(G-3・G-5・G-6)はタスクの実装の中で直す。
+
+### 規模とリスク
+
+- **規模**: XL(2週間以上)。新しい共有ディレクトリ兼アプリ・遅延読み込みのエディタ・描画とサニタイズ・FTS5の索引と非同期の正規化・外部APIを含み、12の大項目に分かれる。今回の食い違いの反映だけならS(1〜3日)。
+- **リスク**: 中。上流の仕組み(共有ディレクトリ・メッセージ・定期実行・層の規則)は設計の前提どおりで、追記で足りる。残るリスクは、Crepeの組み込みの調整(アクセシビリティ・入力経路)と、D1のFTS5がbun:sqliteと同じに振る舞うか(research.mdのRisks & Mitigations)で、G-1・G-2はアクセシビリティの要件3.2に直接効く。
+
+### 設計への申し送り
+
+- G-1〜G-5は、要件を変えずに設計の記述で直せる。G-1・G-4は選択肢の判断が要る。
+- G-6のCrepeの版、G-7のシークレットの置き場所、G-8の再読み込みの扱いは、開発者の判断を要する。
+- 実装の前提の確認は、タスク1.1の「上流の全タスクの完了」とemail-deliveryのcron式の有無の両方が満たされている。
+
+## 差分の分析の反映(2026-10-30、開発者の決定)
+
+- **方針**: 開発者の指示で、G-1〜G-8は実装済みのコードを正とし、コードに明らかな誤りがある場合と判断が付かない場合だけを開発者へ確認した。要件は変えていない。
+- **開発者へ確認した事項**:
+  - G-1: frontend-platformの`FormField`を改め、`Label`に`id`を付けて`FormControlProps.labelId`で子へ渡す(推奨案を採用)。
+  - G-6: Crepe(`@milkdown/crepe`・`kit`・`react`)を7.22.3へ上げる(推奨案を採用)。7.22.3は使う機能(リスト・選択時のツールバー)に当たる不具合の修正を含む。容量・アクセシビリティ・入力経路の調査は7.22.2で行ったため、バンドルの分離の検査とブラウザテストを7.22.3で行う。
+  - G-8: 入力欄の読み込みの失敗ではページを再読み込みさせない(推奨案を採用)。入力欄の読み込み関数は自身の`import()`が未決の間の`vite:preloadError`を捕捉の段階で受けて既定の動作を止め、frontend-platformの`preload-recovery.ts`は`defaultPrevented`の出来事で再読み込みしない。
+- **コードを正として決めた事項**:
+  - G-2: React Hook Formの`Controller`の`ref`は受け取った値の`focus`が関数なら呼ぶだけのため(react-hook-form 7.91.0)、`MarkdownEditor`は`ref`に`focus`だけを持つ値を渡し、読み込み前は要求を保留する。
+  - G-3: 事前バンドルの一覧は3つの`vitest.browser.config.ts`だけが持つため、そこへ描画の9パッケージ・`@milkdown/*`の3つ・`vue`を加え、Storybookには一覧を持たせない。
+  - G-4: email-deliveryの`EmailIncidentReporter`と同じく、eventの`application/search/ports.ts`に`SearchIncidentReporter`を置き、`infrastructure/search`の実装が`captureEvent`(`logentry`と`fingerprint`)で送る。`workers/search`の要求の送信の失敗は`captureException`のままにする。
+  - G-5: `fetch`は引数で受け取り(email-deliveryの`createEmailProvider(env, fetcher)`と同じ)、単体の検査は`vi.fn`の注入、Queueからの結合は`vi.spyOn(globalThis, 'fetch')`で外部への通信を差し替える。workerdの`fetch`を保持したフィールドのメソッドとして呼ばない(APIサーバーの`modules.ts`の注記と同じ理由)。
+  - G-6: Crepe以外の上流と共有するパッケージ(`zod`・`vitest`系・`@cloudflare/vitest-pool-workers`・`axe-core`)は上流の現在の版に従う。2週間の規則を満たさない`remark-cjk-friendly` 2.3.3・`remark-cjk-friendly-gfm-strikethrough` 2.3.2・`hast-util-to-text` 4.0.3は採らず、設計の版のままにする。
+  - G-7: `GOOGLE_NL_API_KEY`は、eventだけが使う既存のキー(`EMAIL_SMOKE_TOKEN`・`MEDIA_SMOKE_TOKEN`)と同じくフォルダ`/`に置き、`WORKER_SCOPED_SECRETS`・`OPTIONAL_WORKER_SECRETS`へは加えない。
+- **変えた箇所**:
+  - design.md: 上流・並行specへの変更の表(frontend-platformの行)、Existing Architecture Analysis(上流の実装済みの状態)、Allowed Dependencies、Revalidation Triggers、Technology Stackの版、File Structure Plan(eventの通知のポートと実装)、Modified Files(`vitest.browser.config.ts`・`form-field.tsx`・`preload-recovery.ts`)、入力欄の読み込みと値の流れ、`MarkdownEditorProps`(`ref`・`labelId`の出どころ・`MarkdownEditorFocusTarget`)、`LoadCrepeEditor`、CrepeEditorSurfaceのIntegration、Components and Interfacesの表、`SearchIndexRefreshHandler`、`SearchIncidentReporter`(新設)、KeywordExtractors・EventSearchComposition、Error Categories・Monitoring、Testing Strategy、Supporting Referencesのシークレットの注記。
+  - tasks.md: 4.2(Crepeの版・上流の版・事前バンドル)、6.5(`FormField`の`labelId`・`preload-recovery.ts`・`ref`・再読み込みの抑止)、9.1(`fetch`の注入・シークレットのフォルダ)、9.2(通知のポートとSentryの実装)、9.3(`fetch`の差し替え・束縛)。
+  - 水平展開: legal-pagesのdesign.mdの技術スタックの表の`Crepe 7.22.2`を7.22.3に改めた。

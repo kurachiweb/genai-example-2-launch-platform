@@ -1,0 +1,7 @@
+mutation ClientStartTotpSetup($input: ReAuthenticationInput!) {
+  startTotpSetup(input: $input) {
+    otpauthUri
+    secret
+    expiresAt
+  }
+}

@@ -4,9 +4,11 @@ import { join } from 'node:path';
 
 import {
   ALL_DIRS,
+  appResultsOf,
   callOf,
   createFakeWorkspace,
   createOutput,
+  DIR_CHECK_SCRIPTS,
   everyDirWith,
   failedWith,
   packageJsonOf,
@@ -17,6 +19,7 @@ import {
   ROOT_DIR,
   runEntry,
   runEntryInProcess,
+  SCRIPT_MISSING,
   scriptsOf,
   SPAWN_TIMEOUT_MS,
   useRunAllFixtures,
@@ -64,7 +67,7 @@ const causesMessageOf = (...details: readonly string[]): string =>
   ].join('\n');
 
 const CHECK_WORKSPACE = {
-  ...everyDirWith('lint', 'typecheck'),
+  ...everyDirWith(...DIR_CHECK_SCRIPTS),
   [ROOT_DIR]: scriptsOf(...ROOT_CHECK_SCRIPTS),
 };
 
@@ -79,7 +82,10 @@ const UNREADABLE_EVENT = unreadablePackage(unreadableEventOf(PARSE_ERROR));
 const CHECK_RESULTS_WITH_UNREADABLE_EVENT: readonly StepResult[] = [
   ...ROOT_STEPS_PASSED,
   ...resultsOf('lint', { api: failedWith(3), event: UNREADABLE_EVENT }, PASSED),
+  ...appResultsOf('cf-typegen:check', { event: UNREADABLE_EVENT }, PASSED),
+  ...appResultsOf('graphql:check', { event: UNREADABLE_EVENT }, PASSED),
   ...resultsOf('typecheck', { event: UNREADABLE_EVENT }, PASSED),
+  { step: 'check:contract-copies', target: 'root', outcome: PASSED },
 ];
 
 const createWorkspaceWithUnreadableEvent = () =>
@@ -89,6 +95,9 @@ const createWorkspaceWithUnreadableEvent = () =>
   );
 
 const DIRS_EXCEPT_EVENT = ALL_DIRS.filter((dir) => dir !== 'apps/event');
+const APP_DIRS_EXCEPT_EVENT = DIRS_EXCEPT_EVENT.filter(
+  (dir) => dir !== ROOT_DIR,
+);
 
 describe('runAggregate', () => {
   test('package.jsonを読めないアプリは、各段階の失敗としてパス付きの原因と共に記録し、後続の対象と段階を続ける', async () => {
@@ -101,7 +110,14 @@ describe('runAggregate', () => {
       callOf(ROOT_DIR, 'bun', 'run', 'check:test-names'),
       callOf(ROOT_DIR, 'bun', 'run', 'format:check'),
       ...DIRS_EXCEPT_EVENT.map((dir) => callOf(dir, 'bun', 'run', 'lint')),
+      ...APP_DIRS_EXCEPT_EVENT.map((dir) =>
+        callOf(dir, 'bun', 'run', 'cf-typegen:check'),
+      ),
+      ...APP_DIRS_EXCEPT_EVENT.map((dir) =>
+        callOf(dir, 'bun', 'run', 'graphql:check'),
+      ),
       ...DIRS_EXCEPT_EVENT.map((dir) => callOf(dir, 'bun', 'run', 'typecheck')),
+      callOf(ROOT_DIR, 'bun', 'run', 'check:contract-copies'),
     ]);
     expect(results).toEqual(CHECK_RESULTS_WITH_UNREADABLE_EVENT);
     expect(exitCodeOf(results)).toBe(1);
@@ -253,7 +269,9 @@ describe('runAggregateEntry', () => {
       deps,
     );
 
-    expect(calls).toHaveLength(3 + DIRS_EXCEPT_EVENT.length * 2);
+    expect(calls).toHaveLength(
+      3 + DIRS_EXCEPT_EVENT.length * 2 + APP_DIRS_EXCEPT_EVENT.length * 2 + 1,
+    );
     expect(stdout).toBe(
       `\n${formatSummary(CHECK_RESULTS_WITH_UNREADABLE_EVENT)}`,
     );
@@ -307,6 +325,7 @@ describe('直接実行したときの入口', () => {
           'format:check': 'echo format',
           lint: 'echo lint-root',
           typecheck: 'echo typecheck-root',
+          'check:contract-copies': 'echo contract-copies',
         }),
         'apps/api/package.json': packageJsonOf({
           lint: 'exit 3',
@@ -324,6 +343,7 @@ describe('直接実行したときの入口', () => {
 
       expect(stdout).toContain('\nlint-frontend-lib\n');
       expect(stdout).toContain('\ntypecheck-frontend-lib\n');
+      expect(stdout).toContain('\ncontract-copies\n');
       expect(stdout).toEndWith(
         formatSummary([
           ...ROOT_STEPS_PASSED,
@@ -337,6 +357,24 @@ describe('直接実行したときの入口', () => {
             },
             PROJECT_MISSING,
           ),
+          ...appResultsOf(
+            'cf-typegen:check',
+            {
+              api: SCRIPT_MISSING,
+              event: unreadable,
+              'frontend-lib': SCRIPT_MISSING,
+            },
+            PROJECT_MISSING,
+          ),
+          ...appResultsOf(
+            'graphql:check',
+            {
+              api: SCRIPT_MISSING,
+              event: unreadable,
+              'frontend-lib': SCRIPT_MISSING,
+            },
+            PROJECT_MISSING,
+          ),
           ...resultsOf(
             'typecheck',
             {
@@ -347,6 +385,7 @@ describe('直接実行したときの入口', () => {
             },
             PROJECT_MISSING,
           ),
+          { step: 'check:contract-copies', target: 'root', outcome: PASSED },
         ]),
       );
       expect(stderr).toEndWith(causesMessageOf(unreadableEventOf(reason)));

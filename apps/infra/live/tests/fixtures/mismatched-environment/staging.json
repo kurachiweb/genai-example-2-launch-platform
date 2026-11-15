@@ -1,0 +1,81 @@
+{
+  "environment": "prod",
+  "cloudflare": {
+    "accountId": "00000000000000000000000000000000",
+    "zoneId": "00000000000000000000000000000000",
+    "zoneName": "kurachiweb.com"
+  },
+  "jurisdiction": "us",
+  "d1": { "main": { "name": "genai-example-2-staging" } },
+  "r2": {
+    "images": { "name": "genai-example-2-images-staging" },
+    "files": { "name": "genai-example-2-files-staging" },
+    "quarantine": { "name": "genai-example-2-quarantine-staging" }
+  },
+  "queues": {
+    "jobs": { "name": "genai-example-2-jobs-staging" },
+    "jobs-dlq": { "name": "genai-example-2-jobs-dlq-staging" },
+    "email-events": { "name": "genai-example-2-email-events-staging" }
+  },
+  "workers": {
+    "api": { "name": "genai-example-2-api-staging" },
+    "event": { "name": "genai-example-2-event-staging" },
+    "client": { "name": "genai-example-2-client-staging" },
+    "admin": { "name": "genai-example-2-admin-staging" }
+  },
+  "hostnames": {
+    "api": {
+      "hostname": "genai-example-2-api-staging.lab.kurachiweb.com",
+      "worker": "api"
+    },
+    "event": {
+      "hostname": "genai-example-2-event-staging.lab.kurachiweb.com",
+      "worker": "event"
+    },
+    "client": {
+      "hostname": "genai-example-2-client-staging.lab.kurachiweb.com",
+      "worker": "client"
+    },
+    "admin": {
+      "hostname": "genai-example-2-admin-staging.lab.kurachiweb.com",
+      "worker": "admin"
+    },
+    "images": {
+      "hostname": "genai-example-2-images-staging.lab.kurachiweb.com",
+      "worker": "event"
+    }
+  },
+  "turnstile": {
+    "name": "genai-example-2-staging",
+    "hostnames": [
+      "genai-example-2-client-staging.lab.kurachiweb.com",
+      "genai-example-2-admin-staging.lab.kurachiweb.com"
+    ],
+    "mode": "invisible"
+  },
+  "webAnalytics": {
+    "hostname": "genai-example-2-client-staging.lab.kurachiweb.com"
+  },
+  "emailSending": {
+    "domain": "genai-example-2-mail-staging.lab.kurachiweb.com",
+    "eventsQueue": "email-events",
+    "events": [
+      "message.bounced",
+      "message.complained",
+      "message.rejected",
+      "message.failed"
+    ],
+    "subscriptionName": "genai-example-2-email-events-staging"
+  },
+  "state": {
+    "bucket": "genai-example-2-tofu-state-staging",
+    "key": "live/terraform.tfstate"
+  },
+  "infisical": {
+    "host": "https://eu.infisical.com",
+    "projectId": "19e6b39b-e1bb-4b71-b15c-96ed8de9ba00",
+    "identityId": "00000000-0000-0000-0000-000000000000",
+    "oidcAudience": "https://github.com/kurachiweb"
+  },
+  "github": { "environment": "prod", "branch": "main" }
+}

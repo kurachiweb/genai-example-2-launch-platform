@@ -1,0 +1,19 @@
+/* サイドバーの区画が全て何も描かなかったとき(枠に目印の要素しか無いとき)は、サイドバーの領域ごと外し、1024px以上でも本文を全幅にして空の列と列の間隔を残さない */
+[data-product-page-aside]:not(
+  :has(> div > div > :not([data-product-page-section-rendered]))
+) {
+  display: none;
+}
+
+@media (width >= 64rem) {
+  [data-product-page-columns]:not(
+    :has(
+      > [data-product-page-aside]
+        > div
+        > div
+        > :not([data-product-page-section-rendered])
+    )
+  ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

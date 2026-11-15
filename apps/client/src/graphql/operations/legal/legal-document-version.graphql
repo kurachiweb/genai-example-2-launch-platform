@@ -1,0 +1,11 @@
+query ClientLegalDocumentVersion(
+  $kind: LegalDocumentKind!
+  $versionNumber: Int!
+) {
+  legalDocumentVersion(kind: $kind, versionNumber: $versionNumber) {
+    publishedAt
+    changeSummary
+    body
+    isLatest
+  }
+}

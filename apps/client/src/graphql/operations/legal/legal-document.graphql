@@ -1,0 +1,14 @@
+query ClientLegalDocument($kind: LegalDocumentKind!) {
+  legalDocument(kind: $kind) {
+    latest {
+      versionNumber
+      publishedAt
+      body
+    }
+    revisions {
+      versionNumber
+      publishedAt
+      changeSummary
+    }
+  }
+}

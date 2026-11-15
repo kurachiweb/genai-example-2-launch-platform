@@ -1,0 +1,37 @@
+fragment Match on Match {
+  id
+  kind
+  round
+  stage
+  phase
+  decision
+  endedEarly
+  viewerRestriction
+  viewerUpvotedEntryId
+  entries {
+    id
+    colorIndex
+    isViewerOwn
+    upvoteCount
+    result
+    product {
+      handle
+      name
+      tagline
+      websiteUrl
+      listed
+      category {
+        id
+        name
+        handle
+      }
+      logo {
+        id
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+    }
+  }
+}

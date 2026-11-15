@@ -302,6 +302,37 @@
   - 完了状態: 一括検査・カバレッジ付き単体テスト・E2Eテストがすべて成功し、技術ドキュメントの固有値の検索結果が0件である
   - _Requirements: 5.7, 7.1, 10.3, 10.6_
 
+- [x] 9. frontend-platformの最終検証後の判断の反映(承認後の改訂1)
+- [x] 9.1 一括検査の段階に写しの照合を加える
+  - 前提: frontend-platformの11.4(ルートの`config/contract-copies.unit.test.ts`)が完了していること。完了していなければ止めて報告する
+  - 先に、`test-support/run-all-fixtures.ts`の`ROOT_CHECK_SCRIPTS`に`check:contract-copies`を加え、`scripts/tooling/run-all.unit.test.ts`の`check`の期待(呼び出しの順と結果の一覧で、型検査の後にルートだけで`bun run check:contract-copies`を実行すること、前段が失敗しても実行すること、ルートにスクリプトが無ければ「飛ばした(スクリプト未定義)」になること、結果の表のラベルが「写しの照合(check:contract-copies)」であること)と`run-all.step-errors.unit.test.ts`の期待を直し、失敗を確かめる
+  - ルートの`package.json`に`check:contract-copies`(`bun test ./config/contract-copies.unit.test.ts`。`./`を付けてパスとして渡す)を加え、`run-all.ts`の`CHECK_STEPS`の末尾(`typecheck`の後)に`{ script: 'check:contract-copies', targets: ROOT_ONLY, args: [] }`、`STEP_LABELS`に`['check:contract-copies', '写しの照合']`を加え、`USAGE`の`check`の説明の段階の並びに「写しの照合」を加える。`check`が引数を受け取らないことと、照合のテストがルートの`test:unit`にも残ることは変えない
+  - `coding/001`の「一括検査」の節の段階の一覧の末尾に「写しの照合(ルートの`check:contract-copies`)」を加え、テストを実行する段階のため型検査の後に置く理由と、結果の表の例(行と件数)を合わせる。プロジェクト名と固有値を含めない
+  - 完了状態: ルートの単体テスト(`run-all`のテストを含む)と`bun run check`が成功し、結果の表の最後の段階が「写しの照合(check:contract-copies)」で、`coding/001`の段階の一覧が`run-all.ts`と一致する
+  - _Boundary: AggregateRunner, CodingDocs_
+  - _Depends: 4.3_
+  - _Requirements: 5.7, 5.10_
+
+- [x] 10. frontend-platformの第4回の判断の反映(承認後の改訂2)
+- [x] 10.1 開発サーバーとビルド後のプレビューの両方でE2Eを続けて実行するコマンドを作る
+  - 先に、`scripts/tooling/e2e-dev-and-preview.unit.test.ts`(新規)で、偽の子プロセス・偽のポートの確認・偽の到達の確認を注入し、ポートの確認→各対象の`bun run dev --port <ポート>`の起動→到達の待ち合わせ→`bun run test:e2e`→停止→各対象の`bun run build`→`bun run preview --port <ポート>`の起動→待ち合わせ→`bun run test:e2e`→停止の順になること、開発サーバーのE2Eが失敗してもプレビューの段階を実行して終了コード1になること、使われているポートがあれば何も起動せずにポートと対象を示して失敗すること、起動しない対象(3分で応答しない・先に終了した)があればその名前と出力の末尾50行を表示してすべての対象を止めること、ローカルでないURLの対象で起動せずに失敗すること、`apps/<対象名>`の無い対象を飛ばすことを確かめるテストを書き、失敗を確かめる
+  - `e2e-dev-and-preview.ts`を、計画を作る純粋な関数(`planDualModeE2E`、対象は`e2e/support/targets.ts`の`resolveE2ETargets`)と、子プロセスの起動・到達の確認(`assertE2ETargetReachable`と同じ判定)・停止(`SIGTERM`の10秒後に`SIGKILL`)を注入できる実行の関数(`runDualModeE2E`)と、両者をつなぐ入口に分けて作る。待ち受けのアドレスの引数はオンボーディングの起動の手順と同じにする。ルートの`package.json`に`test:e2e:dev-and-preview`(`bun ./scripts/tooling/e2e-dev-and-preview.ts`)を加える
+  - `testing/001`のE2Eの節に、開発サーバーとビルド後のプレビューの両方でE2Eを続けて実行するコマンド、前提(APIサーバーを先に起動し、画面を持つアプリは起動しないでおく)、シークレットはコマンド全体を注入の下で実行して引き継ぐことを、プロジェクト名と固有値を含めずに書く。`docs/onboardings/README.md`のコマンドの表に1行を加える
+  - 完了状態: ルートの単体テスト(カバレッジ80%以上)と一括検査が成功し、`testing/001`とオンボーディングの記述がコマンドと一致する。実際の両方の起動での成功はfrontend-platformの12.13で確かめる
+  - _Boundary: E2EDualModeRunner, TestingDocs_
+  - _Depends: 5.3_
+  - _Requirements: 6.11, 6.12_
+
+- [x] 11. frontend-platformの第5回の判断の反映(承認後の改訂3)
+- [x] 11.1 E2Eテストの並列数に上限を設け、環境の変数で上書きできるようにする
+  - 先に、`e2e/support/playwright-config.unit.test.ts`へ、`createPlaywrightConfig`の結果の`workers`が受け取った並列数になることと、`resolveE2EWorkers`が`E2E_WORKERS`の未設定と空文字で`DEFAULT_E2E_WORKERS`(2)、`'1'`・`'4'`でその値を返し、`'0'`・`'-1'`・`'1.5'`・`'50%'`・`'abc'`で変数の名前と受け付ける形を示して例外を投げることを確かめるテストを書き、失敗を確かめる
+  - `e2e/support/playwright-config.ts`に`DEFAULT_E2E_WORKERS`と`resolveE2EWorkers`を加え、`createPlaywrightConfig`に第3引数`workers`を加えて設定の`workers`にする。ルートの`playwright.config.ts`は`resolveE2EWorkers(process.env)`を渡す結線だけを加える。ultras-subscriptionの10.1が後から組み立てを変える場合に並列数の引数を保てるよう、design.mdのE2EConfigの契約(Service Interfaceの宣言と組み立ての説明)が実装と一致することを確かめる
+  - `testing/001`のE2Eの節に、並列数の上限(2)と理由(開発サーバーでの並列の実行の負荷で実行環境が落ちることがある)、`E2E_WORKERS`による上書き、ローカルとCIは変数を設定せず同じ上限で実行すること、コマンドの`--workers`の引数が設定より優先されることを、プロジェクト名と固有値を含めずに書く。`docs/onboardings/README.md`のE2Eの説明(コマンドの表と「スモークテスト」の節)に、上書きの変数と既定の上限を書く
+  - 完了状態: ルートの単体テスト(カバレッジ80%以上)と一括検査が成功し、`E2E_WORKERS`を設定せずに`bun run test:e2e`を実行するとPlaywrightの表示の並列数が2で、`E2E_WORKERS=1`で1になり、`testing/001`とオンボーディングの記述が実装と一致する。両方の起動での成功はfrontend-platformの13.2で確かめる
+  - _Boundary: E2EConfig, TestingDocs_
+  - _Depends: 5.3_
+  - _Requirements: 6.13_
+
 ## Implementation Notes
 
 - 1.1: ルートは`@playwright/test`だけを直接宣言し、`playwright`・`playwright-core`は`@playwright/test`の完全固定により1.63.0へ推移的に決まる。主要パッケージ一覧の文書化(7.1・7.3)ではこの点を明記する。
@@ -316,7 +347,7 @@
 - 2.2: 「`import type`のみ」の検査ヘルパーを設計外の新ディレクトリ`test-support/module-references.ts`へ切り出し、ルート`tsconfig.json`の`include`に`test-support/**/*.ts`を加えた。5.1でも再利用する。2.3のルートESLint設定は`test-support/`も検査対象にし、3.3・4.3でもルート所有として扱う。7.6でCLAUDE.mdのディレクトリ構成に追記する。
 - 2.2: `.prettierignore`はルート直下の`mockups`・`.claude`を`/mockups/`・`/.claude/`と先頭`/`で固定している。4.1の一致テストでは先頭`/`を正規化して`QUALITY_GATE_EXCLUDED_DIRS`・`GENERATED_CODE_PATTERNS`と比べる。
 - 2.2: 対象が`.`のときPrettierはディレクトリ展開で未対応ファイルを飛ばすため、`--ignore-unknown`が効くのはファイルを明示して渡す場合(3.3のlint-staged)。Prettierはcwdの`.gitignore`しか読まないため、アプリ固有の出力先はルートの`.gitignore`にも書く必要がある(後続のplatform系specへの注意)。
-- 2.2: 3.5の初回整形の対象は`.infisical.json`・`.kiro/specs/dev-tooling/design.md`・`research.md`・`.kiro/steering/roadmap.md`・`compose.yaml`・`scripts/merge-claude-trust-config.ts`(2.2時点)。`.infisical.json`はInfisical CLIが`init`時だけ書くため整形対象のままにする。
+- 2.2: 3.5の初回整形の対象は`.infisical.yaml`・`.kiro/specs/dev-tooling/design.md`・`research.md`・`.kiro/steering/roadmap.md`・`compose.yaml`・`scripts/merge-claude-trust-config.ts`(2.2時点)。`.infisical.yaml`はInfisical CLIが`init`時だけ書くため整形対象のままにする。
 - 2.3: ルートの`eslint.config.ts`は`name: 'root/ignores'`で`apps/`・`mockups/`・外部由来(`.claude/`・`docs/ai-extensions/`・`.kiro/settings/`)・Playwrightの出力先を対象外にし、`lint`は`bun --bun eslint .`。ESLint 10.12.0では、ファイルを明示して渡すとルートのignoreに関係なく最も近い設定が使われ、`--no-warn-ignored`付きでは対象外のファイルが黙って飛ばされる(終了コード0)。そのため3.3の計画処理では次が必須: アプリ所有ファイルは所有アプリのESLintへ振り分ける、mockupsのファイルを渡さない(mockupsの設定を読み込んでクラッシュする)、`apps/`配下でどのアプリ・共有ディレクトリにも属さないTSをルート所有に振り分けない(黙って検査漏れになるため、除外かエラーにする)。
 - 2.3: 外部由来の一覧が`eslint.config.ts`・`.prettierignore`・3.3の計画処理に重複する。3.3で`config/`に単一定義を置いて`eslint.config.ts`もそれを参照するか、4.1で一致を確かめる。`.playwright-mcp/`はESLintの対象外に入っていない(現状JSは置かれない)。
 - 3.1: 環境変数`HUSKY=0`のときhuskyは`HUSKY=0 skip install`を返し、インストーラは設計のフェイルクローズに従って失敗扱い(終了コード1)にする。3.4で`prepare`に結線すると`HUSKY=0 bun install`は失敗する(CIは`CI`の判定が先なので影響なし)。飛ばして成功にするには設計の`HookInstallResult`に理由を加える変更が要り、開発者判断とする。インストーラはカレントディレクトリの`.git`を見るため、`prepare`はルートで実行される前提。
@@ -329,7 +360,7 @@
 - 3.4: Bun 1.4.2の`bunx --bun`は`node`を指定するshebangをBunへ置き換えず、`PATH`上の`node`(開発コンテナではBunのシム)に依存する。開発コンテナ外ではBetterleaksの存在確認で先に止まる。
 - 3.4: 計画エラー時の失敗コマンドは`bun -e`へJSON文字列を埋め込む方式。`toCommands`はシングルとダブルの引用符を両方含むパスで例外を投げ、lint-stagedがスタックトレース付きで中止する(フェイルクローズは保たれる)。
 - 3.4: 設計のFile Structure Planに無いルート所有のテスト`git-hooks.unit.test.ts`(フックスクリプト・`prepare`・`.betterleaksignore`の書式の検証)と`lint-staged.config.unit.test.ts`を追加した。
-- 3.5: 初回整形は`caeb2c3`(整形差分だけ)。design.mdのtypescriptコードブロックはPrettierの埋め込み整形で80桁に折り返される。`.infisical.json`はInfisical CLIの`init`で4スペースに戻り得るが、次のコミットでフックが整形し直す。
+- 3.5: 初回整形は`caeb2c3`(整形差分だけ)。design.mdのtypescriptコードブロックはPrettierの埋め込み整形で80桁に折り返される。`.infisical.yaml`はInfisical CLIの`init`で4スペースに戻り得るが、次のコミットでフックが整形し直す。
 - 3.6: 一時リポジトリで要件1.1〜4.5の振る舞いをすべて確認し、修正は無かった。`git revert`・cherry-pickは`--no-edit`でも編集を経てもpre-commit・commit-msgを実行しない(Gitの仕様)ため、これらで作るコミットはシークレット検出を通らない。CIでのシークレット検出(infra-delivery)が補う前提を7.3・7.7の文書とinfra-deliveryへの申し送りに書く。
 - 3.6: `GIT_TRACE=1`を画面に出すとBetterleaksが走査失敗としてコミットを拒否する(安全側。トレースはファイルへ出す)。`betterleaks --log-level debug`は`--redact`でも値を表示するため、誤検知の調査で使わないよう7.3・7.7の文書で注意する。
 - 3.6(開発者判断済み): 開発者の判断により、EslintBaseの`ignores`とdesign.mdの「EslintBase」節に`**/worker-configuration.d.ts`を加えた(`.prettierignore`と一致)。
@@ -360,7 +391,7 @@
 - 5.6(infra-deliveryへの申し送り): `wrangler types --check`で`worker-configuration.d.ts`の鮮度をCIで確認できる。
 - 6.1: `.mcp.json`の`@playwright/mcp`を0.0.83から0.0.80へ変更した。0.0.83の`playwright-core`(1.64.0-alpha)はchromium-1247を期待し、共有Chromium(chromium-1243・153.0.8010.12)と一致するのは0.0.80(`playwright-core` 1.63.0-alpha-2026-08-31)だけだった(0.0.79は1237、0.0.81〜0.0.83は1244・1246・1247)。版ごとの期待リビジョンは、`bun pm view @playwright/mcp@<版> dependencies`で`playwright-core`の版を取り、そのtarballの`browsers.json`で確かめる。0.0.80には`browser_emulate_media`ツールが無い。0.0.83以降を使うには、ルートの`@playwright/test`と`Dockerfile`の`PLAYWRIGHT_VERSION`を先に上げる。実行中のClaude Codeのセッションは、`/mcp`での再接続かセッションの再起動までMCPの旧版を使い続ける。
 - 6.1: `chrome-devtools-mcp`は1.10.1(最新)のままにした。同梱の`puppeteer-core` 25.11.0はChrome 153.0.8010.36を期待し、共有Chromiumとはビルド番号が異なるがメジャー版(CDPの世代)が一致する。完全一致する版は存在しないため、メジャー版の一致と実起動で整合を判断する。両MCPサーバーは`.mcp.json`と同じ引数でstdio起動し、MCPのJSON-RPC(`initialize`→`notifications/initialized`→`tools/list`→ページを開くツールの`tools/call`。chrome-devtools-mcpは`pageId`が必須)でローカルHTTPサーバーのページを開いて確かめた。手順・スクリプトの全文はスクラッチの`6.1-evidence.md`にあり、7.3の文書の材料にする(固有値の`/opt/ms-playwright-bin`などは除く)。research.mdの「Playwright関連の4箇所」は調査時点の記録として残し、8.1で扱いを判断する。
-- 6.2: 開発コンテナ(bind mount)とCI相当環境(`git clone`→`CI=true bun install --frozen-lockfile`→`shared-dirs:place`)の`apps/api`に最小構成(hono 4.13.13・drizzle-orm 1.0.0-rc.4を共有ディレクトリからbare import)を置き、型検査・静的解析・単体テスト・esbuild 0.28.1のバンドル(wrangler 4.124.0の`bundleWorker`の設定を再現)・`check`の成否と、解決された版・実体パス(`apps/api/node_modules/...`)が一致した。手順と結果はresearch.mdの「実装時の検証結果」、最小構成の全文とログはスクラッチの`6.2-evidence.md`にあり、7.2の文書の材料にする。開発コンテナはcompose.yamlの変更を反映済みで、再作成は不要だった。
+- 6.2: 開発コンテナ(bind mount)とCI相当環境(`git clone`→`CI=true bun install --frozen-lockfile`→`shared-dirs:place`)の`apps/api`に最小構成(hono 4.13.13・drizzle-orm 1.0.0-rc.5を共有ディレクトリからbare import)を置き、型検査・静的解析・単体テスト・esbuild 0.28.1のバンドル(wrangler 4.124.0の`bundleWorker`の設定を再現)・`check`の成否と、解決された版・実体パス(`apps/api/node_modules/...`)が一致した。手順と結果はresearch.mdの「実装時の検証結果」、最小構成の全文とログはスクラッチの`6.2-evidence.md`にあり、7.2の文書の材料にする。開発コンテナはcompose.yamlの変更を反映済みで、再作成は不要だった。
 - 6.2(infra-deliveryへの申し送り): 配置の不備を依存の解決エラーより先に示すのは一括検査`check`の最初の段階だけで、`test:all:*`やアプリのスクリプトを単独で実行すると`Cannot find module`だけが出る(設計どおり)。CIでは`shared-dirs:place`の後に`check`をテストより先に実行する。honoのような二重実体は型検査を通過するため、検出は配置確認(`non-empty-node-modules`)が担う。
 - 6.2(開発者判断済み): Bun 1.4.2は`extends`を持つtsconfigで`experimentalDecorators`を継承元の値だけで決め、継承する側の`true`を無視する。そのため`bun test`・`bun build`でパラメータデコレータ(Inversifyの`@inject`)がエラーなく消える(tscとesbuildは継承する側に従う)。開発者の判断により、`tsconfig.base.json`に`experimentalDecorators: true`を置き、design.mdの「TsconfigBase」節を更新した。1.2の本文「デコレータ設定はアプリ側の差分に委ねる」はこの判断で置き換わった。ルートの`tsconfig.base.unit.test.ts`(設計の「Testing Strategy」に追記済み)が、基底設定を継承したアプリでBunがパラメータデコレータを実行することを確かめる。継承する側で`false`にすると、Bunは従来のデコレータ、esbuildとViteのOxcは標準(TC39)のデコレータとして変換して黙って食い違うため、アプリの差分で`experimentalDecorators`を指定せず、標準(TC39)のデコレータを使わない。7.1・7.2の文書では、デコレータ設定を基底設定が持つ理由としてこの挙動と前提を記載する。
 - 7.1: codingの文書からtestingへのリンク(001の「テストの種別と命名…」と002のE2Eテストツール関連の4箇所)は、7.3の文書がまだ無いため`../testing/README.md`を指している。7.3で該当文書(`testing/001-test-strategy.md`・`testing/002-browser-tool-versions.md`)へ張り替える。001は`config/workspace-layout.ts`の`APPS`・`AppName`・`SHARED_DIRS`(`source`・`mounts`・`checkedBy`)の形を記載しているため、このファイルの形を変える場合は001も更新する。
@@ -381,3 +412,4 @@
 - 8.1後の機能検証(開発者判断済み): 要件7.1のBunの単体テストでの「未達の指標と実測値の表示」は、表の実測値と終了コード1で満たすものとし、上流の制約としてdesign.mdの追跡表とBunTestConfigに記録した。
 - 8.1後の機能検証(開発者判断済み): ルートの`tsconfig.json`を`include: ["**/*.ts"]`と、アプリ・品質ゲートの対象外・外部由来の`exclude`に変えた。TypeScriptの`**`はドットで始まるディレクトリに一致しない(実測)ため、`.github/`配下などにルート所有のTSを置く場合は`include`に明示する(infra-deliveryへの申し送り)。`tsconfig.unit.test.ts`が、`exclude`と単一定義の一致と、リポジトリにあるルート所有のTSがすべて型検査の対象に入っていることを確かめる。
 - 8.1後の機能検証: 書き写した値の一致テストを加えた(`bunfig.toml`の`coverageThreshold`・`coverageReporter`、`.gitignore`の共有ディレクトリの配置先、E2Eの既定URLのポート)。E2Eのポートは、compose.yamlの`ports`の行末コメント(利用者側フロントエンド・管理者側フロントエンド)で対象を識別するため、コメントの文言を変える場合は`e2e/support/targets.unit.test.ts`の`COMPOSE_PORT_LABELS`も直す。design.mdは、AppScriptContract(Bunの除外の書き写し)、VitestPresets(`CHROMIUM_PATH`の空文字)、構成図とComponentsの依存、Testing Strategyを実装に合わせた。
+- 承認後の改訂4の取り消し: 追加タスク12・12.1(両方のE2Eのコマンドの後のシークレットのファイルの削除)と要件6.14を取り消した。frontend-platformの13.1で、画面を持つアプリのビルドがシークレットのファイルを出力に含めず(共通部品の`excludeLocalSecretsFile()`)、ビルド後のプレビューが注入した値を`process.env`から受け取る形にしたため、両方のE2Eのコマンドに削除の段階は要らない。

@@ -12,13 +12,13 @@ APIサーバー(`apps/api`)とイベントサーバー(`apps/event`)には、全
 
 ## Desired Outcome
 
-- `apps/db`: Drizzleのスキーマ配置規約、D1接続、`textNoCase`ヘルパー、ID規約(ULID、FTSテーブルのみ連番、DR-009)、作成・更新日時と論理削除の共通カラム規約がある。`drizzle-kit generate`と`migrations_pattern`によるWranglerでの適用がローカルで動く。
+- `apps/db`: Drizzleのスキーマ配置規約、D1接続、`textNoCase`ヘルパー、ID規約(ULID、FTSテーブルのみ連番、DR-014)、作成・更新日時と論理削除の共通カラム規約がある。`drizzle-kit generate`と`migrations_pattern`によるWranglerでの適用がローカルで動く。
 - `apps/backend-lib`: UTC-08:00業務時刻のユーティリティ、HMACによるハッシュ化(NFR-SECUR-006)、共通エラー型などがある。
 - `apps/api`・`apps/event`: Hono+Inversifyによるクリーンアーキテクチャの骨格(ドメイン・アプリケーション・インフラ・プレゼンテーション層)、リクエスト単位のDIコンテナ、ヘルスチェックがある。
 - 両アプリのWrangler設定に全バインディング(D1・R2の3バケット・Queues・Durable Objects・Rate Limiting・Images・Service Bindings・Cron Triggers)とstaging/prod環境が定義され、`secrets.required`と`vars`の規約が確立している。
-- LogTapeによるJSONログ(PIIマスキング、DR-008)とSentry(IPアドレス除去、NFR-OBLOG-003)が組み込まれている。
+- LogTapeによるJSONログ(PIIマスキング、DR-013)とSentry(IPアドレス除去、NFR-OBLOG-003)が組み込まれている。
 - Cronディスパッチャ(UTCのcron式から業務時刻のジョブへ振り分け)とQueue consumerディスパッチャ(メッセージ種別ごとの振り分け、再試行とデッドレターの方針)があり、各specはジョブとメッセージ種別を登録するだけで済む。
-- レート制限基盤として、Durable ObjectsによるAlarmリセット付きの厳密カウンタ(汎用)、Rate Limiting bindingのミドルウェア、全Worker共通のIP単位制限(FR-RLMIT-008)がある。
+- レート制限基盤として、Durable ObjectsによるAlarmリセット付きの厳密カウンタ(汎用)、Rate Limiting bindingのミドルウェア、全Worker共通のIP単位制限(FR-RLMIT-009)がある。
 - Turnstileのsiteverify検証ミドルウェア(SW-018)がある。
 - `docs/GUIDES/tech/backend`(アーキテクチャ)・`db`(設計原則・マイグレーション手順)・`infra`(非同期処理設計)の初版がある。
 
@@ -34,7 +34,7 @@ APIサーバー(`apps/api`)とイベントサーバー(`apps/event`)には、全
   - api・eventの骨格とDI、Wrangler設定
   - ログとSentry
   - Cron・Queuesのディスパッチャ
-  - レート制限基盤(FR-RLMIT-008を含む)
+  - レート制限基盤(FR-RLMIT-009を含む)
   - Turnstile検証
   - 上記のテスト(`*.unit.test.ts`・`*.worker.test.ts`)とtechドキュメント
 - **Out**:
@@ -42,7 +42,7 @@ APIサーバー(`apps/api`)とイベントサーバー(`apps/event`)には、全
   - メール送信(email-delivery)
   - ファイル・画像処理(media-pipeline)
   - 各ドメインのテーブルと業務ロジック
-  - 個別機能のレート制限ルール(FR-RLMIT-001〜007などは各ドメインspec)
+  - 個別機能のレート制限ルール(FR-RLMIT-001・003〜008などは各ドメインspec)
 
 ## Boundary Candidates
 
@@ -81,5 +81,5 @@ APIサーバー(`apps/api`)とイベントサーバー(`apps/event`)には、全
   - Drizzle v1は正式版が出ておらずRCのまま。drizzle-ormとdrizzle-kitを同じRC版で完全固定し、CIで`wrangler d1 migrations list --local`による検出確認を行う
   - ulidxはメンテナンス縮小の計画がある(`ulid@3`への移行を候補として開発者に確認する)
   - Workers Cacheを有効にするとService Bindings経由の呼び出しも課金対象になるため、APIのWorkerでは無効にする
-- 要件の論点: FR-RLMIT-008の「Worker毎にIP単位で10秒100回」はStripe Webhookのバースト送信やNAT配下からの画像閲覧にも及ぶため、除外条件を要件フェーズで開発者に確認する
+- 要件の論点: FR-RLMIT-009の「Worker毎にIP単位で10秒100回」はStripe Webhookのバースト送信やNAT配下からの画像閲覧にも及ぶため、除外条件を要件フェーズで開発者に確認する
 - 新規パッケージ(`reflect-metadata`など)は候補を挙げて開発者に質問し、tech-stack.mdへ記載する

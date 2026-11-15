@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024"],
+    "types": ["bun", "@cloudflare/vitest-pool-workers/types"],
+    "paths": {
+      "@whatwg-node/fetch": ["./types/whatwg-node-fetch.d.ts"]
+    }
+  },
+  "include": [
+    "*.ts",
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "scripts/**/*.ts",
+    "db/**/*.ts",
+    "lib/**/*.ts",
+    "common-lib/**/*.ts",
+    "types/**/*.ts"
+  ],
+  "exclude": [
+    "common-lib/*.config.ts",
+    "common-lib/**/*.test.ts",
+    "common-lib/config/**",
+    "common-lib/markdown/fixtures/**"
+  ]
+}

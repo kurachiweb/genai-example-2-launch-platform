@@ -1,0 +1,7 @@
+mutation ClientUnfollowUser($handle: String!) {
+  unfollowUser(handle: $handle) {
+    handle
+    following
+    followerCount
+  }
+}

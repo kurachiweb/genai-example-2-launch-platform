@@ -1,0 +1,36 @@
+fragment MatchBye on MatchBye {
+  reason
+  match {
+    id
+    kind
+    round
+    stage
+    endedEarly
+  }
+  entry {
+    id
+    colorIndex
+    isViewerOwn
+    upvoteCount
+    result
+    product {
+      handle
+      name
+      tagline
+      websiteUrl
+      listed
+      category {
+        id
+        name
+        handle
+      }
+      logo {
+        id
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+    }
+  }
+}

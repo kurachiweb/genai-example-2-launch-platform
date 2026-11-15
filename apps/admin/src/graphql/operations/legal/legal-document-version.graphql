@@ -1,0 +1,17 @@
+query AdminLegalDocumentVersion(
+  $kind: LegalDocumentKind!
+  $versionNumber: Int!
+) {
+  adminLegalDocumentVersion(kind: $kind, versionNumber: $versionNumber) {
+    kind
+    versionNumber
+    publishedAt
+    changeSummary
+    body
+    isLatest
+    publishedBy {
+      id
+      nickname
+    }
+  }
+}

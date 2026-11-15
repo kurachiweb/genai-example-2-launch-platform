@@ -58,14 +58,14 @@ export default config;
 
 ## 基底設定の継承
 
-ルートに、型検査・静的解析・整形・単体テストの基底設定を1つずつ置く。各アプリは基底設定を継承し、アプリ固有の差分だけを指定する。
+ルートに、型検査・静的解析・整形・単体テストの基底設定を1つずつ置く。各アプリは基底設定を継承し、アプリ固有の差分だけを指定する。ただし、検査担当が`self`の共有ディレクトリ(それ自体がアプリ)の`tsconfig.json`は、基底設定を`extends`せずに値を書き写す(「[検査担当が`self`の共有ディレクトリの`tsconfig.json`](003-shared-directories.md#検査担当がselfの共有ディレクトリのtsconfigjson)」)。
 
-| 種類       | ルートの基底設定                        | アプリでの使い方                                           |
-| ---------- | --------------------------------------- | ---------------------------------------------------------- |
-| 型検査     | `tsconfig.base.json`                    | アプリの`tsconfig.json`の`extends`で継承する               |
-| 静的解析   | `eslint.config.base.ts`                 | アプリの`eslint.config.ts`から`createBaseConfig`を呼び出す |
-| 整形       | `prettier.config.ts`・`.prettierignore` | 設定ファイルを置かず、ルートの設定をそのまま適用する       |
-| 単体テスト | `bunfig.toml`                           | アプリの単体テストのスクリプトで`--config`に指定する       |
+| 種類       | ルートの基底設定                        | アプリでの使い方                                                                                                                       |
+| ---------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 型検査     | `tsconfig.base.json`                    | アプリの`tsconfig.json`の`extends`で継承する                                                                                           |
+| 静的解析   | `eslint.config.base.ts`                 | アプリの`eslint.config.ts`から`createBaseConfig`を呼び出す                                                                             |
+| 整形       | `prettier.config.ts`・`.prettierignore` | 設定ファイルを置かず、ルートの設定をそのまま適用する                                                                                   |
+| 単体テスト | `bunfig.toml`                           | アプリの単体テストのスクリプトで`--config`に指定する。共有ディレクトリの検査担当でないアプリは、書き写した`bunfig.unit.toml`を指定する |
 
 ```mermaid
 graph LR
@@ -111,6 +111,7 @@ graph LR
 - `include`: アプリのソース、アプリ直下の設定ファイル(`*.ts`)、アプリに配置した共有ディレクトリを含める。静的解析の対象になる`.ts`・`.tsx`は、すべて`include`に含める(型情報付きの検査は`tsconfig.json`のプロジェクトを使うため、含まれないファイルは解析エラーになる)。
 - `include`に設定ファイルを含めると、設定ファイルから読み込むルートの基底設定やプリセットも型検査の対象になる。それらの型はルートのnode_modulesから解決されるため、ルートで`bun install`を済ませ、ルートとアプリの品質ツールの版を一致させておく。
 - フレームワーク固有の差分(JSXの扱いなど)は、そのアプリで追加する。
+- 例外として、検査担当が`self`の共有ディレクトリは`extends`を持たず、基底設定の値と差分を直接書く。配置先では相対パスの`extends`が解決できないためである(「[検査担当が`self`の共有ディレクトリの`tsconfig.json`](003-shared-directories.md#検査担当がselfの共有ディレクトリのtsconfigjson)」)。
 
 基底設定は次のオプションを持つ。
 
@@ -145,11 +146,34 @@ Workersの実行環境で動くアプリは、次の差分を加える。
 - `types`: Workers統合テストの`cloudflare:test`モジュールの型を加える。
 - `include`: アプリ直下の`*.ts`により、`wrangler types`が出力する`worker-configuration.d.ts`(実行時の型と環境の型)も含まれる。
 
+#### 依存パッケージがDOMの型を読み込む場合
+
+`lib`からDOMを外しても、依存パッケージの型宣言が`/// <reference lib="dom" />`を含むと、そのパッケージを読み込んだ時点でDOMの型がプログラム全体に加わる。Workersの型と食い違い、依存パッケージと無関係なファイルで型エラーになる(例: `new Request()`の型が`Request<unknown, IncomingRequestCfProperties>`に代入できない、`Uint8Array`が`crypto.subtle`の`BufferSource`に代入できない)。
+
+- 原因の特定: `tsc -p tsconfig.json --explainFiles`の出力で`lib.dom.d.ts`を探し、`Library referenced via 'dom' from file`に続くファイルを確かめる。
+- 対処: そのアプリの`tsconfig.json`の`paths`で、DOMを参照する型宣言のモジュールを、同じ公開の型をWorkersのグローバルから示す宣言ファイル(アプリ直下の`types/`に置く)へ差し替え、`include`に`types/**/*.ts`を加える。アプリの`tsconfig.json`は原則として`types`と`include`だけを差分にするが(「[型検査設定の継承](#型検査設定の継承)」)、この`paths`と`include`の追加はその例外である。
+
+```json
+{
+  "compilerOptions": {
+    "paths": {
+      "<DOMを参照するモジュール>": ["./types/<モジュール名>.d.ts"]
+    }
+  }
+}
+```
+
+- 差し替えの対象は型検査だけである。esbuild(Wrangler)・Bun・Vite(Vitest)は、依存パッケージの内部からの読み込みもアプリのソースからの読み込みも、宣言ファイルではなく本物のパッケージへ解決する。Viteは`resolve.tsconfigPaths`が既定で無効のため`paths`を使わない(有効にしない)。
+- TypeScriptの`libReplacement`は置き換え先を`node_modules`の`@typescript/lib-dom`パッケージからしか探さず`paths`を使わないため、この目的には使わない。
+- 宣言ファイルの書き方の落とし穴: Workersの型は`Headers`・`Blob`・`URL`などを`declare class`、`crypto`などを`declare const`で宣言しており、ブロックスコープの宣言は`typeof globalThis.Headers`のように`globalThis`から引けない。本来は型エラーになるが、宣言ファイル内のエラーは`skipLibCheck: true`で報告されず、その型は黙って`any`になる。また、モジュールの中で公開する名前(`export const Headers`)を宣言すると、モジュール内の`typeof Headers`はグローバルの型ではなくその定数自身を指す。そのため、別名で宣言して(`declare const workersHeaders: typeof Headers;`)、`export { workersHeaders as Headers };`で公開する名前へ付け替える。
+- `any`化の検査: 宣言ファイルの外の、型検査の対象になる`.ts`に型だけの検査を置き、差し替えたモジュールの全ての公開の値と、関数の戻り値・インスタンスの各項目が`any`でないことを確かめる(`0 extends 1 & T`で`any`を判定し、`any`の項目名の和集合が`never`でなければ型エラーにする)。検査は先に書き、`globalThis`から引いた誤った宣言で失敗することを確かめる。
+- 依存パッケージの版を更新したら、差し替えた宣言ファイルの公開の型が元の型宣言と一致しているかを確かめる。
+
 #### デコレータの設定
 
 デコレータの設定は基底設定が持ち、アプリの`tsconfig.json`では`experimentalDecorators`を指定しない(`true`も`false`も書かない)。標準(TC39)のデコレータを使うアプリは置かない。
 
-- 理由: Bun 1.4.2は、`extends`を持つtsconfigの`experimentalDecorators`を継承元の値だけで決め、継承する側の指定を無視する。
+- 理由: Bun 1.4.4は、`extends`を持つtsconfigの`experimentalDecorators`を継承元の値だけで決め、継承する側の指定を無視する。
   - 継承する側だけで`true`にすると、`tsc`とesbuildは従来のデコレータとして扱う一方、Bunの`bun test`・`bun build`は標準のデコレータとして変換する。その結果、パラメータデコレータ(コンストラクタ引数への注入の指定など)がエラーも警告も無く消える。
   - 継承する側で`false`にしても、Bunは基底設定の値で従来のデコレータとして変換し、esbuildとViteのOxcは標準のデコレータとして変換する。変換経路ごとに結果が黙って食い違う。
 - パラメータデコレータは標準のデコレータに存在しないため、コンストラクタ引数への注入を指定するライブラリを使うには従来のデコレータが必要になる。
@@ -192,6 +216,57 @@ export default config;
 - 自動生成コードは、`*.gen.ts`という名前か`generated/`ディレクトリの下に出力する。これにより静的解析・整形・カバレッジの対象から外れる。
 - アプリ固有の規則とプラグインは、`createBaseConfig`の戻り値の後に並べる。書式に関する規則は有効にしない(整形と衝突するため)。書式の規則を含むプラグインの推奨設定を加える場合は、その後に`prettierConfig`をもう一度置く。
 - ESLintは、ファイルごとに最も近い設定ファイルを使う。そのため、ルートから複数のアプリのファイルを1度に渡しても、各ファイルはそれぞれのアプリの設定とモジュールで検査される。
+- 規則の中には、ファイルの位置ではなくESLintを起動した作業ディレクトリ(`process.cwd()`)から設定やファイルを探すものがある(例: `eslint-plugin-storybook`の`storybook/no-uninstalled-addons`は`package.json`を探す)。コミット時の検査はルートから起動するため、アプリの位置を前提とする規則には、`import.meta.dirname`から組み立てた絶対パスを選択肢で渡す(例: `packageJsonLocation`)。ルートを作業ディレクトリにしてESLintを起動する単体テストで確かめる。
+
+#### 画面を持つアプリの静的解析
+
+画面を持つアプリ(Reactの部品・TanStack Startのルートを持つアプリ)と画面の共有ディレクトリは、`createBaseConfig`の戻り値の後に、画面の共有ディレクトリの`config/frontend-lint.ts`の`createFrontendLintConfig`の戻り値を並べ、最後に`prettierConfig`をもう一度置く。プラグインは`createBaseConfig`と同じく、アプリのnode_modulesからimportして渡す。
+
+```typescript
+const config: Linter.Config[] = [
+  ...createBaseConfig({
+    js,
+    tseslint,
+    prettierConfig,
+    tsconfigRootDir: import.meta.dirname,
+  }),
+  ...createFrontendLintConfig({
+    eslintReact,
+    reactHooks,
+    jsxA11y,
+    tanstackQuery,
+    tanstackRouter,
+    storybook,
+  }),
+  prettierConfig,
+];
+```
+
+| 引数             | パッケージ                       | 使う推奨設定                                                       |
+| ---------------- | -------------------------------- | ------------------------------------------------------------------ |
+| `eslintReact`    | `@eslint-react/eslint-plugin`    | `recommended-type-checked`(設定ファイルには`disable-type-checked`) |
+| `reactHooks`     | `eslint-plugin-react-hooks`      | `flat.recommended-latest`                                          |
+| `jsxA11y`        | `eslint-plugin-jsx-a11y-x`       | `recommended`                                                      |
+| `tanstackQuery`  | `@tanstack/eslint-plugin-query`  | `flat/recommended`                                                 |
+| `tanstackRouter` | `@tanstack/eslint-plugin-router` | `flat/recommended`                                                 |
+| `storybook`      | `eslint-plugin-storybook`        | `flat/recommended`                                                 |
+
+- 各プラグインの公開の型は規則の型の出どころが異なり、ESLintの`ESLint.Plugin`へ代入できない。引数は推奨設定(`configs`)を持つことだけを求める構造的な型(`PluginWithConfigs`)で受け、推奨設定が平坦な形式の設定であることを実行時に確かめる(形が違えば例外)。
+- 2つのReactのプラグインが同名で持つフックの規則は、`@eslint-react`の推奨が有効にするものだけ`react-hooks`側を止める。`@eslint-react`が実験的として推奨に含めない規則(refs・immutability・globalsなど)は`react-hooks`側で検査する。推奨の規則の一部は警告(`warn`)だが、一括検査は`--max-warnings=0`で実行するため、警告も失敗になる。
+
+推奨設定に加えて、次の規則を設定する。
+
+| 設定の名前                              | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `frontend/restricted-syntax`            | 生のHTMLの挿入を禁止する(「[生のHTMLの禁止と例外](../frontend/003-frontend-server-security.md#生のhtmlの禁止と例外)」)。エディタの実装のパッケージ(`@milkdown/*`・`vue`・`@vue/*`)の動的`import()`を遅延読み込みのモジュール(`components/markdown-editor/crepe/`)の外で、そのモジュールの動的`import()`を読み込み関数(`components/markdown-editor/load-crepe-editor.ts`)以外で禁止する。指定がテンプレートリテラルでも検出する。読み込み関数にはパッケージの制限と生のHTMLの禁止だけを(`frontend/restricted-syntax/editor-loader`)、モジュールの中には生のHTMLの禁止だけを掛ける(`frontend/restricted-syntax/editor-module`)            |
+| `frontend/router-throwables`            | `@typescript-eslint/only-throw-error`で、`Error`以外の例外として、TanStack Routerの`notFound()`・`redirect()`が投げる`NotFoundError`・`Redirect`だけを許す                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `frontend/zod-entry`                    | `zod`(サブパスを含む)の値のimportを、JITの試行を止める設定を済ませた共有ディレクトリの部品以外で禁止する(「[実行時のコード生成を試すライブラリ](../frontend/003-frontend-server-security.md#実行時のコード生成を試すライブラリ)」)                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `frontend/direction/*`                  | 画面の共有ディレクトリの層(純粋な関数・サーバーの部品・TanStack Startとの接続・部品)の依存の向き、共有ディレクトリから利用側アプリの`src`へのimportの禁止、登録箇所からルートへのimportの禁止、部品(`components/**`)とサーバーの部品(`server/**`)から別の共有ディレクトリのZodを直接使う検証規則(`<共用部品の配置先>/validation/`)へのimportの禁止(「[画面の共通部品から読み込める範囲](003-shared-directories.md#画面の共通部品から読み込める範囲)」)、部品からエラートラッキングの同型の関数のファイル(`start/observability/report-error.ts`)へのimportの禁止(「[送信の入口](../frontend/007-frontend-observability.md#送信の入口)」) |
+| `frontend/editor-isolation`             | エディタの実装のパッケージ(`@milkdown/*`・`vue`・`@vue/*`)のimportを遅延読み込みのモジュール(`components/markdown-editor/crepe/`)の外で禁止し、そのモジュールへの静的なimportとexport-fromを全ファイルで禁止する。モジュールの中では依存の向きの制限だけを掛ける(`frontend/editor-isolation/editor-module`)。相対パスの途中に`crepe/`を含む指定をすべて遅延読み込みのモジュールとみなす                                                                                                                                                                                                                                                 |
+| `frontend/browser-bundle/start-and-app` | ブラウザのバンドルに入るファイルから、遅延で読み込むエラートラッキングのSDK(TanStack Start版)の実行時の値を静的にimportすることを禁止する(「[サーバー専用のファイルと同型の関数](../frontend/002-tanstack-start-on-workers.md#サーバー専用のファイルと同型の関数)」)。`*.server.ts`・サーバーのエントリ・テストは対象外。部品(`components/**`)には`frontend/direction/components`が同じ制限を掛ける                                                                                                                                                                                                                                     |
+
+- ESLintは、同じ規則を設定する後の設定の選択肢で前の選択肢を置き換え、合成しない。`config/frontend-lint.ts`の中で`@typescript-eslint/no-restricted-imports`を設定する時は、`restrictValueImports`で組み立ててZodの制限を常に含める。`no-restricted-imports`を設定する時は、`restrictDirectionImports`で組み立ててエディタの実装の制限を常に含める(遅延読み込みのモジュールの中だけは除く)。`no-restricted-syntax`を設定する時は、生のHTMLの制限を常に含める。アプリの`eslint.config.ts`で同じ規則を設定すると制限が失われるため、制限を足す時は`config/frontend-lint.ts`へ加える。
+- importの制限は静的なimportとexport-fromだけを見て、動的`import()`を検出しない。動的`import()`の制限は`no-restricted-syntax`のセレクターで、文字列の指定(`ImportExpression[source.value=…]`)とテンプレートリテラルの指定(`ImportExpression > TemplateLiteral.source > TemplateElement[value.raw=…]`)の両方を書く。パッケージ名は先頭の文字列の部分(`TemplateElement:first-child`)で判定する。esqueryの正規表現は`/`を含められないため、区切りの`/`は`\x2F`で書く。
 
 ### 整形設定の継承
 
@@ -203,20 +278,26 @@ export default config;
   - 自動生成コード(`**/*.gen.ts`・`**/generated/**`・`**/worker-configuration.d.ts`)
   - ローカル開発で蓄積されるデータ
 - Prettierは`.prettierignore`に加えて、実行したディレクトリの`.gitignore`だけを読む。整形検査はルートで実行するため、アプリ固有の出力先(ビルドの出力など)は、アプリの`.gitignore`ではなくルートの`.gitignore`に書く。
-- アプリ固有のPrettierプラグインが必要な場合に限り、アプリに`prettier.config.ts`を置き、ルートの設定を展開してからプラグインを加える。整形はルートのPrettierで実行されるため、プラグインがアプリの設定ファイルの位置から解決できることを確かめる。
+- アプリ固有のPrettierプラグインが必要な場合に限り、アプリに`prettier.config.ts`を置き、ルートの設定を展開してからプラグインを加える。プラグインは名前ではなく、アプリの`node_modules`から`import.meta.resolve`で解決した絶対パスで渡す。
 
 ```typescript
+import { fileURLToPath } from 'node:url';
+
 import type { Config } from 'prettier';
 
 import baseConfig from '../../prettier.config.ts';
 
 const config: Config = {
   ...baseConfig,
-  plugins: ['<プラグイン名>'],
+  plugins: [fileURLToPath(import.meta.resolve('<プラグイン名>'))],
 };
 
 export default config;
 ```
+
+- 整形はルートのPrettierで実行され、プラグインを名前で書くと、Prettierは整形を実行したディレクトリ(ルート)からプラグインを探して見つけられない。`import.meta.resolve`は設定ファイルの位置から解決するため、アプリが導入したプラグインを指す。
+- ルートの整形検査は、プラグインを持つアプリの`prettier.config.ts`を読み込む時点でプラグインを解決する。CIでは、整形検査の前にそのアプリの依存パッケージを導入する。導入していないと、整形検査が設定の読み込みで失敗する。
+- 共有ディレクトリと利用側アプリが同じプラグインを使う場合は、それぞれに`prettier.config.ts`を置き、それぞれの`node_modules`へ同じ版のプラグインを導入する。配置先はGitの管理対象外のため整形検査の対象にならず、共有ディレクトリのファイルは配置元で整形される。
 
 ## 一括検査への参加
 
@@ -236,13 +317,15 @@ export default config;
 
 一括検査は、ルートと各アプリで同じ名前のスクリプトを`bun run`で実行する。アプリは次のスクリプトを定義する。
 
-| スクリプト     | 定義するアプリ                | 内容                                                                 |
-| -------------- | ----------------------------- | -------------------------------------------------------------------- |
-| `lint`         | 全アプリ                      | `bun --bun eslint .`                                                 |
-| `typecheck`    | 全アプリ                      | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める)  |
-| `test:unit`    | 全アプリ                      | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test` |
-| `test:browser` | ブラウザテストを持つアプリ    | `vitest run --config vitest.browser.config.ts`                       |
-| `test:worker`  | Workers統合テストを持つアプリ | `vitest run --config vitest.worker.config.ts`                        |
+| スクリプト         | 定義するアプリ                                             | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lint`             | 全アプリ                                                   | `bun --bun eslint .`                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `typecheck`        | 全アプリ                                                   | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める)                                                                                                                                                                                                                                                                                                                                                                                   |
+| `cf-typegen:check` | Wranglerで型を生成するアプリ                               | 実行時の型を生成するアプリは`wrangler types --check`(生成済みの`worker-configuration.d.ts`が設定と食い違えば失敗する)。実行時の型を生成せず環境の型だけを照合に使うアプリ(画面を持つアプリ)は`wrangler types --include-runtime=false --check && tsc -p tsconfig.worker-env.json`(生成物の食い違いに加え、生成した環境の型と環境の検証スキーマの型の照合が通らなければ失敗する。「[環境の型](../frontend/002-tanstack-start-on-workers.md#環境の型)」) |
+| `graphql:check`    | GraphQLのサーバー、またはGraphQLの操作の生成物を持つアプリ | GraphQLの生成物の検査。サーバーを持つアプリはスキーマファイル・リゾルバの型・許可リストを、操作の生成物を持つアプリは操作の型・文書・操作の一覧を検査する(定義と食い違えば、再実行すべき生成コマンドを表示して失敗する)                                                                                                                                                                                                                               |
+| `test:unit`        | 全アプリ                                                   | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `test:browser`     | ブラウザテストを持つアプリ                                 | `vitest run --config vitest.browser.config.ts`                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `test:worker`      | Workers統合テストを持つアプリ                              | `vitest run --config vitest.worker.config.ts`                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 ```json
 {
@@ -257,9 +340,12 @@ export default config;
 }
 ```
 
-- 定義していないスクリプトは、一括検査で「飛ばした(スクリプト未定義)」として扱われ、失敗にはならない。ブラウザテストもWorkers統合テストも持たないアプリは、`test:browser`・`test:worker`を定義しない。
+- 定義していないスクリプトは、一括検査で「飛ばした(スクリプト未定義)」として扱われ、失敗にはならない。ブラウザテストもWorkers統合テストも持たないアプリは、`test:browser`・`test:worker`を定義しない。Wranglerで型を生成しないアプリは、`cf-typegen:check`を定義しない。GraphQLのサーバーも操作の生成物も持たないアプリは、`graphql:check`を定義しない。
+- GraphQLの操作の生成物を持つアプリの`graphql:check`は、画面の共有ディレクトリの`config/codegen-check.ts`を`bun ./<共有ディレクトリの配置先>/config/codegen-check.ts`で実行する。アプリのディレクトリの`node_modules/.bin/graphql-codegen`を`--config codegen.config.ts --check`で起動し、生成物が操作の定義と食い違うか、操作がスキーマに合わなければ、GraphQL Code Generatorの出力に続けて再実行すべき`bun run graphql:generate`を表示し、終了コード1で終える。案内は開発者向けのコマンドの出力のため、画面の文言の規則の対象外である。
+- `test:browser`を定義するアプリは、ブラウザテストが1件も無い段階でも`vitest.browser.config.ts`を置く。Vitestは設定ファイルが無いと失敗するため、テストより先にスクリプトを定義する共有ディレクトリ(検査担当が`self`のもの)は、プリセット・ブラウザモード・ブラウザの指定だけの最小の設定ファイルから始める。
 - 整形検査はルートで1回だけ実行するため、アプリに整形のスクリプトは要らない。
 - `test:unit`の`--config=../../bunfig.toml`は省略できない。Bunはアプリのディレクトリからルートの`bunfig.toml`をさかのぼって読まないため、省略すると他の種別のテストの除外・カバレッジ閾値・lcovの出力のいずれも適用されない。相対パスは、アプリのディレクトリがルートの2階層下にある場合の例である。
+- 共有ディレクトリの検査担当でない利用側アプリは、ルートの`bunfig.toml`の代わりに、アプリに置いた単体テスト専用の設定ファイルを`--config`に指定する(「[検査担当でないアプリでの共有ディレクトリの除外](#検査担当でないアプリでの共有ディレクトリの除外)」)。
 - テストの種別と命名、実行コマンド、カバレッジの規約は、「[テスト戦略](../testing/001-test-strategy.md)」に従う。
 
 ### 導入する品質ツール
@@ -280,13 +366,13 @@ bun add --dev --exact eslint@<版> @eslint/js@<版> typescript-eslint@<版> esli
 
 ### 検査担当でないアプリでの共有ディレクトリの除外
 
-同じ共有ディレクトリを配置する利用側アプリのうち、検査担当でないアプリは、配置先を静的解析とテストの対象から外す。同じファイルが別の設定で重ねて検査されることを防ぐためである。型検査は、共有ディレクトリのコードが各利用側アプリの設定と依存で成り立つことを確かめるため、外さずに`include`へ含める。配置の方式と依存の解決は「[共有ディレクトリの配置方式](003-shared-directories.md)」に従う。
+同じ共有ディレクトリを配置する利用側アプリのうち、検査担当でないアプリは、配置先を静的解析とテストの対象から外す。同じファイルが別の設定で重ねて検査されることを防ぐためである。型検査は、共有ディレクトリのコードが各利用側アプリの設定と依存で成り立つことを確かめるため、外さずに`include`へ含める(例外は「[型検査から外すファイル](#型検査から外すファイル)」)。配置の方式と依存の解決は「[共有ディレクトリの配置方式](003-shared-directories.md)」に従う。
 
-| 検査                        | 外し方                                                                      |
-| --------------------------- | --------------------------------------------------------------------------- |
-| 静的解析                    | `eslint.config.ts`の`ignores`に配置先を加える                               |
-| 単体テスト                  | `test:unit`の`--path-ignore-patterns`に配置先を加える                       |
-| ブラウザ・Workers統合テスト | Vitestの設定の`exclude`に配置先を加え、`coverage.include`に配置先を含めない |
+| 検査                        | 外し方                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 静的解析                    | `eslint.config.ts`の`ignores`に配置先を加える                                                                       |
+| 単体テスト                  | `test:unit`の`--path-ignore-patterns`と、単体テスト専用の設定ファイルの`coveragePathIgnorePatterns`に配置先を加える |
+| ブラウザ・Workers統合テスト | Vitestの設定の`exclude`に配置先を加え、`coverage.include`に配置先を含めない                                         |
 
 静的解析では、`ignores`だけを持つ要素を設定の配列に加える。
 
@@ -305,15 +391,28 @@ const config: Linter.Config[] = [
 ];
 ```
 
-単体テストでは、配置先に加えて`bunfig.toml`の`pathIgnorePatterns`(他の種別のテストの除外)をすべて書き写す。Bun 1.4.2では、コマンドラインの`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず、置き換えるためである。
+単体テストでは、テストファイルの選択とカバレッジの分母の両方から配置先を外す。Bun 1.4.4では、コマンドラインの`--path-ignore-patterns`はテストファイルの選択にだけ効き、配置先のテストを実行しなくても、アプリのテストが読み込んだ配置先のファイルはカバレッジの分母に入る。分母から外す手段は設定ファイルの`coveragePathIgnorePatterns`だけであり、コマンドラインの指定は無い。
+
+1. アプリのディレクトリに単体テスト専用の設定ファイル`bunfig.unit.toml`を置く。ルートの`bunfig.toml`の内容をすべて書き写し、`coveragePathIgnorePatterns`にだけ配置先を加える。
+2. `test:unit`の`--config`でこのファイルを指定し、`--path-ignore-patterns`に配置先を加える。`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず置き換えるため、`pathIgnorePatterns`(他の種別のテストの除外)もすべて書き写す。
+
+```toml
+[test]
+# ルートのbunfig.tomlのcoveragePathIgnorePatterns以外の項目をそのまま書き写す
+coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**", "<共有ディレクトリの配置先>/**"]
+```
 
 ```json
 {
   "scripts": {
-    "test:unit": "bun test --config=../../bunfig.toml --pass-with-no-tests --path-ignore-patterns='<共有ディレクトリの配置先>/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test"
+    "test:unit": "bun test --config=bunfig.unit.toml --pass-with-no-tests --path-ignore-patterns='<共有ディレクトリの配置先>/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test"
   }
 }
 ```
+
+- 名前を`bunfig.toml`にしないのは、Bunが実行したディレクトリの`bunfig.toml`を`bun install`・`bun run`などでも自動で読むためである。`--config`で指定したときだけ読まれる名前にする。
+- 設定ファイルの`coverageDir`と`coveragePathIgnorePatterns`の相対パスは、設定ファイルの位置ではなく、テストを実行したディレクトリ(アプリのディレクトリ)を基準に解決される。
+- 書き写した内容がルートの`bunfig.toml`と(`coveragePathIgnorePatterns`に加えた配置先を除いて)一致し、`test:unit`が配置先をテストファイルの選択から外すことを、ルートの単体テストで確かめる。ルートの`bunfig.toml`を変えたときは、各アプリの`bunfig.unit.toml`も同じく変える。
 
 Vitestでは、既定の除外を失わないよう`configDefaults.exclude`を展開してから配置先を加える。次の例は除外の指定だけを示し、プリセットの取り込みなど他の設定を省いている。
 
@@ -326,6 +425,31 @@ export default defineConfig({
   },
 });
 ```
+
+#### 型検査から外すファイル
+
+検査担当が`self`の共有ディレクトリ(それ自体がアプリで、自分の`tsconfig.json`・設定ファイル・テストを持つもの)を配置する利用側アプリは、配置先を`include`に含めたうえで、配置先では型検査が成り立たない次のファイルだけを`exclude`で外す。これらは共有ディレクトリ自身の型検査で検査される。
+
+| 外すファイル                                                                          | 理由                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<共有ディレクトリの配置先>/*.ts`                                                     | 共有ディレクトリの直下の設定ファイル。ルートの基底設定などを相対パスで読み込み、配置先では深さが異なり解決できない。直下のTypeScriptが設定ファイル(`*.config.ts`)だけの共有ディレクトリは、`<共有ディレクトリの配置先>/*.config.ts`と書いてもよい |
+| `<共有ディレクトリの配置先>/**/*.stories.tsx`                                         | 部品のカタログ。カタログのツールは共有ディレクトリにだけ導入し、利用側アプリには導入しない                                                                                                                                                        |
+| `<共有ディレクトリの配置先>/**/*.test.ts`・`<共有ディレクトリの配置先>/**/*.test.tsx` | 共有ディレクトリのテスト。利用側アプリがルーターの経路の型を登録すると、テスト用の経路(存在しない経路へのリンクなど)が利用側アプリの経路の型で検査され、型検査を通らない                                                                          |
+| `<共有ディレクトリの配置先>/<テストだけが使うディレクトリ>/**`                        | 共有ディレクトリ自身の設定を確かめるテストの置き場や、テストだけが読み込むデータ(攻撃的な入力の一覧など)。実行時に読み込まれず、利用側アプリの型検査に含める意味が無い                                                                            |
+
+```json
+{
+  "exclude": [
+    "<共有ディレクトリの配置先>/*.ts",
+    "<共有ディレクトリの配置先>/**/*.stories.tsx",
+    "<共有ディレクトリの配置先>/**/*.test.ts",
+    "<共有ディレクトリの配置先>/**/*.test.tsx",
+    "<共有ディレクトリの配置先>/<テストだけが使うディレクトリ>/**"
+  ]
+}
+```
+
+- 外したファイル以外の共有ディレクトリのコードが型検査で読み込む型の出どころのパッケージ(テストの補助が使うパッケージや、静的解析の設定を組み立てる関数の引数の型のパッケージなど)は、利用側アプリの開発依存に宣言する。実行時に使うパッケージと同じく、版は共有ディレクトリ側とそろえる。
 
 ## 検査コマンド
 
@@ -371,9 +495,16 @@ export default defineConfig({
 2. テスト命名の検査(`check:test-names`)
 3. 整形検査(ルートの`format:check`)
 4. 静的解析(ルートと各アプリの`lint`)
-5. 型検査(ルートと各アプリの`typecheck`)
+5. 型生成の検査(各アプリの`cf-typegen:check`)
+6. GraphQLの生成物の検査(各アプリの`graphql:check`)
+7. 型検査(ルートと各アプリの`typecheck`)
+8. 写しの照合(ルートの`check:contract-copies`)
 
 - 配置の不備は、後段の静的解析や型検査では依存の解決エラーとして現れるため、最初の段階で確かめて原因を先に示す。
+- Wranglerの設定を変えて型を生成し直し忘れると、型検査のエラーとして現れるため、型検査の前に型生成の検査で原因を先に示す。ルートはWranglerで型を生成しないため、この段階の対象にしない。
+- GraphQLのスキーマを変えてリゾルバの型を生成し直し忘れた場合も型検査のエラーとして現れるため、型検査の前にGraphQLの生成物の検査で原因を先に示す。生成物を持つのはアプリだけのため、ルートはこの段階の対象にしない。
+- 写しの照合は、アプリ間で写した値を元と照合するルートの単体テストを実行する。他の段階の結果に依らないが、配置確認から型検査までの静的な検査と違いテストを実行するため、最後の段階に置く。照合のテストはルートに置くため、アプリはこの段階の対象にしない。ルートにスクリプトが無ければ「飛ばした(スクリプト未定義)」となる。
+- `bun test`は`./`で始まらない引数をファイル名の部分一致の絞り込みとして扱うため、`check:contract-copies`はテストファイルを`bun test ./<照合のテストのパス>`のように`./`で始まるパスで渡す。照合のテストはルートの単体テスト(`test:unit`)にも含まれ、一括検査と単体テストの両方で実行される。
 - `check`は追加の引数を受け取らない。テストの一括実行(`bun run test:all:unit`など)は同じ仕組みでルートと各アプリの同名スクリプトを実行し、追加の引数(`--coverage`など)をそれぞれへ渡す。
 
 最後に、段階・対象・結果の表と件数を表示する。
@@ -386,10 +517,15 @@ export default defineConfig({
 静的解析(lint)                                  ルート      成功
 静的解析(lint)                                  <アプリ名>  失敗(終了コード1)
 静的解析(lint)                                  <アプリ名>  飛ばした(プロジェクト未作成)
+型生成の検査(cf-typegen:check)                  <アプリ名>  成功
+型生成の検査(cf-typegen:check)                  <アプリ名>  飛ばした(プロジェクト未作成)
+GraphQLの生成物の検査(graphql:check)            <アプリ名>  成功
+GraphQLの生成物の検査(graphql:check)            <アプリ名>  飛ばした(スクリプト未定義)
 型検査(typecheck)                               ルート      成功
 型検査(typecheck)                               <アプリ名>  成功
 型検査(typecheck)                               <アプリ名>  飛ばした(プロジェクト未作成)
-成功5件・失敗2件・飛ばした2件
+写しの照合(check:contract-copies)               ルート      成功
+成功8件・失敗2件・飛ばした4件
 ```
 
 - 失敗したアプリと検査の種類は表の「失敗」の行で分かる。違反の内容は、表の前に流れる各コマンドの出力で確かめる。

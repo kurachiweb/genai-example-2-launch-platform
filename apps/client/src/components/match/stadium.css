@@ -1,0 +1,95 @@
+/* 対戦カードの演出。祖先にdata-auto-refresh="on"があり、視差効果を減らす設定でないときだけ動かす(属性の無いページでは既定で止まる) */
+
+@keyframes stadium-crowd-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(var(--jump, 3px) * -1));
+  }
+}
+
+@keyframes stadium-flag-wave {
+  0%,
+  100% {
+    transform: skewY(0deg) scaleX(1);
+  }
+  50% {
+    transform: skewY(-6deg) scaleX(0.94);
+  }
+}
+
+@keyframes stadium-ball-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes stadium-flood-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+[data-pitch-crowd-dot] {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+[data-pitch-flag] {
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+
+/* 演出が止まっている間、ボールはUpvoteの演出でもゴールへ飛ばず比率の境目に留まる */
+[data-vote-ball-track] {
+  transform: translateX(calc(var(--ball-rest) * 100%));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-auto-refresh='on'] [data-pitch-flag] {
+    animation: stadium-flag-wave 1.8s ease-in-out var(--flag-delay, 0s) infinite;
+  }
+
+  [data-auto-refresh='on'] [data-pitch-floodlight] {
+    animation: stadium-flood-pulse 4s ease-in-out var(--flood-delay, 0s)
+      infinite;
+  }
+
+  [data-auto-refresh='on']
+    [data-pitch-crowd][data-excited='true']
+    [data-pitch-crowd-dot] {
+    --jump: 12px;
+    animation: stadium-crowd-jump 0.5s cubic-bezier(0.3, 0, 0.15, 1)
+      var(--jump-delay, 0s) 7;
+  }
+
+  [data-auto-refresh='on'] [data-vote-ball-spin] {
+    animation: stadium-ball-spin 6s linear infinite;
+  }
+
+  /* 常時の回転(6秒/回転)に重ねて再生することで、飛行中だけ合計1秒/回転になる。再生と一時停止の切り替えなので回転角が飛ばずに加速・減速して見える */
+  [data-auto-refresh='on'] [data-vote-ball-spin-fast] {
+    animation: stadium-ball-spin 1.2s linear infinite paused;
+  }
+
+  [data-auto-refresh='on']
+    [data-vote-ball][data-flying='true']
+    [data-vote-ball-spin-fast] {
+    animation-play-state: running;
+  }
+
+  [data-auto-refresh='on'] [data-vote-ball-track] {
+    transform: translateX(calc(var(--ball-at) * 100%));
+    transition: transform var(--ball-duration) var(--ball-easing);
+  }
+
+  [data-auto-refresh='on'] [data-vote-bar-fill] {
+    transition: width 700ms ease-out;
+  }
+}

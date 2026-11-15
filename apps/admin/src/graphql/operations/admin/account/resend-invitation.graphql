@@ -1,0 +1,18 @@
+mutation AdminResendInvitation($id: ID!, $reason: String) {
+  resendAdminInvitation(id: $id, reason: $reason) {
+    id
+    email
+    nickname
+    title
+    avatar {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+    role
+    status
+    createdAt
+  }
+}

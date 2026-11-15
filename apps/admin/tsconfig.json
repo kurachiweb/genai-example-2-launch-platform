@@ -1,0 +1,30 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM"],
+    "types": ["bun", "vite/client"]
+  },
+  "include": [
+    "*.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "test/**/*.ts",
+    "test/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx",
+    "common-lib/**/*.ts"
+  ],
+  "exclude": [
+    "lib/*.ts",
+    "lib/**/*.stories.tsx",
+    "lib/**/*.test.ts",
+    "lib/**/*.test.tsx",
+    "common-lib/*.config.ts",
+    "common-lib/**/*.test.ts",
+    "common-lib/config/**",
+    "common-lib/markdown/fixtures/**",
+    "worker-configuration.d.ts",
+    "test/config/worker-env-contract.ts"
+  ]
+}

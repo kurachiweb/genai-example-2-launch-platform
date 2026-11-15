@@ -1,0 +1,22 @@
+query AdminAuditLogs($filter: AuditLogFilterInput, $after: String) {
+  auditLogs(filter: $filter, after: $after) {
+    entries {
+      id
+      occurredAt
+      operator {
+        id
+        nickname
+      }
+      action
+      actionLabel
+      targetKind
+      targetIds
+      reason
+      detail {
+        key
+        value
+      }
+    }
+    nextCursor
+  }
+}

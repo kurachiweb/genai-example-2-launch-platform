@@ -1,0 +1,15 @@
+mutation AdminStartInvitation(
+  $token: String!
+  $nickname: String!
+  $password: String!
+) {
+  startAdminInvitation(
+    token: $token
+    nickname: $nickname
+    password: $password
+  ) {
+    otpauthUri
+    secret
+    expiresAt
+  }
+}

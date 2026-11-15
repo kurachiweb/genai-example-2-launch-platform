@@ -1,0 +1,1659 @@
+# Design Document
+
+## Overview
+
+**Purpose**: 管理者アカウント(招待・招待の完了・ログイン・セッション・パスワードのリセットと変更・メールアドレス変更・TOTPの再設定・プロフィール・一覧・削除・ロールの変更)を、APIサーバー(`apps/api`)・イベントサーバー(`apps/event`)・管理者側フロントエンドサーバー(`apps/admin`)にまたがって実装する。あわせて、後続specが使うロールと所有権のアクセス制御の部品、監査ログの記録の部品と閲覧画面、管理画面のシェル(メニューとダッシュボードの区画)と共通部品、最初の最上位管理者の招待の発行コマンドを提供する。
+
+**Users**: 運営者は`/auth/*`でログイン・招待の完了・パスワードリセットを行い、`/`・`/accounts`・`/audit-logs`・`/account`を使う。開発者は招待の発行コマンドで最初の最上位管理者を用意する。後続の管理機能のspec(ugc-moderation・help-center・inquiry-chat・legal-pages・ultras-subscription・product-launch・notifications・tournament-year・sponsorship・content-reporting)は、`AdminAuthorizer`で必要なロールを宣言し、`AuditLogRecorder`で管理操作を記録し、`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`へ画面を登録する。
+
+**Impact**: backend-platform・api-gateway・email-delivery・frontend-platform・content-processing・media-pipeline・identity-authの骨格と部品(いずれも設計・タスクが承認済み)の登録箇所へ、本specのモジュール・スキーマモジュール・ジョブ・メール種別・テンプレート・用途・画面を追記する。上流のコードへの変更は次に限り、いずれも上流specが定めた差し替えの契約か、振る舞いを変えない追加である。
+
+- identity-authの`composition/session.ts`の`AUTH_TYPES.AdminSessionVerifier`の束縛を、`InvalidSubjectSessionVerifier`から本specの`AdminSessionVerifier`へ差し替える(identity-auth 19.5の契約)。
+- identity-authが利用者側に置いた`return-path.ts`・`fragment-token.ts`(純粋な関数)を`apps/frontend-lib/utilities/auth/`へ移し、利用者側と管理者側で共用する(振る舞いは変えない)。
+- frontend-platformの`ADMIN_LAYOUT_SLOTS`の`navigation`・`headerAccount`を本specの部品へ差し替え、管理者側のトップページの仮のページを本specのダッシュボードへ置き換える(frontend-platformの契約)。
+- media-pipelineの`UPLOAD_PURPOSES`へ管理者のプロフィール画像の用途`admin-avatar`を加える(media-pipelineの契約)。
+- frontend-libの`components/ui`へshadcn/uiの`table`・`select`の部品を加える(既存の`radix-ui`の範囲で、新しいパッケージは無い)。
+
+### Goals
+
+- 4.20(FR-ADMAC-001〜022)の全機能が管理画面から動作し、E2Eテストで最初の最上位管理者の招待から各操作までを確かめられる。
+- 後続specが、ロールの宣言・監査ログの記録・メニューとカードの登録だけで管理機能を載せられる。
+- 監査ログが個人情報を含まず、管理操作と同時に確定し、3年で消える。
+- 本specが追加・変更したコードの単体テスト・Workers統合テスト・ブラウザテストがカバレッジ80%を満たす。
+
+### Non-Goals
+
+- 統計グラフ(ugc-moderation)、未対応の問い合わせ・通報の件数のカード(inquiry-chat・content-reporting)。
+- 12メニュー(ユーザー・プロダクト・コメント・評価・画像モデレーション・通報・問い合わせ・スポンサー広告・ヘルプ記事・カテゴリ・法務文書・設定)の画面と操作、その操作種別の登録と記録の呼び出し(各後続spec)。法務文書の操作は監査ログに記録しない(legal-pagesのQ1)。
+- 各カテゴリマスタのデータと業務規則(利用するspec)。
+- 管理者のセッションの一覧・個別の失効(要件に無い)、多要素認証の無効化(Q4・要件12.6)。
+- 要件定義書の改訂(roadmapのOut。必要な改訂は[research.md](research.md)に記録した)。
+
+## Boundary Commitments
+
+### This Spec Owns
+
+- 管理者のデータ: `admins`・`admin_sessions`・`admin_auth_tokens`・`admin_login_challenges`・`admin_totp_credentials`・`admin_recovery_codes`・`admin_audit_logs`・`admin_audit_log_targets`の8テーブル(`apps/db/schema/admin/`)。
+- 管理者の業務処理(apiの`domain/admin`・`application/admin`・`infrastructure/admin`)と、GraphQLのスキーマモジュール`admin`(管理者側の許可リストにだけ載る)。
+- アクセス制御の部品`AdminAuthorizer`と、リゾルバ向けの補助`requireAdmin`(`presentation/graphql/admin-guard.ts`)。
+- 管理者の照会口`AdminDirectory`(契約と識別子`ADMIN_PLATFORM_TYPES`は`apps/backend-lib/core/admin/`、D1の実装`D1AdminDirectory`とapi・eventの両方で束縛する`ADMIN_PLATFORM_MODULE`は`apps/backend-lib/workers/admin/`)。
+- 監査ログの記録の部品`AuditLogRecorder`・照会`AuditLogReader`、操作種別の型と登録箇所(`apps/common-lib/admin/audit-actions/`)、ユーザーのメールアドレス検索の操作種別`user.email-search`。
+- ロールの型と順序(`apps/common-lib/admin/admin-roles.ts`)、入力規則(`admin-input-rules.ts`)。
+- メール種別6つ(`core/email/kinds/admin.ts`)とテンプレート(`apps/event/src/infrastructure/email/templates/admin/`)。
+- 定期実行のジョブ2つ(業務時刻4:21、`order` 200・210)。
+- 招待の発行コマンド(`apps/api/scripts/admin/`)。
+- 管理画面: `/auth/*`の5画面、ログイン必須のレイアウト`_authenticated`、`/`(ダッシュボード)・`/accounts`・`/audit-logs`・`/account`、ヘッダーとメニューの区画の部品、登録箇所`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`。
+- 管理画面の共通部品(`apps/frontend-lib/components/admin/`)と、shadcn/uiの`table`・`select`(`components/ui/`)。
+- 技術ドキュメント: `security/007`・`backend/008`・`frontend/009`・`operations/003`。サービス仕様のページ配置・文言規則・データ保持期間・日次タイムラインの追記。
+
+### Out of Boundary
+
+- 主体に依存しない認証部品(パスワード・秘密・セッションの有効期限の判定・ログイン試行の記録・TOTP・秘密鍵の暗号化・リカバリコード)と、認証の画面部品(`TotpQrCode`・`RecoveryCodeList`・`PasswordInput`)の実装(identity-auth)。本specは管理者用の値で使う。
+- 利用者のアカウント・運営者による退会の操作口(identity-auth)と、その管理画面(ugc-moderation)。
+- 12メニューの画面・操作・操作種別・記録の呼び出し・ダッシュボードのカード(各後続spec)。本specは登録口と部品だけを持つ。法務文書の操作は監査ログに記録しない(legal-pagesのQ1)。
+- アップロードの受け付け・画像の保存と配信と自動判定・ファイルの削除(media-pipeline)。本specは用途の登録と紐付け・削除の呼び出しだけを行う。
+- bot判定の検証・厳密なレート制限カウンタ・定期実行の仕組み(backend-platform)、セッションの受け渡しの契約(api-gateway)、Cookieの属性と発行・CSP・bot判定のウィジェット(frontend-platform)、メールの描画と送信(email-delivery)、書記素の数え方(content-processing)。
+- staging・prodでの招待の発行コマンドの実行、シークレットと資源の用意(開発者の手作業・infra-delivery・launch-readiness)。AIエージェントは実行しない。コマンドは子のプロセスとしてWranglerを起動し、Claude設定のdenyの`wrangler d1 * --remote`の規則に一致しないため、`--target staging`・`--target prod`の形は開発者がdenyへ加える(`docs/GUIDES/tech/operations/001-deployment.md`の初回の準備)。
+
+### Allowed Dependencies
+
+- backend-platform: `apps/db`の共通カラム(`ulidPrimaryKey`・`timestamps`・`textNoCase`)と`Database`、`core`の`KeyedHasher`・`hashPurpose`・`hashRateLimitKey`・`AppError`・`Clock`・`IdGenerator`・`BusinessTime`・`ScheduledJobDefinition`・`getAppLogger`・`PLATFORM_TYPES`、`workers`の`RateLimitCounterClient`・`BotVerifier`・`PlatformEnv`。形を変えない。application層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`RateLimitCounterClient`は、infrastructure層の`CounterAdminMailSendLimits`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。bot判定はリゾルバが`GraphQLContext.assertHuman`で行い、application層は`BotVerifier`を受け取らない。
+- api-gateway: `Principal`・`AuthenticatedPrincipal`・`SessionVerification`・`GraphQLSchemaModule`・`defineSchemaModule`・`GraphQLContext`・`withValidatedArgs`・`SessionAccess`・`SessionView`(identity-authが加えたapplication層の型)。形を変えない。
+- identity-auth: `AUTH_TYPES`と`auth`の全ポート・`PasswordPolicy`・`SecretIssuer`・`RecoveryCodeIssuer`・`createLoginThrottleKeys`・`LoginThrottleScope`(`'admin'`)・`SessionPolicy`と`newSessionTimes`・`evaluateSession`・`cookieMaxAgeSeconds`・`SecondFactorInput`・`normalizeTotpCode`・`SubjectSessionVerifierPort`、`frontend-lib/components/auth`の3部品。加えて、本specが`identity`から`auth`へ移す主体に依存しない認証のエラーと規則(`AUTH_ERRORS`・`authError`・`loginThrottledError`・本人確認とパスワードの拒否の文言・`createPasswordRejectedError`・`MAIL_SEND_POLICY`、「上流への影響」とAdminErrorsを参照)。`identity`の各層(利用者の業務処理)には依存しない。束縛の差し替えは`AUTH_TYPES.AdminSessionVerifier`の1行だけ。
+- email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`・`toMatchingKey`。形を変えない。
+- frontend-platform: `AdminLayoutSlots`・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`errorMessageOf`・`ADMIN_PROFILE`(`contactAvailable`は偽)・`useAppForm`・`AppForm`・`applyServerFieldErrors`・`FormField`・`SubmitButton`・`useTurnstileToken`・`TurnstileWidget`・状態表示とトーストの部品・shadcn/uiの部品・`DateTime`・`runAxe`・`utilities/validation/zod.ts`の`z`。`ADMIN_SECURITY_POLICY`は変えない(bot判定の許可先は`BASE_SECURITY_POLICY_SOURCES`が両アプリに入れる)。
+  - GraphQLの操作は`apps/admin/src/graphql/operations/**/*.graphql`に1ファイル1操作で書き、操作名を`Admin`で始める。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`gql.ts`・`index.ts`と`graphql()`を使わない(frontend-platformの「操作の追加手順」)。
+  - フォームは`useAppForm<TInput, TOutput>(schema, { defaultValues })`(`defaultValues`は全欄)と、必須の`onSubmitError`・任意の`serverFieldPrefix`(`input`を取るmutationは`"input"`)を受ける`AppForm`で作る。スキーマの`zod`の値は`utilities/validation/zod.ts`から読み、`zod`を直接読み込むのは型だけにする。
+  - 失敗の表示: 管理者側には問い合わせの画面が無いため、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない。`GraphQLClientError`でない例外に代えて画面に出す文言(`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で示す文言、トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、例外の`message`を直接出さない。
+  - bot判定の`TurnstileWidget`は非表示のウィジェットで場所を取らないため、画面に判定の枠の表示と場所を設けない。失敗の文言(`FormMessage`)だけを出す。
+- content-processing: `apps/common-lib`の`countGraphemes`と共有ディレクトリの配置。
+- media-pipeline: `defineUploadPurpose`・`UPLOAD_PURPOSES`・`MediaFiles`(`claim`・`eraseNow`・`findMany`)・`MEDIA_TYPES`・`toMediaImage`・GraphQLの`MediaImage`・`ImageUploadField`・`MediaPicture`・`MediaPlaceholder`。形を変えない。
+- npmパッケージ: 上流が導入したパッケージだけを使い、新規は無い(Q8)。版はTechnology Stackの表のとおりで、`otpauth`だけを本specのタスク1.7で9.5.2から公開中の最新の9.6.0へ上げる。
+
+### Revalidation Triggers
+
+- `AdminRole`の値と順序・`hasRole`、`AdminAuthorizer`・`requireAdmin`の形とエラーコード(管理機能を持つ全後続spec)。
+- メニューごとの必要なロールの一覧(ページ配置)と、Q3の方針(全後続spec)。
+- `AuditActionDefinition`・`AuditTargetKind`の値・`AuditLogRecorder`・`PreparedAuditEntry`・`buildAuditLogStatements`の形(操作と同じ一括の書き込みに含める規約)・`AuditLogReader.latestFor`・`latestForMany`の形と、テストの共有の偽物`createFakeAuditLogReader`の既定の振る舞いと差し替えの形(管理操作を持つ全後続spec。`latestFor`・`latestForMany`はcontent-reportingの対応期間の表示、仮7)。
+- `user.email-search`の記録の形(ugc-moderation)。
+- `ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`の形と`order`、管理画面のURL(仮6)(全後続spec。カードはugc-moderation・inquiry-chat・content-reporting)。
+- `AdminDirectory`の形・削除済みの扱い・置き場所(契約と識別子は`backend-lib/core/admin`、実装と束縛は`backend-lib/workers/admin`)とapi・eventでの束縛(help-center、inquiry-chat(返信した管理者の表示とデータエクスポートの`adminNickname`)、legal-pages(版の公開者と下書きの保存者)、ultras-subscription(機能フラグの変更者))。
+- 共通部品(`apps/frontend-lib/components/admin/`)のprops(全後続spec、カテゴリマスタはinquiry-chat・help-center・product-launch・content-reporting)。
+- `admin-avatar`の用途の上限(512,000バイト、仮2)と、product-launchのロゴの上限の解釈(product-launch)。この値はプロジェクト全体のバイトの単位の規則(1kB=1,024バイト、文言規則)に従う。
+- E2Eの補助`e2e/support/admin-bootstrap.ts`・`e2e/support/local-d1.ts`の関数の形(管理画面のE2Eを持つ全後続spec(legal-pages・inquiry-chat・ultras-subscriptionなど))。
+- `ADMIN_SITE_ORIGIN`の名前と3環境の値(infra-delivery)。
+- 定期実行のジョブの名前と`order`(200・210)(4:21にジョブを登録する全spec、日次タイムラインの表)。
+- identity-authの`auth`のポート・`LoginThrottleScope`・Durable Objectの名前の規則・`SubjectSessionVerifierPort`を変えたら、本specを確かめ直す。
+- `auth`の`AUTH_ERRORS`の文言・`createPasswordRejectedError`・`MAIL_SEND_POLICY`の値(identity-authと本spec。片方の主体の都合で変えず、両方の要件を確かめてから変える)。
+
+### 上流への影響
+
+| 上流spec                         | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | 影響と再検証                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| identity-auth                    | `composition/session.ts`の`AUTH_TYPES.AdminSessionVerifier`を`ADMIN_TYPES.AdminSessionVerifier`への転送に差し替える                                                                                                                                                                                                                                                                                                                                                                                                                                                 | identity-authが定めた差し替えの契約どおり                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| identity-auth                    | `apps/client/src/components/auth/return-path.ts`・`fragment-token.ts`(と単体テスト)を`apps/frontend-lib/utilities/auth/`へ移し、利用者側の読み込みを直す                                                                                                                                                                                                                                                                                                                                                                                                            | 関数の形と振る舞いは変えない。利用者側の画面のテストが通ることで確かめる。identity-authのファイルの置き場所の変更のため再検証を求める                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| identity-auth                    | `apps/client/src/components/auth/`の`use-fragment-token.ts`(`useFragmentToken`)・`auth-page-layout.tsx`(`AuthPageLayout`)・`result-notice.tsx`(`ResultNotice`)・`inline-link-class.ts`(`INLINE_LINK_CLASS_NAME`)・`invalid-link.ts`(`isInvalidLinkError`)・`link-confirmation.tsx`(`LinkConfirmation`)を、管理者側の認証の画面も使うため`apps/frontend-lib`の`components/auth/`・`components/feedback/`・`components/navigation/`・`utilities/auth/`へ移し、利用者側の読み込み先を直す                                                                              | 部品の形と振る舞いは変えない(`isInvalidLinkError`のトークンの欄は引数の`token`と入力の型の`input.token`の両方を見る。`LinkConfirmation`はアプリのプロファイルと文言を読まず、無効なリンクの文言`invalidLinkMessage`と確定の失敗の文言を選ぶ`failureMessageOf`をpropsで受け取る)。共通部品の側にブラウザテスト・単体テスト・ストーリーを加え、利用者側の画面のテストが変更なしで通ることで確かめる。`docs/GUIDES/tech/frontend/005-shared-components.md`の部品の一覧と使い方、identity-authのdesign.mdのファイル構成を直す。identity-authのファイルの置き場所の変更のため再検証を求める |
+| identity-auth                    | 主体に依存しない認証のエラーと規則を`application/identity`・`infrastructure/identity`から`application/auth`へ移す(AdminErrorsを参照)。`IDENTITY_ERRORS`は`AUTH_ERRORS`を展開して利用者に固有のコードだけを足し、`passwordRejectedError`は`createPasswordRejectedError`に利用者用の文言を渡して作り、`CounterMailSendLimits`は`MAIL_SEND_POLICY`を読む                                                                                                                                                                                                               | エラーコード・文言・送信回数の上限は変えない。利用者側の単体テスト・Workers統合テストが変更なしで通ることで確かめる。`admin`は`identity`を読み込めないため(層の規則)、管理者と利用者の規則を同じ定数でそろえる(Q7)には`auth`に置くしかない。`docs/GUIDES/tech/security/006-authentication.md`の部品の表と、identity-authのdesign.mdのファイル構成を直す。identity-authのファイルの置き場所の変更のため再検証を求める                                                                                                                                                                   |
+| identity-auth                    | `apps/api`の`otpauth`を9.5.2から9.6.0へ上げる(依存の`@noble/hashes`は2.4.0のまま)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `docs/GUIDES/tech/coding/002-dependency-versions.md`の`otpauth`の確認事項(`otpauth://`のURIの項目の並びと照合の時間窓の差分の返し方)を確かめ直す。利用者のTOTPの有効化・ログイン・再設定のテストとE2Eが通ることで確かめる。002の主要パッケージの一覧と`docs/onboardings/tech-stack.md`の版を直す                                                                                                                                                                                                                                                                                       |
+| frontend-platform                | `ADMIN_LAYOUT_SLOTS`の差し替え、`apps/admin/src/routes/index.tsx`の仮のページの置き換え、`__root.tsx`の`beforeLoad`での`adminViewer`の取得                                                                                                                                                                                                                                                                                                                                                                                                                          | 契約どおり。`AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ちフッターを持たないため、管理者側のナビゲーションのランドマークは`navigation`の区画の`AdminNavigation`が描く名前付きの`nav`で満たす(frontend-platformの要件10.8)。管理者側でbot判定を使うため、`BASE_SECURITY_POLICY_SOURCES`のTurnstileの許可先が管理者側のCSPにも入り、`TURNSTILE_SITE_KEY`が管理者側の変数にあることを再検証の対象にする(Q7)。無ければ`ADMIN_SECURITY_POLICY`へ加える                                                                                                                         |
+| frontend-platform                | `components/ui`に`table`・`select`の部品(部分ごとのファイル)と、表の横方向のスクロールの領域の補助`ui/table/use-scroll-region.ts`を加え、`config/storybook-catalog.unit.test.ts`の部品のカタログに加える                                                                                                                                                                                                                                                                                                                                                            | 既存の`radix-ui` 1.8.1(公開中の最新)の範囲。frontend-platformの部品の一覧に加わる                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| media-pipeline                   | `apps/api/src/composition/upload-purposes.ts`の`UPLOAD_PURPOSES`に`admin-avatar`を加える                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | 契約どおり。管理者の中継の経路はmedia-pipelineが追加済み                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| identity-auth・frontend-platform | `apps/client/src/components/navigation/path-link.tsx`(`PathLink`)を、管理者側のメニューとリンクも使うため`apps/frontend-lib/components/navigation/path-link.tsx`へ移し、現在のページの判定を変える省略可の`activeOptions`を加える。利用者側の呼び出し元(`components/auth/register-form.tsx`・`components/layout/launch-action.tsx`・`user-menu.tsx`・`components/settings/settings-navigation.tsx`・`suspended-account-notice.tsx`)の読み込み先を`lib/`の下へ直す                                                                                                   | 省略時の振る舞い(同じパスとその下のパスで`aria-current="page"`を付ける)は変えない。共通部品の側にブラウザテストとストーリーを加え、利用者側の画面のテストが変更なしで通ることで確かめる。`docs/GUIDES/tech/frontend/005-shared-components.md`の部品の一覧と使い方を直す。identity-authのファイルの置き場所の変更と、frontend-platformの共通部品の追加のため、両方に再検証を求める                                                                                                                                                                                                      |
+| identity-auth・email-delivery    | `apps/backend-lib/core/email/kinds/identity.ts`のリンクのURLの検査(https:か、ホスト名がlocalhostのhttp:)を、管理者のメール種別(`kinds/admin.ts`)と共有するため`kinds/link-url.ts`(`linkUrlSchema`)へ移し、`identity.ts`はそれを読み込む。`kinds/index.ts`の集約に`ADMIN_EMAIL_KINDS`を加える                                                                                                                                                                                                                                                                        | 検査の規則と文言は変えない。利用者のメール種別と集約点の単体テストが通ることで確かめる。identity-authのメール種別の定義の変更と、email-deliveryの種別の集約点への追加のため、両方に再検証を求める                                                                                                                                                                                                                                                                                                                                                                                      |
+| identity-auth                    | `apps/api/src/presentation/graphql/modules/identity/errors.ts`の`withInputPath`を、管理者のスキーマモジュールと共有するため`presentation/graphql/field-paths.ts`へ移し、経路を足さない失敗に`undefined`を返せる形(`FieldPathPrefix`)に広げる。`modules/identity/errors.ts`・`account-resolvers.ts`・`totp-resolvers.ts`の読み込み先を直す                                                                                                                                                                                                                           | 利用者側の詳細の欄の経路の付け方は変えない。利用者側のWorkers統合テストが変更なしで通ることで確かめる。identity-authのファイルの置き場所の変更のため再検証を求める                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| identity-auth                    | 利用者側のE2Eの補助のうち、管理者側のE2Eも使う`waitForBotToken`・`REACTION_TIMEOUT_MS`・`RETRY_TIMEOUT_MS`・テストのメールのドメインを、`e2e/client/auth/account-steps.ts`から`e2e/support/bot-verification.ts`・`hydration-retry.ts`・`test-email.ts`へ移す(`account-steps.ts`は`waitForBotToken`を再エクスポートする)。`e2e/client/auth/login-and-sessions.e2e.test.ts`の読み込み先を直す。`e2e/support/totp.ts`の`createTotpCodeSource`に、使用済みの時間窓から始める省略可の引数と`lastUsedStep`を加え、現在の時間窓の認証コードを返す`currentTotpCode`を加える | 値と既定の振る舞いは変えない。`e2e/support/totp.unit.test.ts`に加えた単体テストと、利用者側のE2Eの読み込み(`bun run test:e2e --list`)で確かめる(E2Eの実行は開発者の手作業)。identity-authのE2Eの補助の置き場所の変更のため再検証を求める                                                                                                                                                                                                                                                                                                                                               |
+| dev-tooling                      | `e2e/support/playwright-config.ts`に、対象ごとの並列数の上限(管理者側だけ1)を加える                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | 管理者側のE2Eは他の管理者のロールを一時的に変えるため並行させない。他の対象の並列数は変えない。`playwright-config.unit.test.ts`で確かめる                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| infra-delivery                   | 「ホスト名から導かれる変数の値」の表にある、APIサーバーの`ADMIN_SITE_ORIGIN`(本specの所有)の3環境の値の行と、名前と値の一致を確かめる                                                                                                                                                                                                                                                                                                                                                                                                                               | 本specはWrangler設定と`docs/onboardings/project-values.md`に書き、infra-deliveryの表の行(spec横断レビューで追加済み)と名前と値が一致することを確かめる                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| content-processing               | 日次タイムラインの表に本specの2行を足す                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 表が無ければ作る(identity-authと同じ扱い)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+
+## Architecture
+
+### Existing Architecture Analysis
+
+- 上流の7specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする(roadmapの順でidentity-authまでが先に実装される)。
+- apiの層は`domain`・`application`・`infrastructure`・`presentation`・`composition`で、依存の方向は静的解析で強制される。application層は`presentation`の型を読み込まず、セッションは`SessionView`で受け取る。
+- `SessionAccess`は呼び出し元が`admin`なら`subjectKind: 'admin'`で`SessionVerifier`を呼び、identity-authの`SubjectSessionVerifier`が`AUTH_TYPES.AdminSessionVerifier`へ振り分ける。
+- 管理者側のレイアウトは`AdminLayoutSlots`(`navigation`・`headerAccount`)で区画を差し替える。Cookieは`__Host-ls_admin_session`。
+
+### Architecture Pattern & Boundary Map
+
+```mermaid
+graph TB
+    subgraph Admin[admin worker]
+        AuthPages[auth pages]
+        Shell[shell nav and dashboard]
+        Pages[admins audit logs account]
+    end
+    subgraph FrontendLib[frontend lib]
+        AdminParts[admin common parts]
+        AuthParts[auth parts from identity]
+    end
+    subgraph Api[api worker]
+        AdminModule[admin graphql module]
+        AdminApp[admin use cases]
+        Authorizer[admin authorizer]
+        Audit[audit log recorder and reader]
+        Jobs[daily jobs]
+        CLI[super admin invitation script]
+    end
+    AuthPrimitives[identity auth primitives]
+    Media[media pipeline]
+    Email[email delivery]
+    Downstream[downstream admin specs]
+    AuthPages --> AdminModule
+    Pages --> AdminModule
+    Shell --> AdminParts
+    AdminModule --> AdminApp
+    AdminApp --> AuthPrimitives
+    AdminApp --> Audit
+    AdminApp --> Media
+    AdminApp --> Email
+    Downstream --> Authorizer
+    Downstream --> Audit
+    Downstream --> Shell
+    CLI --> Schema[admin tables]
+    AdminApp --> Schema
+    Audit --> Schema
+```
+
+**Architecture Integration**:
+
+- 選んだパターン: backend-platformの4層と合成ルートに従い、apiに`admin`モジュールを置く。認証の規則はidentity-authの`auth`の部品を管理者用の値で使い、利用者の`identity`には依存しない。
+- 境界: 本specは管理者の状態・認可・監査ログを所有し、他ドメインのデータを変えない。後続specとの継ぎ目は`AdminAuthorizer`・`AuditLogRecorder`・`AdminDirectory`・2つの登録箇所だけである。
+- 新規コンポーネントの理由: research.mdの「Design Decisions」を参照。
+
+### Dependency Direction
+
+- 共有コード: `apps/db/schema/admin` → `apps/common-lib/admin`(`countGraphemes`だけを読み込む) → アプリの`src`。`apps/backend-lib/core/admin`(契約と識別子)は`workers`と`apps/db`を読み込まない。`apps/backend-lib/workers/admin`は`core/admin`・`apps/db/schema/admin`の`admins`・`Database`だけを読み込み、api・eventの`infrastructure`・`composition`から読み込まれる。api・eventの`application`は`core/admin`だけを読み込む(core → workers → アプリの`src`)。
+- apiの`src`内: `domain/auth`(identity-auth) ← `domain/admin` ← `application/auth`(identity-auth) ← `application/admin` ← `infrastructure/admin`・`presentation/graphql/modules/admin`・`presentation/graphql/admin-guard.ts` ← `composition`。`admin`の各層は`identity`の各層を読み込まない。後続specのapplication層は`application/admin`の`AdminAuthorizer`・`AuditLogRecorder`と`backend-lib/core/admin`の`AdminDirectory`・`ADMIN_PLATFORM_TYPES`を、infrastructure層は`infrastructure/admin/audit-log-statements.ts`を、presentation層は`admin-guard.ts`を読み込む。違反はapiの`eslint.config.ts`の`no-restricted-imports`で検出する。
+- adminの`src`内: frontend-platformの規則(`composition` ← `components` ← `routes`)に従う。`frontend-lib/components/admin`はGraphQLとアプリの型に依存しない。
+
+### Technology Stack
+
+| Layer    | Choice / Version                                                                       | Role in Feature                                | Notes                                                                                                                                                                                                                                      |
+| -------- | -------------------------------------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 認証部品 | identity-authの`auth`(Web Crypto・otpauth 9.6.0・Durable Object`LoginAttemptThrottle`) | パスワード・秘密・セッション・試行の制限・TOTP | 既存。スコープ`admin`・HMACの用途`admin-*`。`otpauth`は導入済みの9.5.2から公開中の最新の9.6.0へ本specのタスク1.7で上げる                                                                                                                   |
+| 状態     | Cloudflare D1(drizzle-orm 1.0.0-rc.5)                                                  | 管理者・セッション・トークン・TOTP・監査ログ   | 新しいテーブル8つ。drizzle-orm・drizzle-kitは公開中の最新のRC                                                                                                                                                                              |
+| 定期     | Cron Triggers(api)                                                                     | 期限切れの削除・監査ログの保持期間             | backend-platformの基盤                                                                                                                                                                                                                     |
+| メール   | email-deliveryの`EmailSender`・React Email                                             | 6種のトランザクションメール                    | 既存                                                                                                                                                                                                                                       |
+| 画面     | TanStack Start・React・react-hook-form・zod・shadcn/ui・`@marsidev/react-turnstile`    | 認証画面・シェル・一覧・設定                   | frontend-platformの版(`radix-ui` 1.8.1は公開中の最新)。`table`・`select`を追加。`zod`の値は`utilities/validation/zod.ts`から読む                                                                                                           |
+| 画像     | media-pipelineの用途と部品                                                             | プロフィール画像のアップロードと表示           | 既存                                                                                                                                                                                                                                       |
+| コマンド | Bun・Wrangler(`wrangler d1 execute`)                                                   | 最上位管理者の招待の発行                       | 既存。新しいパッケージは無い                                                                                                                                                                                                               |
+| テスト   | bun test・vitest 4.1.12(Workers・Browser)・Playwright 1.64.1・Mailpit                  | 単体・Workers統合・ブラウザ・E2E               | 上流の版。Playwrightは公開中の最新。vitestは5系が公開中の最新だが、`@cloudflare/vitest-pool-workers`の最新の0.23.0が`vitest` `^4.1.0`だけに対応するため、`docs/GUIDES/tech/coding/002-dependency-versions.md`の規則により4系の最新に留める |
+
+## File Structure Plan
+
+### Directory Structure
+
+```
+apps/
+├── db/schema/admin/                                    # 管理者のテーブル定義(各ファイルに同名の*.unit.test.ts)
+│   ├── admins.ts · admin-sessions.ts · admin-auth-tokens.ts · admin-login-challenges.ts
+│   ├── admin-totp-credentials.ts · admin-recovery-codes.ts
+│   ├── admin-audit-logs.ts · admin-audit-log-targets.ts
+│   └── index.ts                                        # adminのテーブルの集約(schema/index.tsから再エクスポート)
+├── common-lib/admin/                                   # 4アプリ共通の純粋な定義(各ファイルに同名の*.unit.test.ts)
+│   ├── admin-roles.ts                                  # AdminRole・ADMIN_ROLES(昇順)・hasRole・ADMIN_ROLE_LABELS
+│   ├── admin-input-rules.ts                            # ニックネーム・肩書き・理由・カテゴリ名・監査ログの検索の条件とカーソルの上限と判定
+│   ├── admin-avatar-upload.ts                          # プロフィール画像のアップロードの用途の名前と上限のバイト数(APIサーバーの登録と画面の選択の検査が読む)
+│   ├── audit-action.ts                                 # AuditTargetKind・AuditActionDefinition・defineAuditAction・createAuditActionCatalog
+│   └── audit-actions/
+│       ├── admin-foundation.ts                         # admin-account.invite・delete・role-change、user.email-search
+│       └── index.ts                                    # AUDIT_ACTIONS(後続specが自分のファイルを足して集約する)
+├── backend-lib/core/email/kinds/admin.ts               # 管理者の6つのメール種別
+├── backend-lib/core/email/kinds/link-url.ts            # linkUrlSchema(リンクのURLの検査。identity-authのidentity.tsから移し、利用者と管理者のメール種別で共有)
+├── backend-lib/core/admin/                             # api・eventと後続specのapplication層が受け取る管理者の照会の契約と識別子
+│   ├── ports.ts                                        # AdminProfileView・AdminDirectory(後続specも使う)
+│   └── identifiers.ts                                  # ADMIN_PLATFORM_TYPES(Symbol.for('admin.<名前>')の凍結したオブジェクト、同名の*.unit.test.ts)
+├── backend-lib/workers/admin/                          # 照会の実装と束縛(apiのWorkers統合テスト、同名の*.worker.test.ts)
+│   ├── d1-admin-directory.ts                           # D1AdminDirectory
+│   └── admin-platform-module.ts                        # ADMIN_PLATFORM_MODULE(両アプリ共通の束縛)
+├── api/
+│   ├── scripts/admin/
+│   │   ├── issue-super-admin-invitation.ts             # 入口: 環境変数と実物の部品を組み立ててsuper-admin-invitation.tsを呼ぶだけ
+│   │   ├── super-admin-invitation.ts                   # 処理: 引数の解析→照会→SQLの生成→一時ファイルでのwrangler d1 execute→リンクの表示(外部を差し替えて単体テスト併置)
+│   │   ├── invitation-sql.ts                           # 純粋: 照会・書き込みのSQLとリテラルのエスケープ(単体テスト併置)
+│   │   └── invitation-targets.ts                       # 純粋: 環境ごとのwranglerの引数と管理者側のオリジン(単体テスト併置)
+│   ├── test/support/admin-graphql-harness.ts · admin-graphql-operations.ts   # 管理者のスキーマモジュールのWorkers統合テストの補助(テストのコンテナ・セッションの発行・招待の準備)と操作の文書
+│   └── src/
+│       ├── domain/admin/                               # 純粋な規則(Bunの単体テスト)
+│       │   ├── admin-account.ts                        # 状態・招待期限切れの判定・削除とロール変更とプロフィール編集の可否
+│       │   ├── admin-session-policy.ts                 # ADMIN_SESSION_POLICY(3600・43200・300)
+│       │   ├── admin-auth-token-purpose.ts             # 用途と有効期限・HMACの用途
+│       │   └── audit-entry.ts                          # 記録の入力の検証(操作種別・理由・対象の形式・詳細)
+│       ├── application/auth/                           # identity-authの既存の層。本specが主体に依存しない部分を移す(上流への影響)
+│       │   ├── auth-errors.ts                          # AUTH_ERRORS・authError・loginThrottledError・本人確認とパスワードの拒否の文言(同名の*.unit.test.ts)
+│       │   ├── password-rejection.ts                   # PasswordRejection・createPasswordRejectedError(同名の*.unit.test.ts)
+│       │   ├── mail-send-policy.ts                     # MAIL_SEND_POLICY(時間窓・宛先とIPアドレスの上限)
+│       │   ├── login-throttle-check.ts                 # checkLoginThrottle(主体のスコープを受け取るログイン試行のロックの確認)
+│       │   ├── second-factor-check.ts                  # checkSubjectSecondFactor・isTotpEnabled・SecondFactorScheme(主体ごとのハッシュの用途と秘密鍵の文脈を受け取る第2要素の照合)
+│       │   └── re-authentication.ts                    # ReAuthenticationInput・本人確認の誤りのエラーの組み立て(利用者と管理者で共有)
+│       ├── application/admin/                          # ポートとユースケース(Bunの単体テスト)
+│       │   ├── admin-types.ts                          # ADMIN_TYPES
+│       │   ├── admin-errors.ts                         # ADMIN_ERRORS(AUTH_ERRORSと管理者に固有のコード)・adminError・adminPasswordRejectedError
+│       │   ├── ports.ts                                # 各ストア・メール・設定値・AdminMailSendLimits
+│       │   ├── admin-session-issuer.ts                 # 発行・操作端末への再発行
+│       │   ├── admin-session-verifier.ts               # SubjectSessionVerifierPortの管理者の実装
+│       │   ├── admin-authorizer.ts                     # AdminAuthorizer(後続specも使う)
+│       │   ├── admin-login.ts                          # パスワードと第2要素のログイン、ログアウト
+│       │   ├── admin-login-throttle-check.ts           # ログイン試行のロックの確認(スコープadmin、ログインと本人確認で共有)
+│       │   ├── admin-second-factor-check.ts            # 第2要素の照合(ログインと本人確認で共有)・秘密鍵の文脈admin:<ID>(adminTotpSecretContext)
+│       │   ├── admin-re-authenticator.ts               # 本人確認
+│       │   ├── admin-invitation.ts                     # 招待・再送・完了の2段階
+│       │   ├── admin-password-reset.ts · admin-email-change.ts · admin-password-change.ts
+│       │   ├── admin-auth-token-issuance.ts            # リセット・メールアドレス変更のトークンの発行(prepareAdminAuthToken、用途ごとの有効期限とハッシュの用途)
+│       │   ├── admin-operator-record.ts                # 本人の手続きの前に操作者の有効な管理者の行を読み直す(requireOperatorRecord、本人確認が要る手続きで共有)
+│       │   ├── admin-totp-management.ts                # 再設定の2段階・リカバリコードの再発行
+│       │   ├── admin-account-management.ts             # 一覧・削除・ロールの変更
+│       │   ├── admin-profile.ts                        # プロフィールの更新
+│       │   ├── audit-log-recorder.ts                   # AuditLogRecorder(検証済みの記録の準備と単独の記録。後続specも使う)
+│       │   ├── audit-log-reader.ts                     # AuditLogReader
+│       │   ├── testing/fake-audit-log-reader.ts        # createFakeAuditLogReader(後続specの単体テストが共有する偽物、仮7。同名の*.unit.test.ts)
+│       │   ├── testing/admin-account-management-fakes.ts · admin-credential-change-fakes.ts · admin-invitation-fakes.ts · admin-login-fakes.ts · admin-totp-management-fakes.ts   # 本specのユースケースの単体テストの偽物
+│       │   └── jobs/
+│       │       ├── admin-credential-cleanup-job.ts     # 期限切れのセッション・トークン・待ち・保留(order 200)
+│       │       └── audit-log-retention-job.ts          # 3年を過ぎた監査ログ(order 210)
+│       ├── infrastructure/auth/mail-send-counters.ts   # consumeMailSendCounters(規則の名前の接頭辞を主体ごとに受け取る送信回数の数え方。利用者はauth-mail、管理者はadmin-auth-mail)
+│       ├── infrastructure/admin/                       # Workers統合テスト
+│       │   ├── d1-admin-account-store.ts · d1-admin-session-store.ts · d1-admin-auth-token-store.ts
+│       │   ├── d1-admin-login-challenge-store.ts · d1-admin-totp-credential-store.ts · d1-admin-recovery-code-store.ts
+│       │   ├── admin-totp-conditional-writes.ts        # TOTPの資格情報の状態を条件にしたリカバリコードの置き換えと全セッションの削除の文(TOTPとリカバリコードのストアが共有)
+│       │   ├── audit-log-statements.ts                 # buildAuditLogStatements(後続specのストアも一括の書き込みに含める)
+│       │   ├── d1-audit-log-store.ts                   # 単独の記録・検索・最新の照会(1件と複数)・保持期間の削除
+│       │   ├── testing/admin-store-fixtures.ts         # Workers統合テストの共有の補助(管理者の行の追加・8テーブルの消去・予測できるIDでの準備の値)
+│       │   ├── counter-admin-mail-send-limits.ts       # AdminMailSendLimitsの実装(厳密カウンタによる送信回数の制限)
+│       │   └── email-admin-mailer.ts                   # 6種のメールの送信要求とリンクのURL
+│       ├── presentation/graphql/
+│       │   ├── admin-guard.ts                          # requireAdmin(後続specのリゾルバも使う)・ロールの不足の拒否のログ
+│       │   ├── field-paths.ts                          # ユースケースの詳細の欄に引数の経路を足すwithInputPath(identityと共有)
+│       │   └── modules/admin/                          # スキーマモジュール(Workers統合テスト)
+│       │       ├── type-defs.ts · inputs.ts · resolver-support.ts
+│       │       ├── login-resolvers.ts                  # adminViewer・ログイン・第2要素・ログアウト
+│       │       ├── credential-resolvers.ts             # リセット・招待の完了・メール変更の確定
+│       │       ├── account-resolvers.ts                # 一覧・招待・再送・削除・ロール・プロフィール
+│       │       ├── self-resolvers.ts                   # メール変更の要求・パスワード変更・TOTP・リカバリコード
+│       │       ├── audit-log-resolvers.ts              # 監査ログの検索
+│       │       └── index.ts                            # adminSchemaModule
+│       └── composition/
+│           └── admin-module.ts                         # ADMIN_TYPESの束縛とジョブのハンドラー(AppModule)
+├── event/src/infrastructure/email/templates/admin/     # 6種のテンプレート(本文の*-email-body.tsxと定義の*-template.ts)と、本文が共有する変更日時・リンクの有効期限・心当たりの無い変更の案内(admin-changed-at-text.tsx・admin-link-expiry-text.tsx・admin-unrecognized-change-notice.tsx)
+├── frontend-lib/
+│   ├── utilities/auth/return-path.ts · fragment-token.ts   # identity-authから移す(単体テスト併置)
+│   ├── utilities/auth/invalid-link.ts                  # 無効なリンクの失敗の判定(identity-authから移す。単体テスト併置)
+│   ├── utilities/messages/admin-console-messages.ts    # 管理画面の共通部品の文言(ページ送りなど、単体テスト併置)
+│   └── components/
+│       ├── ui/table/*.tsx · ui/select/*.tsx            # shadcn/uiの部品(部分ごとのファイル)
+│       ├── ui/table/use-scroll-region.ts               # 幅を超えている間だけ表の横スクロールの領域をTabで止まる名前付きの領域にする
+│       ├── auth/auth-page-layout.tsx · use-fragment-token.ts · link-confirmation.tsx   # 認証の画面の題名と枠・フラグメントのトークンの読み取りと消去・メールのリンクの確定のボタン(identity-authから移す)
+│       ├── feedback/result-notice.tsx                  # フォームに代えて描く結果の文言(identity-authから移す)
+│       ├── navigation/inline-link-class.ts             # 文中のリンクの装飾(identity-authから移す)
+│       ├── navigation/path-link.tsx                    # PathLink(型で指定できない経路への遷移、省略可のactiveOptions。identity-authの利用者側から移す)
+│       └── admin/                                      # 管理画面の共通部品(*.browser.test.tsx・*.stories.tsxを併置)
+│           ├── reason-schema.ts                        # REASON_SCHEMAS(理由の要否ごとの入力の規則、単体テスト併置)
+│           ├── admin-page-header.tsx                   # 見出し・説明・操作の領域
+│           ├── admin-data-table.tsx                    # 列定義の表・読み込み中・空・エラー・前後のページ
+│           ├── admin-filter-bar.tsx                    # 絞り込みの入力欄の並びと適用・解除
+│           ├── confirm-action-dialog.tsx               # 破壊的な操作の確認と理由
+│           ├── reason-field.tsx                        # 500書記素の理由と個人情報の注意
+│           ├── admin-avatar.tsx                        # MediaPictureと既定のアイコン
+│           ├── category-master-editor.tsx              # カテゴリの一覧と操作
+│           └── category-form-dialog.tsx                # カテゴリの追加・編集の入力
+└── admin/src/
+    ├── routes/
+    │   ├── __root.tsx                                  # (変更)beforeLoadでadminViewerを取得
+    │   ├── auth/login.tsx · invitation.tsx · email-change/confirm.tsx
+    │   ├── auth/password-reset/index.tsx · confirm.tsx
+    │   └── _authenticated/
+    │       ├── route.tsx                               # ログインの確認、viewerの文脈、AdminViewerProvider
+    │       ├── index.tsx                               # ダッシュボード(仮のroutes/index.tsxを置き換える)
+    │       ├── accounts/index.tsx · audit-logs/index.tsx · account/index.tsx
+    ├── components/
+    │   ├── auth/login-form.tsx · second-factor-form.tsx · password-reset-request-form.tsx · new-password-form.tsx
+    │   ├── auth/invitation-completion.tsx · invitation-profile-step.tsx · invitation-totp-step.tsx · email-change-confirmation.tsx · auth-form-schemas.ts
+    │   ├── auth/admin-auth-messages.ts · bot-actions.ts · use-signed-in-navigation.ts   # 認証の画面の文言・bot判定の操作名・ログインの後の取得の無効化と戻り先への移動
+    │   ├── auth/use-admin-viewer.ts · use-admin-viewer-refresh.ts   # 区画が取得のキャッシュから管理者を読む・取得を無効にして取り直す
+    │   ├── auth/authenticated-layout.tsx · require-admin-viewer.ts · redirect-signed-in-admin.ts   # ログイン必須の領域のレイアウト・そのbeforeLoadの判定・ログイン中のログインの画面からダッシュボードへの移動
+    │   ├── layout/admin-navigation.tsx · admin-account-menu.tsx · admin-viewer-context.tsx · role-gate.tsx
+    │   ├── layout/use-current-admin.ts · admin-nav-order.ts · admin-shell-messages.ts   # ページの部品が文脈から管理者とロールを読む・メニューの並び・区画の文言(単体テスト併置)
+    │   ├── dashboard/dashboard-grid.tsx · dashboard-card-frame.tsx · dashboard-messages.ts
+    │   ├── pages/dashboard-page.tsx                    # /のページ(見出しとカードの並び)
+    │   ├── admins/admin-list.tsx · invite-admin-dialog.tsx · change-role-dialog.tsx · admin-profile-dialog.tsx · admin-avatar-field.tsx · admin-profile-fields.tsx   # admin-profile-fields.tsxは/accountのプロフィールと共有する入力欄
+    │   ├── admins/admin-form-dialog.tsx · admin-form-dialog-controls.ts · admin-form-dialog-footer.tsx   # 入力を持つダイアログの処理中・フォーカス・取り消しの枠と、監査ログの旨・確定の並び
+    │   ├── admins/admin-account-permissions.ts · admin-account-form-schemas.ts · admin-accounts-messages.ts · admin-account-label.ts · use-admin-accounts-refresh.ts   # ドメインの規則と同じ操作の可否・入力の規則・文言・一覧の取り直し(単体テスト併置)
+    │   ├── pages/admins-page.tsx                       # /accountsのページ(見出し・招待・一覧)
+    │   ├── pages/audit-logs-page.tsx                   # /audit-logsのページ(見出し・絞り込み・一覧・カーソルのページ送り)
+    │   ├── pages/account-page.tsx                      # /accountのページ(見出しと5つの区画)
+    │   ├── audit/audit-log-filters.tsx · audit-log-list.tsx · audit-period.ts
+    │   ├── audit/audit-log-search.ts · audit-log-filter-options.ts · cursor-trail.ts · load-audit-logs-page.ts · audit-logs-messages.ts   # 検索パラメータの検証と検索の引数・選択肢・辿ったページの記録・/audit-logsのloader・文言(単体テスト併置)
+    │   └── account/profile-section.tsx · email-change-section.tsx · password-change-section.tsx · totp-section.tsx · recovery-code-section.tsx · account-section.tsx
+    │       · totp-reset-dialog.tsx · totp-reset-form.tsx · recovery-codes-dialog.tsx · reauthentication-fields.tsx · reauthenticated-action-form.tsx
+    │       · account-form-schemas.ts · account-messages.ts · use-reauthentication-mode.ts · use-reauthenticated-send.ts · use-submit-failure.ts   # 本人確認の入力の規則・文言・第2要素の欄の切り替え・リカバリコードで送った後の残数の取り直し・欄に対応しない失敗(単体テスト併置)
+    ├── composition/
+    │   ├── admin-navigation.ts                         # ADMIN_NAV_ITEMS(後続specが追記)
+    │   ├── dashboard-cards.ts                          # DASHBOARD_CARDS(後続specが追記、初版は空)
+    │   └── layout-slots.ts                             # (変更)navigation・headerAccount
+    └── graphql/
+        ├── admin-viewer.ts                             # adminViewerQueryOptions・toAdminViewer・loadRootAuthContext(取得の失敗は未ログイン、単体テスト併置)
+        ├── admin-accounts.ts                           # adminAccountsQueryOptions・toAdminAccounts・loadAdminAccounts(/accountsのloader、単体テスト併置)
+        ├── admin-audit-logs.ts                         # auditLogsQueryOptions・toAuditLogPage(単体テスト併置)
+        ├── admin-role.ts                               # GraphQLのロールの値とAdminRoleの相互の変換(単体テスト併置)
+        ├── operations/admin/                           # 1ファイル1操作の*.graphql。操作名はAdminで始める(例: viewer.graphqlのAdminViewer)
+        │   ├── viewer.graphql
+        │   └── auth/*.graphql · account/*.graphql · self/*.graphql · audit/*.graphql
+        └── generated/                                  # (再生成)graphql:generateの生成物。画面はgraphql.tsの<操作名>Documentを読む
+apps/admin/test/
+├── account-fixtures.ts · admin-accounts-fixtures.ts · admin-viewer-fixtures.ts · audit-logs-fixtures.ts   # ブラウザテストが共有するGraphQLの応答と入力の値
+└── page-router.tsx                                     # (変更)ルートの文脈の管理者(cachedViewer)を渡してページを描く
+e2e/
+├── support/admin-bootstrap.ts                          # 指定したロールの管理者を招待・完了・ログインさせる補助(後続specのE2Eも使う)
+├── support/admin-bootstrap-parsing.ts                  # 純粋: 招待の発行コマンドの引数と出力・D1の結果の行の読み取り(単体テスト併置)
+├── support/local-d1.ts                                 # ローカルのD1へSQLを実行する補助(後続specのE2Eも使う)
+├── support/local-d1-command.ts                         # 純粋: ローカルのD1を操作するwranglerの引数と結果の行の連結(単体テスト併置)
+├── support/bot-verification.ts · hydration-retry.ts · test-email.ts   # 利用者側と共有するbot判定のトークンの待ち・ハイドレーションの前の操作の押し直しの待ち時間・テストのメールのドメイン(identity-authのaccount-steps.tsから移す)
+└── admin/
+    ├── admin-test.ts                                   # 管理者側のE2Eのtest(ブラウザの文脈ごとに接続元のIPを名乗る)
+    ├── admin-sign-in.e2e.test.ts                       # 最初の最上位管理者の招待と完了・ログイン(認証コード・リカバリコード)・ログイン必須のページ
+    ├── admin-accounts.e2e.test.ts                      # 招待と完了・ロールの変更と最後の最上位管理者の保護・削除・監査ログの絞り込み(操作者・操作種別・期間)
+    ├── my-account.e2e.test.ts                          # 自分のプロフィール・パスワードリセット・メールアドレス変更・パスワード変更・TOTPの再設定
+    └── admin-roles.e2e.test.ts                         # ロールごとのメニューと操作の出し分け
+docs/GUIDES/tech/
+├── security/007-admin-authorization.md · backend/008-audit-logging.md
+└── frontend/009-admin-console-shell.md · operations/003-first-administrator-bootstrap.md
+```
+
+テストファイルは同名の`*.unit.test.ts`(`domain`・`application`・`common-lib`・`db/schema`・`scripts`)、`*.worker.test.ts`(`infrastructure`・`presentation`・`composition`)、`*.browser.test.tsx`(画面部品)を対象ファイルの隣に置く。文書の番号は、roadmapの順でidentity-authの後の空き番号(`security/007`・`backend/008`・`frontend/009`・`operations/003`)に固定する。
+
+### Modified Files
+
+- `apps/db/schema/index.ts` — adminのテーブルを再エクスポートする。`apps/db/migrations/<日時>_admin_foundation/migration.sql`を生成する。mainの最新を取り込んでから生成し、衝突したら生成し直す。
+- `apps/backend-lib/core/email/kinds/index.ts`・`apps/event/src/infrastructure/email/templates/index.ts` — 6つの種別とテンプレートを加える。
+- `apps/api/src/composition/session.ts` — `AUTH_TYPES.AdminSessionVerifier`を`ADMIN_TYPES.AdminSessionVerifier`への転送に差し替える(他の束縛は変えない)。
+- `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`upload-purposes.ts`・`env-schema.ts` — `ADMIN_PLATFORM_MODULE`・`ADMIN_MODULE`、`adminSchemaModule`、2つのジョブ、`admin-avatar`、`ADMIN_SITE_ORIGIN`の検証を加える。
+- `apps/event/src/composition/modules.ts` — `ADMIN_PLATFORM_MODULE`を加える(後続specのデータエクスポートの部品が`AdminDirectory`を使うため)。
+- `apps/api/wrangler.jsonc`・`worker-configuration.d.ts` — 3環境の`vars`に`ADMIN_SITE_ORIGIN`を加え、型を生成し直す。`apps/api/test/config/wrangler-config.unit.test.ts`は`vars`を完全一致で照合するため、期待に3環境の`ADMIN_SITE_ORIGIN`を加える。
+- `apps/api/package.json` — `admin:invite-super-admin`(`bun scripts/admin/issue-super-admin-invitation.ts`)を加える。
+- `apps/api/package.json`・`bun.lock`・`docs/GUIDES/tech/coding/002-dependency-versions.md`・`docs/onboardings/tech-stack.md` — `otpauth`を9.6.0へ上げ、主要パッケージの一覧と技術選定の版を直す(タスク1.7)。
+- `apps/api/eslint.config.ts`・`test/config/admin-layer-rules.unit.test.ts`(新規)・`test/config/layer-rules.unit.test.ts`・`test/support/layer-lint.ts`(新規) — `admin`の各層と`composition/admin-module.ts`から`identity`の読み込みの禁止を加え、違反例は`admin-layer-rules.unit.test.ts`に置く。`layer-rules.unit.test.ts`に加えると800行の上限を超えるため、静的解析の違反例の検査の補助を`test/support/layer-lint.ts`へ移し、両方のテストから読み込む。
+- `apps/api/src/presentation/graphql/auth-inputs.ts`(新規)・`modules/identity/inputs.ts`・`modules/identity/errors.ts`(identity-auth) — メールアドレス・パスワード・リンクのトークン・第2要素の入力の検証の規則と文言を、利用者と管理者のスキーマモジュールが共有する`auth-inputs.ts`へ移す。`apps/api/test/support/graphql-gateway.ts`・`identity-graphql-harness.ts` — bot判定・外部サービスの偽物(`stubExternalServices`など)を`graphql-gateway.ts`へ移し、`identity-graphql-harness.ts`は再エクスポートする。`apps/api/codegen.config.ts` — `AdminViewer`の`mappers`を加える。
+- `apps/client/src/components/auth/*`(identity-auth) — `return-path.ts`・`fragment-token.ts`の読み込み先を`frontend-lib/utilities/auth/`へ直す。
+- `apps/client/src/components/auth/*`・`components/settings/*`・`routes/auth/**`(identity-auth) — `useFragmentToken`・`AuthPageLayout`・`ResultNotice`・`INLINE_LINK_CLASS_NAME`・`isInvalidLinkError`・`LinkConfirmation`の6つを`frontend-lib`(`components/auth/use-fragment-token.ts`・`auth-page-layout.tsx`・`link-confirmation.tsx`、`components/feedback/result-notice.tsx`、`components/navigation/inline-link-class.ts`、`utilities/auth/invalid-link.ts`)へ移し、利用者側の読み込み先を`lib/`の下へ直す。
+- `apps/api/src/application/identity/identity-errors.ts`・`password-rejection.ts`・`re-authenticator.ts`・`login-throttle-check.ts`・`second-factor-check.ts`、`infrastructure/identity/counter-mail-send-limits.ts`と各単体テスト(identity-auth) — 主体に依存しない定義を`application/auth`から読み込む形へ直す(AdminErrors)。`docs/GUIDES/tech/security/006-authentication.md`の部品の表と`.kiro/specs/identity-auth/design.md`のファイル構成も直す。
+- `apps/client/src/components/navigation/path-link.tsx`(identity-auth) — 削除し、省略可の`activeOptions`を加えた`apps/frontend-lib/components/navigation/path-link.tsx`(ブラウザテスト・ストーリーを併置)へ移す。利用者側の呼び出し元の`components/auth/register-form.tsx`・`components/layout/launch-action.tsx`・`user-menu.tsx`・`components/settings/settings-navigation.tsx`・`suspended-account-notice.tsx`の読み込み先を直す。
+- `apps/backend-lib/core/email/kinds/identity.ts`(identity-auth)・`kinds/link-url.ts`(新規) — リンクのURLの検査を`linkUrlSchema`として利用者と管理者のメール種別で共有する。
+- `apps/api/src/presentation/graphql/field-paths.ts`(新規)・`modules/identity/errors.ts`・`account-resolvers.ts`・`totp-resolvers.ts`(identity-auth) — `withInputPath`を`field-paths.ts`へ移し、利用者と管理者のスキーマモジュールが読み込む。
+- `e2e/client/auth/account-steps.ts`・`login-and-sessions.e2e.test.ts`・`e2e/support/totp.ts`・`totp.unit.test.ts`(identity-auth)、`e2e/support/bot-verification.ts`・`hydration-retry.ts`・`test-email.ts`(新規) — 利用者側と管理者側のE2Eが共有する補助を`e2e/support/`へ移し、認証コードの発生源に使用済みの時間窓の受け渡しと現在の時間窓の認証コードを加える。
+- `e2e/support/playwright-config.ts`・`playwright-config.unit.test.ts`(dev-tooling) — 管理者側のE2Eの並列数の上限を1にする。
+- `apps/frontend-lib/config/storybook-catalog.unit.test.ts`(frontend-platform) — `table`・`select`の部品をカタログの期待に加える。
+- `apps/api/src/composition/identity-module.worker.test.ts`・`media-module.worker.test.ts`・`search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts`・`apps/api/test/config/media-registrations.unit.test.ts`・`apps/db/schema/index.unit.test.ts`・`apps/backend-lib/core/email/kinds/index.unit.test.ts` — 管理者のセッションの検証の束縛・`admin-avatar`の用途・2つのジョブ・adminのテーブル・6つのメール種別を期待に加える。
+- `.betterleaks.toml` — GraphQLのスキーマ・操作の文書と生成物・specの設計書のパスワードの項目の型の注釈を、行番号でなく`[[allowlists]]`で誤検知として扱う。
+- `docs/GUIDES/tech/frontend/004-accessibility-rules.md`・`006-data-fetching.md`・`007-frontend-observability.md`・`infra/004-logging-and-error-tracking.md`・`operations/001-deployment.md`・`security/001-secret-management.md`・`testing/001-test-strategy.md` — 管理画面の共通部品の伝え方、検索パラメータで変わる一覧のloader、区画のエラーの境界と取り直しの失敗の送信、管理者のログのカテゴリ、招待の発行コマンドの実行者、GraphQLのパスワードの型の注釈の誤検知の扱い、同じ対象のE2Eを並行させない設定を追記する。
+- `apps/admin/src/routes/index.tsx` — 削除し、`_authenticated/index.tsx`のダッシュボードへ置き換える。`components/pages/placeholder-home.tsx`も削除する。
+- `apps/admin/src/routes/__root.tsx`・`composition/layout-slots.ts` — `adminViewer`の取得と区画の差し替え。
+- `docs/GUIDES/tech/{security,backend,frontend,operations}/README.md` — 新しい文書を1行ずつ追記する。
+- `docs/GUIDES/service/design/002-page-layouts.md` — 管理者側のURL(仮6)・メニューごとの必要なロール(Q3)・ダッシュボードのカードの分担(Q2、「週毎の統計グラフ」の行を改める)・`/auth/*`の画面・自分のアカウントの構成を追記する。
+- `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 本specのエラーメッセージ・確認・状態の文言と、6種のメールの件名と本文の要点を追記する。
+- `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に管理者のセッション・認証系トークン・監査ログ(3年・日次バッチ)の削除方法を加える(既存の監査ログの行は形を確かめる)。
+- `docs/GUIDES/service/overview/007-daily-timeline.md` — 日次バッチのジョブの表に本specの2行(200・210)を加える。表が無ければ作る。
+- `docs/onboardings/project-values.md` — `ADMIN_SITE_ORIGIN`の3環境の値、ジョブの名前と順序、メール種別の名前、HMACの用途、TOTPの発行者名、招待の発行コマンドの引数を記載する。
+- `docs/onboardings/README.md` — ローカルで最初の最上位管理者を用意する手順(招待の発行コマンド)と、staging・prodでは開発者が実行する旨を記載する。
+- `CLAUDE.md` — 「技術規則の参照先」に、管理操作を書く前に読む文書(`security/007`・`backend/008`)へのリンクを加える。
+
+## System Flows
+
+### 招待と完了
+
+```mermaid
+sequenceDiagram
+    participant M as moderator
+    participant A as admin site
+    participant API as api admin module
+    participant E as email delivery
+    participant N as new admin
+    M->>A: invite email and reason
+    A->>API: inviteAdmin
+    API->>API: authorize moderator and insert invited admin token and audit in one batch
+    API->>E: send invitation link 24h
+    N->>A: open auth invitation with fragment token
+    N->>A: nickname and password
+    A->>API: startAdminInvitation
+    API->>API: validate token without consuming, save pending profile and totp secret
+    API-->>A: otpauth uri and secret
+    N->>A: totp code
+    A->>API: completeAdminInvitation
+    API->>API: consume token then activate, enable totp, recovery codes, session in one batch
+    API-->>A: recovery codes and session issue
+```
+
+- 招待の発行コマンドは、`inviteAdmin`の代わりに最上位管理者ロールの招待中の管理者とトークンをD1へ直接書き込み、メールを送らずにリンクを表示する(要件2)。以降の完了の流れは同じ。
+- 招待中の管理者を再送するときは、トークンの置き換え・`invitation_expires_at`の更新・監査ログを1つの一括の書き込みにする(要件3.3)。
+
+### ログインと権限の判定
+
+```mermaid
+sequenceDiagram
+    participant B as browser
+    participant A as admin site
+    participant API as api
+    participant T as login throttle
+    B->>A: email password turnstile
+    A->>API: adminLogin
+    API->>API: assertHuman admin_login
+    API->>T: status admin scope
+    API->>API: verify password or dummy, active admin only
+    API-->>A: challenge 5 min
+    B->>A: totp or recovery code
+    A->>API: completeAdminSecondFactorLogin
+    API->>T: reset on success, record failure otherwise
+    API-->>A: session issue idle 1h absolute 12h
+    B->>A: later request
+    A->>API: graphql with session token
+    API->>API: AdminSessionVerifier then AdminAuthorizer loads role per request
+```
+
+### 削除・ロール変更の保護
+
+- 削除とロールの変更は、先頭に監査ログの挿入を置いた1つの一括の書き込みで行う。挿入の`operator_admin_id`の値を「対象が存在し、操作者の権限で許され、最後の有効な最上位管理者を失わない(ロールの変更では、加えて対象の現在のロールが読み取った変更前のロールと一致する)」ときだけ値になり、それ以外はNULLになる`CASE`式にし、NOT NULL制約の違反で全体を取り消す(identity-authの`UserLifecycleCommitter`と同じ方式)。D1は書き込みを1つずつ処理するため、同時の操作でも有効な最上位管理者は0人にならない(要件15.9)。
+- 取り消された場合は対象を読み直し、無ければ`not_found`、最後の最上位管理者なら`last_super_admin`、それ以外は`admin_state_conflict`を返す。
+
+## Requirements Traceability
+
+| Requirement | Summary                      | Components                                                                                                            | Interfaces / Flows                                |
+| ----------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 1.1〜1.4    | 管理者・ロール・状態・一意   | AdminSchema・AdminRoles・AdminAccountRules                                                                            | `admins`・`hasRole`                               |
+| 1.5         | 管理者の照会口               | AdminDirectory                                                                                                        | `findProfiles`                                    |
+| 2.1〜2.7    | 招待の発行コマンド           | SuperAdminInvitationScript                                                                                            | `buildInvitationSql`・`invitationTarget`          |
+| 3.1〜3.5    | 招待・再送・取り消し         | AdminInvitation・AdminAccountManagement・AuditLogRecorder                                                             | 招待と完了の流れ                                  |
+| 4.1〜4.8    | 招待の完了                   | AdminInvitation・InvitationPages                                                                                      | `startAdminInvitation`・`completeAdminInvitation` |
+| 5.1〜5.5    | パスワード                   | identity-authの`PasswordPolicy`・`PasswordHasher`                                                                     | 識別子はニックネームとメール(全体と@より前の部分) |
+| 6.1〜6.8    | ログイン・ログアウト         | AdminLogin・AdminSessionIssuer・AdminAuthPages                                                                        | ログインの流れ                                    |
+| 7.1〜7.7    | ログイン試行の制限           | identity-authの`LoginThrottle`(スコープ`admin`)・AdminLogin・AdminReAuthenticator                                     | `login-email:admin:<キー>`                        |
+| 8.1〜8.6    | セッション                   | AdminSessionPolicy・AdminSessionVerifier・AdminCredentialCleanupJob・AuthenticatedLayout                              | `ADMIN_SESSION_POLICY`                            |
+| 9.1〜9.5    | パスワードリセット           | AdminPasswordReset・AdminMailSendLimits                                                                               | `requestAdminPasswordReset`                       |
+| 10.1〜10.6  | メールアドレス変更           | AdminEmailChange・AdminSessionIssuer                                                                                  | `requestAdminEmailChange`                         |
+| 11.1〜11.3  | パスワード変更               | AdminPasswordChange                                                                                                   | `changeAdminPassword`                             |
+| 12.1〜12.8  | TOTPの再設定・リカバリコード | AdminTotpManagement・AccountPage                                                                                      | `startAdminTotpReset`                             |
+| 13.1〜13.4  | 本人確認                     | AdminReAuthenticator                                                                                                  | `ReAuthenticationInput`                           |
+| 14.1〜14.8  | トークン・通知メール         | AdminAuthTokenPurpose・AdminMailer・AdminEmailTemplates・AdminMailSendLimits・AdminCredentialCleanupJob               | `admin.*`のメール種別                             |
+| 15.1〜15.10 | 一覧・削除・ロール           | AdminAccountManagement・D1AdminAccountStore・AdminsPage                                                               | 削除・ロール変更の保護                            |
+| 16.1〜16.7  | プロフィール                 | AdminProfile・AdminAvatar・AdminProfileDialog                                                                         | `admin-avatar`                                    |
+| 17.1〜17.6  | アクセス制御の部品           | AdminAuthorizer・AdminGuard・RoleGate・AdminViewerContext・ページ配置                                                 | `requireAdmin`・`hasRole`                         |
+| 18.1〜18.9  | 監査ログの記録               | AuditActionCatalog・AuditEntryRules・AuditLogRecorder・AuditLogStatements・D1AuditLogStore・ReasonField               | `prepare`・`buildAuditLogStatements`              |
+| 19.1〜19.7  | 監査ログの閲覧・保持         | AuditLogReader・AuditLogsPage・AuditLogRetentionJob                                                                   | `searchAuditLogs`・`latestFor`・`latestForMany`   |
+| 20.1〜20.9  | シェル・ダッシュボード       | AdminNavigationRegistry・DashboardCardRegistry・AdminNavigation・AdminAccountMenu・DashboardGrid・AuthenticatedLayout | `ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`              |
+| 21.1〜21.4  | 共通部品                     | AdminCommonParts                                                                                                      | `frontend-lib/components/admin`                   |
+| 22.1〜22.6  | テスト・文書                 | AdminE2E・AdminDocs                                                                                                   | —                                                 |
+
+## Components and Interfaces
+
+| Component                                                                            | Domain/Layer                                                    | Intent                           | Req Coverage                                 | Key Dependencies                            | Contracts |
+| ------------------------------------------------------------------------------------ | --------------------------------------------------------------- | -------------------------------- | -------------------------------------------- | ------------------------------------------- | --------- |
+| AdminSchema                                                                          | db                                                              | 8テーブル                        | 1.1〜1.4, 18.1, 19.6                         | drizzle (P0)                                | State     |
+| AdminRoles・AdminInputRules                                                          | common-lib                                                      | ロールの順序・入力の上限         | 1.2, 4.1, 16.1, 18.4, 21.3                   | countGraphemes (P0)                         | State     |
+| AuditActionCatalog                                                                   | common-lib                                                      | 操作種別の型と登録               | 18.3, 18.6, 18.7                             | —                                           | State     |
+| SuperAdminInvitationScript                                                           | api/scripts                                                     | 最初の最上位管理者の招待         | 2.1〜2.7                                     | wrangler (P0)・KeyedHasher (P0)             | Batch     |
+| AdminAccountRules・AdminSessionPolicy・AdminAuthTokenPurpose・AuditEntryRules        | api/domain                                                      | 純粋な規則                       | 1.4, 8.2, 14.2, 15.4〜15.8, 16.4, 18.4, 18.5 | —                                           | State     |
+| AdminErrors                                                                          | api/application(`auth`へ移す共有の定義と`admin`の定義)          | エラーコードと文言               | 5.2, 5.3, 6.2, 7.3, 13.1, 14.4               | —                                           | State     |
+| AdminPorts                                                                           | api/application                                                 | ストア・メール・設定             | 各ユースケース                               | —                                           | Service   |
+| AdminSessionIssuer・AdminSessionVerifier                                             | api/application                                                 | 発行・再発行・検証               | 6.1, 8.1〜8.4, 10.6, 11.2, 12.5              | identity-authの`auth` (P0)                  | Service   |
+| AdminAuthorizer                                                                      | api/application                                                 | 認可(後続specも使う)             | 17.1〜17.4                                   | AdminAccountStore (P0)                      | Service   |
+| AdminDirectory・AdminPlatformModule                                                  | backend-lib/core(契約と識別子)・backend-lib/workers(実装と束縛) | 照会(後続specがapi・eventで使う) | 1.5                                          | Database(実装だけが使う) (P0)               | Service   |
+| AdminLogin・AdminReAuthenticator                                                     | api/application                                                 | ログイン・本人確認               | 6.1〜6.4, 6.6, 7.1〜7.6, 13.1〜13.4          | LoginThrottle (P0)                          | Service   |
+| AdminMailSendLimits・CounterAdminMailSendLimits                                      | api/application(ポート)・api/infrastructure(実装)               | 送信回数                         | 14.4                                         | RateLimitCounterClient(実装だけが使う) (P0) | Service   |
+| AdminInvitation                                                                      | api/application                                                 | 招待・再送・完了                 | 3.1〜3.5, 4.2〜4.8                           | AuditLogRecorder (P0)                       | Service   |
+| AdminPasswordReset・AdminEmailChange・AdminPasswordChange・AdminTotpManagement       | api/application                                                 | 本人の手続き                     | 9.1〜12.8                                    | identity-authの`auth` (P0)                  | Service   |
+| AdminAccountManagement・AdminProfile                                                 | api/application                                                 | 一覧・削除・ロール・プロフィール | 15.1〜15.10, 16.1〜16.5                      | MediaFiles (P0)・AuditLogRecorder (P0)      | Service   |
+| AuditLogRecorder・AuditLogReader                                                     | api/application                                                 | 記録・検索・最新の照会           | 18.1〜18.8, 19.1〜19.5                       | AuditLogStore (P0)                          | Service   |
+| AdminCredentialCleanupJob・AuditLogRetentionJob                                      | api/application                                                 | 日次のジョブ                     | 8.6, 14.6, 19.6                              | CronRegistry (P0)                           | Batch     |
+| D1AdminStores・AuditLogStatements・D1AuditLogStore・EmailAdminMailer                 | api/infrastructure                                              | D1とメールの実装・監査ログの文   | 18.2, 各ユースケース                         | Database (P0)・EmailSender (P0)             | Service   |
+| AdminSchemaModule・AdminGuard                                                        | api/presentation                                                | GraphQLの型・リゾルバ・補助      | 6.7, 6.8, 17.3ほか各機能                     | api-gateway (P0)                            | API       |
+| ApiAdminComposition                                                                  | api/composition                                                 | 束縛・登録・環境                 | 8.6, 14.6, 16.2, 19.6                        | 上流の登録箇所 (P0)                         | State     |
+| AdminEmailTemplates                                                                  | event                                                           | 6種のテンプレート                | 14.7                                         | email-delivery (P0)                         | —         |
+| AdminCommonParts                                                                     | frontend-lib                                                    | 共通部品                         | 16.6, 18.9, 21.1〜21.4                       | shadcn/ui (P0)・media-pipeline (P1)         | State     |
+| AdminAuthPages・InvitationPages                                                      | admin                                                           | `/auth/*`の5画面                 | 4.1, 6.5, 9.4, 14.3, 20.1, 20.8              | useTurnstileToken (P0)                      | State     |
+| AuthenticatedLayout・AdminViewerContext・RoleGate・AdminNavigation・AdminAccountMenu | admin                                                           | ログイン必須の領域・区画         | 8.5, 17.5, 20.2, 20.3                        | AdminLayoutSlots (P0)                       | State     |
+| AdminNavigationRegistry・DashboardCardRegistry・DashboardGrid                        | admin                                                           | 登録箇所とダッシュボード         | 20.3〜20.7                                   | —                                           | State     |
+| AdminsPage・AuditLogsPage・AccountPage                                               | admin                                                           | 3つのページ                      | 12.7, 15.1, 15.10, 16.6, 19.1〜19.4          | AdminCommonParts (P0)                       | State     |
+| AdminE2E・AdminDocs                                                                  | e2e・docs                                                       | E2Eと文書                        | 22.1〜22.6                                   | Playwright・Mailpit (P0)                    | —         |
+
+### common-lib
+
+#### AdminRoles・AdminInputRules・AuditActionCatalog
+
+**Contracts**: State [x]
+
+```typescript
+// admin-roles.ts
+export type AdminRole = 'viewer' | 'moderator' | 'super_admin';
+export declare const ADMIN_ROLES: readonly AdminRole[]; // 昇順(viewer・moderator・super_admin)
+export declare function hasRole(actual: AdminRole, minimum: AdminRole): boolean; // 順序の比較
+export declare const ADMIN_ROLE_LABELS: Readonly<Record<AdminRole, string>>; // 閲覧のみ・モデレーター・最上位管理者
+
+// admin-input-rules.ts(書記素はcountGraphemes、前後の空白を除いてから数える)
+export declare const ADMIN_NICKNAME_MAX: 25;
+export declare const ADMIN_TITLE_MAX: 50;
+export declare const AUDIT_REASON_MAX: 500;
+export declare const CATEGORY_NAME_MAX: 30;
+export declare const AUDIT_FILTER_TEXT_MAX: 64; // 監査ログの検索の文字列の条件(操作者・操作種別・対象の識別子)の文字数の上限。APIの検証と画面の入力欄が共有する
+export declare const AUDIT_LOG_CURSOR_MAX: 256; // 監査ログの検索のカーソルの文字数の上限
+export declare function checkAdminNickname(
+  value: string,
+): 'empty' | 'too-long' | undefined;
+export declare function checkAdminTitle(value: string): 'too-long' | undefined; // 空を許す
+export declare function checkAuditReason(value: string): 'too-long' | undefined;
+export type CategoryNameIssue = 'forbidden-character' | 'empty' | 'too-long';
+export declare function checkCategoryName(
+  value: string,
+): CategoryNameIssue | undefined; // 禁止文字(前後の空白を除く前に調べる)→空→長すぎるの順に判定する
+export declare const CATEGORY_NAME_MESSAGES: Readonly<
+  Record<CategoryNameIssue, string>
+>; // 違反ごとの文言。APIサーバーと画面が共有する
+
+// audit-action.ts
+export type AuditTargetKind =
+  | 'user'
+  | 'admin'
+  | 'product'
+  | 'comment'
+  | 'rating'
+  | 'image'
+  | 'report'
+  | 'inquiry'
+  | 'sponsorship'
+  | 'help-article'
+  | 'category'
+  | 'setting';
+export interface AuditActionDefinition {
+  readonly name: string; // '<対象の領域>.<動詞句>'、/^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/
+  readonly label: string; // 監査ログの画面の表示名
+  readonly targetKind: AuditTargetKind | null; // nullは対象を取らない
+  readonly reason: 'required' | 'optional' | 'none';
+  readonly detailKeys: readonly string[]; // 詳細に使える鍵(個人情報を入れない値だけ)
+  readonly maxTargets: number; // 1以上(メールアドレス検索は100)
+}
+export declare function defineAuditAction(
+  definition: AuditActionDefinition,
+): AuditActionDefinition; // 形式違反は例外
+export interface AuditActionCatalog {
+  find(name: string): AuditActionDefinition | undefined;
+  list(): readonly AuditActionDefinition[];
+}
+export declare function createAuditActionCatalog(
+  actions: readonly AuditActionDefinition[],
+): AuditActionCatalog; // 名前の重複は例外
+// audit-actions/index.ts
+export declare const AUDIT_ACTIONS: readonly AuditActionDefinition[]; // 各specのファイルの配列を連結する
+```
+
+- 本specの操作種別: `admin-account.invite`(対象`admin`・理由`optional`)、`admin-account.delete`(`admin`・`optional`)、`admin-account.role-change`(`admin`・`optional`・詳細`fromRole`・`toRole`)、`user.email-search`(`user`・理由`none`・詳細なし・`maxTargets` 100。検索文字列を入れる欄を持たない、18.6)。
+- 後続specは`audit-actions/<spec名>.ts`を足して`index.ts`の連結へ加える。要件が「理由付き」とする操作は`reason: 'required'`にする(Q6)。
+
+### api/scripts
+
+#### SuperAdminInvitationScript
+
+**Contracts**: Batch [x]
+
+```typescript
+export type InvitationTarget = 'local' | 'staging' | 'prod';
+export interface InvitationTargetConfig {
+  readonly wranglerArgs: readonly string[]; // local: ['--local', '--persist-to', '/workspace/.wrangler/state']、staging・prod: ['--remote', '--env', <名前>]
+  readonly adminOrigin: string; // ADMIN_SITE_ORIGINと同じ値
+}
+export declare function invitationTarget(
+  target: InvitationTarget,
+): InvitationTargetConfig;
+export declare function sqlStringLiteral(value: string): string; // 'を''にして囲む。制御文字は例外
+export declare function buildLookupSql(email: string): string; // SELECT id, status FROM admins WHERE email = ... COLLATE NOCASE
+export declare function buildInvitationSql(input: {
+  readonly existingInvitedAdminId: string | undefined;
+  readonly newAdminId: string;
+  readonly email: string;
+  readonly tokenId: string;
+  readonly tokenHash: string;
+  readonly now: Date;
+  readonly expiresAt: Date;
+}): string; // 招待中があれば役割の更新と未使用の招待トークンの削除、無ければ挿入。続けてトークンを挿入
+```
+
+- 実行: `infisical --telemetry=false run --env <dev|staging|prod> -- bun run admin:invite-super-admin -- --target <local|staging|prod> --email <アドレス>`(`apps/api`で)。シークレット`HASH_PEPPER`はInfisicalの注入で受け取る(workerdではなくBunで動くコマンドのため、環境変数から読む)。
+- 処理: 引数の検証(メールは前後の空白を除いて254文字以内・`z.regexes.html5Email`)→`wrangler d1 execute DB <wranglerArgs> --json --command <buildLookupSql>`→有効な管理者なら失敗(2.3)→トークン(32バイトのbase64url)とハッシュ(`KeyedHasher`、用途`admin-auth-token-invitation`)とULID→SQLを一時ファイルに書き`wrangler d1 execute DB <wranglerArgs> --file`→一時ファイルを消し、`<adminOrigin>/auth/invitation#token=<平文>`と有効期限を表示する(2.1・2.2・2.4)。
+- `--target staging|prod`はリモートのD1へ書き込むため、開発者だけが実行する(AIエージェントは実行しない。技術的な拒否は開発者がClaude設定のdenyへ加える)。E2Eは`--target local`だけを使う(2.7)。
+
+### api/domain
+
+#### AdminAccountRules・AdminSessionPolicy・AdminAuthTokenPurpose・AuditEntryRules
+
+**Contracts**: State [x]
+
+```typescript
+// admin-account.ts
+export type AdminStatus = 'invited' | 'active';
+export interface AdminSnapshot {
+  readonly id: string;
+  readonly role: AdminRole;
+  readonly status: AdminStatus;
+  readonly invitationExpiresAt: Date | null;
+}
+export type AdminDisplayStatus = 'active' | 'invited' | 'invitation_expired';
+export declare function displayStatus(
+  admin: AdminSnapshot,
+  now: Date,
+): AdminDisplayStatus;
+export type AdminOperationDenial =
+  'insufficient_role' | 'self' | 'super_admin_target';
+export declare function checkDeletable(
+  operator: AdminSnapshot,
+  target: AdminSnapshot,
+): AdminOperationDenial | undefined; // 自分→self、操作者がviewer→insufficient_role、対象がsuper_adminで操作者がsuper_adminでない→super_admin_target
+export declare function checkRoleChangeable(
+  operator: AdminSnapshot,
+): AdminOperationDenial | undefined; // super_adminだけ
+export declare function checkProfileEditable(
+  operator: AdminSnapshot,
+  targetId: string,
+): AdminOperationDenial | undefined; // 本人またはsuper_admin
+export declare function checkInvitable(
+  operator: AdminSnapshot,
+): AdminOperationDenial | undefined; // moderator以上
+
+// admin-session-policy.ts
+export declare const ADMIN_SESSION_POLICY: SessionPolicy; // idle 3600・absolute 43200・touch 300(identity-authのSessionPolicy)
+
+// admin-auth-token-purpose.ts
+export type AdminAuthTokenPurpose =
+  'invitation' | 'email_change' | 'password_reset';
+export declare const ADMIN_AUTH_TOKEN_TTL_SECONDS: Readonly<
+  Record<AdminAuthTokenPurpose, number>
+>; // 86400・86400・1800
+export declare const ADMIN_HASH_PURPOSES: {
+  readonly session: 'admin-session';
+  readonly loginChallenge: 'admin-login-challenge';
+  readonly recoveryCode: 'admin-recovery-code';
+  readonly authToken: (purpose: AdminAuthTokenPurpose) => string; // 'admin-auth-token-<用途のハイフン区切り>'(例: `admin-auth-token-email-change`)
+};
+
+// audit-entry.ts
+export interface AuditEntryInput {
+  readonly operatorAdminId: string;
+  readonly action: string;
+  readonly targetIds: readonly string[]; // 操作種別のtargetKindの識別子
+  readonly reason?: string;
+  readonly detail?: Readonly<Record<string, string>>;
+  readonly occurredAt: Date;
+}
+export type AuditEntryViolation =
+  | 'unknown_action'
+  | 'reason_required'
+  | 'reason_not_allowed'
+  | 'reason_too_long'
+  | 'invalid_target'
+  | 'too_many_targets'
+  | 'targets_not_allowed'
+  | 'invalid_detail';
+export declare function validateAuditEntry(
+  entry: AuditEntryInput,
+  catalog: AuditActionCatalog,
+):
+  | { readonly ok: true; readonly reason: string | null }
+  | { readonly ok: false; readonly violation: AuditEntryViolation };
+```
+
+- `validateAuditEntry`: 理由は前後の空白を除き、空なら未入力として扱う。`required`で空なら`reason_required`、`none`で値があれば`reason_not_allowed`、500書記素超は`reason_too_long`(18.4)。`user`の対象はUUID(`z.uuid()`と同じ形)、それ以外は1〜64文字の`[A-Za-z0-9._:-]`(18.5)。詳細は`detailKeys`の鍵だけで、値は100文字以内。
+
+### api/application
+
+#### AdminErrors
+
+**Contracts**: State [x]
+
+```typescript
+// application/auth/auth-errors.ts(identity-authのapplication/identity/identity-errors.ts・re-authenticator.tsから移す)
+export declare const AUTH_ERRORS: Readonly<{
+  invalid_credentials: AuthErrorDefinition; // unauthenticated・「メールアドレスまたはパスワードが正しくありません。」
+  invalid_second_factor: AuthErrorDefinition;
+  login_challenge_expired: AuthErrorDefinition;
+  invalid_link: AuthErrorDefinition;
+  totp_setup_expired: AuthErrorDefinition;
+  unauthenticated: AuthErrorDefinition;
+  forbidden: AuthErrorDefinition;
+  not_found: AuthErrorDefinition;
+}>;
+export declare const authError: (code: keyof typeof AUTH_ERRORS) => AppError;
+export declare const loginThrottledError: (
+  retryAfterSeconds: number,
+) => AppError; // login_throttled
+export declare const REAUTHENTICATION_FAILED_CODE: 'reauthentication_failed';
+export declare const CURRENT_PASSWORD_INCORRECT_MESSAGE: string; // 第2要素の誤りの詳細はAUTH_ERRORS.invalid_second_factorの文言を使う
+export declare const PASSWORD_LENGTH_MESSAGE: string;
+export declare const PWNED_PASSWORD_MESSAGE: string;
+
+// application/auth/password-rejection.ts(identity-authのapplication/identity/password-rejection.tsから移す)
+export declare const createPasswordRejectedError: (
+  matchesIdentityMessage: string, // 識別子の種類が主体で異なるため、識別子との一致の文言だけを主体ごとに渡す
+) => (violation: PasswordRejection, field?: string) => AppError; // password_rejected
+
+// application/auth/mail-send-policy.ts(identity-authのinfrastructure/identity/counter-mail-send-limits.tsから移す)
+export declare const MAIL_SEND_POLICY: Readonly<{
+  windowSeconds: 3600;
+  limitPerAddress: 3;
+  limitPerIp: 5;
+}>;
+
+// application/admin/admin-errors.ts
+export declare const ADMIN_ERRORS: Readonly<
+  typeof AUTH_ERRORS & {
+    admin_email_in_use: AuthErrorDefinition;
+    last_super_admin: AuthErrorDefinition;
+    self_deletion_forbidden: AuthErrorDefinition;
+    admin_state_conflict: AuthErrorDefinition;
+    invalid_upload: AuthErrorDefinition; // unprocessable・プロフィール画像の紐付けの失敗
+  } // Error Handlingの表のうち、AUTH_ERRORSに無く本specのユースケースが投げるコード
+>;
+export declare const adminError: (code: keyof typeof ADMIN_ERRORS) => AppError;
+export declare const adminPasswordRejectedError: ReturnType<
+  typeof createPasswordRejectedError
+>; // 「ニックネーム・メールアドレス(@より前の部分を含む)と同じパスワードは使えません。」
+export declare const adminInvitationLinkError: () => AppError; // invalid_link。共有の文言に「招待した管理者に再送を依頼してください。」を添える(4.5)
+export declare const ADMIN_NICKNAME_MESSAGES: Readonly<
+  Record<'empty' | 'too-long', string>
+>; // 8.xのリゾルバの検証と同じ文言にする
+export declare const adminNicknameRejectedError: (
+  violation: 'empty' | 'too-long',
+) => AppError; // validation_error・欄nickname
+export declare const ADMIN_TITLE_MESSAGES: Readonly<Record<'too-long', string>>; // 「肩書きは50文字以内で入力してください。」
+export declare const adminProfileRejectedError: (violations: {
+  readonly nickname?: 'empty' | 'too-long';
+  readonly title?: 'too-long';
+}) => AppError; // validation_error・欄nickname・titleの順に違反した欄だけ(16.7)
+```
+
+- 置き場所: apiの層の規則(`eslint.config.ts`)で`admin`は`identity`を読み込めない。管理者と利用者で同じであるべきエラーコード・文言・送信回数の上限(Q7)を両方の機能が読める`auth`(主体に依存しない認証部品の層)へ移し、片方だけを変えて食い違うことを防ぐ。主体で異なるのは、パスワードと識別子の一致の文言(利用者はハンドルを含む)と、主体に固有のエラーコードだけである。
+- 移すのはidentity-authの既存の定義で、エラーコード・種類・文言・上限の値を変えない。`IDENTITY_ERRORS`は`...AUTH_ERRORS`に利用者に固有のコードを足した形にし、`identityError`の呼び出し側は変えない。`CounterMailSendLimits`と`CounterAdminMailSendLimits`は、カウンタの規則の名前だけを主体で分け(`auth-mail:`・`admin-auth-mail:`)、時間窓と上限は`MAIL_SEND_POLICY`から読む。
+- 単体テスト: `AUTH_ERRORS`・`ADMIN_ERRORS`の種類と文言、`ADMIN_ERRORS`が`AUTH_ERRORS`のコードを同じ定義で含むこと、`createPasswordRejectedError`が違反ごとのコード・欄・文言を返すこと(移す前の`password-rejection`・`identity-errors`の単体テストを移して使う)。
+
+#### AdminPorts
+
+**Contracts**: Service [x]
+
+```typescript
+export interface AdminRecord extends AdminSnapshot {
+  readonly email: string;
+  readonly passwordHash: string | null; // 招待の完了前はnull、仮の保存後は値
+  readonly nickname: string | null;
+  readonly title: string | null;
+  readonly avatarFileId: string | null;
+  readonly createdAt: Date;
+  readonly activatedAt: Date | null;
+}
+export interface AdminAccountStore {
+  findById(id: string): Promise<AdminRecord | undefined>;
+  findByEmail(email: string): Promise<AdminRecord | undefined>; // 大文字小文字を区別しない
+  list(): Promise<readonly AdminRecord[]>; // 登録の新しい順
+  findProfiles(
+    ids: readonly string[],
+  ): Promise<ReadonlyMap<string, AdminRecord>>; // 100件ごと
+  insertInvited(
+    admin: {
+      readonly id: string;
+      readonly email: string;
+      readonly invitedAt: Date;
+    },
+    token: NewAdminInvitationToken, // { tokenHash, expiresAt }。用途はinvitationに固定し、期限は招待の期限にもなる
+    audit: PreparedAuditEntry,
+  ): Promise<'created' | 'email-in-use'>;
+  reissueInvitation(
+    adminId: string,
+    token: NewAdminInvitationToken,
+    audit: PreparedAuditEntry,
+  ): Promise<'reissued' | 'not-invited'>; // 招待中でなければ新しいトークンの挿入の管理者のIDがNULLになり全体を取り消す
+  savePendingProfile(
+    adminId: string,
+    input: { readonly nickname: string; readonly passwordHash: string },
+  ): Promise<void>;
+  activate(
+    adminId: string,
+    input: {
+      readonly at: Date;
+      readonly step: number;
+      readonly pendingSealedSecret: string; // 照合に使った保留の秘密鍵(照合の後に設定が始め直されていれば有効化しない)
+      readonly recoveryHashes: readonly string[];
+      readonly session: NewAdminSessionRecord;
+    },
+  ): Promise<'activated' | 'not-invited'>; // 仮の保存(パスワードとニックネーム)を済ませた招待中で照合した保留が期限内のまま残っていなければ、先頭のセッションの挿入の管理者のIDがNULLになり全体を取り消す
+  deleteGuarded(
+    operator: AdminSnapshot,
+    targetId: string,
+    audit: PreparedAuditEntry,
+  ): Promise<'deleted' | 'rejected'>;
+  changeRoleGuarded(
+    operator: AdminSnapshot,
+    change: {
+      readonly targetId: string;
+      readonly fromRole: AdminRole; // 読み取った対象のロール。監査ログの詳細のfromRoleと一致させるため条件に含める
+      readonly toRole: AdminRole;
+    },
+    audit: PreparedAuditEntry,
+  ): Promise<'changed' | 'rejected'>;
+  updateProfile(
+    adminId: string,
+    input: {
+      readonly nickname: string;
+      readonly title: string | null;
+      readonly avatarFileId: string | null;
+    },
+  ): Promise<'updated' | 'not-active'>; // 有効な管理者の行だけを更新する。招待中・存在しない(読み取った後に削除された)ならnot-active
+  applyPasswordReset(adminId: string, passwordHash: string): Promise<void>; // 更新・全セッション・未使用のリセットのトークンを削除
+  applyEmailChange(
+    adminId: string,
+    newEmail: string,
+  ): Promise<'changed' | 'email-in-use'>; // 更新・全セッション・未使用の変更のトークンを削除
+  applyPasswordChange(adminId: string, passwordHash: string): Promise<void>; // 更新・全セッションを削除
+}
+export interface AdminRequestMeta {
+  readonly clientIp: string | undefined;
+  readonly userAgent: string | undefined; // 512文字まで
+  readonly now: Date;
+} // identity-authのRequestMetaと同じ形を本specで定義する(identityの層に依存しないため)
+export interface IssuedAdminSession {
+  readonly sessionId: string;
+  readonly token: string; // SESSION_TOKEN_PATTERNに合う
+  readonly maxAgeSeconds: number;
+}
+export interface AdminTotpSetupView {
+  readonly otpauthUri: string;
+  readonly secret: string; // 手入力用(base32)
+  readonly expiresAt: Date; // 開始から10分
+}
+// AdminSessionStore・AdminAuthTokenStore・AdminLoginChallengeStore・AdminTotpCredentialStore・AdminRecoveryCodeStoreは
+// identity-authの同名の利用者のストアと同じ操作を、admin_*のテーブルと管理者のIDで持つ
+// (TOTPは再設定のためpending_sealed_secret・pending_expires_atを別の列に持ち、savePendingと、照合した保留の秘密鍵を条件に
+//  現在の設定との入れ替え・リカバリコードの置き換え・全セッションの削除を1つの一括の書き込みで行うcommitPendingRevokingSessionsで入れ替える。
+//  リカバリコードの再発行もreplaceAllRevokingSessionsで全セッションの削除と同じ一括の書き込みにする。期限切れの削除はlimit件まで。
+//  リカバリコードは未使用の件数を返すcount(adminId)を持ち、AdminViewer.remainingRecoveryCodesに使う(12.7)。
+//  利用者側にあって管理者側に持たない操作は、セッションの一覧と他の端末の削除(listByUser・deleteOthers、管理者に端末の管理の画面が無い)、
+//  多要素認証の無効化(disableRevokingSessions、12.6)、メールアドレスの使用中の判定(isEmailInUse、findByEmailで足りる)である)
+export interface AdminMailer {
+  sendInvitation(to: string, token: string, expiresAt: Date): Promise<void>;
+  sendEmailChangeConfirmation(
+    admin: AdminRecord,
+    newEmail: string,
+    token: string,
+    expiresAt: Date,
+  ): Promise<void>;
+  sendEmailChanged(
+    previousEmail: string,
+    admin: AdminRecord,
+    at: Date,
+  ): Promise<void>;
+  sendPasswordReset(
+    admin: AdminRecord,
+    token: string,
+    expiresAt: Date,
+  ): Promise<void>;
+  sendPasswordResetCompleted(admin: AdminRecord, at: Date): Promise<void>;
+  sendPasswordChanged(admin: AdminRecord, at: Date): Promise<void>;
+}
+export interface AdminSettings {
+  readonly adminOrigin: string; // ADMIN_SITE_ORIGIN
+  readonly totpIssuer: string; // 'Launch Stadium Admin'・'Launch Stadium Admin staging'・'Launch Stadium Admin local'
+}
+export type AdminLimitedMailKind = 'password_reset' | 'email_change';
+export interface AdminMailSendLimits {
+  consume(
+    kind: AdminLimitedMailKind,
+    address: string,
+    meta: AdminRequestMeta,
+  ): Promise<void>; // 超過はAppError(rate_limited, rate_limit_exceeded)。実装はinfrastructure/admin/counter-admin-mail-send-limits.ts
+}
+export declare const ADMIN_TYPES: {
+  /* 各ポート・ユースケース・ジョブ(Symbol.for('admin.<名前>')) */
+};
+```
+
+#### AdminSessionIssuer・AdminSessionVerifier
+
+- `issue(adminId, meta)`: `SecretGenerator.token()`→`SecretIssuer.hashOf('admin-session')`→`newSessionTimes(now, ADMIN_SESSION_POLICY)`→挿入。User-Agentは512文字で切る。`reissueForOperator(adminId, operator, meta)`は、操作者が同じ管理者のときだけ発行する(10.6)。
+- `AdminSessionVerifier.verify(token)`: ハッシュで検索し、無い・管理者が無い・`status`が`invited`・`evaluateSession`が`expired`なら(行があれば削除して)`invalid`(8.2・8.4)。`touch`なら更新して`renewal`を返す(8.3)。主体は`{ subjectKind: 'admin', subjectId, sessionId }`。
+
+#### AdminAuthorizer・AdminDirectory
+
+**Contracts**: Service [x]
+
+```typescript
+export interface CurrentAdmin {
+  readonly id: string;
+  readonly role: AdminRole;
+  readonly nickname: string;
+  readonly sessionId: string;
+}
+export interface AdminAuthorizer {
+  requireAdmin(
+    session: SessionView,
+    caller: string,
+    minimum: AdminRole,
+  ): Promise<CurrentAdmin>; // 管理者側でない・未ログインはunauthenticated/forbidden、ロール不足はforbidden
+  requireSelfOrRole(
+    session: SessionView,
+    caller: string,
+    ownerAdminId: string,
+    minimum: AdminRole,
+  ): Promise<CurrentAdmin>; // 本人なら許可(NFR-SECUR-008)
+}
+// apps/backend-lib/core/admin/ports.ts
+export interface AdminProfileView {
+  readonly id: string;
+  readonly nickname: string;
+  readonly title: string | null;
+  readonly avatarFileId: string | null;
+}
+export interface AdminDirectory {
+  findProfiles(
+    ids: readonly string[],
+  ): Promise<ReadonlyMap<string, AdminProfileView>>; // 削除済み・招待中は含めない
+}
+// apps/backend-lib/core/admin/identifiers.ts
+export declare const ADMIN_PLATFORM_TYPES: { readonly AdminDirectory: symbol }; // Symbol.for('admin.AdminDirectory')の凍結したオブジェクト
+// apps/backend-lib/workers/admin/d1-admin-directory.ts
+export declare class D1AdminDirectory implements AdminDirectory {
+  constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
+}
+// apps/backend-lib/workers/admin/admin-platform-module.ts
+export declare const ADMIN_PLATFORM_MODULE: Omit<AppModule, 'routes'>; // AdminDirectory → D1AdminDirectory。apiとeventのcomposition/modules.tsの両方へ入れる
+```
+
+- 置き場所: api・eventのapplication層(後続specのユースケースとデータエクスポートの部品)が読み込めるよう、契約(`AdminProfileView`・`AdminDirectory`)は`apps/backend-lib/core/admin/ports.ts`、識別子は`core/admin/identifiers.ts`に置き、D1の実装と束縛だけを`apps/backend-lib/workers/admin`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。識別子は`Symbol.for('admin.<名前>')`の凍結したオブジェクトで、`core/admin/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。apiの`ADMIN_TYPES`とは別の識別子にし、同じ`admin.`の接頭辞を使うため、メンバーの名前を重ねない。
+
+- `D1AdminDirectory.findProfiles`: 重複を除いたIDを100件ずつに分け、`admins`から`status = 'active'`の行の`id`・`nickname`・`title`・`avatar_file_id`だけを読む(1.5)。apiの処理単位のコンテナで後続specのユースケースが使い、eventでは後続specのデータエクスポートの部品(inquiry-chatの`InquiryExport`)が使う。`AdminAccountStore`を経由しないのは、eventに管理者のストアの束縛を持ち込まないためである。
+
+- `requireAdmin`: `caller`が`'admin'`でなければ`forbidden`(17.3)→`session.principal()`が認証済みで`subjectKind: 'admin'`でなければ`unauthenticated`→`AdminAccountStore.findById`で保存済みのロールを読み(要求ごとに1回、処理単位のコンテナで保持、17.4)→`hasRole`を満たさなければ`forbidden`(17.1)。`caller`はpresentation層の`CallerKind`を読み込まないため文字列で受ける(identity-authのR3-1と同じ)。
+- 後続specのリゾルバは`requireAdmin(context, 'moderator')`(`admin-guard.ts`、`context.caller`と`context.session`を渡す補助)で使う。ロールの選び方はページ配置の一覧に従う(17.6)。
+
+#### AdminLogin・AdminReAuthenticator・AdminMailSendLimits・CounterAdminMailSendLimits
+
+```typescript
+// application/admin/ports.tsのAdminLimitedMailKind・AdminMailSendLimits(「AdminPorts」)を実装する
+// infrastructure/admin/counter-admin-mail-send-limits.ts(@injectable())
+export declare class CounterAdminMailSendLimits implements AdminMailSendLimits {
+  constructor(
+    counters: RateLimitCounterClient, // @inject(PLATFORM_TYPES.RateLimitCounterClient)
+    hasher: KeyedHasher, // @inject(PLATFORM_TYPES.KeyedHasher)
+  );
+}
+```
+
+- `AdminLogin.withPassword`: `assertHuman('admin_login')`(リゾルバ)→`createLoginThrottleKeys`→`LoginThrottle.status('admin', keys)`(ロック中は`login_throttled`)→`findByEmail`→無い・招待中なら`verifyAgainstDummy`して`recordFailure`・`invalid_credentials`、有効なら`verify`(不一致は`recordFailure`・`invalid_credentials`)→待ちの値(`admin-login-challenge`、5分)を返す(6.1・6.2)。有効な管理者は必ずTOTPを持つため、パスワードだけでセッションを発行する経路は無い。
+- `withSecondFactor`: 待ちの値→管理者の現在のメールでキー→`status`→TOTPは`verify`と`advanceStep`、リカバリコードは`consume`→失敗は`recordFailure`・`invalid_second_factor`→成功は待ちを消し、`reset`して`AdminSessionIssuer.issue`(6.3・6.4・7.5)。
+- `logout`: 自分のセッションを削除し、リゾルバが`session.clear()`(6.6)。
+- `AdminReAuthenticator.verify(admin, { currentPassword, secondFactor }, meta)`: 第2要素は必須。ロック中は`login_throttled`(13.4)、誤りは`recordFailure`して`reauthentication_failed`(詳細は現在のパスワードか第2要素)、リカバリコードは消費する(13.1〜13.3・7.6)。
+- `reauthentication_failed`の詳細の経路は、画面の欄の形(GraphQLの引数の形)のとおりにする。リゾルバは`reAuthentication.currentPassword`と、送った第2要素の`reAuthentication.secondFactor.totpCode`か`reAuthentication.secondFactor.recoveryCode`(どちらも送らなかった時は`reAuthentication.secondFactor`)を経路にする(identity-authの`reauthentication_failed`と同じ形)。
+- `CounterAdminMailSendLimits.consume(kind, address, meta)`: 規則`admin-auth-mail:<kind>:address`(3回/3600秒)と`admin-auth-mail:<kind>:ip`(5回/3600秒)で`RateLimitCounterClient.hit`し(回数と時間窓は`MAIL_SEND_POLICY`から読む)、超過は`rate_limit_exceeded`(14.4)。有無の判定より前に数える。
+- 置き場所: ポート`AdminMailSendLimits`はapplication層、実装`CounterAdminMailSendLimits`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`の型が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」、identity-authの`CounterMailSendLimits`と同じ形)。`ADMIN_TYPES.AdminMailSendLimits`を`CounterAdminMailSendLimits`へ束縛し、リセットと変更のユースケースはポートだけを受け取る。実装の振る舞いはWorkers統合テスト(偽の厳密カウンタ)、ユースケースの呼び出しの順は偽のポートによる単体テストで確かめる。
+
+#### AdminInvitation
+
+```typescript
+export interface AdminInvitation {
+  invite(
+    current: CurrentAdmin,
+    input: { readonly email: string; readonly reason?: string },
+    meta: AdminRequestMeta,
+  ): Promise<void>;
+  resend(
+    current: CurrentAdmin,
+    input: { readonly adminId: string; readonly reason?: string },
+    meta: AdminRequestMeta,
+  ): Promise<void>;
+  start(
+    input: {
+      readonly token: string;
+      readonly nickname: string;
+      readonly password: string;
+    },
+    meta: AdminRequestMeta,
+  ): Promise<AdminTotpSetupView>;
+  complete(
+    input: { readonly token: string; readonly totpCode: string },
+    meta: AdminRequestMeta,
+  ): Promise<{
+    readonly recoveryCodes: readonly string[];
+    readonly session: IssuedAdminSession;
+  }>;
+}
+```
+
+- `invite`: `checkInvitable`→`AuditLogRecorder.prepare`(`admin-account.invite`)→`insertInvited`(監査ログの文を同じ一括の書き込みに含める)(`email-in-use`は`admin_email_in_use`、3.2)→メール(3.1)。`resend`は`checkInvitable`→`findById`(無い・有効な管理者なら`not_found`)→`AuditLogRecorder.prepare`(`admin-account.invite`、要件18.7・仮5の「招待の操作」として記録する)→`reissueInvitation`(監査ログの文を同じ一括の書き込みに含める。`not-invited`は`not_found`)→メール(3.3)。
+- `start`: `findValid('invitation')`(無効・有効な管理者は`invalid_link`、4.5)→ニックネームの規則→`PasswordPolicy`(識別子はニックネームとメール)→`savePendingProfile`→秘密鍵を生成して`seal(secret, 'admin:<ID>')`し`savePending`(10分)→URI(ラベル`管理者:<ニックネーム>`。ニックネームが`@`を含むときは、メールアドレスをラベルから締め出す`TotpAuthenticator.buildUri`の検査に掛かるため`管理者`だけにする)を返す(4.2)。
+- `complete`: 保留が無い・期限切れは`totp_setup_expired`(4.6)→`open`と`verify`(誤りは`invalid_second_factor`)→`consume('invitation')`(負けたら`invalid_link`)→`RecoveryCodeIssuer.issue('admin-recovery-code')`→`activate`(有効化・TOTPの確定・リカバリコード・セッションの挿入と、残りの招待トークンの削除を1つの一括の書き込み、4.3・4.4。セッションは`prepareAdminSession`で組み立てる。`not-invited`はトークンを消費済みのため`invalid_link`)。
+- 招待のリンクの無効(`start`・`complete`の`invalid_link`)は`adminInvitationLinkError`で、共有の文言に「招待した管理者に再送を依頼してください。」を添える(4.5)。ニックネームの規則の違反は欄`nickname`の`validation_error`(`adminNicknameRejectedError`)。
+
+#### AdminPasswordReset・AdminEmailChange・AdminPasswordChange・AdminTotpManagement
+
+- `AdminPasswordReset.request`: `assertHuman('admin_password_reset')`(リゾルバ)→`consume('password_reset')`→有効な管理者だけにトークン(30分)を置き換えて送信。応答は常に`true`(9.1〜9.3)。`complete`: `findValid`→`PasswordPolicy`→`consume`→`applyPasswordReset`→完了メール(9.4)。TOTPは変えない(9.5)。
+- `AdminEmailChange.request`: `AdminReAuthenticator`→`consume('email_change', newEmail)`→重複しなければトークン(24時間)を置き換えて送信。応答は常に`true`(10.1〜10.3)。`confirm`: `consume`→`applyEmailChange`(重複は`invalid_link`、10.5)→旧アドレスへ完了メール→`reissueForOperator`(10.4・10.6)。
+- `AdminPasswordChange.change`: `AdminReAuthenticator`→`PasswordPolicy`→`applyPasswordChange`→完了メール→操作した端末へ再発行(11.1〜11.3)。
+- `AdminTotpManagement.startReset`: 本人確認→新しい秘密鍵を`savePending`(現在の設定は有効なまま、12.1)。`completeReset(code)`: 保留の期限・誤りは拒否(12.3)→`commitPendingRevokingSessions`(保留と現在の設定の入れ替え・リカバリコードの置き換え・全セッションの削除を1つの一括の書き込み)→再発行(12.2・12.5)。`regenerateRecoveryCodes`: 本人確認→`replaceAllRevokingSessions`→再発行(12.4・12.5)。無効化の操作は持たない(12.6)。
+
+#### AdminAccountManagement・AdminProfile
+
+- `list(current, meta)`: `viewer`以上(認可はリゾルバの`requireAdmin`)。`displayStatus`を付けた`AdminAccountView`(`id`・`email`・`nickname`・`title`・`avatarFileId`・`role`・`status`・`createdAt`)の一覧を返す(15.1)。
+- `delete(current, { adminId, reason }, meta)`: 自分自身なら`self_deletion_forbidden`→対象を読み、無ければ`not_found`→`checkDeletable`(15.4・15.5、ロール不足と最上位管理者の対象は`forbidden`)→`prepare`(`admin-account.delete`)→`deleteGuarded`(監査ログを先頭に、子の行と管理者の行の削除。15.2・15.3)→`rejected`なら「削除・ロール変更の保護」の節と同じく読み直して`not_found`・`last_super_admin`・`admin_state_conflict`(15.8。事前の可否の判定を通った後の取り消しは、読み取った後に操作者か対象の状態が変わった競合のため)→読み取った行が参照するプロフィール画像があれば`MediaFiles.eraseNow`(失敗はmedia-pipelineの日次バッチが完了させるため`warning`のログだけ)。
+- `changeRole(current, { adminId, role, reason }, meta)`: `checkRoleChangeable`(15.7)→`prepare`(`admin-account.role-change`・詳細`fromRole`・`toRole`)→`changeRoleGuarded`(変更前のロールは読み取った対象のロール。15.6・15.8)→`rejected`なら対象を読み直し、無ければ`not_found`、対象が有効な最上位管理者で最上位管理者以外へ変えようとし、他に有効な最上位管理者がいなければ`last_super_admin`、それ以外(操作者のロール・状態や対象のロールが読み取った後に変わった)は`admin_state_conflict`を返す。成功すると変更後の`AdminAccountView`を返す。
+- `AdminProfile.update(current, { adminId, nickname, title, avatarFileId }, meta)`: `checkProfileEditable`(16.3・16.4)→規則(16.7、ニックネームと肩書きの違反を欄ごとの詳細にまとめた`validation_error`。空白だけの肩書きは未設定)→対象を読み、無いか有効でなければ(招待中・招待期限切れ)`not_found`→対象の行と異なる新しい画像があれば`MediaFiles.claim({ purpose: 'admin-avatar', owner: { kind: 'admin', id: current.id } })`(失敗は`invalid_upload`)→`updateProfile`→`not-active`なら(読み取った後に対象が削除された競合)紐付けた新しい画像を`eraseNow`して(失敗は`warning`のログだけ)`not_found`→以前の画像を`eraseNow`(16.5、失敗は`warning`のログだけ)→更新後の`AdminAccountView`を返す。招待中・招待期限切れの管理者のニックネームは本人が招待の完了で決めるため、最上位管理者も編集できない(画面の操作の可否とページ配置の「招待中・招待期限切れの管理者のプロフィールは編集できない」と同じ規則を、招待の再送と同じく`not_found`で拒否する)。用途の名前と上限のバイト数は`apps/common-lib/admin/admin-avatar-upload.ts`の`ADMIN_AVATAR_UPLOAD_PURPOSE`・`ADMIN_AVATAR_MAX_BYTES`で、APIサーバーの用途の登録(`composition/upload-purposes.ts`)と画面の選択の検査(`admin-avatar-field.tsx`)が読む。保有者はアップロードした操作者で、削除は管理者の行の画像のIDで行う(保有者単位の削除を使わない)。
+
+#### AuditLogRecorder・AuditLogReader
+
+**Contracts**: Service [x]
+
+```typescript
+export interface AuditLogRecorder {
+  prepare(entry: AuditEntryInput): PreparedAuditEntry; // 検証の違反はAppError(bad_request, validation_error, 詳細action・reason・targets・detail)
+  record(entry: AuditEntryInput): Promise<void>; // 単独で書く(読み取りの操作の記録、例: user.email-search)
+}
+export interface AuditLogEntryView {
+  readonly id: string;
+  readonly occurredAt: Date;
+  readonly operatorAdminId: string;
+  readonly action: string;
+  readonly targetKind: AuditTargetKind | null;
+  readonly targetIds: readonly string[];
+  readonly reason: string | null;
+  readonly detail: Readonly<Record<string, string>>;
+}
+export interface AuditLogFilter {
+  readonly operatorAdminId?: string;
+  readonly action?: string;
+  readonly targetId?: string;
+  readonly occurredFrom?: Date; // 含む
+  readonly occurredBefore?: Date; // 含まない
+}
+export interface AuditLogReader {
+  search(
+    filter: AuditLogFilter,
+    page: { readonly after?: string; readonly limit: 50 },
+  ): Promise<{
+    readonly entries: readonly AuditLogEntryView[];
+    readonly nextCursor: string | null;
+  }>;
+  latestFor(input: {
+    readonly action: string;
+    readonly targetKind: AuditTargetKind;
+    readonly targetId: string;
+  }): Promise<Date | undefined>;
+  latestForMany(input: {
+    readonly action: string;
+    readonly targetKind: AuditTargetKind;
+    readonly targetIds: readonly string[];
+  }): Promise<ReadonlyMap<string, Date>>; // 記録のある対象だけを含む(仮7)
+}
+
+// application/admin/testing/fake-audit-log-reader.ts(後続specの単体テストが共有する偽物、仮7)
+export declare function createFakeAuditLogReader(
+  overrides?: Partial<AuditLogReader>,
+): AuditLogReader; // 既定はsearchが空・latestForがundefined・latestForManyが空のMap
+// PreparedAuditEntryは検証と正規化を済ませた値(ID・操作者・操作種別・対象の種類(対象が0件ならnull)と重複を除いたID・理由・詳細・日時)。作れるのはprepareだけ
+export interface PreparedAuditEntry {
+  readonly [PREPARED]: true; // PREPAREDはaudit-log-recorder.tsの非公開のシンボル。以下の値は読み取り専用
+}
+
+// infrastructure/admin/audit-log-statements.ts(drizzleの型を扱うためinfrastructure層に置く)
+export type AuditGuard =
+  | {
+      readonly kind: 'delete';
+      readonly operator: AdminSnapshot;
+      readonly targetId: string;
+    }
+  | {
+      readonly kind: 'role-change';
+      readonly operator: AdminSnapshot;
+      readonly targetId: string;
+      readonly fromRole: AdminRole;
+      readonly toRole: AdminRole;
+    };
+export declare function buildAuditLogStatements(
+  db: Database,
+  entry: PreparedAuditEntry,
+  guard?: AuditGuard,
+): readonly [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]; // db.batch()へそのまま渡せる1件以上の文
+export declare function isAuditGuardRejection(error: unknown): boolean; // guardの条件を満たさず取り消された一括の書き込みの失敗か
+```
+
+- `prepare`: 対象のIDの重複を最初の出現の順で除いてから`validateAuditEntry`で検証し(対象の上限は重複を除いた件数で数える)、IDを採番した値を作る。違反は欄(`action`・`reason`・`targets`・`detail`)と違反の種類をコードにした詳細を持つ`validation_error`になる。application層のユースケースは、管理操作の前に`prepare`を呼び(違反なら操作を行わない、18.4)、その値を自分のストアへ渡す。
+- `buildAuditLogStatements`: ログの挿入(`guard`があれば`operator_admin_id`を`CASE`式にする)→対象の挿入(対象の行の6列から1文あたり16行、バインド変数100個以内。対象の行のIDは記録の順に単調増加で採番し、照会で記録の順に返す)。条件は、削除なら「操作者が読み取った状態(ID・ロール・有効)のまま・自分以外・モデレーター以上・対象が存在し最上位管理者ならモデレーターを拒否・対象が有効な最上位管理者なら他に有効な最上位管理者がいる」、ロールの変更なら「操作者が読み取った状態のままの最上位管理者・対象が存在し現在のロールが読み取った変更前のロール(監査ログの詳細の`fromRole`)と一致する・最上位管理者以外へ変えるなら対象の他に有効な最上位管理者がいる(対象が有効な最上位管理者の場合)」。取り消しは`isAuditGuardRejection`で判別し、他の失敗はそのまま投げ直す。ストア(infrastructure層)は自分の文と同じ`db.batch()`に入れる(18.2)。
+- 規約(`backend/008`): 管理操作は、application層で`prepare`し、infrastructure層のストアで操作の文と`buildAuditLogStatements`を同じ一括の書き込みにする。記録だけの操作(閲覧・検索)は`record`を操作の結果を返す前に呼び、失敗したら結果を返さない。
+- `search`: `(occurred_at, id)`の降順のカーソル(`base64url('<ミリ秒>:<ID>')`)。対象の識別子は`admin_audit_log_targets`との`EXISTS`で絞る(19.2・19.3)。
+- `latestForMany`(仮7、19.5): `latestFor`の複数の対象版。`targetIds`の重複を除き、空なら問い合わせずに空のMapを返す。`D1AuditLogStore`は対象のIDを90件ずつ(操作種別と対象の種類を含めてバインド変数100個以内)に分け、`admin_audit_log_targets`の`(target_kind, target_id, log_id)`の索引と`admin_audit_logs`の結合で`target_id`ごとの`MAX(occurred_at)`を1回の問い合わせで求め、結果を1つのMapにまとめる。記録の無い対象は含めない。`search`・`latestFor`の形は変えない。
+- `createFakeAuditLogReader`(仮7): 後続specの単体テストが`AuditLogReader`の偽物を自分で書かずに使う共有の偽物。`overrides`に渡したメソッドだけを差し替え、残りは既定の振る舞いを返す。`AuditLogReader`にメソッドを足すときは本specがこの偽物の既定の振る舞いも足すため、後続specの偽物が型検査で壊れない。テストだけが読み込む。
+
+#### AdminCredentialCleanupJob・AuditLogRetentionJob
+
+- `admin-foundation.credential-cleanup`(4:21・200): 期限切れのセッション・認証系トークン・第2要素の待ち・TOTPの保留を、各500件まで削除する(8.6・14.6)。
+- `admin-foundation.audit-log-retention`(4:21・210): `occurred_at`が実行時刻の3年前(UTCの暦の3年)以前のログを、対象の行から順に500件ずつ、最大20回削除する。残りは翌日に続ける(19.6)。
+
+### api/presentation
+
+#### AdminSchemaModule・AdminGuard
+
+**Contracts**: API [x]
+
+```graphql
+enum AdminRole {
+  VIEWER
+  MODERATOR
+  SUPER_ADMIN
+}
+enum AdminAccountStatus {
+  ACTIVE
+  INVITED
+  INVITATION_EXPIRED
+}
+type AdminViewer {
+  id: ID!
+  nickname: String!
+  title: String
+  email: String!
+  role: AdminRole!
+  avatar: MediaImage
+  remainingRecoveryCodes: Int!
+}
+type AdminAccount {
+  id: ID!
+  email: String!
+  nickname: String
+  title: String
+  avatar: MediaImage
+  role: AdminRole!
+  status: AdminAccountStatus!
+  createdAt: DateTime!
+}
+type AdminSecondFactorRequired {
+  challenge: String!
+  expiresAt: DateTime!
+}
+type AdminTotpSetup {
+  otpauthUri: String!
+  secret: String!
+  expiresAt: DateTime!
+}
+type AdminRecoveryCodeSet {
+  codes: [String!]!
+}
+type AdminConfirmationResult {
+  viewer: AdminViewer
+}
+type AuditLogEntry {
+  id: ID!
+  occurredAt: DateTime!
+  operator: AuditOperator!
+  action: String!
+  actionLabel: String!
+  targetKind: String
+  targetIds: [String!]!
+  reason: String
+  detail: [AuditDetail!]!
+}
+type AuditOperator {
+  id: ID!
+  nickname: String
+}
+type AuditDetail {
+  key: String!
+  value: String!
+}
+type AuditLogPage {
+  entries: [AuditLogEntry!]!
+  nextCursor: String
+}
+input AdminSecondFactorInput {
+  totpCode: String
+  recoveryCode: String
+}
+input AdminReAuthenticationInput {
+  currentPassword: String!
+  secondFactor: AdminSecondFactorInput!
+}
+input AuditLogFilterInput {
+  operatorId: ID
+  action: String
+  targetId: String
+  occurredFrom: DateTime
+  occurredBefore: DateTime
+}
+type Query {
+  "未ログイン・無効なセッションではnull"
+  adminViewer: AdminViewer
+  adminAccounts: [AdminAccount!]!
+  auditLogs(filter: AuditLogFilterInput, after: String): AuditLogPage!
+}
+type Mutation {
+  adminLogin(email: String!, password: String!): AdminSecondFactorRequired!
+  completeAdminSecondFactorLogin(
+    challenge: String!
+    secondFactor: AdminSecondFactorInput!
+  ): AdminViewer!
+  adminLogout: Boolean!
+  requestAdminPasswordReset(email: String!): Boolean!
+  resetAdminPassword(token: String!, newPassword: String!): Boolean!
+  startAdminInvitation(
+    token: String!
+    nickname: String!
+    password: String!
+  ): AdminTotpSetup!
+  completeAdminInvitation(
+    token: String!
+    totpCode: String!
+  ): AdminRecoveryCodeSet!
+  inviteAdmin(email: String!, reason: String): AdminAccount!
+  resendAdminInvitation(id: ID!, reason: String): AdminAccount!
+  deleteAdmin(id: ID!, reason: String): Boolean!
+  changeAdminRole(id: ID!, role: AdminRole!, reason: String): AdminAccount!
+  updateAdminProfile(
+    id: ID!
+    nickname: String!
+    title: String
+    avatarFileId: ID
+  ): AdminAccount!
+  requestAdminEmailChange(
+    newEmail: String!
+    reAuthentication: AdminReAuthenticationInput!
+  ): Boolean!
+  confirmAdminEmailChange(token: String!): AdminConfirmationResult!
+  changeAdminPassword(
+    newPassword: String!
+    reAuthentication: AdminReAuthenticationInput!
+  ): Boolean!
+  startAdminTotpReset(
+    reAuthentication: AdminReAuthenticationInput!
+  ): AdminTotpSetup!
+  completeAdminTotpReset(totpCode: String!): AdminRecoveryCodeSet!
+  regenerateAdminRecoveryCodes(
+    reAuthentication: AdminReAuthenticationInput!
+  ): AdminRecoveryCodeSet!
+}
+```
+
+| 操作                                                                                           | bot判定のaction        | 必要なロール                       | セッションの指示                                                                                |
+| ---------------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `adminLogin`                                                                                   | `admin_login`          | 不要                               | なし                                                                                            |
+| `completeAdminSecondFactorLogin`・`completeAdminInvitation`                                    | なし                   | 不要                               | 発行                                                                                            |
+| `requestAdminPasswordReset`                                                                    | `admin_password_reset` | 不要                               | なし                                                                                            |
+| `resetAdminPassword`・`startAdminInvitation`                                                   | なし                   | 不要                               | なし                                                                                            |
+| `confirmAdminEmailChange`                                                                      | なし                   | 不要                               | 操作した端末が同じなら発行                                                                      |
+| `adminViewer`・`adminAccounts`・`auditLogs`・`adminLogout`                                     | なし                   | 閲覧のみ以上(`adminViewer`は任意)  | `adminLogout`は削除                                                                             |
+| `inviteAdmin`・`resendAdminInvitation`・`deleteAdmin`                                          | なし                   | モデレーター以上(削除は対象による) | なし                                                                                            |
+| `changeAdminRole`                                                                              | なし                   | 最上位管理者                       | なし                                                                                            |
+| `updateAdminProfile`                                                                           | なし                   | 本人または最上位管理者             | なし                                                                                            |
+| `requestAdminEmailChange`・`changeAdminPassword`・`*TotpReset`・`regenerateAdminRecoveryCodes` | なし                   | 閲覧のみ以上(本人)                 | `changeAdminPassword`・`completeAdminTotpReset`・`regenerateAdminRecoveryCodes`は発行(入れ替え) |
+
+- `ResolverSupport`: 呼び出し元が`admin`でなければ`forbidden`(6.8・17.3)。入力の検証は`withValidatedArgs`(ニックネーム・肩書き・理由は`common-lib/admin`の規則、メールは254文字以内の`html5Email`、パスワードは長さ)。`auditLogs`の`operator.nickname`は`AdminDirectory`で引き、削除済みは`null`(19.4)。`actionLabel`は`AUDIT_ACTIONS`の表示名。
+- `admin-guard.ts`: `requireAdmin(context: GraphQLContext, minimum: AdminRole): Promise<CurrentAdmin>`と`requireSelfOrRole(context, ownerAdminId, minimum)`。`AdminAuthorizer`に`context.session`と`context.caller`を渡す。
+
+### api/composition
+
+#### ApiAdminComposition
+
+- `admin-module.ts`: 各ストア・`AdminMailer`・`AdminMailSendLimits`(→`CounterAdminMailSendLimits`)・`AdminSettings`(`ADMIN_SITE_ORIGIN`、TOTPの発行者名は`APP_ENVIRONMENT`から)・各ユースケース・`AdminAuthorizer`(処理単位で単一)・`AuditLogRecorder`(`AUDIT_ACTIONS`のカタログ)・`AuditLogReader`・2つのジョブ。`AdminDirectory`は`ADMIN_PLATFORM_MODULE`が束縛する。identity-authの`AUTH_TYPES`の束縛はそのまま使う。
+- `session.ts`: `AUTH_TYPES.AdminSessionVerifier`→`ADMIN_TYPES.AdminSessionVerifier`。`upload-purposes.ts`: `defineUploadPurpose({ name: ADMIN_AVATAR_UPLOAD_PURPOSE, storage: 'images', uploaderKinds: ['admin'], allowedTypes: IMAGE_MEDIA_TYPES, maxBytes: ADMIN_AVATAR_MAX_BYTES })`(`common-lib/admin/admin-avatar-upload.ts`の`admin-avatar`・512000。16.2・仮2)。
+- `env-schema.ts`: `ADMIN_SITE_ORIGIN`(http・httpsのオリジンで`new URL(v).origin === v`)。Wrangler設定: ローカル`http://localhost:48045`、staging`https://genai-example-2-admin-staging.lab.kurachiweb.com`、prod`https://genai-example-2-admin.lab.kurachiweb.com`。
+
+### event
+
+#### AdminEmailTemplates
+
+- `templates/admin/`に6種の本文(`*-body.tsx`)と定義(`*-template.ts`)。宛名はニックネーム(招待は宛名なし)、日時は`formatUtcDateTime`。招待・確認・リセットは行動ボタン(「招待を受けて設定する」「メールアドレスの変更を確定する」「パスワードを再設定する」)と有効期限、完了の3種は日時と、心当たりが無い場合に他の管理者へ連絡する旨。リンクは`<ADMIN_SITE_ORIGIN>/auth/invitation#token=`・`/auth/email-change/confirm#token=`・`/auth/password-reset/confirm#token=`。
+
+### frontend-lib
+
+#### AdminCommonParts
+
+**Contracts**: State [x]
+
+```typescript
+export interface AdminDataTableColumn<Row> {
+  readonly key: string;
+  readonly header: string;
+  readonly cell: (row: Row) => ReactNode;
+  readonly className?: string;
+}
+export interface AdminDataTableProps<Row> {
+  readonly caption: string; // 支援技術向けの表の名前
+  readonly columns: readonly AdminDataTableColumn<Row>[];
+  readonly rows: readonly Row[] | undefined; // undefinedは読み込み中
+  readonly rowKey: (row: Row) => string;
+  readonly error?: { readonly message: string; readonly onRetry: () => void };
+  readonly emptyMessage: string;
+  readonly pagination?: {
+    readonly hasPrevious: boolean;
+    readonly hasNext: boolean;
+    readonly onPrevious: () => void;
+    readonly onNext: () => void;
+  };
+}
+export interface ConfirmActionDialogProps {
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly title: string;
+  readonly description: string;
+  readonly confirmLabel: string;
+  readonly reason: 'required' | 'optional' | 'none'; // 'none'以外はReasonFieldを表示
+  readonly audited: boolean; // 監査ログに記録される旨の表示
+  readonly onConfirm: (input: {
+    readonly reason: string | undefined;
+  }) => Promise<void>; // 失敗は例外で知らせる
+  readonly failureMessageOf: (error: unknown) => string; // 必須。管理者側の画面は(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)を渡す
+}
+export interface CategoryMasterEditorProps {
+  readonly title: string;
+  readonly categories:
+    | readonly {
+        readonly id: string;
+        readonly name: string;
+        readonly handle?: string;
+        readonly systemDefault: boolean;
+      }[]
+    | undefined;
+  readonly withHandle: boolean; // プロダクトカテゴリだけ真
+  readonly canEdit: boolean; // ロールによる
+  readonly validateHandle?: (handle: string) => string | undefined; // ハンドルの形式の検証。妥当ならundefined、違反なら欄に示す文言
+  readonly onCreate: (input: {
+    readonly name: string;
+    readonly handle?: string;
+  }) => Promise<void>;
+  readonly onUpdate: (
+    id: string,
+    input: { readonly name: string; readonly handle?: string },
+  ) => Promise<void>;
+  readonly onDelete: (id: string) => Promise<void>; // 拒否・失敗は例外で知らせ、部品はfailureMessageOfの文言を表示する
+  readonly failureMessageOf: (error: unknown) => string; // 管理者側の画面は(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)を渡す
+}
+```
+
+- `AdminPageHeader({ title, description?, actions? })`、`AdminFilterBar({ children, onApply, onReset })`、`ReasonField({ required, ...fieldProps })`(500書記素・個人情報の注意、18.9)、`AdminAvatar({ image, nickname, size })`(`MediaPicture`で、画像が無い・表示できないときは`MediaPlaceholder`、16.6)、`CategoryFormDialog`(名前1〜30書記素・ハンドルの形式は呼び出す側が渡す検証)。
+- いずれもGraphQLとアプリの型に依存せず、Storybookに載せる(21.4)。入力を持つ部品(`ConfirmActionDialog`の理由・`CategoryFormDialog`)は`useAppForm`と`AppForm`で作り、`ReasonField`は呼び出す側の`AppForm`の中の`FormField`として描く(frontend-platformの`FormField`は`AppForm`の中でだけ使う)。日時は`DateTime`(`<time datetime>`)で表示する。
+- 失敗の文言: 共通部品はアプリのプロファイルを読まない。`AdminDataTable`の`error.message`には呼び出す側の画面が`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選んだ文言を渡し、`ConfirmActionDialog`・`CategoryMasterEditor`の`failureMessageOf`には`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を渡す。`ConfirmActionDialog`は`onConfirm`が例外を投げたら、ダイアログを開いたまま理由の入力を保ち、`failureMessageOf(error)`の文言をダイアログの中に`role="alert"`で示す。`AdminDataTable`のエラーの状態は`ErrorState`を`contactHref`無しで描く(問い合わせのボタンを出さない)。
+
+### admin
+
+#### AdminNavigationRegistry・DashboardCardRegistry
+
+**Contracts**: State [x]
+
+```typescript
+// composition/admin-navigation.ts
+export interface AdminNavItem {
+  readonly to: string;
+  readonly label: string;
+  readonly order: number;
+}
+export declare const ADMIN_NAV_ITEMS: readonly AdminNavItem[]; // 初版はダッシュボード(/、10)・管理者アカウント(/accounts、140)・監査ログ(/audit-logs、150)・自分のアカウント(/account、160)
+// composition/dashboard-cards.ts
+export interface DashboardCard {
+  readonly id: string; // '<spec名>.<名詞句>'
+  readonly order: number; // ugc-moderationの統計 10・inquiry-chatの未対応の問い合わせ 20・content-reportingの未対応の通報 30
+  readonly width: 'full' | 'half';
+  readonly component: ComponentType; // 自分でデータを取得し、DashboardCardFrameで枠と状態を表示する
+}
+export declare const DASHBOARD_CARDS: readonly DashboardCard[]; // 初版は空
+```
+
+- メニューの`order`とURL(仮6、ページ配置の順): ダッシュボード`/`10・ユーザー`/users`20・プロダクト`/products`30・コメント`/comments`40・評価`/ratings`50・画像モデレーション`/media-moderation`60・通報`/reports`70・問い合わせ`/inquiries`80・スポンサー広告`/sponsorships`90・ヘルプ記事`/help-articles`100・カテゴリ`/categories`110・法務文書`/legal-documents`120・設定`/settings`130・管理者アカウント`/accounts`140・監査ログ`/audit-logs`150・自分のアカウント`/account`160。全ロールが全メニューを参照できるため、項目はロールで隠さない(Q3)。
+- `DashboardGrid`: `DASHBOARD_CARDS`を`order`順に並べ、各カードを個別のエラー境界で包む(20.7)。空なら`EmptyState`(「表示できる項目はまだありません。」、20.5)。`DashboardCardFrame({ title, href?, state, children })`は読み込み中・エラー・本文を切り替える。エラーは`ErrorState`を`contactHref`無しで描き、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ(エラー境界が捕まえた例外も同じ)。
+
+#### AuthenticatedLayout・AdminViewerContext・RoleGate・AdminNavigation・AdminAccountMenu
+
+- `__root.tsx`の`beforeLoad`: `adminViewer`を取得して文脈に入れる(失敗は未ログイン)。`_authenticated/route.tsx`: `viewer`が無ければ`redirect({ to: '/auth/login', search: { redirect } })`(8.5)。`AdminViewerProvider`でロールを配る。ログイン中に`/auth/login`を開いたら`/`へ移動する(20.8)。疎通確認の画面`/system/status`(frontend-platform)は20.1の例外として`_authenticated`の外に置く。デプロイの後のスモークテストがログイン無しで開くためで、prodでは404になる。
+- `RoleGate({ minimum, fallback?, children })`と`useAdminRole()`: `hasRole`で判定する(17.5)。
+- `AdminNavigation`(`navigation`の区画): 自身で名前付きの`nav`を描き、管理者側の画面シェルのナビゲーションのランドマークを満たす(`AdminLayout`はヘッダー・`navigation`の区画・本文だけを持ち、フッターを持たない。frontend-platformの要件10.8)。PCは左の縦の一覧、768px未満は`Sheet`で、開閉ボタンはヘッダーと本文の間(区画の位置)に出る。現在の項目は`aria-current="page"`(20.3)。`AdminAccountMenu`(`headerAccount`): `AdminAvatar`・ニックネーム・ロールの表示名、自分のアカウント・ログアウト(20.2)。
+- 未ログインのときの区画: `AdminLayout`はルートの`shellComponent`にあり、2つの区画の部品は`/auth/*`・404・エラーのページにも描かれる。区画の型は静的な`ComponentType | null`で、ページごとに外せない。また、エラーと404のページではルートの文脈を読めない。そこで2つの部品は、利用者側の`useViewer`と同じく、ルートの`beforeLoad`(`loadRootAuthContext`)が入れた取得のキャッシュを`useAdminViewer()`(`useQuery`に`adminViewerQueryOptions()`と`select: toAdminViewer`を渡す)で読む。取得の前と取得の失敗は未ログインとして扱う。未ログインなら、`AdminNavigation`は`nav`を含めて何も描かず、`AdminAccountMenu`も何も描かない(`null`を返す)。管理者側には新規登録が無く、未ログインで開ける画面は`/auth/*`の認証の画面だけのため、ログインへの導線も置かない。ログアウト・メールのリンクの確定・セッションの入れ替えの後は、`useAdminViewerRefresh()`で取得を無効にし`router.invalidate()`でルートの`beforeLoad`に取り直させ、区画を消すか描き直す(利用者側の`useViewerRefresh`と同じ形)。
+
+#### AdminAuthPages・InvitationPages・AdminsPage・AuditLogsPage・AccountPage
+
+| 経路                               | 画面                                                                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/auth/login`                      | メール・パスワード・bot判定→同じ画面で認証コードかリカバリコード。クエリ`redirect`(`toSafeReturnPath`)                                                       |
+| `/auth/password-reset`・`/confirm` | メールとbot判定(送信後は常に同じ案内)・新しいパスワードの確定                                                                                                |
+| `/auth/invitation`                 | ニックネーム・パスワード→QRコードと手入力用の文字列→認証コード→リカバリコードの表示→ダッシュボードへ                                                         |
+| `/auth/email-change/confirm`       | 「メールアドレスの変更を確定する」                                                                                                                           |
+| `/accounts`                        | 一覧(`AdminDataTable`)、招待(モデレーター以上)、再送・削除(権限による)、ロールの変更(最上位管理者)、プロフィールの編集(最上位管理者、自分以外の有効な管理者) |
+| `/audit-logs`                      | 絞り込み(操作者の選択・操作種別の選択・対象の識別子・開始日と終了日の`<input type="date">`)と一覧                                                            |
+| `/account`                         | プロフィール・メールアドレス変更・パスワード変更・TOTPの再設定・リカバリコードの再発行と残数                                                                 |
+
+- メールのリンクの画面は、フラグメントのトークンを`readFragmentToken`で読み、開いただけでは何もしない。
+- フォームの値: 入力欄を描かない値(ログインの第2要素の`challenge`、パスワードの再設定と招待の`token`、プロフィールの編集の対象の`id`)はスキーマの入力に含めず`onSubmit`で足す。ログインの第2要素は、認証コードの入力の間は`secondFactor.totpCode`だけ、リカバリコードの入力に切り替えた間は`secondFactor.recoveryCode`だけを持つスキーマを使い(条件ごとに分けた定数のスキーマから選んで`useAppForm`へ渡すだけにし、描画ごとに作らない。切り替えの後の検証のし直しは`useAppForm`に任せる)、本人確認の欄(`reauthentication-fields.tsx`)も現在のパスワードと、認証コードとリカバリコードのうち描いている一方だけをスキーマに含める。本人確認の失敗の詳細はAPIが欄の形のとおりの経路(`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`など)で返すため、現在のパスワードの欄と描いている第2要素の欄に示す。第2要素を送らなかった時の詳細(`reAuthentication.secondFactor`)は欄をまとめた値の経路のため、`onSubmitError`の`unmatched`に入ってフォーム全体の失敗として示す。
+- `audit-period.ts`: 入力の日付(閲覧者の地域の暦)を、開始日の0時を`occurredFrom`、終了日の翌日0時を`occurredBefore`とするUTCの時刻に変換する(19.2)。境界の時刻がAPIの日時(西暦4桁)で表せるよう年は0001〜9998年だけを受け付け、範囲の外はURLでは未指定として捨て、入力欄では欄の誤りにする(20.9)。
+- `/accounts`の操作のダイアログ(15.10)。いずれも理由は任意で、失敗の文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選び、ダイアログの中に示す。
+  - 削除と招待の再送は`ConfirmActionDialog`(監査ログに記録される旨あり)。
+  - 招待(メールアドレス)とロールの変更(現在のロールを選べなくしたラジオボタン)は、入力欄を持つため管理者側の`AdminFormDialog`(`components/admins/`。処理中・フォーカス・取り消しの扱いは`ConfirmActionDialog`と同じ)で作り、理由の欄は`ReasonField`、監査ログに記録される旨を示す。
+  - プロフィールの編集(ニックネーム・肩書き・`ImageUploadField`の画像)も`AdminFormDialog`で、監査ログの操作種別が無いため監査ログの旨を示さない。
+  - 操作の可否はドメインの規則(`admin-account.ts`)と同じ判定(`admin-account-permissions.ts`)で決め、許可されない操作は描かない。自分の行は削除を描かず、プロフィールは`/account`で編集するため描かない。招待の完了前の行のプロフィールも描かない。最後の最上位管理者の保護はAPIの拒否の文言で示す。
+  - 開いた元の操作が成功で消える場合(削除、自分のロールを下げてロールの変更が描かれなくなる場合)は、閉じた後に一覧の見出しへフォーカスを移す。
+- リカバリコードの表示では、両方を失うと復旧できない旨を示す(12.7)。
+
+### e2e・docs
+
+#### AdminE2E・AdminDocs
+
+- E2Eの補助(テストではないファイル。後続specの管理画面のE2Eもこれを使い、同等の補助を作らない):
+
+```typescript
+// e2e/support/local-d1.ts
+export declare function executeLocalD1(
+  sql: string,
+): Promise<readonly Record<string, unknown>[]>; // wrangler d1 execute DB <invitationTarget('local').wranglerArgs> --json --command <sql>の結果の行
+export { sqlStringLiteral } from '<apps/api/scripts/admin/invitation-sql.ts>'; // 値は必ずこれでリテラルにする
+
+// e2e/support/admin-bootstrap.ts
+export interface BootstrappedAdmin {
+  readonly adminId: string;
+  readonly email: string; // e2e-<乱数>@test.example
+  readonly password: string;
+  readonly nickname: string;
+  readonly role: AdminRole;
+  readonly totpSecret: string; // 招待の完了の画面の手入力用の文字列
+  readonly recoveryCodes: readonly string[]; // 招待の完了の画面でだけ表示されたリカバリコード
+}
+export declare function issueSuperAdminInvitation(
+  email: string,
+): Promise<{ readonly link: string; readonly expiresAt: string }>;
+export declare function signInAsNewAdmin(
+  page: Page,
+  options: { readonly role: AdminRole },
+): Promise<BootstrappedAdmin>;
+export declare function signInAdmin(
+  page: Page,
+  admin: BootstrappedAdmin,
+): Promise<void>;
+export declare function signOutAdmin(
+  page: Page,
+  admin: Pick<BootstrappedAdmin, 'nickname'>,
+): Promise<void>;
+export declare function completeAdminInvitation(
+  page: Page,
+  link: string,
+): Promise<Omit<BootstrappedAdmin, 'adminId' | 'email' | 'role'>>; // 画面で招待した管理者の完了(Mailpitのリンク)にも使う
+export declare function nextTotpCode(
+  admin: Pick<BootstrappedAdmin, 'totpSecret'>,
+): Promise<string>; // 同じ秘密鍵の使用済みの時間窓を避ける
+export declare function withTotpSecret<T extends BootstrappedAdmin>(
+  admin: T,
+  totpSecret: string,
+): T; // 多要素認証の再設定の後の秘密鍵に替える
+export declare function openFromAdminNavigation(
+  page: Page,
+  admin: Pick<BootstrappedAdmin, 'nickname'>,
+  path: string,
+): Promise<void>; // ハイドレーションを待ってから管理メニューのルーターの遷移で開く
+export declare function withSoleActiveSuperAdmin<T>(
+  admin: Pick<BootstrappedAdmin, 'adminId'>,
+  action: () => Promise<T>,
+): Promise<T>; // 他の有効な最上位管理者をこの間だけモデレーターにし、終わったら戻す
+export declare function currentTotpCode(secret: string, at?: Date): string;
+```
+
+- `issueSuperAdminInvitation`: `bun run admin:invite-super-admin -- --target local --email <アドレス>`を実行し、表示されたリンクと有効期限を返す。
+- `signInAsNewAdmin`: 乱数のアドレスで`issueSuperAdminInvitation`→`page`でリンクを開き、ニックネームとパスワード→手入力用の文字列から`nextTotpCode`で認証コード→リカバリコードの確認→ダッシュボードの表示を待つ(管理者のIDは発行の直後に`executeLocalD1`で読む)→`role`が`super_admin`以外なら`UPDATE admins SET role = <role> WHERE id = <ID>`を実行する(ロールは要求ごとに読み直されるため、同じ`page`のまま次の要求から反映される、17.4)。返したときの`page`はそのロールでログインしたダッシュボードにある。
+- `signInAdmin`: `/auth/login`でメールとパスワードとbot判定(ローカルのテスト用のキー)→`nextTotpCode`の認証コードでログインする(再ログイン・ログアウト後の確認に使う)。同じ時間窓の認証コードは再使用できないため、前回の時間窓を過ぎるまで待つ。
+- 最後の最上位管理者の保護は有効な全ての最上位管理者を数えるため、その拒否を確かめるテストは`withSoleActiveSuperAdmin`の中で操作する。他のテストの最上位管理者のロールを一時的に変えるため、Playwrightの管理者側のプロジェクトは並列数を1にする(`e2e/support/playwright-config.ts`の`PROJECT_WORKER_LIMITS`)。
+- `executeLocalD1`は、利用者の停止など画面から作れない状態の用意に後続specも使う。Wranglerの引数を`--local --persist-to`に固定し、`--remote`を付けないため、リモートのD1には書き込めない。メールはMailpitの補助(identity-auth)で読む。
+- `security/007-admin-authorization.md`: 管理者の主体と利用者の主体の分離、ロールの順序と最低限のロールの宣言、所有権の判定、要求ごとのロールの読み込み、最後の最上位管理者の保護の書き込みの方式、管理者のセッションの期限、本人確認、bot判定の適用範囲。
+- `backend/008-audit-logging.md`: 操作種別の登録、記録の文を操作と同じ一括の書き込みに含める規約、個人情報を含めない規則(利用者は仮名化ID、検索文字列を残さない)、理由の要否、保持期間の削除、最新の日時の照会(1件と複数の対象、複数の対象はバインド変数の上限に合わせた分割)、利用側の単体テストが照会の偽物を自分で書かずに共有の偽物を使う規約(仮7)。
+- `frontend/009-admin-console-shell.md`: メニューとダッシュボードのカードの登録、ナビゲーションのランドマーク(`navigation`の区画の部品が名前付きの`nav`を描き、画面シェルはフッターを持たない)、カードの状態表示とエラーの分離、失敗の文言の選び方(`errorMessageOf`とプロファイルの`contactAvailable`、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない)、ロールによる操作の出し分け、共通部品の使い方。
+- `operations/003-first-administrator-bootstrap.md`: 招待の発行コマンドの目的・実行者・環境ごとの手順・リンクの扱い・最後の最上位管理者が締め出された場合の手順(仮3)。プロジェクト名と固有の値はプレースホルダーにし、値は`docs/onboardings/project-values.md`へのリンクにする。
+
+## Data Models
+
+### Domain Model
+
+```mermaid
+erDiagram
+    ADMINS ||--o{ ADMIN_SESSIONS : has
+    ADMINS ||--o{ ADMIN_AUTH_TOKENS : has
+    ADMINS ||--o{ ADMIN_LOGIN_CHALLENGES : has
+    ADMINS ||--o| ADMIN_TOTP_CREDENTIALS : has
+    ADMINS ||--o{ ADMIN_RECOVERY_CODES : has
+    ADMIN_AUDIT_LOGS ||--o{ ADMIN_AUDIT_LOG_TARGETS : targets
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> Invited: invite or bootstrap script
+    Invited --> Invited: resend
+    Invited --> Active: complete with password and totp
+    Invited --> [*]: delete
+    Active --> [*]: delete
+```
+
+- 集約: 管理者(`admins`を根に、セッション・トークン・待ち・TOTP・リカバリコード)。監査ログは管理者と外部キーを持たない別の集約で、管理者の削除後も残る。
+- 不変条件: メールアドレスは全管理者で大文字小文字を区別せずに一意。有効な管理者はパスワードのハッシュ・ニックネーム・有効なTOTPを持つ。有効な最上位管理者は1人以上(要件15.8・15.9)。トークン・セッション・待ち・リカバリコードの平文を保存しない。
+
+### Physical Data Model
+
+すべてのテーブルは`ulidPrimaryKey()`・`timestamps()`を持つ。日時はUTCのエポックミリ秒の整数。
+
+| テーブル                  | 列(共通カラム以外)                                                                                                                                                                                               | 制約・索引                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `admins`                  | `email` text collate nocase・`password_hash` text?・`nickname` text?・`title` text?・`avatar_file_id` text?(外部キーなし)・`role` text・`status` text・`invitation_expires_at` integer?・`activated_at` integer? | `email`一意、`role`・`status`のCHECK、`(role, status)`の索引                           |
+| `admin_sessions`          | `admin_id`(→`admins.id`)・`token_hash`・`user_agent`?・`last_used_at`・`absolute_expires_at`                                                                                                                     | `token_hash`一意、`admin_id`・`last_used_at`・`absolute_expires_at`の索引              |
+| `admin_auth_tokens`       | `admin_id`(→`admins.id`)・`purpose`・`token_hash`・`expires_at`・`new_email` collate nocase?                                                                                                                     | `token_hash`一意、`(admin_id, purpose)`・`expires_at`の索引、`purpose`のCHECK          |
+| `admin_login_challenges`  | `admin_id`(→`admins.id`)・`token_hash`・`expires_at`                                                                                                                                                             | `token_hash`一意、`expires_at`の索引                                                   |
+| `admin_totp_credentials`  | `admin_id`(→`admins.id`)・`sealed_secret`?・`enabled_at`?・`last_used_step`?・`pending_sealed_secret`?・`pending_expires_at`?                                                                                    | `admin_id`一意、`pending_expires_at`の索引                                             |
+| `admin_recovery_codes`    | `admin_id`(→`admins.id`)・`code_hash`                                                                                                                                                                            | `code_hash`一意、`admin_id`の索引                                                      |
+| `admin_audit_logs`        | `operator_admin_id` text(外部キーなし、NOT NULL)・`action` text・`target_kind` text?・`reason` text?・`detail` text(JSON、既定`{}`)・`occurred_at` integer                                                       | `(occurred_at, id)`・`(operator_admin_id, occurred_at)`・`(action, occurred_at)`の索引 |
+| `admin_audit_log_targets` | `log_id`(→`admin_audit_logs.id`)・`target_kind` text・`target_id` text                                                                                                                                           | `(target_kind, target_id, log_id)`の索引、`log_id`の索引                               |
+
+- 外部キーは`ON DELETE`を指定せず、削除は子の行から順に行う。監査ログの対象のIDは他のテーブルを参照しない(利用者の物理削除後も仮名化IDが残る)。
+- 列と制約はDrizzleのスキーマで表し、生成したマイグレーションに含まれることを確かめる(`db/001`)。
+
+### Data Contracts & Integration
+
+- GraphQL: 「AdminSchemaModule」のSDLが契約で、管理者側の許可リストにだけ載る。
+- メール: `admin.invitation`・`admin.email-change-confirmation`・`admin.email-changed`・`admin.password-reset`・`admin.password-reset-completed`・`admin.password-changed`(すべてトランザクションメール、期限付きの3種は`deadline`にトークンの期限)。
+- アップロード: 用途`admin-avatar`(media-pipelineの中継の経路`/_bff/uploads/admin-avatar`)。プロフィール画像の入力(`/account`の`ProfileSection`と`/accounts`の`AdminProfileDialog`)に置くmedia-pipelineの`ImageUploadField`には、`contactAvailable`として`ADMIN_PROFILE.contactAvailable`を渡し、アップロードの失敗の文言に問い合わせを促す文を出さない。
+
+## Error Handling
+
+### Error Strategy
+
+- 想定内の失敗は`AppError`で表し、api-gatewayの方針で`extensions.code`と状態コードになる。文言は`AppError.message`に入れる。
+- 応答の同一化(NFR-SECUR-043): パスワードリセットの要求・メールアドレス変更の要求は、有無・重複で応答を変えない。ログインの失敗は、未登録・招待中・パスワードの誤りを区別しない(ダミーの計算で時間もそろえる)。
+- 監査ログの検証の違反は、管理操作の前に`validation_error`で返し、操作を行わない(18.4)。
+
+### Error Categories and Responses
+
+| エラーコード                                                                         | 種類(状態コード)     | 文言                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 主な発生箇所                                                                   |
+| ------------------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `validation_error`                                                                   | bad_request(400)     | 欄ごとの詳細(理由の未入力は「理由を入力してください。」)                                                                                                                                                                                                                                                                                                                                                                                                                 | 全入力・監査ログの検証                                                         |
+| `invalid_credentials`                                                                | unauthenticated(401) | メールアドレスまたはパスワードが正しくありません。                                                                                                                                                                                                                                                                                                                                                                                                                       | ログイン(6.2)                                                                  |
+| `invalid_second_factor`・`login_challenge_expired`                                   | unauthenticated(401) | `auth`の共有の定義の文言(AdminErrors、identity-authと同じ)                                                                                                                                                                                                                                                                                                                                                                                                               | 第2要素・招待の完了・再設定                                                    |
+| `login_throttled`・`rate_limit_exceeded`                                             | rate_limited(429)    | `auth`の共有の定義の文言(AdminErrors、identity-authと同じ。`rate_limit_exceeded`は共通ライブラリの文言、`Retry-After`)                                                                                                                                                                                                                                                                                                                                                   | ログイン・本人確認・送信回数                                                   |
+| `reauthentication_failed`・`invalid_link`・`password_rejected`・`totp_setup_expired` | unprocessable(422)   | `auth`の共有の定義の文言(AdminErrors、identity-authと同じ。招待のリンクの無効は「招待した管理者に再送を依頼してください。」を添える)。ただし`password_rejected`の識別子との一致(`matches_identity`)は、管理者にハンドルが無いため「ニックネーム・メールアドレス(@より前の部分を含む)と同じパスワードは使えません。」とする(5.2)。`reauthentication_failed`の詳細は欄の形のとおりの経路(`reAuthentication.currentPassword`・`reAuthentication.secondFactor.totpCode`など) | 本人確認・リンク・パスワード・TOTP                                             |
+| `admin_email_in_use`                                                                 | conflict(409)        | このメールアドレスは既に管理者として登録されています。                                                                                                                                                                                                                                                                                                                                                                                                                   | 招待(3.2)                                                                      |
+| `last_super_admin`                                                                   | conflict(409)        | 最上位管理者が1人だけのため、この操作はできません。                                                                                                                                                                                                                                                                                                                                                                                                                      | 削除・ロールの変更(15.8)                                                       |
+| `self_deletion_forbidden`                                                            | forbidden(403)       | 自分自身のアカウントは削除できません。                                                                                                                                                                                                                                                                                                                                                                                                                                   | 削除(15.5、仮1)                                                                |
+| `admin_state_conflict`                                                               | conflict(409)        | 処理が重なりました。時間をおいて再度お試しください。                                                                                                                                                                                                                                                                                                                                                                                                                     | 削除・ロールの変更の競合                                                       |
+| `invalid_upload`                                                                     | unprocessable(422)   | 画像を確認できませんでした。もう一度アップロードしてください。                                                                                                                                                                                                                                                                                                                                                                                                           | プロフィール画像の紐付け                                                       |
+| `unauthenticated`・`forbidden`・`not_found`                                          | 401・403・404        | ログインが必要です。・この操作はできません。・対象が見つかりません。                                                                                                                                                                                                                                                                                                                                                                                                     | 認可(17.1・17.3)・対象(招待中・招待期限切れの管理者のプロフィールの更新を含む) |
+| `bot_verification_failed`・`bot_verification_unavailable`                            | 403・503             | backend-platformの定型                                                                                                                                                                                                                                                                                                                                                                                                                                                   | ログイン・リセットの要求(6.7)                                                  |
+
+### Monitoring
+
+- ログ(カテゴリ`['api', 'admin', <機能>]`): ログインの成否と理由、ロック、権限の拒否(カテゴリ`['api', 'admin', 'authorization']`に必要なロール。操作名は同じ相関IDのGraphQLの操作のログが持つ)、監査ログの検証の違反、日次のジョブの件数。メールアドレス・IP・トークン・パスワード・理由の本文を属性に入れない。
+- Sentry: 漏洩照合の不能はidentity-authの`AuthIncidentReporter`。プロフィール画像の即時の削除の失敗は`warning`のログ(例外と管理者のID`adminId`だけを添える)に留め、エラートラッキングへ送らない(`MediaFiles.eraseNow`の失敗は`AppError`で、削除待ちの印から日次バッチが完了させるため)。
+
+## Testing Strategy
+
+- **Unit Tests**(Bun):
+  - `admin-roles`・`admin-input-rules`: 順序の比較、25・26書記素のニックネーム、50・51書記素の肩書き、500・501書記素の理由、30・31書記素のカテゴリ名(1.2・16.1・18.4・21.3)。
+  - `admin-avatar-upload`: 用途の名前`admin-avatar`と上限の512,000バイト(16.2・仮2)。
+  - `audit-action`・`audit-entry`: 名前の形式と重複の拒否、`required`で空・`none`で値あり・501書記素、`user`の対象のUUIDでない値、`maxTargets`超、未登録の操作種別、`user.email-search`が理由と詳細を受け付けないこと(18.3〜18.6)。
+  - `admin-account`: 削除の可否(自分・viewer・moderatorから最上位管理者・最上位管理者から最上位管理者)、ロール変更とプロフィール編集の可否、招待期限切れの表示(15.2〜15.7・16.3・16.4)。
+  - `admin-session-policy`: アイドル1時間・絶対12時間の境界、5分未満は更新しない(8.2・8.3)。
+  - `auth-errors`・`password-rejection`・`admin-errors`: 共有の定義の種類と文言、`ADMIN_ERRORS`が`AUTH_ERRORS`の全コードを同じ定義で含むこと、管理者のパスワードの識別子との一致の文言(5.2)。移す前のidentity-authの単体テストは移した先でそのまま通り、利用者側の既存のテストは変更なしで通る。
+  - 各ユースケース(ポートを偽物にする): 招待の重複の拒否と監査ログの文の同梱(3.1・3.2)、招待の完了の2段階とトークンを`start`では消費しないこと(4.2・4.3)、招待中・未登録のログインが同じ失敗になること(6.2)、本人確認の失敗の記録(7.6・13.2)、パスワードリセットの要求の同一の結果(9.1)、メール変更の重複時の不送信(10.3)、TOTPの再設定で保留が期限切れなら現在の設定が残ること(12.3)、`AdminAuthorizer`の呼び出し元・主体・ロールの拒否(17.1・17.3)と`requireSelfOrRole`の本人の許可(17.2)、`AuditLogReader.latestForMany`のストアへの受け渡し(19.5)。
+  - `AdminProfile`: 招待中・招待期限切れの対象は最上位管理者でも`not_found`で拒否して画像を紐付けず、読み取った後に対象が削除されて更新が`not-active`なら紐付けた新しい画像を削除して`not_found`にすること(16.3)。
+  - `core/admin/identifiers`: `ADMIN_PLATFORM_TYPES`が`Symbol.for('admin.<名前>')`の値を持ち、凍結されていること(`core/media/identifiers.unit.test.ts`と同じ形、1.5)。
+  - `createFakeAuditLogReader`: 既定の振る舞い(空の検索・`undefined`・空のMap)と、渡したメソッドだけが差し替わること(仮7)。
+  - `scripts/admin`: `sqlStringLiteral`の`'`の二重化と制御文字の拒否、招待中の有無で生成されるSQL、環境ごとの引数とオリジン(2.1〜2.5)。
+- **Integration Tests**(Workers統合テスト):
+  - D1のストア: メールの大文字小文字を区別しない一意(1.3)、`deleteGuarded`・`changeRoleGuarded`が最後の有効な最上位管理者で全体を取り消し監査ログも残らないこと、2人の最上位管理者が互いを同時に降格しても1人が残ること(15.8・15.9・18.2)、`activate`の一括の書き込み(4.3・4.4)、トークンの2回目の消費の失敗(14.2)、監査ログの検索のカーソルと各条件(19.2・19.3)、最新の照会の1件と複数(対象ごとの最新の日時、記録の無い対象を含めないこと、操作種別と対象の種類で絞ること、90件を超える入力の分割と重複したID、空の入力、19.5・仮7)、保持期間の削除の境界(19.6)。
+  - `D1AdminAccountStore.updateProfile`とGraphQLの`updateAdminProfile`: 招待中・存在しない管理者を書き換えずに`not-active`を返し、最上位管理者による招待中・招待期限切れの管理者の更新が`not_found`になること(16.3)。
+  - `AdminSessionVerifier`: 期限切れ・招待中・削除済みで`invalid`、`touch`で`renewal`(8.2〜8.4)。identity-authの`SubjectSessionVerifier`経由で管理者側のGraphQLが管理者の主体を得ること。
+  - `D1AdminDirectory`: 有効な管理者だけを返し、削除済み・招待中・存在しないIDを含めないこと、101件のIDを2回の照会に分けること、`ADMIN_PLATFORM_MODULE`がapiとeventの両方のコンテナで解決できること(1.5)。
+  - `CounterAdminMailSendLimits`: 偽の厳密カウンタに宛先とIPの2つの規則で数え、どちらかの超過で`rate_limit_exceeded`になり、キーをハッシュ化すること(14.4)。
+  - GraphQLの`admin`モジュール(`AdminGateway`から): ログインの2段階とCookieの指示、bot判定の失敗の403(6.7)、利用者側の呼び出し元の拒否(6.8)、閲覧のみの`inviteAdmin`の403(3.5)、モデレーターの最上位管理者の削除の403(15.4)、`auditLogs`の削除済みの操作者(19.4)。
+  - 結合: 6種のテンプレートが`createEmailTemplateRegistry`に通る(14.7)。`admin-avatar`の用途で512,001バイトが413になる(16.2)。
+- **E2E/UI Tests**(Playwright、ローカルで起動したapi・event・adminとMailpit):
+  - 招待の発行コマンド→リンク→ニックネームとパスワード→TOTP→リカバリコード→ダッシュボード(空状態)(2.1・4.3・20.5)。
+  - ログアウト→認証コードでのログイン→リカバリコードでのログイン、誤ったパスワードの文言(6.1〜6.6)。
+  - 最上位管理者がモデレーターを招待(Mailpitのリンク)→完了→最上位管理者がロールを変更→最後の最上位管理者の自己降格の拒否→削除(3.1・15.6・15.8・15.2)。
+  - プロフィールの編集と画像の登録・既定のアイコン、パスワードリセット、メールアドレス変更、パスワード変更、TOTPの再設定(16.1・9.4・10.4・11.2・12.2)。
+  - 監査ログで招待・ロール変更・削除が表示され、操作種別と期間で絞り込める(19.1・19.2)。
+  - E2Eの補助の確認: `signInAsNewAdmin`で閲覧のみ・モデレーター・最上位管理者を用意し、それぞれのロールでヘッダーのロールの表示とロールによる操作の出し分けが変わること、`signInAdmin`で再ログインできること(17.5・20.2)。
+- **ブラウザテスト**(Vitest Browser Mode): 共通部品(表の状態、確認のダイアログの理由の必須、カテゴリマスタの編集とシステム標準の削除不可、`ReasonField`の文字数と注意)、`RoleGate`、`DashboardGrid`の空状態と1つのカードの失敗の分離(20.7、問い合わせのボタンと問い合わせを促す文が出ないこと)、`AdminNavigation`の名前付きの`nav`と`aria-current`、未ログイン(取得の前・失敗)で`AdminNavigation`・`AdminAccountMenu`が何も描かないこと、各フォームの検証、`runAxe`の違反0件(20.9・21.4)。
+
+## Security Considerations
+
+- 権限の奪取: 管理者のログインはTOTP必須で、パスワードだけではセッションを発行しない。bot判定・指数的なクールダウン・漏洩パスワードの拒否・短いセッション(アイドル1時間・絶対12時間)。
+- 権限昇格: ロールは要求ごとに保存済みの値から判定し、ロールの変更は最上位管理者だけ。招待は常に閲覧のみ。最上位管理者の招待は、D1へ書き込める開発者が招待の発行コマンドで行うだけで、公開された入口は無い。
+- 締め出し: 最後の有効な最上位管理者は、ロールの変更と削除を一括の書き込みの条件で拒否する。自分自身の削除を拒否する(仮1)。最後の最上位管理者が認証の手段を失っても、招待の発行コマンドで新しい最上位管理者を用意できる(仮3)。
+- 監査ログの改ざん・漏洩: 変更・削除の操作を持たず、保持期間の削除だけを日次で行う。個人情報(メールアドレス・ニックネーム・検索文字列)を保存しない。理由の個人情報は機械的に判定できないため、入力欄の注意で抑える。
+- メールのリンクと端末への表示: 短い有効期限・単回・再発行での失効、フラグメントでの受け渡し。招待の発行コマンドはトークンを一時ファイル(SQL)に書くため、実行後に削除する。
+
+## Performance & Scalability
+
+- 権限の判定は要求ごとにD1の主キーの検索1回(処理単位のコンテナで保持)。セッションの最終利用の更新は5分に1回までに間引く。
+- 監査ログの検索は索引付きのカーソルで1ページ50件。対象の絞り込みは`(target_kind, target_id, log_id)`の索引を使う。`latestForMany`は90件ごとに1回の問い合わせで、後続specの一覧の1ページ(50件)なら1回で済む(NFR-PERF-008)。
+- 日次のジョブは件数の上限で区切り、Workersのcpu時間に収める。
+
+## Migration Strategy
+
+```mermaid
+flowchart LR
+    Upstream[upstream specs implemented] --> Schema[admin tables migration]
+    Schema --> Domain[common lib and domain rules]
+    Domain --> UseCases[admin use cases and audit log]
+    UseCases --> GraphQL[admin graphql module and session binding]
+    GraphQL --> Script[super admin invitation script]
+    Script --> Screens[admin shell and pages]
+    Screens --> Docs[docs and e2e]
+```
+
+- テーブルは新規のため、Expand/Contractの段階は1つ(追加だけ)。デプロイ後、stagingとprodでは開発者が招待の発行コマンドを実行するまで管理者はいない。
+- `AdminSessionVerifier`の差し替えまでは、管理者側のセッションは常に無効(identity-authの既定)で、管理画面はログイン画面だけが動く。
+
+## Supporting References
+
+### 本specが定める固有の値
+
+| 項目                   | 値                                                                                                                                                                                           |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| セッション             | アイドル3600秒・絶対43200秒・更新の間引き300秒、Cookie`__Host-ls_admin_session`(frontend-platform)                                                                                           |
+| トークンの有効期限     | 招待86400秒・メールアドレス変更86400秒・パスワードリセット1800秒、第2要素の待ち300秒、TOTPの保留600秒                                                                                        |
+| HMACの用途             | `admin-session`・`admin-auth-token-invitation`・`admin-auth-token-email-change`・`admin-auth-token-password-reset`・`admin-login-challenge`・`admin-recovery-code`(`password-prehash`は共用) |
+| ログイン試行・送信回数 | `login-email:admin:<キー>`・`login-ip:<キー>`(共有)、`admin-auth-mail:<email_change\|password_reset>:<address\|ip>`                                                                          |
+| bot判定のaction        | `admin_login`・`admin_password_reset`                                                                                                                                                        |
+| TOTP                   | 発行者prod`Launch Stadium Admin`・staging`Launch Stadium Admin staging`・ローカル`Launch Stadium Admin local`、ラベル`管理者:<ニックネーム>`、秘密鍵の文脈`admin:<ID>`                       |
+| 変数                   | `ADMIN_SITE_ORIGIN`(api): ローカル`http://localhost:48045`・staging`https://genai-example-2-admin-staging.lab.kurachiweb.com`・prod`https://genai-example-2-admin.lab.kurachiweb.com`        |
+| 定期実行のジョブ       | `admin-foundation.credential-cleanup`(4:21・200)・`admin-foundation.audit-log-retention`(4:21・210)                                                                                          |
+| 用途                   | `admin-avatar`(images・管理者・画像5形式・512000バイト)                                                                                                                                      |
+| 技術ドキュメントの番号 | `security/007`・`backend/008`・`frontend/009`・`operations/003`                                                                                                                              |
+| コマンド               | `bun run admin:invite-super-admin -- --target <local\|staging\|prod> --email <アドレス>`(`apps/api`、Infisicalの注入付き)                                                                    |

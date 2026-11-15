@@ -1,0 +1,7 @@
+fragment HelpCategory on HelpCategory {
+  id
+  name
+  systemDefault
+  sortOrder
+  articleCount
+}

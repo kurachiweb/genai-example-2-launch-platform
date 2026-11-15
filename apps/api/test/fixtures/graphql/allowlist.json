@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "operations": {
+    "admin": {
+      "sha256:50be504394d59b79d7ed0f17a442f9d5806429e42d0c07323ea0fe2be9ad46bd": "query AdminValue { adminValue }"
+    },
+    "client": {
+      "sha256:4816c43da17b44d5d6b343d6827d091e5f937690d59998beb3f58cf60a1e63dd": "query ClientValue { clientValue }"
+    }
+  }
+}

@@ -1,0 +1,93 @@
+import type { UserLifecycleAsyncRegistration } from '../../lib/core/identity/user-lifecycle.ts';
+import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-types.ts';
+import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
+import { EVENT_INQUIRY_TYPES } from '../application/inquiry/event-inquiry-types.ts';
+import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
+import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
+import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
+import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
+import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
+
+// 退会・停止・停止解除・物理削除の開始の後にイベントサーバーで自分のデータを変える機能が、登録をここへ追記する。
+// orderは0〜9999を各ドメインspecが使い、10000以上はアカウント機能が使う
+export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistration[] =
+  Object.freeze([
+    {
+      name: 'inquiry-chat.member-inquiry-purge',
+      events: ['purge_due'],
+      order: 300,
+      handler: EVENT_INQUIRY_TYPES.MemberInquiryPurgeHandler,
+    },
+    {
+      name: 'payments.customer-erasure',
+      events: ['purge_due'],
+      order: 400,
+      handler: EVENT_PAYMENTS_TYPES.CustomerErasureHandler,
+    },
+    {
+      name: 'payments.open-checkout-expiry',
+      events: ['withdrawn', 'suspended'],
+      order: 410,
+      handler: EVENT_PAYMENTS_TYPES.OpenCheckoutExpiryHandler,
+    },
+    {
+      name: 'ultras-subscription.subscription-cancellation',
+      events: ['withdrawn', 'suspended'],
+      order: 500,
+      handler: EVENT_ULTRAS_TYPES.SubscriptionCancellationHandler,
+    },
+    {
+      name: 'ultras-subscription.subscription-erasure',
+      events: ['purge_due'],
+      order: 500,
+      handler: EVENT_ULTRAS_TYPES.SubscriptionErasureHandler,
+    },
+    {
+      name: 'user-profile-social.profile-erasure',
+      events: ['purge_due'],
+      order: 600,
+      handler: EVENT_PROFILE_TYPES.ProfileErasureHandler,
+    },
+    {
+      name: 'user-profile-social.owned-file-erasure',
+      events: ['purge_due'],
+      order: 610,
+      handler: EVENT_PROFILE_TYPES.OwnedFileErasureHandler,
+    },
+    {
+      name: 'user-profile-social.owned-image-quarantine',
+      events: ['suspended', 'unsuspended'],
+      order: 600,
+      handler: EVENT_PROFILE_TYPES.OwnedImageQuarantineHandler,
+    },
+    {
+      name: 'product-launch.product-erasure',
+      events: ['purge_due'],
+      order: 1000,
+      handler: EVENT_PRODUCT_TYPES.UserProductErasureHandler,
+    },
+    {
+      name: 'match-engine.account-decision-follow-up',
+      events: ['withdrawn', 'suspended'],
+      order: 1100,
+      handler: EVENT_MATCH_TYPES.AccountDecisionFollowUpHandler,
+    },
+    {
+      name: 'match-engine.upvote-erasure',
+      events: ['purge_due'],
+      order: 1100,
+      handler: EVENT_MATCH_TYPES.UpvoteErasureHandler,
+    },
+    {
+      name: 'directory-discovery.account-index-restore',
+      events: ['unsuspended'],
+      order: 1200,
+      handler: EVENT_DIRECTORY_TYPES.AccountIndexRestoreHandler,
+    },
+    {
+      name: 'identity-auth.email-suppression-cleanup',
+      events: ['withdrawn'],
+      order: 10000,
+      handler: EVENT_IDENTITY_TYPES.EmailSuppressionCleanupHandler,
+    },
+  ]);

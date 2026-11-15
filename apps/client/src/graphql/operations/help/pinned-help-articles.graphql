@@ -1,0 +1,6 @@
+query ClientPinnedHelpArticles {
+  pinnedHelpArticles {
+    handle
+    title
+  }
+}

@@ -1,0 +1,195 @@
+import type {
+  MatchKind,
+  MatchPhase,
+} from '../../../lib/core/match/match-model.ts';
+import type { BusinessDate } from '../../../lib/core/time/business-time.ts';
+import type {
+  EntryTally,
+  KickoffOutcome,
+  MatchOutcome,
+} from '../../../lib/core/match/match-decision.ts';
+import type { UpvoteAction } from '../../domain/match/upvote-plan.ts';
+
+export interface UpvoteState {
+  readonly matchId: string;
+  readonly phase: MatchPhase;
+  // 側の番号の順
+  readonly entryIds: readonly string[];
+  // 紐付けを解除した側はnull
+  readonly ownerUserIds: readonly (string | null)[];
+  // 利用者の有効なUpvoteの側
+  readonly currentEntryId: string | null;
+}
+
+// rejectedは記録の時点の条件(受け付け中・側・自分のマッチ・利用者の状態)の不成立、duplicateは同時の追加で既に有効なUpvoteがあること
+export type UpvoteWriteResult = 'applied' | 'rejected' | 'duplicate';
+
+export interface UpvoteApplyInput {
+  readonly action: Exclude<UpvoteAction, { readonly kind: 'none' }>;
+  readonly matchId: string;
+  readonly userId: string;
+  readonly upvoteId: string;
+  readonly now: Date;
+}
+
+export interface UpvoteCancelInput {
+  readonly matchId: string;
+  readonly userId: string;
+  readonly now: Date;
+}
+
+export interface UpvoteStore {
+  findState(
+    matchId: string,
+    userId: string,
+    now: Date,
+  ): Promise<UpvoteState | undefined>;
+  apply(input: UpvoteApplyInput): Promise<UpvoteWriteResult>;
+  // nothingは、受け付け中のマッチに利用者の有効なUpvoteが無かったこと
+  cancel(input: UpvoteCancelInput): Promise<'cancelled' | 'nothing'>;
+}
+
+export interface MatchBoardStore {
+  // マッチID → 有効なUpvoteの側のID。有効なUpvoteの無いマッチは含めない
+  viewerUpvotes(
+    matchIds: readonly string[],
+    userId: string,
+  ): Promise<ReadonlyMap<string, string>>;
+}
+
+// 公開の続きの位置からUpvoteの日時を推測させないため、日時とUpvoteのIDを持たず、利用者がマッチごとに1件だけ持つ有効なUpvoteをマッチのIDで指す
+export interface UpvoteHistoryPosition {
+  readonly matchDate: BusinessDate;
+  readonly matchId: string;
+}
+
+export interface UpvoteHistoryRecord {
+  readonly upvoteId: string;
+  readonly matchId: string;
+  readonly entryId: string;
+  readonly productId: string;
+  readonly matchDate: BusinessDate;
+  readonly upvotedAt: Date;
+}
+
+// 対象は利用者の有効なUpvoteのうち、側がプロダクトに紐付いていて、そのプロダクトが可視のもの
+export interface UpvoteHistoryStore {
+  count(userId: string): Promise<number>;
+  // 実施日・Upvoteの日時・IDの降順に位置より後からlimit件まで返す
+  list(input: {
+    readonly userId: string;
+    readonly limit: number;
+    readonly before: UpvoteHistoryPosition | undefined;
+  }): Promise<readonly UpvoteHistoryRecord[]>;
+  // 指定した実施日ごとの件数。対象の無い日は0
+  countByDates(
+    userId: string,
+    dates: readonly BusinessDate[],
+  ): Promise<ReadonlyMap<BusinessDate, number>>;
+}
+
+export interface DueSettlement {
+  readonly matchId: string;
+  // 側の番号の順。値は保存済みの集計値
+  readonly entries: readonly EntryTally[];
+  readonly entryCount: 1 | 2;
+}
+
+export interface SettlementWrite {
+  readonly matchId: string;
+  readonly outcome: MatchOutcome;
+  readonly eventId: string;
+}
+
+export interface SettlementStore {
+  // 開始が記録され終了の日時を過ぎた未確定のマッチを、終了の日時とIDの順に返す
+  listDue(now: Date, limit: number): Promise<readonly DueSettlement[]>;
+  // 1〜50件を1つの一括の書き込みで確定し、確定したマッチのイベントのIDを返す。既に確定していたマッチは変えず、イベントも作らない
+  writeOutcomes(
+    outcomes: readonly SettlementWrite[],
+    at: Date,
+  ): Promise<readonly string[]>;
+  // 終了の日時がendedBeforeより前の未確定のマッチの数。開始されないまま終了の日時を過ぎたマッチも確定されずに残るため、開始の記録の有無を問わない
+  countOverdue(endedBefore: Date): Promise<number>;
+}
+
+// already-completedは、その日のペアリングが一度完了していること
+export type PairingDayState = 'begun' | 'already-completed';
+
+export interface PairingCounts {
+  // 組んだマッチの側のローンチの数
+  readonly launches: number;
+  readonly matches: number;
+}
+
+export interface PairingStore {
+  // 実施日の記録が無ければ未完了で作り、あれば変えない
+  beginDay(date: BusinessDate, at: Date): Promise<PairingDayState>;
+  // 既に完了していれば最初の完了の日時を保ち、件数を足す
+  completeDay(
+    date: BusinessDate,
+    counts: PairingCounts,
+    at: Date,
+  ): Promise<void>;
+  isDayCompleted(date: BusinessDate): Promise<boolean>;
+  // 実施日の予選の側のローンチ。紐付けを解除した側は含めない
+  pairedLaunchIds(date: BusinessDate): Promise<ReadonlySet<string>>;
+}
+
+export interface KickoffEntry {
+  readonly entryId: string;
+  // 紐付けを解除した側はnull
+  readonly launchId: string | null;
+  readonly productId: string | null;
+  // 予定の間に該当が記録されている
+  readonly forfeited: boolean;
+}
+
+export interface DueKickoff {
+  readonly matchId: string;
+  readonly kind: MatchKind;
+  readonly startsAt: Date;
+  // 側の番号の順
+  readonly entries: readonly KickoffEntry[];
+}
+
+export interface KickoffWrite {
+  readonly matchId: string;
+  readonly outcome: KickoffOutcome;
+  readonly eventId: string;
+  // 判定で該当とした側。読み取りの後に他の側へ該当が記録されたマッチは書き込まない
+  readonly forfeitedEntryIds: readonly string[];
+}
+
+export interface KickoffStore {
+  // 開始の日時を過ぎて開始も確定もしていないマッチを、開始の日時とIDの順に返す
+  listDue(now: Date, limit: number): Promise<readonly DueKickoff[]>;
+  // 1〜50件を1つの一括の書き込みで開始または決着し、書き込んだマッチのイベントのIDを返す。既に開始・確定していたマッチは変えず、イベントも作らない
+  writeKickoffs(
+    items: readonly KickoffWrite[],
+    at: Date,
+  ): Promise<readonly string[]>;
+}
+
+export interface EntryEligibilityChecker {
+  // 開始の時点で該当する側のID
+  forfeitedEntries(
+    items: readonly Pick<DueKickoff, 'kind' | 'entries'>[],
+    now: Date,
+  ): Promise<ReadonlySet<string>>;
+}
+
+export type MatchIncident =
+  // 開始の日時から遅れて開始・決着したマッチの数
+  | { readonly kind: 'match-kickoff-late'; readonly count: number }
+  // 終了の時刻のジョブで確定できず、ペアリングの前に確定したマッチの数
+  | { readonly kind: 'match-settlement-late'; readonly count: number }
+  // 前日に完了していなかったペアリングを開始の前に行い、予定したマッチの数
+  | { readonly kind: 'qualifier-pairing-late'; readonly count: number }
+  // 終了の日時から一定の時間を過ぎても確定していないマッチの数
+  | { readonly kind: 'match-settlement-overdue'; readonly count: number };
+
+export interface MatchIncidentReporter {
+  // 運用者が検知できるようログとエラートラッキングへ送る。個人情報を含めない
+  report(incident: MatchIncident): void;
+}

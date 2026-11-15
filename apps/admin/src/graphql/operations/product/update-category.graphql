@@ -1,0 +1,5 @@
+mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {
+  updateProductCategory(id: $id, input: $input) {
+    id
+  }
+}

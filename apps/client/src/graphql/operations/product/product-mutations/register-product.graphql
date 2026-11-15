@@ -1,0 +1,76 @@
+mutation ClientRegisterProduct($input: RegisterProductInput!) {
+  registerProduct(input: $input) {
+    handle
+    previousHandle
+    name
+    tagline
+    category {
+      id
+      name
+      handle
+      systemDefault
+    }
+    websiteUrl
+    description
+    logoFileId
+    logo {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+    screenshots {
+      fileId
+      image {
+        id
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+      byteSize
+    }
+    hidden
+    listed
+    version
+    latestLaunch {
+      id
+      number
+      launchDate
+      kickoffAt
+      status
+      outcome
+      summary {
+        label
+        inMatch
+      }
+    }
+    plan {
+      mode
+      currentLaunchDate
+      window {
+        earliest
+        latest
+        unavailable {
+          from
+          to
+          reason
+        }
+        relaunchIntervalDays
+      }
+      blocks {
+        code
+        message
+        releaseAt
+      }
+      locked
+      locks {
+        code
+        message
+      }
+      lockUnknown
+      ultrasEntitled
+    }
+  }
+}

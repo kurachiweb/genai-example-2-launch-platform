@@ -76,7 +76,7 @@ export const OPTION_LABELS = {
   },
   bye: { title: '不戦勝による掲載', values: { off: '無し', on: 'あり' } },
   early: {
-    title: '早期勝敗決定での掲載(FR-GAME-013)',
+    title: '早期勝敗決定での掲載(FR-GAME-015)',
     values: { off: '無し', on: 'あり' },
   },
   categories: {

@@ -5,7 +5,7 @@ import type { Product } from '#/lib/mock-data';
 type Props = {
   product: Pick<Product, 'id' | 'name' | 'art'>;
   size: number;
-  // 読み込み失敗または隔離中(FR-FILEU-011・FR-ADMUG-025〜027)
+  // 読み込み失敗または隔離中(FR-FILEU-013・FR-ADMUG-047〜049)
   broken?: boolean;
   className?: string;
 };

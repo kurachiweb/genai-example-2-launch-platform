@@ -1,0 +1,18 @@
+mutation AdminInvite($email: String!, $reason: String) {
+  inviteAdmin(email: $email, reason: $reason) {
+    id
+    email
+    nickname
+    title
+    avatar {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+    role
+    status
+    createdAt
+  }
+}

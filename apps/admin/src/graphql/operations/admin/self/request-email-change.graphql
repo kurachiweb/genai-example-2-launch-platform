@@ -1,0 +1,9 @@
+mutation AdminRequestEmailChange(
+  $newEmail: String!
+  $reAuthentication: AdminReAuthenticationInput!
+) {
+  requestAdminEmailChange(
+    newEmail: $newEmail
+    reAuthentication: $reAuthentication
+  )
+}

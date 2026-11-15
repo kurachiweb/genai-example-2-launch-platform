@@ -1,0 +1,24 @@
+mutation AdminPublishLegalDocument($input: PublishLegalDocumentInput!) {
+  publishLegalDocument(input: $input) {
+    kind
+    stateVersion
+    latestBody
+    draft {
+      body
+      savedAt
+      savedBy {
+        id
+        nickname
+      }
+    }
+    revisions {
+      versionNumber
+      publishedAt
+      changeSummary
+      publishedBy {
+        id
+        nickname
+      }
+    }
+  }
+}

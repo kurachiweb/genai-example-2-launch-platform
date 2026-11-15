@@ -1,0 +1,8 @@
+query AdminProductCategories {
+  adminProductCategories {
+    id
+    name
+    handle
+    systemDefault
+  }
+}

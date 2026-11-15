@@ -1,0 +1,5 @@
+query AdminHelpArticle($id: ID!) {
+  adminHelpArticle(id: $id) {
+    ...AdminHelpArticle
+  }
+}

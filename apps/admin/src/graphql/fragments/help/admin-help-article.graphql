@@ -1,0 +1,26 @@
+fragment AdminHelpArticle on AdminHelpArticle {
+  id
+  handle
+  previousHandle
+  title
+  subtitle
+  body
+  categoryId
+  categoryName
+  status
+  pinned
+  creator {
+    nickname
+    title
+    avatar {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+  }
+  revision
+  createdAt
+  updatedAt
+}

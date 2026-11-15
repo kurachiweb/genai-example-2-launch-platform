@@ -1,0 +1,100 @@
+query ClientProductPage($handle: String!) {
+  productPage(handle: $handle) {
+    __typename
+    ... on ProductPage {
+      id
+      handle
+      name
+      tagline
+      category {
+        id
+        name
+        handle
+      }
+      websiteUrl
+      logo {
+        id
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+      description
+      screenshots {
+        fileId
+        image {
+          id
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+      }
+      owner {
+        handle
+        nickname
+        avatar {
+          id
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+      }
+      viewerIsOwner
+      listed
+      awards {
+        kind
+        count
+        labels
+      }
+      record {
+        firstLaunchDate
+        launchCount
+        wins
+        losses
+      }
+      launches {
+        id
+        number
+        launchDate
+        kickoffAt
+        status
+        summary {
+          label
+          inMatch
+        }
+        kickedOff
+        latestKickedOff
+        matches {
+          id
+          entryId
+          kind
+          round
+          stage
+          date
+          result
+          decision
+          endedEarly
+          ownUpvoteCount
+          opponentUpvoteCount
+          opponent {
+            kind
+            handle
+            name
+            logo {
+              id
+              objectKey
+              fallbackFormat
+              width
+              height
+            }
+          }
+        }
+      }
+    }
+    ... on ProductPageRedirect {
+      handle
+    }
+  }
+}

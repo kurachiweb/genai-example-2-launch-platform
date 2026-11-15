@@ -1,0 +1,795 @@
+import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import ts from 'typescript';
+
+// 他のアプリのファイルをimportすると、ルートの型検査とカバレッジの分母にそのファイルが入るため、ソースを構文解析で読むか子プロセスで実行して比べる
+const REPO_ROOT = join(import.meta.dir, '..');
+
+const RELAY_CONTRACT = 'apps/frontend-lib/server/relay/relay-contract.ts';
+const GATEWAY_HEADERS_SOURCE =
+  'apps/api/src/presentation/gateway/gateway-headers.ts';
+const SESSION_ACCESS_SOURCE =
+  'apps/api/src/presentation/gateway/session-access.ts';
+const SESSION_VERIFIER_SOURCE =
+  'apps/api/src/application/session/session-verifier.ts';
+const GRAPHQL_RESULT = 'apps/frontend-lib/utilities/graphql/graphql-result.ts';
+const ERROR_CODES_SOURCE = 'apps/api/src/presentation/graphql/error-codes.ts';
+const FRONTEND_SECURITY_HEADERS =
+  'apps/frontend-lib/server/http/security-headers.ts';
+const FRONTEND_SECURITY_POLICY =
+  'apps/frontend-lib/server/http/security-policy.ts';
+const BACKEND_SECURITY_HEADERS =
+  'apps/backend-lib/workers/http/security-headers.ts';
+const FRONTEND_LOGGING = 'apps/frontend-lib/server/observability/logging.ts';
+const FRONTEND_REDACTION_PATTERNS =
+  'apps/frontend-lib/utilities/observability/redaction-patterns.ts';
+const BACKEND_REDACTION = 'apps/backend-lib/core/logging/redaction.ts';
+const FRONTEND_RATE_LIMIT_KEY_HASH =
+  'apps/frontend-lib/server/http/rate-limit-key-hash.ts';
+const BACKEND_RATE_LIMIT_KEY =
+  'apps/backend-lib/core/rate-limit/rate-limit-key.ts';
+const BACKEND_KEYED_HASHER = 'apps/backend-lib/core/crypto/keyed-hasher.ts';
+const BACKEND_HEALTH_ROUTE = 'apps/backend-lib/workers/http/health-route.ts';
+const E2E_API_RATE_LIMIT = 'e2e/support/api-rate-limit.ts';
+const BACKEND_BUSINESS_TIME = 'apps/backend-lib/core/time/business-time.ts';
+const BACKEND_LAUNCH_STATUS = 'apps/backend-lib/core/product/launch-status.ts';
+const CLIENT_PRODUCT_BUSINESS_TIME =
+  'apps/client/src/components/product/business-time.ts';
+const API_PROFILE_INPUT_MESSAGES =
+  'apps/api/src/presentation/graphql/modules/profile/errors.ts';
+const API_PROFILE_ERRORS = 'apps/api/src/application/profile/profile-errors.ts';
+const CLIENT_PROFILE_FORM_MESSAGES =
+  'apps/client/src/components/profile/profile-form-messages.ts';
+const API_PRODUCT_INPUT_MESSAGES =
+  'apps/api/src/presentation/graphql/modules/product/errors.ts';
+const API_PRODUCT_ERRORS = 'apps/api/src/application/product/product-errors.ts';
+const CLIENT_PRODUCT_FORM_MESSAGES =
+  'apps/client/src/components/product/product-form-messages.ts';
+
+type ExtractedValue =
+  | string
+  | number
+  | RegExp
+  | readonly string[]
+  | { readonly [key: string]: ExtractedValue };
+
+interface DeclarationRef {
+  readonly path: string;
+  readonly name: string;
+}
+
+const describeRef = ({ path, name }: DeclarationRef): string =>
+  `${path}の${name}`;
+
+const parsedSources = new Map<string, ts.SourceFile>();
+
+const parseSource = (path: string): ts.SourceFile => {
+  const cached = parsedSources.get(path);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const source = ts.createSourceFile(
+    path,
+    readFileSync(join(REPO_ROOT, path), 'utf8'),
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  parsedSources.set(path, source);
+  return source;
+};
+
+const collectDeclarations = (
+  node: ts.Node,
+  name: string,
+): readonly ts.VariableDeclaration[] => [
+  ...(ts.isVariableDeclaration(node) &&
+  ts.isIdentifier(node.name) &&
+  node.name.text === name
+    ? [node]
+    : []),
+  ...node.getChildren().flatMap((child) => collectDeclarations(child, name)),
+];
+
+const unwrapExpression = (expression: ts.Expression): ts.Expression => {
+  if (
+    ts.isAsExpression(expression) ||
+    ts.isSatisfiesExpression(expression) ||
+    ts.isParenthesizedExpression(expression)
+  ) {
+    return unwrapExpression(expression.expression);
+  }
+  if (
+    ts.isCallExpression(expression) &&
+    ts.isPropertyAccessExpression(expression.expression) &&
+    ts.isIdentifier(expression.expression.expression) &&
+    expression.expression.expression.text === 'Object' &&
+    expression.expression.name.text === 'freeze' &&
+    expression.arguments.length === 1 &&
+    expression.arguments[0] !== undefined
+  ) {
+    return unwrapExpression(expression.arguments[0]);
+  }
+  return expression;
+};
+
+const findInitializer = (ref: DeclarationRef): ts.Expression => {
+  const declarations = collectDeclarations(parseSource(ref.path), ref.name);
+  const [declaration] = declarations;
+  if (declarations.length !== 1 || declaration?.initializer === undefined) {
+    throw new Error(
+      `${describeRef(ref)}の初期化子付きの宣言を1つだけ見つけられません(${String(declarations.length)}件)`,
+    );
+  }
+  return unwrapExpression(declaration.initializer);
+};
+
+const failToExtract = (ref: DeclarationRef, node: ts.Node): never => {
+  throw new Error(
+    `${describeRef(ref)}の初期化子から値を取り出せない形です: ${ts.SyntaxKind[node.kind]} ${node.getText()}`,
+  );
+};
+
+const regExpOf = (literal: ts.RegularExpressionLiteral): RegExp => {
+  const flagsStart = literal.text.lastIndexOf('/');
+  return new RegExp(
+    literal.text.slice(1, flagsStart),
+    literal.text.slice(flagsStart + 1),
+  );
+};
+
+const stringLiteralsOf = (
+  ref: DeclarationRef,
+  array: ts.ArrayLiteralExpression,
+): readonly string[] =>
+  array.elements.map((element) =>
+    ts.isStringLiteral(element) ? element.text : failToExtract(ref, element),
+  );
+
+const joinedElementsOf = (
+  ref: DeclarationRef,
+  expression: ts.Expression,
+): readonly string[] | undefined => {
+  if (
+    !ts.isCallExpression(expression) ||
+    !ts.isPropertyAccessExpression(expression.expression) ||
+    expression.expression.name.text !== 'join'
+  ) {
+    return undefined;
+  }
+  const receiver = unwrapExpression(expression.expression.expression);
+  return ts.isArrayLiteralExpression(receiver)
+    ? stringLiteralsOf(ref, receiver)
+    : failToExtract(ref, receiver);
+};
+
+const propertyNameOf = (
+  ref: DeclarationRef,
+  property: ts.ObjectLiteralElementLike,
+): string =>
+  property.name !== undefined &&
+  (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name))
+    ? property.name.text
+    : failToExtract(ref, property);
+
+const propertyInitializersOf = (
+  ref: DeclarationRef,
+  object: ts.ObjectLiteralExpression,
+): readonly (readonly [string, ts.Expression])[] =>
+  object.properties.map((property) =>
+    ts.isPropertyAssignment(property)
+      ? [propertyNameOf(ref, property), unwrapExpression(property.initializer)]
+      : failToExtract(ref, property),
+  );
+
+const extractValue = (
+  ref: DeclarationRef,
+  expression: ts.Expression,
+): ExtractedValue => {
+  if (ts.isStringLiteral(expression)) {
+    return expression.text;
+  }
+  if (ts.isNumericLiteral(expression)) {
+    return Number(expression.getText().replaceAll('_', ''));
+  }
+  if (
+    ts.isPrefixUnaryExpression(expression) &&
+    expression.operator === ts.SyntaxKind.MinusToken &&
+    ts.isNumericLiteral(expression.operand)
+  ) {
+    return -Number(expression.operand.getText().replaceAll('_', ''));
+  }
+  if (ts.isRegularExpressionLiteral(expression)) {
+    return regExpOf(expression);
+  }
+  if (ts.isArrayLiteralExpression(expression)) {
+    return stringLiteralsOf(ref, expression);
+  }
+  if (ts.isObjectLiteralExpression(expression)) {
+    return Object.fromEntries(
+      propertyInitializersOf(ref, expression).map(([key, initializer]) => [
+        key,
+        extractValue(ref, initializer),
+      ]),
+    );
+  }
+  const joined = joinedElementsOf(ref, expression);
+  if (joined !== undefined && ts.isCallExpression(expression)) {
+    const [separator] = expression.arguments;
+    return separator !== undefined &&
+      expression.arguments.length === 1 &&
+      ts.isStringLiteral(separator)
+      ? joined.join(separator.text)
+      : failToExtract(ref, expression);
+  }
+  return failToExtract(ref, expression);
+};
+
+const failOnType = (ref: DeclarationRef, expected: string): never => {
+  throw new Error(`${describeRef(ref)}の値が${expected}ではありません`);
+};
+
+const readValue = (path: string, name: string): ExtractedValue => {
+  const ref = { path, name };
+  return extractValue(ref, findInitializer(ref));
+};
+
+const readString = (path: string, name: string): string => {
+  const value = readValue(path, name);
+  return typeof value === 'string'
+    ? value
+    : failOnType({ path, name }, '文字列');
+};
+
+const readNumber = (path: string, name: string): number => {
+  const value = readValue(path, name);
+  return typeof value === 'number' ? value : failOnType({ path, name }, '数値');
+};
+
+const readRegExp = (path: string, name: string): RegExp => {
+  const value = readValue(path, name);
+  return value instanceof RegExp
+    ? value
+    : failOnType({ path, name }, '正規表現');
+};
+
+const isStringArray = (value: ExtractedValue): value is readonly string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string');
+
+const readStringArray = (path: string, name: string): readonly string[] => {
+  const value = readValue(path, name);
+  return isStringArray(value)
+    ? value
+    : failOnType({ path, name }, '文字列の配列');
+};
+
+const readStringRecord = (
+  path: string,
+  name: string,
+): Readonly<Record<string, string>> => {
+  const value = readValue(path, name);
+  if (
+    typeof value !== 'object' ||
+    value instanceof RegExp ||
+    isStringArray(value) ||
+    !Object.values(value).every((item) => typeof item === 'string')
+  ) {
+    return failOnType({ path, name }, '文字列の値のオブジェクト');
+  }
+  return value as Readonly<Record<string, string>>;
+};
+
+const readJoinedProperty = (
+  path: string,
+  name: string,
+  property: string,
+): readonly string[] => {
+  const ref = { path, name };
+  const object = findInitializer(ref);
+  if (!ts.isObjectLiteralExpression(object)) {
+    return failToExtract(ref, object);
+  }
+  const initializer = propertyInitializersOf(ref, object).find(
+    ([key]) => key === property,
+  )?.[1];
+  if (initializer === undefined) {
+    throw new Error(`${describeRef(ref)}に${property}の項目がありません`);
+  }
+  return joinedElementsOf(ref, initializer) ?? failToExtract(ref, initializer);
+};
+
+const withoutUnicodeFlag = (flags: string): string => flags.replace('u', '');
+
+const isRegExpConstructionWithFlags = (
+  node: ts.Node,
+): node is ts.NewExpression & {
+  readonly arguments: ts.NodeArray<ts.Expression>;
+} =>
+  ts.isNewExpression(node) &&
+  ts.isIdentifier(node.expression) &&
+  node.expression.text === 'RegExp' &&
+  node.arguments?.length === 2 &&
+  node.arguments[1] !== undefined &&
+  ts.isStringLiteral(node.arguments[1]);
+
+// frontend-libだけが正規表現にuフラグを付けるため、その違いだけを除いた形にする
+const removeUnicodeFlags: ts.TransformerFactory<ts.Expression> =
+  (context) => (root) => {
+    const visit = (node: ts.Node): ts.Node => {
+      const visited = ts.visitEachChild(node, visit, context);
+      if (ts.isRegularExpressionLiteral(visited)) {
+        const flagsStart = visited.text.lastIndexOf('/') + 1;
+        return ts.factory.createRegularExpressionLiteral(
+          visited.text.slice(0, flagsStart) +
+            withoutUnicodeFlag(visited.text.slice(flagsStart)),
+        );
+      }
+      if (isRegExpConstructionWithFlags(visited)) {
+        const [pattern, flags] = visited.arguments;
+        if (
+          pattern !== undefined &&
+          flags !== undefined &&
+          ts.isStringLiteral(flags)
+        ) {
+          return ts.factory.updateNewExpression(
+            visited,
+            visited.expression,
+            visited.typeArguments,
+            [
+              pattern,
+              ts.factory.createStringLiteral(withoutUnicodeFlag(flags.text)),
+            ],
+          );
+        }
+      }
+      return visited;
+    };
+    const transformed = visit(root);
+    return ts.isExpression(transformed) ? transformed : root;
+  };
+
+const printer = ts.createPrinter({ removeComments: true });
+
+const printInitializerWithoutUnicodeFlags = (
+  path: string,
+  name: string,
+): string => {
+  const result = ts.transform(findInitializer({ path, name }), [
+    removeUnicodeFlags,
+  ]);
+  try {
+    const [transformed] = result.transformed;
+    if (transformed === undefined) {
+      throw new Error(`${path}の${name}の初期化子を変換できません`);
+    }
+    return printer.printNode(
+      ts.EmitHint.Expression,
+      transformed,
+      parseSource(path),
+    );
+  } finally {
+    result.dispose();
+  }
+};
+
+const sortedUnique = (values: readonly string[]): readonly string[] =>
+  [...new Set(values)].toSorted();
+
+describe('中継の契約の写し(relay-contract.ts)', () => {
+  test('中継が付けるヘッダーと呼び出し元のヘッダーを合わせると、apiのGATEWAY_HEADERSの項目と名前が一致する', () => {
+    const relayRequestHeaders = readStringRecord(
+      RELAY_CONTRACT,
+      'RELAY_REQUEST_HEADERS',
+    );
+    const callerHeaders = readStringRecord(
+      RELAY_CONTRACT,
+      'GATEWAY_CALLER_HEADERS',
+    );
+
+    expect(
+      Object.keys(relayRequestHeaders).filter((key) =>
+        Object.hasOwn(callerHeaders, key),
+      ),
+    ).toEqual([]);
+    expect({ ...relayRequestHeaders, ...callerHeaders }).toEqual(
+      readStringRecord(GATEWAY_HEADERS_SOURCE, 'GATEWAY_HEADERS'),
+    );
+  });
+
+  test('セッションの指示のヘッダーがapiのSESSION_RESPONSE_HEADERSと一致する', () => {
+    expect(
+      readStringRecord(RELAY_CONTRACT, 'SESSION_INSTRUCTION_HEADERS'),
+    ).toEqual(
+      readStringRecord(GATEWAY_HEADERS_SOURCE, 'SESSION_RESPONSE_HEADERS'),
+    );
+  });
+
+  test('セッションの破棄の指示の値がapiの公開されていないCLEAR_HEADER_VALUEと一致する', () => {
+    expect(readString(RELAY_CONTRACT, 'SESSION_CLEAR_VALUE')).toBe(
+      readString(SESSION_ACCESS_SOURCE, 'CLEAR_HEADER_VALUE'),
+    );
+  });
+
+  test('セッションの識別子の形式と有効期間の上限がapiのsession-verifier.tsの同名の値と一致する', () => {
+    expect(String(readRegExp(RELAY_CONTRACT, 'SESSION_TOKEN_PATTERN'))).toBe(
+      String(readRegExp(SESSION_VERIFIER_SOURCE, 'SESSION_TOKEN_PATTERN')),
+    );
+    expect(readNumber(RELAY_CONTRACT, 'MAX_SESSION_MAX_AGE_SECONDS')).toBe(
+      readNumber(SESSION_VERIFIER_SOURCE, 'MAX_SESSION_MAX_AGE_SECONDS'),
+    );
+  });
+});
+
+describe('エラーコードの写し(graphql-result.ts)', () => {
+  test('想定外の失敗のコードのうちapiの写しの部分が、apiのGATEWAY_ERROR_CODESと要素の集合で一致する', () => {
+    expect(
+      sortedUnique(readStringArray(GRAPHQL_RESULT, 'GATEWAY_ERROR_CODES')),
+    ).toEqual(
+      sortedUnique(readStringArray(ERROR_CODES_SOURCE, 'GATEWAY_ERROR_CODES')),
+    );
+  });
+});
+
+describe('セキュリティヘッダーの写し(security-headers.ts・security-policy.ts)', () => {
+  test('共通のヘッダーがbackend-libのSECURITY_HEADERSのPermissions-Policy以外の項目と一致する', () => {
+    const { 'Permissions-Policy': permissionsPolicy, ...baseHeaders } =
+      readStringRecord(BACKEND_SECURITY_HEADERS, 'SECURITY_HEADERS');
+
+    expect(permissionsPolicy).toBeString();
+    expect(
+      readStringRecord(FRONTEND_SECURITY_HEADERS, 'BASE_SECURITY_HEADERS'),
+    ).toEqual(baseHeaders);
+  });
+
+  test('Permissions-Policyの機能の並びがbackend-libの配列の各要素から=()を除いた並びと一致する', () => {
+    const backendFeatures = readJoinedProperty(
+      BACKEND_SECURITY_HEADERS,
+      'SECURITY_HEADERS',
+      'Permissions-Policy',
+    ).map((entry) => {
+      if (!entry.endsWith('=()')) {
+        throw new Error(
+          `${BACKEND_SECURITY_HEADERS}のPermissions-Policyの要素が=()で終わりません: ${entry}`,
+        );
+      }
+      return entry.slice(0, -'=()'.length);
+    });
+
+    expect(
+      readStringArray(FRONTEND_SECURITY_POLICY, 'PERMISSION_FEATURES'),
+    ).toEqual(backendFeatures);
+  });
+
+  test('ページ以外のCSPがbackend-libのDEFAULT_CONTENT_SECURITY_POLICYと一致する', () => {
+    expect(
+      readString(FRONTEND_SECURITY_POLICY, 'NON_PAGE_CONTENT_SECURITY_POLICY'),
+    ).toBe(
+      readString(BACKEND_SECURITY_HEADERS, 'DEFAULT_CONTENT_SECURITY_POLICY'),
+    );
+  });
+});
+
+// 写しに宣言を足しても照合から漏れないよう、写しの範囲(REDACTEDからREDACTION_PATTERNSまで)の最上位の変数と関数の宣言の名前を写し側から取り出す。範囲の端が宣言として見つからないか逆順なら、0件で黙って通らないよう、宣言として存在しない名前を返して照合を失敗させる
+const copiedRedactionDeclarationNames = (): readonly string[] => {
+  const names = parseSource(FRONTEND_REDACTION_PATTERNS).statements.flatMap(
+    (statement) =>
+      ts.isVariableStatement(statement)
+        ? statement.declarationList.declarations.map(({ name }) =>
+            name.getText(),
+          )
+        : ts.isFunctionDeclaration(statement) && statement.name
+          ? [statement.name.text]
+          : [],
+  );
+  const start = names.indexOf('REDACTED');
+  const end = names.indexOf('REDACTION_PATTERNS');
+  return start === -1 || end < start
+    ? ['REDACTEDからREDACTION_PATTERNSまでの範囲']
+    : names.slice(start, end + 1);
+};
+
+describe('伏せ字の写し(logging.ts・redaction-patterns.ts)', () => {
+  test('属性名による伏せ字の並びがbackend-libのREDACTED_FIELD_PATTERNSと一致する', () => {
+    const print = (path: string): string =>
+      printInitializerWithoutUnicodeFlags(path, 'REDACTED_FIELD_PATTERNS');
+    expect(print(FRONTEND_LOGGING)).toBe(print(BACKEND_REDACTION));
+  });
+
+  test.each(copiedRedactionDeclarationNames())(
+    '値の形式による伏せ字の%sが、uフラグを除いてbackend-libの同名の宣言と一致する',
+    (name) => {
+      expect(
+        printInitializerWithoutUnicodeFlags(FRONTEND_REDACTION_PATTERNS, name),
+      ).toBe(printInitializerWithoutUnicodeFlags(BACKEND_REDACTION, name));
+    },
+  );
+});
+
+const HASH_COMPARISON_INPUT_VARIABLE = 'CONTRACT_COPIES_HASH_INPUT';
+
+// 子プロセスのbunで評価するため、ルートの型検査の対象に入らない文字列にしている
+const HASH_COMPARISON_SCRIPT = `
+const { modules, pepper, cases } = JSON.parse(process.env.${HASH_COMPARISON_INPUT_VARIABLE});
+const [frontend, backend, hasher] = await Promise.all([
+  import(modules.frontend),
+  import(modules.backend),
+  import(modules.hasher),
+]);
+const backendHasher = hasher.createKeyedHasher(pepper);
+const results = [];
+for (const parts of cases) {
+  results.push({
+    parts,
+    frontend: await frontend.hashRateLimitKey(pepper, ...parts),
+    backend: await backend.hashRateLimitKey(backendHasher, ...parts),
+  });
+}
+console.log(JSON.stringify(results));
+`;
+
+interface HashComparison {
+  readonly parts: readonly string[];
+  readonly frontend: string;
+  readonly backend: string;
+}
+
+const HASH_COMPARISON_CASES: readonly (readonly string[])[] = [
+  ['ip:203.0.113.5'],
+  ['ip:2001:db8::1'],
+  ['ip:unknown'],
+  ['ip:198.51.100.7', 'route:/_bff/graphql'],
+  ['利用者:テスト', '経路:送信'],
+];
+
+const runHashComparison = (): readonly HashComparison[] => {
+  const result = Bun.spawnSync(
+    [process.execPath, '--eval', HASH_COMPARISON_SCRIPT],
+    {
+      cwd: REPO_ROOT,
+      env: {
+        ...process.env,
+        [HASH_COMPARISON_INPUT_VARIABLE]: JSON.stringify({
+          modules: {
+            frontend: join(REPO_ROOT, FRONTEND_RATE_LIMIT_KEY_HASH),
+            backend: join(REPO_ROOT, BACKEND_RATE_LIMIT_KEY),
+            hasher: join(REPO_ROOT, BACKEND_KEYED_HASHER),
+          },
+          pepper: 'contract-copies-pepper-0123456789abcdef',
+          cases: HASH_COMPARISON_CASES,
+        }),
+      },
+    },
+  );
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `レート制限のキーのハッシュ化の比較が終了コード${String(result.exitCode)}で失敗しました: ${result.stderr.toString()}`,
+    );
+  }
+  return JSON.parse(result.stdout.toString()) as readonly HashComparison[];
+};
+
+describe('レート制限のキーのハッシュ化の写し(rate-limit-key-hash.ts)', () => {
+  test('同じペッパーと部品から、backend-libのhashRateLimitKey(createKeyedHasher(pepper), ...parts)と同じ値を作る', () => {
+    const comparisons = runHashComparison();
+
+    expect(comparisons.map(({ parts }) => parts)).toEqual([
+      ...HASH_COMPARISON_CASES,
+    ]);
+    for (const { frontend, backend } of comparisons) {
+      expect(backend).toMatch(/^[A-Za-z0-9_-]{86}$/);
+      expect(frontend).toBe(backend);
+    }
+  });
+});
+
+describe('ヘルスチェックの経路の写し(e2e/support/api-rate-limit.ts)', () => {
+  test('APIサーバーの制限を使い切る要求の経路がbackend-libのHEALTH_CHECK_PATHと一致する', () => {
+    expect(readString(E2E_API_RATE_LIMIT, 'HEALTH_CHECK_PATH')).toBe(
+      readString(BACKEND_HEALTH_ROUTE, 'HEALTH_CHECK_PATH'),
+    );
+  });
+});
+
+interface BotActionCopy {
+  readonly api: DeclarationRef;
+  readonly copy: DeclarationRef;
+}
+
+// 写しは画面のアプリの`src/components/<部品のディレクトリ>/bot-actions.ts`に、APIサーバーのスキーマモジュールの`resolver-support.ts`と同じ名前で置く
+const botActionCopy = (
+  apiModule: string,
+  app: 'client' | 'admin',
+  directory: string,
+  name: string,
+): BotActionCopy => ({
+  api: {
+    path: `apps/api/src/presentation/graphql/modules/${apiModule}/resolver-support.ts`,
+    name,
+  },
+  copy: {
+    path: `apps/${app}/src/components/${directory}/bot-actions.ts`,
+    name,
+  },
+});
+
+const BOT_ACTION_COPIES: readonly BotActionCopy[] = [
+  botActionCopy('identity', 'client', 'auth', 'BOT_ACTIONS'),
+  botActionCopy('admin', 'admin', 'auth', 'ADMIN_BOT_ACTIONS'),
+  botActionCopy('inquiry', 'client', 'inquiry', 'INQUIRY_BOT_ACTIONS'),
+  botActionCopy('profile', 'client', 'profile', 'PROFILE_BOT_ACTIONS'),
+  botActionCopy('product', 'client', 'product', 'PRODUCT_BOT_ACTIONS'),
+  botActionCopy('match', 'client', 'match', 'MATCH_BOT_ACTIONS'),
+];
+
+describe('bot判定の操作名の写し(components/*/bot-actions.ts)', () => {
+  test.each(
+    BOT_ACTION_COPIES.map(
+      ({ api, copy }) =>
+        [describeRef(copy), describeRef(api), api, copy] as const,
+    ),
+  )('%sが%sと項目の名前と値で一致する', (_copyLabel, _apiLabel, api, copy) => {
+    const apiActions = readStringRecord(api.path, api.name);
+
+    expect(Object.keys(apiActions)).not.toBeEmpty();
+    expect(readStringRecord(copy.path, copy.name)).toEqual(apiActions);
+  });
+});
+
+describe('業務時刻の写し(components/product/business-time.ts)', () => {
+  test('業務時刻のUTCとの差がbackend-libのBUSINESS_UTC_OFFSET_MINUTESと一致する', () => {
+    expect(
+      readNumber(CLIENT_PRODUCT_BUSINESS_TIME, 'BUSINESS_UTC_OFFSET_MINUTES'),
+    ).toBe(readNumber(BACKEND_BUSINESS_TIME, 'BUSINESS_UTC_OFFSET_MINUTES'));
+  });
+
+  test('選べる日の締め切りがbackend-libのLAUNCH_SELECTION_CUTOFFと一致する', () => {
+    expect(
+      readValue(CLIENT_PRODUCT_BUSINESS_TIME, 'LAUNCH_SELECTION_CUTOFF'),
+    ).toEqual(readValue(BACKEND_LAUNCH_STATUS, 'LAUNCH_SELECTION_CUTOFF'));
+  });
+});
+
+const FORM_MESSAGES_INPUT_VARIABLE = 'CONTRACT_COPIES_FORM_MESSAGES_INPUT';
+
+// 文言は上限の定数から組み立てるため、ソースの構文解析ではなく子プロセスのbunで評価した値を比べる。ルートの型検査の対象に入らない文字列にしている
+const FORM_MESSAGES_SCRIPT = `
+const { modules, names } = JSON.parse(process.env.${FORM_MESSAGES_INPUT_VARIABLE});
+const [input, errors, form] = await Promise.all([
+  import(modules.input),
+  import(modules.errors),
+  import(modules.form),
+]);
+console.log(JSON.stringify({
+  inputMessages: input.INPUT_MESSAGES,
+  handleUnavailable: errors[names.errors].handle_unavailable.message,
+  formMessages: form[names.form],
+}));
+`;
+
+interface FormMessagesSources {
+  readonly label: string;
+  readonly input: string;
+  readonly errors: { readonly path: string; readonly name: string };
+  readonly form: DeclarationRef;
+}
+
+interface FormMessagesComparison {
+  readonly inputMessages: Readonly<Record<string, string | undefined>>;
+  readonly handleUnavailable: string;
+  readonly formMessages: Readonly<Record<string, string | undefined>>;
+}
+
+const runFormMessagesComparison = ({
+  label,
+  input,
+  errors,
+  form,
+}: FormMessagesSources): FormMessagesComparison => {
+  const result = Bun.spawnSync(
+    [process.execPath, '--eval', FORM_MESSAGES_SCRIPT],
+    {
+      cwd: REPO_ROOT,
+      env: {
+        ...process.env,
+        [FORM_MESSAGES_INPUT_VARIABLE]: JSON.stringify({
+          modules: {
+            input: join(REPO_ROOT, input),
+            errors: join(REPO_ROOT, errors.path),
+            form: join(REPO_ROOT, form.path),
+          },
+          names: { errors: errors.name, form: form.name },
+        }),
+      },
+    },
+  );
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `${label}の文言の比較が終了コード${String(result.exitCode)}で失敗しました: ${result.stderr.toString()}`,
+    );
+  }
+  return JSON.parse(result.stdout.toString()) as FormMessagesComparison;
+};
+
+const PROFILE_MESSAGES_SOURCES: FormMessagesSources = {
+  label: 'プロフィール',
+  input: API_PROFILE_INPUT_MESSAGES,
+  errors: { path: API_PROFILE_ERRORS, name: 'PROFILE_ERRORS' },
+  form: { path: CLIENT_PROFILE_FORM_MESSAGES, name: 'PROFILE_FORM_MESSAGES' },
+};
+
+const PRODUCT_MESSAGES_SOURCES: FormMessagesSources = {
+  label: 'プロダクト',
+  input: API_PRODUCT_INPUT_MESSAGES,
+  errors: { path: API_PRODUCT_ERRORS, name: 'PRODUCT_ERRORS' },
+  form: { path: CLIENT_PRODUCT_FORM_MESSAGES, name: 'PRODUCT_FORM_MESSAGES' },
+};
+
+describe('プロフィールの入力の違反の文言の写し(components/profile/profile-form-messages.ts)', () => {
+  test('画面のPROFILE_FORM_MESSAGESがAPIサーバーのINPUT_MESSAGESとPROFILE_ERRORSの使用中の文言と項目ごとに一致する', () => {
+    const { inputMessages, handleUnavailable, formMessages } =
+      runFormMessagesComparison(PROFILE_MESSAGES_SOURCES);
+    const { handleUnavailable: formHandleUnavailable, ...formInputMessages } =
+      formMessages;
+
+    expect(Object.keys(formInputMessages)).not.toBeEmpty();
+    expect(formInputMessages).toEqual(
+      Object.fromEntries(
+        Object.keys(formInputMessages).map((key) => [key, inputMessages[key]]),
+      ),
+    );
+    expect(formHandleUnavailable).toBe(handleUnavailable);
+  });
+
+  test('APIサーバーが画面で扱う違反の文言は、画面が全て持つ', () => {
+    const { inputMessages, formMessages } = runFormMessagesComparison(
+      PROFILE_MESSAGES_SOURCES,
+    );
+    const screenless = new Set(['avatarInvalid']);
+
+    const missing = Object.keys(inputMessages).filter(
+      (key) => !screenless.has(key) && !(key in formMessages),
+    );
+
+    expect(missing).toEqual([]);
+  });
+});
+
+describe('プロダクトの入力の違反の文言の写し(components/product/product-form-messages.ts)', () => {
+  test('画面のPRODUCT_FORM_MESSAGESがAPIサーバーのINPUT_MESSAGESとPRODUCT_ERRORSの使用中の文言と項目ごとに一致する', () => {
+    const { inputMessages, handleUnavailable, formMessages } =
+      runFormMessagesComparison(PRODUCT_MESSAGES_SOURCES);
+    const { handleUnavailable: formHandleUnavailable, ...formInputMessages } =
+      formMessages;
+
+    expect(Object.keys(formInputMessages)).not.toBeEmpty();
+    expect(formInputMessages).toEqual(
+      Object.fromEntries(
+        Object.keys(formInputMessages).map((key) => [key, inputMessages[key]]),
+      ),
+    );
+    expect(formHandleUnavailable).toBe(handleUnavailable);
+  });
+
+  test('APIサーバーが登録・編集のフォームで扱う違反の文言は、画面が全て持つ', () => {
+    const { inputMessages, formMessages } = runFormMessagesComparison(
+      PRODUCT_MESSAGES_SOURCES,
+    );
+    // 利用者のハンドル・管理画面のカテゴリ・監査の理由と、画面の操作では起きずサーバーの詳細の文言をそのまま示す違反
+    const screenless = new Set([
+      'userHandleRequired',
+      'userHandleTooLong',
+      'userHandleFormat',
+      'categoryInvalid',
+      'imageInvalid',
+      'categoryNotFound',
+      'reasonTooLong',
+    ]);
+
+    const missing = Object.keys(inputMessages).filter(
+      (key) => !screenless.has(key) && !(key in formMessages),
+    );
+
+    expect(missing).toEqual([]);
+  });
+});

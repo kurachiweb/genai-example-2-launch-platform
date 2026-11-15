@@ -12,10 +12,10 @@
 ## Desired Outcome
 
 - apiアプリ上でGraphQL Yogaが動作する。GraphQL Armorによる各種上限、本番でのintrospection無効化、persisted operationsの許可リスト、エラーマスキングが有効になっている(NFR-SECUR-016〜020)。
-- ドメインごとのスキーマモジュール(型定義・リゾルバ・DataLoader)の追加規約があり、各ドメインspecはモジュールを1つ追加するだけで済む(NFR-PERF-004)。
+- ドメインごとのスキーマモジュール(型定義・リゾルバ・DataLoader)の追加規約があり、各ドメインspecはモジュールを1つ追加するだけで済む(NFR-PERF-008)。
 - スキーマの出力とpersisted documentsの登録がCIとデプロイの流れに組み込まれている(NFR-MAINT-004)。
 - フロントエンドとAPIの間の内部認証(Service Bindings経由の呼び出しだけを信頼する仕組み)、セッション識別子の生成・検証をAPIが担う契約(COM-004)、元のクライアントIPアドレスの引き継ぎ(COM-005)が確立している。
-- `@hono/zod-openapi`によるRESTの骨格がある。ベースパス、エラー形式(`ecc:api-design`準拠)、認証不要のOpenAPI仕様配信、公開APIだけに限ったCORS `*`(NFR-SECUR-043)を含む。
+- `@hono/zod-openapi`によるRESTの骨格がある。ベースパス、エラー形式(`ecc:api-design`準拠)、認証不要のOpenAPI仕様配信、公開APIだけに限ったCORS `*`(NFR-SECUR-045)を含む。
 - `docs/GUIDES/tech/backend`(API設計)と`coding`(GraphQL通信)に記載がある。
 
 ## Approach
@@ -63,6 +63,6 @@ GraphQLはapiアプリ内の1エンドポイントとし、セキュリティ上
 ## Constraints
 
 - APIレスポンス形式とバリデーションエラー時のステータスコードは`ecc:api-design`スキルを正とする
-- サーバー間通信はService Bindingsが必須(NFR-PERF-005)
-- GraphQLのクライアント観測p95は300ms以内(NFR-PERF-002)
+- サーバー間通信はService Bindingsが必須(NFR-PERF-009)
+- GraphQLのクライアント観測p95は300ms以内(NFR-PERF-004)
 - `process.env`ではなく`env`バインディングで設定値を取得する

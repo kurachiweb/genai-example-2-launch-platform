@@ -1,0 +1,80 @@
+name: setup-toolchain
+description: CIで使うツールを、開発コンテナのDockerfileと同じ版で導入する
+inputs:
+  node:
+    description: Node.jsを導入する
+    default: 'false'
+  tofu:
+    description: OpenTofuを導入する
+    default: 'false'
+  infisical:
+    description: Infisical CLIを導入する
+    default: 'false'
+  wrangler-tool:
+    description: メールの購読の操作に使うWranglerを導入する
+    default: 'false'
+  mailpit:
+    description: Mailpitを導入する
+    default: 'false'
+outputs:
+  mailpit-bin:
+    description: Mailpitの実行ファイルの場所(mailpitを導入しない時は空)
+    value: ${{ steps.mailpit.outputs.bin }}
+runs:
+  using: composite
+  steps:
+    - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      with:
+        bun-version: '1.4.4'
+    - if: inputs.node == 'true'
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: '26.12.1'
+    # ラッパーは実行したコマンドの行を標準出力へ加えるため、`tofu output -json`等の出力を読めるように外す
+    - if: inputs.tofu == 'true'
+      uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+      with:
+        tofu_version: '1.13.2'
+        tofu_wrapper: 'false'
+    - if: inputs.infisical == 'true'
+      shell: bash
+      env:
+        INFISICAL_CLI_VERSION: '0.44.8'
+      run: |
+        case "$RUNNER_ARCH" in X64) arch=amd64 ;; ARM64) arch=arm64 ;; *) echo "unsupported architecture: $RUNNER_ARCH" >&2; exit 1 ;; esac
+        archive="cli_${INFISICAL_CLI_VERSION}_linux_${arch}.tar.gz"
+        release="https://github.com/Infisical/cli/releases/download/v${INFISICAL_CLI_VERSION}"
+        download_dir="$(mktemp -d "$RUNNER_TEMP/infisical-download.XXXXXX")"
+        install_dir="$RUNNER_TEMP/infisical-cli"
+        mkdir -p "$install_dir"
+        cd "$download_dir"
+        curl -fsSLO "${release}/${archive}"
+        curl -fsSL "${release}/checksums.txt" | grep " ${archive}\$" | sha256sum -c -
+        tar -xzf "$archive" -C "$install_dir" infisical
+        echo "$install_dir" >> "$GITHUB_PATH"
+    # 開発コンテナと同じく、Bunのグローバル導入の置き場所と実行ファイルの場所を固定してPATHへ加える
+    - if: inputs.wrangler-tool == 'true'
+      shell: bash
+      env:
+        WRANGLER_VERSION: '4.152.0'
+      run: |
+        export BUN_INSTALL="$RUNNER_TEMP/wrangler-tool"
+        export BUN_INSTALL_BIN="$BUN_INSTALL/bin"
+        bun add -g "wrangler@${WRANGLER_VERSION}"
+        echo "$BUN_INSTALL_BIN" >> "$GITHUB_PATH"
+    # Mailpitはチェックサムが非公開のため、開発コンテナと同じく未検証で取得する
+    - if: inputs.mailpit == 'true'
+      id: mailpit
+      shell: bash
+      env:
+        MAILPIT_VERSION: '1.32.0'
+      run: |
+        case "$RUNNER_ARCH" in X64) arch=amd64 ;; ARM64) arch=arm64 ;; *) echo "unsupported architecture: $RUNNER_ARCH" >&2; exit 1 ;; esac
+        archive="mailpit-linux-${arch}.tar.gz"
+        download_dir="$(mktemp -d "$RUNNER_TEMP/mailpit-download.XXXXXX")"
+        install_dir="$RUNNER_TEMP/mailpit"
+        mkdir -p "$install_dir"
+        cd "$download_dir"
+        curl -fsSLO "https://github.com/axllent/mailpit/releases/download/v${MAILPIT_VERSION}/${archive}"
+        tar -xzf "$archive" -C "$install_dir" mailpit
+        echo "bin=$install_dir/mailpit" >> "$GITHUB_OUTPUT"

@@ -1,0 +1,8 @@
+query AdminUltrasPromotionSetting {
+  ultrasPromotionSetting {
+    enabled
+    updatedAt
+    updatedByNickname
+    version
+  }
+}

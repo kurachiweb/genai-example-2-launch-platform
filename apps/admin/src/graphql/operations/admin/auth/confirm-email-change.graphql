@@ -1,0 +1,19 @@
+mutation AdminConfirmEmailChange($token: String!) {
+  confirmAdminEmailChange(token: $token) {
+    viewer {
+      id
+      nickname
+      title
+      email
+      role
+      avatar {
+        id
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+      remainingRecoveryCodes
+    }
+  }
+}

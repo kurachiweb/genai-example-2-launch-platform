@@ -1,0 +1,11 @@
+mutation AdminChangeInquiryStatus(
+  $inquiryId: ID!
+  $status: InquiryStatus!
+  $reason: String
+) {
+  changeInquiryStatus(inquiryId: $inquiryId, status: $status, reason: $reason) {
+    id
+    status
+    statusChangedAt
+  }
+}

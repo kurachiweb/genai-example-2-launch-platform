@@ -1,0 +1,5 @@
+mutation AdminCompleteInvitation($token: String!, $totpCode: String!) {
+  completeAdminInvitation(token: $token, totpCode: $totpCode) {
+    codes
+  }
+}

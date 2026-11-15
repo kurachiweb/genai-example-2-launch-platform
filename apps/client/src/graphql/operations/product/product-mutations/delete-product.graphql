@@ -1,0 +1,6 @@
+mutation ClientDeleteProduct($productHandle: String!, $expectedVersion: Int!) {
+  deleteProduct(
+    productHandle: $productHandle
+    expectedVersion: $expectedVersion
+  )
+}

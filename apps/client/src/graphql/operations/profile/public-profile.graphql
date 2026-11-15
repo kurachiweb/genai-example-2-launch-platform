@@ -1,0 +1,29 @@
+query ClientPublicProfile($handle: String!) {
+  publicProfile(handle: $handle) {
+    __typename
+    ... on PublicProfile {
+      handle
+      nickname
+      headline
+      bio
+      avatar {
+        id
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+      websites {
+        name
+        url
+      }
+      followerCount
+      ultras
+      suspended
+      viewerRelation
+    }
+    ... on PublicProfileRedirect {
+      handle
+    }
+  }
+}

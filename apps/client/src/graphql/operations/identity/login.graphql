@@ -1,0 +1,14 @@
+mutation ClientLogin($input: LoginInput!) {
+  login(input: $input) {
+    __typename
+    ... on LoginSucceeded {
+      viewer {
+        id
+      }
+    }
+    ... on SecondFactorRequired {
+      challenge
+      expiresAt
+    }
+  }
+}

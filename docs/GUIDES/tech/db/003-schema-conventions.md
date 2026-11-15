@@ -1,0 +1,378 @@
+# データベースのスキーマ規約
+
+Cloudflare D1のテーブルをDrizzleで定義するときの、テーブル定義の配置、主キー、共通カラム(作成日時・更新日時・論理削除)、日時の保持、列名の変換、マイグレーションの流れと初期データ、接続と一括実行の規約を定める。
+
+## 前提と用語
+
+ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`、データベースにCloudflare D1を使う構成を前提とする。マイグレーションの生成と適用・大文字小文字を区別しないカラム・命名規則は「[DrizzleとCloudflare D1のマイグレーションと命名規則](001-drizzle-migrations-on-d1.md)」に、トランザクション・バインド変数は「[Cloudflare D1の制約と対処](002-d1-constraints.md#d1の制約と対処)」に、全文検索の索引の構成と同期は「[全文検索の索引](004-full-text-search.md)」に従う。
+
+| 用語                         | 意味                                                                                                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<DBディレクトリ>`           | スキーマ定義・接続・マイグレーションの生成設定を置く共有ディレクトリ。D1を使う各アプリへ配置する(「[共有ディレクトリの配置方式](../coding/003-shared-directories.md)」) |
+| 共通カラム                   | 全文検索用のテーブル以外の全テーブル、または論理削除を採るテーブルが同じ定義で持つカラム(ID・作成日時・更新日時・削除日時)                                              |
+| ULID                         | 先頭48ビットが採番時刻のミリ秒、残りが乱数の識別子。Crockford Base32の26文字で表し、文字列の順に並べると採番時刻の順になる(同じミリ秒の中の順は保証しない)              |
+| 論理削除                     | 行を削除せず削除日時を記録し、読み出しで除外する削除の方法                                                                                                              |
+| 全文検索用のテーブル         | FTS5の仮想テーブルが`content`に指定する、索引の対象の本文を持つ通常のテーブル(external content)                                                                         |
+| 業務時刻                     | サービスが日付の区切りや定期実行の時刻に使う、夏時間の無い固定のUTCオフセットでの時刻。業務時刻での日付を業務日付と呼ぶ                                                 |
+| `<マイグレーションの保存先>` | 「[DrizzleとCloudflare D1のマイグレーションと命名規則](001-drizzle-migrations-on-d1.md#前提と用語)」と同じ。`<DBディレクトリ>/migrations`に置く                         |
+
+## テーブル定義の配置
+
+テーブル定義は`<DBディレクトリ>/schema/`に、ドメインごとのディレクトリを作り、1テーブル1ファイルで置く。
+
+```text
+<DBディレクトリ>/
+├── client.ts              # 接続(createDatabase・Database型)
+├── drizzle.config.ts      # マイグレーションの生成設定
+├── migrations/            # <マイグレーションの保存先>
+└── schema/
+    ├── _shared/
+    │   ├── columns.ts      # ulidPrimaryKey・timestamps・softDelete・notDeleted
+    │   ├── search-documents.ts # searchDocumentColumns・searchTextColumn・searchDocumentStatusIndex・KEYWORD_STATUSES
+    │   └── text-no-case.ts # textNoCase
+    ├── <ドメイン>/
+    │   └── <テーブル>.ts   # テーブルごとの定義
+    └── index.ts            # 全テーブル定義の集約点
+```
+
+- `schema/_shared/`には複数のテーブルが共有する列の部品を置き、`drizzle-orm`と`ulid`以外を読み込まない。
+- テーブルを追加するときは`schema/<ドメイン>/<テーブル>.ts`に定義し、`schema/index.ts`から再エクスポートする。
+- `drizzle.config.ts`の`schema`には集約点の`./schema/index.ts`を指定する。`drizzle-kit generate`は集約点から辿れるテーブルだけを読むため、再エクスポートし忘れたテーブルはマイグレーションに含まれない。
+
+```typescript
+import { defineConfig } from 'drizzle-kit';
+
+export default defineConfig({
+  dialect: 'sqlite',
+  schema: './schema/index.ts',
+  out: './migrations',
+});
+```
+
+```typescript
+export * from './blog/articles.ts';
+```
+
+```mermaid
+graph LR
+    Shared["schema/_shared/(共有する列の部品)"] --> Domain["schema/ドメイン名/テーブル名.ts"]
+    Domain -- "再エクスポート" --> Index["schema/index.ts(集約点)"]
+    Index -- "drizzle-kit generate" --> Migrations["マイグレーションの保存先"]
+    Migrations -- "wrangler d1 migrations apply" --> D1["D1"]
+    Domain -- "import" --> App["アプリのクエリ"]
+    App -- "createDatabase" --> D1
+```
+
+### 利用例
+
+全文検索用のテーブル以外は、次の形で定義する。
+
+```typescript
+import { integer, snakeCase, text } from 'drizzle-orm/sqlite-core';
+
+import { softDelete, timestamps, ulidPrimaryKey } from '../_shared/columns.ts';
+import { textNoCase } from '../_shared/text-no-case.ts';
+
+export const articles = snakeCase.table('articles', {
+  id: ulidPrimaryKey(),
+  slug: textNoCase().notNull().unique(),
+  title: text().notNull(),
+  publishedAt: integer({ mode: 'timestamp_ms' }),
+  ...timestamps(),
+  ...softDelete(),
+});
+```
+
+`drizzle-kit generate`は、この定義から次のSQLを生成する。
+
+```sql
+CREATE TABLE `articles` (
+	`id` text PRIMARY KEY,
+	`slug` text collate nocase NOT NULL UNIQUE,
+	`title` text NOT NULL,
+	`published_at` integer,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL,
+	`deleted_at` integer
+);
+```
+
+## 主キー
+
+| テーブル                                        | 主キー                              | 定義                                                                                       |
+| ----------------------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| 下の2つ以外の全て                               | ULIDの文字列(`id TEXT PRIMARY KEY`) | `ulidPrimaryKey()`                                                                         |
+| 全文検索用のテーブル                            | 連番(`id INTEGER PRIMARY KEY`)      | `searchDocumentColumns()`                                                                  |
+| 2つのテーブルの行の紐付けだけを持つ中間テーブル | 紐付ける2つのIDの列の複合主キー     | `primaryKey({ name, columns })`(「[中間テーブルの複合主キー](#中間テーブルの複合主キー)」) |
+
+### ULID
+
+- 主キーは`id: ulidPrimaryKey()`で定義する。追加時に`id`を渡さなければ、ULIDを採番して設定する。
+- ULIDはデータベースを介さずに採番できる。追加の前にIDが要る場合(親の行と、そのIDを参照する子の行を同じ一括実行で追加するなど)は、呼び出し側でULIDを採番して`id`に渡す。
+- 外部キーなど他のテーブルのIDを持つ列は、`text()`で定義する。
+
+### 全文検索用のテーブルの連番
+
+全文検索用のテーブルは、ULIDではなく連番を主キーにする。主キーを含む共通の列は`schema/_shared/search-documents.ts`の`searchDocumentColumns()`をスプレッド構文で展開して定義し、主キーは`integer('id').primaryKey()`(`id INTEGER PRIMARY KEY`)になる。
+
+- 全文検索用のテーブルでは、`ulidPrimaryKey()`・`timestamps()`・`softDelete()`を使わない。
+- `searchDocumentColumns()`は、主キー`id`、元の行のULIDを持つ一意の列`source_id`、索引の更新の状態を記録する列(`source_version`・`keywords`・`keyword_status`・`extraction_input_hash`・`status_changed_at`)を返す。`keyword_status`の値は`KEYWORD_STATUSES`のいずれかに限る。
+- 索引の対象の元テキストの列は`searchTextColumn(<列名>)`(`TEXT NOT NULL DEFAULT ''`)で定義し、状態の列の索引は`searchDocumentStatusIndex(<テーブル名>, table)`(`<テーブル名>_status_idx`)で定義する。
+- 共通の列と元テキストの列は、全文検索の索引のSQLが列名を直接参照するため、列名を明示して定義する。`snakeCase.table`の変換に関係なく、渡した名前がそのまま列名になる。
+- FTS5の索引は、整数の`rowid`で全文検索用のテーブルの行と対応する。`INTEGER PRIMARY KEY`の列は`rowid`の別名になり、追加時に値を渡さなければSQLiteが連番を採番する。
+- FTS5の仮想テーブルの`content_rowid`には、この主キーの列を指定する。`INTEGER PRIMARY KEY`を持たないテーブルの`rowid`は`VACUUM`で変わり得るため、索引と行の対応が崩れる(「[全文検索の索引](004-full-text-search.md#全文検索の索引)」)。
+- 業務のテーブルの主キーはULIDのままにし、全文検索用のテーブルを別に定義して、元の行のULIDを一意の列で持つ。
+
+```typescript
+import { snakeCase } from 'drizzle-orm/sqlite-core';
+
+import {
+  searchDocumentColumns,
+  searchDocumentStatusIndex,
+  searchTextColumn,
+} from '../_shared/search-documents.ts';
+
+export const articleSearchDocuments = snakeCase.table(
+  'article_search_documents',
+  {
+    ...searchDocumentColumns(),
+    title: searchTextColumn('title'),
+    summary: searchTextColumn('summary'),
+  },
+  (table) => [searchDocumentStatusIndex('article_search_documents', table)],
+);
+```
+
+`drizzle-kit generate`は、この定義から次のSQLを生成する。
+
+```sql
+CREATE TABLE `article_search_documents` (
+	`id` integer PRIMARY KEY,
+	`source_id` text NOT NULL UNIQUE,
+	`source_version` integer DEFAULT 0 NOT NULL,
+	`keywords` text DEFAULT '' NOT NULL,
+	`keyword_status` text DEFAULT 'pending' NOT NULL,
+	`extraction_input_hash` text,
+	`status_changed_at` integer NOT NULL,
+	`title` text DEFAULT '' NOT NULL,
+	`summary` text DEFAULT '' NOT NULL
+);
+--> statement-breakpoint
+CREATE INDEX `article_search_documents_status_idx` ON `article_search_documents` (`keyword_status`,`status_changed_at`);
+```
+
+- 全文検索の仮想テーブルと、索引を同期するトリガーは、カスタムマイグレーションで記述する(「[マイグレーション](#マイグレーション)」)。列の意味と状態の値、仮想テーブルとトリガーの構成は「[全文検索の索引](004-full-text-search.md#索引文書のテーブルと全文検索の索引の構成)」に従う。
+
+### 中間テーブルの複合主キー
+
+2つのテーブルの行の紐付け(と、紐付けの中の並び順など紐付けに付く値)だけを持ち、紐付けを追加・削除するだけで行を更新しない中間テーブルは、ULIDの`id`を持たず、紐付ける2つのIDの列の複合主キーにする。紐付けは2つのIDの組で特定でき、同じ組の紐付けが2行入ることを主キーで防げるためである。
+
+- 複合主キーは、テーブル定義の第3引数で`primaryKey({ name: '<テーブル名>_<列名1>_<列名2>_pk', columns: [table.<列1>, table.<列2>] })`と定義する。名前を明示し、自動生成の名前に頼らない。
+- 複合主キーの先頭の列で絞り込む検索は、主キーの索引を使える。2つ目の列だけで絞り込む検索があれば、その列の索引を別に定義する。
+- 共通カラムを持たない(「[共通カラムを持たないテーブル](#共通カラムを持たないテーブル)」)。
+
+```typescript
+import {
+  index,
+  integer,
+  primaryKey,
+  snakeCase,
+  text,
+} from 'drizzle-orm/sqlite-core';
+
+export const articleTags = snakeCase.table(
+  'article_tags',
+  {
+    articleId: text()
+      .notNull()
+      .references(() => articles.id),
+    tagId: text()
+      .notNull()
+      .references(() => tags.id),
+    position: integer().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'article_tags_article_id_tag_id_pk',
+      columns: [table.articleId, table.tagId],
+    }),
+    index('article_tags_tag_id_idx').on(table.tagId),
+  ],
+);
+```
+
+## 共通カラム
+
+| 部品                    | カラム                                                       | 振る舞い                                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ulidPrimaryKey()`      | `id TEXT PRIMARY KEY`                                        | 追加時に値が無ければULIDを採番する                                                                                                                     |
+| `timestamps()`          | `created_at INTEGER NOT NULL`・`updated_at INTEGER NOT NULL` | 追加時は両方に現在時刻を、Drizzleの更新クエリでは`updated_at`に現在時刻を設定する                                                                      |
+| `softDelete()`          | `deleted_at INTEGER`                                         | NULLは未削除。値は論理削除した日時                                                                                                                     |
+| `notDeleted(deletedAt)` | (条件)                                                       | `deleted_at IS NULL`の条件を返す                                                                                                                       |
+| `textNoCase()`          | `TEXT COLLATE NOCASE`                                        | 英字の大文字小文字を区別せずに照合・一意判定する(「[大文字小文字を区別しないカラム](001-drizzle-migrations-on-d1.md#大文字小文字を区別しないカラム)」) |
+
+- `timestamps()`・`softDelete()`は列のオブジェクトを返すため、テーブル定義の中でスプレッド構文(`...timestamps()`)で展開する。
+- 全文検索用のテーブルと「[共通カラムを持たないテーブル](#共通カラムを持たないテーブル)」に当たるテーブルを除く全テーブルが、`ulidPrimaryKey()`と`timestamps()`を持つ。`softDelete()`は論理削除を採るテーブルだけが持つ。
+
+### 共通カラムを持たないテーブル
+
+行を更新しないテーブルでは、`updated_at`が常に`created_at`と同じ値になり意味を持たないため、`timestamps()`を使わない。
+
+| テーブル                                                                      | 主キー                                                                             | 日時の列                                                                   |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 2つのテーブルの行の紐付けだけを持ち、紐付けを追加・削除するだけの中間テーブル | 2つのIDの列の複合主キー(「[中間テーブルの複合主キー](#中間テーブルの複合主キー)」) | 持たない                                                                   |
+| 行を追加するだけで更新しないテーブル(会話のメッセージ・履歴など)              | `ulidPrimaryKey()`                                                                 | `created_at`だけ(`createdAt: integer({ mode: 'timestamp_ms' }).notNull()`) |
+
+- 追加するだけのテーブルの`created_at`には`timestamps()`の自動設定が無いため、追加する側が値を渡す。同じ一括実行で他のテーブルに書く日時(親の行の最後の更新日時など)と同じ値を渡せる。
+- 後から行を更新する要件が加わったら、`updated_at`を足して`timestamps()`に置き換える。
+- 行を消す要件があっても物理削除にするテーブルは、`softDelete()`を持たない。
+
+### 作成日時と更新日時
+
+- 追加時は、呼び出し側が渡さなければ`created_at`と`updated_at`に現在時刻を設定する。2つの値は別々に現在時刻を取るため、1ミリ秒程度ずれることがある。作成から更新されていないことを、2つの値の一致で判定しない。
+- Drizzleの更新クエリ(`db.update().set()`・`onConflictDoUpdate()`)は、`set`に`updated_at`が無ければ現在時刻を加える。`set`に`updatedAt`を渡すと、その値を使う。
+- 自動設定はDrizzleのクエリビルダでだけ働く。生のSQL(`db.run()`に渡す`sql`のテンプレート・`wrangler d1 execute`・トリガー)で更新する場合は、そのSQLで`updated_at`を設定する。
+
+### 日時の保持
+
+- 日時はUTCのUnixエポックミリ秒の整数で保持する。共通カラム以外の日時の列も、`integer({ mode: 'timestamp_ms' })`で定義する。TypeScriptでは`Date`として読み書きする。
+- タイムゾーン付きの文字列や、特定のタイムゾーンでの日時の文字列を日時の列に保存しない。比較と範囲検索は整数のまま行う。
+- 業務時刻は、日時の判定・集計・表示に使い、日時の保存には使わない。業務日付の範囲で絞り込む場合は、業務日付の0:00をUTCの時点へ変換して比べる。業務時刻は夏時間の無い固定のオフセットのため、業務日付の1日は常に24時間である。
+
+```typescript
+import { and, gte, lt } from 'drizzle-orm';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const dayStart = fromBusinessDateTime(businessDate, { hour: 0, minute: 0 });
+const nextDayStart = new Date(dayStart.getTime() + DAY_MS);
+
+const created = await db
+  .select()
+  .from(articles)
+  .where(
+    and(
+      gte(articles.createdAt, dayStart),
+      lt(articles.createdAt, nextDayStart),
+      notDeleted(articles.deletedAt),
+    ),
+  );
+```
+
+- `fromBusinessDateTime`(業務日付と時・分からUTCの時点を求める)と`toBusinessDateTime`(UTCの時点から業務日付と時・分を求める)は、業務時刻の計算部品が提供する。
+- 時点ではなく業務日付そのものが値である列(日ごとの集計の単位となる日付など)は、`YYYY-MM-DD`の文字列で保持する。
+
+### 論理削除
+
+- 論理削除は、`deleted_at`に削除した日時を設定する更新で行う(Drizzleの更新クエリのため、`updated_at`も更新される)。
+- 論理削除を採るテーブルを読み出すクエリには、必ず`notDeleted(<テーブル>.deletedAt)`を条件に加える。他の条件とは`and()`で組み合わせる。ただし次の処理は、論理削除した行も対象にするため`notDeleted`を加えない。理由をクエリのコメントに書く。
+  - 外部キーで参照する行を付け替える・消す処理と、その対象の件数の集計。論理削除した行も外部キーで参照先を指し続けるため、残すと参照先の行を消せない。件数は付け替える範囲と同じ範囲で数える。
+  - 管理者の画面で、論理削除した行を削除済みと分かる形で読み取り専用で示す読み出し(一覧の削除済みの表示、削除済みの行の詳細や添付の閲覧など)。削除済みであることは`deleted_at`が`NULL`でないことから求めて画面へ返す。その行への書き込みは、`notDeleted`を書き込みの条件に加えて拒む。
+  - 論理削除の有無で扱いを分けるため、削除日時を返して呼び出し側が判定する読み出し(書き込みが取り消された後の原因の判定、本人の閲覧・操作の拒否の判定など)。論理削除した行を除くと「無い」と「削除済み」を区別できないためである。呼び出し側は必ず削除日時で判定し、論理削除した行を有効な行として扱わない。論理削除した行を拒否の条件にする読み出し(`isNotNull(<テーブル>.deletedAt)`で削除済みの行を探し、見つかれば拒否するなど)もこれに含める。
+
+```typescript
+import { and, eq } from 'drizzle-orm';
+
+await db
+  .update(articles)
+  .set({ deletedAt: new Date() })
+  .where(and(eq(articles.id, articleId), notDeleted(articles.deletedAt)));
+
+const visible = await db
+  .select()
+  .from(articles)
+  .where(notDeleted(articles.deletedAt));
+```
+
+- 一意制約は論理削除した行にも働く。論理削除した行と同じ値を新しい行に使えるようにする必要があるかを、一意制約を付けるときに決める。
+
+## 列名の変換
+
+- テーブルは`drizzle-orm/sqlite-core`の`snakeCase.table`で定義する。TypeScriptのキーはキャメルケースで書き、データベースの列名はスネークケースになる(`createdAt`→`created_at`)。
+- `sqliteTable`・`sqliteTableCreator`は使わない。列名の明示が必要なキー(`totpSecretV2`など)を含め、規則は「[命名規則](001-drizzle-migrations-on-d1.md#命名規則)」に従う。
+
+## マイグレーション
+
+テーブル定義を変えたら、次の順でマイグレーションを生成して適用する。各コマンドの詳細は「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」に従う。
+
+1. `<DBディレクトリ>`で`drizzle-kit generate`(スクリプト`db:generate`)を実行し、`<マイグレーションの保存先>/<日時>_<名前>/migration.sql`を生成する。テーブル定義に変更が無ければ、新しいマイグレーションは生成されない。
+2. テーブル定義で表現できない内容(全文検索の仮想テーブル・トリガー・初期データなど)は、`drizzle-kit generate --custom --name=<マイグレーションの名前>`で空のマイグレーションを作り、生のSQLを書き足す。全文検索の仮想テーブルとトリガーのSQLは手で書かず、索引の定義を集約点`search/search-indexes.ts`の`SEARCH_INDEXES`へ登録してから、スクリプト`db:search-index-sql`で出力して貼る(「[全文検索の索引](#全文検索の索引)」)。初期データは「[初期データ](#初期データ)」に従う。
+3. 同じD1を使うアプリのうち1つで、`wrangler d1 migrations apply <データベース名> --local --persist-to <ローカル状態の保存先>`(スクリプト`db:migrate:local`)を実行する。ローカル状態の保存先とリソースIDを共有していれば、1回の適用で全アプリから同じデータベースを参照できる(「[ローカル状態の永続化と共有](../infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)」)。
+4. 生成したマイグレーションがWranglerに検出されることを、スクリプト`db:migrations:check`で確かめる。CIからも同じスクリプトを呼ぶ。
+
+- `db:migrations:check`は、空の一時ディレクトリを`--persist-to`に指定して`wrangler d1 migrations list <データベース名> --local`を実行し、未適用として一覧された名前を`<マイグレーションの保存先>`のディレクトリ名と突き合わせる。共有のローカル状態を変えずに、検出の設定(「[マイグレーションの検出設定](001-drizzle-migrations-on-d1.md#マイグレーションの検出設定)」)の誤りを見つけるためである。食い違えば、検出されなかったマイグレーションの名前を表示して終了コード1で終わる。
+
+### 全文検索の索引
+
+全文検索の仮想テーブルとトリガーのSQLは、索引の定義から出力してカスタムマイグレーションに貼る。SQLの出力のオプション、索引する列を変えるときのマイグレーションの順、マイグレーションとの突き合わせの単体テスト、検索のクエリに組み込むSQL断片は「[全文検索の索引](004-full-text-search.md)」に従う。
+
+### 初期データ
+
+種類が決まっていて利用者の操作では増えない行(版を持つデータの集約の行など)のように、アプリが常にあることを前提に読む行は、マイグレーションで初期データとして入れる。
+
+1. テーブルを作るマイグレーションを`drizzle-kit generate --name=<名前>`で生成する。
+2. 続けて`drizzle-kit generate --custom --name=<名前>_seed`で別のカスタムマイグレーションを作り、初期データの`INSERT`を書く。マイグレーションは名前の日時の順に適用されるため、初期データはテーブルの作成の直後に適用される。続けて作った複数のマイグレーションの名前が同じ秒の日時になり、名前の順が作成の順と食い違う場合は、ディレクトリ名の日時を作成の順に1秒ずつずらす(スナップショットの`prevIds`の連鎖は作成の順のままで整合する)。
+
+```sql
+INSERT INTO `pages` (`id`, `slug`, `state_version`, `latest_version_number`, `draft_body`, `draft_saved_at`, `draft_saved_by`, `created_at`, `updated_at`) VALUES
+	('01KDVDNA000000000000000001', 'about', 0, 0, NULL, NULL, NULL, 1767225600000, 1767225600000),
+	('01KDVDNA000000000000000002', 'contact', 0, 0, NULL, NULL, NULL, 1767225600000, 1767225600000)
+ON CONFLICT (`slug`) DO NOTHING;
+```
+
+- テーブルの作成と同じマイグレーションに書き足さない。テーブルを作るマイグレーションは、他のマイグレーションとの衝突などで生成し直すことがあり、そのとき手で書いたSQLが消えるためである。
+- 主キーは固定のULIDをSQLに書く。全ての環境とテストで同じIDになり、テストや後のマイグレーションから参照できる。ULIDの時刻部(先頭10文字)は`created_at`の値を表すものにし、乱数部は行ごとに異なる固定の値にする。
+- `created_at`・`updated_at`は、マイグレーションを書いた時点のUTCのミリ秒の固定の値をSQLに書く。生のSQLでは共通カラムの自動設定が働かない(「[作成日時と更新日時](#作成日時と更新日時)」)。
+- 設計が主キーのULIDを先に決めている場合(コードの定数として参照する固定のIDなど)は、ULIDの時刻部と`created_at`を一致させる規則を優先し、`created_at`・`updated_at`にはマイグレーションを書いた時点ではなく、そのULIDの時刻部が表す時刻を書く。ULIDの時刻部が表す時刻は、`ulid`パッケージの`decodeTime(<ULID>)`で求める。
+- 既定値のある列やNULLの列も含め、全ての列を明示して初期の状態をSQLから読み取れるようにする。
+- 一意の列(主キー以外の業務上の識別子)を対象に`ON CONFLICT (<一意の列>) DO NOTHING`を付け、同じ値の行が既にあっても適用を失敗させない。主キーではなく一意の列を対象にするのは、別のIDで同じ値の行が入っている場合も無視するためである。
+- 複数の文を書くときは、文の間に`--> statement-breakpoint`の行を挟む(「[マイグレーションの生成と適用](001-drizzle-migrations-on-d1.md#マイグレーションの生成と適用)」)。
+- 初期データはローカル環境とデプロイ先の全ての環境に同じ内容で入る。環境ごとに異なる値や、利用者が作るデータはマイグレーションで入れない。
+- 適用済みのマイグレーションは書き換えない。適用済みのマイグレーションは名前で記録されて再び適用されないため、書き換えた内容は適用済みの環境に反映されない。初期データを変えるときは、新しいカスタムマイグレーションで更新する。
+
+#### Workers統合テストとの関係
+
+- Workers統合テストのデータベースにはマイグレーションが全て適用されるため、初期データの行も常に入っている。テストは初期データの行がある前提で書き、同じ一意の値の行をテストで追加しない。
+- 初期データの行を書き換えるテストは、各テストの前に初期データの状態へ戻す。テーブルの行を全て消してから、マイグレーションと同じ固定のIDと日時の値で入れ直す。
+
+#### スナップショットとの関係
+
+- `drizzle-kit generate --custom`でも、マイグレーションのディレクトリに`snapshot.json`が作られる。`prevIds`は直前のマイグレーションのスナップショットの`id`を指し、内容は直前のスナップショットと`id`・`prevIds`以外が同じである。キーの並びは異なることがあるため、同じであることは文字列ではなくJSONとして比べて確かめる。
+- テーブル定義はカスタムマイグレーションの前後で変わらないため、直後の`drizzle-kit generate`は差分なし(`No schema changes`)として新しいマイグレーションを作らない。作られたスナップショットは手で直さず、マイグレーションのSQLと一緒にコミットする。
+
+## 接続と一括実行
+
+### 接続
+
+- 接続は、`<DBディレクトリ>/client.ts`の`createDatabase(env.<バインディング名>)`で作る。戻り値の型`Database`は`DrizzleD1Database`である。
+- リクエストや定期実行・メッセージ処理の処理単位ごとに接続を作り、依存性の注入では`Database`の識別子で受け取る(「[コンストラクタ引数の注入](../backend/001-dependency-injection-on-workers.md#コンストラクタ引数の注入)」)。
+
+```typescript
+import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1';
+
+export type Database = DrizzleD1Database;
+
+export function createDatabase(d1: D1Database): Database {
+  return drizzle(d1);
+}
+```
+
+- テーブル定義は接続に渡さず、クエリはクエリビルダ(`db.select()`・`db.insert()`など)と`sql`で書く。リレーショナルクエリ(`db.query`)は使わない。
+  - リレーショナルクエリが必要になった場合は、`defineRelations`で定義したリレーションを`drizzle(d1, { relations })`で渡し、`Database`を`DrizzleD1Database<typeof relations>`にする。その場合、`where`の項目に`undefined`を渡すと例外になるため、条件を省く項目には`drizzle-orm/relations`の`EmptyFilter`を渡す。
+- クエリに渡した値は、SQL文に埋め込まれずバインド変数として送られる。`sql`のテンプレートに差し込んだ値も同じである。利用者の入力を`sql.raw()`に渡さない。
+
+### 一括実行
+
+- 複数の書き込みは`db.batch([...])`にまとめる。途中の文が失敗すると、先行する文の書き込みも取り消される。
+- `db.transaction()`は使わない。一括実行の中で前の文の結果を使えない点と、代わりの書き方は「[トランザクション](002-d1-constraints.md#トランザクション)」に従う。
+
+```typescript
+import { ulid } from 'ulid';
+
+const articleId = ulid();
+
+await db.batch([
+  db.insert(articles).values({ id: articleId, slug, title }),
+  db.insert(articleRevisions).values({ articleId, title }),
+]);
+```

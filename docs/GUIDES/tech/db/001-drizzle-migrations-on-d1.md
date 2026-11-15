@@ -1,6 +1,6 @@
 # DrizzleとCloudflare D1のマイグレーションと命名規則
 
-DrizzleのスキーマからCloudflare D1のマイグレーションを生成してWranglerで適用する手順、大文字小文字を区別しないカラムの定義方法、テーブルの命名規則を定める。
+DrizzleのスキーマからCloudflare D1のマイグレーションを生成してWranglerで適用する手順、大文字小文字を区別しないカラムの定義方法、テーブルとカラムの命名規則を定める。
 
 ## 前提と用語
 
@@ -8,7 +8,7 @@ ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`
 
 | 用語                         | 意味                                                                                                                                       |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| スキーマ定義                 | Drizzleの`sqliteTable`などで記述したテーブル定義                                                                                           |
+| スキーマ定義                 | Drizzleの`snakeCase.table`で記述したテーブル定義                                                                                           |
 | マイグレーション             | スキーマ定義の変更をデータベースへ反映するSQLファイル                                                                                      |
 | カスタムマイグレーション     | スキーマ定義から生成せず、生のSQLを手で記述するマイグレーション                                                                            |
 | `<マイグレーションの保存先>` | `drizzle-kit`の設定の`out`に指定する、マイグレーションを置くディレクトリ。Wrangler設定では、Wrangler設定のファイルからの相対パスで指定する |
@@ -18,7 +18,9 @@ ORMにDrizzle(`drizzle-orm`)、マイグレーションの生成に`drizzle-kit`
 ### マイグレーションの生成と適用
 
 - マイグレーションのSQLは`drizzle-kit generate`で生成する。
-- スキーマ定義で表現できない内容(仮想テーブル・トリガーなど)は、`drizzle-kit generate --custom`で空のマイグレーションを作成し、その中に生のSQLで記述する。
+- スキーマ定義で表現できない内容(仮想テーブル・トリガー・初期データなど)は、`drizzle-kit generate --custom`で空のマイグレーションを作成し、その中に生のSQLで記述する。初期データの書き方とスナップショットとの関係は「[初期データ](003-schema-conventions.md#初期データ)」に従う。
+  - 複数の文を書くときは、`drizzle-kit generate`の出力と同じく文の間に`--> statement-breakpoint`の行を挟む。Workers統合テストなどでマイグレーションを適用する処理は、この区切りで文を分けて1文ずつ実行する。区切りの無い文を別のSQLの後に貼り足すときも、間に区切りを挟む。
+  - 全文検索の仮想テーブル・トリガー・索引の再構築のSQLは、索引の定義からスクリプトで出力して貼る(「[SQLの出力](004-full-text-search.md#sqlの出力)」)。
 - マイグレーションの適用は`wrangler d1 migrations apply`で行う。ローカル環境への適用では、「[ローカル状態の永続化と共有](../infra/001-wrangler-conventions.md#ローカル状態の永続化と共有)」に従って`--local`と`--persist-to`を付ける。
 - `drizzle-kit migrate`・`drizzle-kit push`は使用しない。適用済みのマイグレーションはWranglerがデータベース内の`d1_migrations`テーブルに記録する。Drizzleの適用コマンドを併用すると、適用の状態がWranglerの記録と食い違う(`drizzle-kit migrate`はDrizzle独自のテーブルに記録し、`drizzle-kit push`はマイグレーションを経ずにスキーマを直接変更する)。そのため、適用の管理をWranglerに一本化する。
 
@@ -69,22 +71,41 @@ export const textNoCase = customType<{ data: string }>({
 ```
 
 ```typescript
-import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { textNoCase } from './text-no-case';
+import { snakeCase } from 'drizzle-orm/sqlite-core';
 
-export const users = sqliteTable('users', {
-  id: text().primaryKey(),
+import { ulidPrimaryKey } from '../_shared/columns.ts';
+import { textNoCase } from '../_shared/text-no-case.ts';
+
+export const users = snakeCase.table('users', {
+  id: ulidPrimaryKey(),
   handle: textNoCase().notNull().unique(),
 });
 ```
 
+- `textNoCase`は、共通カラムの部品と同じくスキーマ定義のディレクトリの`_shared/`に置く。配置と主キーの部品(`ulidPrimaryKey`)は「[データベースのスキーマ規約](003-schema-conventions.md)」に従う。
 - `nocase`が同一視するのはASCIIの大文字小文字だけで、非ASCII文字(全角英字・アクセント付きの文字など)は区別される。
 - 既存のカラムへ後から指定すると、テーブルを作り直すマイグレーションが生成される。そのため、`textNoCase`はテーブルを新規に作成するときに指定する。
 
 ## 命名規則
 
 - テーブル名は小文字の複数形にする(例: `users`・`articles`)。
-- テーブル名は`sqliteTable`の第1引数で指定する。
+- テーブル名は`snakeCase.table`の第1引数で指定する。
+- カラム名は、TypeScriptのキーをキャメルケースで書き、データベースではスネークケースにする(例: `createdAt`→`created_at`)。
+  - `drizzle-orm` v1には、接続の設定や`drizzle-kit`の設定で列名の変換を指定する`casing`が無い。そのため、テーブルは`drizzle-orm/sqlite-core`の`snakeCase.table`で定義し、変換をテーブル定義に持たせる。マイグレーションの生成と実行時のクエリが同じテーブル定義を読むため、両者の列名が一致する。
+  - `sqliteTable`・`sqliteTableCreator`は使用しない。列名がキーのまま(キャメルケース)で作られる。静的解析の`no-restricted-imports`で、スキーマ定義からのimportを禁止する。
+  - カラム型の関数に列名を渡すと(`text('source_id')`など)、`snakeCase.table`の中でもその名前が使われる。変換結果が意図と異なるキーは、列名を明示する。例えば、大文字に続く数字の前でも区切られるため、`totpSecretV2`は`totp_secret_v_2`になる。
+
+```typescript
+import { snakeCase, text } from 'drizzle-orm/sqlite-core';
+
+import { ulidPrimaryKey } from '../_shared/columns.ts';
+
+export const accounts = snakeCase.table('accounts', {
+  id: ulidPrimaryKey(),
+  displayName: text().notNull(), // display_name
+  totpSecretV2: text('totp_secret_v2'),
+});
+```
 
 ## 関連する制約
 

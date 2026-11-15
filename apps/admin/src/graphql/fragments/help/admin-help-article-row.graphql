@@ -1,0 +1,24 @@
+fragment AdminHelpArticleRow on AdminHelpArticleRow {
+  id
+  handle
+  title
+  categoryId
+  categoryName
+  status
+  pinned
+  sortOrder
+  creatorAdminId
+  creator {
+    nickname
+    title
+    avatar {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+  }
+  createdAt
+  updatedAt
+}

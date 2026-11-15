@@ -1,0 +1,21 @@
+mutation ClientUpdateMyProfile($input: UpdateMyProfileInput!) {
+  updateMyProfile(input: $input) {
+    nickname
+    handle
+    previousHandle
+    headline
+    bio
+    avatar {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+    websites {
+      name
+      url
+    }
+    suspended
+  }
+}

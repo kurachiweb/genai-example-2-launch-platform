@@ -1,0 +1,10 @@
+query ClientUltrasOffer {
+  ultrasOffer {
+    price {
+      amount
+      currency
+    }
+    priceStale
+    promotionEnabled
+  }
+}

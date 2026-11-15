@@ -1,0 +1,28 @@
+mutation AdminUpdateProfile(
+  $id: ID!
+  $nickname: String!
+  $title: String
+  $avatarFileId: ID
+) {
+  updateAdminProfile(
+    id: $id
+    nickname: $nickname
+    title: $title
+    avatarFileId: $avatarFileId
+  ) {
+    id
+    email
+    nickname
+    title
+    avatar {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+    role
+    status
+    createdAt
+  }
+}

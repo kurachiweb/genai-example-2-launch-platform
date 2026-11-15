@@ -1,0 +1,23 @@
+mutation AdminCompleteSecondFactorLogin(
+  $challenge: String!
+  $secondFactor: AdminSecondFactorInput!
+) {
+  completeAdminSecondFactorLogin(
+    challenge: $challenge
+    secondFactor: $secondFactor
+  ) {
+    id
+    nickname
+    title
+    email
+    role
+    avatar {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+    remainingRecoveryCodes
+  }
+}

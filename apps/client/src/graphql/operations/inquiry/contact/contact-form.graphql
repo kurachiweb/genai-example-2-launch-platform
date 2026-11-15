@@ -1,0 +1,15 @@
+query ClientInquiryContactForm {
+  inquiryCategories {
+    id
+    name
+  }
+  inquiryComposer {
+    nickname
+    avatar {
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+  }
+}
