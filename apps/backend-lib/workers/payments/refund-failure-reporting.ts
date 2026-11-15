@@ -1,6 +1,8 @@
 import type { Logger } from '@logtape/logtape';
 import { captureEvent } from '@sentry/cloudflare';
 
+import { UPPERCASE_ULID_PATTERN } from '../../core/ids/uppercase-ulid.ts';
+
 export interface RefundFailure {
   readonly refundRequestId: string;
   readonly stripeRefundId: string;
@@ -8,8 +10,6 @@ export interface RefundFailure {
 }
 
 const MESSAGE = '決済サービス上で返金が失敗しました';
-
-const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
 
 const STRIPE_REFUND_ID_PATTERN = /^(?:re|pyr)_[0-9A-Za-z_]{1,255}$/u;
 
@@ -28,7 +28,7 @@ export function reportRefundFailure(
 ): void {
   const tags = {
     payments_incident: 'refund-failed',
-    refund_request_id: safely(failure.refundRequestId, ULID_PATTERN),
+    refund_request_id: safely(failure.refundRequestId, UPPERCASE_ULID_PATTERN),
     stripe_refund_id: safely(failure.stripeRefundId, STRIPE_REFUND_ID_PATTERN),
     failure_code: safely(failure.failureCode, FAILURE_CODE_PATTERN),
   };

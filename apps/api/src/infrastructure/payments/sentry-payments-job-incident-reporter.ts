@@ -1,6 +1,7 @@
 import { captureEvent, type SeverityLevel } from '@sentry/cloudflare';
 import { injectable } from 'inversify';
 
+import { isUppercaseUlid } from '../../../lib/core/ids/uppercase-ulid.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import type {
   PaymentsJobIncident,
@@ -32,8 +33,6 @@ const MESSAGES: Readonly<Record<PaymentsJobIncidentKind, string>> = {
     '依頼待ちのまま依頼できなかった決済のメールがあります',
 };
 
-const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
-
 const ERROR_NAME_PATTERN = /^[A-Za-z]{1,64}$/u;
 
 const UNSAFE_VALUE = 'unknown';
@@ -43,8 +42,7 @@ const CONTEXT_NAME = 'payments_incident';
 const logger = getAppLogger(['api', 'payments', 'job-incident']);
 
 // タグ・コンテキスト・指紋は除去処理の対象外のため、分類の値と識別子の形の値だけを送り、メールアドレスなどが紛れ込まないようにする
-const toId = (id: string): string =>
-  ULID_PATTERN.test(id) ? id : UNSAFE_VALUE;
+const toId = (id: string): string => (isUppercaseUlid(id) ? id : UNSAFE_VALUE);
 
 // 例外のメッセージは利用者の情報を含み得るため、タグには例外の名前だけを入れ、メッセージはログ(伏せ字の対象)に残す
 const toErrorName = (error: unknown): string =>

@@ -1,6 +1,7 @@
 import type { Logger } from '@logtape/logtape';
 import { captureEvent, type SeverityLevel } from '@sentry/cloudflare';
 
+import { isUppercaseUlid } from '../../core/ids/uppercase-ulid.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import { parseSlotKey } from '../../core/notifications/notification-slots.ts';
 import type {
@@ -35,8 +36,6 @@ const MESSAGES: Readonly<Record<IncidentKind, string>> = {
   'event-stalled': '展開されないまま残っている通知イベントがあります',
 };
 
-const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
-
 // メール種別と送り出しの前提の名前は、どちらも<spec名>.<名詞句>の形で登録される
 const QUALIFIED_NAME_PATTERN =
   /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*\.[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
@@ -54,7 +53,7 @@ const toSlotKey = (value: string): string =>
   parseSlotKey(value) === undefined ? UNSAFE_VALUE : value;
 
 const toEventId = (value: string): string =>
-  ULID_PATTERN.test(value) ? value : UNSAFE_VALUE;
+  isUppercaseUlid(value) ? value : UNSAFE_VALUE;
 
 const toQualifiedName = (value: string): string =>
   QUALIFIED_NAME_PATTERN.test(value) ? value : UNSAFE_VALUE;

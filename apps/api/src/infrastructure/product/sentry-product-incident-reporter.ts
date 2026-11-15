@@ -1,6 +1,7 @@
 import { captureEvent } from '@sentry/cloudflare';
 import { injectable } from 'inversify';
 
+import { isUppercaseUlid } from '../../../lib/core/ids/uppercase-ulid.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import type {
   ProductIncident,
@@ -23,8 +24,6 @@ const MESSAGES: Readonly<Record<IncidentKind, string>> = {
     'プロダクトライフサイクルイベントの送信に失敗しました',
 };
 
-const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
-
 const UNSAFE_VALUE = 'unknown';
 
 const CONTEXT_NAME = 'product_incident';
@@ -33,7 +32,7 @@ const logger = getAppLogger(['api', 'infrastructure', 'product']);
 
 // タグ・コンテキスト・指紋は除去処理の対象外のため、分類の値と識別子の形の値だけを送る
 const toIdentifier = (value: string): string =>
-  ULID_PATTERN.test(value) ? value : UNSAFE_VALUE;
+  isUppercaseUlid(value) ? value : UNSAFE_VALUE;
 
 function detailsOf(incident: ProductIncident): IncidentDetails {
   switch (incident.kind) {

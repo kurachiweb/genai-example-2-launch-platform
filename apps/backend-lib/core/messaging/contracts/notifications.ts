@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { UPPERCASE_ULID_PATTERN } from '../../ids/uppercase-ulid.ts';
 import { parseSlotKey } from '../../notifications/notification-slots.ts';
 import {
   defineMessageContract,
@@ -22,7 +23,7 @@ const flushNotificationSlotBodySchema = z.object({
 
 // 受賞の枠のキーは採番の表記の大文字のIDから作るため、同じ表記だけを受け付ける
 const expandNotificationEventBodySchema = z.object({
-  eventId: z.ulid().regex(/^[0-9A-HJKMNP-TV-Z]{26}$/u),
+  eventId: z.ulid().regex(UPPERCASE_ULID_PATTERN),
 });
 
 export const FLUSH_NOTIFICATION_SLOT_MESSAGE: MessageContract<

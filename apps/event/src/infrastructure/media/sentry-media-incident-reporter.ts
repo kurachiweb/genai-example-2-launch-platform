@@ -1,6 +1,7 @@
 import { captureEvent, type SeverityLevel } from '@sentry/cloudflare';
 import { injectable } from 'inversify';
 
+import { isUppercaseUlid } from '../../../lib/core/ids/uppercase-ulid.ts';
 import type {
   MediaIncidentReporter,
   ModerationOutcome,
@@ -32,14 +33,12 @@ const KNOWN_REASONS: ReadonlySet<string> = new Set<ModerationFailureReason>([
   'invalid-parameter',
 ]);
 
-const FILE_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/;
-
 // タグと指紋は除去処理の対象外のため、識別子の形のファイルの識別子と判定の結果の分類の値だけを送り、ファイル名などが紛れ込まないようにする
 const toReasonTag = (reason: string): string =>
   KNOWN_REASONS.has(reason) ? reason : UNSAFE_TAG_VALUE;
 
 const toFileIdTag = (fileId: string): string =>
-  FILE_ID_PATTERN.test(fileId) ? fileId : UNSAFE_TAG_VALUE;
+  isUppercaseUlid(fileId) ? fileId : UNSAFE_TAG_VALUE;
 
 function send(incident: IncidentEvent): void {
   const reason = toReasonTag(incident.reason);

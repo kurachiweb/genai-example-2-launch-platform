@@ -11,6 +11,7 @@ import { ADMIN_PLATFORM_TYPES } from '../../core/admin/identifiers.ts';
 import type { AdminDirectory } from '../../core/admin/ports.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
 import { invalidCursorError } from '../../core/errors/invalid-cursor.ts';
+import { isUppercaseUlid } from '../../core/ids/uppercase-ulid.ts';
 import {
   INQUIRY_EXPORT_PAGE_SIZE,
   type InquiryExport,
@@ -23,8 +24,6 @@ import { getAppLogger } from '../../core/logging/app-logger.ts';
 import { MEDIA_TYPES } from '../../core/media/identifiers.ts';
 import type { MediaFileView } from '../../core/media/media-file.ts';
 import type { MediaFiles } from '../../core/media/ports.ts';
-
-const INQUIRY_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
 
 // データエクスポートはイベントサーバーのQueueの処理だけが呼ぶ
 const logger = getAppLogger(['event', 'inquiry', 'export']);
@@ -54,7 +53,7 @@ function afterInquiry(after: string | undefined) {
   if (after === undefined) {
     return undefined;
   }
-  if (!INQUIRY_ID_PATTERN.test(after)) {
+  if (!isUppercaseUlid(after)) {
     throw invalidCursorError();
   }
   return gt(memberInquiries.id, after);

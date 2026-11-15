@@ -4,6 +4,7 @@ import {
 } from '../../../common-lib/notifications/notification-topics.ts';
 import { hashPurpose, type HashPurpose } from '../crypto/keyed-hasher.ts';
 import type { ExtraHeaders } from '../email/email-headers.ts';
+import { isUppercaseUlid } from '../ids/uppercase-ulid.ts';
 
 export const UNSUBSCRIBE_TOKEN_PURPOSE: HashPurpose = hashPurpose(
   'notification-unsubscribe-token',
@@ -15,7 +16,6 @@ export const UNSUBSCRIBE_LOOKUP_PURPOSE: HashPurpose = hashPurpose(
 
 export const UNSUBSCRIBE_SEED_BYTES = 32;
 
-const USER_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
 // 32バイトをパディングなしのbase64urlで表すと43文字になり、最後の文字は下位2ビットが0の表記に限られる
 const SEED_PATTERN = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/u;
 // HMAC-SHA512の64バイトをパディングなしのbase64urlで表すと86文字になり、最後の文字は下位4ビットが0の表記に限られる
@@ -31,7 +31,7 @@ export function unsubscribeTokenSource(input: {
 }): string {
   const { userId, topic, seed } = input;
   if (
-    !USER_ID_PATTERN.test(userId) ||
+    !isUppercaseUlid(userId) ||
     !NOTIFICATION_TOPICS.includes(topic) ||
     !SEED_PATTERN.test(seed)
   ) {

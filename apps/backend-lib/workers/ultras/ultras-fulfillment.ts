@@ -3,6 +3,7 @@ import { captureEvent } from '@sentry/cloudflare';
 import type { BatchItem } from 'drizzle-orm/batch';
 
 import type { IdGenerator } from '../../core/ids/id-generator.ts';
+import { UPPERCASE_ULID_PATTERN } from '../../core/ids/uppercase-ulid.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import type { FulfillablePurchase } from '../../core/payments/purchase-kind-contract.ts';
 import type {
@@ -35,8 +36,6 @@ const MISSING_SUBSCRIPTION_MESSAGE =
 
 const MISSING_SUBSCRIPTION_INCIDENT = 'fulfillment-missing-subscription';
 
-const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
-
 const UNSAFE_VALUE = 'unknown';
 
 const REJECTED: FulfillmentPlan = Object.freeze({
@@ -52,7 +51,7 @@ const safely = (value: string, pattern: RegExp): string =>
 function reportMissingSubscription(logger: Logger, purchaseId: string): void {
   const tags = {
     ultras_incident: MISSING_SUBSCRIPTION_INCIDENT,
-    purchase_id: safely(purchaseId, ULID_PATTERN),
+    purchase_id: safely(purchaseId, UPPERCASE_ULID_PATTERN),
   };
   logger.error(MISSING_SUBSCRIPTION_MESSAGE, { purchaseId: tags.purchase_id });
   // captureMessageの文言だけのイベントは、直前と同じ文言と指紋なら重複として捨てられる。文言をlogentryに置くと重複の判定から外れる

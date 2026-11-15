@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { UPPERCASE_ULID_PATTERN } from '../ids/uppercase-ulid.ts';
 import { businessWeekOf, parseBusinessDate } from '../time/business-time.ts';
 
 export const NOTIFICATION_EVENT_TYPES = Object.freeze([
@@ -30,14 +31,13 @@ export type NotificationEvent =
 
 export const NOTIFICATION_PUBLISH_EVENT_LIMIT = 50;
 
-// 送信枠のキー・重複のキーが同じIDから同じ文字列になるよう、採番の表記である大文字だけを受け付ける
-const UPPERCASE_ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
 const WEEK_PERIOD_PATTERN = /^(?<year>\d{4})-W(?<week>\d{2})$/u;
 const YEAR_PERIOD_PATTERN = /^\d{4}$/u;
 // <spec名>の形で、各部分の文字の規則はライフサイクルの処理の名前と同じにする
 const PUBLISHER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
 const MIN_WEEK = 1;
 
+// 送信枠のキー・重複のキーが同じIDから同じ文字列になるよう、採番の表記である大文字だけを受け付ける
 const ulid = z.ulid().regex(UPPERCASE_ULID_PATTERN);
 
 function isExistingYear(year: string): boolean {

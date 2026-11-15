@@ -1,3 +1,4 @@
+import { isUppercaseUlid } from '../ids/uppercase-ulid.ts';
 import { QUALIFIER_SCHEDULE } from '../match/match-model.ts';
 import { PAIRING_TIME } from '../product/launch-status.ts';
 import {
@@ -40,7 +41,6 @@ export const MORNING_KICKOFF_WAIT_SECONDS = 300;
 const MILLISECONDS_PER_SECOND = 1000;
 const MILLISECONDS_PER_DAY = 86_400_000;
 const START_OF_DAY: BusinessTimeOfDay = Object.freeze({ hour: 0, minute: 0 });
-const EVENT_ID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
 const DATED_SLOT_KEY_PATTERN =
   /^(?<kind>evening|morning):(?<date>\d{4}-\d{2}-\d{2})$/u;
 const AWARD_SLOT_KEY_PREFIX = 'award:';
@@ -64,7 +64,7 @@ export function morningSlot(date: BusinessDate): NotificationSlot {
 }
 
 export function awardSlot(eventId: string, at: Date): NotificationSlot {
-  if (!EVENT_ID_PATTERN.test(eventId)) {
+  if (!isUppercaseUlid(eventId)) {
     throw new RangeError(
       `通知イベントのIDはULIDで指定してください: ${eventId}`,
     );
@@ -107,7 +107,7 @@ function parseDate(value: string): BusinessDate | undefined {
 export function parseSlotKey(key: string): ParsedSlotKey | undefined {
   if (key.startsWith(AWARD_SLOT_KEY_PREFIX)) {
     const eventId = key.slice(AWARD_SLOT_KEY_PREFIX.length);
-    return EVENT_ID_PATTERN.test(eventId)
+    return isUppercaseUlid(eventId)
       ? { key, kind: 'award', eventId }
       : undefined;
   }
