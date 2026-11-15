@@ -1,0 +1,94 @@
+import { createExecutionContext } from 'cloudflare:test';
+import { env } from 'cloudflare:workers';
+import type { Container } from 'inversify';
+import { beforeEach, describe, expect, test } from 'vitest';
+
+import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import {
+  SAMPLE_LAUNCH_ID,
+  SAMPLE_MEMBER_ID,
+  SAMPLE_OWNER_ID,
+  SAMPLE_PRODUCT_ID,
+  seedEngagementPlatformSample,
+} from '../../lib/workers/engagement/testing/engagement-platform-fixtures.ts';
+import { ENGAGEMENT_TYPES } from '../application/engagement/engagement-types.ts';
+import {
+  DirectoryEngagementTargetResolver,
+  type EngagementTargetResolver,
+} from '../application/engagement/engagement-target-resolver.ts';
+import { MODULES } from './modules.ts';
+
+const NOW = new Date('2026-11-15T03:00:00.000Z');
+
+function createContainer(): Container {
+  return createInvocationContainer(
+    {
+      env,
+      executionCtx: createExecutionContext(),
+      info: {
+        kind: 'fetch',
+        correlationId: crypto.randomUUID(),
+        clientIp: undefined,
+      },
+    },
+    MODULES,
+  );
+}
+
+beforeEach(seedEngagementPlatformSample);
+
+describe('APIサーバーのモジュールの一覧へのエンゲージメントの登録', () => {
+  test('エンゲージメントのapiの束縛を1つだけ持ち、共通の束縛とプロダクトの共通の束縛の後に置く', () => {
+    const names = MODULES.map(({ name }) => name);
+
+    expect(names.filter((name) => name === 'engagement')).toHaveLength(1);
+    expect(names.indexOf('engagement')).toBeGreaterThan(
+      names.indexOf('engagement-platform'),
+    );
+    expect(names.indexOf('engagement')).toBeGreaterThan(
+      names.indexOf('product-platform'),
+    );
+  });
+});
+
+describe('APIサーバーのエンゲージメントの束縛', () => {
+  test('投稿先の解決を処理単位のコンテナから解決する', () => {
+    expect(
+      createContainer().get<EngagementTargetResolver>(
+        ENGAGEMENT_TYPES.EngagementTargetResolver,
+      ),
+    ).toBeInstanceOf(DirectoryEngagementTargetResolver);
+  });
+
+  test('解決した投稿先の解決は、D1のプロダクトとローンチを読み、未掲載のプロダクトを投稿者本人にだけ解決する', async () => {
+    const resolver = createContainer().get<EngagementTargetResolver>(
+      ENGAGEMENT_TYPES.EngagementTargetResolver,
+    );
+    const input = {
+      productId: SAMPLE_PRODUCT_ID,
+      launchId: SAMPLE_LAUNCH_ID,
+      now: NOW,
+    };
+
+    const ownerTarget = await resolver.resolve({
+      ...input,
+      viewerUserId: SAMPLE_OWNER_ID,
+    });
+    const memberTarget = await resolver.resolve({
+      ...input,
+      viewerUserId: SAMPLE_MEMBER_ID,
+    });
+
+    expect(ownerTarget?.product).toMatchObject({
+      productId: SAMPLE_PRODUCT_ID,
+      ownerUserId: SAMPLE_OWNER_ID,
+      listed: false,
+    });
+    expect(ownerTarget?.launch).toMatchObject({
+      launchId: SAMPLE_LAUNCH_ID,
+      productId: SAMPLE_PRODUCT_ID,
+    });
+    expect(ownerTarget?.viewerIsOwner).toBe(true);
+    expect(memberTarget).toBeUndefined();
+  });
+});

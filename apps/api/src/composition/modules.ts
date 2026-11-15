@@ -32,6 +32,7 @@ import { createGraphQLModule } from '../presentation/graphql/graphql-module.ts';
 import { ADMIN_MODULE } from './admin-module.ts';
 import { DIRECTORY_MODULE } from './directory-module.ts';
 import { API_EMAIL_MODULE } from './email-module.ts';
+import { ENGAGEMENT_MODULE } from './engagement-module.ts';
 import { GRAPHQL_SCHEMA_MODULES } from './graphql-modules.ts';
 import { HELP_MODULE } from './help-module.ts';
 import { IDENTITY_MODULE } from './identity-module.ts';
@@ -145,4 +146,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_MATCH_MODULE,
   DIRECTORY_MODULE,
   NOTIFICATIONS_MODULE,
+  ENGAGEMENT_MODULE,
 ];
