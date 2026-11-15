@@ -39,3 +39,14 @@ export const COMMENT_DELETE_CONFIRM_TITLE = 'コメントを削除しますか?'
 
 export const COMMENT_DELETE_CONFIRM_DESCRIPTION =
   '削除したコメントは「このコメントは削除されました。」と表示され、付いている返信はそのまま残ります。';
+
+export const COMMENT_POSTED_MESSAGE = 'コメントしました。';
+
+export const COMMENT_WITH_RATING_POSTED_MESSAGE =
+  'コメントと評価を投稿しました。';
+
+export const COMMENT_REPLIED_MESSAGE = '返信しました。';
+
+export const COMMENT_UPDATED_MESSAGE = 'コメントを更新しました。';
+
+export const COMMENT_DELETED_MESSAGE = 'コメントを削除しました。';

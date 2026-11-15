@@ -3,10 +3,15 @@ import { QueryClient } from '@tanstack/react-query';
 
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import {
+  launchCommentCountsKeyOf,
+  launchCommentCountsQueryOptions,
+  launchCommentsQueryOptions,
   productRatingQueryOptions,
   replaceProductRating,
 } from './engagement.ts';
 import {
+  ClientLaunchCommentCountsDocument,
+  ClientLaunchCommentsDocument,
   ClientProductRatingDocument,
   type ProductRatingFragment,
 } from './generated/graphql.ts';
@@ -81,5 +86,83 @@ describe('replaceProductRating', () => {
     expect(queryClient.getQueryData(otherKey)).toStrictEqual({
       productRating: guestRating,
     });
+  });
+});
+
+const LAUNCH_ID = '01JC0LAUNCH0000000000000001';
+
+const threadPageOf = (endCursor: string | null, hasNextPage: boolean) => ({
+  launchComments: { nodes: [], pageInfo: { endCursor, hasNextPage } },
+});
+
+describe('launchCommentsQueryOptions', () => {
+  test('操作の識別子とプロダクト・ローンチのIDで始まり、閲覧者ごとと未ログインとローンチごとで別のキーにする', () => {
+    const own = launchCommentsQueryOptions(
+      VIEWER_ID,
+      PRODUCT_ID,
+      LAUNCH_ID,
+    ).queryKey;
+    const guest = launchCommentsQueryOptions(
+      null,
+      PRODUCT_ID,
+      LAUNCH_ID,
+    ).queryKey;
+    const otherLaunch = launchCommentsQueryOptions(
+      VIEWER_ID,
+      PRODUCT_ID,
+      '01JC0LAUNCH0000000000000002',
+    ).queryKey;
+
+    expect(own.slice(0, 2)).toStrictEqual([
+      documentIdOf(ClientLaunchCommentsDocument),
+      { productId: PRODUCT_ID, launchId: LAUNCH_ID },
+    ]);
+    expect(
+      new Set([own, guest, otherLaunch].map((key) => JSON.stringify(key))).size,
+    ).toBe(3);
+  });
+
+  test('最初のページはカーソル無しで読み、続きがあれば最後のカーソルを次のページの引数にする', () => {
+    const options = launchCommentsQueryOptions(
+      VIEWER_ID,
+      PRODUCT_ID,
+      LAUNCH_ID,
+    );
+
+    expect(options.initialPageParam).toBeNull();
+    expect(
+      options.getNextPageParam(threadPageOf('cursor-10', true), [], null, []),
+    ).toBe('cursor-10');
+    expect(
+      options.getNextPageParam(threadPageOf('cursor-10', false), [], null, []),
+    ).toBeUndefined();
+    expect(
+      options.getNextPageParam(threadPageOf(null, true), [], null, []),
+    ).toBeUndefined();
+    expect(
+      options.getNextPageParam({ launchComments: null }, [], null, []),
+    ).toBeUndefined();
+  });
+});
+
+describe('launchCommentCountsQueryOptions', () => {
+  test('操作の識別子とプロダクトのIDで始まり、ローンチを含めずに閲覧者ごとと未ログインで別のキーにする', () => {
+    const own = launchCommentCountsQueryOptions(VIEWER_ID, PRODUCT_ID).queryKey;
+    const guest = launchCommentCountsQueryOptions(null, PRODUCT_ID).queryKey;
+
+    expect(own.slice(0, 2)).toStrictEqual([
+      documentIdOf(ClientLaunchCommentCountsDocument),
+      { productId: PRODUCT_ID },
+    ]);
+    expect(JSON.stringify(own)).not.toBe(JSON.stringify(guest));
+  });
+
+  test('同じプロダクトの件数は全ての閲覧者のキーを共通の前方の部分でまとめて無効にできる', () => {
+    expect(
+      launchCommentCountsQueryOptions(VIEWER_ID, PRODUCT_ID).queryKey.slice(
+        0,
+        2,
+      ),
+    ).toStrictEqual([...launchCommentCountsKeyOf(PRODUCT_ID)]);
   });
 });
