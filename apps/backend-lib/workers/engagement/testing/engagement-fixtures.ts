@@ -31,6 +31,18 @@ export {
 type CommentRow = typeof launchComments.$inferInsert;
 type RatingRow = typeof productRatings.$inferInsert;
 
+// 1行が最大14個のバインド変数を使うため、上限(100)に収まる行数ずつ追加する
+const COMMENT_ROWS_PER_INSERT = 7;
+
+// 1行が最大8個のバインド変数を使う
+const RATING_ROWS_PER_INSERT = 12;
+
+function insertsOf<T>(rows: readonly T[], size: number): T[][] {
+  return Array.from({ length: Math.ceil(rows.length / size) }, (_, index) =>
+    rows.slice(index * size, (index + 1) * size),
+  );
+}
+
 export const COMMENT_GUARD_VIOLATION =
   /NOT NULL constraint failed: launch_comments\.product_id/u;
 
@@ -74,8 +86,8 @@ export interface CommentFixture {
   readonly columns?: Partial<CommentRow>;
 }
 
-export async function insertComment(fixture: CommentFixture): Promise<void> {
-  await db.insert(launchComments).values({
+function commentRowOf(fixture: CommentFixture): CommentRow {
+  return {
     id: commentIdOf(fixture.index),
     productId: productIdOf(fixture.product),
     launchId: launchIdOf(fixture.launch),
@@ -88,7 +100,23 @@ export async function insertComment(fixture: CommentFixture): Promise<void> {
     createdAt: T0,
     updatedAt: T0,
     ...fixture.columns,
-  });
+  };
+}
+
+export async function insertComment(fixture: CommentFixture): Promise<void> {
+  await db.insert(launchComments).values(commentRowOf(fixture));
+}
+
+export async function insertComments(
+  fixtures: readonly CommentFixture[],
+): Promise<void> {
+  const [first, ...rest] = insertsOf(
+    fixtures.map(commentRowOf),
+    COMMENT_ROWS_PER_INSERT,
+  ).map((rows) => db.insert(launchComments).values(rows));
+  if (first !== undefined) {
+    await db.batch([first, ...rest]);
+  }
 }
 
 export async function readComment(index: number) {
@@ -115,8 +143,8 @@ export interface RatingFixture {
   readonly columns?: Partial<RatingRow>;
 }
 
-export async function insertRating(fixture: RatingFixture): Promise<void> {
-  await db.insert(productRatings).values({
+function ratingRowOf(fixture: RatingFixture): RatingRow {
+  return {
     id: ratingIdOf(fixture.index),
     productId: productIdOf(fixture.product),
     userId: userIdOf(fixture.user),
@@ -124,7 +152,23 @@ export async function insertRating(fixture: RatingFixture): Promise<void> {
     createdAt: T0,
     updatedAt: T0,
     ...fixture.columns,
-  });
+  };
+}
+
+export async function insertRating(fixture: RatingFixture): Promise<void> {
+  await db.insert(productRatings).values(ratingRowOf(fixture));
+}
+
+export async function insertRatings(
+  fixtures: readonly RatingFixture[],
+): Promise<void> {
+  const [first, ...rest] = insertsOf(
+    fixtures.map(ratingRowOf),
+    RATING_ROWS_PER_INSERT,
+  ).map((rows) => db.insert(productRatings).values(rows));
+  if (first !== undefined) {
+    await db.batch([first, ...rest]);
+  }
 }
 
 export async function readRating(index: number) {
