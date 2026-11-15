@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 入力の規則・テーブル・サービス仕様
-- [ ] 1.1 コメントと評価の入力の規則を、4アプリが読み込める共有の定義として作る
+- [x] 1.1 コメントと評価の入力の規則を、4アプリが読み込める共有の定義として作る
   - 前提: dev-tooling〜notificationsの20specの全タスクが完了していること(directory-discoveryの`PRODUCT_PAGE_SECTIONS`・`PRODUCT_LAUNCH_SECTIONS`・`DIRECTORY_ITEM_METRIC_SOURCES`・`DIRECTORY_ITEM_METRICS`と区画の文脈の型・E2Eの`e2e/support/directory-fixtures.ts`、product-launchの`core/product`の`ProductDirectory`・`PRODUCT_PLATFORM_TYPES`・`visibleProducts()`・`wonLaunchExists()`・プロダクトライフサイクルの登録口、identity-authの`AccountGuard`・`visibleUsers()`・`verifiedUsers()`・ユーザーライフサイクルの登録口・`LoginRequiredDialog`・`resendVerificationEmail`、content-processingの`markdownTextSchema`・`MarkdownEditor`・`useMarkdownOptions`、user-profile-socialの`UserSummary`・`userSummaryLoader`・`UserAvatar`、backend-platformの`SCHEDULED_JOBS`と改訂2のE2Eの共有の補助`triggerScheduled`(`e2e/support/scheduled-trigger.ts`)、admin-foundationのE2Eの`executeLocalD1`。2026-11-15のギャップ分析で全タスクの完了と契約の実在を確かめた)。無ければ該当するタスクを保留して開発者へ報告する(`triggerScheduled`が無い場合は9.1の4:21の匿名化の確かめだけを保留する)
   - 先に、単体テストで、本文の2,000書記素の境界(結合文字を含む絵文字)・空白だけ・使用できない文字の文言と順、評価の0・6・小数・文字列の拒否、1ページ10件と3階層の定数、bot対策の操作名3つ、見出しのアンカーの接頭辞がコメントのIDごとに異なり英小文字と数字の32文字以内になること、キックオフ前のローンチと自身のプロダクトの評価の文言の定数(`LAUNCH_NOT_COMMENTABLE_MESSAGE`・`OWN_PRODUCT_RATING_MESSAGE`)が文言規則(設計のError Handling)の文言と一致することを確かめる
   - 完了状態: 単体テストが成功し、apiとclientの型検査で規則を読み込める
@@ -280,3 +280,7 @@
   - roadmapの帯の割り当ての表の本specの「使用中の値」(4:21は1400、波及処理は1400)と、ugc-moderationが本specの管理画面の一覧の照会(`AdminCommentDirectory`・`AdminRatingDirectory`、仮6)を使う旨を作業の報告に記録する(仮1〜仮6は2026-10-24に開発者が確定済み)
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に帯の値と照会の利用者が載っている
   - _Requirements: 14.5, 14.6, 15.1, 15.2_
+
+## Implementation Notes
+
+- 1.1: 規則は`apps/common-lib/engagement/engagement-rules.ts`。本文は`markdownTextSchema(COMMENT_BODY_RULE)`(名前「コメント」)、評価の文言「評価は1〜5で選んでください。」は非公開の定数で`ratingScoreSchema`の文言として読む(clientのフォームで要るなら`ratingScoreSchema`を使う)。`commentIdScope(id)`は`c`+小文字のIDで入力のULIDを検証しない(7.xの呼び出し側は26文字のULIDを渡す。不正なら`idPrefixFor`が例外を投げる)。
