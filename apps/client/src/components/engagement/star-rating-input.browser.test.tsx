@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -20,6 +20,20 @@ const REASON_ID = 'rating-unverified-reason';
 
 const REASON =
   'この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。';
+
+const OUTSIDE = '星の外の領域';
+
+// 前に実行したテストのポインターの位置が残ると、同じ位置に描いた星へポインターが重なった扱いになり予告で塗られるため、描画の後にポインターを外へ移す
+async function renderAwayFromPointer(element: ReactNode) {
+  const screen = await render(
+    <>
+      {element}
+      <p>{OUTSIDE}</p>
+    </>,
+  );
+  await userEvent.hover(page.getByText(OUTSIDE));
+  return screen;
+}
 
 const group = () => page.getByRole('radiogroup', { name: LABEL });
 
@@ -81,7 +95,7 @@ afterEach(() => {
 
 describe('StarRatingInput', () => {
   test('名前の付いた1つのラジオグループに「5段階中1」〜「5段階中5」の5つの選択肢を置き、値の星を選んだ状態にする', async () => {
-    await render(<ControlledStarRatingInput initial={3} />);
+    await renderAwayFromPointer(<ControlledStarRatingInput initial={3} />);
 
     await expect.element(group()).toBeInTheDocument();
     expect(page.getByRole('radio').elements()).toHaveLength(5);
@@ -92,7 +106,7 @@ describe('StarRatingInput', () => {
   });
 
   test('Tabは選んだ星だけに止まる', async () => {
-    await render(
+    await renderAwayFromPointer(
       <>
         <ControlledStarRatingInput initial={4} />
         <button type="button">次の操作</button>
@@ -109,7 +123,7 @@ describe('StarRatingInput', () => {
   });
 
   test('未選択ならTabは最初の星に止まる', async () => {
-    await render(<ControlledStarRatingInput initial={null} />);
+    await renderAwayFromPointer(<ControlledStarRatingInput initial={null} />);
 
     await userEvent.tab();
 
@@ -121,7 +135,9 @@ describe('StarRatingInput', () => {
 
   test('右と上の矢印キーで次の星、左と下の矢印キーで前の星へフォーカスを移して選ぶ', async () => {
     const onChange = vi.fn();
-    await render(<ControlledStarRatingInput initial={2} onChange={onChange} />);
+    await renderAwayFromPointer(
+      <ControlledStarRatingInput initial={2} onChange={onChange} />,
+    );
 
     await userEvent.tab();
     await userEvent.keyboard('{ArrowRight}');
@@ -140,7 +156,9 @@ describe('StarRatingInput', () => {
 
   test('両端の星から外へは移らず、値が変わらないため選択の変更を伝えない', async () => {
     const onChange = vi.fn();
-    await render(<ControlledStarRatingInput initial={5} onChange={onChange} />);
+    await renderAwayFromPointer(
+      <ControlledStarRatingInput initial={5} onChange={onChange} />,
+    );
 
     await userEvent.tab();
     await userEvent.keyboard('{ArrowRight}');
@@ -155,7 +173,7 @@ describe('StarRatingInput', () => {
 
   test('未選択のまま矢印キーを押すと最初の星の次を選ぶ', async () => {
     const onChange = vi.fn();
-    await render(
+    await renderAwayFromPointer(
       <ControlledStarRatingInput initial={null} onChange={onChange} />,
     );
 
@@ -168,7 +186,7 @@ describe('StarRatingInput', () => {
 
   test('星の押下とSpaceでその星を選ぶ', async () => {
     const onChange = vi.fn();
-    await render(
+    await renderAwayFromPointer(
       <ControlledStarRatingInput initial={null} onChange={onChange} />,
     );
 
@@ -183,7 +201,9 @@ describe('StarRatingInput', () => {
 
   test('選んだ星の押下とSpaceは値が変わらないため選択の変更を伝えない', async () => {
     const onChange = vi.fn();
-    await render(<ControlledStarRatingInput initial={3} onChange={onChange} />);
+    await renderAwayFromPointer(
+      <ControlledStarRatingInput initial={3} onChange={onChange} />,
+    );
 
     await userEvent.click(star(3));
     await userEvent.keyboard(' ');
@@ -194,10 +214,10 @@ describe('StarRatingInput', () => {
   });
 
   test('値までの星をプライマリの色で塗り、残りは塗らない', async () => {
-    await render(<ControlledStarRatingInput initial={3} />);
+    await renderAwayFromPointer(<ControlledStarRatingInput initial={3} />);
 
     await expect.element(star(3)).toBeChecked();
-    expect(filledScores()).toStrictEqual([1, 2, 3]);
+    await expect.poll(filledScores).toStrictEqual([1, 2, 3]);
     expect(getComputedStyle(starIconOf(1)).color).toBe(tokenColorOf('primary'));
     expect(getComputedStyle(starIconOf(4)).color).not.toBe(
       tokenColorOf('primary'),
@@ -206,23 +226,20 @@ describe('StarRatingInput', () => {
 
   test('ポインターを重ねた星までを予告として塗り、外すと値の表示へ戻す', async () => {
     const onChange = vi.fn();
-    await render(
-      <>
-        <ControlledStarRatingInput initial={2} onChange={onChange} />
-        <p>外側</p>
-      </>,
+    await renderAwayFromPointer(
+      <ControlledStarRatingInput initial={2} onChange={onChange} />,
     );
 
     await userEvent.hover(star(4));
     await expect.poll(filledScores).toStrictEqual([1, 2, 3, 4]);
-    await userEvent.hover(page.getByText('外側'));
+    await userEvent.hover(page.getByText(OUTSIDE));
 
     await expect.poll(filledScores).toStrictEqual([1, 2]);
     expect(onChange).not.toHaveBeenCalled();
   });
 
   test('キーボードでフォーカスした星に共通のフォーカスの輪郭を付ける', async () => {
-    await render(<ControlledStarRatingInput initial={1} />);
+    await renderAwayFromPointer(<ControlledStarRatingInput initial={1} />);
 
     await userEvent.tab();
 
@@ -231,7 +248,7 @@ describe('StarRatingInput', () => {
   });
 
   test('小さい大きさは大きい大きさより星を小さく描く', async () => {
-    await render(
+    await renderAwayFromPointer(
       <>
         <StarRatingInput
           label="小さい星"
@@ -260,7 +277,7 @@ describe('StarRatingInput', () => {
 
   describe('無効のとき', () => {
     test('どの星も選べず、無効の理由をグループの説明として伝える', async () => {
-      await render(<DisabledStarRatingInput value={null} />);
+      await renderAwayFromPointer(<DisabledStarRatingInput value={null} />);
 
       await expect.element(group()).toHaveAttribute('aria-disabled', 'true');
       await expect.element(group()).toHaveAccessibleDescription(REASON);
@@ -271,7 +288,7 @@ describe('StarRatingInput', () => {
 
     test('押してもポインターを重ねても選ばず、塗りを変えない', async () => {
       const onChange = vi.fn();
-      await render(
+      await renderAwayFromPointer(
         <StarRatingInput
           label={LABEL}
           value={2}
@@ -291,14 +308,14 @@ describe('StarRatingInput', () => {
   describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
     test('選んだ星をプライマリの色で塗る', async () => {
       applyColorScheme(scheme);
-      await render(<ControlledStarRatingInput initial={2} />);
+      await renderAwayFromPointer(<ControlledStarRatingInput initial={2} />);
 
-      expect(filledScores()).toStrictEqual([1, 2]);
+      await expect.poll(filledScores).toStrictEqual([1, 2]);
     });
 
     test('入力できる状態のアクセシビリティの検査の違反が0件', async () => {
       applyColorScheme(scheme);
-      const { container } = await render(
+      const { container } = await renderAwayFromPointer(
         <ControlledStarRatingInput initial={3} />,
       );
 
@@ -307,7 +324,9 @@ describe('StarRatingInput', () => {
 
     test('無効の状態のアクセシビリティの検査の違反が0件', async () => {
       applyColorScheme(scheme);
-      const { container } = await render(<DisabledStarRatingInput value={4} />);
+      const { container } = await renderAwayFromPointer(
+        <DisabledStarRatingInput value={4} />,
+      );
 
       expect(await runAxe(container)).toStrictEqual([]);
     });
