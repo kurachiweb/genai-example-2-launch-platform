@@ -7,7 +7,7 @@ import { notificationNotices } from '../../../db/schema/notifications/notificati
 import {
   NOTICE_ROWS_PER_INSERT,
   noticeInsertStatements,
-} from './d1-notification-notice-store.ts';
+} from './notice-insert-statements.ts';
 
 const MAX_BOUND_PARAMETERS = 100;
 

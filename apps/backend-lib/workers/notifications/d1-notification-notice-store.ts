@@ -1,4 +1,4 @@
-import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import { inject, injectable } from 'inversify';
 
@@ -21,39 +21,18 @@ import type {
   NotificationNoticeStore,
   NotificationSlotStore,
 } from '../../core/notifications/ports.ts';
+import { noticeInsertStatements } from './notice-insert-statements.ts';
 
 const notices = notificationNotices;
-
-const MAX_BOUND_PARAMETERS = 100;
-
-// 任意の列も含めて1行がすべての列のバインド変数を使う場合でも上限に収まる行数
-export const NOTICE_ROWS_PER_INSERT = Math.floor(
-  MAX_BOUND_PARAMETERS / Object.keys(getTableColumns(notices)).length,
-);
 
 // D1のバインド変数の上限(100)から、IDの一覧以外の条件と更新値に使う変数の分を残す
 const IDS_PER_STATEMENT = 90;
 
 const LATE_PHASES: ReadonlySet<string> = new Set(['sending', 'done']);
 
-type NoticeRow = typeof notices.$inferInsert;
-
 function chunk<T>(items: readonly T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
     items.slice(index * size, (index + 1) * size),
-  );
-}
-
-export function noticeInsertStatements(
-  db: Database,
-  rows: readonly NoticeRow[],
-) {
-  return chunk(rows, NOTICE_ROWS_PER_INSERT).map((page) =>
-    db
-      .insert(notices)
-      .values(page)
-      .onConflictDoNothing({ target: notices.dedupeKey })
-      .returning({ id: notices.id }),
   );
 }
 

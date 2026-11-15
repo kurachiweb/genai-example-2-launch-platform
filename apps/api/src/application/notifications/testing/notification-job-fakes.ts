@@ -141,8 +141,20 @@ export interface FakeSlotStore extends NotificationSlotStore {
   }[];
 }
 
-function unused(name: string): never {
-  throw new Error(`ジョブは送信枠のストアの${name}を使わない`);
+// 使わないメソッドを呼んだら失敗させ、ジョブが想定外のポートに触れたことを検出する
+function partialFake<T extends object>(implemented: Partial<T>): T {
+  return new Proxy(implemented, {
+    get(target, property, receiver) {
+      if (Reflect.has(target, property)) {
+        return Reflect.get(target, property, receiver) as unknown;
+      }
+      return () => {
+        throw new Error(
+          `ジョブは送信枠のストアの${String(property)}を使わない`,
+        );
+      };
+    },
+  }) as T;
 }
 
 export function createFakeSlotStore(
@@ -156,7 +168,7 @@ export function createFakeSlotStore(
     readonly before: Date;
     readonly limit: number;
   }[] = [];
-  return {
+  return partialFake<FakeSlotStore>({
     ensured,
     overdueQueries,
     doneWithPendingQueries,
@@ -177,14 +189,7 @@ export function createFakeSlotStore(
       doneWithPendingQueries.push({ before, limit });
       return Promise.resolve(options.doneWithPending ?? []);
     },
-    find: () => unused('find'),
-    acquireLease: () => unused('acquireLease'),
-    releaseLease: () => unused('releaseLease'),
-    advance: () => unused('advance'),
-    missingParticipants: () => unused('missingParticipants'),
-    markDispatchRequested: () => unused('markDispatchRequested'),
-    fixParticipants: () => unused('fixParticipants'),
-  };
+  });
 }
 
 export interface FakeMaintenanceStoreOptions {
