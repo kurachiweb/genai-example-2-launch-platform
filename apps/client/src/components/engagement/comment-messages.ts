@@ -1,3 +1,5 @@
+import type { EngagementViewerKind } from './engagement-viewer.ts';
+
 export const COMMENT_GUEST_NOTICE =
   'ログインすると、コメントや返信を投稿できます。';
 
@@ -72,3 +74,19 @@ export const COMMENT_LOGIN_REQUIRED_TITLE = 'コメントにはログインが�
 
 export const COMMENT_LOGIN_REQUIRED_DESCRIPTION =
   'ログインすると、ローンチごとにコメントや返信を投稿できます。';
+
+export const COMMENTS_LOAD_ERROR_MESSAGE = 'コメントを読み込めませんでした。';
+
+export const COMMENTS_LOAD_MORE_LABEL = 'さらに読み込む';
+
+export const COMMENTS_EMPTY_TITLE = 'まだコメントはありません。';
+
+// 閲覧者の状態ごとに、最初のコメントへ促す一言
+export const COMMENTS_EMPTY_HINTS: Readonly<
+  Record<EngagementViewerKind, string>
+> = Object.freeze({
+  guest: 'ログインすると、最初のコメントを書けます。',
+  unverified: 'メールアドレスを確認すると、最初のコメントを書けます。',
+  owner: 'ローンチの背景や近況を書いて、サポーターに伝えましょう。',
+  member: '感想や質問を最初に書いてみましょう。',
+});
