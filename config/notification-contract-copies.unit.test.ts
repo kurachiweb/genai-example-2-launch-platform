@@ -14,6 +14,12 @@ const BACKEND_NOTIFICATION_EVENT_CONTRACT =
   'apps/backend-lib/core/notifications/notification-event-contract.ts';
 const DB_NOTIFICATION_EVENTS =
   'apps/db/schema/notifications/notification-events.ts';
+const BACKEND_SENDER_INFO_STORE =
+  'apps/backend-lib/workers/notifications/d1-sender-info-store.ts';
+const E2E_NOTIFICATION_FIXTURE_SQL = 'e2e/support/notification-fixture-sql.ts';
+const EVENT_ONE_CLICK_UNSUBSCRIBE_ROUTE =
+  'apps/event/src/presentation/notifications/one-click-unsubscribe-route.ts';
+const E2E_UNSUBSCRIBE_LINK = 'e2e/support/unsubscribe-link.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
   ts.createSourceFile(
@@ -89,6 +95,16 @@ const readStringArray = (path: string, name: string): readonly string[] => {
   });
 };
 
+const readString = (path: string, name: string): string => {
+  const initializer = readInitializer(path, name);
+  if (!ts.isStringLiteral(initializer)) {
+    throw new Error(
+      `${path}の${name}の初期化子が文字列リテラルではありません: ${initializer.getText()}`,
+    );
+  }
+  return initializer.text;
+};
+
 describe('通知種別の写し(apps/db/schema/notifications/notification-preferences.ts)', () => {
   test('CHECK制約に使う値の一覧がcommon-libのNOTIFICATION_TOPICSと順も含めて一致する', () => {
     const shared = readStringArray(
@@ -116,4 +132,32 @@ describe('通知イベントの種類と賞の種類の写し(apps/db/schema/not
       expect(readStringArray(DB_NOTIFICATION_EVENTS, name)).toEqual(shared);
     },
   );
+});
+
+describe('送信者情報の設定のキーの写し(e2e/support/notification-fixture-sql.ts)', () => {
+  test('E2Eの補助のSENDER_INFO_SETTING_KEYがbackend-libの送信者情報のストアの値と一致する', () => {
+    const shared = readString(
+      BACKEND_SENDER_INFO_STORE,
+      'SENDER_INFO_SETTING_KEY',
+    );
+
+    expect(shared).not.toBe('');
+    expect(
+      readString(E2E_NOTIFICATION_FIXTURE_SQL, 'SENDER_INFO_SETTING_KEY'),
+    ).toBe(shared);
+  });
+});
+
+describe('ワンクリックの配信停止の経路の写し(e2e/support/unsubscribe-link.ts)', () => {
+  test('E2Eの補助のONE_CLICK_UNSUBSCRIBE_PATHがイベントサーバーの経路と一致する', () => {
+    const shared = readString(
+      EVENT_ONE_CLICK_UNSUBSCRIBE_ROUTE,
+      'ONE_CLICK_UNSUBSCRIBE_PATH',
+    );
+
+    expect(shared).toStartWith('/');
+    expect(readString(E2E_UNSUBSCRIBE_LINK, 'ONE_CLICK_UNSUBSCRIBE_PATH')).toBe(
+      shared,
+    );
+  });
 });
