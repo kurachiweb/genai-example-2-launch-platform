@@ -16,8 +16,16 @@ import {
   type EngagementTargetResolver,
 } from '../application/engagement/engagement-target-resolver.ts';
 import { ENGAGEMENT_TYPES } from '../application/engagement/engagement-types.ts';
-import type { CommentWriter } from '../application/engagement/ports.ts';
+import type {
+  CommentWriter,
+  RatingWriter,
+} from '../application/engagement/ports.ts';
+import {
+  type RatingService,
+  StoreRatingService,
+} from '../application/engagement/rating-service.ts';
 import { D1CommentWriter } from '../infrastructure/engagement/d1-comment-writer.ts';
+import { D1RatingWriter } from '../infrastructure/engagement/d1-rating-writer.ts';
 
 // コメントと評価のストア・文の部品(ENGAGEMENT_PLATFORM_MODULE)とプロダクトの照会(PRODUCT_PLATFORM_MODULE)は各モジュールの束縛を使う
 export const ENGAGEMENT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
@@ -31,5 +39,7 @@ export const ENGAGEMENT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
       StoreCommentService,
     );
     bind<CommentReader>(ENGAGEMENT_TYPES.CommentReader).to(StoreCommentReader);
+    bind<RatingWriter>(ENGAGEMENT_TYPES.RatingWriter).to(D1RatingWriter);
+    bind<RatingService>(ENGAGEMENT_TYPES.RatingService).to(StoreRatingService);
   }),
 };

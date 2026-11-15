@@ -33,6 +33,11 @@ export const ENGAGEMENT_ERRORS = Object.freeze({
     kind: 'not_found',
     message: 'コメントが見つかりません。削除された可能性があります。',
   },
+  rating_target_not_found: {
+    kind: 'not_found',
+    message:
+      '評価先のプロダクトが見つかりません。ページを再読み込みしてください。',
+  },
   rating_own_product: {
     kind: 'unprocessable',
     message: OWN_PRODUCT_RATING_MESSAGE,

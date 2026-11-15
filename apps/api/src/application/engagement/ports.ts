@@ -31,3 +31,8 @@ export interface CommentWriter {
   // 自分の削除されていないコメントでなく、変更が0行ならnot-found
   remove(input: CommentSoftDelete): Promise<'deleted' | 'not-found'>;
 }
+
+export interface RatingWriter {
+  // 同じ利用者とプロダクトの評価があれば値を上書きし、無効化の印を保つ
+  upsert(input: RatingUpsert): Promise<WriteOutcome>;
+}

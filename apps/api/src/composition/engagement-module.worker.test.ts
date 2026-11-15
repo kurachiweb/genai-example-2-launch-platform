@@ -10,6 +10,8 @@ import {
   SAMPLE_MEMBER_ID,
   SAMPLE_OWNER_ID,
   SAMPLE_PRODUCT_ID,
+  SAMPLE_RATING_ID,
+  SAMPLE_RATING_SCORE,
   seedEngagementPlatformSample,
 } from '../../lib/workers/engagement/testing/engagement-platform-fixtures.ts';
 import {
@@ -25,9 +27,17 @@ import {
   DirectoryEngagementTargetResolver,
   type EngagementTargetResolver,
 } from '../application/engagement/engagement-target-resolver.ts';
-import type { CommentWriter } from '../application/engagement/ports.ts';
+import type {
+  CommentWriter,
+  RatingWriter,
+} from '../application/engagement/ports.ts';
+import {
+  type RatingService,
+  StoreRatingService,
+} from '../application/engagement/rating-service.ts';
 import { currentUserOf } from '../application/engagement/testing/comment-fakes.ts';
 import { D1CommentWriter } from '../infrastructure/engagement/d1-comment-writer.ts';
+import { D1RatingWriter } from '../infrastructure/engagement/d1-rating-writer.ts';
 import {
   after,
   commentIdOf,
@@ -38,6 +48,7 @@ import {
   insertProduct,
   launchIdOf,
   readComment,
+  readRating,
   readRatingsOf,
   T0,
 } from '../../lib/workers/engagement/testing/engagement-fixtures.ts';
@@ -372,6 +383,103 @@ describe('APIサーバーのスレッドの読み取りの束縛', () => {
     expect(counts).toEqual([
       { launchId: SAMPLE_LAUNCH_ID, count: 12 },
       { launchId: launchIdOf(2), count: 0 },
+    ]);
+  });
+});
+
+describe('APIサーバーの評価の束縛', () => {
+  const RATING_NOW = new Date('2026-11-15T03:00:00.000Z');
+
+  const serviceOf = (): RatingService =>
+    createContainer().get<RatingService>(ENGAGEMENT_TYPES.RatingService);
+
+  async function listSampleProduct(): Promise<void> {
+    await insertLaunch(2, 1, {
+      launchDate: '2026-11-10',
+      outcome: 'won',
+      decidedAt: T0,
+    });
+  }
+
+  test('評価のユースケースと書き込みの単位を処理単位のコンテナから解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<RatingService>(ENGAGEMENT_TYPES.RatingService),
+    ).toBeInstanceOf(StoreRatingService);
+    expect(
+      container.get<RatingWriter>(ENGAGEMENT_TYPES.RatingWriter),
+    ).toBeInstanceOf(D1RatingWriter);
+  });
+
+  test('解決したユースケースは、無効化された自分の評価を返し、上書きで無効化を保ち、取消で行ごと消し、評価し直すと平均値と件数に含める', async () => {
+    await listSampleProduct();
+    const service = serviceOf();
+    const user = currentUserOf(SAMPLE_MEMBER_ID);
+    const input = { productId: SAMPLE_PRODUCT_ID, now: RATING_NOW };
+
+    const read = await service.read({ ...input, viewer: user });
+    const overwritten = await service.rate({ ...input, user, score: 2 });
+    const overwrittenRow = await readRating(1);
+    const canceled = await service.cancel({ ...input, user });
+    const canceledRow = await readRating(1);
+    const rated = await service.rate({ ...input, user, score: 5 });
+
+    expect(read).toEqual({
+      productId: SAMPLE_PRODUCT_ID,
+      average: null,
+      count: 0,
+      viewerScore: SAMPLE_RATING_SCORE,
+    });
+    expect(overwritten).toEqual({
+      productId: SAMPLE_PRODUCT_ID,
+      average: null,
+      count: 0,
+      viewerScore: 2,
+    });
+    expect(overwrittenRow).toMatchObject({
+      id: SAMPLE_RATING_ID,
+      score: 2,
+      invalidatedAt: expect.any(Date) as Date,
+    });
+    expect(canceled).toEqual({
+      productId: SAMPLE_PRODUCT_ID,
+      average: null,
+      count: 0,
+      viewerScore: null,
+    });
+    expect(canceledRow).toBeUndefined();
+    expect(rated).toEqual({
+      productId: SAMPLE_PRODUCT_ID,
+      average: 5,
+      count: 1,
+      viewerScore: 5,
+    });
+  });
+
+  test('解決したユースケースは、投稿者本人の評価を拒否して自分の評価をnullにし、未掲載のプロダクトの他者からの評価と取消を拒否する', async () => {
+    const service = serviceOf();
+    const owner = currentUserOf(SAMPLE_OWNER_ID);
+    const member = currentUserOf(SAMPLE_MEMBER_ID);
+    const input = { productId: SAMPLE_PRODUCT_ID, now: RATING_NOW };
+
+    const ownerView = await service.read({ ...input, viewer: owner });
+
+    await expect(
+      service.rate({ ...input, user: owner, score: 5 }),
+    ).rejects.toMatchObject({ code: 'rating_own_product' });
+    await expect(
+      service.rate({ ...input, user: member, score: 5 }),
+    ).rejects.toMatchObject({ code: 'rating_target_not_found' });
+    await expect(
+      service.cancel({ ...input, user: member }),
+    ).rejects.toMatchObject({ code: 'rating_target_not_found' });
+    expect(ownerView).toMatchObject({ viewerScore: null });
+    expect(await readRatingsOf(1)).toEqual([
+      expect.objectContaining({
+        id: SAMPLE_RATING_ID,
+        score: SAMPLE_RATING_SCORE,
+      }),
     ]);
   });
 });
