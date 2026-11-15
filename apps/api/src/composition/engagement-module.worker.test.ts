@@ -11,14 +11,36 @@ import {
   SAMPLE_PRODUCT_ID,
   seedEngagementPlatformSample,
 } from '../../lib/workers/engagement/testing/engagement-platform-fixtures.ts';
+import {
+  type CommentService,
+  StoreCommentService,
+} from '../application/engagement/comment-service.ts';
 import { ENGAGEMENT_TYPES } from '../application/engagement/engagement-types.ts';
 import {
   DirectoryEngagementTargetResolver,
   type EngagementTargetResolver,
 } from '../application/engagement/engagement-target-resolver.ts';
+import type { CommentWriter } from '../application/engagement/ports.ts';
+import { currentUserOf } from '../application/engagement/testing/comment-fakes.ts';
+import { D1CommentWriter } from '../infrastructure/engagement/d1-comment-writer.ts';
+import {
+  countComments,
+  insertLaunch,
+  readRatingsOf,
+  T0,
+} from '../../lib/workers/engagement/testing/engagement-fixtures.ts';
+import {
+  fromBusinessDateTime,
+  parseBusinessDate,
+} from '../../lib/core/time/business-time.ts';
 import { MODULES } from './modules.ts';
 
 const NOW = new Date('2026-11-15T03:00:00.000Z');
+
+const LAUNCH_DAY_NOON = fromBusinessDateTime(parseBusinessDate('2026-11-20'), {
+  hour: 12,
+  minute: 0,
+});
 
 function createContainer(): Container {
   return createInvocationContainer(
@@ -90,5 +112,50 @@ describe('APIサーバーのエンゲージメントの束縛', () => {
     });
     expect(ownerTarget?.viewerIsOwner).toBe(true);
     expect(memberTarget).toBeUndefined();
+  });
+});
+
+describe('APIサーバーのコメントの投稿の束縛', () => {
+  test('コメントのユースケースと書き込みの単位を処理単位のコンテナから解決する', () => {
+    const container = createContainer();
+
+    expect(
+      container.get<CommentService>(ENGAGEMENT_TYPES.CommentService),
+    ).toBeInstanceOf(StoreCommentService);
+    expect(
+      container.get<CommentWriter>(ENGAGEMENT_TYPES.CommentWriter),
+    ).toBeInstanceOf(D1CommentWriter);
+  });
+
+  test('解決したユースケースは、掲載中のプロダクトのキックオフ当日のローンチへの評価を添えた投稿でD1にコメントと評価を保存する', async () => {
+    await insertLaunch(2, 1, {
+      launchDate: '2026-11-10',
+      outcome: 'won',
+      decidedAt: T0,
+    });
+    const service = createContainer().get<CommentService>(
+      ENGAGEMENT_TYPES.CommentService,
+    );
+    const before = await countComments();
+
+    const result = await service.post({
+      user: currentUserOf(SAMPLE_MEMBER_ID),
+      productId: SAMPLE_PRODUCT_ID,
+      launchId: SAMPLE_LAUNCH_ID,
+      parentId: undefined,
+      body: '本文',
+      rating: 2,
+      now: LAUNCH_DAY_NOON,
+    });
+
+    expect(result.comment).toMatchObject({
+      kind: 'shown',
+      authorUserId: SAMPLE_MEMBER_ID,
+      byProductOwner: false,
+    });
+    expect(await countComments()).toBe(before + 1);
+    expect(await readRatingsOf(1)).toEqual([
+      expect.objectContaining({ userId: SAMPLE_MEMBER_ID, score: 2 }),
+    ]);
   });
 });
