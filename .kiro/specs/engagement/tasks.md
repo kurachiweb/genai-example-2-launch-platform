@@ -142,7 +142,7 @@
   - _Requirements: 9.5, 9.7, 9.8, 9.9, 11.11_
 
 - [ ] 5. ライフサイクルの処理と日次のジョブ
-- [ ] 5.1 退会の確定と同じ書き込みでコメントと評価を論理削除する同期の処理を作り、登録する
+- [x] 5.1 退会の確定と同じ書き込みでコメントと評価を論理削除する同期の処理を作り、登録する
   - 先に、Workers統合テストで、identity-authの退会の確定でその利用者のコメントと評価に論理削除の印が入り、確定の失敗で取り消されること、他の利用者の行が変わらないこと、返す文が利用者で絞った集合の更新だけであることを確かめる
   - apiの束縛に追記し、ユーザーライフサイクルの同期の登録口へ加える
   - 完了状態: テストが成功し、apiのDIの解決とユーザーライフサイクルの同期の登録口の検証を通る
@@ -303,3 +303,4 @@
 - 4.1: スキーマモジュールは`apps/api/src/presentation/graphql/modules/engagement/`(`type-defs.ts`・`inputs.ts`・`resolver-support.ts`・`engagement-views.ts`・`comment-resolvers.ts`・`index.ts`)、テストの補助は`apps/api/test/support/engagement-graphql-operations.ts`(4.2・4.3が操作を足す)。IDの検証は設計の`z.ulid`ではなく前例(directory・follow)の`/^[0-9A-Z]{26}$/u`(テスト用データのIDがO・Lを含み`z.ulid`を通らないため。matchは`z.ulid`で前例が揃っていない)。IDの形式違反の文言は`comment_target_not_found`の文言(matchの前例)で、4.2の`commentId`は同じ形で`comment_not_found`の文言にする。カーソルは256文字の上限(超えれば`invalid_cursor`の文言の`validation_error`)。`REMOVED`は投稿者・本文・日時をnull、`edited`・`byProductOwner`・`viewerIsAuthor`を偽。codegenのmappersで`LaunchComment`を`LaunchCommentModel`(`CommentView`)に結んだ。投稿と編集の入力の型は4.2、`productRating`の照会と`rating-resolvers.ts`は4.3。テストのデータで1つのプロダクトに未決着のローンチは1つしか置けない(`product_launches_product_id_open_unique`)。
 - 4.2: 操作のリゾルバの順は呼び出し元→入力の検証→利用者の状態(投稿・編集は`requireVerifiedUser`、削除は`requireWritableUser`)→`context.assertHuman(COMMENT_BOT_ACTIONS.*)`→ユースケース(`backend/004`と`upvote`の前例)。返信への評価の`validation_error`は`withInputPath('input', …)`で`input.rating`になる(clientは`serverFieldPrefix="input"`で`rating`)。形式違反の`parentId`は`comment_parent_unavailable`、`commentId`は`comment_not_found`の文言。評価を添えない結果の`rating`はnull。テストは設計のファイル構成に無い`comment-mutations.worker.test.ts`。許可リストの再生成は6.1。
 - 4.3: 評価のリゾルバは`rating-resolvers.ts`(照会`productRating`は`currentUser`、`rateProduct`は`requireVerifiedUser`、`cancelProductRating`は`requireWritableUser`。どれも`assertHuman`を呼ばない、仮4)。評価の値の違反は`field` `score`(トップレベルの引数のため。clientの評価欄は`AppForm`を使わずエラーの`code`で文言を選ぶ)。引数の検証は利用者の判定より先に走るため、未ログインの不正な値は`validation_error`になる。テストは設計のファイル構成に無い`rating-resolvers.worker.test.ts`。clientの操作は`productId`・`score`の引数に合わせる。
+- 5.1: 退会の同期の処理は`apps/api/src/infrastructure/engagement/engagement-withdrawal-sync-handler.ts`(DBの型を扱うため前例どおりinfrastructure)、`USER_LIFECYCLE_SYNC_HANDLERS`の末尾に`engagement.withdrawal`(`withdrawn`だけ、同期の登録口は`order`を持たない)。`deleted_at IS NULL`の行だけに`deleted_at`・`updated_at`を退会の日時で入れ、本人が先に削除した日時は上書きしない(匿名化の期限を保つ)。`docs/onboardings/project-values.md`の「同期の波及処理の登録」の行(7件)は8.2で`engagement.withdrawal`を加えて8件にする。テストの補助は設計のファイル構成に無い`infrastructure/engagement/testing/withdrawal-fixtures.ts`。

@@ -32,10 +32,12 @@ import {
 } from '../infrastructure/engagement/comment-moderation-control.ts';
 import { D1CommentWriter } from '../infrastructure/engagement/d1-comment-writer.ts';
 import { D1RatingWriter } from '../infrastructure/engagement/d1-rating-writer.ts';
+import { EngagementWithdrawalSyncHandler } from '../infrastructure/engagement/engagement-withdrawal-sync-handler.ts';
 import {
   D1RatingModerationControl,
   type RatingModerationControl,
 } from '../infrastructure/engagement/rating-moderation-control.ts';
+import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 
 // コメントと評価のストア・文の部品(ENGAGEMENT_PLATFORM_MODULE)とプロダクトの照会(PRODUCT_PLATFORM_MODULE)は各モジュールの束縛を使う
 export const ENGAGEMENT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
@@ -60,5 +62,8 @@ export const ENGAGEMENT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<DirectoryItemMetricSource>(
       ENGAGEMENT_TYPES.CommentCountMetricSource,
     ).to(ThreadQueryCommentCountMetricSource);
+    bind<UserLifecycleSyncHandler>(
+      ENGAGEMENT_TYPES.EngagementWithdrawalSyncHandler,
+    ).to(EngagementWithdrawalSyncHandler);
   }),
 };

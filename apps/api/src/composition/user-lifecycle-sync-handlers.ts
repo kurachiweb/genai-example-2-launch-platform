@@ -1,4 +1,5 @@
 import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
+import { ENGAGEMENT_TYPES } from '../application/engagement/engagement-types.ts';
 import { INQUIRY_TYPES } from '../application/inquiry/inquiry-types.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
 import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
@@ -43,5 +44,10 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       name: 'notifications.account-withdrawal',
       events: ['withdrawn'],
       handler: NOTIFICATIONS_TYPES.AccountWithdrawalSyncHandler,
+    },
+    {
+      name: 'engagement.withdrawal',
+      events: ['withdrawn'],
+      handler: ENGAGEMENT_TYPES.EngagementWithdrawalSyncHandler,
     },
   ];
