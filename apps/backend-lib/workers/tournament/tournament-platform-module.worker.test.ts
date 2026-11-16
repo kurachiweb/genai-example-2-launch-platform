@@ -7,9 +7,16 @@ import { beforeEach, describe, expect, expectTypeOf, test } from 'vitest';
 import type { AppModule } from '../../core/di/app-module.ts';
 import type { InvocationScopeInfo } from '../../core/di/identifiers.ts';
 import { TOURNAMENT_PLATFORM_TYPES } from '../../core/tournament/identifiers.ts';
-import type { BracketStore } from '../../core/tournament/ports.ts';
+import type {
+  BracketProgression,
+  BracketStore,
+} from '../../core/tournament/ports.ts';
+import { parseBusinessDate } from '../../core/time/business-time.ts';
+import { dailyRoundPolicy } from '../../core/tournament/round-schedule.ts';
 import { createInvocationContainer } from '../di/invocation-container.ts';
 import type { PlatformHonoEnv } from '../http/hono-env.ts';
+import { createMatchPlatformModule } from '../match/match-platform-module.ts';
+import { D1BracketProgression } from './d1-bracket-progression.ts';
 import { D1BracketStore } from './d1-bracket-store.ts';
 import {
   SAMPLE_BRACKET_ID,
@@ -19,6 +26,10 @@ import {
   seedTournamentPlatformSample,
 } from './testing/tournament-platform-fixtures.ts';
 import { TOURNAMENT_PLATFORM_MODULE } from './tournament-platform-module.ts';
+
+const FIRST_ROUND_DATE = parseBusinessDate('2026-11-24');
+
+const PROGRESSED_AT = new Date('2026-11-24T07:45:00.000Z');
 
 function createContainer(
   kind: InvocationScopeInfo['kind'] = 'fetch',
@@ -33,7 +44,7 @@ function createContainer(
         clientIp: undefined,
       },
     },
-    [TOURNAMENT_PLATFORM_MODULE],
+    [createMatchPlatformModule('api'), TOURNAMENT_PLATFORM_MODULE],
   );
 }
 
@@ -75,21 +86,53 @@ describe('TOURNAMENT_PLATFORM_MODULE', () => {
     ).resolves.toEqual(new Set(SAMPLE_ENTRY_REFS));
   });
 
+  test('ラウンドの進行をマッチの共通の束縛と組んだD1の実装に解決し、未確定の決勝を予定済みのブラケットを進めると予定済みの結果を返す', async () => {
+    const progression = createContainer().get<BracketProgression>(
+      TOURNAMENT_PLATFORM_TYPES.BracketProgression,
+    );
+
+    expect(progression).toBeInstanceOf(D1BracketProgression);
+    await expect(
+      progression.advance(
+        SAMPLE_BRACKET_ID,
+        dailyRoundPolicy(FIRST_ROUND_DATE, PROGRESSED_AT),
+        PROGRESSED_AT,
+      ),
+    ).resolves.toEqual({
+      kind: 'scheduled',
+      bracketId: SAMPLE_BRACKET_ID,
+      round: 1,
+      late: false,
+      decidedMatchIds: [],
+      previewMatchIds: [SAMPLE_MATCH_ID],
+    });
+  });
+
   test.each(['fetch', 'queue', 'scheduled'] as const)(
-    '%sの処理単位でもブラケットのストアを解決する',
+    '%sの処理単位でもブラケットのストアと進行を解決する',
     (kind) => {
+      const container = createContainer(kind);
+
       expect(
-        createContainer(kind).get(TOURNAMENT_PLATFORM_TYPES.BracketStore),
+        container.get(TOURNAMENT_PLATFORM_TYPES.BracketStore),
       ).toBeInstanceOf(D1BracketStore);
+      expect(
+        container.get(TOURNAMENT_PLATFORM_TYPES.BracketProgression),
+      ).toBeInstanceOf(D1BracketProgression);
     },
   );
 
-  test('ストアは処理単位の中では同じインスタンスを返し、別の処理単位では別のインスタンスを返す', () => {
-    const first = createContainer();
-    const second = createContainer();
-    const identifier = TOURNAMENT_PLATFORM_TYPES.BracketStore;
+  test.each([
+    TOURNAMENT_PLATFORM_TYPES.BracketStore,
+    TOURNAMENT_PLATFORM_TYPES.BracketProgression,
+  ])(
+    '%sは処理単位の中では同じインスタンスを返し、別の処理単位では別のインスタンスを返す',
+    (identifier) => {
+      const first = createContainer();
+      const second = createContainer();
 
-    expect(first.get(identifier)).toBe(first.get(identifier));
-    expect(second.get(identifier)).not.toBe(first.get(identifier));
-  });
+      expect(first.get(identifier)).toBe(first.get(identifier));
+      expect(second.get(identifier)).not.toBe(first.get(identifier));
+    },
+  );
 });

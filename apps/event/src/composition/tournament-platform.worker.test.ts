@@ -8,8 +8,12 @@ import type { Container } from 'inversify';
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { TOURNAMENT_PLATFORM_TYPES } from '../../lib/core/tournament/identifiers.ts';
-import type { BracketStore } from '../../lib/core/tournament/ports.ts';
+import type {
+  BracketProgression,
+  BracketStore,
+} from '../../lib/core/tournament/ports.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { D1BracketProgression } from '../../lib/workers/tournament/d1-bracket-progression.ts';
 import { D1BracketStore } from '../../lib/workers/tournament/d1-bracket-store.ts';
 import {
   SAMPLE_BRACKET_ID,
@@ -75,6 +79,14 @@ describe.each(INVOCATION_KINDS)(
           ],
         ]),
       );
+    });
+
+    test('処理単位のコンテナからラウンドの進行をD1の実装に解決する', () => {
+      expect(
+        createContainer(kind).get<BracketProgression>(
+          TOURNAMENT_PLATFORM_TYPES.BracketProgression,
+        ),
+      ).toBeInstanceOf(D1BracketProgression);
     });
   },
 );

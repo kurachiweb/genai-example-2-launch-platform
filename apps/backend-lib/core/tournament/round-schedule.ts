@@ -14,7 +14,7 @@ const START_OF_DAY: BusinessTimeOfDay = Object.freeze({ hour: 0, minute: 0 });
 const MILLISECONDS_PER_DAY = 86_400_000;
 
 // 業務時刻は固定のオフセットで夏時間が無いため、0:00の24時間後の時点の業務日付が翌日になる
-function nextBusinessDate(date: BusinessDate): BusinessDate {
+export function nextBusinessDate(date: BusinessDate): BusinessDate {
   const startOfDay = fromBusinessDateTime(date, START_OF_DAY);
   return toBusinessDateTime(
     new Date(startOfDay.getTime() + MILLISECONDS_PER_DAY),
