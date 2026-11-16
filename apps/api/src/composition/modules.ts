@@ -19,7 +19,7 @@ import {
   createRateLimitCounterClient,
   type RateLimitCounterClient,
 } from '../../lib/workers/rate-limit/rate-limit-counter-client.ts';
-import { TOURNAMENT_PLATFORM_MODULE } from '../../lib/workers/tournament/tournament-platform-module.ts';
+import { createTournamentPlatformModule } from '../../lib/workers/tournament/tournament-platform-module.ts';
 import {
   type DatabaseProbe,
   DefaultSystemStatusQuery,
@@ -125,7 +125,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   PROFILE_PLATFORM_MODULE,
   PRODUCT_PLATFORM_MODULE,
   API_MATCH_PLATFORM_MODULE,
-  TOURNAMENT_PLATFORM_MODULE,
+  createTournamentPlatformModule('api'),
   DIRECTORY_PLATFORM_MODULE,
   API_NOTIFICATIONS_PLATFORM_MODULE,
   ENGAGEMENT_PLATFORM_MODULE,

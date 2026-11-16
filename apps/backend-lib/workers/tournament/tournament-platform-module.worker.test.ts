@@ -1,9 +1,11 @@
 import { createExecutionContext } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
+import { eq } from 'drizzle-orm';
 import type { Hono } from 'hono';
 import type { Container } from 'inversify';
 import { beforeEach, describe, expect, expectTypeOf, test } from 'vitest';
 
+import { bracketMatches } from '../../../db/schema/tournament/bracket-matches.ts';
 import type { AppModule } from '../../core/di/app-module.ts';
 import type { InvocationScopeInfo } from '../../core/di/identifiers.ts';
 import { TOURNAMENT_PLATFORM_TYPES } from '../../core/tournament/identifiers.ts';
@@ -15,7 +17,9 @@ import { parseBusinessDate } from '../../core/time/business-time.ts';
 import { dailyRoundPolicy } from '../../core/tournament/round-schedule.ts';
 import { createInvocationContainer } from '../di/invocation-container.ts';
 import type { PlatformHonoEnv } from '../http/hono-env.ts';
+import type { LoggingOptions } from '../logging/configure-logging.ts';
 import { createMatchPlatformModule } from '../match/match-platform-module.ts';
+import { db } from '../product/testing/product-fixtures.ts';
 import { D1BracketProgression } from './d1-bracket-progression.ts';
 import { D1BracketStore } from './d1-bracket-store.ts';
 import {
@@ -25,7 +29,12 @@ import {
   SAMPLE_TOURNAMENT_ID,
   seedTournamentPlatformSample,
 } from './testing/tournament-platform-fixtures.ts';
-import { TOURNAMENT_PLATFORM_MODULE } from './tournament-platform-module.ts';
+import {
+  installRecordingSentry,
+  recordLogs,
+  resetObservability,
+} from './testing/observability-fixtures.ts';
+import { createTournamentPlatformModule } from './tournament-platform-module.ts';
 
 const FIRST_ROUND_DATE = parseBusinessDate('2026-11-24');
 
@@ -33,6 +42,7 @@ const PROGRESSED_AT = new Date('2026-11-24T07:45:00.000Z');
 
 function createContainer(
   kind: InvocationScopeInfo['kind'] = 'fetch',
+  appName: LoggingOptions['appName'] = 'api',
 ): Container {
   return createInvocationContainer(
     {
@@ -44,23 +54,61 @@ function createContainer(
         clientIp: undefined,
       },
     },
-    [createMatchPlatformModule('api'), TOURNAMENT_PLATFORM_MODULE],
+    [
+      createMatchPlatformModule(appName),
+      createTournamentPlatformModule(appName),
+    ],
   );
 }
 
 beforeEach(seedTournamentPlatformSample);
 
-describe('TOURNAMENT_PLATFORM_MODULE', () => {
+describe('createTournamentPlatformModule', () => {
   test('両アプリのモジュールの一覧へ環境を指定した型のまま加えられる', () => {
+    const module = createTournamentPlatformModule('api');
     const modules: readonly AppModule<Hono<PlatformHonoEnv<typeof env>>>[] = [
-      TOURNAMENT_PLATFORM_MODULE,
+      module,
     ];
 
     expectTypeOf(modules).toEqualTypeOf<
       readonly AppModule<Hono<PlatformHonoEnv<typeof env>>>[]
     >();
-    expect(TOURNAMENT_PLATFORM_MODULE.name).toBe('tournament-platform');
-    expect('routes' in TOURNAMENT_PLATFORM_MODULE).toBe(false);
+    expect(module.name).toBe('tournament-platform');
+    expect('routes' in module).toBe(false);
+  });
+
+  test('進行の遅れのログを、渡したアプリの名前で始まるカテゴリに出す', async () => {
+    const logs = recordLogs('event');
+    installRecordingSentry();
+    await db
+      .update(bracketMatches)
+      .set({ status: 'planned' })
+      .where(eq(bracketMatches.matchId, SAMPLE_MATCH_ID));
+    const progression = createContainer(
+      'scheduled',
+      'event',
+    ).get<BracketProgression>(TOURNAMENT_PLATFORM_TYPES.BracketProgression);
+    const afterMidnight = new Date('2026-11-24T08:10:00.000Z');
+
+    try {
+      await expect(
+        progression.advance(
+          SAMPLE_BRACKET_ID,
+          dailyRoundPolicy(FIRST_ROUND_DATE, afterMidnight),
+          afterMidnight,
+        ),
+      ).resolves.toMatchObject({ kind: 'scheduled', round: 1, late: true });
+      expect(logs).toEqual([
+        expect.objectContaining({
+          level: 'warning',
+          category: 'event.tournament.progression',
+          bracketId: SAMPLE_BRACKET_ID,
+          matchIds: [SAMPLE_MATCH_ID],
+        }),
+      ]);
+    } finally {
+      resetObservability();
+    }
   });
 
   test('ブラケットのストアをD1の実装に解決し、マッチのIDからブラケットを引ける', async () => {
