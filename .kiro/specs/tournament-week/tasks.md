@@ -57,7 +57,7 @@
   - 完了状態: 単体テストが成功する
   - _Requirements: 5.6, 5.7, 5.8, 5.9, 5.10, 6.5, 6.6, 6.7, 7.1, 7.2, 7.3, 13.1, 15.2_
 
-- [ ] 2.4 未来のラウンドを含む表示の配置を作る
+- [x] 2.4 未来のラウンドを含む表示の配置を作る
   - 先に、単体テストで、N = 13・129・200の各ラウンドの位置と、各枠がシードの番号か「前ラウンドの何番の位置の勝者」かを表すこと、2.3の進行の判定と同じ対戦になることを確かめる
   - 2.3の判定と照合するため(P)にしない
   - 完了状態: 単体テストが成功する
@@ -437,3 +437,4 @@
 - 2.1: `core/tournament/bracket-shape.ts`(`bracketShape`・`roundSlotCount`・`roundStage`・`seedPlacementOrder`)。N≤1はP・S・1回戦・ラウンド数すべて0、参加数は`Number.isSafeInteger`で検査、範囲外のラウンドと2の冪でない配置の長さは`RangeError`。`seedPlacementOrder(shape.secondRoundSize)`はN≤1で例外になるため、2.2〜2.4はN≤1を先に分ける。
 - 2.2: `core/tournament/bracket-draw-rules.ts`の`drawBracket`(比較→`tieBreaker`→`ref`の昇順で並べ、上位Sに1〜S、残りを非シードの比較でS+1〜N。`ref`の重複は`RangeError`。公開の型`DrawOrder<T>`・`BracketDrawResult`)と`core/week-tournament/week-ordering.ts`の`weekSeedOrder`・`weekNonSeedOrder`(`WeekOrderingKey`の`lastUpvoteElapsedMs`は予選の開始からの経過ミリ秒、nullは末尾)。1回戦の組(k番の位置にS+2k−1とS+2k)は2.3の`decideNext`が作る。2.3のテストでN = 13の1回戦の組(E×F・G×H・I×B・J×K・L×M)も`decideNext`の出力で確かめること。4.xの`WeekDrawService`は`tieBreaker`にローンチのID、`ref`に枠のIDを渡す。
 - 2.3: `core/tournament/bracket-progress-rules.ts`の`decideNext`・`nextRoundOccupants`(型`PlannedNode`・`RecordedNode`・`BracketState`・`ProgressDecision`)。`nextRoundOccupants(state, round)`は結果が出たラウンドを受け`round+1`の枠を返す(1回戦の後は1〜Sがシード、S+kが1回戦の位置kの勝者)。シードが無い場合も2回戦は`seedPlacementOrder`で組む(N = 8の2回戦はM1×M4・M2×M3)。2.4の`bracketLayout`も同じ配置にそろえる。`PlannedNode.participants`は枠の並び順(番号の昇順ではない)で空の側を除く。3.xは`RecordedNode`へ、作っていない位置は入れず、確定の勝者は`{kind:'winner'}`、両者敗北・両者の不戦敗は`{kind:'none'}`、未確定は`null`、側1つの不戦勝の勝者も`winner`で写すこと。`decideNext`は最大のラウンドだけを現ラウンドとして見るため、次ラウンドの一部だけを挿入した中断からの補完は3.2・3.3の`advance`が前ラウンドから再計算して行う。
+- 2.4: `core/tournament/bracket-layout.ts`の`bracketLayout(shape)`(`SlotFeed`は`participant`/`winner_of`、N≤1は空)。`decideNext`と同じ規則を表示用に別に書き、テスト`decideNextの進行との一致`で一致を保証する(どちらかを変えたらこのテストを通すこと)。配置は両側が空と確定した位置や終了後のラウンドも含むため、6.7の`buildBracketRoundsView`が記録から除く。「シード<n>」は`participant`でn ≤ Sの枠、S超の`participant`は1回戦の予定済みのマッチで上書きされる。
