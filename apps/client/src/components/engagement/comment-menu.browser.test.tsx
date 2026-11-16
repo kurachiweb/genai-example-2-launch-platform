@@ -3,6 +3,11 @@ import { page, userEvent } from 'vitest/browser';
 
 import '../../styles.css';
 import { resetTurnstileScriptFailure } from '../../../lib/components/bot-protection/turnstile-script-failure.ts';
+import { Dialog } from '../../../lib/components/ui/dialog/dialog.tsx';
+import { DialogContent } from '../../../lib/components/ui/dialog/dialog-content.tsx';
+import { DialogDescription } from '../../../lib/components/ui/dialog/dialog-description.tsx';
+import { DialogHeader } from '../../../lib/components/ui/dialog/dialog-header.tsx';
+import { DialogTitle } from '../../../lib/components/ui/dialog/dialog-title.tsx';
 import { DropdownMenuItem } from '../../../lib/components/ui/dropdown-menu/dropdown-menu-item.tsx';
 import { runAxe } from '../../../lib/test/a11y.ts';
 import {
@@ -40,13 +45,34 @@ const CONTEXT: CommentActionContext = Object.freeze({
 
 const DELETE_TITLE = 'コメントを削除しますか?';
 
-const actionOf = (id: string, order: number, label: string): CommentAction => ({
+const actionOf = (
+  id: string,
+  order: number,
+  label: string,
+  { applicable = true }: { readonly applicable?: boolean } = {},
+): CommentAction => ({
   id,
   order,
-  component: ({ comment, product, launch }) => (
-    <DropdownMenuItem>
-      {label}:{comment.authorNickname}:{product.handle}:{launch.id}
-    </DropdownMenuItem>
+  Item: ({ comment, product, launch, onSelect }) =>
+    applicable ? (
+      <DropdownMenuItem onSelect={onSelect}>
+        {label}:{comment.authorNickname}:{product.handle}:{launch.id}
+      </DropdownMenuItem>
+    ) : null,
+  Dialog: ({ comment, open, onOpenChange, returnFocusRef }) => (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          returnFocusRef.current?.focus();
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>{`${label}のダイアログ`}</DialogTitle>
+          <DialogDescription>{comment.id}</DialogDescription>
+        </DialogHeader>
+      </DialogContent>
+    </Dialog>
   ),
 });
 
@@ -145,6 +171,52 @@ describe('CommentMenu', () => {
     await renderMenu({ actions: [] });
 
     await expect.element(trigger()).not.toBeInTheDocument();
+  });
+
+  test('キーボードで登録された操作の項目を選ぶと、メニューを閉じてその操作のダイアログだけを開いたまま残し、閉じると「…」のボタンへフォーカスが戻る', async () => {
+    await renderMenu({
+      actions: [
+        actionOf('a.report', 10, '通報'),
+        actionOf('b.mute', 20, '非表示'),
+      ],
+    });
+    focusTrigger();
+
+    await userEvent.keyboard('{Enter}');
+    await expect
+      .poll(() => document.activeElement?.textContent)
+      .toContain('通報:');
+    await userEvent.keyboard('{Enter}');
+
+    const dialog = page.getByRole('dialog', { name: '通報のダイアログ' });
+    await expect.element(dialog).toBeVisible();
+    await expect.element(page.getByRole('menu')).not.toBeInTheDocument();
+    await expect
+      .element(dialog.getByText('01JC0COMMENT00000000000000'))
+      .toBeVisible();
+    await expect
+      .poll(() => dialog.element().contains(document.activeElement))
+      .toBe(true);
+    expect(
+      page.getByRole('dialog', { name: '非表示のダイアログ' }).query(),
+    ).toBeNull();
+
+    await userEvent.keyboard('{Escape}');
+
+    await expect.element(dialog).not.toBeInTheDocument();
+    await expect.poll(() => document.activeElement).toBe(trigger().element());
+  });
+
+  test('項目を描かない登録だけでも「…」のボタンは出し、開いたメニューには項目が無い', async () => {
+    await renderMenu({
+      actions: [actionOf('a.report', 10, '通報', { applicable: false })],
+    });
+
+    await userEvent.click(trigger());
+
+    await expect.element(page.getByRole('menu')).toBeInTheDocument();
+    expect(menuItems().elements()).toHaveLength(0);
+    expect(page.getByRole('dialog').query()).toBeNull();
   });
 
   test('登録口を渡さなければ初版の空の登録口を使い、他者のコメントにはメニューを出さない', async () => {
@@ -255,6 +327,24 @@ describe('CommentMenu', () => {
         .toBeEnabled();
 
       expect(await runAxe(deleteDialog().element())).toStrictEqual([]);
+    },
+  );
+
+  test.each(COLOR_SCHEMES)(
+    '%sの配色で、他者のコメントの開いたメニューと登録された操作のダイアログのaxeの違反が0件である',
+    async (scheme) => {
+      applyColorScheme(scheme);
+      await renderMenu({ actions: [actionOf('a.report', 10, '通報')] });
+
+      await userEvent.click(trigger());
+      await expect.element(page.getByRole('menu')).toBeVisible();
+      expect(await runAxe(page.getByRole('menu').element())).toStrictEqual([]);
+
+      await userEvent.click(page.getByRole('menuitem'));
+      const dialog = page.getByRole('dialog', { name: '通報のダイアログ' });
+      await expect.element(dialog).toBeVisible();
+
+      expect(await runAxe(dialog.element())).toStrictEqual([]);
     },
   );
 });

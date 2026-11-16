@@ -30,7 +30,7 @@ export interface CommentMenuProps {
   readonly actions?: readonly CommentAction[];
 }
 
-// 表示中のコメントにだけ描く。自身のコメントには「編集」「削除」を、他者のコメントには他の機能が登録した操作だけを出し、操作が無ければボタンごと出さない
+// 表示中のコメントにだけ描く。自身のコメントには「編集」「削除」を、他者のコメントには他の機能が登録した操作だけを出し、操作が無ければボタンごと出さない。登録された操作のダイアログは、メニューが閉じても残るようメニューの外に描く
 export function CommentMenu({
   context,
   viewerIsAuthor,
@@ -40,7 +40,8 @@ export function CommentMenu({
 }: CommentMenuProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  // 確認のダイアログが自分の中へフォーカスを移すため、メニューを閉じた時にボタンへ戻すと奪い合いになる
+  const [openActionId, setOpenActionId] = useState<string | null>(null);
+  // ダイアログが自分の中へフォーカスを移すため、メニューを閉じた時にボタンへ戻すと奪い合いになる
   const focusHandOffRef = useRef(false);
   const ordered = viewerIsAuthor ? [] : orderSections(actions);
   if (!viewerIsAuthor && ordered.length === 0) {
@@ -87,8 +88,15 @@ export function CommentMenu({
               </DropdownMenuItem>
             </>
           ) : (
-            ordered.map(({ id, component: Action }) => (
-              <Action key={id} {...context} />
+            ordered.map(({ id, Item }) => (
+              <Item
+                key={id}
+                {...context}
+                onSelect={() => {
+                  focusHandOffRef.current = true;
+                  setOpenActionId(id);
+                }}
+              />
             ))
           )}
         </DropdownMenuContent>
@@ -100,7 +108,19 @@ export function CommentMenu({
           returnFocusRef={triggerRef}
           onConfirm={onDelete}
         />
-      ) : null}
+      ) : (
+        ordered.map(({ id, Dialog }) => (
+          <Dialog
+            key={id}
+            {...context}
+            open={openActionId === id}
+            onOpenChange={(open) => {
+              setOpenActionId(open ? id : null);
+            }}
+            returnFocusRef={triggerRef}
+          />
+        ))
+      )}
     </>
   );
 }

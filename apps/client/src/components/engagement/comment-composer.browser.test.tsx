@@ -58,12 +58,24 @@ const EDIT_PLACEHOLDER = 'コメントを編集';
 
 const RATING_INPUT_LABEL = 'このプロダクトの評価(任意)';
 
-const POST: CommentComposerTarget = Object.freeze({ mode: 'post' });
+const LAUNCH_ID = '01JC0LAUNCH000000000000001';
+
+const OTHER_LAUNCH_ID = '01JC0LAUNCH000000000000002';
+
+const PARENT_ID = '01JC0COMMENT00000000000001';
+
+const COMMENT_ID = '01JC0COMMENT00000000000002';
+
+const POST: CommentComposerTarget = Object.freeze({
+  mode: 'post',
+  launchId: LAUNCH_ID,
+});
 
 const replyTarget = (
   onCancel: () => void = vi.fn(),
 ): CommentComposerTarget => ({
   mode: 'reply',
+  parentId: PARENT_ID,
   onCancel,
 });
 
@@ -72,6 +84,7 @@ const editTarget = (
   onCancel: () => void = vi.fn(),
 ): CommentComposerTarget => ({
   mode: 'edit',
+  commentId: COMMENT_ID,
   body: '前の本文',
   topLevel: true,
   onCancel,
@@ -541,6 +554,85 @@ describe('CommentComposer', () => {
     await waitForEditor();
 
     await expect.element(editor()).not.toHaveFocus();
+  });
+});
+
+describe('同じページの複数の欄のプレビュー', () => {
+  const HEADING = '## Heading';
+
+  const SECTIONS = [
+    {
+      label: 'ローンチ1の投稿欄',
+      target: POST,
+      typed: true,
+      expectedId: `user-content-p${LAUNCH_ID.toLowerCase()}-heading`,
+    },
+    {
+      label: 'ローンチ2の投稿欄',
+      target: { mode: 'post', launchId: OTHER_LAUNCH_ID },
+      typed: true,
+      expectedId: `user-content-p${OTHER_LAUNCH_ID.toLowerCase()}-heading`,
+    },
+    {
+      label: '返信の欄',
+      target: replyTarget(),
+      typed: true,
+      expectedId: `user-content-r${PARENT_ID.toLowerCase()}-heading`,
+    },
+    {
+      label: '編集の欄',
+      target: editTarget({ body: HEADING, topLevel: false }),
+      typed: false,
+      expectedId: `user-content-e${COMMENT_ID.toLowerCase()}-heading`,
+    },
+  ] as const satisfies readonly {
+    readonly label: string;
+    readonly target: CommentComposerTarget;
+    readonly typed: boolean;
+    readonly expectedId: string;
+  }[];
+
+  test('投稿欄・返信の欄・編集の欄のプレビューを同時に開いても、見出しのIDが欄ごとに異なる', async () => {
+    const context = createPageRouterContext('local');
+    context.queryClient.setQueryData(ratingKey(), ratingQueryOf(null));
+    await renderInRouter(
+      <main className="flex flex-col gap-4 bg-background p-4 text-foreground">
+        {SECTIONS.map(({ label, target }) => (
+          <section key={label} aria-label={label}>
+            <CommentComposer
+              target={target}
+              productId={PRODUCT_ID}
+              viewerIsOwner={false}
+              onSubmit={vi.fn(() => Promise.resolve())}
+            />
+          </section>
+        ))}
+      </main>,
+      { context, cachedViewer: signedInViewerQuery() },
+    );
+
+    for (const { label, typed } of SECTIONS) {
+      const section = page.getByRole('region', { name: label });
+      await expect.element(section.getByRole('textbox')).toBeInTheDocument();
+      if (typed) {
+        await userEvent.click(section.getByRole('textbox'));
+        await userEvent.keyboard(HEADING);
+      }
+      await userEvent.click(section.getByRole('tab', { name: 'プレビュー' }));
+    }
+
+    const ids = await Promise.all(
+      SECTIONS.map(async ({ label }) => {
+        const heading = page
+          .getByRole('region', { name: label })
+          .getByRole('tabpanel', { name: 'プレビュー' })
+          .getByRole('heading', { name: 'Heading' });
+        await expect.element(heading).toBeVisible();
+        return heading.element().id;
+      }),
+    );
+
+    expect(ids).toStrictEqual(SECTIONS.map(({ expectedId }) => expectedId));
   });
 });
 

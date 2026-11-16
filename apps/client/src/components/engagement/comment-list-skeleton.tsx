@@ -25,7 +25,7 @@ export function CommentListSkeleton({
       <div className="flex flex-col gap-4">
         {rows.map((row) => (
           <div key={row} className="flex gap-3">
-            <Skeleton className="size-9 shrink-0 rounded-full" />
+            <Skeleton className="size-8 shrink-0 rounded-full" />
             <div className="flex flex-1 flex-col gap-2">
               <Skeleton className="h-3 w-32" />
               <Skeleton className="h-3 w-full" />

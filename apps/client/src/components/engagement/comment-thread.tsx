@@ -225,7 +225,7 @@ function CommentThreadView({
     >
       {mutations !== null && (kind === 'member' || kind === 'owner') ? (
         <CommentComposer
-          target={{ mode: 'post' }}
+          target={{ mode: 'post', launchId: launch.id }}
           productId={product.id}
           viewerIsOwner={viewerIsOwner}
           onSubmit={mutations.post}

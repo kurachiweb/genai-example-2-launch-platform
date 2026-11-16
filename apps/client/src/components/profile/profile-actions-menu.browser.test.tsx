@@ -3,6 +3,11 @@ import { page, userEvent } from 'vitest/browser';
 
 import '../../styles.css';
 import { TooltipProvider } from '../../../lib/components/ui/tooltip/tooltip-provider.tsx';
+import { Dialog } from '../../../lib/components/ui/dialog/dialog.tsx';
+import { DialogContent } from '../../../lib/components/ui/dialog/dialog-content.tsx';
+import { DialogDescription } from '../../../lib/components/ui/dialog/dialog-description.tsx';
+import { DialogHeader } from '../../../lib/components/ui/dialog/dialog-header.tsx';
+import { DialogTitle } from '../../../lib/components/ui/dialog/dialog-title.tsx';
 import { DropdownMenuItem } from '../../../lib/components/ui/dropdown-menu/dropdown-menu-item.tsx';
 import { runAxe } from '../../../lib/test/a11y.ts';
 import {
@@ -36,13 +41,30 @@ const itemOf = (
   id: string,
   order: number,
   label: string,
+  { applicable = true }: { readonly applicable?: boolean } = {},
 ): PublicProfileMenuItem => ({
   id,
   order,
-  Item: ({ handle }) => (
-    <DropdownMenuItem>
-      {label}:@{handle}
-    </DropdownMenuItem>
+  Item: ({ handle, onSelect }) =>
+    applicable ? (
+      <DropdownMenuItem onSelect={onSelect}>
+        {label}:@{handle}
+      </DropdownMenuItem>
+    ) : null,
+  Dialog: ({ nickname, open, onOpenChange, returnFocusRef }) => (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          returnFocusRef.current?.focus();
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle>{`${label}のダイアログ`}</DialogTitle>
+          <DialogDescription>{nickname}</DialogDescription>
+        </DialogHeader>
+      </DialogContent>
+    </Dialog>
   ),
 });
 
@@ -106,6 +128,61 @@ describe('ProfileActionsMenu', () => {
     await expect.element(page.getByRole('menuitem')).not.toBeInTheDocument();
     await expect.poll(() => document.activeElement).toBe(trigger().element());
   });
+
+  test('キーボードで項目を選ぶと、メニューを閉じてその項目のダイアログだけを開いたまま残し、閉じるとボタンへフォーカスが戻る', async () => {
+    await renderMenu({
+      items: [itemOf('a', 10, '通報'), itemOf('b', 20, 'ブロック')],
+    });
+    (trigger().element() as HTMLElement).focus();
+
+    await userEvent.keyboard('{Enter}');
+    await expect
+      .poll(() => document.activeElement?.textContent)
+      .toBe('通報:@maker_ai');
+    await userEvent.keyboard('{Enter}');
+
+    const dialog = page.getByRole('dialog', { name: '通報のダイアログ' });
+    await expect.element(dialog).toBeVisible();
+    await expect.element(page.getByRole('menu')).not.toBeInTheDocument();
+    await expect.element(dialog.getByText('ピッチの作り手')).toBeVisible();
+    await expect
+      .poll(() => dialog.element().contains(document.activeElement))
+      .toBe(true);
+    expect(
+      page.getByRole('dialog', { name: 'ブロックのダイアログ' }).query(),
+    ).toBeNull();
+
+    await userEvent.keyboard('{Escape}');
+
+    await expect.element(dialog).not.toBeInTheDocument();
+    await expect.poll(() => document.activeElement).toBe(trigger().element());
+  });
+
+  test('項目を描かない登録だけでもボタンは出し、開いたメニューには項目が無い', async () => {
+    await renderMenu({
+      items: [itemOf('a', 10, '通報', { applicable: false })],
+    });
+
+    await userEvent.click(trigger());
+
+    await expect.element(page.getByRole('menu')).toBeInTheDocument();
+    expect(page.getByRole('menuitem').elements()).toHaveLength(0);
+    expect(page.getByRole('dialog').query()).toBeNull();
+  });
+
+  test.each(COLOR_SCHEMES)(
+    '%sの配色で、項目のダイアログのaxeの違反が0件である',
+    async (scheme) => {
+      applyColorScheme(scheme);
+      await renderMenu({ items: [itemOf('report', 10, '通報')] });
+      await userEvent.click(trigger());
+      await userEvent.click(page.getByRole('menuitem'));
+      const dialog = page.getByRole('dialog', { name: '通報のダイアログ' });
+      await expect.element(dialog).toBeVisible();
+
+      expect(await runAxe(dialog.element())).toStrictEqual([]);
+    },
+  );
 
   test.each(COLOR_SCHEMES)(
     '開いたメニューで%sの配色のaxeの違反が0件である',

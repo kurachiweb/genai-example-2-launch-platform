@@ -27,6 +27,17 @@ describe('CommentListSkeleton', () => {
     ).toBeGreaterThan(0);
   });
 
+  test('プロフィール画像の形を32pxの正方形で描く', async () => {
+    await render(<CommentListSkeleton />);
+
+    const circle = page
+      .getByRole('status')
+      .element()
+      .querySelector('[data-slot="skeleton"].rounded-full');
+    const box = circle?.getBoundingClientRect();
+    expect([box?.width, box?.height]).toStrictEqual([32, 32]);
+  });
+
   test('続きの読み込みでは「続きを読み込み中」を状態として伝える', async () => {
     await render(<CommentListSkeleton loadingMore />);
 

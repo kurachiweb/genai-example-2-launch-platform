@@ -11,6 +11,7 @@ import type { z } from 'zod';
 import {
   COMMENT_BOT_ACTIONS,
   COMMENT_MAX_GRAPHEMES,
+  commentComposerIdScope,
   type RatingScore,
 } from '../../../common-lib/engagement/engagement-rules.ts';
 import { TurnstileWidget } from '../../../lib/components/bot-protection/turnstile-widget.tsx';
@@ -50,10 +51,15 @@ import { StarRatingInput } from './star-rating-input.tsx';
 import { useEngagementViewer } from './use-engagement-viewer.ts';
 
 export type CommentComposerTarget =
-  | { readonly mode: 'post' }
-  | { readonly mode: 'reply'; readonly onCancel: () => void }
+  | { readonly mode: 'post'; readonly launchId: string }
+  | {
+      readonly mode: 'reply';
+      readonly parentId: string;
+      readonly onCancel: () => void;
+    }
   | {
       readonly mode: 'edit';
+      readonly commentId: string;
       readonly body: string;
       readonly topLevel: boolean;
       readonly onCancel: () => void;
@@ -106,15 +112,31 @@ const EMPTY_BODY_VALUES: CommentFormInput = Object.freeze({ body: '' });
 const initialBodyOf = (target: CommentComposerTarget): string =>
   target.mode === 'edit' ? target.body : '';
 
+const previewIdScopeOf = (target: CommentComposerTarget): string => {
+  switch (target.mode) {
+    case 'post':
+      return commentComposerIdScope('post', target.launchId);
+    case 'reply':
+      return commentComposerIdScope('reply', target.parentId);
+    case 'edit':
+      return commentComposerIdScope('edit', target.commentId);
+  }
+};
+
 const isTopLevel = (target: CommentComposerTarget): boolean =>
   target.mode === 'post' || (target.mode === 'edit' && target.topLevel);
 
-function BodyField({ placeholder }: { readonly placeholder: string }) {
+interface BodyFieldProps {
+  readonly placeholder: string;
+  readonly previewIdScope: string;
+}
+
+function BodyField({ placeholder, previewIdScope }: BodyFieldProps) {
   const { control } = useFormContext<CommentFormInput>();
-  // コメントの本文と同じrelの指定で描き、本文の識別子だけ入力欄の中と分ける
+  // コメントの本文と同じrelの指定で描き、本文の識別子だけ欄ごとに分ける
   const preview = useMarkdownOptions({
     externalLinkRel: ['noopener', 'ugc'],
-    idScope: 'preview',
+    idScope: previewIdScope,
   });
 
   return (
@@ -245,7 +267,10 @@ function ComposerForm<TInput extends CommentFormInput, TOutput>({
       }}
       className="flex flex-col gap-3"
     >
-      <BodyField placeholder={copy.placeholder} />
+      <BodyField
+        placeholder={copy.placeholder}
+        previewIdScope={previewIdScopeOf(target)}
+      />
       <TurnstileWidget {...turnstile.widgetProps} action={copy.botAction} />
       {tokenUnavailable && turnstile.status !== 'error' ? (
         <FormMessage role="alert">{BOT_CHECK_FAILED_MESSAGE}</FormMessage>

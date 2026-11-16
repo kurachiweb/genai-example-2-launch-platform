@@ -39,6 +39,22 @@ export const COMMENT_BOT_ACTIONS = Object.freeze({
 export const commentIdScope = (commentId: string): string =>
   `c${commentId.toLowerCase()}`;
 
+const COMMENT_COMPOSER_ID_SCOPE_PREFIXES = Object.freeze({
+  post: 'p',
+  reply: 'r',
+  edit: 'e',
+} as const);
+
+export type CommentComposerMode =
+  keyof typeof COMMENT_COMPOSER_ID_SCOPE_PREFIXES;
+
+// 1つのページに複数の投稿欄・返信の欄・編集の欄のプレビューが同時に開くため、投稿先のローンチ・返信先・編集するコメントのIDで欄ごとに分け、欄の種類ごとの1文字でコメントの本文のcと分ける
+export const commentComposerIdScope = (
+  mode: CommentComposerMode,
+  targetId: string,
+): string =>
+  `${COMMENT_COMPOSER_ID_SCOPE_PREFIXES[mode]}${targetId.toLowerCase()}`;
+
 export const LAUNCH_NOT_COMMENTABLE_MESSAGE =
   'キックオフ後にコメントできるようになります。';
 

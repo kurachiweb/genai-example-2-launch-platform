@@ -9,6 +9,7 @@ import {
   COMMENT_MAX_GRAPHEMES,
   COMMENT_PAGE_SIZE,
   commentBodySchema,
+  commentComposerIdScope,
   commentIdScope,
   LAUNCH_NOT_COMMENTABLE_MESSAGE,
   OWN_PRODUCT_RATING_MESSAGE,
@@ -230,6 +231,41 @@ describe('commentIdScope', () => {
     expect(idPrefixFor(commentIdScope(second))).toBe(
       'user-content-c01jf0comment00000000000002-',
     );
+  });
+});
+
+describe('commentComposerIdScope', () => {
+  const [LAUNCH_ID, COMMENT_ID] = COMMENT_IDS;
+
+  test.each<[Parameters<typeof commentComposerIdScope>[0], string]>([
+    ['post', 'p'],
+    ['reply', 'r'],
+    ['edit', 'e'],
+  ])(
+    '%sの欄は対象のIDの小文字に%sを前置し、英小文字と数字の32文字以内にする',
+    (mode, prefix) => {
+      const scope = commentComposerIdScope(mode, LAUNCH_ID);
+
+      expect(scope).toBe(`${prefix}${LAUNCH_ID.toLowerCase()}`);
+      expect(scope).toMatch(ID_SCOPE_PATTERN);
+    },
+  );
+
+  test('同じIDでも欄の種類ごとに異なり、コメントの本文・説明文の接頭辞と衝突しない', () => {
+    const scopes = [
+      commentComposerIdScope('post', COMMENT_ID),
+      commentComposerIdScope('reply', COMMENT_ID),
+      commentComposerIdScope('edit', COMMENT_ID),
+    ];
+
+    expect(new Set([...scopes, commentIdScope(COMMENT_ID)]).size).toBe(4);
+    expect(scopes).not.toContain('product');
+  });
+
+  test('対象のIDごとに異なる', () => {
+    const scopes = COMMENT_IDS.map((id) => commentComposerIdScope('reply', id));
+
+    expect(new Set(scopes).size).toBe(COMMENT_IDS.length);
   });
 });
 

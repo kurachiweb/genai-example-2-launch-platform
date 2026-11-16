@@ -225,7 +225,10 @@ const passBotCheckBehindDialog = () => {
 const reportActionOf = (label: string): CommentAction => ({
   id: 'content-reporting.comment-report',
   order: 10,
-  component: () => <DropdownMenuItem>{label}</DropdownMenuItem>,
+  Item: ({ onSelect }) => (
+    <DropdownMenuItem onSelect={onSelect}>{label}</DropdownMenuItem>
+  ),
+  Dialog: () => null,
 });
 
 beforeEach(() => {
@@ -255,6 +258,31 @@ describe('CommentItem', () => {
     expect(article.getByText('(編集済み)').query()).toBeNull();
     expect(article.getByText('投稿者', { exact: true }).query()).toBeNull();
     expect(article.getByText('あなた', { exact: true }).query()).toBeNull();
+  });
+
+  test.each<[string, LaunchCommentFragment, string, string]>([
+    [
+      '表示中のコメントのプロフィール画像',
+      commentOf(),
+      '早起きのファンさんのコメント',
+      ':scope > [aria-hidden="true"] > *',
+    ],
+    [
+      '置き換え表示のコメントの印',
+      removedOf(commentOf()),
+      '削除されたコメント',
+      ':scope > [aria-hidden="true"]',
+    ],
+  ])('%sを32pxの正方形で描く', async (_, comment, articleName, selector) => {
+    await renderItem({ node: nodeOf(comment) });
+
+    const article = page.getByRole('article', { name: articleName });
+    await expect.element(article).toBeVisible();
+    const box = article
+      .element()
+      .querySelector(selector)
+      ?.getBoundingClientRect();
+    expect([box?.width, box?.height]).toStrictEqual([32, 32]);
   });
 
   test('編集済みのコメントに「(編集済み)」を表示する', async () => {

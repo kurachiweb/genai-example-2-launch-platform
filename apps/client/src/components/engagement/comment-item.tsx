@@ -62,7 +62,7 @@ export interface CommentItemProps {
 
 const ARTICLE_CLASS = 'flex gap-3 rounded-md';
 
-const AVATAR_CLASS = 'size-9 shrink-0';
+const AVATAR_CLASS = 'size-8 shrink-0';
 
 type ItemMode = 'view' | 'reply' | 'edit';
 
@@ -288,6 +288,7 @@ export function CommentItem({
             <CommentComposer
               target={{
                 mode: 'edit',
+                commentId: current.id,
                 body: current.body,
                 topLevel: current.depth === 1,
                 onCancel: () => {
@@ -350,6 +351,7 @@ export function CommentItem({
             <CommentComposer
               target={{
                 mode: 'reply',
+                parentId: current.id,
                 onCancel: () => {
                   closeComposer('reply');
                 },
@@ -384,7 +386,7 @@ export function CommentItem({
       {replies.length > 0 ? (
         <ol
           aria-label={COMMENT_REPLIES_LABEL}
-          className="mt-4 ml-[1.0625rem] space-y-4 border-l-2 border-border pl-3 sm:pl-5"
+          className="mt-4 ml-[0.9375rem] space-y-4 border-l-2 border-border pl-3 sm:pl-5"
         >
           {replies.map((reply) => (
             <CommentItem

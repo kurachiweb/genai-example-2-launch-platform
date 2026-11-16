@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, RefObject } from 'react';
 
 export interface PublicProfileSectionContext {
   readonly handle: string;
@@ -30,11 +30,25 @@ export interface PublicProfileBadgeSection {
   readonly Section: PublicProfileSectionComponent;
 }
 
+export interface PublicProfileMenuItemProps extends PublicProfileSectionContext {
+  // 選ぶとメニューを閉じ、同じ登録の`Dialog`を開く
+  readonly onSelect: () => void;
+}
+
+export interface PublicProfileMenuDialogProps extends PublicProfileSectionContext {
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  // 閉じた後にフォーカスを戻す「その他の操作」のボタン
+  readonly returnFocusRef: RefObject<HTMLButtonElement | null>;
+}
+
 export interface PublicProfileMenuItem {
   // '<spec名>.<名詞句>'
   readonly id: string;
   // content-reportingのreport 10
   readonly order: number;
-  // 表示条件は部品自身が持ち、`DropdownMenuItem`と自分のダイアログを描く
-  readonly Item: PublicProfileSectionComponent;
+  // メニューの中に描く。表示条件は部品自身が持ち、`DropdownMenuItem`を描いて選択で`onSelect`を呼び、該当しなければnullを描く
+  readonly Item: ComponentType<PublicProfileMenuItemProps>;
+  // メニューが閉じると中身が外れるため、メニューの外に描く。`open`の間だけ開き、閉じると`returnFocusRef`へフォーカスを戻す
+  readonly Dialog: ComponentType<PublicProfileMenuDialogProps>;
 }
