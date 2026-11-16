@@ -108,8 +108,7 @@
         {
           "binding": "DB",
           "database_name": "genai-example-2-staging",
-          // 仮の値。infra-deliveryがOpenTofuで作成したD1の値に、apiと同時に置き換える
-          "database_id": "00000000-0000-0000-0000-000000000000",
+          "database_id": "0e2adedf-a072-4e5f-a00b-6e2cb04c4bdf",
         },
       ],
       "r2_buckets": [
