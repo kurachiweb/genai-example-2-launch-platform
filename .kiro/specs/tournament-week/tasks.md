@@ -9,7 +9,7 @@
   - 完了状態: 単体テストが成功し、api・event・clientとbackend-libの型検査で規則を読み込める
   - _Requirements: 1.6, 6.8, 8.2_
 
-- [ ] 1.2 notificationsの通知文とmatch-engineのclientの表示の週とラウンド名を、共用の規則で作る形に寄せる
+- [x] 1.2 notificationsの通知文とmatch-engineのclientの表示の週とラウンド名を、共用の規則で作る形に寄せる
   - 実装前のギャップ分析の決定G2による、notificationsとmatch-engineのclientへの明示の横断(既存の規則の寄せ替え)である。公開の関数の名前・引数・表記・例外は変えない
   - notificationsの受賞の期間の表記(Weekの週)・ISO週の検証・ラウンド名と、clientのマッチの段階の印のラウンド名(GraphQLの大文字の段階を小文字にして渡す)を、1.1の規則で作る
   - 先に、既存の単体テスト(notificationsの通知文と通知イベントの契約、clientのマッチの表記)を期待値を変えずに実行して成功を確かめ、寄せ替えの後にも同じテストが期待値を変えずに成功することで表記の一致を確かめる
@@ -430,3 +430,4 @@
 
 - 開発者への依頼(1.1): devとstagingが共用するStripeのsandboxに、`lookup_key`が`week_tournament_entry`の価格(参考$5、税込)を1回作成する(8.4のE2Eの前提。prodはlaunch-readiness)。
 - 1.1: 規則は`apps/common-lib/tournament/week-period.ts`(`weekStartOf`・`isoWeekKey`・`parseIsoWeek`・`formatWeekPeriodLabel`)と`round-name.ts`(`TOURNAMENT_STAGES`・`stageForSlotCount`・`roundLabel`・`tournamentRoundName`)。`parseIsoWeek`は形式違反・年の範囲外(4桁で1年以上)・存在しない週を`undefined`で返し、存在しない日付は`RangeError`。`roundLabel`はラウンドが正の整数でなく段階も無ければ`null`、`tournamentRoundName`はそのとき`RangeError`。`isoWeekKey`・`formatWeekPeriodLabel`は月曜日以外の日付も受け付ける。1.2への申し送り: (a)notificationsの`awardPeriodLabel`は0001〜0099年で`RangeError`(`Date.UTC`の読み替え)だが新しい規則は表記を返す(既存テストに影響なし。既存の2種類のエラーメッセージ(形式違反・存在しないISO週)の区別を保つこと)、(b)clientの`roundNameOf`は0・負・非整数で「0回戦」等を返すが`roundLabel`は`null`(表示は種別名だけになる)、(c)設計に無い公開の名前`TOURNAMENT_STAGES`・`RoundLabelInput`・`TournamentRoundNameInput`・`ParsedIsoWeek`は8.2の文書で扱う。
+- 1.2: notificationsの`notice-copy.ts`(`roundName`→`roundLabel`、Weekの期間→形式の正規表現`WEEK_PERIOD_PATTERN`で形式違反を分けてから`parseIsoWeek`→`formatWeekPeriodLabel`)・`notification-event-contract.ts`(`isIsoWeekPeriod`→`parseIsoWeek`)とclientの`match-labels.ts`(`Record<MatchStageValue, TournamentStage>`で大文字を小文字へ)を寄せ替えた。差は0000〜0099年と`9999-W53/54`のエラーメッセージだけ(どちらも`RangeError`)。`core/time`の`businessWeekOf`は本体から使われなくなった(設計どおり業務時刻の部品として残す)。
