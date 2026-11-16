@@ -20,7 +20,7 @@ import { safeTagOf } from './incident-tags.ts';
 const LATE_ENTRY_MESSAGE =
   '組み合わせ決定の凍結の後に届いた予選の勝利を、期限切れの参加の枠で記録しました';
 
-interface QualifierWinner {
+export interface QualifierWinner {
   readonly launchId: string;
   readonly productId: string;
   readonly ownerUserId: string;
@@ -33,7 +33,7 @@ type NewWeekEntryBase = Omit<
   'status' | 'entitlementSource' | 'closeReason'
 >;
 
-function winnersOf(match: MatchRecord): QualifierWinner[] {
+export function qualifierWinnersOf(match: MatchRecord): QualifierWinner[] {
   return match.entries.flatMap(
     ({
       result,
@@ -81,7 +81,7 @@ export class QualifierWeekEntryRegistrar implements WeekEntryRegistrar {
     if (match.kind !== 'qualifier' || wonAt === null) {
       return [];
     }
-    const winners = winnersOf(match);
+    const winners = qualifierWinnersOf(match);
     if (winners.length === 0) {
       return [];
     }

@@ -2,6 +2,7 @@ import {
   and,
   asc,
   eq,
+  gt,
   gte,
   inArray,
   isNotNull,
@@ -275,6 +276,45 @@ export class D1WeekTournamentStore implements WeekTournamentStore {
     return row === undefined ? undefined : entryRecordOf(row);
   }
 
+  async listEntriesForClassification(
+    tournamentId: string,
+    afterEntryId: string | undefined,
+    limit: number,
+  ): Promise<readonly WeekEntryRecord[]> {
+    const rows = await this.db
+      .select(ENTRY_COLUMNS)
+      .from(weekTournamentEntries)
+      .where(
+        and(
+          eq(weekTournamentEntries.tournamentId, tournamentId),
+          inArray(weekTournamentEntries.status, OPEN_ENTRY_STATUSES),
+          afterEntryId === undefined
+            ? undefined
+            : gt(weekTournamentEntries.id, afterEntryId),
+        ),
+      )
+      .orderBy(asc(weekTournamentEntries.id))
+      .limit(limit);
+    return rows.map(entryRecordOf);
+  }
+
+  // ブラケットは凍結後の同じ候補で作り直すため、紐付けを解除した枠も候補から外さない
+  async listDrawnEntries(
+    tournamentId: string,
+  ): Promise<readonly WeekEntryRecord[]> {
+    const rows = await this.db
+      .select(ENTRY_COLUMNS)
+      .from(weekTournamentEntries)
+      .where(
+        and(
+          eq(weekTournamentEntries.tournamentId, tournamentId),
+          eq(weekTournamentEntries.status, 'drawn'),
+        ),
+      )
+      .orderBy(asc(weekTournamentEntries.id));
+    return rows.map(entryRecordOf);
+  }
+
   // 同じ勝利の知らせが重ねて届いても枠が1つにそろうよう、ローンチと週ごとのプロダクトの一意索引で重複を無視する。
   // 凍結の後の分類から漏れる枠を作らないよう、受付中・資格を得た枠は凍結前の条件を読み取りでなく挿入の文に含める
   async insertEntry({
@@ -376,6 +416,21 @@ export class D1WeekTournamentStore implements WeekTournamentStore {
       reason,
       at,
     );
+  }
+
+  // 凍結の後は資格を変える書き込みが条件の不一致で何もしなくなるため、凍結前の条件を更新の文に含めて凍結を1回にする
+  async freeze(tournamentId: string, at: Date): Promise<boolean> {
+    const rows = await this.db
+      .update(weekTournaments)
+      .set({ status: 'drawing', drawStartedAt: at, updatedAt: at })
+      .where(
+        and(
+          eq(weekTournaments.id, tournamentId),
+          isNull(weekTournaments.drawStartedAt),
+        ),
+      )
+      .returning({ tournamentId: weekTournaments.id });
+    return rows.length > 0;
   }
 
   async classify(

@@ -103,6 +103,14 @@ export interface WeekTournamentStore {
     launchIds: readonly string[],
   ): Promise<ReadonlyMap<string, WeekEntryRecord>>;
   findEntry(entryId: string): Promise<WeekEntryRecord | undefined>;
+  // 受付中・資格を得た枠を、afterEntryIdより後から枠のIDの昇順で件数の上限まで返す
+  listEntriesForClassification(
+    tournamentId: string,
+    afterEntryId: string | undefined,
+    limit: number,
+  ): Promise<readonly WeekEntryRecord[]>;
+  // 組み合わせの対象の枠を、紐付けを解除した枠も含めて枠のIDの昇順で返す
+  listDrawnEntries(tournamentId: string): Promise<readonly WeekEntryRecord[]>;
   // ローンチと、週ごとのプロダクトの一意索引に当たればexists。
   // 受付中・資格を得た枠は凍結前の週にだけ挿入し、凍結済みの週ならfrozenを返す(期限切れの枠は凍結によらず挿入する)
   insertEntry(entry: NewWeekEntry): Promise<'inserted' | 'exists' | 'frozen'>;
@@ -123,6 +131,8 @@ export interface WeekTournamentStore {
     reason: 'withdrawn',
     at: Date,
   ): Promise<readonly string[]>;
+  // 凍結前の週だけに凍結の日時を記録して組み合わせ決定中にし、この呼び出しで凍結したらtrue
+  freeze(tournamentId: string, at: Date): Promise<boolean>;
   // 受付中・資格を得た枠だけを書き換え、それ以外の状態の枠は変えない
   classify(
     updates: readonly WeekEntryClassification[],
