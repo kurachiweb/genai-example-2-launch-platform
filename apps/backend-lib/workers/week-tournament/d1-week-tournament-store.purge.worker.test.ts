@@ -166,3 +166,26 @@ describe('D1WeekTournamentStore.unlinkOrDeleteByProduct', () => {
     expectWithinBindLimit(recording.placeholderCounts);
   });
 });
+
+describe('D1WeekTournamentStore.listLaunchIdsByProduct', () => {
+  test('プロダクトの枠のローンチを、組み合わせに入った・喪失・期限切れなど枠の状態によらずローンチのIDの昇順で返す', async () => {
+    await expect(store.listLaunchIdsByProduct(productIdOf(3))).resolves.toEqual(
+      [launchIdOf(3), launchIdOf(4), launchIdOf(5), launchIdOf(6)],
+    );
+    await expect(store.listLaunchIdsByProduct(productIdOf(1))).resolves.toEqual(
+      [launchIdOf(1)],
+    );
+  });
+
+  test('枠の無いプロダクトと、紐付けを解除した後のプロダクトでは空を返す', async () => {
+    await expect(store.listLaunchIdsByProduct(productIdOf(9))).resolves.toEqual(
+      [],
+    );
+
+    await store.unlinkOrDeleteByProduct(productIdOf(3));
+
+    await expect(store.listLaunchIdsByProduct(productIdOf(3))).resolves.toEqual(
+      [],
+    );
+  });
+});

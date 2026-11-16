@@ -103,6 +103,8 @@ export interface WeekTournamentStore {
     launchIds: readonly string[],
   ): Promise<ReadonlyMap<string, WeekEntryRecord>>;
   findEntry(entryId: string): Promise<WeekEntryRecord | undefined>;
+  // プロダクトの枠のローンチを、枠の状態によらず重複を除いてローンチのIDの昇順で返す。紐付けを解除した枠は含めない
+  listLaunchIdsByProduct(productId: string): Promise<readonly string[]>;
   // 受付中・資格を得た枠を、afterEntryIdより後から枠のIDの昇順で件数の上限まで返す
   listEntriesForClassification(
     tournamentId: string,

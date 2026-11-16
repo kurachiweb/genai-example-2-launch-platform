@@ -276,6 +276,22 @@ export class D1WeekTournamentStore implements WeekTournamentStore {
     return row === undefined ? undefined : entryRecordOf(row);
   }
 
+  async listLaunchIdsByProduct(productId: string): Promise<readonly string[]> {
+    const rows = await this.db
+      .selectDistinct({ launchId: weekTournamentEntries.launchId })
+      .from(weekTournamentEntries)
+      .where(
+        and(
+          eq(weekTournamentEntries.productId, productId),
+          isNotNull(weekTournamentEntries.launchId),
+        ),
+      )
+      .orderBy(asc(weekTournamentEntries.launchId));
+    return rows.flatMap(({ launchId }) =>
+      launchId === null ? [] : [launchId],
+    );
+  }
+
   async listEntriesForClassification(
     tournamentId: string,
     afterEntryId: string | undefined,

@@ -149,6 +149,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
     listInProgress: notUsed,
     findEntriesByLaunch: notUsed,
     findEntry: notUsed,
+    listLaunchIdsByProduct: notUsed,
     listEntriesForClassification: notUsed,
     listDrawnEntries: notUsed,
     insertEntry: notUsed,
