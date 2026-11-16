@@ -567,6 +567,49 @@ describe('D1WeekTournamentStore.insertEntry', () => {
     await expect(store.findEntry(weekEntryIdOf(1))).resolves.toBeUndefined();
   });
 
+  describe('凍結済みの週', () => {
+    beforeEach(async () => {
+      await db
+        .update(weekTournaments)
+        .set({ status: 'drawing', drawStartedAt: WEEK_WINDOW.drawAt })
+        .where(eq(weekTournaments.id, weekTournamentIdOf(1)));
+    });
+
+    test.each<Partial<NewWeekEntry>>([
+      { status: 'awaiting_payment', entitlementSource: null },
+      { status: 'entitled', entitlementSource: 'ultras' },
+    ])('$statusの枠は挿入せずfrozenを返す', async (overrides) => {
+      await expect(store.insertEntry(newEntryOf(1, overrides))).resolves.toBe(
+        'frozen',
+      );
+
+      await expect(db.select().from(weekTournamentEntries)).resolves.toEqual(
+        [],
+      );
+    });
+
+    test('遅れた勝利の期限切れの枠は挿入する', async () => {
+      await expect(
+        store.insertEntry(
+          newEntryOf(1, { status: 'expired', closeReason: 'late_entry' }),
+        ),
+      ).resolves.toBe('inserted');
+
+      await expect(store.findEntry(weekEntryIdOf(1))).resolves.toMatchObject({
+        status: 'expired',
+        closeReason: 'late_entry',
+      });
+    });
+
+    test('凍結前の週への受付中の枠の挿入は凍結済みの週の影響を受けない', async () => {
+      await expect(
+        store.insertEntry(
+          newEntryOf(1, { tournamentId: weekTournamentIdOf(2) }),
+        ),
+      ).resolves.toBe('inserted');
+    });
+  });
+
   test('同じプロダクトでも別の週の枠は挿入する', async () => {
     await insertLaunch(4, 1, {
       launchDate: '2026-11-25',

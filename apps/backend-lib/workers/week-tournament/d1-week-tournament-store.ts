@@ -89,6 +89,20 @@ function followUpTargetCondition(target: WeekFollowUpTarget): SQL {
   return eq(weekTournamentEntries.tournamentId, target.tournamentId);
 }
 
+type EntryInsertRow = typeof weekTournamentEntries.$inferInsert;
+
+// 挿入する値を、条件付きの挿入(INSERT ... SELECT)の選択の定数として各列の形式で渡す
+function constantSelectionOf(row: EntryInsertRow) {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [
+      key,
+      sql`${sql.param(value, weekTournamentEntries[key as keyof EntryInsertRow])}`.as(
+        key,
+      ),
+    ]),
+  ) as Record<keyof EntryInsertRow, SQL.Aliased>;
+}
+
 function chunk<T>(items: readonly T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
     items.slice(index * size, (index + 1) * size),
@@ -261,24 +275,52 @@ export class D1WeekTournamentStore implements WeekTournamentStore {
     return row === undefined ? undefined : entryRecordOf(row);
   }
 
-  // 同じ勝利の知らせが重ねて届いても枠が1つにそろうよう、ローンチと週ごとのプロダクトの一意索引で重複を無視する
+  // 同じ勝利の知らせが重ねて届いても枠が1つにそろうよう、ローンチと週ごとのプロダクトの一意索引で重複を無視する。
+  // 凍結の後の分類から漏れる枠を作らないよう、受付中・資格を得た枠は凍結前の条件を読み取りでなく挿入の文に含める
   async insertEntry({
     entryId,
     at,
     ...entry
-  }: NewWeekEntry): Promise<'inserted' | 'exists'> {
+  }: NewWeekEntry): Promise<'inserted' | 'exists' | 'frozen'> {
+    const row: EntryInsertRow = {
+      ...entry,
+      id: entryId,
+      entitledAt: entry.status === 'entitled' ? at : null,
+      closedAt: entry.status === 'expired' ? at : null,
+      createdAt: at,
+      updatedAt: at,
+    };
+    if (entry.status === 'expired') {
+      const result = await this.db
+        .insert(weekTournamentEntries)
+        .values(row)
+        .onConflictDoNothing();
+      return result.meta.changes > 0 ? 'inserted' : 'exists';
+    }
     const result = await this.db
       .insert(weekTournamentEntries)
-      .values({
-        ...entry,
-        id: entryId,
-        entitledAt: entry.status === 'entitled' ? at : null,
-        closedAt: entry.status === 'expired' ? at : null,
-        createdAt: at,
-        updatedAt: at,
-      })
+      .select(
+        this.db
+          .select(constantSelectionOf(row))
+          .from(weekTournaments)
+          .where(
+            and(
+              eq(weekTournaments.id, entry.tournamentId),
+              isNull(weekTournaments.drawStartedAt),
+            ),
+          ),
+      )
       .onConflictDoNothing();
-    return result.meta.changes > 0 ? 'inserted' : 'exists';
+    if (result.meta.changes > 0) {
+      return 'inserted';
+    }
+    const tournament = await this.findTournament(entry.tournamentId);
+    if (tournament === undefined) {
+      throw new Error(
+        `週のトーナメントが見つかりません: ${entry.tournamentId}`,
+      );
+    }
+    return tournament.drawStartedAt === null ? 'exists' : 'frozen';
   }
 
   // 凍結と同時の加入の知らせが凍結後の資格を変えないよう、凍結前の条件と期間の条件を読み取りでなく更新の文に含める

@@ -103,8 +103,9 @@ export interface WeekTournamentStore {
     launchIds: readonly string[],
   ): Promise<ReadonlyMap<string, WeekEntryRecord>>;
   findEntry(entryId: string): Promise<WeekEntryRecord | undefined>;
-  // ローンチと、週ごとのプロダクトの一意索引に当たればexists
-  insertEntry(entry: NewWeekEntry): Promise<'inserted' | 'exists'>;
+  // ローンチと、週ごとのプロダクトの一意索引に当たればexists。
+  // 受付中・資格を得た枠は凍結前の週にだけ挿入し、凍結済みの週ならfrozenを返す(期限切れの枠は凍結によらず挿入する)
+  insertEntry(entry: NewWeekEntry): Promise<'inserted' | 'exists' | 'frozen'>;
   // 凍結前の週の受付中の枠のうち、勝利の確定 ≤ 有効化 ≤ 決済期限のものに参加資格を与え、そのIDを返す
   grantByUltras(
     userId: string,
