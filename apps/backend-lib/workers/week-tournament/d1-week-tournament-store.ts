@@ -4,8 +4,12 @@ import {
   eq,
   gte,
   inArray,
+  isNotNull,
   isNull,
+  lt,
   lte,
+  ne,
+  or,
   sql,
   type SQL,
 } from 'drizzle-orm';
@@ -22,8 +26,12 @@ import {
 } from '../../core/time/business-time.ts';
 import type {
   NewWeekEntry,
+  WeekAwardedProduct,
   WeekEntryClassification,
   WeekEntryRecord,
+  WeekFollowUpTarget,
+  WeekRefundClosedStatus,
+  WeekTournamentFinish,
   WeekTournamentRecord,
   WeekTournamentStore,
 } from '../../core/week-tournament/ports.ts';
@@ -45,6 +53,41 @@ const CLASSIFICATIONS_PER_BATCH = 50;
 const REFUND_ON_CLOSE = sql<
   'pending' | 'not_needed'
 >`case when ${weekTournamentEntries.purchaseId} is not null then 'pending' else 'not_needed' end`;
+
+const PENDING_FOLLOW_UP = or(
+  eq(weekTournamentEntries.refundStatus, 'pending'),
+  eq(weekTournamentEntries.refundNoticeStatus, 'pending'),
+);
+
+// 受賞の照会が優勝の枠を引けなくならないよう、受賞と優勝の枠の有無の食い違いを書き込む前に止める
+function finishColumns(
+  outcome: WeekTournamentFinish['outcome'],
+  championEntryId: string | null,
+  at: Date,
+) {
+  if ((outcome === 'awarded') !== (championEntryId !== null)) {
+    throw new RangeError(
+      `受賞の結果と優勝の枠が食い違っています: ${outcome}, ${String(championEntryId)}`,
+    );
+  }
+  return {
+    status: 'finished',
+    outcome,
+    championEntryId,
+    awardedAt: outcome === 'awarded' ? at : null,
+    finishedAt: at,
+  } as const;
+}
+
+function followUpTargetCondition(target: WeekFollowUpTarget): SQL {
+  if ('productId' in target) {
+    return eq(weekTournamentEntries.productId, target.productId);
+  }
+  if ('ownerUserId' in target) {
+    return eq(weekTournamentEntries.ownerUserId, target.ownerUserId);
+  }
+  return eq(weekTournamentEntries.tournamentId, target.tournamentId);
+}
 
 function chunk<T>(items: readonly T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
@@ -306,6 +349,184 @@ export class D1WeekTournamentStore implements WeekTournamentStore {
         await this.db.batch(batch);
       }
     }
+  }
+
+  // 回復で呼び直しても記録済みのブラケットと結果を書き換えないよう、組み合わせ決定中の条件を更新の文に含める
+  async markDrawn(
+    tournamentId: string,
+    bracketId: string,
+    finished: WeekTournamentFinish | null,
+    at: Date,
+  ): Promise<void> {
+    await this.db
+      .update(weekTournaments)
+      .set({
+        bracketId,
+        drawnAt: at,
+        ...(finished === null
+          ? { status: 'in_progress' }
+          : finishColumns(finished.outcome, finished.championEntryId, at)),
+        updatedAt: at,
+      })
+      .where(
+        and(
+          eq(weekTournaments.id, tournamentId),
+          eq(weekTournaments.status, 'drawing'),
+        ),
+      );
+  }
+
+  // イベントの処理と23:45のジョブが同時に終了を確定させても受賞が1回になるよう、終了していない条件を更新の文に含める
+  async recordFinish(
+    tournamentId: string,
+    outcome: WeekTournamentFinish['outcome'],
+    championEntryId: string | null,
+    at: Date,
+  ): Promise<boolean> {
+    const rows = await this.db
+      .update(weekTournaments)
+      .set({ ...finishColumns(outcome, championEntryId, at), updatedAt: at })
+      .where(
+        and(
+          eq(weekTournaments.id, tournamentId),
+          ne(weekTournaments.status, 'finished'),
+        ),
+      )
+      .returning({ tournamentId: weekTournaments.id });
+    return rows.length > 0;
+  }
+
+  async listAwardedBetween(
+    from: Date,
+    to: Date,
+  ): Promise<readonly WeekAwardedProduct[]> {
+    const rows = await this.db
+      .select({
+        weekStart: weekTournaments.weekStart,
+        productId: weekTournamentEntries.productId,
+      })
+      .from(weekTournaments)
+      .innerJoin(
+        weekTournamentEntries,
+        eq(weekTournamentEntries.id, weekTournaments.championEntryId),
+      )
+      .where(
+        and(
+          eq(weekTournaments.outcome, 'awarded'),
+          gte(weekTournaments.awardedAt, from),
+          lt(weekTournaments.awardedAt, to),
+          isNotNull(weekTournamentEntries.productId),
+        ),
+      )
+      .orderBy(asc(weekTournaments.awardedAt), asc(weekTournaments.weekStart));
+    return rows.flatMap(({ weekStart, productId }) =>
+      productId === null
+        ? []
+        : [{ weekStart: parseBusinessDate(weekStart), productId }],
+    );
+  }
+
+  // 処理中の枠を再処理で重ねて扱わないよう、基準の時刻より前に更新した枠だけを返す
+  async listPendingFollowUps(
+    olderThan: Date,
+    limit: number,
+  ): Promise<readonly WeekEntryRecord[]> {
+    const rows = await this.db
+      .select(ENTRY_COLUMNS)
+      .from(weekTournamentEntries)
+      .where(
+        and(PENDING_FOLLOW_UP, lt(weekTournamentEntries.updatedAt, olderThan)),
+      )
+      .orderBy(
+        asc(weekTournamentEntries.updatedAt),
+        asc(weekTournamentEntries.id),
+      )
+      .limit(limit);
+    return rows.map(entryRecordOf);
+  }
+
+  async listPendingFollowUpsOf(
+    target: WeekFollowUpTarget,
+    limit: number,
+  ): Promise<readonly WeekEntryRecord[]> {
+    const rows = await this.db
+      .select(ENTRY_COLUMNS)
+      .from(weekTournamentEntries)
+      .where(and(PENDING_FOLLOW_UP, followUpTargetCondition(target)))
+      .orderBy(asc(weekTournamentEntries.id))
+      .limit(limit);
+    return rows.map(entryRecordOf);
+  }
+
+  // 重複の処理で返金の知らせを送り直さないよう、返金待ちの条件を更新の文に含める
+  async markRefundRequested(entryId: string, at: Date): Promise<void> {
+    await this.db
+      .update(weekTournamentEntries)
+      .set({
+        refundStatus: 'requested',
+        refundRequestedAt: at,
+        refundNoticeStatus: 'pending',
+        updatedAt: at,
+      })
+      .where(
+        and(
+          eq(weekTournamentEntries.id, entryId),
+          eq(weekTournamentEntries.refundStatus, 'pending'),
+        ),
+      );
+  }
+
+  async markRefundClosed(
+    entryId: string,
+    status: WeekRefundClosedStatus,
+    at: Date,
+  ): Promise<void> {
+    await this.db
+      .update(weekTournamentEntries)
+      .set({ refundStatus: status, updatedAt: at })
+      .where(
+        and(
+          eq(weekTournamentEntries.id, entryId),
+          eq(weekTournamentEntries.refundStatus, 'pending'),
+        ),
+      );
+  }
+
+  async markNotice(
+    entryId: string,
+    status: 'sent' | 'skipped',
+    at: Date,
+  ): Promise<void> {
+    await this.db
+      .update(weekTournamentEntries)
+      .set({ refundNoticeStatus: status, updatedAt: at })
+      .where(
+        and(
+          eq(weekTournamentEntries.id, entryId),
+          eq(weekTournamentEntries.refundNoticeStatus, 'pending'),
+        ),
+      );
+  }
+
+  // ブラケットの参加者と受賞が組み合わせに入った枠を参照し続けるため、その枠は残す。
+  // 投稿者の列も外部キーのため、解除しないと利用者の物理削除が失敗する
+  async unlinkOrDeleteByProduct(
+    productId: string,
+  ): Promise<{ readonly unlinked: number; readonly deleted: number }> {
+    const ofProduct = eq(weekTournamentEntries.productId, productId);
+    const [unlinked, deleted] = await this.db.batch([
+      this.db
+        .update(weekTournamentEntries)
+        .set({ launchId: null, productId: null, ownerUserId: null })
+        .where(and(ofProduct, eq(weekTournamentEntries.status, 'drawn'))),
+      this.db
+        .delete(weekTournamentEntries)
+        .where(and(ofProduct, ne(weekTournamentEntries.status, 'drawn'))),
+    ]);
+    return {
+      unlinked: unlinked.meta.changes,
+      deleted: deleted.meta.changes,
+    };
   }
 
   // 決済で得た資格の出どころと日時は、組み合わせ決定の時点のUltrasの判定で書き換えない

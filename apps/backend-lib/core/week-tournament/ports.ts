@@ -127,7 +127,73 @@ export interface WeekTournamentStore {
     updates: readonly WeekEntryClassification[],
     at: Date,
   ): Promise<void>;
+  // 組み合わせ決定中の週だけに書き、参加0・1で組み合わせと同時に終わる週はfinishedに結果を渡す
+  markDrawn(
+    tournamentId: string,
+    bracketId: string,
+    finished: WeekTournamentFinish | null,
+    at: Date,
+  ): Promise<void>;
+  // 終了していない週だけを終え、この呼び出しで確定させたらtrue
+  recordFinish(
+    tournamentId: string,
+    outcome: WeekTournamentFinish['outcome'],
+    championEntryId: string | null,
+    at: Date,
+  ): Promise<boolean>;
+  // 受賞の日時が[from, to)の受賞を受賞の昇順で返す。紐付けを解除した受賞は除く
+  listAwardedBetween(
+    from: Date,
+    to: Date,
+  ): Promise<readonly WeekAwardedProduct[]>;
+  // 返金待ち・知らせ待ちの枠のうち、更新がolderThanより前のものを更新の昇順で返す
+  listPendingFollowUps(
+    olderThan: Date,
+    limit: number,
+  ): Promise<readonly WeekEntryRecord[]>;
+  // 返金待ち・知らせ待ちの枠を、更新の日時によらずプロダクト・投稿者・週で絞って返す
+  listPendingFollowUpsOf(
+    target: WeekFollowUpTarget,
+    limit: number,
+  ): Promise<readonly WeekEntryRecord[]>;
+  // 返金待ちの枠だけを依頼済みにし、返金の知らせを知らせ待ちにする
+  markRefundRequested(entryId: string, at: Date): Promise<void>;
+  // 返金待ちの枠だけを、依頼をせずに終えた状態にする(返金の知らせは送らない)
+  markRefundClosed(
+    entryId: string,
+    status: WeekRefundClosedStatus,
+    at: Date,
+  ): Promise<void>;
+  // 知らせ待ちの枠だけを送信済み・省略にする
+  markNotice(
+    entryId: string,
+    status: 'sent' | 'skipped',
+    at: Date,
+  ): Promise<void>;
+  // 組み合わせに入った枠は紐付けだけを解除して残し、それ以外の枠は削除する
+  unlinkOrDeleteByProduct(
+    productId: string,
+  ): Promise<{ readonly unlinked: number; readonly deleted: number }>;
 }
+
+export type WeekTournamentFinish =
+  | { readonly outcome: 'awarded'; readonly championEntryId: string }
+  | { readonly outcome: 'no_award'; readonly championEntryId: null };
+
+export interface WeekAwardedProduct {
+  readonly weekStart: BusinessDate;
+  readonly productId: string;
+}
+
+export type WeekFollowUpTarget =
+  | { readonly productId: string }
+  | { readonly ownerUserId: string }
+  | { readonly tournamentId: string };
+
+export type WeekRefundClosedStatus = Extract<
+  WeekRefundStatus,
+  'not_needed' | 'already_refunded' | 'rejected'
+>;
 
 export interface WeekEntryClassification {
   readonly entryId: string;
