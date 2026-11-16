@@ -14,7 +14,7 @@ import { RATE_LIMIT_EXCLUSIONS } from './rate-limit-exclusions.ts';
 
 // IP単位の制限の計数を他のテストファイルと分けるため、このファイルだけの接続元にする
 const BURST_IP = '203.0.113.82';
-const IP_LIMIT = 100;
+const IP_LIMIT = 500;
 const PERIOD_MILLISECONDS = 10_000;
 const BURST_MARGIN_MILLISECONDS = 4_000;
 const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;
@@ -29,7 +29,7 @@ async function waitForFreshWindow(): Promise<void> {
 
 describe('RATE_LIMIT_EXCLUSIONS', () => {
   test(
-    '同じIPからのStripeのWebhookは101回目の要求でもIP制限で429にならず、回数に数えられない',
+    '同じIPからのStripeのWebhookは501回目の要求でもIP制限で429にならず、回数に数えられない',
     async () => {
       await waitForFreshWindow();
       const { app } = createWebhookTestApp(

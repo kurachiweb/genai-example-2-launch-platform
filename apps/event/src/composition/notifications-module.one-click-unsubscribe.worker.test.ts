@@ -33,6 +33,7 @@ import {
   T0,
 } from '../../lib/workers/notifications/testing/notification-store-fixtures.ts';
 import { MODULES } from './modules.ts';
+import { consumeIpRateLimit } from './testing/ip-rate-limit-quota.ts';
 
 // TEST_MIGRATIONSはvitest.worker.config.tsだけが渡すテスト用のバインディングで、実行時の環境の型には含めない
 const testEnv = env as Env & { readonly TEST_MIGRATIONS: D1Migration[] };
@@ -48,10 +49,13 @@ const INVALID_BODY = 'このリンクは無効です。';
 
 const UNSUBSCRIBED_BODY = '配信を停止しました。';
 
-const IP_LIMIT = 100;
+const IP_LIMIT = 500;
 const PERIOD_MILLISECONDS = 10_000;
 const BURST_MARGIN_MILLISECONDS = 4_000;
 const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;
+
+// 上限までの残りの1回を超えて送る回数。IP制限で数える要求なら2回目が上限を超える
+const REQUESTS_BEYOND_REMAINING = 2;
 
 const CONSOLE_METHODS = ['log', 'debug', 'info', 'warn', 'error'] as const;
 
@@ -272,12 +276,13 @@ describe('POST /unsubscribe(ワンクリックの配信停止)', () => {
   });
 
   test(
-    '同じIPからの101回目もIP制限で429にならず、他の経路の回数にも数えられない',
+    '同じIPからの501回目もIP制限で429にならず、他の経路の回数にも数えられない',
     async () => {
       await waitForFreshWindow();
       const ip = freshIp();
+      await consumeIpRateLimit(ip, IP_LIMIT - 1);
       const statuses: number[] = [];
-      for (let index = 0; index <= IP_LIMIT; index += 1) {
+      for (let index = 0; index < REQUESTS_BEYOND_REMAINING; index += 1) {
         const response = await postOneClick('malformed', ip);
         statuses.push(response.status);
         await response.body?.cancel();

@@ -23,6 +23,7 @@ import {
   SECURITY_HEADERS,
 } from '../lib/workers/http/security-headers.ts';
 import { createMessagePublisher } from '../lib/workers/messaging/queue-publisher.ts';
+import { consumeIpRateLimit } from './composition/testing/ip-rate-limit-quota.ts';
 
 // エントリが読み込む登録箇所に、テスト用の契約とハンドラーを追記した状態にする。エントリはテストからの最初の呼び出しで読み込まれるため、その時点で下の定数を参照できる
 vi.mock('./composition/message-handlers.ts', async (importOriginal) => {
@@ -45,7 +46,7 @@ vi.mock('./composition/modules.ts', async (importOriginal) => {
 });
 
 const EVENT_ORIGIN = 'https://event.launch.example';
-const IP_LIMIT = 100;
+const IP_LIMIT = 500;
 const PERIOD_MILLISECONDS = 10_000;
 const BURST_MARGIN_MILLISECONDS = 4_000;
 const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;
@@ -195,34 +196,28 @@ describe('イベントサーバーのエントリ', () => {
   });
 
   test(
-    '同じIPからの101回目は429・Retry-After: 10になり、別のIPは影響を受けない',
+    '同じIPからの501回目は429・Retry-After: 10になり、別のIPは影響を受けない',
     async () => {
       await waitForFreshWindow();
-      const statuses: number[] = [];
-      let limited: Response | undefined;
-      for (let index = 0; index <= IP_LIMIT; index += 1) {
-        const response = await exports.default.fetch(
-          `${EVENT_ORIGIN}/health`,
-          fromIp('203.0.113.20'),
-        );
-        statuses.push(response.status);
-        if (index < IP_LIMIT) {
-          await response.body?.cancel();
-        } else {
-          limited = response;
-        }
-      }
+      await consumeIpRateLimit('203.0.113.20', IP_LIMIT - 1);
+      const lastAllowed = await exports.default.fetch(
+        `${EVENT_ORIGIN}/health`,
+        fromIp('203.0.113.20'),
+      );
+      await lastAllowed.body?.cancel();
+      const limited = await exports.default.fetch(
+        `${EVENT_ORIGIN}/health`,
+        fromIp('203.0.113.20'),
+      );
       const otherIp = await exports.default.fetch(
         `${EVENT_ORIGIN}/health`,
         fromIp('203.0.113.21'),
       );
 
-      expect(
-        statuses.slice(0, IP_LIMIT).every((status) => status === 200),
-      ).toBe(true);
-      expect(limited?.status).toBe(429);
-      expect(limited?.headers.get('Retry-After')).toBe('10');
-      expect(await limited?.json()).toMatchObject({
+      expect(lastAllowed.status).toBe(200);
+      expect(limited.status).toBe(429);
+      expect(limited.headers.get('Retry-After')).toBe('10');
+      expect(await limited.json()).toMatchObject({
         error: { code: 'rate_limit_exceeded' },
       });
       expect(otherIp.status).toBe(200);
