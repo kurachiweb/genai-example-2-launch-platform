@@ -25,12 +25,12 @@ regexTarget = "match"
 regexes = ['''^\w*[Pp]assword\s*:\s*String!\)?,?$''']
 
 # アクセス解析(Cloudflare Web Analytics)のトークンは、計測スクリプトの属性として公開ページのHTMLに載る秘密でない識別子であり、Wrangler設定の変数に書く。
-# 名前のTOKENと32桁の16進数の値を、generic-api-keyが秘密の値として誤検知する。Wrangler設定と、それを写した型定義の生成物の両方に現れ、生成物は変数を足すたびに行がずれるため、行番号のFingerprintでは登録しない。
-# その変数に32桁の16進数または空文字だけを入れた行(型定義の生成物の環境ごとの値の合併型を含む)に限って除外する
+# 名前のTOKENと32桁の16進数の値を、generic-api-keyが秘密の値として誤検知する。Wrangler設定と、それを写した型定義の生成物と、設定の値を確かめるテストに現れ、生成物は変数を足すたびに行がずれるため、行番号のFingerprintでは登録しない。
+# その変数に32桁の16進数または空文字だけを入れた行(型定義の生成物の環境ごとの値の合併型を含む)と、テストでその値だけを入れた定数の行に限って除外する
 [[allowlists]]
-description = "Wrangler設定と型定義の生成物のアクセス解析のトークン"
+description = "Wrangler設定と型定義の生成物と設定のテストのアクセス解析のトークン"
 targetRules = ["generic-api-key"]
 condition = "AND"
-paths = ['''(^|/)apps/client/wrangler\.jsonc$''', '''(^|/)apps/client/worker-configuration\.d\.ts$''']
+paths = ['''(^|/)apps/client/wrangler\.jsonc$''', '''(^|/)apps/client/worker-configuration\.d\.ts$''', '''(^|/)apps/client/test/config/wrangler-config\.unit\.test\.ts$''']
 regexTarget = "line"
-regexes = ['''^\s*"?WEB_ANALYTICS_TOKEN"?\s*:\s*"[0-9a-f]{32}"(\s*\|\s*("[0-9a-f]{32}"|""))*\s*[,;]?\s*$''']
+regexes = ['''^\s*"?WEB_ANALYTICS_TOKEN"?\s*:\s*"[0-9a-f]{32}"(\s*\|\s*("[0-9a-f]{32}"|""))*\s*[,;]?\s*$''', '''^\s*const\s+\w*WEB_ANALYTICS_TOKEN\s*=\s*'[0-9a-f]{32}';\s*$''']
