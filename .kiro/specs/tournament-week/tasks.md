@@ -157,7 +157,7 @@
   - _Depends: 1.1_
   - _Requirements: 4.8_
 
-- [ ] 4.9 返金の依頼と知らせの部品を作る
+- [x] 4.9 返金の依頼と知らせの部品を作る
   - 先に、Workers統合テスト(返金の部品とメールの送信は偽物)で、返金待ちの枠の依頼(全額・理由・依頼キー)、受け付けと重複で依頼済みにして知らせ待ちにすること、拒否の分類(2.6)で支払いが無い・購入が無いは不要にしてログ(購入の識別だけ)を残し、返金できる残額が無いは返金済みにして`captureEvent`し、金額・依頼キーの形式の誤りと理由の形式違反の例外は拒否にして`captureEvent`すること、不要・返金済み・拒否の枠に返金の知らせを送らず再処理の対象から外れること、知らせの送信と退会済みの`skipped`、一時的な失敗が例外になり状態が変わらないことを確かめる
   - 完了状態: Workers統合テストが成功する
   - _Depends: 4.3, 4.8_
@@ -452,3 +452,4 @@
 - 4.6: `workers/week-tournament/week-entry-fulfillment.ts`の`WeekEntryFulfillment(store, products)`(デコレータ無し、4.14で`toDynamicValue`)。反映の時刻は`purchase.paidAt`(paymentsの3経路すべてで反映時の`clock.now()`。設計の「`paidAt`ではなく反映の時刻」は誤記)。拒否は`{kind:'reject', reason:'ineligible'}`、非公開化・停止は拒否しない(分類で除外)。付与の文は`prepare`の`db`でCASE式(`GRANTABLE_STATUSES`と未凍結)で、凍結・Ultrasの付与の後はNOT NULL違反(paymentsの`D1GuardedBatch`で`constraint_failed`→`prepare`の呼び直しで拒否)。4.14では、paymentsの反映の経路で「23:35:01に反映すれば新しいローンチで拒否」の1件も加えて`paidAt`=反映の時刻の前提を固定すること。
 - 4.7: `workers/week-tournament/week-notification-publisher.ts`の`WeekTournamentNotificationPublisher(store, matches: MatchDirectory, notifications: NotificationEventPublisher, appName)`(デコレータ無し、4.14で`toDynamicValue`。`NOTIFICATIONS_PLATFORM_TYPES.NotificationEventPublisher`とmatchの束縛が同じコンテナにある前提)。`publishRound`は空なら呼ばない。違反は位置の1件を除いて発行し直し(`match-not-previewable`は`info`、他は`error`、位置の無い拒否と範囲外は例外のまま)。`publishNight`は当日のWeekの確定(結果)→翌日のWeekの`scheduled`で側2つ(予告)→`listAwardedBetween(業務日付0:00, at)`(受賞、`period`は`isoWeekKey(weekStart)`)を1つの一覧で50件ずつ。ログのカテゴリ`[appName, 'week-tournament', 'notification']`、受賞を除いたときは`productId`を出す(設計のログの列挙に無い。8.2で扱う)。
 - 4.8: メール種別`core/email/kinds/tournament-week.ts`(`TOURNAMENT_WEEK_ENTRY_REFUND_KIND`、`transactional`、入力`nickname`・`weekLabel`・`launchDate`(`z.iso.date()`)・`reason`・`billingUrl`)、テンプレート`apps/event/src/infrastructure/email/templates/tournament-week/`(ローンチ日は業務日付なので`formatUtcDate`を使わず年付きの`LaunchDateText`)。4.9は`weekLabel`を`formatWeekPeriodLabel(weekStart)`、`billingUrl`を`CLIENT_SITE_ORIGIN + '/settings/billing'`で組み立てる。8.2は種別を`project-values.md`へ。
+- 4.9: `workers/week-tournament/week-entry-follow-up.ts`の`WeekEntryRefundFollowUp({appName, store, refunds: PaymentRefunds, contacts: UserContactDirectory, emails: EmailSender, clientSiteOrigin, readLimit?})`(デコレータ無し、4.14で`toDynamicValue`、`CLIENT_SITE_ORIGIN`はenvから)。`process(entryIds, now)`は各枠を`findEntry`で読み直す。1件の失敗で止めず全件試してから投げる(1件なら元の例外、複数なら`AggregateError`)。`processTournament`は試したIDの集合で終わる。理由を決められない状態は`rejected`(`invalid_reason`)、知らせの入力が作れない・紐付けの解除・退会は`skipped`、送信の失敗は例外で知らせ待ちのまま。ログ`[appName, 'week-tournament', 'follow-up']`、`captureEvent`のタグ`tournament_incident`・`tournament_id`・`entry_id`。並行して同じ枠を処理すると知らせが2通になりうる(稀、状態は壊れない)。
