@@ -5,6 +5,7 @@ import { IDENTITY_EMAIL_KINDS } from './identity.ts';
 import { INQUIRY_REPLY_NOTIFICATION_KIND } from './inquiry.ts';
 import { NOTIFICATION_EMAIL_KINDS } from './notifications.ts';
 import { PAYMENTS_EMAIL_KINDS } from './payments.ts';
+import { TOURNAMENT_WEEK_EMAIL_KINDS } from './tournament-week.ts';
 import { ULTRAS_EMAIL_KINDS } from './ultras.ts';
 
 export const EMAIL_KINDS: readonly AnyEmailKind[] = Object.freeze([
@@ -15,4 +16,5 @@ export const EMAIL_KINDS: readonly AnyEmailKind[] = Object.freeze([
   ...PAYMENTS_EMAIL_KINDS,
   ...ULTRAS_EMAIL_KINDS,
   ...NOTIFICATION_EMAIL_KINDS,
+  ...TOURNAMENT_WEEK_EMAIL_KINDS,
 ]);
