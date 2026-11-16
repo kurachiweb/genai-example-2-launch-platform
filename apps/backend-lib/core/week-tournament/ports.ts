@@ -105,6 +105,36 @@ export interface WeekTournamentStore {
   findEntry(entryId: string): Promise<WeekEntryRecord | undefined>;
   // ローンチと、週ごとのプロダクトの一意索引に当たればexists
   insertEntry(entry: NewWeekEntry): Promise<'inserted' | 'exists'>;
+  // 凍結前の週の受付中の枠のうち、勝利の確定 ≤ 有効化 ≤ 決済期限のものに参加資格を与え、そのIDを返す
+  grantByUltras(
+    userId: string,
+    activatedAt: Date,
+    at: Date,
+  ): Promise<readonly string[]>;
+  // 凍結前の週の受付中・資格を得た枠を喪失にし、そのIDを返す
+  forfeitByProduct(
+    productId: string,
+    reason: 'deleted',
+    at: Date,
+  ): Promise<readonly string[]>;
+  forfeitByOwner(
+    userId: string,
+    reason: 'withdrawn',
+    at: Date,
+  ): Promise<readonly string[]>;
+  // 受付中・資格を得た枠だけを書き換え、それ以外の状態の枠は変えない
+  classify(
+    updates: readonly WeekEntryClassification[],
+    at: Date,
+  ): Promise<void>;
+}
+
+export interface WeekEntryClassification {
+  readonly entryId: string;
+  readonly status: 'drawn' | 'expired' | 'forfeited' | 'excluded' | 'entitled';
+  readonly closeReason: WeekEntryCloseReason | null;
+  // 受付中の枠に組み合わせ決定の時点でUltrasの参加資格を与えるときだけ指定する
+  readonly entitlementSource?: 'ultras';
 }
 
 export interface WeekEntryRegistrar {
