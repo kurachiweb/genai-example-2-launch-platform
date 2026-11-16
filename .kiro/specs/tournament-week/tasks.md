@@ -31,7 +31,7 @@
   - 完了状態: 単体テストが成功し、マイグレーションをローカルのD1に適用できる
   - _Requirements: 4.7, 7.4, 13.3, 14.3_
 
-- [ ] 1.5 (P) Weekトーナメント規則・日次タイムライン・ページ配置・文言規則・返金ポリシー・決済実装方針に、本specの決定を先に書く
+- [x] 1.5 (P) Weekトーナメント規則・日次タイムライン・ページ配置・文言規則・返金ポリシー・決済実装方針に、本specの決定を先に書く
   - Weekトーナメント規則: 仮2(組み合わせ決定時点の非公開化・停止の除外、FR-TOURW-008)・仮3(その返金、FR-PYMNT-011)・仮5(期限の後の反映、FR-TOURW-006)の注記のうち未記載のものを加え、凍結の時点、ラウンドの遅れの回復(FR-TOURW-022)、ブラケットのページ(仮4)を加える
   - 日次タイムライン: 23:45の`tournament-week.evening-bracket`(1500。組み合わせ・進行・追いつき・通知の発行の後に、最後にnotificationsへ夜の送り出しの準備の完了を伝える。夜の送り出しは前提がそろった時点、遅くとも23:55)、4:21の表に`tournament-week.entry-follow-up`(1500)
   - ページ配置: ブラケットのページの構成(仮4)、トーナメントの区画の見出しとブラケットへの導線、トロフィーの区画の所有、参加費の導線の状態の一覧、削除の注意書き
@@ -433,3 +433,4 @@
 - 1.2: notificationsの`notice-copy.ts`(`roundName`→`roundLabel`、Weekの期間→形式の正規表現`WEEK_PERIOD_PATTERN`で形式違反を分けてから`parseIsoWeek`→`formatWeekPeriodLabel`)・`notification-event-contract.ts`(`isIsoWeekPeriod`→`parseIsoWeek`)とclientの`match-labels.ts`(`Record<MatchStageValue, TournamentStage>`で大文字を小文字へ)を寄せ替えた。差は0000〜0099年と`9999-W53/54`のエラーメッセージだけ(どちらも`RangeError`)。`core/time`の`businessWeekOf`は本体から使われなくなった(設計どおり業務時刻の部品として残す)。
 - 1.3: match-engineの時間帯を`MATCH_SCHEDULE`・`MatchSchedule`・`matchWindow(date)`(`core/match/match-model.ts`)に改名した(23ファイル、設計の一覧と一致)。ブラケットの予定(3.2・2.5)はこの名前を使う。eventのメールのテンプレートのReactコンポーネント`MatchSchedule`と同名だが別モジュール。
 - 1.4: テーブルは`apps/db/schema/tournament/`(`tournamentBrackets`・`bracketParticipants`・`bracketMatches`・`weekTournaments`・`weekTournamentEntries`)、マイグレーションは`20261116171705_tournament_week`。`bracket_matches`の主キーは`match_id`(matchesへの外部キー無し)。`bracket_participants.owner_user_id`・`week_tournament_entries.owner_user_id`は`users`への外部キー(ON DELETE無し)のため、物理削除の紐付けの解除(4.3の`unlinkOrDeleteByProduct`・3.1の`unlinkProduct`)は`owner_user_id`も必ずnullにし、テストで確かめること(忘れると利用者の物理削除が外部キー違反で失敗する)。既定値は`refund_status`・`refund_notice_status`の`'none'`だけ。D1での制約の確認は`apps/db/tournament-week-schema.worker.test.ts`(apiの`bun run test:worker -- db/`)。
+- 1.5(差し戻し1回): サービス仕様の5文書に決定を書いた(返金ポリシーは2行が仮3と一致し不変)。画面・メール・追記の文言は`design/003-text-and-copy-rules.md`の行をそのまま使う。設計との相違: Ultrasの結果通知の追記の「組み合わせは<決済期限の日時(UTC)>に決定します。」は設計の誤記として文言規則で「<組み合わせ決定の日時(UTC)>」(月曜日23:45)にした。5.4はこちらに従う。コードとの相違: `product_locked`は汎用の文言のまま(Weekの固定の文言は画面の理由として出す)、`checkout_closed`はpaymentsの「決済の受付は終了しました。」のため参加費の導線(7.7)が「Weekトーナメントの参加受付は終了しました。」に置き換える。除外・喪失の状態文の返金の一文は、決済していない(Ultrasの)枠では省く。設計に無くモックアップ等から決めた文言(ブラケットのページの見出し・状態・タブ名、決勝の区画の「Week Final」、取得エラー4つ、返金の知らせの本文など)は文言規則に載せた。
