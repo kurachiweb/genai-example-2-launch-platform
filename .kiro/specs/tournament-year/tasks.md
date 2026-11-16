@@ -276,7 +276,7 @@
 - [ ] 6. 利用者側の画面
 - [ ] 6.1 本specの利用者側のGraphQLの操作を加え、型を生成して許可リストを再生成する
   - トップページの区画・ブラケット・参加費の導線の照会と決済の開始の操作を、clientの`src/graphql/operations/year-tournament/`に1ファイル1操作の`.graphql`で書く。操作名は`Client`で始め(`ClientYearTournamentBoard`・`ClientYearBracket`・`ClientMyYearEntry`・`ClientStartYearTournamentCheckout`)、`graphql()`を呼ばない
-  - `ClientYearBracket`は、tournament-weekが`.graphql`に置くフラグメント`BracketRoundFields`(`rounds`)と`BracketMatchProductFields`(`champion`)を名前で展開し、`tournament`の`awarded`・`status`・`year`・`finalDate`と`participantCount`・`seedCount`を取得し、フラグメントを再定義しない(tournament-weekのタスク7.1、1.1の前提に含む)
+  - `ClientYearBracket`は、tournament-weekがclientの`src/graphql/fragments/bracket/`の`.graphql`に置くフラグメント`BracketRoundFields`(`rounds`)と`BracketMatchProductFields`(`champion`)を名前で展開し、`tournament`の`awarded`・`status`・`year`・`finalDate`と`participantCount`・`seedCount`を取得し、フラグメントを再定義しない(tournament-weekのタスク7.1、1.1の前提に含む)
   - frontend-platformの「操作の追加手順」どおり、clientで`bun run graphql:generate`、apiで`bun run graphql:allowlist`を実行する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない
   - 完了状態: 型の生成と許可リストの再生成が成功し、clientとapiの`graphql:check`とclientの`codegen.unit.test.ts`(操作名の接頭辞)が通り、clientの型検査が通る
   - _Depends: 5.11, 5.12_

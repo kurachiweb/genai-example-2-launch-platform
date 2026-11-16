@@ -306,3 +306,9 @@
 
 - ultras-subscriptionの実装前のギャップ分析への開発者の決定で、管理画面の設定ページの区画の登録口`ADMIN_SETTINGS_SECTIONS`の形が、adminの前例に合わせて`id`(`'<spec名>.<名詞句>'`。`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例)・`order`・`title`(区画の見出し。`CATEGORY_SECTIONS`の前例)・`component`になった。ページは区画ごとにfrontend-libへ移した`RecoverableSlot`で包み、1つの区画の描画や取得の失敗をその区画の位置に留め、読み込み中と失敗の間は`title`の見出しを補う。
 - 本specの登録に、部品が描く見出しと同じ文言の`title`を加えた(design.mdの登録の行、tasks.mdの登録のタスク)。要件と受け入れ基準は変えていない。タスクの番号は変えていない。
+
+## 上流のtournament-weekのフラグメントの置き場所の改訂の反映(2026-11-16)
+
+- tournament-weekの実装前のギャップ分析への開発者の決定(tournament-weekのG3)で、clientの`codegen.unit.test.ts`が`src/graphql/operations/`の各ファイルに操作を1つだけ求めるため、フラグメントだけのファイルを`src/graphql/fragments/`へ置くことになった。Yearと共用する`BracketRoundFields`・`BracketMatchProductFields`はclientの`src/graphql/fragments/bracket/`に置く。フラグメントの名前・選択・生成される型の名前は変わらない。
+- 本specのdesign.mdのAllowed Dependenciesと「上流への影響」の表、tasks.mdの`ClientYearBracket`のタスクの、フラグメントの置き場所の記述を改めた。要件と受け入れ基準は変えていない。
+- 申し送り: tournament-weekのG2(週の表記とラウンド名を共用部品へ一本化する)で、`weekLabel`が参照する`formatWeekPeriodLabel`などの関数の名前が変わり得る。tournament-weekの設計の改訂で名前が確定した後に、本specの文書を合わせる。
