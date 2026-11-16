@@ -2,7 +2,7 @@ import type { RateLimiter } from '../env/frontend-env.ts';
 import { hashRateLimitKey } from './rate-limit-key-hash.ts';
 
 export const IP_RATE_LIMIT = Object.freeze({
-  limit: 100,
+  limit: 500,
   periodSeconds: 10,
   keyPrefix: 'ip:',
   unknownClient: 'unknown',

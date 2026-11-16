@@ -353,7 +353,7 @@ Playwrightを更新するときに同期すべき4箇所(「[同期すべき4箇
 - R2の管轄と公開URLの設定は、構成検査(`bun run --cwd /workspace delivery contract-check`)と各アプリの`test/config/wrangler-config.unit.test.ts`(api・eventは`apps/api`のテスト)が確かめる。
 - `namespace_id`は全Worker・全環境で重複させない。4アプリ12個の値が互いに異なることは`apps/admin/test/config/wrangler-config.unit.test.ts`が確かめる。
 - `apps/client`・`apps/admin`の`API`の`service`は、`apps/api`の同じ環境のWorker名である。`services`・`ratelimits`はWrangler設定の`env`へ継承されないため、ルートと`env.staging`・`env.prod`のそれぞれに書く。
-- `IP_RATE_LIMITER`の上限は、全Worker・全環境で送信元IPアドレスごとに10秒あたり100回(`simple: { limit: 100, period: 10 }`)である。
+- `IP_RATE_LIMITER`の上限は、全Worker・全環境で送信元IPアドレスごとに10秒あたり500回(`simple: { limit: 500, period: 10 }`)である。
 - IP制限の除外規則(「[除外規則](../GUIDES/tech/backend/003-rate-limiting-and-bot-verification.md#除外規則)」)を持つのは`apps/api`・`apps/event`のうち`apps/event`だけで、画像配信のホスト名への画像の要求と、StripeのWebhookの`POST /webhooks/stripe`と、メールソフトのワンクリックの配信停止の`POST /unsubscribe`を除外する(`apps/event/src/composition/rate-limit-exclusions.ts`)。除外はパスの区切りで前方一致を判定するため、`POST /unsubscribe/…`も除外され、登録の無い経路として404になる。
 - メールイベント用Queueは`apps/event`だけがconsumerを持ち、`max_retries`とデッドレターは本体Queueと同じ値にする。デプロイ先のメールイベント用Queueと送信ドメインの登録(送信内容のプレビューの無効化を含む)はIaC定義が資源一覧から作り、配信不能イベントの購読はデプロイのパイプラインがデプロイのたびに確かめて無ければ作る。管理画面では作らない(「[購読とQueueの作成](../GUIDES/tech/external/001-email-sending.md#購読とqueueの作成)」「[送信ドメインの登録](../GUIDES/tech/external/001-email-sending.md#送信ドメインの登録)」)。
 

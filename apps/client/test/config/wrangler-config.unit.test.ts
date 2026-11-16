@@ -239,12 +239,12 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     ]);
   });
 
-  test('IP制限は10秒あたり100回で、利用者側の環境ごとの名前空間を使う', () => {
+  test('IP制限は10秒あたり500回で、利用者側の環境ごとの名前空間を使う', () => {
     expect(config.ratelimits).toStrictEqual([
       {
         name: 'IP_RATE_LIMITER',
         namespace_id: env.rateLimitNamespaceId,
-        simple: { limit: 100, period: 10 },
+        simple: { limit: 500, period: 10 },
       },
     ]);
   });

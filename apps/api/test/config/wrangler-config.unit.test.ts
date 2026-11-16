@@ -459,13 +459,13 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     expect(consumer?.dead_letter_queue).toBeUndefined();
   });
 
-  test('IP制限は10秒あたり100回で、Workerごとの名前空間を使う', () => {
+  test('IP制限は10秒あたり500回で、Workerごとの名前空間を使う', () => {
     for (const app of APP_NAMES) {
       const config = app === 'api' ? api : event;
       expect(findRateLimiter(config)).toEqual({
         name: 'IP_RATE_LIMITER',
         namespace_id: env.rateLimitNamespaceIds[app],
-        simple: { limit: 100, period: 10 },
+        simple: { limit: 500, period: 10 },
       });
     }
   });
