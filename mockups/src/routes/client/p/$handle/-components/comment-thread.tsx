@@ -145,7 +145,7 @@ export function CommentThread({ launchNumber, initial, defaultOpen }: Props) {
             <ul aria-label="読み込み中" className="space-y-4">
               {[0, 1].map((i) => (
                 <li key={i} className="flex gap-3">
-                  <Skeleton className="size-9 rounded-full" />
+                  <Skeleton className="size-8 rounded-full" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-3 w-32" />
                     <Skeleton className="h-3 w-full" />

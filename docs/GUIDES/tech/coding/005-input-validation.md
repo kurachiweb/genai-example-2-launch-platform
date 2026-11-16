@@ -82,9 +82,10 @@ const displayName = z
 
 ## 採番したIDの検証
 
-サーバーが採番したID(ULID)を引数・カーソル・メッセージの本文で受け取る時は、採番の表記(大文字のCrockford Base32の26文字)だけを通す共用の規則で検証する。Zodの`z.ulid()`やULIDのライブラリの判定は小文字も通し、手書きの`/^[0-9A-Z]{26}$/`はCrockford Base32に無いI・L・O・Uも通すため、各所で書くと通す値が食い違う。
+サーバーが採番したID(ULID)を引数・カーソル・メッセージの本文で受け取り、その形式を確かめる時は、採番の表記(大文字のCrockford Base32の26文字)だけを通す共用の規則で検証する。Zodの`z.ulid()`やULIDのライブラリの判定は小文字も通し、手書きの`/^[0-9A-Z]{26}$/`はCrockford Base32に無いI・L・O・Uも通すため、各所で書くと通す値が食い違う。
 
-- 規則は`<共通ライブラリの配置先>/core/ids/uppercase-ulid.ts`に置く。全体を照合する正規表現`UPPERCASE_ULID_PATTERN`、判定の関数`isUppercaseUlid`、複合の正規表現に組み込む断片`UPPERCASE_ULID_SOURCE`を持つ。
+- 引数のIDのうち、存在の照合にだけ使い一致しない値を見つからないとして扱うものは、「[サーバーの検証を正とする](#サーバーの検証を正とする)」の形式に意味の無い値と同じに、26文字の長さだけを確かめてよい。どちらにするかは引数ごとに決め、長さだけにする所はその理由をコメントに書く。
+- 規則は`<共通ライブラリの配置先>/core/ids/uppercase-ulid.ts`に置く。全体を照合する正規表現`UPPERCASE_ULID_PATTERN`、判定の関数`isUppercaseUlid`、複合の正規表現に組み込む断片`UPPERCASE_ULID_SOURCE`を持つ。正規表現は文字の種類と長さだけを確かめ、先頭の文字が0〜7であること(ULIDの時刻の上限)は確かめない。採番した値は常にこの範囲に収まるため、範囲の外の値は見つからない値として扱われる。Zodの`z.ulid()`は先頭の文字の範囲も確かめる。
 - Zodのスキーマでは`z.ulid().regex(UPPERCASE_ULID_PATTERN)`と書く。欄の詳細を返す引数の検証では`z.ulid({ error: message, abort: true }).regex(UPPERCASE_ULID_PATTERN, message)`とし、ULIDの形式の違反で大文字の検査を止めて、欄ごとの詳細を1件にする。
 - 日時などとIDを1つの文字列に詰めるカーソルは、断片から組み立て、文字の並びを書き写さない。
 
