@@ -9,6 +9,7 @@ import { ENGAGEMENT_PLATFORM_MODULE } from '../../lib/workers/engagement/engagem
 import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-platform-module.ts';
 import { PRODUCT_PLATFORM_MODULE } from '../../lib/workers/product/product-platform-module.ts';
 import { PROFILE_PLATFORM_MODULE } from '../../lib/workers/profile/profile-platform-module.ts';
+import { TOURNAMENT_PLATFORM_MODULE } from '../../lib/workers/tournament/tournament-platform-module.ts';
 import { createImageGatewayModule } from '../presentation/media/image-gateway-module.ts';
 import { EVENT_DIRECTORY_MODULE } from './directory-module.ts';
 import { EVENT_EMAIL_MODULE } from './email-module.ts';
@@ -59,6 +60,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     PRODUCT_PLATFORM_MODULE,
     EVENT_MATCH_PLATFORM_MODULE,
     EVENT_MATCH_MODULE,
+    TOURNAMENT_PLATFORM_MODULE,
     DIRECTORY_PLATFORM_MODULE,
     EVENT_DIRECTORY_MODULE,
     EVENT_NOTIFICATIONS_PLATFORM_MODULE,
