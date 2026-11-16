@@ -468,3 +468,29 @@
 
 - tournament-year: G3のフラグメントの置き場所を、本決定と同時にtournament-yearのdesign.md・tasks.mdへ反映した。G2で週の表記の関数の名前(tournament-yearの`weekLabel`が参照する`formatWeekPeriodLabel`)とラウンド名の関数の名前が変わり得るため、本specの設計の改訂で名前が確定した後に、tournament-yearの文書を合わせる。
 - data-export: `WeekAwardExport.listForLaunches`の契約は変えない。
+
+## 設計の改訂(2026-11-16、`/kiro-spec-design tournament-week`)
+
+- **発見の種別**: Extension(light discovery)。上流は実装済みで、契約の照合は「実装前のギャップ分析」で済んでいるため、改訂に必要な既存のコード(notificationsの`notice-copy.ts`・`notification-event-contract.ts`、clientの`match-labels.ts`、match-engineの`match-model.ts`と`QUALIFIER_SCHEDULE`の参照の20ファイル、email-deliveryの種別とテンプレートの置き場所、ultras-subscriptionの`ultras-registrations.ts`、match-engineの`MatchIncidentReporter`、clientの`codegen.unit.test.ts`と区画の並びのテスト、命名規則の文書)だけを読み直した。外部の依存の調査は不要(新しいパッケージ・APIなし)。
+- **参照したスキルと規則**: cc-sddの`kiro-spec-design`の規則(design-principles・design-discovery-light・design-synthesis・design-review-gate)、CLAUDE.mdの技術規則の参照先([共通化の対象](../../../docs/GUIDES/tech/frontend/005-shared-components.md#共通化の対象)の考え方による週とラウンド名の一本化、[別の共有ディレクトリの参照](../../../docs/GUIDES/tech/coding/003-shared-directories.md#別の共有ディレクトリの参照)、[依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析)、[命名規則](../../../docs/GUIDES/tech/db/001-drizzle-migrations-on-d1.md#命名規則))。
+- **統合(synthesis)**:
+  - 一般化: 週とラウンド名の規則を`common-lib/tournament`の1か所に置き(G2)、`stageForSlotCount`と`roundLabel`の2段に分けた。保存した段階から名前を作る既存の用途(通知文・`MatchCard`の印)と、残り参加数から段階を導く本specの用途(未来のラウンドの表示・`roundStage`)が同じ部品を使う。公開の名前(`formatWeekPeriodLabel`・`tournamentRoundName`など)は変えず、tournament-yearの参照は変わらない。
+  - 一般化: マッチの時間帯はmatch-engineの`MATCH_SCHEDULE`・`matchWindow`(G5で改名)を全種別で使い、`core/tournament`に時間帯を持たない。
+  - 簡素化: 通知イベントの違反は発行の前に照会せず、拒否の`eventIndex`を除いて発行し直す(G1)。
+  - 既存の型に合わせる: 返金の依頼の拒否を`refundRejectionOutcome`で5つから3つの終わり方(`not_needed`・`already_refunded`・`rejected`)へ写す純粋な規則にし(G4)、枠の`refund_status`に2値を足した。
+  - 既存の規約に合わせる: メール種別とテンプレートのドメインごとの置き場所(C-1)、購入種別の登録の定数(C-2)、apiのジョブの失敗の通知のポート(C-3)、不戦勝の分類の`placementOf`の再利用(S-5)。
+- **設計への反映**: Overview(Impact・Goals)、Boundary Commitments(週とラウンド名の所有、メール種別の置き場所、Allowed Dependenciesの現在の契約の形、Revalidation Triggers)、上流への影響(G2・G5の寄せ替え、空の登録口を前提にした上流のテストの書き換え、`ByeCard`の実装済み)、Existing Architecture Analysis、File Structure Plan(フラグメントの置き場所、メールのテンプレートのディレクトリ、登録の定数、通知のポートとSentryの実装、Modified FilesのG2・G5・B-5)、common-lib・RoundSchedule・WeekEntryRules・メール種別の契約、`BracketProgression.advance`・`publishRound`・`describe`・`summarize`・`WeekBoardReader`・`WeekEntryFollowUp.process`・ジョブの表・マッチイベントの処理の表・GraphQLのエラーの表・clientの節、エラーの分類・Monitoring・Testing Strategy・追跡表の4.7と6.1。
+- **レビューゲート**: 機械的な検査で、要件の116件の受け入れ基準がすべて追跡表にあること、境界の4節とファイル構成が空でないこと、新しい部品(`WeekTournamentIncidentReporter`・`WeekTournamentRegistrations`・`TOURNAMENT_WEEK_EMAIL_TEMPLATES`・`refundRejectionOutcome`・`stageForSlotCount`・`roundLabel`)がファイル構成にあること、古い名前(`tournamentMatchWindow`・`TOURNAMENT_MATCH_HOURS`・`TOURNAMENT_WEEK_ENTRY_REFUND_EMAIL`・`bad_user_input`・`operations/`のフラグメント)が残っていないことを確かめた。判断のレビューで見つけた漏れ(追跡表の4.7・6.1の部品、email-deliveryの`AnyEmailKind`)を直し、2回目で問題は無かった。
+- **残る作業**: 設計の承認の後に`/kiro-spec-tasks tournament-week`でタスクを作り直す(G2・G5の寄せ替え、上流のテストの書き換え、`WeekTournamentIncidentReporter`、`refundRejectionOutcome`のタスクと、1.1のsandboxの記述を、devとstagingが共用するsandboxでの1回の作成に改める)。G2で公開の名前を変えなかったため、tournament-yearの文書の関数名の追従は不要になった。
+
+## タスクの計画の再生成(2026-11-16、`/kiro-spec-tasks tournament-week`、承認待ち)
+
+- 開発者が改訂した設計を承認し(`approvals.design.approved`)、既存の`tasks.md`(56のサブタスク)を引き継ぐ形でタスクを作り直した。下書きは59のサブタスクで、G2の共用の規則(1.1)・寄せ替え(1.2)・G5の改名(1.3)・ジョブの失敗の通知のSentryの実装(6.2)を加え、以降の番号と`_Depends:_`を振り直した。要件の116件の受け入れ基準がすべてタスクにあり、依存が前のタスクだけを指し、全てのサブタスクに完了状態があることを機械的に確かめた。
+- タスクのグラフのサニティレビュー(新しいサブエージェントによる独立した確認、上限2回):
+  - 1回目はNEEDS_FIXES(必須3件)。(1)空の登録口や登録の一覧の完全一致を前提にした上流のテストが設計のB-5の4件の他にも多数あり(eventのマッチ・プロダクト・engagement・directory-discoveryなどのモジュールのWorkers統合テスト、apiの判定の供給元の単体テストと4:21のジョブの一覧、clientの区画の登録口のテスト)、担当のタスクが無かった。5.5・6.10・7.2・7.3・7.6・7.8に、登録の前に上流のテストを検索で洗い出して書き換える手順を加えた。(2)G5の改名の参照にE2Eの2ファイルが漏れていた(22ファイルへ)。(3)6.12の後にapiのスキーマの生成が無かった。軽微の指摘(2.5・4.8の`_Depends:_`、`splitBoardRound`の単体テスト、6.2の要件、(P)の理由の書き方、1.5の返金ポリシー)にも従った。設計のModified Filesと上流への影響の表を、確かめた事実(B-5の一覧、G5の22ファイル、directory-discoveryの区画の登録口のブラウザテスト)に合わせて直した。
+  - 2回目もNEEDS_FIXES(必須1件)。1回目の3件の修正は確認された。必須の指摘は、1.3の完了状態「旧い名前の参照が`git grep`で0件」が承認済みのspecの記録(`.kiro/`)にも旧い名前があるため満たせないことだった。
+- kiro-spec-tasksの規則(2回目の判定がPASSでなければ、`tasks.md`を書かず承認もせずに止める)に従い、`tasks.md`は書き換えていない(旧い56のサブタスクのまま)。2回目の必須の指摘(検索の範囲を`apps/`・`e2e/`・`docs/`に限る)と軽微の指摘(paymentsのモジュールのWorkers統合テストの`withdrawn`の一覧、1.3の型検査の時期、8.3の`_Depends: 5.5_`、返金ポリシーは更新済みで2行の一致を確かめるだけであること)は、下書きと設計(Modified FilesのB-5の一覧と返金ポリシーの行)にだけ反映した。`/kiro-spec-tasks tournament-week`を再実行し、修正済みの下書きのサニティレビューがPASSになれば`tasks.md`を書いて承認できる。
+- **再実行(2026-11-16)**: `/kiro-spec-tasks tournament-week`を、前回の指摘を直した下書きを引き継ぐ形で再実行した。新しいサブエージェントによる独立した確認(independent)を、通常の2回の上限で行った。
+  - 1回目はNEEDS_FIXES(必須3件)。(1)夜の送り出しの前提の登録で落ちる`notifications-module.jobs.worker.test.ts`の担当が無かったため6.10に加え、5.5・6.10の完了状態にeventとapiのWorkers統合テストの全件の実行を加えた(登録口の名前を参照せずに振る舞いで影響を受けるテストは検索で拾えないため)。(2)6.6がapplication層からpresentationの`loadMatchView`を使う形で、6.6・6.8がWorkers統合テスト(apiのWorkers統合テストのカバレッジは`src/application`を数えない)だったため、6.6・6.8を偽物を使う単体テストにし、マッチの表示のまとめた読み取りとD1の確認を6.11のリゾルバとそのWorkers統合テストへ移した(設計の`WeekBoardReader.read`の記述も同じく改めた)。(3)ストアの契約を4.1で全部作ると4.10まで実装が契約を満たさず型検査が通らないため、4.2・4.3・4.11がそれぞれのメソッドを契約と実装の両方へ加える形にした。軽微の指摘(4.6の決済期限の境界、4.4・5.1の照会の呼び出し元、1.3の数え方、3.1・3.4の識別子の解決と束縛の形、4.14のpaymentsのテストの例、clientの取得の補助`src/graphql/week-tournament.ts`の担当を7.1にして設計のファイル構成に加えた、7.2の定期再取得)にも従った。
+  - 2回目はPASSだった(必須の修正なし)。軽微の指摘のうち、7.4・7.6・7.7の`_Depends: 7.1_`と4.13の`_Depends: 4.1_`、凍結済みの週のテストの用意、1.1の文言、8.2の`CLAUDE.md`の編集が拒否された場合の報告、設計のB-5の注記を反映した。`frontend/016`の`CLAUDE.md`の参照先の行と、ブラケットのページで閲覧者ごとの項目を出さないことの明記は、設計の範囲を変えないため加えていない。
+  - `tasks.md`を59のサブタスクで書き、`spec.json`を`tasks-generated`(タスクは開発者の承認待ち)にした。

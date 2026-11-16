@@ -312,3 +312,4 @@
 - tournament-weekの実装前のギャップ分析への開発者の決定(tournament-weekのG3)で、clientの`codegen.unit.test.ts`が`src/graphql/operations/`の各ファイルに操作を1つだけ求めるため、フラグメントだけのファイルを`src/graphql/fragments/`へ置くことになった。Yearと共用する`BracketRoundFields`・`BracketMatchProductFields`はclientの`src/graphql/fragments/bracket/`に置く。フラグメントの名前・選択・生成される型の名前は変わらない。
 - 本specのdesign.mdのAllowed Dependenciesと「上流への影響」の表、tasks.mdの`ClientYearBracket`のタスクの、フラグメントの置き場所の記述を改めた。要件と受け入れ基準は変えていない。
 - 申し送り: tournament-weekのG2(週の表記とラウンド名を共用部品へ一本化する)で、`weekLabel`が参照する`formatWeekPeriodLabel`などの関数の名前が変わり得る。tournament-weekの設計の改訂で名前が確定した後に、本specの文書を合わせる。
+- (解決済み、2026-11-16)tournament-weekの設計の改訂で、週の表記とラウンド名を共用部品へ一本化しても公開の名前(`formatWeekPeriodLabel`・`tournamentRoundName`など)と置き場所(`common-lib/tournament`)は変えないことになった。上の申し送りによる本specの文書の変更は不要である。
