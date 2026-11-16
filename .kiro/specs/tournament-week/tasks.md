@@ -47,7 +47,7 @@
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
   - _Requirements: 5.3, 6.8, 13.1, 15.2_
 
-- [ ] 2.2 抽選番号を振る組み合わせの規則と、Weekの並びの比較を作る
+- [x] 2.2 抽選番号を振る組み合わせの規則と、Weekの並びの比較を作る
   - 先に、単体テストで、Weekトーナメント規則のN = 13の例でシードがA・C・D、非シードの1回戦がE×F・G×H・I×B・J×K・L×Mになること、Upvote数・最終Upvote時間・ローンチの識別子の同順の決まった順、最終Upvote時間が無い(Upvote数0)の枠が同日の末尾になること、同じ入力で同じ番号になること、比較を差し替えると並びが変わること(Yearの再利用)を確かめる
   - 完了状態: 単体テストが成功する
   - _Requirements: 5.4, 5.5, 5.11, 13.2, 13.4, 15.2_
@@ -435,3 +435,4 @@
 - 1.4: テーブルは`apps/db/schema/tournament/`(`tournamentBrackets`・`bracketParticipants`・`bracketMatches`・`weekTournaments`・`weekTournamentEntries`)、マイグレーションは`20261116171705_tournament_week`。`bracket_matches`の主キーは`match_id`(matchesへの外部キー無し)。`bracket_participants.owner_user_id`・`week_tournament_entries.owner_user_id`は`users`への外部キー(ON DELETE無し)のため、物理削除の紐付けの解除(4.3の`unlinkOrDeleteByProduct`・3.1の`unlinkProduct`)は`owner_user_id`も必ずnullにし、テストで確かめること(忘れると利用者の物理削除が外部キー違反で失敗する)。既定値は`refund_status`・`refund_notice_status`の`'none'`だけ。D1での制約の確認は`apps/db/tournament-week-schema.worker.test.ts`(apiの`bun run test:worker -- db/`)。
 - 1.5(差し戻し1回): サービス仕様の5文書に決定を書いた(返金ポリシーは2行が仮3と一致し不変)。画面・メール・追記の文言は`design/003-text-and-copy-rules.md`の行をそのまま使う。設計との相違: Ultrasの結果通知の追記の「組み合わせは<決済期限の日時(UTC)>に決定します。」は設計の誤記として文言規則で「<組み合わせ決定の日時(UTC)>」(月曜日23:45)にした。5.4はこちらに従う。コードとの相違: `product_locked`は汎用の文言のまま(Weekの固定の文言は画面の理由として出す)、`checkout_closed`はpaymentsの「決済の受付は終了しました。」のため参加費の導線(7.7)が「Weekトーナメントの参加受付は終了しました。」に置き換える。除外・喪失の状態文の返金の一文は、決済していない(Ultrasの)枠では省く。設計に無くモックアップ等から決めた文言(ブラケットのページの見出し・状態・タブ名、決勝の区画の「Week Final」、取得エラー4つ、返金の知らせの本文など)は文言規則に載せた。
 - 2.1: `core/tournament/bracket-shape.ts`(`bracketShape`・`roundSlotCount`・`roundStage`・`seedPlacementOrder`)。N≤1はP・S・1回戦・ラウンド数すべて0、参加数は`Number.isSafeInteger`で検査、範囲外のラウンドと2の冪でない配置の長さは`RangeError`。`seedPlacementOrder(shape.secondRoundSize)`はN≤1で例外になるため、2.2〜2.4はN≤1を先に分ける。
+- 2.2: `core/tournament/bracket-draw-rules.ts`の`drawBracket`(比較→`tieBreaker`→`ref`の昇順で並べ、上位Sに1〜S、残りを非シードの比較でS+1〜N。`ref`の重複は`RangeError`。公開の型`DrawOrder<T>`・`BracketDrawResult`)と`core/week-tournament/week-ordering.ts`の`weekSeedOrder`・`weekNonSeedOrder`(`WeekOrderingKey`の`lastUpvoteElapsedMs`は予選の開始からの経過ミリ秒、nullは末尾)。1回戦の組(k番の位置にS+2k−1とS+2k)は2.3の`decideNext`が作る。2.3のテストでN = 13の1回戦の組(E×F・G×H・I×B・J×K・L×M)も`decideNext`の出力で確かめること。4.xの`WeekDrawService`は`tieBreaker`にローンチのID、`ref`に枠のIDを渡す。
