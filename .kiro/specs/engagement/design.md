@@ -246,7 +246,7 @@ apps/
 ├── client/src/
 │   ├── composition/comment-actions.ts               # COMMENT_ACTIONS(初版は空)
 │   ├── components/engagement/                       # 1ファイル1コンポーネント(browser testを併置)
-│   │   ├── comment-action-types.ts                  # CommentAction・CommentActionContext(テストなし)
+│   │   ├── comment-action-types.ts                  # CommentAction・CommentActionContext・CommentActionItemProps・CommentActionDialogProps(テストなし)
 │   │   ├── engagement-viewer.ts                     # 閲覧者の状態の判定(engagementViewerKind、*.unit.test.ts)
 │   │   ├── use-engagement-viewer.ts                 # useViewer()と区画の文脈から閲覧者の状態とIDを返すフック(useEngagementViewer、*.browser.test.tsx)
 │   │   ├── comment-form-schema.ts                   # 投稿欄の検証(Zodの値はlib/utilities/validation/zod.tsのz、*.unit.test.ts)
