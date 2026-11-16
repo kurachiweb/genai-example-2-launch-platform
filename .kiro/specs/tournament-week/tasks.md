@@ -77,7 +77,7 @@
   - _Boundary: WeekEntryRules_
   - _Requirements: 3.6, 3.8, 4.6, 4.7, 7.6_
 
-- [ ] 3. 汎用のブラケットの部品
+- [x] 3. 汎用のブラケットの部品
 - [x] 3.1 ブラケットのストアと、汎用の部品の束縛をapiとeventに組み込む
   - 先に、ローカルD1のWorkers統合テストで、種類と識別子での読み取り、マッチのIDからのブラケットの引き当て(90件を超える入力の分割)、勝ち残りの判定(進行中・未敗退・優勝でない)、参加者の紐付けの解除を確かめる
   - 同じく先に、識別子`TOURNAMENT_PLATFORM_TYPES`が`Symbol.for('tournament.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
@@ -98,7 +98,7 @@
   - 完了状態: Workers統合テストが成功する
   - _Requirements: 6.10, 7.1, 7.2, 7.3, 14.5_
 
-- [ ] 3.4 組み合わせの作成を作る
+- [x] 3.4 組み合わせの作成を作る
   - 先に、Workers統合テストで、候補から参加者の番号を記録し1回戦のマッチを予定すること、参加0・1でマッチを作らず終了すること、参加2で決勝だけを作ること、同じ候補での再実行で記録を重ねず続きから進めることを確かめる
   - 完了状態: Workers統合テストと、3経路で`TOURNAMENT_PLATFORM_TYPES`の全識別子が解決できる検査が成功する
   - _Requirements: 5.3, 5.8, 5.9, 5.10, 13.3_
@@ -443,3 +443,4 @@
 - 3.1: 契約`core/tournament/ports.ts`(名前付きの型`BracketParticipantRecord`・`BracketMatchRecord`・`BracketOfMatch`を追加、`BracketDraw.create`の`order`は`DrawOrder<T>`)、識別子`core/tournament/identifiers.ts`、`workers/tournament/d1-bracket-store.ts`(`BracketRecord.shape`は`bracketShape(participantCount)`で再計算、読み取りは1回の`db.batch()`、90件ずつ分割)、定数のモジュール`TOURNAMENT_PLATFORM_MODULE`(api・eventのmatchの束縛の直後)。3.2〜3.4は`tournament-platform-module.ts`に束縛を追記し、3つの解決の検査(`workers/tournament/tournament-platform-module.worker.test.ts`、api・eventの`src/composition/tournament-platform.worker.test.ts`)を広げる。テストの補助は`workers/tournament/testing/bracket-fixtures.ts`(`clearBracketTables`はmatch・product・identityのテーブルも消す)。
 - 3.2: `workers/tournament/d1-bracket-progression.ts`(コンストラクタは`(db, IdGenerator, BracketStore, MatchDirectory, MatchScheduler)`で設計の`(db, scheduler)`と違う。束縛はmatch-platformの束縛が同じコンテナにある前提)。勝者は`isWinningResult`(`won`・`bye`・`walkover`)、勝者なしは両者に敗退を記録。位置は一意索引と`onConflictDoNothing()`で挿入し`planned`の行を読み直して50件ずつ`MatchScheduler.schedule`。`participant1_no`・`participant2_no`は番号の昇順。`core/tournament/round-schedule.ts`の`nextBusinessDate`を公開(8.2の文書)。戻り値: 最後のラウンドに確定が1件も無ければ予定の直後と同じ`scheduled`(同じ`previewMatchIds`)を何度でも返し、一部確定なら`waiting`(確定したID)を返す。4.7・4.10・5.1は同じ予告を何度受け取っても冪等であること。3.3で置き換える所: `finish`の決定と紐付けを解除した参加者の側で例外を投げている2か所、遅れの`warn`と`captureEvent`、0:00を過ぎた`planned`の再開での実施日の繰り下げ。1回戦の`late`は`first_round_date`との比較(3.4が記録する値で決まる)。
 - 3.3(差し戻し1回): 束縛は定数から`createTournamentPlatformModule(appName)`に変えた(遅れのログのカテゴリ`[appName, 'tournament', 'progression']`に要る。3.1の「定数のモジュール」と設計の`TOURNAMENT_PLATFORM_MODULE`は文書の直しが要る、8.2)。`D1BracketProgression`はデコレータ無しで`(db, ids, store, directory, scheduler, appName)`を束縛で組み立てる。純粋な計画は`workers/tournament/bracket-progress-plan.ts`(`planNext`・`finishPlan`・`isFinalWinner`)。親の決定: 決勝のマッチで確定した勝者は後で紐付けを解除しても`champion`(受賞の照会が除く)、それ以外で終了の候補が紐付けを解除済みなら`no_award`にしその参加者を次のラウンドの敗退にする。遅れは`created`のマッチだけ`warn`と`captureEvent`(`level: 'warning'`、`fingerprint: ['tournament','round-late']`、タグ`tournament_incident: 'round-late'`・`bracket_id`、設計のタグ`job`は付けない)。`skipped`のマッチは`findMatches`で読み戻し日付をそろえる。終了の前に残った`planned`の行は片付ける。1回戦を飛ばしたとき2回戦は`firstRoundDate`の日。4.xの呼び出し元は`dailyRoundPolicy(..., now)`を呼び出しのたびに作り直すこと。8.2は`round-late`とログのカテゴリを`project-values.md`へ。
+- 3.4: `workers/tournament/d1-bracket-draw.ts`の`D1BracketDraw(db, progression)`。ブラケットを一意索引で挿入しIDを読み直し、参加者を1行1文・50文ずつ`onConflictDoNothing()`で挿入(設計の「90件ずつ」は同じ節の「50件ずつ」に合わせた)、1回戦は`advance`に任せる。参加1以下は`first_round_date`がnull。既存のブラケットにも毎回参加者を挿入して補完する。候補が前回と違う場合の照合は無い(凍結で候補が変わらない前提)。`planNext`は参加者の行の欠落を紐付けの解除と区別できないため、4.11・4.12は凍結後の同じ候補で`create`を呼ぶこと。公開の型`BracketDrawInput<T>`(8.2)。4.12は`create`に`dailyRoundPolicy(weekFirstRoundDate(weekStart), now)`を呼び出しのたびに作って渡し、`week_tournaments.bracket_id`の記録は4.xが行う。

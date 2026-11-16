@@ -5,10 +5,12 @@ import { beforeEach, describe, expect, test } from 'vitest';
 
 import { TOURNAMENT_PLATFORM_TYPES } from '../../lib/core/tournament/identifiers.ts';
 import type {
+  BracketDraw,
   BracketProgression,
   BracketStore,
 } from '../../lib/core/tournament/ports.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { D1BracketDraw } from '../../lib/workers/tournament/d1-bracket-draw.ts';
 import { D1BracketProgression } from '../../lib/workers/tournament/d1-bracket-progression.ts';
 import { D1BracketStore } from '../../lib/workers/tournament/d1-bracket-store.ts';
 import {
@@ -72,4 +74,17 @@ describe('APIサーバーのトーナメントの共通の束縛', () => {
       ),
     ).toBeInstanceOf(D1BracketProgression);
   });
+
+  test('処理単位のコンテナから組み合わせの作成をD1の実装に解決する', () => {
+    expect(
+      createContainer().get<BracketDraw>(TOURNAMENT_PLATFORM_TYPES.BracketDraw),
+    ).toBeInstanceOf(D1BracketDraw);
+  });
+
+  test.each(Object.entries(TOURNAMENT_PLATFORM_TYPES))(
+    '処理単位のコンテナからTOURNAMENT_PLATFORM_TYPESの%sを解決できる',
+    (_, identifier) => {
+      expect(createContainer().get(identifier)).toBeDefined();
+    },
+  );
 });

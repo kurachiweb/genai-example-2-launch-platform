@@ -8,10 +8,12 @@ import { MATCH_PLATFORM_TYPES } from '../../core/match/identifiers.ts';
 import type { MatchDirectory, MatchScheduler } from '../../core/match/ports.ts';
 import { TOURNAMENT_PLATFORM_TYPES } from '../../core/tournament/identifiers.ts';
 import type {
+  BracketDraw,
   BracketProgression,
   BracketStore,
 } from '../../core/tournament/ports.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
+import { D1BracketDraw } from './d1-bracket-draw.ts';
 import { D1BracketProgression } from './d1-bracket-progression.ts';
 import { D1BracketStore } from './d1-bracket-store.ts';
 
@@ -37,6 +39,9 @@ export function createTournamentPlatformModule(
               appName,
             ),
         )
+        .inSingletonScope();
+      bind<BracketDraw>(TOURNAMENT_PLATFORM_TYPES.BracketDraw)
+        .to(D1BracketDraw)
         .inSingletonScope();
     }),
   };

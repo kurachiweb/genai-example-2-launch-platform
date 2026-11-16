@@ -101,16 +101,18 @@ export interface BracketDrawCandidate<T> extends DrawCandidate<T> {
   readonly participant: BracketParticipantInput;
 }
 
+export interface BracketDrawInput<T> {
+  readonly kind: BracketKind;
+  readonly tournamentId: string;
+  readonly candidates: readonly BracketDrawCandidate<T>[];
+  readonly order: DrawOrder<T>;
+  readonly policy: RoundSchedulePolicy;
+  readonly now: Date;
+}
+
 export interface BracketDraw {
   // 既にあれば記録を再利用して進行だけ行う
-  create<T>(input: {
-    readonly kind: BracketKind;
-    readonly tournamentId: string;
-    readonly candidates: readonly BracketDrawCandidate<T>[];
-    readonly order: DrawOrder<T>;
-    readonly policy: RoundSchedulePolicy;
-    readonly now: Date;
-  }): Promise<AdvanceResult>;
+  create<T>(input: BracketDrawInput<T>): Promise<AdvanceResult>;
 }
 
 export interface BracketProgression {

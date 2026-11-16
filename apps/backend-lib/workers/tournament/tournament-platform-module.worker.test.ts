@@ -10,6 +10,7 @@ import type { AppModule } from '../../core/di/app-module.ts';
 import type { InvocationScopeInfo } from '../../core/di/identifiers.ts';
 import { TOURNAMENT_PLATFORM_TYPES } from '../../core/tournament/identifiers.ts';
 import type {
+  BracketDraw,
   BracketProgression,
   BracketStore,
 } from '../../core/tournament/ports.ts';
@@ -20,6 +21,7 @@ import type { PlatformHonoEnv } from '../http/hono-env.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
 import { createMatchPlatformModule } from '../match/match-platform-module.ts';
 import { db } from '../product/testing/product-fixtures.ts';
+import { D1BracketDraw } from './d1-bracket-draw.ts';
 import { D1BracketProgression } from './d1-bracket-progression.ts';
 import { D1BracketStore } from './d1-bracket-store.ts';
 import {
@@ -156,8 +158,33 @@ describe('createTournamentPlatformModule', () => {
     });
   });
 
+  test('組み合わせの作成を進行と組んだD1の実装に解決し、記録済みのブラケットは記録を再利用して進行だけを行う', async () => {
+    const draw = createContainer().get<BracketDraw>(
+      TOURNAMENT_PLATFORM_TYPES.BracketDraw,
+    );
+
+    expect(draw).toBeInstanceOf(D1BracketDraw);
+    await expect(
+      draw.create({
+        kind: 'week',
+        tournamentId: SAMPLE_TOURNAMENT_ID,
+        candidates: [],
+        order: { seed: () => 0, nonSeed: () => 0 },
+        policy: dailyRoundPolicy(FIRST_ROUND_DATE, PROGRESSED_AT),
+        now: PROGRESSED_AT,
+      }),
+    ).resolves.toEqual({
+      kind: 'scheduled',
+      bracketId: SAMPLE_BRACKET_ID,
+      round: 1,
+      late: false,
+      decidedMatchIds: [],
+      previewMatchIds: [SAMPLE_MATCH_ID],
+    });
+  });
+
   test.each(['fetch', 'queue', 'scheduled'] as const)(
-    '%sの処理単位でもブラケットのストアと進行を解決する',
+    '%sの処理単位でもTOURNAMENT_PLATFORM_TYPESの全ての識別子を解決する',
     (kind) => {
       const container = createContainer(kind);
 
@@ -167,13 +194,13 @@ describe('createTournamentPlatformModule', () => {
       expect(
         container.get(TOURNAMENT_PLATFORM_TYPES.BracketProgression),
       ).toBeInstanceOf(D1BracketProgression);
+      expect(
+        container.get(TOURNAMENT_PLATFORM_TYPES.BracketDraw),
+      ).toBeInstanceOf(D1BracketDraw);
     },
   );
 
-  test.each([
-    TOURNAMENT_PLATFORM_TYPES.BracketStore,
-    TOURNAMENT_PLATFORM_TYPES.BracketProgression,
-  ])(
+  test.each(Object.values(TOURNAMENT_PLATFORM_TYPES))(
     '%sは処理単位の中では同じインスタンスを返し、別の処理単位では別のインスタンスを返す',
     (identifier) => {
       const first = createContainer();
