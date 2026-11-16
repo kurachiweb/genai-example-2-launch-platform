@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 共用の規則・上流の寄せ替え・テーブル・サービス仕様
+- [x] 1. 基盤: 共用の規則・上流の寄せ替え・テーブル・サービス仕様
 - [x] 1.1 週の識別と表記、段階とラウンド名を、api・event・clientとbackend-libが読み込める唯一の共用の規則として作る
   - 前提: 上流のspec(match-engine・payments・ultras-subscription・notifications・product-launch・directory-discovery・identity-auth・email-delivery・frontend-platform・backend-platform・api-gateway・admin-foundation)の実装が済んでいること(2026-11-16に設計の上流の契約を現在のコードと照合済み。match-engineの`ByeCard`の`match.kind`による文言の切り替え(match-engineの仮7)とbackend-platformの改訂2の`e2e/support/scheduled-trigger.ts`も実装済み)。設計のAllowed Dependenciesの部品が無ければ該当するタスクを保留して開発者へ報告する
   - 開発者が行う作業(devとstagingが共用するStripeのsandboxでの、`lookup_key`が`week_tournament_entry`の価格(参考$5、税込)の1回の作成。prodはlaunch-readinessが行う)を、この最初のタスクで報告する(8.4のE2Eの前提。4.14・6.12はStripeの模擬応答を使う)
@@ -42,7 +42,7 @@
   - _Requirements: 15.6_
 
 - [ ] 2. ブラケットとWeekの純粋な規則
-- [ ] 2.1 ブラケットの形(シード数・ラウンド数・各ラウンドの残り参加数・段階)とシードの配置の列を作る
+- [x] 2.1 ブラケットの形(シード数・ラウンド数・各ラウンドの残り参加数・段階)とシードの配置の列を作る
   - 先に、単体テストで、Nが0・1・2・3・5・6・7・8・13・100・128・129・200のP・S・1回戦のマッチ数・ラウンド数がWeekトーナメント規則の表と一致すること、配置の列(2・4・8・16)、段階が1.1の残り参加数からの段階の規則で残り8・4・2で準々決勝・準決勝・決勝になりmatch-engineの段階の型と値が一致すること、負・非整数の参加数で例外になることを確かめる
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
   - _Requirements: 5.3, 6.8, 13.1, 15.2_
@@ -434,3 +434,4 @@
 - 1.3: match-engineの時間帯を`MATCH_SCHEDULE`・`MatchSchedule`・`matchWindow(date)`(`core/match/match-model.ts`)に改名した(23ファイル、設計の一覧と一致)。ブラケットの予定(3.2・2.5)はこの名前を使う。eventのメールのテンプレートのReactコンポーネント`MatchSchedule`と同名だが別モジュール。
 - 1.4: テーブルは`apps/db/schema/tournament/`(`tournamentBrackets`・`bracketParticipants`・`bracketMatches`・`weekTournaments`・`weekTournamentEntries`)、マイグレーションは`20261116171705_tournament_week`。`bracket_matches`の主キーは`match_id`(matchesへの外部キー無し)。`bracket_participants.owner_user_id`・`week_tournament_entries.owner_user_id`は`users`への外部キー(ON DELETE無し)のため、物理削除の紐付けの解除(4.3の`unlinkOrDeleteByProduct`・3.1の`unlinkProduct`)は`owner_user_id`も必ずnullにし、テストで確かめること(忘れると利用者の物理削除が外部キー違反で失敗する)。既定値は`refund_status`・`refund_notice_status`の`'none'`だけ。D1での制約の確認は`apps/db/tournament-week-schema.worker.test.ts`(apiの`bun run test:worker -- db/`)。
 - 1.5(差し戻し1回): サービス仕様の5文書に決定を書いた(返金ポリシーは2行が仮3と一致し不変)。画面・メール・追記の文言は`design/003-text-and-copy-rules.md`の行をそのまま使う。設計との相違: Ultrasの結果通知の追記の「組み合わせは<決済期限の日時(UTC)>に決定します。」は設計の誤記として文言規則で「<組み合わせ決定の日時(UTC)>」(月曜日23:45)にした。5.4はこちらに従う。コードとの相違: `product_locked`は汎用の文言のまま(Weekの固定の文言は画面の理由として出す)、`checkout_closed`はpaymentsの「決済の受付は終了しました。」のため参加費の導線(7.7)が「Weekトーナメントの参加受付は終了しました。」に置き換える。除外・喪失の状態文の返金の一文は、決済していない(Ultrasの)枠では省く。設計に無くモックアップ等から決めた文言(ブラケットのページの見出し・状態・タブ名、決勝の区画の「Week Final」、取得エラー4つ、返金の知らせの本文など)は文言規則に載せた。
+- 2.1: `core/tournament/bracket-shape.ts`(`bracketShape`・`roundSlotCount`・`roundStage`・`seedPlacementOrder`)。N≤1はP・S・1回戦・ラウンド数すべて0、参加数は`Number.isSafeInteger`で検査、範囲外のラウンドと2の冪でない配置の長さは`RangeError`。`seedPlacementOrder(shape.secondRoundSize)`はN≤1で例外になるため、2.2〜2.4はN≤1を先に分ける。
