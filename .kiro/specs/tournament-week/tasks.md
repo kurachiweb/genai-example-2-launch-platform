@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共用の規則・上流の寄せ替え・テーブル・サービス仕様
-- [ ] 1.1 週の識別と表記、段階とラウンド名を、api・event・clientとbackend-libが読み込める唯一の共用の規則として作る
+- [x] 1.1 週の識別と表記、段階とラウンド名を、api・event・clientとbackend-libが読み込める唯一の共用の規則として作る
   - 前提: 上流のspec(match-engine・payments・ultras-subscription・notifications・product-launch・directory-discovery・identity-auth・email-delivery・frontend-platform・backend-platform・api-gateway・admin-foundation)の実装が済んでいること(2026-11-16に設計の上流の契約を現在のコードと照合済み。match-engineの`ByeCard`の`match.kind`による文言の切り替え(match-engineの仮7)とbackend-platformの改訂2の`e2e/support/scheduled-trigger.ts`も実装済み)。設計のAllowed Dependenciesの部品が無ければ該当するタスクを保留して開発者へ報告する
   - 開発者が行う作業(devとstagingが共用するStripeのsandboxでの、`lookup_key`が`week_tournament_entry`の価格(参考$5、税込)の1回の作成。prodはlaunch-readinessが行う)を、この最初のタスクで報告する(8.4のE2Eの前提。4.14・6.12はStripeの模擬応答を使う)
   - 先に、単体テストで、その日を含む週の月曜日(月曜日・日曜日・月またぎ)、ISO週のキーと年の境界(12/29〜1/4は翌年の第1週)と第53週の有無、キーの解釈の形式違反・年の範囲外・存在しない週、週の表記(「2026年第37週(9/7〜9/13)」)、残り参加数からの段階(8・4・2とそれ以外)、段階と回戦からのラウンド名(段階・「◯回戦」・どちらも無い)、残り参加数からのラウンド名(N = 3・4・8・13の各ラウンド)を確かめる
@@ -425,3 +425,8 @@
   - 整形・静的解析・型検査・4種のテストを全アプリで実行し、本specが変更したファイル(1.2・1.3で寄せ替え・改名した上流のファイルを含む)のカバレッジが80%以上であることを確かめる
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
   - _Requirements: 15.1_
+
+## Implementation Notes
+
+- 開発者への依頼(1.1): devとstagingが共用するStripeのsandboxに、`lookup_key`が`week_tournament_entry`の価格(参考$5、税込)を1回作成する(8.4のE2Eの前提。prodはlaunch-readiness)。
+- 1.1: 規則は`apps/common-lib/tournament/week-period.ts`(`weekStartOf`・`isoWeekKey`・`parseIsoWeek`・`formatWeekPeriodLabel`)と`round-name.ts`(`TOURNAMENT_STAGES`・`stageForSlotCount`・`roundLabel`・`tournamentRoundName`)。`parseIsoWeek`は形式違反・年の範囲外(4桁で1年以上)・存在しない週を`undefined`で返し、存在しない日付は`RangeError`。`roundLabel`はラウンドが正の整数でなく段階も無ければ`null`、`tournamentRoundName`はそのとき`RangeError`。`isoWeekKey`・`formatWeekPeriodLabel`は月曜日以外の日付も受け付ける。1.2への申し送り: (a)notificationsの`awardPeriodLabel`は0001〜0099年で`RangeError`(`Date.UTC`の読み替え)だが新しい規則は表記を返す(既存テストに影響なし。既存の2種類のエラーメッセージ(形式違反・存在しないISO週)の区別を保つこと)、(b)clientの`roundNameOf`は0・負・非整数で「0回戦」等を返すが`roundLabel`は`null`(表示は種別名だけになる)、(c)設計に無い公開の名前`TOURNAMENT_STAGES`・`RoundLabelInput`・`TournamentRoundNameInput`・`ParsedIsoWeek`は8.2の文書で扱う。
