@@ -103,7 +103,7 @@
   - 完了状態: Workers統合テストと、3経路で`TOURNAMENT_PLATFORM_TYPES`の全識別子が解決できる検査が成功する
   - _Requirements: 5.3, 5.8, 5.9, 5.10, 13.3_
 
-- [ ] 4. Weekの部品
+- [x] 4. Weekの部品
 - [x] 4.1 週のトーナメントと参加の枠のストアの基本(作成・一覧・引き当て・挿入)と、Weekの部品の識別子を作る
   - Weekの部品の契約と型(`NewWeekEntry`を含む。`WeekEntryOfferPolicy`・`WeekEntryFulfillment`はpaymentsの契約を実装するため除く)を純粋な部品(`apps/backend-lib/core/week-tournament/ports.ts`)に作る。ストアの契約は本タスクで実装するメソッド(作成・一覧・引き当て・挿入)だけを置き、4.2・4.3・4.11はそれぞれ加えるメソッドを契約と実装の両方へ同時に加える(各タスクの終わりに型検査が通るようにする)。Weekの全部品のDIの識別子`WEEK_TOURNAMENT_TYPES`を`core/week-tournament/identifiers.ts`にここで作る。api・eventとtournament-year・data-exportのapplication層が契約と識別子を読み込むため、`workers`に置かない。ストアのD1の実装は`apps/backend-lib/workers/week-tournament/d1-week-tournament-store.ts`に作る。束縛と登録は4.14でまとめて行い、4.2〜4.13は束縛と登録のファイルを変えない(テストは部品を直接組み立てる)
   - 先に、ローカルD1のWorkers統合テストで、週の行の作成の重複の無視、期限の到来した週と進行中の週の一覧、ローンチからの枠の引き当て(90件を超える入力の分割)、枠の挿入の重複(ローンチ・週ごとのプロダクト)を確かめる
@@ -191,7 +191,7 @@
   - _Depends: 4.1_
   - _Requirements: 7.5, 14.4_
 
-- [ ] 4.14 Weekの部品をapiとeventに束縛し、購入種別の登録に加え、paymentsの反映の経路で確かめる
+- [x] 4.14 Weekの部品をapiとeventに束縛し、購入種別の登録に加え、paymentsの反映の経路で確かめる
   - 4.1〜4.13の部品を処理単位で束縛するモジュールを作り、apiとeventの束縛の一覧へ同時に加える
   - 購入種別の登録は、ultras-subscriptionと同じく`workers/week-tournament`が登録の定数`WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION`を書き出し、paymentsの購入種別の集約点がそれを一覧へ加える。登録の一覧の完全一致を確かめるpaymentsの束縛のWorkers統合テストの期待値を書き換え、同じテストが「登録していない購入種別」の例に`week_tournament_entry`を使っている箇所を、登録の無い別の購入種別の例へ差し替える(明示の横断)
   - paymentsの反映の経路の確認は、依存の方向を守るためapiのWorkers統合テストの環境(`composition`の`*.worker.test.ts`)に置く
@@ -457,3 +457,4 @@
 - 4.11(差し戻し1回、テストのみ): `workers/week-tournament/week-draw-service.ts`の`WeekTournamentDrawService`(オブジェクト1つの引数、デコレータ無し)。`drawDue`は`listDue`で最大4件、週ごとに補完(凍結前だけ、週7日の`listForDate`の勝者のうち枠の無いものを`registerFromMatch`)→`store.freeze`(凍結のメソッドの名前は設計に無く`freeze(): Promise<boolean>`)→分類(`listEntriesForClassification`を90件ずつ)。分類の順は状態遷移図と規則の文書どおり、受付中は先にUltras(`wasEntitledDuring(wonAt, deadlineAt)`)で参加資格か期限切れ(プロダクトの状態は見ない)、資格を得た枠は論理削除→喪失・非公開化と停止→除外・可視→`drawn`。週の失敗は`error`ログ(`[appName,'week-tournament','draw']`)と`captureException`(`tournament_incident: 'draw-failed'`)で他の週を止めない。`qualifierWinnersOf`を公開。4.12: `drawTournament`の分類の後に手順4〜6を足し、`listDrawnEntries`(紐付けを解除した枠も含む)で`create`する。`week-draw-service.worker.test.ts`の2か所(週の状態が`drawing`)の期待値を更新すること。
 - 4.12: `WeekTournamentDrawService`のオプションに`bracketDraw`・`progression`・`followUp`を加え、分類の後に`listDrawnEntries`→`BracketDraw.create`(`weekSeedOrder`・`weekNonSeedOrder`、`ref`は枠のID、`tieBreaker`はローンチのID(紐付けを解除した枠は枠のID)、方針は毎回`dailyRoundPolicy(weekFirstRoundDate(weekStart), now)`)→`markDrawn`→`applyResult`(予告、参加1の受賞)→`processTournament`。`core/tournament/ports.ts`の`BracketParticipantInput`の`launchId`・`productId`・`ownerUserId`をnull可にした(設計は非null)。`markDrawn`の後の後処理の失敗は`drawDue`が再試行せず`failed`に入れる(回復は同じ夜の`advanceAll`(予告)・`publishNight({at: clock.now()})`(参加1の受賞)・4:21の`listPendingFollowUps`(返金))。6.1のジョブはこの順で同じ実行内で動かし、`publishNight`の`at`は`clock.now()`にすること。成功の`info`ログ(`tournamentId`・`bracketId`・`participantCount`)。
 - 4.13: `workers/week-tournament/d1-week-champion-directory.ts`(`listChampions`は`[awardedFrom, awardedBefore)`、`awardedFrom`がnullなら起点なし、受賞の日時→週の初日の昇順、紐付けの3列が非nullだけ)と`d1-week-award-export.ts`(`listForLaunches`は受賞の無いローンチをMapに入れない、90件ずつ・重複除去・空なら問い合わせ無し)。どちらも`@inject(PLATFORM_TYPES.Database)`で、4.14で通常の`to()`で`WEEK_TOURNAMENT_TYPES.WeekChampionDirectory`・`WeekAwardExport`へ束縛する。
+- 4.14: 束縛は関数`createWeekTournamentPlatformModule(appName)`(`workers/week-tournament/week-tournament-platform-module.ts`、名前`week-tournament-platform`、10部品を`inSingletonScope`、api・eventの`MODULES`のUltrasの共有の束縛の直後。設計の定数`WEEK_TOURNAMENT_PLATFORM_MODULE`とは違う、8.2)。購入種別の登録`WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION`(`week-tournament-registrations.ts`)をpaymentsの`purchase-kind-registrations.ts`へ。paymentsの束縛のテストの未登録の例は`year_tournament_entry`に差し替えた(tournament-yearかsponsorshipが登録するときは残る未登録の種別へ差し替えること)。部品の名前とクラスの対応は`testing/week-tournament-platform-implementations.ts`。paymentsの反映の経路のテストは`apps/api/src/composition/week-tournament-platform.payments.worker.test.ts`(実物のガード付きの一括・自動返金・3経路、23:35:00/01の境界)。api・eventのアプリ固有のWeekの束縛は5.5・6.10で足す。

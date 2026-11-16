@@ -31,6 +31,7 @@ import {
   ULTRAS_PURCHASE_KIND_REGISTRATION,
   ULTRAS_SUBSCRIPTION_EVENT_SINK_REGISTRATION,
 } from '../ultras/ultras-registrations.ts';
+import { WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION } from '../week-tournament/week-tournament-registrations.ts';
 import { StripeCheckoutSessionReflection } from './checkout-session-reflection.ts';
 import { D1CustomerStore } from './d1-customer-store.ts';
 import { D1PaymentRecordStore } from './d1-payment-record-store.ts';
@@ -246,10 +247,11 @@ describe('createPaymentsPlatformModule', () => {
 });
 
 describe('購入種別の登録', () => {
-  test('登録箇所は疎通確認用とUltrasの購入種別をこの順に登録し、定期課金の受け取り口はUltrasの加入状態の受け取り口だけを持つ', () => {
+  test('登録箇所は疎通確認用・Ultras・Weekトーナメント参加費の購入種別をこの順に登録し、定期課金の受け取り口はUltrasの加入状態の受け取り口だけを持つ', () => {
     expect(PURCHASE_KIND_REGISTRATIONS).toEqual([
       SMOKE_PURCHASE_REGISTRATION,
       ULTRAS_PURCHASE_KIND_REGISTRATION,
+      WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION,
     ]);
     expect(SUBSCRIPTION_EVENT_SINKS).toEqual([
       ULTRAS_SUBSCRIPTION_EVENT_SINK_REGISTRATION,
@@ -268,18 +270,20 @@ describe('購入種別の登録', () => {
     );
   });
 
-  test('登録していない購入種別は解決されず、Ultrasは疎通確認の有効の条件によらず解決される', () => {
+  test('登録していない購入種別は解決されず、UltrasとWeekトーナメント参加費は疎通確認の有効の条件によらず解決される', () => {
     const registry = registryOf(createContainer());
 
     expect(
-      registry.resolve('week_tournament_entry', SMOKE_ENABLED_ENV),
+      registry.resolve('year_tournament_entry', SMOKE_ENABLED_ENV),
     ).toBeUndefined();
-    expect(registry.resolve('ultras', SMOKE_ENABLED_ENV)).toBe(
-      ULTRAS_PURCHASE_KIND_REGISTRATION,
-    );
-    expect(registry.resolve('ultras', SMOKE_DISABLED_ENV)).toBe(
-      ULTRAS_PURCHASE_KIND_REGISTRATION,
-    );
+    for (const paymentsEnv of [SMOKE_ENABLED_ENV, SMOKE_DISABLED_ENV]) {
+      expect(registry.resolve('ultras', paymentsEnv)).toBe(
+        ULTRAS_PURCHASE_KIND_REGISTRATION,
+      );
+      expect(registry.resolve('week_tournament_entry', paymentsEnv)).toBe(
+        WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION,
+      );
+    }
   });
 
   test('PAYMENTS_SMOKE_ENABLEDがfalseの環境では疎通確認用の購入種別が解決されない', () => {
