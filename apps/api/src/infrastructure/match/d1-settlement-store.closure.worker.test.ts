@@ -30,7 +30,7 @@ const SETTLE_AT = new Date(ENDS_AT.getTime() + 5000);
 const store = new D1SettlementStore(db);
 
 function eventIdOf(index: number): string {
-  return `01JD0STLE${String(index).padStart(17, '0')}`;
+  return `01JD0ST1E${String(index).padStart(17, '0')}`;
 }
 
 function writeOf(matchIndex: number) {

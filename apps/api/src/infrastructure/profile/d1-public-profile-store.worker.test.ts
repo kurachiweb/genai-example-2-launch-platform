@@ -23,7 +23,7 @@ const ALICE = 2;
 const BOB = 3;
 const CAROL = 4;
 
-const AVATAR = '01JC0FILE00000000000000001';
+const AVATAR = '01JC0F11E00000000000000001';
 
 interface D1Calls {
   readonly batchSizes: number[];
@@ -77,7 +77,7 @@ async function insertProfile(
   },
 ): Promise<void> {
   await db.insert(userProfiles).values({
-    id: `01JC0PROF${String(userIndex).padStart(17, '0')}`,
+    id: `01JC0PR0F${String(userIndex).padStart(17, '0')}`,
     userId: userIdOf(userIndex),
     headline: columns.headline ?? null,
     bioMarkdown: columns.bioMarkdown ?? null,
@@ -110,7 +110,7 @@ async function insertFollow(
   columns: { readonly deletedAt?: Date } = {},
 ): Promise<void> {
   await db.insert(userFollows).values({
-    id: `01JC0FLW${String(followerIndex * 100 + followeeIndex).padStart(18, '0')}`,
+    id: `01JC0F1W${String(followerIndex * 100 + followeeIndex).padStart(18, '0')}`,
     followerId: userIdOf(followerIndex),
     followeeId: userIdOf(followeeIndex),
     createdAt: T0,

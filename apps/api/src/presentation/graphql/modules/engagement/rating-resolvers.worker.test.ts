@@ -137,6 +137,26 @@ describe('productRating: 評価欄の値の照会', () => {
     expect(codesOf(response)).toEqual(['forbidden']);
   });
 
+  test.each(
+    ['I', 'L', 'O', 'U']
+      .map((letter) => `${productIdOf(LISTED).slice(0, 25)}${letter}`)
+      .concat(productIdOf(LISTED).toLowerCase()),
+  )(
+    '大文字のULIDでないプロダクトのID(%s)を、評価先が見つからない文言のvalidation_errorにする',
+    async (productId) => {
+      const response = await fetchProductRating(productId);
+
+      expect(codesOf(response)).toEqual(['validation_error']);
+      expect(detailsOf(response)).toEqual([
+        {
+          field: 'productId',
+          code: 'invalid_format',
+          message: ENGAGEMENT_ERRORS.rating_target_not_found.message,
+        },
+      ]);
+    },
+  );
+
   test('ULIDでないプロダクトのIDを、評価先が見つからない文言のvalidation_errorにする', async () => {
     const response = await fetchProductRating('product-1');
 

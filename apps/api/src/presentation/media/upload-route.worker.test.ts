@@ -116,14 +116,14 @@ const RELAYED_IP = '203.0.113.7';
 const SESSION_TOKEN_LENGTH = 43;
 const USER_TOKEN = 'user'.padEnd(SESSION_TOKEN_LENGTH, '0');
 const ADMIN_TOKEN = 'admin'.padEnd(SESSION_TOKEN_LENGTH, '0');
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 const ADMIN_ID = '01JC0ADMIN0000000000000001';
 
 const USER_PRINCIPAL: AuthenticatedPrincipal = Object.freeze({
   kind: 'authenticated',
   subjectKind: 'user',
   subjectId: USER_ID,
-  sessionId: '01JC0USERSESSION0000000001',
+  sessionId: '01JC0VSERSESSION0000000001',
 });
 
 const ADMIN_PRINCIPAL: AuthenticatedPrincipal = Object.freeze({

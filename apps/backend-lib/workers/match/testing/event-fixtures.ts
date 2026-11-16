@@ -24,7 +24,7 @@ export function sequentialIdOf(index: number): string {
 }
 
 function handlerRunIdOf(index: number): string {
-  return `01JD0MRUN${String(index).padStart(17, '0')}`;
+  return `01JD0MRVN${String(index).padStart(17, '0')}`;
 }
 
 // 検証で作った行の識別子を予測できるよう、指定した番号から順に識別子を作る

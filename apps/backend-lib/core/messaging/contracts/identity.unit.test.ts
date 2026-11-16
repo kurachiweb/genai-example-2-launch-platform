@@ -34,6 +34,7 @@ describe('RUN_USER_LIFECYCLE_MESSAGE', () => {
     ['イベントのIDの欠落', {}],
     ['空のイベントのID', { eventId: '' }],
     ['ULIDでないイベントのID', { eventId: 'event-1' }],
+    ['小文字のULIDのイベントのID', { eventId: ULID.toLowerCase() }],
     ['数値のイベントのID', { eventId: 1 }],
   ])('%sの本文を拒否する', (_label, body) => {
     expect(RUN_USER_LIFECYCLE_MESSAGE.schema.safeParse(body).success).toBe(
@@ -70,6 +71,7 @@ describe('RECHECK_DISPOSABLE_EMAIL_MESSAGE', () => {
     ['利用者のIDの欠落', {}],
     ['空の利用者のID', { userId: '' }],
     ['ULIDでない利用者のID', { userId: 'user-1' }],
+    ['小文字のULIDの利用者のID', { userId: ULID.toLowerCase() }],
     ['数値の利用者のID', { userId: 1 }],
   ])('%sの本文を拒否する', (_label, body) => {
     expect(

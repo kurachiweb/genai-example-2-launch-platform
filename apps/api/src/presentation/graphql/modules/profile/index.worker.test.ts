@@ -157,7 +157,7 @@ async function setAvatar(
   fileIndex: number | null,
 ): Promise<void> {
   await db.insert(userProfiles).values({
-    id: `01JC0PROF${String(userIndex).padStart(17, '0')}`,
+    id: `01JC0PR0F${String(userIndex).padStart(17, '0')}`,
     userId: userIdOf(userIndex),
     avatarFileId: fileIndex === null ? null : fileIdOf(fileIndex),
     createdAt: T0,

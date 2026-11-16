@@ -11,7 +11,7 @@ import type {
 } from './account-guard.ts';
 
 const USER: UserAccountView = {
-  id: '01JC0USER00000000000000001',
+  id: '01JC0VSER00000000000000001',
   pseudonymousId: '0b5f8c3e-2d4a-4f6b-9c1e-7a8d9e0f1a2b',
   status: 'active',
   emailVerifiedAt: new Date('2026-11-01T00:00:00.000Z'),

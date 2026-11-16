@@ -50,7 +50,7 @@ export function createSequentialProductEventIds(start = 1000): IdGenerator {
 }
 
 export function productIdOf(index: number): string {
-  return `01JD0PROD${String(index).padStart(17, '0')}`;
+  return `01JD0PR0D${String(index).padStart(17, '0')}`;
 }
 
 export function categoryIdOf(index: number): string {
@@ -58,7 +58,7 @@ export function categoryIdOf(index: number): string {
 }
 
 export function launchIdOf(index: number): string {
-  return `01JD0LNCH${String(index).padStart(17, '0')}`;
+  return `01JD01NCH${String(index).padStart(17, '0')}`;
 }
 
 export function screenshotIdOf(index: number): string {
@@ -70,7 +70,7 @@ export function previousHandleIdOf(index: number): string {
 }
 
 export function logoFileIdOf(index: number): string {
-  return `01JD0LOGO${String(index).padStart(17, '0')}`;
+  return `01JD010G0${String(index).padStart(17, '0')}`;
 }
 
 function productRowOf(

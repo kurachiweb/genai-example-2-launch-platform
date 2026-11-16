@@ -1495,7 +1495,7 @@ type Mutation {
 
 - 呼び出し元が`client`でなければ`forbidden`。bot対策はログインと状態の確認の後に`resolver-support.ts`の`assertHuman(context, MATCH_BOT_ACTIONS.upvote)`で行う(6.1・6.4)。
 - `MatchViews`(`match-views.ts`): `Match`・`MatchEntry`・`MatchProduct`の項目のリゾルバ(`MatchProduct.logo`は`mediaFileLoader`→`toMediaImage`、`category`は`productCategoryLoader`、`UpvoteHistoryItem.owner`は`userSummaryLoader`)と、`matchViewLoader = defineLoader<string, MatchView | null>`(`MatchViewReader.findViews`、閲覧者は処理単位の`AccountGuard.currentUser`)。トーナメントのモジュールは自分の型の項目で`Match`を返し、値は`matchViewLoader`で引く(9.5)。
-- `MatchInputs`(`inputs.ts`、`withValidatedArgs`): IDはULIDの形式、`first`は1〜20、`userHandle`は`checkHandleFormat(USER_HANDLE_RULE)`の違反で`null`を返す(不在と同じ)。
+- `MatchInputs`(`inputs.ts`、`withValidatedArgs`): IDは大文字のULIDの形式(`z.ulid({ error, abort: true }).regex(UPPERCASE_ULID_PATTERN, error)`。directoryの`matchSupporters`も同じスキーマを使う)、`first`は1〜20、`userHandle`は`checkHandleFormat(USER_HANDLE_RULE)`の違反で`null`を返す(不在と同じ)。
 
 ### event
 

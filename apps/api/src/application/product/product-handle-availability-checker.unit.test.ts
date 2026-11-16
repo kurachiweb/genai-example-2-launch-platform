@@ -9,7 +9,7 @@ import {
   fixedClock,
 } from './testing/product-fakes.ts';
 
-const OTHER_USER_ID = '01JC0USER00000000000000002';
+const OTHER_USER_ID = '01JC0VSER00000000000000002';
 
 function setup(options: FakeProductStoreOptions = {}) {
   const calls: string[] = [];
@@ -93,7 +93,7 @@ describe('StoreProductHandleAvailabilityChecker.check', () => {
       snapshots: [
         snapshotOf({ previousHandle: 'old-meter' }),
         snapshotOf({
-          productId: '01JD0PRODUCT00000000000002',
+          productId: '01JD0PR0DVCT00000000000002',
           ownerUserId: OTHER_USER_ID,
           handle: 'rival',
           previousHandle: 'old-rival',

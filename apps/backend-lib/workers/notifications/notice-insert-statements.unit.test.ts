@@ -21,7 +21,7 @@ const db = createDatabase({} as D1Database);
 // 任意の列も含めてすべての列に値を入れ、1行が使うバインド変数を最大にする
 function fullRowOf(index: number): Required<NoticeRow> {
   return {
-    id: `01JC0NOTICE${String(index).padStart(15, '0')}`,
+    id: `01JC0N0T1CE${String(index).padStart(15, '0')}`,
     dedupeKey: `dedupe-${String(index)}`,
     slotKey: 'evening:2026-11-01',
     groupKey: `evening:2026-11-01:recipient-${String(index)}:product`,

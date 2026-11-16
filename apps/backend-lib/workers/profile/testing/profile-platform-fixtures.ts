@@ -12,7 +12,7 @@ import {
 export const ALICE_ID = userIdOf(1);
 export const BOB_ID = userIdOf(2);
 
-const FOLLOW_ID = '01JC0FLW000000000000000901';
+const FOLLOW_ID = '01JC0F1W000000000000000901';
 
 export async function clearProfilePlatformTables(): Promise<void> {
   await db.delete(userFollows);
@@ -26,7 +26,7 @@ export async function seedProfilePlatformSample(): Promise<void> {
   await insertUser(1, { handle: 'Alice', nickname: 'アリス' });
   await insertUser(2, { handle: 'bob', nickname: 'ボブ' });
   await db.insert(userProfiles).values({
-    id: '01JC0PROF000000000000000901',
+    id: '01JC0PR0F000000000000000901',
     userId: ALICE_ID,
     headline: '個人開発者',
     createdAt: T0,

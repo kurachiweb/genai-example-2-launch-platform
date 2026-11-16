@@ -5,16 +5,17 @@ import {
   ratingScoreSchema,
 } from '../../../../../common-lib/engagement/engagement-rules.ts';
 import { invalidCursorError } from '../../../../../lib/core/errors/invalid-cursor.ts';
+import { UPPERCASE_ULID_PATTERN } from '../../../../../lib/core/ids/uppercase-ulid.ts';
 import { ENGAGEMENT_ERRORS } from '../../../../application/engagement/engagement-errors.ts';
 
 // 他の一覧のカーソルと同じ上限。位置のカーソルはこれより十分に短い
 const COMMENT_CURSOR_MAX = 256;
 
-// プロダクト・ローンチ・コメントのIDは26文字の大文字の英数字(ULID)。画面の操作では形式の違うIDを送らないため、存在しない対象と同じ文言を示す
-const RESOURCE_ID_PATTERN = /^[0-9A-Z]{26}$/u;
-
+// 画面の操作では形式の違うIDを送らないため、存在しない対象と同じ文言を示す。欄ごとの詳細を1件にするため、ULIDの形式の違反で大文字の検査を止める
 const resourceIdOf = (message: string) =>
-  z.string().regex(RESOURCE_ID_PATTERN, message);
+  z
+    .ulid({ error: message, abort: true })
+    .regex(UPPERCASE_ULID_PATTERN, message);
 
 const commentTargetId = resourceIdOf(
   ENGAGEMENT_ERRORS.comment_target_not_found.message,

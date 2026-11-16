@@ -27,7 +27,7 @@ const clock: Clock = { now: () => NOW };
 function productIdsOf(count: number): readonly string[] {
   return Array.from(
     { length: count },
-    (_, index) => `01JD0PROD${String(index + 1).padStart(17, '0')}`,
+    (_, index) => `01JD0PR0D${String(index + 1).padStart(17, '0')}`,
   );
 }
 

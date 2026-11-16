@@ -37,8 +37,8 @@ import {
 const ROOT_A = '01JD0CMNT00000000000000011';
 const ROOT_B = '01JD0CMNT00000000000000012';
 const REPLY_A = '01JD0CMNT00000000000000021';
-const THIRD_LAUNCH_ID = '01JD0LNCH00000000000000003';
-const CANCELED_LAUNCH_ID = '01JD0LNCH00000000000000004';
+const THIRD_LAUNCH_ID = '01JD01NCH00000000000000003';
+const CANCELED_LAUNCH_ID = '01JD01NCH00000000000000004';
 const STRANGER_ID = '01JD0USER00000000000000003';
 
 const ROOT_A_AT = new Date('2026-11-20T03:10:00.000Z');
@@ -131,7 +131,7 @@ const LAUNCHES: readonly LaunchRecord[] = [
   launchOf({ launchId: OTHER_LAUNCH_ID, number: 2, status: 'finished' }),
   launchOf({ launchId: LAUNCH_ID, number: 1, status: 'finished' }),
   launchOf({
-    launchId: '01JD0LNCH00000000000000009',
+    launchId: '01JD01NCH00000000000000009',
     productId: OTHER_PRODUCT_ID,
   }),
 ];
@@ -366,14 +366,14 @@ describe('StoreCommentReader.page', () => {
     const { reader } = setup({ page: TWO_THREADS });
 
     expect(
-      await reader.page(pageInput({ productId: '01JD0PROD00000000000000099' })),
+      await reader.page(pageInput({ productId: '01JD0PR0D00000000000000099' })),
     ).toBeNull();
   });
 
   test.each([
-    ['別のプロダクトのローンチ', '01JD0LNCH00000000000000009'],
+    ['別のプロダクトのローンチ', '01JD01NCH00000000000000009'],
     ['取り消されたローンチ', CANCELED_LAUNCH_ID],
-    ['存在しないローンチ', '01JD0LNCH00000000000000099'],
+    ['存在しないローンチ', '01JD01NCH00000000000000099'],
   ])('%sはnullを返す', async (_label, launchId) => {
     const { reader } = setup({ page: TWO_THREADS });
 
@@ -438,7 +438,7 @@ describe('StoreCommentReader.counts', () => {
     const { reader } = setup({
       counts: new Map([
         [CANCELED_LAUNCH_ID, 2],
-        ['01JD0LNCH00000000000000099', 5],
+        ['01JD01NCH00000000000000099', 5],
       ]),
     });
 
@@ -480,7 +480,7 @@ describe('StoreCommentReader.counts', () => {
 
     expect(
       await reader.counts(
-        countsInput({ productId: '01JD0PROD00000000000000099' }),
+        countsInput({ productId: '01JD0PR0D00000000000000099' }),
       ),
     ).toBeNull();
   });

@@ -493,7 +493,7 @@ describe('StoreProfileEditor.update の利用者の状態', () => {
   });
 
   test('セッションではなく引数の利用者のIDで読み取りと保存をする', async () => {
-    const otherId = '01JC0USER00000000000000009';
+    const otherId = '01JC0VSER00000000000000009';
     const { editor, store } = setup({
       snapshot: snapshotOf({ userId: otherId }),
     });

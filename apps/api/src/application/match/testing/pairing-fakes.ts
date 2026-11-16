@@ -186,7 +186,7 @@ export function createPairingMatchIds(): IdGenerator {
   return {
     generate: () => {
       serial += 1;
-      return `01JF0PAIR${String(serial).padStart(17, '0')}`;
+      return `01JF0PA1R${String(serial).padStart(17, '0')}`;
     },
   };
 }

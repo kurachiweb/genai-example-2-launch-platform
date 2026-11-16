@@ -352,6 +352,11 @@ describe('D1AdminRatingDirectory.search', () => {
       ['区切りの無い値', base64urlOf(`1730419200000${ratingIdOf(1)}`)],
       ['ミリ秒が数字でない値', base64urlOf(`abc:${ratingIdOf(1)}`)],
       ['IDの欠けた値', base64urlOf('1730419200000:')],
+      ['IDが小文字の値', base64urlOf(`1:${ratingIdOf(1).toLowerCase()}`)],
+      ...['I', 'L', 'O', 'U'].map((letter) => [
+        `IDがCrockford Base32に無い${letter}を含む値`,
+        base64urlOf(`1:${ratingIdOf(1).slice(0, 25)}${letter}`),
+      ]),
       ['パディング付きの値', `${base64urlOf(`1:${ratingIdOf(1)}`)}=`],
     ])(
       '不正なカーソル(%s)をページの位置の指定の誤りとして拒否する',

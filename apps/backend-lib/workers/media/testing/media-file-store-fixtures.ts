@@ -27,9 +27,9 @@ export const T0 = new Date('2026-11-01T00:00:00.000Z');
 export const IMAGE_PURPOSE = 'product-image';
 export const FILE_PURPOSE = 'inquiry-attachment';
 
-export const USER_A = '01JC0USER00000000000000001';
-export const USER_B = '01JC0USER00000000000000002';
-export const USER_C = '01JC0USER00000000000000003';
+export const USER_A = '01JC0VSER00000000000000001';
+export const USER_B = '01JC0VSER00000000000000002';
+export const USER_C = '01JC0VSER00000000000000003';
 export const ADMIN_A = '01JC0ADM000000000000000001';
 
 export const FINDINGS: readonly ModerationFinding[] = [

@@ -28,10 +28,10 @@ import {
   USER_ID,
 } from './testing/product-fakes.ts';
 
-const OTHER_USER_ID = '01JC0USER00000000000000002';
+const OTHER_USER_ID = '01JC0VSER00000000000000002';
 
 const productIdOf = (index: number): string =>
-  `01JD0PRODUCT${String(index).padStart(14, '0')}`;
+  `01JD0PR0DVCT${String(index).padStart(14, '0')}`;
 
 const launchOf = (productId: string, launchDate: string): LaunchRecord => ({
   ...FINISHED_LAUNCH,

@@ -19,6 +19,7 @@ import { users } from '../../../db/schema/identity/users.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
 import { AppError } from '../../core/errors/app-error.ts';
 import { invalidCursorError } from '../../core/errors/invalid-cursor.ts';
+import { UPPERCASE_ULID_SOURCE } from '../../core/ids/uppercase-ulid.ts';
 import type {
   AdminUserDirectory,
   AdminUserRecord,
@@ -31,7 +32,10 @@ const MAX_PAGE_SIZE = 50;
 // D1のバインド変数の上限(100)から、識別子以外の条件に使う変数の分を残す
 const IDS_PER_STATEMENT = 90;
 
-const CURSOR_PATTERN = /^(\d{1,15}):([0-9A-Z]{26})$/u;
+const CURSOR_PATTERN = new RegExp(
+  String.raw`^(\d{1,15}):(${UPPERCASE_ULID_SOURCE})$`,
+  'u',
+);
 
 const LIKE_SPECIAL_CHARACTERS = /[\\%_]/gu;
 

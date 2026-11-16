@@ -44,7 +44,7 @@ export function adminEmailOf(index: number): string {
 }
 
 export function auditLogIdOf(index: number): string {
-  return `01JC0ALOG${String(index).padStart(17, '0')}`;
+  return `01JC0A10G${String(index).padStart(17, '0')}`;
 }
 
 // 利用者の対象は仮名化ID(UUID)だけを受け付けるため、番号から妥当なUUIDを作る

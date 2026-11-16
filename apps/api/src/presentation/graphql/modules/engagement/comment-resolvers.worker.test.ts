@@ -211,6 +211,30 @@ describe('launchComments・launchCommentCounts: 呼び出し元と引数', () =>
     ]);
   });
 
+  test.each(['I', 'L', 'O', 'U'])(
+    'Crockford Base32に無い%sを含むプロダクトとローンチのIDを、投稿先が見つからない文言のvalidation_errorにする',
+    async (letter) => {
+      const comments = await fetchLaunchComments({
+        productId: `${productIdOf(LISTED).slice(0, 25)}${letter}`,
+        launchId: `${launchIdOf(CURRENT_LAUNCH).slice(0, 25)}${letter}`,
+      });
+
+      expect(codesOf(comments)).toEqual(['validation_error']);
+      expect(detailsOf(comments)).toEqual([
+        {
+          field: 'productId',
+          code: 'invalid_format',
+          message: TARGET_NOT_FOUND_MESSAGE,
+        },
+        {
+          field: 'launchId',
+          code: 'invalid_format',
+          message: TARGET_NOT_FOUND_MESSAGE,
+        },
+      ]);
+    },
+  );
+
   test('復号できないカーソルをinvalid_cursorにし、長すぎるカーソルを同じ文言のvalidation_errorにする', async () => {
     const malformed = await fetchLaunchComments({
       ...currentLaunchArgs,

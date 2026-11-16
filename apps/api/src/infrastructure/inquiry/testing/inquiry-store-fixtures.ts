@@ -34,23 +34,23 @@ export function categoryIdOf(index: number): string {
 }
 
 export function memberInquiryIdOf(index: number): string {
-  return `01JC0MINQ${String(index).padStart(17, '0')}`;
+  return `01JC0M1NQ${String(index).padStart(17, '0')}`;
 }
 
 export function guestInquiryIdOf(index: number): string {
-  return `01JC0GINQ${String(index).padStart(17, '0')}`;
+  return `01JC0G1NQ${String(index).padStart(17, '0')}`;
 }
 
 export function messageIdOf(index: number): string {
-  return `01JC0IMSG${String(index).padStart(17, '0')}`;
+  return `01JC01MSG${String(index).padStart(17, '0')}`;
 }
 
 export function fileIdOf(index: number): string {
-  return `01JC0FILE${String(index).padStart(17, '0')}`;
+  return `01JC0F11E${String(index).padStart(17, '0')}`;
 }
 
 export function auditLogIdOf(index: number): string {
-  return `01JC0ALOG${String(index).padStart(17, '0')}`;
+  return `01JC0A10G${String(index).padStart(17, '0')}`;
 }
 
 // 初期データの標準カテゴリはマイグレーションで常に入るため残し、各テストの前にそれ以外の問い合わせの行と監査ログを消す

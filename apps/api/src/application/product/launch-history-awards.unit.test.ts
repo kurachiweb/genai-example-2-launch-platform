@@ -40,10 +40,10 @@ const NOW = fromBusinessDateTime(parseBusinessDate('2026-11-10'), {
   minute: 0,
 });
 
-const OTHER_VIEWER_ID = '01JC0USER00000000000000002';
+const OTHER_VIEWER_ID = '01JC0VSER00000000000000002';
 
-const PRODUCT_A = '01JD0PROD00000000000000001';
-const PRODUCT_B = '01JD0PROD00000000000000002';
+const PRODUCT_A = '01JD0PR0D00000000000000001';
+const PRODUCT_B = '01JD0PR0D00000000000000002';
 
 const records: LogRecord[] = [];
 
@@ -269,7 +269,7 @@ describe('LaunchHistoryReader.awards: 全ページの集計', () => {
   // 最新のローンチ日が同じため、IDの降順に並ぶ
   const many = Array.from({ length: 181 }, (_, index) =>
     historyProductOf(
-      `01JD0PROD${String(index + 1).padStart(17, '0')}`,
+      `01JD0PR0D${String(index + 1).padStart(17, '0')}`,
       '2026-10-01',
       { name: `P${String(index + 1)}` },
     ),
@@ -307,7 +307,7 @@ describe('LaunchHistoryReader.awards: 全ページの集計', () => {
         limit: 90,
         before: {
           latestLaunchDate: day('2026-10-01'),
-          id: '01JD0PROD00000000000000092',
+          id: '01JD0PR0D00000000000000092',
         },
       },
       {
@@ -316,7 +316,7 @@ describe('LaunchHistoryReader.awards: 全ページの集計', () => {
         limit: 90,
         before: {
           latestLaunchDate: day('2026-10-01'),
-          id: '01JD0PROD00000000000000002',
+          id: '01JD0PR0D00000000000000002',
         },
       },
     ]);

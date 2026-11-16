@@ -14,7 +14,7 @@ import { clearProfilePlatformTables } from '../../../../lib/workers/profile/test
 const FOLLOWS_PER_INSERT = 10;
 
 export function followIdOf(index: number): string {
-  return `01JC0FLW${String(index).padStart(18, '0')}`;
+  return `01JC0F1W${String(index).padStart(18, '0')}`;
 }
 
 export async function resetProfilePurgeRows(): Promise<void> {
@@ -50,7 +50,7 @@ export async function insertFollows(
 export async function insertProfileRows(userIndex: number): Promise<void> {
   const suffix = String(userIndex).padStart(2, '0');
   await db.insert(userProfiles).values({
-    id: `01JC0PROF${suffix.padStart(17, '0')}`,
+    id: `01JC0PR0F${suffix.padStart(17, '0')}`,
     userId: userIdOf(userIndex),
     headline: `見出し${suffix}`,
     createdAt: T0,

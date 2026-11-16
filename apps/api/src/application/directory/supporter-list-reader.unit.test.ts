@@ -46,7 +46,7 @@ const finishedMatch = matchOf({
 });
 
 const supporterOf = (index: number): SupporterRecord => ({
-  upvoteId: `01JD0UPVT0000000000000${String(index).padStart(4, '0')}`,
+  upvoteId: `01JD0VPVT0000000000000${String(index).padStart(4, '0')}`,
   userId: `user-${String(index)}`,
   upvotedAt: new Date(Date.UTC(2026, 10, 5, 0, index)),
 });

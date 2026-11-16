@@ -335,7 +335,7 @@ describe('APIサーバーのプロダクトのモジュールの束縛', () => {
 
     await expect(
       hooks.statementsFor(
-        { productId: '01JD0PRODUCT00000000000001', at: T0 },
+        { productId: '01JD0PR0DVCT00000000000001', at: T0 },
         db,
       ),
     ).resolves.toEqual([]);

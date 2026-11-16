@@ -9,7 +9,7 @@ import {
 
 const EVENT: UserLifecycleEvent = Object.freeze({
   id: '01JC0EVT000000000000000061',
-  userId: '01JC0USER00000000000000001',
+  userId: '01JC0VSER00000000000000001',
   type: 'purge_due',
   occurredAt: new Date('2026-11-20T00:00:00.000Z'),
 });

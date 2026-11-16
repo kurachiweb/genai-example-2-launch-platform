@@ -12,7 +12,7 @@ import type {
 } from '../../../lib/core/media/ports.ts';
 import { OwnedImageQuarantineHandler } from './owned-image-quarantine-handler.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 
 function eventOf(type: UserLifecycleEventType): UserLifecycleEvent {
   return Object.freeze({

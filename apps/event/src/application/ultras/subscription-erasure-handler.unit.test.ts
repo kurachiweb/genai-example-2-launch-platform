@@ -4,7 +4,7 @@ import type { UserLifecycleEvent } from '../../../lib/core/identity/user-lifecyc
 import { SubscriptionErasureHandler } from './subscription-erasure-handler.ts';
 import type { UltrasAccountDataEraser } from './ultras-account-data-eraser.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 
 const EVENT: UserLifecycleEvent = Object.freeze({
   id: '01JC0EVT000000000000000051',

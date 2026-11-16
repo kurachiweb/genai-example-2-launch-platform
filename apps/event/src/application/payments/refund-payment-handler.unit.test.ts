@@ -29,7 +29,7 @@ interface Recorded {
 }
 
 const REFUND_REQUEST_ID = '01JC0RF0000000000000000001';
-const PURCHASE_ID = '01JC0PURCHASE0000000000001';
+const PURCHASE_ID = '01JC0PVRCHASE0000000000001';
 const PAYMENT_INTENT_ID = 'pi_test_unit_1';
 const SUBSCRIPTION_ID = 'sub_test_unit_1';
 const T0 = new Date('2026-11-01T00:00:00.000Z');
@@ -71,12 +71,12 @@ function requestOf(
 function purchaseOf(overrides: Partial<PurchaseRecord> = {}): PurchaseRecord {
   return {
     id: PURCHASE_ID,
-    userId: '01JC0USER0000000000000001',
+    userId: '01JC0VSER0000000000000001',
     kind: 'payments_smoke',
     targetId: null,
     relatedId: null,
     exclusivityKey: null,
-    stateToken: '01JC0TOKEN0000000000000001',
+    stateToken: '01JC0T0KEN0000000000000001',
     priceLookupKey: 'payments_smoke_v1',
     stripePriceId: 'price_smoke',
     unitAmount: 1_000,

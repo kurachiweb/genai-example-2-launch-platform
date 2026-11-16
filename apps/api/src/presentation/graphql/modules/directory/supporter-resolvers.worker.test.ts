@@ -216,10 +216,20 @@ describe('matchSupporters: 引数の検証', () => {
     expect(response.data?.matchSupporters).toBeNull();
   });
 
-  test.each(['matchId', 'entryId'])(
-    '形式の違う%sはマッチが見つからない文言のvalidation_errorにする',
-    async (field) => {
-      const response = await supportersOf({ [field]: 'not-a-ulid' });
+  test.each(
+    ['matchId', 'entryId'].flatMap((field) =>
+      [
+        'not-a-ulid',
+        matchIdOf(DECIDED_MATCH).toLowerCase(),
+        ...['I', 'L', 'O', 'U'].map(
+          (letter) => `${matchIdOf(DECIDED_MATCH).slice(0, 25)}${letter}`,
+        ),
+      ].map((value) => [field, value] as const),
+    ),
+  )(
+    '形式の違う%s(%s)はマッチが見つからない文言のvalidation_errorにする',
+    async (field, value) => {
+      const response = await supportersOf({ [field]: value });
 
       expect(codesOf(response)).toEqual(['validation_error']);
       expect(detailsOf(response)).toEqual([
@@ -238,6 +248,17 @@ describe('matchSupporters: 引数の検証', () => {
     ['時刻が文字列の', encodeCursor({ upvotedAt: '1', upvoteId: UPVOTE_ID })],
     ['時刻が負の', encodeCursor({ upvotedAt: -1, upvoteId: UPVOTE_ID })],
     ['IDがULIDでない', encodeCursor({ upvotedAt: 1, upvoteId: 'abc' })],
+    [
+      'IDが小文字の',
+      encodeCursor({ upvotedAt: 1, upvoteId: UPVOTE_ID.toLowerCase() }),
+    ],
+    ...['I', 'L', 'O', 'U'].map((letter) => [
+      `IDがCrockford Base32に無い${letter}を含む`,
+      encodeCursor({
+        upvotedAt: 1,
+        upvoteId: `${UPVOTE_ID.slice(0, 25)}${letter}`,
+      }),
+    ]),
   ])('%sカーソルはinvalid_cursorにする', async (_name, after) => {
     const response = await supportersOf({ after });
 

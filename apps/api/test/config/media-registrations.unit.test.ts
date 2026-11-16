@@ -79,7 +79,7 @@ const MEDIA_JOBS: readonly ScheduledJobDefinition[] = [
 const USER_PRINCIPAL = Object.freeze({
   kind: 'authenticated',
   subjectKind: 'user',
-  subjectId: '01JC0USER00000000000000001',
+  subjectId: '01JC0VSER00000000000000001',
   sessionId: '01JC0SESSION0000000000001',
 } as const);
 

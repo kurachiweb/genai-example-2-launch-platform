@@ -44,7 +44,7 @@ const INVALID_CURSOR_MESSAGE = 'ページの位置の指定が正しくありま
 installProfileGraphQLTest();
 
 const followIdOf = (index: number): string =>
-  `01JC0FLW${String(index).padStart(18, '0')}`;
+  `01JC0F1W${String(index).padStart(18, '0')}`;
 
 async function insertAlice(
   columns: Partial<typeof users.$inferInsert> = {},
@@ -736,20 +736,24 @@ describe.each([
       ['空の', ''],
       ['JSONでない', btoa('not-json').replaceAll('=', '')],
       ['位置の形でない', encodeCursor({ x: 1 })],
-      ['時刻が負の', encodeCursor({ t: -1, id: '01JC0FLW000000000000000001' })],
+      ['時刻が負の', encodeCursor({ t: -1, id: '01JC0F1W000000000000000001' })],
       [
         '時刻が小数の',
-        encodeCursor({ t: 1.5, id: '01JC0FLW000000000000000001' }),
+        encodeCursor({ t: 1.5, id: '01JC0F1W000000000000000001' }),
       ],
       [
         '時刻が文字列の',
-        encodeCursor({ t: '1', id: '01JC0FLW000000000000000001' }),
+        encodeCursor({ t: '1', id: '01JC0F1W000000000000000001' }),
       ],
       ['IDがULIDでない', encodeCursor({ t: 1, id: 'abc' })],
       [
         'IDが小文字の',
-        encodeCursor({ t: 1, id: '01jc0flw000000000000000001' }),
+        encodeCursor({ t: 1, id: '01jc0f1w000000000000000001' }),
       ],
+      ...['I', 'L', 'O', 'U'].map((letter) => [
+        `IDがCrockford Base32に無い${letter}を含む`,
+        encodeCursor({ t: 1, id: `01JC0F1W00000000000000000${letter}` }),
+      ]),
     ])('%sカーソルはinvalid_cursorで拒否する', async (_name, cursor) => {
       const token = await insertAlice();
 

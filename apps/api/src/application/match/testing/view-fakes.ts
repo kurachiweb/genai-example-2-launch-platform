@@ -26,7 +26,7 @@ export const VIEW_NOW = fromBusinessDateTime(VIEW_DATE, {
 });
 
 export function viewMatchIdOf(index: number): string {
-  return `01JF0VIEW${String(index).padStart(17, '0')}`;
+  return `01JF0V1EW${String(index).padStart(17, '0')}`;
 }
 
 export function viewEntryIdOf(matchIndex: number, slot: 1 | 2): string {

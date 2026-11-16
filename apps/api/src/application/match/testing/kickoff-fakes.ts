@@ -29,7 +29,7 @@ export function afterKickoff(milliseconds: number): Date {
 }
 
 export function kickoffMatchIdOf(index: number): string {
-  return `01JF0KICK${String(index).padStart(17, '0')}`;
+  return `01JF0K1CK${String(index).padStart(17, '0')}`;
 }
 
 export function kickoffEntryOf(

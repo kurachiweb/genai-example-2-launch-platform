@@ -9,7 +9,7 @@ import {
 
 const EVENT: ProductLifecycleEvent = Object.freeze({
   id: '01JD0PEVT00000000000000141',
-  productId: '01JD0PROD00000000000000004',
+  productId: '01JD0PR0D00000000000000004',
   ownerUserId: '01JD0USER00000000000000002',
   type: 'purge_due',
   occurredAt: new Date('2026-12-20T03:00:00.000Z'),

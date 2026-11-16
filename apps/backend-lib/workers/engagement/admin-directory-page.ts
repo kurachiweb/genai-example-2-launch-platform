@@ -4,11 +4,15 @@ import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import type { AdminDirectoryPage } from '../../core/engagement/ports.ts';
 import { AppError } from '../../core/errors/app-error.ts';
 import { invalidCursorError } from '../../core/errors/invalid-cursor.ts';
+import { UPPERCASE_ULID_SOURCE } from '../../core/ids/uppercase-ulid.ts';
 
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 100;
 
-const CURSOR_PATTERN = /^(\d{1,15}):([0-9A-Z]{26})$/u;
+const CURSOR_PATTERN = new RegExp(
+  String.raw`^(\d{1,15}):(${UPPERCASE_ULID_SOURCE})$`,
+  'u',
+);
 
 const BASE64URL_OPTIONS = {
   alphabet: 'base64url',

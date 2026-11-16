@@ -229,37 +229,46 @@ describe('upvote・cancelUpvoteの拒否の順', () => {
     },
   );
 
-  test('IDの形式の違反は、bot判定を使わずマッチが見つからない文言のvalidation_errorにする', async () => {
-    const calls = stubExternalServices();
-    await seedLiveMatch();
-    const token = await voterSession();
-    const options = { sessionToken: token, botToken: UPVOTE_BOT_TOKEN };
+  test.each([
+    'not-a-match',
+    entryIdOf(ENTRY_A).toLowerCase(),
+    ...['I', 'L', 'O', 'U'].map(
+      (letter) => `${entryIdOf(ENTRY_A).slice(0, 25)}${letter}`,
+    ),
+  ])(
+    'IDの形式の違反(%s)は、bot判定を使わずマッチが見つからない文言のvalidation_errorにする',
+    async (matchId) => {
+      const calls = stubExternalServices();
+      await seedLiveMatch();
+      const token = await voterSession();
+      const options = { sessionToken: token, botToken: UPVOTE_BOT_TOKEN };
 
-    const upvoted = await upvote(
-      { matchId: 'not-a-match', entryId: entryIdOf(ENTRY_A) },
-      options,
-    );
-    const cancelled = await cancelUpvote('not-a-match', options);
+      const upvoted = await upvote(
+        { matchId, entryId: entryIdOf(ENTRY_A) },
+        options,
+      );
+      const cancelled = await cancelUpvote(matchId, options);
 
-    expect(codesOf(upvoted)).toEqual(['validation_error']);
-    expect(upvoted.errors?.[0]?.message).toBe(VALIDATION_MESSAGE);
-    expect(detailsOf(upvoted)).toEqual([
-      {
-        field: 'input.matchId',
-        code: 'invalid_format',
-        message: MATCH_NOT_FOUND_MESSAGE,
-      },
-    ]);
-    expect(codesOf(cancelled)).toEqual(['validation_error']);
-    expect(detailsOf(cancelled)).toEqual([
-      {
-        field: 'matchId',
-        code: 'invalid_format',
-        message: MATCH_NOT_FOUND_MESSAGE,
-      },
-    ]);
-    expect(calls.siteverifyTokens).toEqual([]);
-  });
+      expect(codesOf(upvoted)).toEqual(['validation_error']);
+      expect(upvoted.errors?.[0]?.message).toBe(VALIDATION_MESSAGE);
+      expect(detailsOf(upvoted)).toEqual([
+        {
+          field: 'input.matchId',
+          code: 'invalid_format',
+          message: MATCH_NOT_FOUND_MESSAGE,
+        },
+      ]);
+      expect(codesOf(cancelled)).toEqual(['validation_error']);
+      expect(detailsOf(cancelled)).toEqual([
+        {
+          field: 'matchId',
+          code: 'invalid_format',
+          message: MATCH_NOT_FOUND_MESSAGE,
+        },
+      ]);
+      expect(calls.siteverifyTokens).toEqual([]);
+    },
+  );
 });
 
 describe('upvoteとcancelUpvoteの成功', () => {

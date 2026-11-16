@@ -23,7 +23,7 @@ function createStore(): AdminLoginChallengeStore {
 }
 
 function challengeIdOf(index: number): string {
-  return `01JC0CHLG${String(index).padStart(17, '0')}`;
+  return `01JC0CH1G${String(index).padStart(17, '0')}`;
 }
 
 function challengeHashOf(index: number): string {

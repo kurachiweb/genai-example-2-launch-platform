@@ -40,7 +40,7 @@ const failure = new Error('障害を再現する');
 const OWNER = { kind: 'user', id: USER_A } as const;
 
 function userIdOf(index: number): string {
-  return `01JC0USER${String(index).padStart(17, '0')}`;
+  return `01JC0VSER${String(index).padStart(17, '0')}`;
 }
 
 async function listAll(

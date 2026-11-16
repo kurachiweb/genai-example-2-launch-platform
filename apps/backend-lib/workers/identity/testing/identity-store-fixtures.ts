@@ -31,7 +31,7 @@ export function after(milliseconds: number): Date {
 }
 
 export function userIdOf(index: number): string {
-  return `01JC0USER${String(index).padStart(17, '0')}`;
+  return `01JC0VSER${String(index).padStart(17, '0')}`;
 }
 
 export function eventIdOf(index: number): string {

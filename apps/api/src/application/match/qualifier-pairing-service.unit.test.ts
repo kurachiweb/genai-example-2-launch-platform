@@ -131,12 +131,12 @@ describe('StoreQualifierPairingService.pair', () => {
         inputs: [
           {
             ...common,
-            matchId: '01JF0PAIR00000000000000001',
+            matchId: '01JF0PA1R00000000000000001',
             entries: [entryOf(first), entryOf(second)],
           },
           {
             ...common,
-            matchId: '01JF0PAIR00000000000000002',
+            matchId: '01JF0PA1R00000000000000002',
             entries: [entryOf(third)],
           },
         ],

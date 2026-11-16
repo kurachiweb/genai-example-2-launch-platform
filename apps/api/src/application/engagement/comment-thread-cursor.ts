@@ -1,11 +1,10 @@
 import type { CommentThreadPageInput } from '../../../lib/core/engagement/ports.ts';
 import { invalidCursorError } from '../../../lib/core/errors/invalid-cursor.ts';
+import { isUppercaseUlid } from '../../../lib/core/ids/uppercase-ulid.ts';
 
 export type CommentThreadPosition = NonNullable<
   CommentThreadPageInput['after']
 >;
-
-const COMMENT_ID_PATTERN = /^[0-9A-Z]{26}$/u;
 
 const BASE64URL_OPTIONS = {
   alphabet: 'base64url',
@@ -68,7 +67,7 @@ function toPosition(value: unknown): CommentThreadPosition | undefined {
     !Number.isSafeInteger(createdAt) ||
     createdAt < 0 ||
     typeof commentId !== 'string' ||
-    !COMMENT_ID_PATTERN.test(commentId)
+    !isUppercaseUlid(commentId)
   ) {
     return undefined;
   }

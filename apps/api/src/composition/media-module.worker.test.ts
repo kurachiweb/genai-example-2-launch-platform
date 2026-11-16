@@ -83,7 +83,7 @@ interface LoggedObject {
 
 const BASE_URL = 'https://api.launch.example';
 const RELAYED_IP = '203.0.113.7';
-const FILE_ID = '01JC0FILE000000000000000001';
+const FILE_ID = '01JC0F11E000000000000000001';
 
 // 業務日付2026-11-02の業務時刻4:21
 const SCHEDULED_TIME = new Date(Date.UTC(2026, 10, 2, 12, 21));
@@ -98,13 +98,13 @@ const MEDIA_JOB_NAMES = [
 const OWNER: AuthenticatedPrincipal = Object.freeze({
   kind: 'authenticated',
   subjectKind: 'user',
-  subjectId: '01JC0USER00000000000000001',
+  subjectId: '01JC0VSER00000000000000001',
   sessionId: '01JC0SESSION0000000000001',
 });
 
 const OTHER_USER: AuthenticatedPrincipal = Object.freeze({
   ...OWNER,
-  subjectId: '01JC0USER00000000000000002',
+  subjectId: '01JC0VSER00000000000000002',
 });
 
 const ADMIN: AuthenticatedPrincipal = Object.freeze({

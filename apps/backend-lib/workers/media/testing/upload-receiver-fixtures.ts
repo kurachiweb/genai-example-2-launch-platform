@@ -53,7 +53,7 @@ export const FILE_PURPOSE: UploadPurpose = defineUploadPurpose({
   maxBytes: MAX_UPLOAD_BYTES,
 });
 
-export const USER_ID = '01JC0USER00000000000000001';
+export const USER_ID = '01JC0VSER00000000000000001';
 
 export const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
 

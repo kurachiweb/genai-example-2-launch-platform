@@ -455,6 +455,7 @@ describe('GET /internal/media/files/:fileId', () => {
     test.each([
       ['形式の不正な識別子', 'not-a-file-id'],
       ['26文字でない識別子', fileIdOf(1).slice(1)],
+      ['小文字の識別子', fileIdOf(1).toLowerCase()],
       ['存在しない識別子', fileIdOf(99)],
     ])('%s', async (_label, fileId) => {
       await seedAttachment(1);

@@ -343,6 +343,12 @@ describe('D1AuditLogStore.search', () => {
         .encode(`1:${auditLogIdOf(1).toLowerCase()}`)
         .toBase64({ alphabet: 'base64url', omitPadding: true }),
     },
+    ...['I', 'L', 'O', 'U'].map((letter) => ({
+      name: `IDがCrockford Base32に無い${letter}を含む`,
+      cursor: new TextEncoder()
+        .encode(`1:${auditLogIdOf(1).slice(0, 25)}${letter}`)
+        .toBase64({ alphabet: 'base64url', omitPadding: true }),
+    })),
     {
       name: 'UTF-8として読めない中身',
       cursor: new Uint8Array([0xff, 0xfe]).toBase64({

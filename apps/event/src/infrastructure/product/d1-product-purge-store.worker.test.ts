@@ -42,7 +42,7 @@ function screenshotFileIdOf(productIndex: number, position: number): string {
 }
 
 function handlerRunIdOf(index: number): string {
-  return `01JD0HRUN${String(index).padStart(17, '0')}`;
+  return `01JD0HRVN${String(index).padStart(17, '0')}`;
 }
 
 async function insertHandlerRun(

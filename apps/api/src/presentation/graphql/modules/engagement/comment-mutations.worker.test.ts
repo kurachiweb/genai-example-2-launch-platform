@@ -467,6 +467,48 @@ describe('postComment・updateComment・deleteComment: 入力の検証', () => {
     },
   );
 
+  test.each(['I', 'L', 'O', 'U'])(
+    'Crockford Base32に無い%sを含むIDを、それぞれの対象が見つからない文言のvalidation_errorにする',
+    async (letter) => {
+      const calls = stubExternalServices();
+      const token = await issueEngagementUserSession(COMMENTER);
+      const invalidIdOf = (id: string): string => `${id.slice(0, 25)}${letter}`;
+
+      const posted = await postComment(
+        topLevelPost({
+          productId: invalidIdOf(productIdOf(LISTED)),
+          parentId: invalidIdOf(commentIdOf(COMMENTER_TOP)),
+        }),
+        { sessionToken: token, botToken: POST_TOKEN },
+      );
+      const deleted = await deleteComment(
+        invalidIdOf(commentIdOf(COMMENTER_TOP)),
+        { sessionToken: token, botToken: DELETE_TOKEN },
+      );
+
+      expect(detailsOf(posted)).toEqual([
+        {
+          field: 'input.productId',
+          code: 'invalid_format',
+          message: ENGAGEMENT_ERRORS.comment_target_not_found.message,
+        },
+        {
+          field: 'input.parentId',
+          code: 'invalid_format',
+          message: ENGAGEMENT_ERRORS.comment_parent_unavailable.message,
+        },
+      ]);
+      expect(detailsOf(deleted)).toEqual([
+        {
+          field: 'commentId',
+          code: 'invalid_format',
+          message: ENGAGEMENT_ERRORS.comment_not_found.message,
+        },
+      ]);
+      expect(calls.siteverifyTokens).toEqual([]);
+    },
+  );
+
   test('形式の違うIDを、それぞれの対象が見つからない文言のvalidation_errorにする', async () => {
     const calls = stubExternalServices();
     const token = await issueEngagementUserSession(COMMENTER);

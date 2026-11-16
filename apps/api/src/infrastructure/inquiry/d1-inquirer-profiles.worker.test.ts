@@ -179,7 +179,7 @@ describe('D1InquirerProfilesの束縛', () => {
                 userId,
                 nickname: '差し替えた利用者',
                 handle: 'replaced',
-                avatarFileId: '01JC0FILE00000000000000001',
+                avatarFileId: '01JC0F11E00000000000000001',
               },
             ]),
           ),
@@ -197,6 +197,6 @@ describe('D1InquirerProfilesの束縛', () => {
     expect(profiles).toBe(withAvatar);
     expect(
       (await profiles.findMany([userIdOf(1)])).get(userIdOf(1))?.avatarFileId,
-    ).toBe('01JC0FILE00000000000000001');
+    ).toBe('01JC0F11E00000000000000001');
   });
 });

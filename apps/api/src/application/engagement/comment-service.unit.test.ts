@@ -234,7 +234,7 @@ describe('CommentService.post: 投稿先とローンチの判定', () => {
   });
 
   test('別のプロダクトのローンチ・存在しないローンチ・取消のローンチはcomment_target_not_foundで拒否する', async () => {
-    const canceledId = '01JD0LNCH00000000000000003';
+    const canceledId = '01JD01NCH00000000000000003';
     const { service, writer } = setup({
       launches: [
         launchOf(),
@@ -245,7 +245,7 @@ describe('CommentService.post: 投稿先とローンチの判定', () => {
 
     for (const launchId of [
       OTHER_LAUNCH_ID,
-      '01JD0LNCH00000000000000009',
+      '01JD01NCH00000000000000009',
       canceledId,
     ]) {
       expect(

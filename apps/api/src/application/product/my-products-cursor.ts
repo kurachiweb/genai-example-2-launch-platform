@@ -1,4 +1,5 @@
 import { invalidCursorError } from '../../../lib/core/errors/invalid-cursor.ts';
+import { isUppercaseUlid } from '../../../lib/core/ids/uppercase-ulid.ts';
 import {
   type BusinessDate,
   parseBusinessDate,
@@ -6,7 +7,6 @@ import {
 import type { ProductListPosition } from './ports.ts';
 
 const BUSINESS_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
-const PRODUCT_ID_PATTERN = /^[0-9A-Z]{26}$/u;
 
 const BASE64URL_OPTIONS = {
   alphabet: 'base64url',
@@ -71,7 +71,7 @@ function toPosition(value: unknown): ProductListPosition | undefined {
   if (
     latestLaunchDate === undefined ||
     typeof id !== 'string' ||
-    !PRODUCT_ID_PATTERN.test(id)
+    !isUppercaseUlid(id)
   ) {
     return undefined;
   }

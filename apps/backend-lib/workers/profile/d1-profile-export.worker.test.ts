@@ -13,14 +13,14 @@ import {
 } from '../identity/testing/identity-store-fixtures.ts';
 import { D1ProfileExport } from './d1-profile-export.ts';
 
-const AVATAR_FILE_ID = '01JC0FILE00000000000000001';
+const AVATAR_FILE_ID = '01JC0F11E00000000000000001';
 
 async function insertProfile(
   index: number,
   columns: Partial<typeof userProfiles.$inferInsert> = {},
 ): Promise<void> {
   await db.insert(userProfiles).values({
-    id: `01JC0PROF${String(index).padStart(17, '0')}`,
+    id: `01JC0PR0F${String(index).padStart(17, '0')}`,
     userId: userIdOf(index),
     createdAt: T0,
     updatedAt: T0,
@@ -145,7 +145,7 @@ describe('ProfileExport.find', () => {
 
   test('物理削除済みで行の無い利用者は返さない', async () => {
     expect(
-      await profileExport.find('01JC0USER99999999999999999'),
+      await profileExport.find('01JC0VSER99999999999999999'),
     ).toBeUndefined();
   });
 });

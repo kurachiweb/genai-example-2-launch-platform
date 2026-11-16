@@ -22,7 +22,7 @@ import {
   UltrasOfferPolicy,
 } from './ultras-offer-policy.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 const NOW = new Date('2026-11-06T04:21:00.000Z');
 const REQUEST: PurchaseOfferRequest = Object.freeze({
   userId: USER_ID,

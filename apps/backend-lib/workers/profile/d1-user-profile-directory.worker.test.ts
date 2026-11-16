@@ -14,12 +14,12 @@ import {
 } from '../identity/testing/identity-store-fixtures.ts';
 import { D1UserProfileDirectory } from './d1-user-profile-directory.ts';
 
-const AVATAR_FILE_ID = '01JC0FILE00000000000000001';
+const AVATAR_FILE_ID = '01JC0F11E00000000000000001';
 
 const BULK_USER_COUNT = 200;
 
 function profileIdOf(index: number): string {
-  return `01JC0PROF${String(index).padStart(17, '0')}`;
+  return `01JC0PR0F${String(index).padStart(17, '0')}`;
 }
 
 async function insertProfile(
@@ -42,7 +42,7 @@ async function insertPrevious(
   deletedAt: Date | null = null,
 ): Promise<void> {
   await db.insert(userPreviousHandles).values({
-    id: `01JC0PRVHDL${String(index).padStart(15, '0')}`,
+    id: `01JC0PRVHD1${String(index).padStart(15, '0')}`,
     ownerId: userIdOf(ownerIndex),
     handle,
     createdAt: T0,
@@ -129,7 +129,7 @@ describe('findSummaries', () => {
     '範囲%sでも存在しないIDは返さず、空の一覧では問い合わせずに空の結果を返す',
     async (scope) => {
       const found = await directory.findSummaries(
-        [userIdOf(1), '01JC0USER99999999999999999'],
+        [userIdOf(1), '01JC0VSER99999999999999999'],
         scope,
       );
 

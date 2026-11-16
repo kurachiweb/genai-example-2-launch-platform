@@ -123,7 +123,7 @@ async function insertPreviousHandle(
   handle: string,
 ): Promise<void> {
   await db.insert(userPreviousHandles).values({
-    id: `01JC0PRVHDL${String(ownerIndex).padStart(15, '0')}`,
+    id: `01JC0PRVHD1${String(ownerIndex).padStart(15, '0')}`,
     ownerId: userIdOf(ownerIndex),
     handle,
     createdAt: T0,
@@ -387,7 +387,7 @@ describe('公開プロフィールの照会(実物の束縛)', () => {
 
   test('現在のハンドルを大文字小文字を区別せずに解決し、閲覧者のフォローの有無とフォロワー数を返す', async () => {
     await db.insert(userFollows).values({
-      id: '01JC0FLW000000000000000301',
+      id: '01JC0F1W000000000000000301',
       followerId: userIdOf(OTHER),
       followeeId: userIdOf(TARGET),
       createdAt: T0,
@@ -549,9 +549,9 @@ describe('退会の同期の波及処理の登録', () => {
   const TARGET = 3;
   const WITHDRAWN_AT = new Date('2026-11-05T01:00:00.000Z');
   const FOLLOW_IDS = [
-    '01JC0FLW000000000000000001',
-    '01JC0FLW000000000000000002',
-    '01JC0FLW000000000000000003',
+    '01JC0F1W000000000000000001',
+    '01JC0F1W000000000000000002',
+    '01JC0F1W000000000000000003',
   ] as const;
 
   beforeEach(async () => {

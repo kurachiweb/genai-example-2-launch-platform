@@ -135,7 +135,7 @@ describe('D1AdminDirectory.findProfiles', () => {
     await insertAdmins([1], {
       role: 'super_admin',
       title: 'サポート担当',
-      avatarFileId: '01JC0FILE00000000000000001',
+      avatarFileId: '01JC0F11E00000000000000001',
     });
     await insertAdmins([2]);
 
@@ -152,7 +152,7 @@ describe('D1AdminDirectory.findProfiles', () => {
             id: adminIdOf(1),
             nickname: '管理者1',
             title: 'サポート担当',
-            avatarFileId: '01JC0FILE00000000000000001',
+            avatarFileId: '01JC0F11E00000000000000001',
           },
         ],
         [

@@ -206,8 +206,8 @@ export function deletedProductOf(
   overrides: Partial<DeletedProduct> = {},
 ): DeletedProduct {
   return {
-    productId: ulidOf('01JD0PROD', index),
-    ownerUserId: ulidOf('01JC0USER', index),
+    productId: ulidOf('01JD0PR0D', index),
+    ownerUserId: ulidOf('01JC0VSER', index),
     deletedAt,
     ...overrides,
   };
@@ -219,8 +219,8 @@ export function pendingProductEventOf(
 ): StoredProductLifecycleEvent {
   return {
     id: ulidOf('01JD0EVENT', index),
-    productId: ulidOf('01JD0PROD', index),
-    ownerUserId: ulidOf('01JC0USER', index),
+    productId: ulidOf('01JD0PR0D', index),
+    ownerUserId: ulidOf('01JC0VSER', index),
     type: 'deleted',
     occurredAt: new Date('2026-11-01T00:00:00.000Z'),
     status: 'pending',

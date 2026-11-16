@@ -251,11 +251,12 @@ test('翌日の締めの定期実行の後に当日の日報が締め済みに�
 ```typescript
 import { z } from 'zod';
 
+import { UPPERCASE_ULID_PATTERN } from '../ids/uppercase-ulid.ts';
 import { defineMessageContract } from '../messaging/message-contract.ts';
 
 export const purgeImageCache = defineMessageContract(
   'media.purge-image-cache',
-  z.object({ imageId: z.ulid() }),
+  z.object({ imageId: z.ulid().regex(UPPERCASE_ULID_PATTERN) }),
 );
 ```
 

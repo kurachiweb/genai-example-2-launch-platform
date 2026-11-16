@@ -115,6 +115,15 @@ describe('decodeCommentThreadCursor', () => {
         JSON.stringify({ createdAt: 1, commentId: COMMENT_ID.toLowerCase() }),
       ),
     ],
+    ...['I', 'L', 'O', 'U'].map((letter) => [
+      `IDがCrockford Base32に無い${letter}を含む値`,
+      base64urlOf(
+        JSON.stringify({
+          createdAt: 1,
+          commentId: `${COMMENT_ID.slice(0, 25)}${letter}`,
+        }),
+      ),
+    ]),
     [
       '余分な項目を加えた値',
       base64urlOf(

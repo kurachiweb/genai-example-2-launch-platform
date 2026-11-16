@@ -377,7 +377,7 @@ describe('RatingService.rate: 評価と変更', () => {
       rejectionOf(
         missing.service.rate({
           ...input,
-          productId: '01JD0PROD00000000000000099',
+          productId: '01JD0PR0D00000000000000099',
         }),
       ),
     ]);

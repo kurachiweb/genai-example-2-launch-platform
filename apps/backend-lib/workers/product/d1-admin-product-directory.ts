@@ -26,6 +26,7 @@ import { products } from '../../../db/schema/product/products.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
 import { AppError } from '../../core/errors/app-error.ts';
 import { invalidCursorError } from '../../core/errors/invalid-cursor.ts';
+import { UPPERCASE_ULID_SOURCE } from '../../core/ids/uppercase-ulid.ts';
 import {
   deriveLaunchStatus,
   type QualifierOutcome,
@@ -46,7 +47,10 @@ import {
 const MIN_PAGE_SIZE = 1;
 const MAX_PAGE_SIZE = 50;
 
-const CURSOR_PATTERN = /^(\d{1,15}):([0-9A-Z]{26})$/u;
+const CURSOR_PATTERN = new RegExp(
+  String.raw`^(\d{1,15}):(${UPPERCASE_ULID_SOURCE})$`,
+  'u',
+);
 
 const LIKE_SPECIAL_CHARACTERS = /[\\%_]/gu;
 

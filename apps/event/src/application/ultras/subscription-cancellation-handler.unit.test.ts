@@ -19,7 +19,7 @@ import { SubscriptionCancellationHandler } from './subscription-cancellation-han
 
 type CancelResult = Awaited<ReturnType<StripeGateway['cancelSubscription']>>;
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 
 const T0 = new Date('2026-11-05T00:00:00.000Z');
 

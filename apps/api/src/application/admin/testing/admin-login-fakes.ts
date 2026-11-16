@@ -349,7 +349,7 @@ function createSecretFakes() {
   };
   let sequence = 0;
   const ids: IdGenerator = {
-    generate: () => `01JC0CHLG${String(sequence++).padStart(17, '0')}`,
+    generate: () => `01JC0CH1G${String(sequence++).padStart(17, '0')}`,
   };
   return { secrets, ids };
 }

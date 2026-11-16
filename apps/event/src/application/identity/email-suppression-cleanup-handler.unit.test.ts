@@ -8,7 +8,7 @@ import type { UserLifecycleEvent } from '../../../lib/core/identity/user-lifecyc
 import { EmailSuppressionCleanupHandler } from './email-suppression-cleanup-handler.ts';
 import type { UserEmailLookup } from './ports.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 
 const EVENT: UserLifecycleEvent = {
   id: '01JC0EVT000000000000000010',

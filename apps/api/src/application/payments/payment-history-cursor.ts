@@ -1,7 +1,11 @@
 import { invalidCursorError } from '../../../lib/core/errors/invalid-cursor.ts';
+import { UPPERCASE_ULID_SOURCE } from '../../../lib/core/ids/uppercase-ulid.ts';
 import type { PaymentRecordCursor } from '../../../lib/core/payments/ports.ts';
 
-const CURSOR_PATTERN = /^(\d{1,15}):([0-9A-Z]{26})$/u;
+const CURSOR_PATTERN = new RegExp(
+  String.raw`^(\d{1,15}):(${UPPERCASE_ULID_SOURCE})$`,
+  'u',
+);
 
 const BASE64URL_OPTIONS = {
   alphabet: 'base64url',

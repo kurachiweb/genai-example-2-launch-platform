@@ -125,7 +125,7 @@ export async function insertEventRow(
 }
 
 export function followIdOf(followerIndex: number): string {
-  return `01JC0FLW${String(followerIndex).padStart(18, '0')}`;
+  return `01JC0F1W${String(followerIndex).padStart(18, '0')}`;
 }
 
 export async function clearFollows(): Promise<void> {

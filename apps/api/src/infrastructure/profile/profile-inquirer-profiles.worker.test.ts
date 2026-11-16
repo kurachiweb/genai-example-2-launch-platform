@@ -21,8 +21,8 @@ import type {
 } from '../../application/inquiry/ports.ts';
 import { ProfileInquirerProfiles } from './profile-inquirer-profiles.ts';
 
-const AVATAR_FILE_ID = '01JC0FILE00000000000000001';
-const OTHER_AVATAR_FILE_ID = '01JC0FILE00000000000000002';
+const AVATAR_FILE_ID = '01JC0F11E00000000000000001';
+const OTHER_AVATAR_FILE_ID = '01JC0F11E00000000000000002';
 
 const BULK_USER_COUNT = 150;
 
@@ -31,7 +31,7 @@ function range(from: number, to: number): number[] {
 }
 
 function profileIdOf(index: number): string {
-  return `01JC0PROF${String(index).padStart(17, '0')}`;
+  return `01JC0PR0F${String(index).padStart(17, '0')}`;
 }
 
 async function insertProfile(

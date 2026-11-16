@@ -127,7 +127,7 @@ describe('EngagementTargetResolver.resolve: 閲覧の可否', () => {
 
     expect(
       await resolver.resolve({
-        productId: '01JD0PROD00000000000000009',
+        productId: '01JD0PR0D00000000000000009',
         launchId: LAUNCH_ID,
         viewerUserId: OWNER_ID,
         now: NOW,
@@ -238,7 +238,7 @@ describe('EngagementTargetResolver.resolve: ローンチ', () => {
 
     const target = await resolver.resolve({
       productId: PRODUCT_ID,
-      launchId: '01JD0LNCH00000000000000009',
+      launchId: '01JD01NCH00000000000000009',
       viewerUserId: MEMBER_ID,
       now: NOW,
     });

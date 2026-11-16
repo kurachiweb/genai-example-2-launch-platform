@@ -445,7 +445,7 @@ describe('adminInquiry', () => {
       moderationStatus: 'passed',
     });
     await db.insert(userProfiles).values({
-      id: '01JC0PROF000000000000000001',
+      id: '01JC0PR0F000000000000000001',
       userId: userIdOf(INQUIRER),
       avatarFileId: fileIdOf(1),
       createdAt: T0,

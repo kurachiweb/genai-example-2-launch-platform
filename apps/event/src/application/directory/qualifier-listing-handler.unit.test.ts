@@ -49,7 +49,7 @@ const EVENT_ID = '01JD0MEVT00000000000000010';
 const clock: Clock = { now: () => NOW };
 
 function productIdOf(slot: 1 | 2): string {
-  return `01JD0PROD0000000000000000${String(slot)}`;
+  return `01JD0PR0D0000000000000000${String(slot)}`;
 }
 
 function ownerIdOf(slot: 1 | 2): string {
@@ -82,7 +82,7 @@ function entryOf(
   return {
     entryId: `01JD0ENTR0000000000000000${String(slot)}`,
     slot,
-    launchId: linked ? `01JD0LNCH0000000000000000${String(slot)}` : null,
+    launchId: linked ? `01JD01NCH0000000000000000${String(slot)}` : null,
     productId: linked ? productIdOf(slot) : null,
     ownerUserId: linked && !ownerCleared ? ownerIdOf(slot) : null,
     upvoteCount: 0,

@@ -92,7 +92,7 @@ export const SENDER_INFO = {
 } as const;
 
 export function emailRequestIdOf(index: number): string {
-  return `01JC0EMAIL${String(index).padStart(16, '0')}`;
+  return `01JC0EMA11${String(index).padStart(16, '0')}`;
 }
 
 export interface RecordingSender extends EmailSender {

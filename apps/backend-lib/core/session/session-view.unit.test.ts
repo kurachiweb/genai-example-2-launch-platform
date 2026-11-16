@@ -12,7 +12,7 @@ describe('SessionView', () => {
     const principal: Principal = {
       kind: 'authenticated',
       subjectKind: 'user',
-      subjectId: '01JC0USER00000000000000001',
+      subjectId: '01JC0VSER00000000000000001',
       sessionId: '01JC0SESSION00000000000001',
     };
     const session: SessionView = {

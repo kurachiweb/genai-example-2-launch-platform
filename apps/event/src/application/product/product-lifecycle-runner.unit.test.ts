@@ -44,9 +44,9 @@ import {
 
 const NOW = new Date('2026-11-09T07:21:00.000Z');
 
-const PRODUCT_ID = '01JD0PROD00000000000000001';
+const PRODUCT_ID = '01JD0PR0D00000000000000001';
 
-const OWNER_ID = '01JC0USER00000000000000001';
+const OWNER_ID = '01JC0VSER00000000000000001';
 
 const EVENT_ID = '01JD0PEVT00000000000000010';
 
@@ -334,7 +334,7 @@ describe('プロダクトライフサイクルイベントの非同期の処理�
       EARLIER_EVENT_ID,
       storedEvent({
         id: EARLIER_EVENT_ID,
-        productId: '01JD0PROD00000000000000002',
+        productId: '01JD0PR0D00000000000000002',
         occurredAt: new Date('2026-11-09T06:00:00.000Z'),
       }),
     );

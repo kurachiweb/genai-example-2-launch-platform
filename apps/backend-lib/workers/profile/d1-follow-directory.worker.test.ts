@@ -14,7 +14,7 @@ import {
 import { D1FollowDirectory } from './d1-follow-directory.ts';
 
 function followIdOf(index: number): string {
-  return `01JC0FLW${String(index).padStart(18, '0')}`;
+  return `01JC0F1W${String(index).padStart(18, '0')}`;
 }
 
 async function insertFollow(

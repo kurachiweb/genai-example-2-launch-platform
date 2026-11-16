@@ -22,7 +22,7 @@ describe('StoredLifecycleEvent', () => {
   test('イベントに状態と送信の回数と最後の送信日時を加えた形で、イベントとして渡せる', () => {
     const stored: StoredLifecycleEvent = {
       id: '01JC0EVT000000000000000001',
-      userId: '01JC0USER00000000000000001',
+      userId: '01JC0VSER00000000000000001',
       type: 'withdrawn',
       occurredAt: new Date('2026-11-01T00:00:00.000Z'),
       status: 'pending',

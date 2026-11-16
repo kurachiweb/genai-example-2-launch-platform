@@ -38,11 +38,11 @@ import {
 
 export const day = (value: string): BusinessDate => parseBusinessDate(value);
 
-export const PRODUCT_ID = '01JD0PRODUCT00000000000001';
+export const PRODUCT_ID = '01JD0PR0DVCT00000000000001';
 export const LAUNCH_ID = '01JD0LAUNCH000000000000001';
 export const OTHER_CATEGORY_ID = '01JD0CATEGORY0000000000002';
-export const NEW_LOGO_FILE_ID = '01JC0FILE00000000000000002';
-export const NEW_SCREENSHOT_FILE_ID = '01JC0FILE00000000000000013';
+export const NEW_LOGO_FILE_ID = '01JC0F11E00000000000000002';
+export const NEW_SCREENSHOT_FILE_ID = '01JC0F11E00000000000000013';
 export const [FIRST_SCREENSHOT_ID, SECOND_SCREENSHOT_ID] = SCREENSHOT_FILE_IDS;
 
 export const FINISHED_LAUNCH: LaunchRecord = Object.freeze({
@@ -198,4 +198,4 @@ export async function rejectionOf(
 }
 
 export const generatedIdOf = (index: number): string =>
-  `01JD0ID${String(index).padStart(19, '0')}`;
+  `01JD01D${String(index).padStart(19, '0')}`;

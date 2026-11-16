@@ -4,7 +4,7 @@ import type { DirectoryEntryStore } from '../../../lib/core/directory/ports.ts';
 import type { ProductLifecycleEvent } from '../../../lib/core/product/product-lifecycle.ts';
 import { EntryErasureHandler } from './entry-erasure-handler.ts';
 
-const PRODUCT_ID = '01JD0PROD00000000000000004';
+const PRODUCT_ID = '01JD0PR0D00000000000000004';
 
 const EVENT: ProductLifecycleEvent = Object.freeze({
   id: '01JD0PEVT00000000000000081',

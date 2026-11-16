@@ -39,7 +39,7 @@ import {
 
 const NOW = new Date('2026-11-02T07:21:00.000Z');
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 
 const EVENT_ID = '01JC0EVT000000000000000010';
 
@@ -319,7 +319,7 @@ describe('ユーザーライフサイクルイベントの非同期の波及処�
       EARLIER_EVENT_ID,
       storedEvent({
         id: EARLIER_EVENT_ID,
-        userId: '01JC0USER00000000000000002',
+        userId: '01JC0VSER00000000000000002',
         occurredAt: new Date('2026-11-02T06:00:00.000Z'),
       }),
     );

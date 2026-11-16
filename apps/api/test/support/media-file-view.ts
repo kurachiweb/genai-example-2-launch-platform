@@ -1,12 +1,12 @@
 import type { MediaFileView } from '../../lib/core/media/media-file.ts';
 
 const BASE_FILE: MediaFileView = Object.freeze({
-  id: '01JC0FILE000000000000000001',
+  id: '01JC0F11E000000000000000001',
   objectKey: '0123456789abcdef'.repeat(2),
   purpose: 'inquiry-attachment',
   storage: 'files',
   location: 'files',
-  owner: Object.freeze({ kind: 'user', id: '01JC0USER00000000000000001' }),
+  owner: Object.freeze({ kind: 'user', id: '01JC0VSER00000000000000001' }),
   originalFileName: 'document.pdf',
   contentType: 'application/pdf',
   byteSize: 1024,

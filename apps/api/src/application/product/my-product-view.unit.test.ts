@@ -12,7 +12,7 @@ import {
   USER_ID,
 } from './testing/product-fakes.ts';
 
-const PRODUCT_ID = '01JD0PRODUCT00000000000001';
+const PRODUCT_ID = '01JD0PR0DVCT00000000000001';
 
 const launchOf = (overrides: Partial<LaunchRecord> = {}): LaunchRecord => ({
   launchId: '01JD0LAUNCH000000000000001',
