@@ -17,4 +17,5 @@ export * from './notifications/index.ts';
 export * from './payments/index.ts';
 export * from './product/index.ts';
 export * from './profile/index.ts';
+export * from './tournament/index.ts';
 export * from './ultras/index.ts';

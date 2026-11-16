@@ -25,7 +25,7 @@
   - _Boundary: match-engineのマッチの時間帯の定義とその参照(E2Eの手順と補助を含む)_
   - _Requirements: 6.1, 15.1_
 
-- [ ] 1.4 ブラケット・参加者・ブラケットのマッチ・週のトーナメント・参加の枠のテーブルとマイグレーションを作る
+- [x] 1.4 ブラケット・参加者・ブラケットのマッチ・週のトーナメント・参加の枠のテーブルとマイグレーションを作る
   - 先に、テーブルの定義の単体テストで、ブラケットの種類と識別子の一意索引、参加者の番号と枠の一意索引、マッチの位置の一意索引とマッチへの外部キーが無いこと、週の一意索引、枠のローンチの一意索引と週ごとのプロダクトの一意索引、状態・理由・返金(`already_refunded`・`rejected`を含む6値)と知らせの状態の値の制約、参加資格の状態なら出どころが必須・決済なら購入が必須の制約、外部キーに`ON DELETE`の指定が無いことを確かめる
   - mainの最新を取り込んでからマイグレーションを生成し、ローカルに適用する
   - 完了状態: 単体テストが成功し、マイグレーションをローカルのD1に適用できる
@@ -432,3 +432,4 @@
 - 1.1: 規則は`apps/common-lib/tournament/week-period.ts`(`weekStartOf`・`isoWeekKey`・`parseIsoWeek`・`formatWeekPeriodLabel`)と`round-name.ts`(`TOURNAMENT_STAGES`・`stageForSlotCount`・`roundLabel`・`tournamentRoundName`)。`parseIsoWeek`は形式違反・年の範囲外(4桁で1年以上)・存在しない週を`undefined`で返し、存在しない日付は`RangeError`。`roundLabel`はラウンドが正の整数でなく段階も無ければ`null`、`tournamentRoundName`はそのとき`RangeError`。`isoWeekKey`・`formatWeekPeriodLabel`は月曜日以外の日付も受け付ける。1.2への申し送り: (a)notificationsの`awardPeriodLabel`は0001〜0099年で`RangeError`(`Date.UTC`の読み替え)だが新しい規則は表記を返す(既存テストに影響なし。既存の2種類のエラーメッセージ(形式違反・存在しないISO週)の区別を保つこと)、(b)clientの`roundNameOf`は0・負・非整数で「0回戦」等を返すが`roundLabel`は`null`(表示は種別名だけになる)、(c)設計に無い公開の名前`TOURNAMENT_STAGES`・`RoundLabelInput`・`TournamentRoundNameInput`・`ParsedIsoWeek`は8.2の文書で扱う。
 - 1.2: notificationsの`notice-copy.ts`(`roundName`→`roundLabel`、Weekの期間→形式の正規表現`WEEK_PERIOD_PATTERN`で形式違反を分けてから`parseIsoWeek`→`formatWeekPeriodLabel`)・`notification-event-contract.ts`(`isIsoWeekPeriod`→`parseIsoWeek`)とclientの`match-labels.ts`(`Record<MatchStageValue, TournamentStage>`で大文字を小文字へ)を寄せ替えた。差は0000〜0099年と`9999-W53/54`のエラーメッセージだけ(どちらも`RangeError`)。`core/time`の`businessWeekOf`は本体から使われなくなった(設計どおり業務時刻の部品として残す)。
 - 1.3: match-engineの時間帯を`MATCH_SCHEDULE`・`MatchSchedule`・`matchWindow(date)`(`core/match/match-model.ts`)に改名した(23ファイル、設計の一覧と一致)。ブラケットの予定(3.2・2.5)はこの名前を使う。eventのメールのテンプレートのReactコンポーネント`MatchSchedule`と同名だが別モジュール。
+- 1.4: テーブルは`apps/db/schema/tournament/`(`tournamentBrackets`・`bracketParticipants`・`bracketMatches`・`weekTournaments`・`weekTournamentEntries`)、マイグレーションは`20261116171705_tournament_week`。`bracket_matches`の主キーは`match_id`(matchesへの外部キー無し)。`bracket_participants.owner_user_id`・`week_tournament_entries.owner_user_id`は`users`への外部キー(ON DELETE無し)のため、物理削除の紐付けの解除(4.3の`unlinkOrDeleteByProduct`・3.1の`unlinkProduct`)は`owner_user_id`も必ずnullにし、テストで確かめること(忘れると利用者の物理削除が外部キー違反で失敗する)。既定値は`refund_status`・`refund_notice_status`の`'none'`だけ。D1での制約の確認は`apps/db/tournament-week-schema.worker.test.ts`(apiの`bun run test:worker -- db/`)。

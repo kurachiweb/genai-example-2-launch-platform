@@ -81,6 +81,11 @@ describe('スキーマの集約点', () => {
     'notification_notices',
     'launch_comments',
     'product_ratings',
+    'tournament_brackets',
+    'bracket_participants',
+    'bracket_matches',
+    'week_tournaments',
+    'week_tournament_entries',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
