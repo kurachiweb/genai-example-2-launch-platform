@@ -11,8 +11,8 @@ import {
   MATCH_PHASES,
   MATCH_STAGES,
   type MatchTimes,
-  QUALIFIER_SCHEDULE,
-  qualifierWindow,
+  MATCH_SCHEDULE,
+  matchWindow,
 } from './match-model.ts';
 
 const MATCH_DATE = parseBusinessDate('2026-09-07');
@@ -70,30 +70,30 @@ describe('マッチの値の一覧', () => {
   });
 });
 
-describe('QUALIFIER_SCHEDULE', () => {
+describe('MATCH_SCHEDULE', () => {
   test('開始は0:00、終了は23:40、ペアリングは23:45で、変更できない', () => {
-    expect(QUALIFIER_SCHEDULE).toEqual({
+    expect(MATCH_SCHEDULE).toEqual({
       kickoff: { hour: 0, minute: 0 },
       fullTime: { hour: 23, minute: 40 },
       pairing: { hour: 23, minute: 45 },
     });
-    expect(Object.isFrozen(QUALIFIER_SCHEDULE)).toBe(true);
-    expect(Object.isFrozen(QUALIFIER_SCHEDULE.kickoff)).toBe(true);
-    expect(Object.isFrozen(QUALIFIER_SCHEDULE.fullTime)).toBe(true);
-    expect(Object.isFrozen(QUALIFIER_SCHEDULE.pairing)).toBe(true);
+    expect(Object.isFrozen(MATCH_SCHEDULE)).toBe(true);
+    expect(Object.isFrozen(MATCH_SCHEDULE.kickoff)).toBe(true);
+    expect(Object.isFrozen(MATCH_SCHEDULE.fullTime)).toBe(true);
+    expect(Object.isFrozen(MATCH_SCHEDULE.pairing)).toBe(true);
   });
 });
 
-describe('qualifierWindow', () => {
+describe('matchWindow', () => {
   test('実施日の業務時刻の0:00(UTCの8:00)に始まり、23:40(UTCの翌日7:40)に終わる', () => {
-    expect(qualifierWindow(MATCH_DATE)).toEqual({
+    expect(matchWindow(MATCH_DATE)).toEqual({
       startsAt: KICKOFF,
       endsAt: FULL_TIME,
     });
   });
 
   test('年をまたぐ実施日でも業務時刻の0:00から23:40までになる', () => {
-    expect(qualifierWindow(parseBusinessDate('2026-12-31'))).toEqual({
+    expect(matchWindow(parseBusinessDate('2026-12-31'))).toEqual({
       startsAt: new Date('2026-12-31T08:00:00.000Z'),
       endsAt: new Date('2027-01-01T07:40:00.000Z'),
     });

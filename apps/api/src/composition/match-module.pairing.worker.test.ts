@@ -8,7 +8,7 @@ import { qualifierPairings } from '../../db/schema/match/qualifier-pairings.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../lib/core/ids/id-generator.ts';
 import { MATCH_PLATFORM_TYPES } from '../../lib/core/match/identifiers.ts';
-import { qualifierWindow } from '../../lib/core/match/match-model.ts';
+import { matchWindow } from '../../lib/core/match/match-model.ts';
 import type { MatchScheduler } from '../../lib/core/match/ports.ts';
 import { PRODUCT_PLATFORM_TYPES } from '../../lib/core/product/identifiers.ts';
 import type { ScheduledLaunchDirectory } from '../../lib/core/product/ports.ts';
@@ -144,7 +144,7 @@ describe('APIサーバーのマッチのモジュールのペアリングの束�
       launchIdOf(2),
       launchIdOf(3),
     ]);
-    const window = qualifierWindow(DATE);
+    const window = matchWindow(DATE);
     const rows = await readMatchRows();
     expect(rows).toHaveLength(2);
     for (const row of rows) {
@@ -228,7 +228,7 @@ describe('APIサーバーのマッチのモジュールのペアリングの束�
         calls += 1;
         const contested = inputs[0]?.entries[0];
         if (calls === 1 && contested !== undefined) {
-          const window = qualifierWindow(DATE);
+          const window = matchWindow(DATE);
           await scheduler.schedule(
             [
               {

@@ -62,13 +62,13 @@ export interface MatchWindow {
   readonly endsAt: Date;
 }
 
-export interface QualifierSchedule {
+export interface MatchSchedule {
   readonly kickoff: BusinessTimeOfDay;
   readonly fullTime: BusinessTimeOfDay;
   readonly pairing: BusinessTimeOfDay;
 }
 
-export const QUALIFIER_SCHEDULE: QualifierSchedule = Object.freeze({
+export const MATCH_SCHEDULE: MatchSchedule = Object.freeze({
   kickoff: Object.freeze({ hour: 0, minute: 0 }),
   fullTime: Object.freeze({ hour: 23, minute: 40 }),
   pairing: PAIRING_TIME,
@@ -88,10 +88,10 @@ export function deriveMatchPhase(match: MatchTimes, now: Date): MatchPhase {
   return 'live';
 }
 
-export function qualifierWindow(date: BusinessDate): MatchWindow {
+export function matchWindow(date: BusinessDate): MatchWindow {
   return {
-    startsAt: fromBusinessDateTime(date, QUALIFIER_SCHEDULE.kickoff),
-    endsAt: fromBusinessDateTime(date, QUALIFIER_SCHEDULE.fullTime),
+    startsAt: fromBusinessDateTime(date, MATCH_SCHEDULE.kickoff),
+    endsAt: fromBusinessDateTime(date, MATCH_SCHEDULE.fullTime),
   };
 }
 

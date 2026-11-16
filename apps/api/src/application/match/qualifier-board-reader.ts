@@ -3,7 +3,7 @@ import { inject, injectable } from 'inversify';
 import type { CurrentUser } from '../../../lib/core/identity/account-guard.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { MATCH_PLATFORM_TYPES } from '../../../lib/core/match/identifiers.ts';
-import { qualifierWindow } from '../../../lib/core/match/match-model.ts';
+import { matchWindow } from '../../../lib/core/match/match-model.ts';
 import type {
   MatchDirectory,
   MatchRecord,
@@ -124,7 +124,7 @@ export class DirectoryQualifierBoardReader implements QualifierBoardReader {
   }): Promise<QualifierBoard> {
     const { viewer, now } = input;
     const date = toBusinessDateTime(now).date;
-    const window = qualifierWindow(date);
+    const window = matchWindow(date);
     const [records, pairingCompleted] = await Promise.all([
       this.matches.listForDate({ date, kinds: ['qualifier'], now }),
       this.pairing.isDayCompleted(date),

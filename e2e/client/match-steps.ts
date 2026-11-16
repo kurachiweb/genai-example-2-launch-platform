@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { expect, type Locator, type Page } from '@playwright/test';
 
 import { PRODUCT_CATEGORIES_TITLE } from '../../apps/admin/src/components/product/product-category-messages.ts';
-import { QUALIFIER_SCHEDULE } from '../../apps/backend-lib/core/match/match-model.ts';
+import { MATCH_SCHEDULE } from '../../apps/backend-lib/core/match/match-model.ts';
 import {
   type BusinessTimeOfDay,
   toBusinessDateTime,
@@ -64,7 +64,7 @@ const businessTimeText = ({ hour, minute }: BusinessTimeOfDay): string =>
   `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
 const SKIP_FROM_MINUTES =
-  minutesOf(QUALIFIER_SCHEDULE.fullTime) - QUALIFIER_DEADLINE_MARGIN_MINUTES;
+  minutesOf(MATCH_SCHEDULE.fullTime) - QUALIFIER_DEADLINE_MARGIN_MINUTES;
 
 // 業務時刻の締め切りの前の幅から業務日付の境界(24:00)までは、流れの途中でUpvoteの受け付けが終わるか業務日付が変わる
 export function isNearQualifierFullTime(now: Date): boolean {
@@ -110,12 +110,12 @@ export async function startQualifiers(businessDate: string): Promise<void> {
   await triggerScheduled({
     worker: 'api',
     businessDate: addBusinessDays(businessDate, -1),
-    businessTime: businessTimeText(QUALIFIER_SCHEDULE.pairing),
+    businessTime: businessTimeText(MATCH_SCHEDULE.pairing),
   });
   await triggerScheduled({
     worker: 'api',
     businessDate,
-    businessTime: businessTimeText(QUALIFIER_SCHEDULE.kickoff),
+    businessTime: businessTimeText(MATCH_SCHEDULE.kickoff),
   });
 }
 

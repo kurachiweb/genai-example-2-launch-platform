@@ -3,7 +3,7 @@ import { asc } from 'drizzle-orm';
 import { matchEntries } from '../../../../db/schema/match/match-entries.ts';
 import { matchUpvotes } from '../../../../db/schema/match/match-upvotes.ts';
 import { matches } from '../../../../db/schema/match/matches.ts';
-import { qualifierWindow } from '../../../../lib/core/match/match-model.ts';
+import { matchWindow } from '../../../../lib/core/match/match-model.ts';
 import { parseBusinessDate } from '../../../../lib/core/time/business-time.ts';
 import {
   entryIdOf,
@@ -63,9 +63,7 @@ export const PREVIOUS_DAY_VOTER_UPVOTE = 3;
 
 const PREVIOUS_DAY = '2026-11-19';
 
-export const PREVIOUS_DAY_WINDOW = qualifierWindow(
-  parseBusinessDate(PREVIOUS_DAY),
-);
+export const PREVIOUS_DAY_WINDOW = matchWindow(parseBusinessDate(PREVIOUS_DAY));
 
 export const AFTER_FULL_TIME = new Date(ENDS_AT.getTime() + 60_000);
 

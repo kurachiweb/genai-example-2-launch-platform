@@ -4,7 +4,7 @@ import { matchEvents } from '../../../../db/schema/match/match-events.ts';
 import { matchUpvotes } from '../../../../db/schema/match/match-upvotes.ts';
 import { matches } from '../../../../db/schema/match/matches.ts';
 import { qualifierPairings } from '../../../../db/schema/match/qualifier-pairings.ts';
-import { qualifierWindow } from '../../../core/match/match-model.ts';
+import { matchWindow } from '../../../core/match/match-model.ts';
 import { parseBusinessDate } from '../../../core/time/business-time.ts';
 import {
   clearProductTables,
@@ -20,7 +20,7 @@ const ROWS_PER_INSERT = 4;
 
 export const MATCH_DATE = '2026-11-20';
 
-export const MATCH_WINDOW = qualifierWindow(parseBusinessDate(MATCH_DATE));
+export const MATCH_WINDOW = matchWindow(parseBusinessDate(MATCH_DATE));
 
 type MatchRow = typeof matches.$inferInsert;
 type EntryRow = typeof matchEntries.$inferInsert;

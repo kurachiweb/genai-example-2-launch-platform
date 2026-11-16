@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 
-import { qualifierWindow } from '../../apps/backend-lib/core/match/match-model.ts';
+import { matchWindow } from '../../apps/backend-lib/core/match/match-model.ts';
 import { parseBusinessDate } from '../../apps/backend-lib/core/time/business-time.ts';
 import { DIRECTORY_PAGE_SIZE } from '../../apps/common-lib/directory/directory-query-rules.ts';
 import { moveLaunchesToDate } from '../client/match-steps.ts';
@@ -74,7 +74,7 @@ export async function createEndedQualifier(
   const inserted = await executeLocalD1(
     endedQualifierInsertSql(resolved, {
       businessDate,
-      window: qualifierWindow(parseBusinessDate(businessDate)),
+      window: matchWindow(parseBusinessDate(businessDate)),
       now: new Date(),
       ids,
     }),
@@ -95,7 +95,7 @@ export async function createListedProducts({
   const plan = planListedProducts({
     count,
     matchDate,
-    window: qualifierWindow(parseBusinessDate(matchDate)),
+    window: matchWindow(parseBusinessDate(matchDate)),
     now: new Date(),
     suffix: randomBytes(SUFFIX_BYTES).toString('hex'),
     nextId: nextFixtureId,

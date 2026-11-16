@@ -1,5 +1,5 @@
 import { isUppercaseUlid } from '../ids/uppercase-ulid.ts';
-import { QUALIFIER_SCHEDULE } from '../match/match-model.ts';
+import { MATCH_SCHEDULE } from '../match/match-model.ts';
 import { PAIRING_TIME } from '../product/launch-status.ts';
 import {
   type BusinessDate,
@@ -32,7 +32,7 @@ export type ParsedSlotKey =
 
 export const EVENING_SLOT_TIME: BusinessTimeOfDay = PAIRING_TIME;
 
-export const MORNING_SLOT_TIME: BusinessTimeOfDay = QUALIFIER_SCHEDULE.kickoff;
+export const MORNING_SLOT_TIME: BusinessTimeOfDay = MATCH_SCHEDULE.kickoff;
 
 export const EVENING_DISPATCH_DEADLINE_SECONDS = 600;
 

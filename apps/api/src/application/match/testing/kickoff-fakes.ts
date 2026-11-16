@@ -1,4 +1,4 @@
-import { qualifierWindow } from '../../../../lib/core/match/match-model.ts';
+import { matchWindow } from '../../../../lib/core/match/match-model.ts';
 import type {
   LaunchRecord,
   ProductDirectory,
@@ -19,7 +19,7 @@ import type {
 export const KICKOFF_DATE = parseBusinessDate('2027-03-03');
 
 // 業務時刻0:00
-export const KICKOFF_AT = qualifierWindow(KICKOFF_DATE).startsAt;
+export const KICKOFF_AT = matchWindow(KICKOFF_DATE).startsAt;
 
 // 前日の業務時刻23:59:59
 export const JUST_BEFORE_KICKOFF = new Date(KICKOFF_AT.getTime() - 1000);

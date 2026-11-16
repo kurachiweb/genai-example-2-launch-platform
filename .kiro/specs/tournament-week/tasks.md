@@ -17,7 +17,7 @@
   - _Depends: 1.1_
   - _Requirements: 6.8, 12.4, 15.1_
 
-- [ ] 1.3 (P) match-engineの予選の名前のマッチの時間帯を、種別によらない名前へ改める
+- [x] 1.3 (P) match-engineの予選の名前のマッチの時間帯を、種別によらない名前へ改める
   - 実装前のギャップ分析の決定G5による、match-engineの定義と参照する既存のファイル(api・event・backend-libの本体とテストと補助、オンボーディングの本プロジェクト固有の値)への明示の横断である。時刻(0:00開始・23:40終了・23:45のペアリング)の値と振る舞いは変えない
   - 改名の前に`apps/`・`e2e/`・`docs/`のGit管理のファイルを`git grep -l`で数え直し(定義の`match-model.ts`と参照の22ファイルの計23ファイル)、設計のModified Filesの一覧(E2Eの手順`e2e/client/match-steps.ts`と補助`e2e/support/directory-fixtures.ts`を含む)と突き合わせる。Git管理外のカバレッジの出力は対象にしない
   - 型検査は、並行する1.2の作業が終わってから行う
@@ -431,3 +431,4 @@
 - 開発者への依頼(1.1): devとstagingが共用するStripeのsandboxに、`lookup_key`が`week_tournament_entry`の価格(参考$5、税込)を1回作成する(8.4のE2Eの前提。prodはlaunch-readiness)。
 - 1.1: 規則は`apps/common-lib/tournament/week-period.ts`(`weekStartOf`・`isoWeekKey`・`parseIsoWeek`・`formatWeekPeriodLabel`)と`round-name.ts`(`TOURNAMENT_STAGES`・`stageForSlotCount`・`roundLabel`・`tournamentRoundName`)。`parseIsoWeek`は形式違反・年の範囲外(4桁で1年以上)・存在しない週を`undefined`で返し、存在しない日付は`RangeError`。`roundLabel`はラウンドが正の整数でなく段階も無ければ`null`、`tournamentRoundName`はそのとき`RangeError`。`isoWeekKey`・`formatWeekPeriodLabel`は月曜日以外の日付も受け付ける。1.2への申し送り: (a)notificationsの`awardPeriodLabel`は0001〜0099年で`RangeError`(`Date.UTC`の読み替え)だが新しい規則は表記を返す(既存テストに影響なし。既存の2種類のエラーメッセージ(形式違反・存在しないISO週)の区別を保つこと)、(b)clientの`roundNameOf`は0・負・非整数で「0回戦」等を返すが`roundLabel`は`null`(表示は種別名だけになる)、(c)設計に無い公開の名前`TOURNAMENT_STAGES`・`RoundLabelInput`・`TournamentRoundNameInput`・`ParsedIsoWeek`は8.2の文書で扱う。
 - 1.2: notificationsの`notice-copy.ts`(`roundName`→`roundLabel`、Weekの期間→形式の正規表現`WEEK_PERIOD_PATTERN`で形式違反を分けてから`parseIsoWeek`→`formatWeekPeriodLabel`)・`notification-event-contract.ts`(`isIsoWeekPeriod`→`parseIsoWeek`)とclientの`match-labels.ts`(`Record<MatchStageValue, TournamentStage>`で大文字を小文字へ)を寄せ替えた。差は0000〜0099年と`9999-W53/54`のエラーメッセージだけ(どちらも`RangeError`)。`core/time`の`businessWeekOf`は本体から使われなくなった(設計どおり業務時刻の部品として残す)。
+- 1.3: match-engineの時間帯を`MATCH_SCHEDULE`・`MatchSchedule`・`matchWindow(date)`(`core/match/match-model.ts`)に改名した(23ファイル、設計の一覧と一致)。ブラケットの予定(3.2・2.5)はこの名前を使う。eventのメールのテンプレートのReactコンポーネント`MatchSchedule`と同名だが別モジュール。

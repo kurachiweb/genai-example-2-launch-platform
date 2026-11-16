@@ -13,7 +13,7 @@ import type {
 } from '../../../../lib/core/email/ports.ts';
 import {
   type EntryResult,
-  qualifierWindow,
+  matchWindow,
 } from '../../../../lib/core/match/match-model.ts';
 import type { NoticeDraft } from '../../../../lib/core/notifications/notice-plan.ts';
 import {
@@ -309,7 +309,7 @@ export function captureLogs(): {
 }
 
 export const NEXT_DAY = parseBusinessDate('2026-11-21');
-export const NEXT_DAY_WINDOW = qualifierWindow(NEXT_DAY);
+export const NEXT_DAY_WINDOW = matchWindow(NEXT_DAY);
 export const EVENING = eveningSlot(MATCH_DAY);
 export const EVENING_NOW = fromBusinessDateTime(MATCH_DAY, {
   hour: 23,

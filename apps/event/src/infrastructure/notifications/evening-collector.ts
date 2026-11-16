@@ -1,7 +1,7 @@
 import { inject, injectable } from 'inversify';
 
 import { MATCH_PLATFORM_TYPES } from '../../../lib/core/match/identifiers.ts';
-import { QUALIFIER_SCHEDULE } from '../../../lib/core/match/match-model.ts';
+import { MATCH_SCHEDULE } from '../../../lib/core/match/match-model.ts';
 import type { MatchDirectory } from '../../../lib/core/match/ports.ts';
 import { NOTIFICATIONS_PLATFORM_TYPES } from '../../../lib/core/notifications/identifiers.ts';
 import {
@@ -45,7 +45,7 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
 
 // 業務時刻は固定のオフセットで夏時間が無いため、0:00の24時間後の業務日付が翌日になる
 function nextBusinessDate(date: BusinessDate): BusinessDate {
-  const startOfDay = fromBusinessDateTime(date, QUALIFIER_SCHEDULE.kickoff);
+  const startOfDay = fromBusinessDateTime(date, MATCH_SCHEDULE.kickoff);
   return toBusinessDateTime(
     new Date(startOfDay.getTime() + MILLISECONDS_PER_DAY),
   ).date;

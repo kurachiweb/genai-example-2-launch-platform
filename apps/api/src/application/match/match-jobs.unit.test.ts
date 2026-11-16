@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
 
-import { QUALIFIER_SCHEDULE } from '../../../lib/core/match/match-model.ts';
+import { MATCH_SCHEDULE } from '../../../lib/core/match/match-model.ts';
 import {
   MATCH_EVENT_SWEEP_LIMIT,
   MATCH_EVENT_SWEEP_WINDOW_MS,
@@ -55,9 +55,9 @@ function matchLogs() {
     .map(({ level, properties }) => ({ level, properties }));
 }
 
-const SETTLEMENT_TIME = scheduledAt(JOB_DATE, QUALIFIER_SCHEDULE.fullTime);
-const PAIRING_TIME = scheduledAt(JOB_DATE, QUALIFIER_SCHEDULE.pairing);
-const KICKOFF_TIME = scheduledAt(NEXT_DATE, QUALIFIER_SCHEDULE.kickoff);
+const SETTLEMENT_TIME = scheduledAt(JOB_DATE, MATCH_SCHEDULE.fullTime);
+const PAIRING_TIME = scheduledAt(JOB_DATE, MATCH_SCHEDULE.pairing);
+const KICKOFF_TIME = scheduledAt(NEXT_DATE, MATCH_SCHEDULE.kickoff);
 const ONE_DAY_MS = 86_400_000;
 
 function sweptPage(from: number, count: number): string[] {
@@ -264,7 +264,7 @@ describe('QualifierPairingJob(23:45)', () => {
   });
 
   test.each([
-    ['23:44:59', scheduledAt(JOB_DATE, QUALIFIER_SCHEDULE.pairing, -1_000)],
+    ['23:44:59', scheduledAt(JOB_DATE, MATCH_SCHEDULE.pairing, -1_000)],
     ['23:45:00', PAIRING_TIME],
   ])(
     '予定時刻が業務時刻%sでも、対象日は予定時刻の業務日付の翌日になる',

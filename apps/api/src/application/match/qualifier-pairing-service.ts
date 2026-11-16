@@ -4,7 +4,7 @@ import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import type { IdGenerator } from '../../../lib/core/ids/id-generator.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { MATCH_PLATFORM_TYPES } from '../../../lib/core/match/identifiers.ts';
-import { qualifierWindow } from '../../../lib/core/match/match-model.ts';
+import { matchWindow } from '../../../lib/core/match/match-model.ts';
 import type {
   MatchScheduleInput,
   MatchScheduler,
@@ -152,7 +152,7 @@ export class StoreQualifierPairingService implements QualifierPairingService {
     date: BusinessDate,
     pairing: PairingResult,
   ): MatchScheduleInput[] {
-    const window = qualifierWindow(date);
+    const window = matchWindow(date);
     const inputOf = (
       entries: MatchScheduleInput['entries'],
     ): MatchScheduleInput => ({
