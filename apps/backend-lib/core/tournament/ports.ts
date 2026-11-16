@@ -9,9 +9,10 @@ export type BracketKind = Exclude<MatchKind, 'qualifier'>;
 export interface BracketParticipantInput {
   readonly ref: string;
   readonly tieBreaker: string;
-  readonly launchId: string;
-  readonly productId: string;
-  readonly ownerUserId: string;
+  // 組み合わせの前に物理削除で紐付けを解除した参加の枠はnull
+  readonly launchId: string | null;
+  readonly productId: string | null;
+  readonly ownerUserId: string | null;
 }
 
 export interface BracketParticipantRecord {

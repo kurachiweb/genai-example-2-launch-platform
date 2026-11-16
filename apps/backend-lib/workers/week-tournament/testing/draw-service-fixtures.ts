@@ -3,16 +3,34 @@ import { eq } from 'drizzle-orm';
 import type { Database } from '../../../../db/client.ts';
 import { weekTournamentEntries } from '../../../../db/schema/tournament/week-tournament-entries.ts';
 import { weekTournaments } from '../../../../db/schema/tournament/week-tournaments.ts';
+import type {
+  EmailSender,
+  EmailSendRequest,
+} from '../../../core/email/ports.ts';
 import type { IdGenerator } from '../../../core/ids/id-generator.ts';
 import { matchWindow } from '../../../core/match/match-model.ts';
 import type { MatchRecord } from '../../../core/match/ports.ts';
+import {
+  type NotificationEvent,
+  notificationEventDedupeKey,
+  type NotificationEventPublisher,
+  type NotificationPublishRequest,
+  type NotificationPublishResult,
+} from '../../../core/notifications/notification-event-contract.ts';
+import type {
+  PaymentRefunds,
+  RefundRequestInput,
+} from '../../../core/payments/ports.ts';
 import { parseBusinessDate } from '../../../core/time/business-time.ts';
+import type { BracketDraw } from '../../../core/tournament/ports.ts';
 import type { UltrasEntitlements } from '../../../core/ultras/ports.ts';
 import type {
   WeekEntryClassification,
   WeekEntryRecord,
   WeekEntryRegistrar,
+  WeekTournamentFinish,
 } from '../../../core/week-tournament/ports.ts';
+import { D1UserContactDirectory } from '../../identity/d1-user-contact-directory.ts';
 import { D1MatchDirectory } from '../../match/d1-match-directory.ts';
 import type { MatchFixture } from '../../match/testing/match-fixtures.ts';
 import { D1ProductDirectory } from '../../product/d1-product-directory.ts';
@@ -24,9 +42,14 @@ import {
   T0,
   userIdOf,
 } from '../../product/testing/product-fixtures.ts';
+import { D1BracketDraw } from '../../tournament/d1-bracket-draw.ts';
+import { createProgression } from '../../tournament/testing/progression-fixtures.ts';
 import { D1WeekTournamentStore } from '../d1-week-tournament-store.ts';
 import { WeekTournamentDrawService } from '../week-draw-service.ts';
+import { WeekEntryRefundFollowUp } from '../week-entry-follow-up.ts';
 import { QualifierWeekEntryRegistrar } from '../week-entry-registrar.ts';
+import { WeekTournamentNotificationPublisher } from '../week-notification-publisher.ts';
+import { WeekTournamentProgressionService } from '../week-progression-service.ts';
 import {
   WEEK_WINDOW,
   weekEntryIdOf,
@@ -142,6 +165,8 @@ export type StoreCall =
 export interface ObservedStoreHooks {
   readonly afterFreeze?: () => Promise<void>;
   readonly failFreezeOf?: string;
+  // 組み合わせの後、週への記録の前に中断した状態を作る
+  readonly failMarkDrawnOf?: string;
 }
 
 // 呼び出しの順と分類の読み取りの件数を記録し、凍結の直後に同時の書き込みを差し込めるストア
@@ -197,11 +222,102 @@ export class ObservedStore extends D1WeekTournamentStore {
     this.calls.push('insertEntry');
     return super.insertEntry(...args);
   }
+
+  override markDrawn(
+    tournamentId: string,
+    bracketId: string,
+    finished: WeekTournamentFinish | null,
+    at: Date,
+  ): Promise<void> {
+    if (tournamentId === this.hooks.failMarkDrawnOf) {
+      return Promise.reject(new Error('週への記録の一時的な失敗'));
+    }
+    return super.markDrawn(tournamentId, bracketId, finished, at);
+  }
 }
+
+// 実物の発行の口と同じく、記録済みの通知イベントを重複として数える
+export class RecordingNotificationEvents implements NotificationEventPublisher {
+  readonly recorded = new Map<string, NotificationEvent>();
+
+  publish(
+    request: NotificationPublishRequest,
+  ): Promise<NotificationPublishResult> {
+    const newEvents = request.events.filter(
+      (event) => !this.recorded.has(notificationEventDedupeKey(event)),
+    );
+    for (const event of newEvents) {
+      this.recorded.set(notificationEventDedupeKey(event), event);
+    }
+    return Promise.resolve({
+      recorded: newEvents.length,
+      duplicates: request.events.length - newEvents.length,
+    });
+  }
+
+  events(): NotificationEvent[] {
+    return [...this.recorded.values()];
+  }
+}
+
+const notUsed = (): never => {
+  throw new Error('この操作は使わない');
+};
+
+function createRefunds(requests: RefundRequestInput[]): PaymentRefunds {
+  return {
+    request: (input) => {
+      requests.push(input);
+      return Promise.resolve({
+        kind: 'accepted',
+        refundRequestId: `01JD0REFVND${String(requests.length).padStart(15, '0')}`,
+        duplicate: false,
+      });
+    },
+    dispatch: notUsed,
+    redispatch: notUsed,
+  };
+}
+
+// 実際の送信要求と同じく、入力が種別の検証規則に合わなければ拒否する
+function createSender(
+  sent: EmailSendRequest<unknown>[],
+  failure: Error | undefined,
+): EmailSender {
+  return {
+    send: <TInput>(request: EmailSendRequest<TInput>) => {
+      if (failure !== undefined) {
+        return Promise.reject(failure);
+      }
+      request.kind.inputSchema.parse(request.input);
+      sent.push(request);
+      return Promise.resolve(
+        `01JC0EMA11${String(sent.length).padStart(16, '0')}`,
+      );
+    },
+  };
+}
+
+function failingDrawOf(inner: BracketDraw, tournamentId: string): BracketDraw {
+  return {
+    create: (input) =>
+      input.tournamentId === tournamentId
+        ? Promise.reject(new Error('組み合わせの一時的な失敗'))
+        : inner.create(input),
+  };
+}
+
+export const CLIENT_SITE_ORIGIN = 'https://launch-stadium.example';
+
+// 組み合わせ決定が作るマッチのIDの採番の始まり
+export const DRAW_MATCH_IDS = 701;
 
 export interface DrawServiceOptions extends ObservedStoreHooks {
   readonly database?: Database;
   readonly entitlements?: FakeEntitlements;
+  readonly notifications?: RecordingNotificationEvents;
+  readonly failDrawOf?: string;
+  readonly emailFailure?: Error;
 }
 
 export function createDrawService(options: DrawServiceOptions = {}) {
@@ -222,15 +338,57 @@ export function createDrawService(options: DrawServiceOptions = {}) {
       return qualifierRegistrar.registerFromMatch(match, at);
     },
   };
+  const matches = new D1MatchDirectory(database);
+  const notifications =
+    options.notifications ?? new RecordingNotificationEvents();
+  const { progression, scheduler } = createProgression(
+    DRAW_MATCH_IDS,
+    database,
+  );
+  const bracketDraw = new D1BracketDraw(database, progression);
+  const refundRequests: RefundRequestInput[] = [];
+  const sent: EmailSendRequest<unknown>[] = [];
   const service = new WeekTournamentDrawService({
     appName: 'api',
     store,
     registrar,
-    matches: new D1MatchDirectory(database),
+    matches,
     products: new D1ProductDirectory(database),
     entitlements,
+    bracketDraw:
+      options.failDrawOf === undefined
+        ? bracketDraw
+        : failingDrawOf(bracketDraw, options.failDrawOf),
+    progression: new WeekTournamentProgressionService(
+      store,
+      progression,
+      new WeekTournamentNotificationPublisher(
+        store,
+        matches,
+        notifications,
+        'api',
+      ),
+      'api',
+    ),
+    followUp: new WeekEntryRefundFollowUp({
+      appName: 'api',
+      store,
+      refunds: createRefunds(refundRequests),
+      contacts: new D1UserContactDirectory(database),
+      emails: createSender(sent, options.emailFailure),
+      clientSiteOrigin: CLIENT_SITE_ORIGIN,
+    }),
   });
-  return { service, store, registered, queries };
+  return {
+    service,
+    store,
+    registered,
+    queries,
+    notifications,
+    scheduler,
+    refundRequests,
+    sent,
+  };
 }
 
 export async function readEntry(index: number) {
@@ -262,6 +420,21 @@ export async function readTournament(index = 1) {
     .select({
       status: weekTournaments.status,
       drawStartedAt: weekTournaments.drawStartedAt,
+    })
+    .from(weekTournaments)
+    .where(eq(weekTournaments.id, weekTournamentIdOf(index)));
+  return row;
+}
+
+export async function readDrawnTournament(index = 1) {
+  const [row] = await db
+    .select({
+      status: weekTournaments.status,
+      bracketId: weekTournaments.bracketId,
+      drawnAt: weekTournaments.drawnAt,
+      outcome: weekTournaments.outcome,
+      championEntryId: weekTournaments.championEntryId,
+      awardedAt: weekTournaments.awardedAt,
     })
     .from(weekTournaments)
     .where(eq(weekTournaments.id, weekTournamentIdOf(index)));

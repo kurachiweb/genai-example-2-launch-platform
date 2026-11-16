@@ -8,16 +8,34 @@ import type {
   ProductSummaryRecord,
 } from '../../core/product/ports.ts';
 import type { BusinessDate } from '../../core/time/business-time.ts';
-import { nextBusinessDate } from '../../core/tournament/round-schedule.ts';
+import type { DrawOrder } from '../../core/tournament/bracket-draw-rules.ts';
+import type {
+  AdvanceResult,
+  BracketDraw,
+  BracketDrawCandidate,
+} from '../../core/tournament/ports.ts';
+import {
+  dailyRoundPolicy,
+  nextBusinessDate,
+} from '../../core/tournament/round-schedule.ts';
 import type { UltrasEntitlements } from '../../core/ultras/ports.ts';
 import type {
   WeekDrawService,
   WeekEntryClassification,
+  WeekEntryFollowUp,
   WeekEntryRecord,
   WeekEntryRegistrar,
+  WeekProgressionService,
+  WeekTournamentFinish,
   WeekTournamentRecord,
   WeekTournamentStore,
 } from '../../core/week-tournament/ports.ts';
+import {
+  type WeekOrderingKey,
+  weekNonSeedOrder,
+  weekSeedOrder,
+} from '../../core/week-tournament/week-ordering.ts';
+import { weekFirstRoundDate } from '../../core/week-tournament/week-schedule.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
 import { safeTagOf } from './incident-tags.ts';
 import { qualifierWinnersOf } from './week-entry-registrar.ts';
@@ -32,6 +50,13 @@ const DAYS_PER_WEEK = 7;
 
 const DRAW_FAILED_MESSAGE = 'Weekトーナメントの組み合わせ決定に失敗しました';
 
+const DRAWN_MESSAGE = 'Weekトーナメントの組み合わせを記録しました';
+
+const WEEK_DRAW_ORDER: DrawOrder<WeekOrderingKey> = Object.freeze({
+  seed: weekSeedOrder,
+  nonSeed: weekNonSeedOrder,
+});
+
 export interface WeekTournamentDrawServiceOptions {
   readonly appName: LoggingOptions['appName'];
   readonly store: WeekTournamentStore;
@@ -39,6 +64,9 @@ export interface WeekTournamentDrawServiceOptions {
   readonly matches: MatchDirectory;
   readonly products: ProductDirectory;
   readonly entitlements: UltrasEntitlements;
+  readonly bracketDraw: BracketDraw;
+  readonly progression: WeekProgressionService;
+  readonly followUp: WeekEntryFollowUp;
 }
 
 function weekDatesOf(weekStart: BusinessDate): BusinessDate[] {
@@ -80,6 +108,38 @@ function classificationOf(
   return { entryId, status: 'drawn', closeReason: null, ...source };
 }
 
+// 紐付けを解除した枠はローンチのIDを失うため、同順の最後の決め手に枠のIDを使う
+function candidateOf(
+  entry: WeekEntryRecord,
+): BracketDrawCandidate<WeekOrderingKey> {
+  const tieBreaker = entry.launchId ?? entry.entryId;
+  return {
+    ref: entry.entryId,
+    tieBreaker,
+    value: {
+      launchDate: entry.launchDate,
+      upvoteCount: entry.qualifierUpvoteCount,
+      lastUpvoteElapsedMs: entry.qualifierLastUpvoteElapsedMs,
+    },
+    participant: {
+      ref: entry.entryId,
+      tieBreaker,
+      launchId: entry.launchId,
+      productId: entry.productId,
+      ownerUserId: entry.ownerUserId,
+    },
+  };
+}
+
+function finishOf(result: AdvanceResult): WeekTournamentFinish | null {
+  if (result.kind !== 'finished') {
+    return null;
+  }
+  return result.championRef === null
+    ? { outcome: 'no_award', championEntryId: null }
+    : { outcome: 'awarded', championEntryId: result.championRef };
+}
+
 export class WeekTournamentDrawService implements WeekDrawService {
   private readonly logger: Logger;
   private readonly store: WeekTournamentStore;
@@ -87,6 +147,9 @@ export class WeekTournamentDrawService implements WeekDrawService {
   private readonly matches: MatchDirectory;
   private readonly products: ProductDirectory;
   private readonly entitlements: UltrasEntitlements;
+  private readonly bracketDraw: BracketDraw;
+  private readonly progression: WeekProgressionService;
+  private readonly followUp: WeekEntryFollowUp;
 
   constructor(options: WeekTournamentDrawServiceOptions) {
     this.logger = getAppLogger([options.appName, 'week-tournament', 'draw']);
@@ -95,6 +158,9 @@ export class WeekTournamentDrawService implements WeekDrawService {
     this.matches = options.matches;
     this.products = options.products;
     this.entitlements = options.entitlements;
+    this.bracketDraw = options.bracketDraw;
+    this.progression = options.progression;
+    this.followUp = options.followUp;
   }
 
   async drawDue(now: Date): Promise<{
@@ -126,6 +192,43 @@ export class WeekTournamentDrawService implements WeekDrawService {
       await this.store.freeze(tournament.tournamentId, now);
     }
     await this.classifyEntries(tournament, now);
+    const result = await this.createBracket(tournament, now);
+    // 進行の部品の終了の記録は組み合わせ決定中の週も終えるため、ブラケットを週に記録してから受賞と予告を発行する
+    await this.progression.applyResult(tournament, result, now);
+    await this.followUp.processTournament(tournament.tournamentId, now);
+  }
+
+  // 中断の後の再実行でも参加者の記録がそろうよう、凍結の後の同じ候補で毎回組み合わせを求める
+  private async createBracket(
+    tournament: WeekTournamentRecord,
+    now: Date,
+  ): Promise<AdvanceResult> {
+    const { tournamentId } = tournament;
+    const entries = await this.store.listDrawnEntries(tournamentId);
+    const result = await this.bracketDraw.create({
+      kind: 'week',
+      tournamentId,
+      candidates: entries.map(candidateOf),
+      order: WEEK_DRAW_ORDER,
+      // 方針は現在の業務日付から遅れの下限を決めるため、呼び出しのたびに作り直す
+      policy: dailyRoundPolicy(
+        weekFirstRoundDate(tournament.window.weekStart),
+        now,
+      ),
+      now,
+    });
+    await this.store.markDrawn(
+      tournamentId,
+      result.bracketId,
+      finishOf(result),
+      now,
+    );
+    this.logger.info(DRAWN_MESSAGE, {
+      tournamentId,
+      bracketId: result.bracketId,
+      participantCount: entries.length,
+    });
+    return result;
   }
 
   // 勝利の知らせの処理が遅れた枠を作る。枠のある勝利は登録の問い合わせを省き、1回の実行の問い合わせの数を抑える

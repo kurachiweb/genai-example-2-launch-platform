@@ -118,7 +118,7 @@ describe('WeekTournamentDrawService.drawDue(組み合わせ決定の時刻)', ()
     });
 
     await expect(readTournament()).resolves.toEqual({
-      status: 'drawing',
+      status: 'finished',
       drawStartedAt: DRAW_AT,
     });
     await expect(readEntry(1)).resolves.toMatchObject({
@@ -277,7 +277,7 @@ describe('WeekTournamentDrawService.drawDue(枠の補完)', () => {
 
     expect(registered).toEqual([]);
     await expect(readTournament()).resolves.toEqual({
-      status: 'drawing',
+      status: 'in_progress',
       drawStartedAt: DRAW_AT,
     });
     await expect(readEntry(24)).resolves.toMatchObject({
@@ -384,7 +384,7 @@ describe('WeekTournamentDrawService.drawDue(凍結と同時の変更)', () => {
       closeReason: 'deleted',
       purchaseId: PURCHASE_ID,
       closedAt: DRAW_AT,
-      refundStatus: 'pending',
+      refundStatus: 'requested',
     });
     await expect(readEntry(3)).resolves.toMatchObject({
       status: 'drawn',

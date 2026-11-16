@@ -85,7 +85,7 @@ beforeEach(async () => {
 afterEach(resetObservability);
 
 describe('WeekTournamentDrawService.drawDue(分類)', () => {
-  test('資格を得た枠は、可視なら組み合わせの対象、非公開化・停止なら除外、論理削除済みなら喪失とし、決済した枠だけを返金待ちにする', async () => {
+  test('資格を得た枠は、可視なら組み合わせの対象、非公開化・停止なら除外、論理削除済みなら喪失とし、決済した枠だけを返金待ちにして返金を依頼する', async () => {
     const { service } = createDrawService();
 
     await service.drawDue(DRAW_AT);
@@ -111,14 +111,14 @@ describe('WeekTournamentDrawService.drawDue(分類)', () => {
         closeReason: 'hidden_or_suspended',
         purchaseId: PURCHASE_ID,
         closedAt: DRAW_AT,
-        refundStatus: 'pending',
+        refundStatus: 'requested',
       });
     }
     await expect(readEntry(5)).resolves.toMatchObject({
       status: 'forfeited',
       closeReason: 'deleted',
       closedAt: DRAW_AT,
-      refundStatus: 'pending',
+      refundStatus: 'requested',
     });
     await expect(readEntry(6)).resolves.toMatchObject({
       status: 'forfeited',
@@ -235,7 +235,12 @@ describe('WeekTournamentDrawService.drawDue(分類)', () => {
       drawStartedAt: null,
     });
     await expect(readEntry(1)).resolves.toMatchObject({ status: 'drawn' });
-    expect(logs.filter(({ category }) => category === DRAW_CATEGORY)).toEqual([
+    expect(
+      logs.filter(
+        ({ category, level }) =>
+          category === DRAW_CATEGORY && level === 'error',
+      ),
+    ).toEqual([
       expect.objectContaining({
         level: 'error',
         tournamentId: weekTournamentIdOf(2),
