@@ -18,6 +18,8 @@ const COMPATIBILITY_DATE = '2026-08-04';
 
 const LOCAL_TURNSTILE_SITE_KEY = '1x00000000000000000000BB';
 
+const STAGING_TURNSTILE_SITE_KEY = '0x4AAAAAAGC4ePw7j05JF-MC';
+
 const PLACEHOLDER_TURNSTILE_SITE_KEY = '0x0000000000000000000000';
 
 const RATE_LIMITED_APPS = ['client', 'admin', 'api', 'event'] as const;
@@ -115,7 +117,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       LOG_LEVEL: 'info',
       SENTRY_ENVIRONMENT: 'staging',
       SENTRY_TRACES_SAMPLE_RATE: '1',
-      TURNSTILE_SITE_KEY: PLACEHOLDER_TURNSTILE_SITE_KEY,
+      TURNSTILE_SITE_KEY: STAGING_TURNSTILE_SITE_KEY,
       IMAGES_ORIGIN:
         'https://genai-example-2-images-staging.lab.kurachiweb.com',
       CLIENT_SITE_ORIGIN:

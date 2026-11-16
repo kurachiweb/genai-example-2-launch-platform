@@ -56,8 +56,7 @@
         "LOG_LEVEL": "info",
         "SENTRY_ENVIRONMENT": "staging",
         "SENTRY_TRACES_SAMPLE_RATE": "1",
-        // 仮の値。infra-deliveryが作成したTurnstileのウィジェットの値に置き換える
-        "TURNSTILE_SITE_KEY": "0x0000000000000000000000",
+        "TURNSTILE_SITE_KEY": "0x4AAAAAAGC4ePw7j05JF-MC",
         "IMAGES_ORIGIN": "https://genai-example-2-images-staging.lab.kurachiweb.com",
         "CLIENT_SITE_ORIGIN": "https://genai-example-2-client-staging.lab.kurachiweb.com",
       },

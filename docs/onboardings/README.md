@@ -698,7 +698,7 @@ APIサーバーとイベントサーバーは、メールアドレスの確認�
 
 決済を試す開発者は、次の手順でdevのキーを用意して登録する。AIエージェントは登録しない。手順の詳細と権限は「[決済の環境とデータの運用](../GUIDES/tech/operations/004-payment-data-operations.md)」に従う。
 
-1. Stripeのダッシュボードで、ローカル環境用のsandbox(デプロイ先検証環境のsandboxとは別)を作り、「[環境ごとのStripeの設定](../GUIDES/tech/operations/004-payment-data-operations.md#環境ごとのstripeの設定)」の価格(疎通確認用の`payments_smoke`を含む)・税・Adaptive Pricingの無効化・決済手段を設定する。
+1. Stripeのダッシュボードで、ローカル環境とデプロイ先検証環境で共用する開発用のsandboxを開き(無ければ作り)、「[環境ごとのStripeの設定](../GUIDES/tech/operations/004-payment-data-operations.md#環境ごとのstripeの設定)」の価格(疎通確認用の`payments_smoke`を含む)・税・Adaptive Pricingの無効化・決済手段を設定する。
 2. 同じsandboxで、`apps/api`用と`apps/event`用の2つの制限付きキーを、「[制限付きキーの権限](../GUIDES/tech/operations/004-payment-data-operations.md#制限付きキーの権限)」の表の権限で別々に作る。
 3. Infisicalのプロジェクトの`dev`環境で、`apps/api`用の鍵をWorkerごとのフォルダ`/workers/api`へ、`apps/event`用の鍵を`/workers/event`へ、どちらも`STRIPE_API_KEY`の名前でWebの管理画面から登録する。共通のフォルダ(`/`)には置かない(`WORKER_SCOPED_SECRETS`のキーのため、`/`の値は使われない)。
 4. `stripe listen --print-secret`で表示される転送の署名の秘密を、`dev`の共通のフォルダ(`/`)へ`STRIPE_WEBHOOK_SECRET`の名前で登録する(「[ローカルの転送](../GUIDES/tech/operations/004-payment-data-operations.md#ローカルの転送)」)。
@@ -710,7 +710,7 @@ APIサーバーとイベントサーバーは、メールアドレスの確認�
    bun /workspace/scripts/delivery/cli.ts run-with-secrets --scope local -- sh -c 'test -z "$STRIPE_API_KEY" && echo "Workerの指定が無ければ鍵は渡らない"'
    ```
 
-- 公開キーは`apps/client`のWrangler設定の`vars`の`STRIPE_PUBLISHABLE_KEY`に書く。ローカル環境の値は、`dev`に登録した制限付きキーと同じローカル環境用のsandboxの公開キーである。sandboxを作り直したときは、同じsandboxの公開キーへ置き換える(「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」)。
+- 公開キーは`apps/client`のWrangler設定の`vars`の`STRIPE_PUBLISHABLE_KEY`に書く。ローカル環境の値は、`dev`に登録した制限付きキーと同じ開発用のsandbox(デプロイ先検証環境と共用)の公開キーである。sandboxを作り直したときは、同じsandboxの公開キーへ置き換える(「[バインディング・変数・シークレット](project-values.md#バインディング変数シークレット)」)。
 - 登録先のフォルダと時期は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を正とする。
 
 ### ローカルのWebhookの転送

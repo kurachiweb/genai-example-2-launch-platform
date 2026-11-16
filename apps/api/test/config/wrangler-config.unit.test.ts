@@ -161,7 +161,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     wranglerEnv: 'staging',
     workerNameSuffix: '-staging',
     resourceSuffix: 'staging',
-    databaseId: '00000000-0000-0000-0000-000000000000',
+    databaseId: '0e2adedf-a072-4e5f-a00b-6e2cb04c4bdf',
     r2Jurisdiction: 'us',
     rateLimitNamespaceIds: { api: '2001', event: '2002' },
     logLevel: 'info',
