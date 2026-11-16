@@ -305,6 +305,28 @@ describe('QualifierWeekEntryRegistrar.registerFromMatch(勝利の側)', () => {
       }),
     ]);
   });
+
+  test('決済期限の後に確定した勝利は、Ultrasを問い合わせず受付中の枠で作る', async () => {
+    const decidedAfterDeadline = new Date(
+      WEEK_WINDOW.deadlineAt.getTime() + 60_000,
+    );
+    const match = {
+      ...(await readMatch(settledQualifier(1))),
+      decidedAt: decidedAfterDeadline,
+    };
+    const { registrar, queries } = createRegistrar(() => Promise.resolve(true));
+
+    await registrar.registerFromMatch(match, decidedAfterDeadline);
+
+    await expect(readEntryRows()).resolves.toEqual([
+      expect.objectContaining({
+        wonAt: decidedAfterDeadline,
+        status: 'awaiting_payment',
+        entitlementSource: null,
+      }),
+    ]);
+    expect(queries).toEqual([]);
+  });
 });
 
 describe('QualifierWeekEntryRegistrar.registerFromMatch(枠を作らないマッチ)', () => {
