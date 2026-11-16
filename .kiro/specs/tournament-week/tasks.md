@@ -41,7 +41,7 @@
   - _Boundary: `docs/GUIDES/service`の該当する6文書_
   - _Requirements: 15.6_
 
-- [ ] 2. ブラケットとWeekの純粋な規則
+- [x] 2. ブラケットとWeekの純粋な規則
 - [x] 2.1 ブラケットの形(シード数・ラウンド数・各ラウンドの残り参加数・段階)とシードの配置の列を作る
   - 先に、単体テストで、Nが0・1・2・3・5・6・7・8・13・100・128・129・200のP・S・1回戦のマッチ数・ラウンド数がWeekトーナメント規則の表と一致すること、配置の列(2・4・8・16)、段階が1.1の残り参加数からの段階の規則で残り8・4・2で準々決勝・準決勝・決勝になりmatch-engineの段階の型と値が一致すること、負・非整数の参加数で例外になることを確かめる
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
@@ -71,7 +71,7 @@
   - _Depends: 1.3_
   - _Requirements: 1.6, 6.1, 6.2, 6.10, 13.2_
 
-- [ ] 2.6 (P) 参加の枠の状態と、返金の理由・依頼キー・依頼の拒否の分類の規則を作る
+- [x] 2.6 (P) 参加の枠の状態と、返金の理由・依頼キー・依頼の拒否の分類の規則を作る
   - 先に、単体テストで、参加資格を与えられる状態が受付中だけであること、資格の喪失は返金の理由「entitlement_lost」、停止は「entitlement_suspended」になり依頼キーが`tournament-week:<購入ID>:<理由>`になること、返金の依頼の5つの拒否の分類(支払いが無い・購入が無いは「不要」、返金できる残額が無いは「返金済み」で運用者へ知らせる、金額・依頼キーの形式の誤りは「拒否」で運用者へ知らせる)、参加資格を得た状態が特典の終了で戻らないことを確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: WeekEntryRules_
@@ -439,3 +439,4 @@
 - 2.3: `core/tournament/bracket-progress-rules.ts`の`decideNext`・`nextRoundOccupants`(型`PlannedNode`・`RecordedNode`・`BracketState`・`ProgressDecision`)。`nextRoundOccupants(state, round)`は結果が出たラウンドを受け`round+1`の枠を返す(1回戦の後は1〜Sがシード、S+kが1回戦の位置kの勝者)。シードが無い場合も2回戦は`seedPlacementOrder`で組む(N = 8の2回戦はM1×M4・M2×M3)。2.4の`bracketLayout`も同じ配置にそろえる。`PlannedNode.participants`は枠の並び順(番号の昇順ではない)で空の側を除く。3.xは`RecordedNode`へ、作っていない位置は入れず、確定の勝者は`{kind:'winner'}`、両者敗北・両者の不戦敗は`{kind:'none'}`、未確定は`null`、側1つの不戦勝の勝者も`winner`で写すこと。`decideNext`は最大のラウンドだけを現ラウンドとして見るため、次ラウンドの一部だけを挿入した中断からの補完は3.2・3.3の`advance`が前ラウンドから再計算して行う。
 - 2.4: `core/tournament/bracket-layout.ts`の`bracketLayout(shape)`(`SlotFeed`は`participant`/`winner_of`、N≤1は空)。`decideNext`と同じ規則を表示用に別に書き、テスト`decideNextの進行との一致`で一致を保証する(どちらかを変えたらこのテストを通すこと)。配置は両側が空と確定した位置や終了後のラウンドも含むため、6.7の`buildBracketRoundsView`が記録から除く。「シード<n>」は`participant`でn ≤ Sの枠、S超の`participant`は1回戦の予定済みのマッチで上書きされる。
 - 2.5: `core/tournament/round-schedule.ts`の`dailyRoundPolicy(plannedFirstRoundDate, now)`(1回戦はmax(予定の日, 現在の業務日付+1)、次ラウンドはmax(前ラウンドの日+1, 現在の業務日付+1))と`core/week-tournament/week-schedule.ts`の`entryWindowFor`(翌週月曜日23:00・23:35・23:45、月曜日以外の週の初日は`RangeError`)・`weekFirstRoundDate`(翌週火曜日)・`isSundayLaunch`・`WEEK_ENTRY_PRICE_LOOKUP_KEY`。業務時刻は固定のUTC-08:00(夏時間無し)。設計のSystem Flowsの`dailyRoundPolicy(weekFirstRoundDate(weekStart))`は契約どおり`now`も渡す(4.11・4.12)。3.2・3.3の遅れの検知は`nextRoundDate(prev, now)`が前ラウンドの翌日より後かで判定する。4.5は`WeekEntryWindow.drawAt`をpaymentsの`fulfillableUntil`に対応させる。
+- 2.6: `core/week-tournament/week-entry-rules.ts`(`GRANTABLE_STATUSES`=`['awaiting_payment']`、`refundReasonFor`、`weekRefundRequestKey`、`refundRejectionOutcome`(paymentsの`RefundRequestResult`の`rejected`の`code`から導出した型)、値の一覧`WEEK_ENTRY_STATUSES`・`WEEK_ENTRY_CLOSE_REASONS`・`WEEK_ENTITLEMENT_SOURCES`・`WEEK_REFUND_STATUSES`・`WEEK_REFUND_NOTICE_STATUSES`)。テーブルの値との一致は`workers/week-tournament/week-entry-columns.unit.test.ts`。4.9の`WeekEntryFollowUp`への申し送り: paymentsの理由の形式違反の`RangeError`は呼び出し側で`rejected`扱い(`captureEvent`)、`not_needed`でも購入のIDだけの`error`ログを残す(`report: false`はログ無しの意味ではない)、`already_refunded`・`rejected`・`not_needed`には返金の知らせを送らない。3.8(参加資格を得た状態は特典の終了で戻らない)は、4.2・5.3のWorkers統合テストで状態を書き換えないことを確かめる。Storeの条件は`GRANTABLE_STATUSES`を使う。
