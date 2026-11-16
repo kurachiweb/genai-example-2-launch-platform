@@ -52,7 +52,7 @@
   - 完了状態: 単体テストが成功する
   - _Requirements: 5.4, 5.5, 5.11, 13.2, 13.4, 15.2_
 
-- [ ] 2.3 次ラウンドの枠と進行の判定(不戦勝・終了)の規則を作る
+- [x] 2.3 次ラウンドの枠と進行の判定(不戦勝・終了)の規則を作る
   - 先に、単体テストで、記録が無いときの参加0・1・2以上の判定、2回戦の枠の配置(N = 13の準々決勝がA×M5勝者・M1勝者×M2勝者・C×M4勝者・D×M3勝者)、3回戦以降の固定のブラケット、未確定のマッチがあれば待つこと、片側だけの枠が側1つのマッチになり両側が空の枠を作らないこと、1回戦M4が両者敗北のときCが準々決勝と準決勝で続けて不戦勝になる例、残り1で優勝、残り0と全滅で受賞なし、決勝の勝者と決勝の両者敗北、参加2の決勝だけを確かめる
   - 完了状態: 単体テストが成功する
   - _Requirements: 5.6, 5.7, 5.8, 5.9, 5.10, 6.5, 6.6, 6.7, 7.1, 7.2, 7.3, 13.1, 15.2_
@@ -436,3 +436,4 @@
 - 1.5(差し戻し1回): サービス仕様の5文書に決定を書いた(返金ポリシーは2行が仮3と一致し不変)。画面・メール・追記の文言は`design/003-text-and-copy-rules.md`の行をそのまま使う。設計との相違: Ultrasの結果通知の追記の「組み合わせは<決済期限の日時(UTC)>に決定します。」は設計の誤記として文言規則で「<組み合わせ決定の日時(UTC)>」(月曜日23:45)にした。5.4はこちらに従う。コードとの相違: `product_locked`は汎用の文言のまま(Weekの固定の文言は画面の理由として出す)、`checkout_closed`はpaymentsの「決済の受付は終了しました。」のため参加費の導線(7.7)が「Weekトーナメントの参加受付は終了しました。」に置き換える。除外・喪失の状態文の返金の一文は、決済していない(Ultrasの)枠では省く。設計に無くモックアップ等から決めた文言(ブラケットのページの見出し・状態・タブ名、決勝の区画の「Week Final」、取得エラー4つ、返金の知らせの本文など)は文言規則に載せた。
 - 2.1: `core/tournament/bracket-shape.ts`(`bracketShape`・`roundSlotCount`・`roundStage`・`seedPlacementOrder`)。N≤1はP・S・1回戦・ラウンド数すべて0、参加数は`Number.isSafeInteger`で検査、範囲外のラウンドと2の冪でない配置の長さは`RangeError`。`seedPlacementOrder(shape.secondRoundSize)`はN≤1で例外になるため、2.2〜2.4はN≤1を先に分ける。
 - 2.2: `core/tournament/bracket-draw-rules.ts`の`drawBracket`(比較→`tieBreaker`→`ref`の昇順で並べ、上位Sに1〜S、残りを非シードの比較でS+1〜N。`ref`の重複は`RangeError`。公開の型`DrawOrder<T>`・`BracketDrawResult`)と`core/week-tournament/week-ordering.ts`の`weekSeedOrder`・`weekNonSeedOrder`(`WeekOrderingKey`の`lastUpvoteElapsedMs`は予選の開始からの経過ミリ秒、nullは末尾)。1回戦の組(k番の位置にS+2k−1とS+2k)は2.3の`decideNext`が作る。2.3のテストでN = 13の1回戦の組(E×F・G×H・I×B・J×K・L×M)も`decideNext`の出力で確かめること。4.xの`WeekDrawService`は`tieBreaker`にローンチのID、`ref`に枠のIDを渡す。
+- 2.3: `core/tournament/bracket-progress-rules.ts`の`decideNext`・`nextRoundOccupants`(型`PlannedNode`・`RecordedNode`・`BracketState`・`ProgressDecision`)。`nextRoundOccupants(state, round)`は結果が出たラウンドを受け`round+1`の枠を返す(1回戦の後は1〜Sがシード、S+kが1回戦の位置kの勝者)。シードが無い場合も2回戦は`seedPlacementOrder`で組む(N = 8の2回戦はM1×M4・M2×M3)。2.4の`bracketLayout`も同じ配置にそろえる。`PlannedNode.participants`は枠の並び順(番号の昇順ではない)で空の側を除く。3.xは`RecordedNode`へ、作っていない位置は入れず、確定の勝者は`{kind:'winner'}`、両者敗北・両者の不戦敗は`{kind:'none'}`、未確定は`null`、側1つの不戦勝の勝者も`winner`で写すこと。`decideNext`は最大のラウンドだけを現ラウンドとして見るため、次ラウンドの一部だけを挿入した中断からの補完は3.2・3.3の`advance`が前ラウンドから再計算して行う。
