@@ -3,7 +3,6 @@ import { captureEvent } from '@sentry/cloudflare';
 
 import { weekStartOf } from '../../../common-lib/tournament/week-period.ts';
 import type { IdGenerator } from '../../core/ids/id-generator.ts';
-import { isUppercaseUlid } from '../../core/ids/uppercase-ulid.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import { isWinningResult } from '../../core/match/match-model.ts';
 import type { MatchRecord } from '../../core/match/ports.ts';
@@ -16,11 +15,10 @@ import type {
   WeekTournamentStore,
 } from '../../core/week-tournament/ports.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
+import { safeTagOf } from './incident-tags.ts';
 
 const LATE_ENTRY_MESSAGE =
   '組み合わせ決定の凍結の後に届いた予選の勝利を、期限切れの参加の枠で記録しました';
-
-const UNSAFE_VALUE = 'unknown';
 
 interface QualifierWinner {
   readonly launchId: string;
@@ -184,9 +182,7 @@ export class QualifierWeekEntryRegistrar implements WeekEntryRegistrar {
       fingerprint: ['tournament', 'late-entry'],
       tags: {
         tournament_incident: 'late-entry',
-        tournament_id: isUppercaseUlid(tournamentId)
-          ? tournamentId
-          : UNSAFE_VALUE,
+        tournament_id: safeTagOf(tournamentId),
       },
     });
   }

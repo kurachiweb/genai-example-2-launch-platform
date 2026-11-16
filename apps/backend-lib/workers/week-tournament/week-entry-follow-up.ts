@@ -8,7 +8,6 @@ import {
 } from '../../core/email/kinds/tournament-week.ts';
 import type { EmailSender } from '../../core/email/ports.ts';
 import type { UserContactDirectory } from '../../core/identity/ports.ts';
-import { isUppercaseUlid } from '../../core/ids/uppercase-ulid.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import type { PaymentRefunds } from '../../core/payments/ports.ts';
 import type {
@@ -25,6 +24,7 @@ import {
   weekRefundRequestKey,
 } from '../../core/week-tournament/week-entry-rules.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
+import { safeTagOf } from './incident-tags.ts';
 
 export interface WeekEntryRefundFollowUpDependencies {
   readonly appName: LoggingOptions['appName'];
@@ -40,8 +40,6 @@ export interface WeekEntryRefundFollowUpDependencies {
 const DEFAULT_READ_LIMIT = 50;
 
 const PAYMENT_HISTORY_PATH = '/settings/billing';
-
-const UNSAFE_VALUE = 'unknown';
 
 const NOT_NEEDED_MESSAGE =
   '決済の機能が返金の依頼を不要と答えたため、返金をせずに依頼を終えました';
@@ -78,11 +76,6 @@ function reasonOf(entry: WeekEntryRecord): WeekRefundReason | undefined {
   return entry.status === 'forfeited' || entry.status === 'excluded'
     ? refundReasonFor(entry.status)
     : undefined;
-}
-
-// タグは除去処理の対象外のため、識別子の形の値だけを送る
-function safeTagOf(value: string): string {
-  return isUppercaseUlid(value) ? value : UNSAFE_VALUE;
 }
 
 function failureOf(errors: readonly unknown[]): unknown {
