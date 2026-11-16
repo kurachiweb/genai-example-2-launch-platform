@@ -63,7 +63,7 @@
   - 完了状態: 単体テストが成功する
   - _Requirements: 9.2, 13.1_
 
-- [ ] 2.5 (P) ラウンドの実施日の方針と、Weekの期限と日程を作る
+- [x] 2.5 (P) ラウンドの実施日の方針と、Weekの期限と日程を作る
   - マッチの時間帯は持たず、1.3で改めたmatch-engineの種別によらない時間帯を使う
   - 先に、単体テストで、1回戦の日が予定の日と現在の業務日付の翌日の遅い方になること、23:45の実行で次ラウンドが翌日、翌日0:10の実行で翌々日になる(遅れ)こと、週の受付期限23:00・決済期限23:35・組み合わせ決定23:45(翌週月曜日)、1回戦の火曜日、日曜日の判定を確かめる
   - 完了状態: 単体テストが成功し、ブラケットの規則にマッチの開始・終了の時刻の定義が無い
@@ -438,3 +438,4 @@
 - 2.2: `core/tournament/bracket-draw-rules.ts`の`drawBracket`(比較→`tieBreaker`→`ref`の昇順で並べ、上位Sに1〜S、残りを非シードの比較でS+1〜N。`ref`の重複は`RangeError`。公開の型`DrawOrder<T>`・`BracketDrawResult`)と`core/week-tournament/week-ordering.ts`の`weekSeedOrder`・`weekNonSeedOrder`(`WeekOrderingKey`の`lastUpvoteElapsedMs`は予選の開始からの経過ミリ秒、nullは末尾)。1回戦の組(k番の位置にS+2k−1とS+2k)は2.3の`decideNext`が作る。2.3のテストでN = 13の1回戦の組(E×F・G×H・I×B・J×K・L×M)も`decideNext`の出力で確かめること。4.xの`WeekDrawService`は`tieBreaker`にローンチのID、`ref`に枠のIDを渡す。
 - 2.3: `core/tournament/bracket-progress-rules.ts`の`decideNext`・`nextRoundOccupants`(型`PlannedNode`・`RecordedNode`・`BracketState`・`ProgressDecision`)。`nextRoundOccupants(state, round)`は結果が出たラウンドを受け`round+1`の枠を返す(1回戦の後は1〜Sがシード、S+kが1回戦の位置kの勝者)。シードが無い場合も2回戦は`seedPlacementOrder`で組む(N = 8の2回戦はM1×M4・M2×M3)。2.4の`bracketLayout`も同じ配置にそろえる。`PlannedNode.participants`は枠の並び順(番号の昇順ではない)で空の側を除く。3.xは`RecordedNode`へ、作っていない位置は入れず、確定の勝者は`{kind:'winner'}`、両者敗北・両者の不戦敗は`{kind:'none'}`、未確定は`null`、側1つの不戦勝の勝者も`winner`で写すこと。`decideNext`は最大のラウンドだけを現ラウンドとして見るため、次ラウンドの一部だけを挿入した中断からの補完は3.2・3.3の`advance`が前ラウンドから再計算して行う。
 - 2.4: `core/tournament/bracket-layout.ts`の`bracketLayout(shape)`(`SlotFeed`は`participant`/`winner_of`、N≤1は空)。`decideNext`と同じ規則を表示用に別に書き、テスト`decideNextの進行との一致`で一致を保証する(どちらかを変えたらこのテストを通すこと)。配置は両側が空と確定した位置や終了後のラウンドも含むため、6.7の`buildBracketRoundsView`が記録から除く。「シード<n>」は`participant`でn ≤ Sの枠、S超の`participant`は1回戦の予定済みのマッチで上書きされる。
+- 2.5: `core/tournament/round-schedule.ts`の`dailyRoundPolicy(plannedFirstRoundDate, now)`(1回戦はmax(予定の日, 現在の業務日付+1)、次ラウンドはmax(前ラウンドの日+1, 現在の業務日付+1))と`core/week-tournament/week-schedule.ts`の`entryWindowFor`(翌週月曜日23:00・23:35・23:45、月曜日以外の週の初日は`RangeError`)・`weekFirstRoundDate`(翌週火曜日)・`isSundayLaunch`・`WEEK_ENTRY_PRICE_LOOKUP_KEY`。業務時刻は固定のUTC-08:00(夏時間無し)。設計のSystem Flowsの`dailyRoundPolicy(weekFirstRoundDate(weekStart))`は契約どおり`now`も渡す(4.11・4.12)。3.2・3.3の遅れの検知は`nextRoundDate(prev, now)`が前ラウンドの翌日より後かで判定する。4.5は`WeekEntryWindow.drawAt`をpaymentsの`fulfillableUntil`に対応させる。
