@@ -13,7 +13,7 @@ import {
   UserProductErasureHandler,
 } from './user-product-erasure-handler.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 
 const NOW = new Date('2026-11-20T00:00:00.000Z');
 
@@ -25,7 +25,7 @@ const EVENT: UserLifecycleEvent = Object.freeze({
 });
 
 function productIdOf(index: number): string {
-  return `01JD0PROD${String(index).padStart(17, '0')}`;
+  return `01JD0PR0D${String(index).padStart(17, '0')}`;
 }
 
 function eventIdOf(index: number): string {

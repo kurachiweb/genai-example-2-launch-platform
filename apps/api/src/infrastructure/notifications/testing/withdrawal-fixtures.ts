@@ -27,7 +27,7 @@ type NoticeRow = typeof notificationNotices.$inferInsert;
 export const EARLIER_SETTLED_AT = new Date(T0.getTime() + 1_000);
 
 export function noticeIdOf(index: number): string {
-  return `01JC0NOTCE${String(index).padStart(16, '0')}`;
+  return `01JC0N0TCE${String(index).padStart(16, '0')}`;
 }
 
 function noticeOf(

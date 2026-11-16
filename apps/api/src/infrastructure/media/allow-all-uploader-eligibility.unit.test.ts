@@ -39,7 +39,7 @@ const FILE_PURPOSE: UploadPurpose = defineUploadPurpose({
 const PRINCIPAL: AuthenticatedPrincipal = Object.freeze({
   kind: 'authenticated',
   subjectKind: 'user',
-  subjectId: '01JC0USER00000000000000001',
+  subjectId: '01JC0VSER00000000000000001',
   sessionId: '01JC0SESSION0000000000001',
 });
 

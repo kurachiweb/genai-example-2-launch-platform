@@ -13,7 +13,7 @@ import {
 } from '../../application/media/file-access-policies.ts';
 import { OwnerOnlyFileReadPolicy } from './owner-only-file-read-policy.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 
 const principalOf = (
   subjectKind: AuthenticatedPrincipal['subjectKind'],
@@ -54,7 +54,7 @@ describe('OwnerOnlyFileReadPolicy', () => {
   test.each<[string, AuthenticatedPrincipal, MediaOwner]>([
     [
       '識別子が異なる利用者',
-      principalOf('user', '01JC0USER00000000000000002'),
+      principalOf('user', '01JC0VSER00000000000000002'),
       { kind: 'user', id: USER_ID },
     ],
     [
@@ -112,7 +112,7 @@ describe('OwnerOnlyFileReadPolicy', () => {
     const results = await Promise.all([
       policy.canRead({ principal: principalOf('user', USER_ID), file }),
       policy.canRead({
-        principal: principalOf('user', '01JC0USER00000000000000002'),
+        principal: principalOf('user', '01JC0VSER00000000000000002'),
         file,
       }),
     ]);

@@ -8,7 +8,7 @@ import type {
 import type { ProductPurgeStore } from './ports.ts';
 import { ProductImageErasureHandler } from './product-image-erasure-handler.ts';
 
-const PRODUCT_ID = '01JD0PROD00000000000000001';
+const PRODUCT_ID = '01JD0PR0D00000000000000001';
 
 const IMAGE_IDS = [
   '01JC0F00000000000000000001',
@@ -19,7 +19,7 @@ function eventOf(type: ProductLifecycleEventType): ProductLifecycleEvent {
   return Object.freeze({
     id: '01JD0PEVT00000000000000010',
     productId: PRODUCT_ID,
-    ownerUserId: '01JC0USER00000000000000001',
+    ownerUserId: '01JC0VSER00000000000000001',
     type,
     occurredAt: new Date('2026-11-20T00:00:00.000Z'),
   });

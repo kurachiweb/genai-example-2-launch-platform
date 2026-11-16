@@ -74,9 +74,9 @@ export function CommentItem({ node, depth, actions }: Props) {
         className="flex gap-3"
       >
         {author ? (
-          <UserAvatar user={author} size={36} broken={imagesBroken} />
+          <UserAvatar user={author} size={32} broken={imagesBroken} />
         ) : (
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <MessageSquareOffIcon className="size-4" aria-hidden="true" />
           </span>
         )}
@@ -187,7 +187,7 @@ export function CommentItem({ node, depth, actions }: Props) {
         <ol
           aria-label="返信"
           className={cn(
-            'mt-4 ml-[1.0625rem] space-y-4 border-l-2 border-border pl-3 sm:pl-5',
+            'mt-4 ml-[0.9375rem] space-y-4 border-l-2 border-border pl-3 sm:pl-5',
           )}
         >
           {node.replies.map((reply) => (

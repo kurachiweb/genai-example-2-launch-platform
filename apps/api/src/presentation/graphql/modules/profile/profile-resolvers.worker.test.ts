@@ -712,21 +712,21 @@ describe('publicProfile', () => {
     });
     await db.insert(userFollows).values([
       {
-        id: '01JC0FLW000000000000000001',
+        id: '01JC0F1W000000000000000001',
         followerId: userIdOf(ALICE),
         followeeId: userIdOf(BOB),
         createdAt: T0,
         updatedAt: T0,
       },
       {
-        id: '01JC0FLW000000000000000002',
+        id: '01JC0F1W000000000000000002',
         followerId: userIdOf(3),
         followeeId: userIdOf(BOB),
         createdAt: T0,
         updatedAt: T0,
       },
       {
-        id: '01JC0FLW000000000000000003',
+        id: '01JC0F1W000000000000000003',
         followerId: userIdOf(4),
         followeeId: userIdOf(BOB),
         createdAt: T0,

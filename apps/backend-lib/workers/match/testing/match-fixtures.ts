@@ -35,7 +35,7 @@ export function entryIdOf(index: number): string {
 }
 
 export function upvoteIdOf(index: number): string {
-  return `01JD0UPVT${String(index).padStart(17, '0')}`;
+  return `01JD0VPVT${String(index).padStart(17, '0')}`;
 }
 
 export interface EntryFixture {

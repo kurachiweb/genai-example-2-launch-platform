@@ -32,6 +32,7 @@ describe('RUN_MATCH_EVENT_MESSAGE', () => {
     ['イベントのIDの欠落', {}],
     ['空のイベントのID', { eventId: '' }],
     ['ULIDでないイベントのID', { eventId: 'event-1' }],
+    ['小文字のULIDのイベントのID', { eventId: ULID.toLowerCase() }],
     ['数値のイベントのID', { eventId: 1 }],
   ])('%sの本文を拒否する', (_label, body) => {
     expect(RUN_MATCH_EVENT_MESSAGE.schema.safeParse(body).success).toBe(false);

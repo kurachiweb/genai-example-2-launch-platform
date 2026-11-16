@@ -62,6 +62,11 @@ describe('decodeUpvoteHistoryCursor', () => {
     ['マッチのIDの無い値', base64urlOf('2027-03-02')],
     ['存在しない日付の値', base64urlOf(`2027-02-30:${MATCH_ID}`)],
     ['IDの形式が違う値', base64urlOf('2027-03-02:match-1')],
+    ['IDが小文字の値', base64urlOf(`2027-03-02:${MATCH_ID.toLowerCase()}`)],
+    ...['I', 'L', 'O', 'U'].map((letter) => [
+      `IDがCrockford Base32に無い${letter}を含む値`,
+      base64urlOf(`2027-03-02:${MATCH_ID.slice(0, 25)}${letter}`),
+    ]),
     ['日時を加えた値', base64urlOf(`2027-03-02:1772454896789:${MATCH_ID}`)],
   ])('%sはinvalid_cursorで拒否する', (_label, cursor) => {
     const error = rejectionOf(cursor);

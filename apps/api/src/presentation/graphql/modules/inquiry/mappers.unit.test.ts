@@ -29,7 +29,7 @@ const LAST_MESSAGE_AT = new Date('2026-11-05T02:00:00.000Z');
 
 const MEMBER_INQUIRY: MemberInquiryRecord = {
   id: '01JC0M0000000000000000000A',
-  userId: '01JC0USER00000000000000001',
+  userId: '01JC0VSER00000000000000001',
   categoryId: '01JC0CTGY00000000000000001',
   status: 'resolved',
   statusChangedAt: CHANGED_AT,

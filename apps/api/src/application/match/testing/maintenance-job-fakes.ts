@@ -6,7 +6,7 @@ import type { SettlementStore } from '../ports.ts';
 import type { CallLog } from './match-job-fakes.ts';
 
 export function staleEventIdOf(index: number): string {
-  return `01JF0STALE${String(index).padStart(16, '0')}`;
+  return `01JF0STA1E${String(index).padStart(16, '0')}`;
 }
 
 export function staleEventOf(

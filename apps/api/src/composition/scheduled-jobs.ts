@@ -4,6 +4,7 @@ import type { ScheduledRunBudget } from '../../lib/core/scheduling/run-budget.ts
 import { SEARCH_TYPES } from '../../lib/core/search/identifiers.ts';
 import { ADMIN_TYPES } from '../application/admin/admin-types.ts';
 import { API_EMAIL_TYPES } from '../application/email/email-cleanup-job.ts';
+import { COMMENT_ANONYMIZATION_JOB_DEFINITION } from '../application/engagement/comment-anonymization-job.ts';
 import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
 import { GUEST_INQUIRY_RETENTION_JOB_DEFINITION } from '../application/inquiry/jobs/guest-inquiry-retention-job.ts';
 import {
@@ -92,6 +93,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   MATCH_EVENT_REDISPATCH_JOB_DEFINITION,
   MATCH_EVENT_CLEANUP_JOB_DEFINITION,
   NOTIFICATION_MAINTENANCE_JOB_DEFINITION,
+  COMMENT_ANONYMIZATION_JOB_DEFINITION,
   {
     name: 'content-processing.keyword-reextraction',
     at: { hour: 4, minute: 21 },

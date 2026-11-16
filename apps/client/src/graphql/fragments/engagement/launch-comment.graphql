@@ -1,0 +1,22 @@
+fragment LaunchComment on LaunchComment {
+  id
+  parentId
+  depth
+  state
+  author {
+    handle
+    nickname
+    avatar {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+  }
+  body
+  createdAt
+  edited
+  byProductOwner
+  viewerIsAuthor
+}

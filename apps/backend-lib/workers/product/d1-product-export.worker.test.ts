@@ -24,7 +24,7 @@ const productExport = new D1ProductExport(db);
 const launchExport = new D1LaunchExport(db);
 
 function screenshotFileIdOf(index: number): string {
-  return `01JD0SFIL${String(index).padStart(17, '0')}`;
+  return `01JD0SF11${String(index).padStart(17, '0')}`;
 }
 
 beforeEach(async () => {

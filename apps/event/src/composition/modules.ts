@@ -5,12 +5,14 @@ import { ADMIN_PLATFORM_MODULE } from '../../lib/workers/admin/admin-platform-mo
 import { DIRECTORY_PLATFORM_MODULE } from '../../lib/workers/directory/directory-platform-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-module.ts';
+import { ENGAGEMENT_PLATFORM_MODULE } from '../../lib/workers/engagement/engagement-platform-module.ts';
 import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-platform-module.ts';
 import { PRODUCT_PLATFORM_MODULE } from '../../lib/workers/product/product-platform-module.ts';
 import { PROFILE_PLATFORM_MODULE } from '../../lib/workers/profile/profile-platform-module.ts';
 import { createImageGatewayModule } from '../presentation/media/image-gateway-module.ts';
 import { EVENT_DIRECTORY_MODULE } from './directory-module.ts';
 import { EVENT_EMAIL_MODULE } from './email-module.ts';
+import { EVENT_ENGAGEMENT_MODULE } from './engagement-module.ts';
 import type { EventEnv } from './env-schema.ts';
 import { EVENT_IDENTITY_MODULE } from './identity-module.ts';
 import { EVENT_INQUIRY_MODULE } from './inquiry-module.ts';
@@ -61,6 +63,8 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_DIRECTORY_MODULE,
     EVENT_NOTIFICATIONS_PLATFORM_MODULE,
     EVENT_NOTIFICATIONS_MODULE,
+    ENGAGEMENT_PLATFORM_MODULE,
+    EVENT_ENGAGEMENT_MODULE,
     EVENT_PROFILE_MODULE,
     EVENT_SEARCH_PLATFORM_MODULE,
     EVENT_SEARCH_MODULE,

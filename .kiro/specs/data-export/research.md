@@ -224,7 +224,7 @@
 
 ## 上流・後続specへの影響
 
-- engagement(上流): `apps/backend-lib/workers/engagement/engagement-export.ts`の`RatingExportRecord`の`readonly invalidatedByAdmin: boolean;`と、評価の行の無効化の印から値を返す`RatingExport.listByUser`は、engagementがその仮5(2026-10-24に開発者が確定)として提供する。本specはengagementのファイルを変更せず、タスク2の契約のテストで提供された項目を確かめる。本specの仮2も同日に確定した。
+- engagement(上流): `apps/backend-lib/core/engagement/ports.ts`の`RatingExportRecord`の`readonly invalidatedByAdmin: boolean;`と、評価の行の無効化の印から値を返す`RatingExport.listByUser`(D1の実装は`apps/backend-lib/workers/engagement/d1-engagement-export.ts`の`D1RatingExport`、コメントは同じファイルの`D1CommentExport`)は、engagementがその仮5(2026-10-24に開発者が確定)として提供する。本specはengagementのファイルを変更せず、タスク2の契約のテストで提供された項目を確かめる。本specの仮2も同日に確定した。
 - identity-auth(上流): clientの`composition/settings-navigation.ts`の`SETTINGS_NAV_ITEMS`に`{ to: '/settings/export', label: 'データエクスポート', order: 100 }`、eventの`composition/user-lifecycle-async-handlers.ts`に`data-export.archive-erasure`(`withdrawn`・`purge_due`、2100)を加える(契約どおり)。`AccountExport`・`AccountGuard`・`UserContactDirectory`を使う。
 - backend-platform(上流): `core/messaging/contracts/index.ts`に2つのメッセージ種別、eventの`message-handlers.ts`に2つの処理、apiの`scheduled-jobs.ts`に2つのジョブ(4:21の式は上流で追加済み)、api・eventの`modules.ts`にモジュールを加える(契約どおり)。eventの`limits.cpu_ms`はstagingの実測の結果で開発者が判断する(本specは変更しない)。
 - api-gateway(上流): apiの`graphql-modules.ts`に`dataExportSchemaModule`、`internal-routes.ts`に`GET /internal/data-exports/:exportId/archive`、clientの許可リストの再生成(契約どおり)。

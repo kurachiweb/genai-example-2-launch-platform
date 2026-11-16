@@ -26,7 +26,7 @@ import type {
 } from './statement-contracts.ts';
 import { noticePayloadOf } from './ultras-notifier.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 const PURCHASE_ID = '01JC0PRCH00000000000000001';
 const SUBSCRIPTION_ID = '01JC0SUBS00000000000000001';
 const STRIPE_SUBSCRIPTION_ID = 'sub_ultras_0000000000000001';

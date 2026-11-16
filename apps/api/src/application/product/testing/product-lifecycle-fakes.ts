@@ -10,7 +10,7 @@ import type {
 } from '../ports.ts';
 import { PRODUCT_NOW, USER_ID } from './product-fakes.ts';
 
-export const LIFECYCLE_PRODUCT_ID = '01JD0PRODUCT00000000000001';
+export const LIFECYCLE_PRODUCT_ID = '01JD0PR0DVCT00000000000001';
 export const LIFECYCLE_EVENT_ID = '01JD0EVENT0000000000000001';
 export const MESSAGE_ID = '01JD0MESSAGE00000000000001';
 

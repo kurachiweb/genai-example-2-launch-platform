@@ -1,0 +1,16 @@
+query ClientLaunchComments($productId: ID!, $launchId: ID!, $after: String) {
+  launchComments(productId: $productId, launchId: $launchId, after: $after) {
+    nodes {
+      comment {
+        ...LaunchComment
+      }
+      replies {
+        ...LaunchComment
+      }
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}

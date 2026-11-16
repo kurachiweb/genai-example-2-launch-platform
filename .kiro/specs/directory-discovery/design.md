@@ -782,7 +782,7 @@ export interface DirectoryItemMetricSource {
   metrics(input: {
     readonly productIds: readonly string[];
     readonly at: Date;
-  }): Promise<ReadonlyMap<string, number>>; // productId → 値
+  }): Promise<ReadonlyMap<string, number>>; // productId → 値。示す値のあるプロダクトだけを返し、件数のように0も示す値なら0も返す
 }
 export interface DirectoryItemMetricRegistration {
   readonly key: string; // '<名詞>'(例: 'comments')。clientのDIRECTORY_ITEM_METRICSのkeyと一致させる
@@ -1094,12 +1094,12 @@ type Query {
 }
 ```
 
-| 操作                               | 呼び出し元 | ログイン・権限 | bot対策 | エラー                                                         |
-| ---------------------------------- | ---------- | -------------- | ------- | -------------------------------------------------------------- |
-| `directory`・`directoryCategories` | client     | 不要           | なし    | —(不正な入力は正規化して返す、3.7)                             |
-| `productPage`                      | client     | 不要           | なし    | —(null・リダイレクトで表す)                                    |
-| `productLiveMatch`                 | client     | 不要           | なし    | —(nullで表す)                                                  |
-| `matchSupporters`                  | client     | 不要           | なし    | `validation_error`(`first`は1〜20、IDはULID)・`invalid_cursor` |
+| 操作                               | 呼び出し元 | ログイン・権限 | bot対策 | エラー                                                                                                            |
+| ---------------------------------- | ---------- | -------------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
+| `directory`・`directoryCategories` | client     | 不要           | なし    | —(不正な入力は正規化して返す、3.7)                                                                                |
+| `productPage`                      | client     | 不要           | なし    | —(null・リダイレクトで表す)                                                                                       |
+| `productLiveMatch`                 | client     | 不要           | なし    | —(nullで表す)                                                                                                     |
+| `matchSupporters`                  | client     | 不要           | なし    | `validation_error`(`first`は1〜20、IDは大文字のULIDでmatch-engineの`MatchInputs`と同じスキーマ)・`invalid_cursor` |
 
 - 呼び出し元が`client`でなければ`forbidden`。`DirectoryInput`は全ての項目を文字列で受け、検証の違反をエラーにせず`normalizeDirectoryQuery`へ渡す(3.7)。
 - `DirectoryViews`(`directory-views.ts`): `logo`・`ProductPageScreenshot.image`・`ProductPageOpponent.logo`は`mediaFileLoader`→`toMediaImage`、`category`は`productCategoryLoader`、`owner`・`SupporterConnection.nodes`は`userSummaryLoader`(`nodes`は`[UserSummary!]!`のため、`null`になった利用者(退会・停止の競合)は一覧から除く。`UserSummary.avatar`は上流の`UserSummary`のリゾルバが解決するため、本specは画像を読まない)、`ProductLiveMatch.match`はmatch-engineの`loadMatchView(context, matchId)`(`matchViewLoader`を直接`load`しない。閲覧者の`viewerUpvotedEntryId`・`viewerRestriction`はmatch-engineが処理単位のセッションで解決する、9.6)、`websiteUrl`は`checkExternalUrl`が`ok`でなければ空文字(2.6)。`ProductAward`・`LaunchSummary`はproduct-launchの型を、値の形(`kind`・`count`・`labels`、`label`・`inMatch`)をそろえて返す。

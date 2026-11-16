@@ -1,11 +1,15 @@
 import { invalidCursorError } from '../../../lib/core/errors/invalid-cursor.ts';
+import { UPPERCASE_ULID_SOURCE } from '../../../lib/core/ids/uppercase-ulid.ts';
 import {
   type BusinessDate,
   parseBusinessDate,
 } from '../../../lib/core/time/business-time.ts';
 import type { UpvoteHistoryPosition } from './ports.ts';
 
-const CURSOR_PATTERN = /^(\d{4}-\d{2}-\d{2}):([0-9A-Z]{26})$/u;
+const CURSOR_PATTERN = new RegExp(
+  String.raw`^(\d{4}-\d{2}-\d{2}):(${UPPERCASE_ULID_SOURCE})$`,
+  'u',
+);
 
 const BASE64URL_OPTIONS = {
   alphabet: 'base64url',

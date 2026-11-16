@@ -1162,7 +1162,7 @@ type Mutation {
 | `myFollowing`・`myFollowers` | client               | `requireUser`         | なし              | `unauthenticated`・`validation_error`(`first`は1〜20)・`invalid_cursor`                                                                                                                    |
 
 - 呼び出し元が`client`でなければ`forbidden`。bot対策は、ログインと状態の確認の後に`context.assertHuman(action)`で行う。
-- `FollowResolvers`の`myFollowing`・`myFollowers`の引数は、`CURSOR_PAGE_ARGS`の`first`を1〜20に絞った独自のスキーマを`withValidatedArgs`で検証する(`CURSOR_PAGE_ARGS`の上限は100のため)。`after`は`decodeCursor(FollowListPositionSchema, after)`で`FollowListPosition`(`t`は0以上の整数、`id`はULID)に戻し、失敗は`invalid_cursor`。`FollowListReader.list`の結果は`toConnection(rows, first, (row) => encodeCursor({ t: row.followedAt.getTime(), id: row.followId }))`でConnectionにする(`toConnection`が先頭`first`件と`hasNextPage`・`endCursor`を決める)。
+- `FollowResolvers`の`myFollowing`・`myFollowers`の引数は、`CURSOR_PAGE_ARGS`の`first`を1〜20に絞った独自のスキーマを`withValidatedArgs`で検証する(`CURSOR_PAGE_ARGS`の上限は100のため)。`after`は`decodeCursor(FollowListPositionSchema, after)`で`FollowListPosition`(`t`は0以上の整数、`id`は`z.ulid().regex(UPPERCASE_ULID_PATTERN)`の大文字のULID)に戻し、失敗は`invalid_cursor`。`FollowListReader.list`の結果は`toConnection(rows, first, (row) => encodeCursor({ t: row.followedAt.getTime(), id: row.followId }))`でConnectionにする(`toConnection`が先頭`first`件と`hasNextPage`・`endCursor`を決める)。
 - `ProfileInputs`(`inputs.ts`、`withValidatedArgs`): ニックネームは`checkNickname`、ハンドルは`checkHandleFormat(USER_HANDLE_RULE)`、ヘッドラインは`checkHeadline`、自己紹介は`markdownTextSchema({ label: '自己紹介', maxGraphemes: 5000, required: false })`、外部Webサイトは0〜10件(仮3)で名前は`checkWebsiteName`・URLは`checkExternalUrl`。空文字列のヘッドライン・自己紹介は`null`として保存する。違反は`validation_error`と欄ごとの詳細(`websites.2.url`など)。
 - `UserSummaryModule`(`user-summary.ts`): `userSummaryLoader = defineLoader<string, UserSummaryRecord | null>`(`UserProfileDirectory.findSummaries(ids, 'visible')`、可視でなければnull)と、`UserSummary.avatar`・`PublicProfile.avatar`・`MyProfile.avatar`の項目のリゾルバ(`mediaFileLoader`→`toMediaImage`)。後続specは自分の型の項目で`UserSummary`を返す。
 
@@ -1238,10 +1238,19 @@ export interface PublicProfileBadgeSection {
   readonly order: number;
   readonly Section: ComponentType<PublicProfileSectionContext>;
 }
+export interface PublicProfileMenuItemProps extends PublicProfileSectionContext {
+  readonly onSelect: () => void;
+}
+export interface PublicProfileMenuDialogProps extends PublicProfileSectionContext {
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly returnFocusRef: RefObject<HTMLButtonElement | null>; // 「その他の操作」のボタン
+}
 export interface PublicProfileMenuItem {
   readonly id: string;
   readonly order: number;
-  readonly Item: ComponentType<PublicProfileSectionContext>; // DropdownMenuItemと自分のダイアログを描画する
+  readonly Item: ComponentType<PublicProfileMenuItemProps>; // メニューの中に描く項目(DropdownMenuItem)。選択でonSelectを呼び、該当しなければnull
+  readonly Dialog: ComponentType<PublicProfileMenuDialogProps>; // メニューの外に描くダイアログ。openの間だけ開き、閉じるとreturnFocusRefへフォーカスを戻す
 }
 // composition/public-profile-sections.ts
 export declare const PUBLIC_PROFILE_TABS: readonly PublicProfileTab[]; // 初版は空。product-launch launches(10)・match-engine upvotes(20)が追記
@@ -1256,7 +1265,7 @@ export declare const PUBLIC_PROFILE_MENU_ITEMS: readonly PublicProfileMenuItem[]
 - `FollowerCount`: 「フォロワー」と`Intl.NumberFormat('ja-JP')`の数と「人」。本人は`/settings/follows?tab=followers`へのリンク(6.6・6.9)。フォロー・解除の結果の`followerCount`で更新する。
 - `ExternalWebsiteList`: `<ul aria-label="外部Webサイト">`、各行は`target="_blank"`・`rel="noopener ugc"`、名前(無ければホスト名)とホスト名、「(新しいタブで開きます)」の読み上げ用の文言。`checkExternalUrl`が`ok`でない値はリンクにしない(保存時の検証に加えた防御、6.4・6.5)。
 - `ProfileTabs`: `PUBLIC_PROFILE_TABS`を`order`順に下線型のタブで並べ、`Count`があれば添える。選択は`tab`のクエリ(最小の`order`のタブは省略、未登録の値は既定、8.2)。タブバーは`sticky`で共通ヘッダーの直下(`top-14`)に追従し、追従中の切り替えはタブの位置までスクロールを戻す(8.3)。パネルは`Suspense`の中に置き、切り替え中はパネルの部分だけをスケルトンにする(8.4)。
-- `ProfileActionsMenu`: 本人でなく項目が1つ以上のときだけ「その他の操作」のボタンと`PUBLIC_PROFILE_MENU_ITEMS`の項目(8.6)。
+- `ProfileActionsMenu`: 本人でなく項目が1つ以上のときだけ「その他の操作」のボタンと`PUBLIC_PROFILE_MENU_ITEMS`の`Item`(8.6)。メニューの中身はメニューが閉じると外れるため、登録の`Dialog`はメニューの外に描き、開いている登録の`id`を状態で持つ。`Item`が`onSelect`を呼ぶと、メニューが閉じる時のボタンへのフォーカスの戻しを止めて(`onCloseAutoFocus`の`preventDefault`)その登録の`Dialog`を開き、`Dialog`には「その他の操作」のボタンを`returnFocusRef`として渡して、閉じるとそこへフォーカスを戻させる。
 
 #### ProfileEditRoute・ProfileEditForm・ProfileAvatarField・ProfileHandleField・ProfileWebsiteFields・ProfileFormSchema
 

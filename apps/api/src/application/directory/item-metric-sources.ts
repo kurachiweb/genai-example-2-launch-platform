@@ -8,7 +8,7 @@ import {
 } from '../product/decision-sources.ts';
 
 export interface DirectoryItemMetricSource {
-  // 値のあるプロダクトだけを返す(productId → 値)
+  // 示す値のあるプロダクトだけを返す(productId → 値)。件数のように0も示す値なら0も返す
   metrics(input: {
     readonly productIds: readonly string[];
     readonly at: Date;

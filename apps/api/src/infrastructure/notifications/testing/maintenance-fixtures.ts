@@ -24,7 +24,7 @@ export function at(iso: string): Date {
 }
 
 export function maintenanceNoticeIdOf(index: number): string {
-  return `01JC0NOTCE${String(index).padStart(16, '0')}`;
+  return `01JC0N0TCE${String(index).padStart(16, '0')}`;
 }
 
 export function maintenanceEventIdOf(index: number): string {

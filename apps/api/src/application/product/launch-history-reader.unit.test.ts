@@ -41,10 +41,10 @@ const NOW = fromBusinessDateTime(parseBusinessDate('2026-11-10'), {
   minute: 0,
 });
 
-const OTHER_VIEWER_ID = '01JC0USER00000000000000002';
+const OTHER_VIEWER_ID = '01JC0VSER00000000000000002';
 
-const PRODUCT_A = '01JD0PROD00000000000000001';
-const PRODUCT_B = '01JD0PROD00000000000000002';
+const PRODUCT_A = '01JD0PR0D00000000000000001';
+const PRODUCT_B = '01JD0PR0D00000000000000002';
 
 const records: LogRecord[] = [];
 
@@ -269,7 +269,7 @@ describe('LaunchHistoryReader.list: 対象の範囲と本人の印', () => {
 describe('LaunchHistoryReader.list: ページ', () => {
   const many = Array.from({ length: 21 }, (_, index) =>
     historyProductOf(
-      `01JD0PROD${String(index + 1).padStart(17, '0')}`,
+      `01JD0PR0D${String(index + 1).padStart(17, '0')}`,
       `2026-10-${String(index + 1).padStart(2, '0')}`,
     ),
   );
@@ -291,7 +291,7 @@ describe('LaunchHistoryReader.list: ページ', () => {
     expect(page?.endCursor).toBe(
       encodeMyProductsCursor({
         latestLaunchDate: day('2026-10-02'),
-        id: '01JD0PROD00000000000000002',
+        id: '01JD0PR0D00000000000000002',
       }),
     );
   });
@@ -300,17 +300,17 @@ describe('LaunchHistoryReader.list: ページ', () => {
     const { reader, store } = setup({ public: many });
     const after = encodeMyProductsCursor({
       latestLaunchDate: day('2026-10-02'),
-      id: '01JD0PROD00000000000000002',
+      id: '01JD0PR0D00000000000000002',
     });
 
     const page = await reader.list(SESSION, { ...firstPage, after });
 
     expect(store.listRequests[0]?.before).toEqual({
       latestLaunchDate: day('2026-10-02'),
-      id: '01JD0PROD00000000000000002',
+      id: '01JD0PR0D00000000000000002',
     });
     expect(page?.nodes.map(({ product }) => product.productId)).toEqual([
-      '01JD0PROD00000000000000001',
+      '01JD0PR0D00000000000000001',
     ]);
     expect(page?.hasNextPage).toBe(false);
   });

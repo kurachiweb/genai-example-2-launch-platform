@@ -75,7 +75,7 @@ describe('通知のジョブの定期実行の一覧への登録', () => {
     ]);
   });
 
-  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、マッチのイベントの削除の後・再抽出の前に保守が動く', () => {
+  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、マッチのイベントの削除の後・コメントの匿名化の前に保守が動く', () => {
     const names = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(MAINTENANCE_CRON)
       .map(({ name }) => name);
@@ -89,7 +89,7 @@ describe('通知のジョブの定期実行の一覧への登録', () => {
     expect(names.slice(index - 1, index + 2)).toEqual([
       'match-engine.event-cleanup',
       'notifications.maintenance',
-      'content-processing.keyword-reextraction',
+      'engagement.comment-anonymization',
     ]);
   });
 

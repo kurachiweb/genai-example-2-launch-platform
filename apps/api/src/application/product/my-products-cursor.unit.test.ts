@@ -7,7 +7,7 @@ import {
   encodeMyProductsCursor,
 } from './my-products-cursor.ts';
 
-const PRODUCT_ID = '01JD0PRODUCT00000000000001';
+const PRODUCT_ID = '01JD0PR0DVCT00000000000001';
 
 const POSITION = Object.freeze({
   latestLaunchDate: parseBusinessDate('2026-10-30'),
@@ -77,6 +77,15 @@ describe('decodeMyProductsCursor', () => {
       'IDが25文字の値',
       base64urlOf(JSON.stringify({ d: '2026-10-30', id: PRODUCT_ID.slice(1) })),
     ],
+    ...['I', 'L', 'O', 'U'].map((letter) => [
+      `IDがCrockford Base32に無い${letter}を含む値`,
+      base64urlOf(
+        JSON.stringify({
+          d: '2026-10-30',
+          id: `${PRODUCT_ID.slice(0, 25)}${letter}`,
+        }),
+      ),
+    ]),
     [
       '余分な項目を持つ値',
       base64urlOf(

@@ -62,7 +62,7 @@ describe('StoreAdminLogin.withPassword', () => {
     });
     expect(fakes.state.challenges).toEqual([
       {
-        id: '01JC0CHLG00000000000000000',
+        id: '01JC0CH1G00000000000000000',
         adminId: ADMIN_ID,
         tokenHash: 'hashed(admin-login-challenge):challenge-plain-1',
         expiresAt,

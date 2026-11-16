@@ -35,12 +35,12 @@ import type {
   ProductStateInput,
 } from '../product-state-evaluator.ts';
 
-export const USER_ID = '01JC0USER00000000000000001';
+export const USER_ID = '01JC0VSER00000000000000001';
 export const CATEGORY_ID = '01JD0CATEGORY0000000000001';
-export const LOGO_FILE_ID = '01JC0FILE00000000000000001';
+export const LOGO_FILE_ID = '01JC0F11E00000000000000001';
 export const SCREENSHOT_FILE_IDS = [
-  '01JC0FILE00000000000000011',
-  '01JC0FILE00000000000000012',
+  '01JC0F11E00000000000000011',
+  '01JC0F11E00000000000000012',
 ] as const;
 
 // 業務日付2026-10-23の12:00。登録で選べる日は10-24〜2027-01-21
@@ -82,7 +82,7 @@ export const currentUserOf = (
 });
 
 // 呼び出しのたびに連番のIDを返す
-export function createSequentialIds(prefix = '01JD0ID'): IdGenerator {
+export function createSequentialIds(prefix = '01JD01D'): IdGenerator {
   let next = 0;
   return {
     generate: () => {

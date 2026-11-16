@@ -113,9 +113,9 @@ describe('toStripeRefundReason', () => {
 
 describe('依頼キー', () => {
   test('反映の依頼キーはreflection:に購入IDを続けたもので、reflection:で始まるかを判定できる', () => {
-    const key = reflectionRequestKeyOf('01JC0PURCHASE0000000000001');
+    const key = reflectionRequestKeyOf('01JC0PVRCHASE0000000000001');
 
-    expect(key).toBe('reflection:01JC0PURCHASE0000000000001');
+    expect(key).toBe('reflection:01JC0PVRCHASE0000000000001');
     expect(isReflectionRequestKey(key)).toBe(true);
     expect(isReflectionRequestKey('tournament-week:reflection:1')).toBe(false);
   });
@@ -125,7 +125,7 @@ describe('依頼キー', () => {
     ['128文字', 'k'.repeat(128), true],
     ['空', '', false],
     ['129文字', 'k'.repeat(129), false],
-    ['reflection:で始まる', 'reflection:01JC0PURCHASE0000000000001', false],
+    ['reflection:で始まる', 'reflection:01JC0PVRCHASE0000000000001', false],
   ])('依頼元の依頼キーが%sなら%pを返す', (_, key, expected) => {
     expect(isAcceptableRequestKey(key)).toBe(expected);
   });

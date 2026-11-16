@@ -32,6 +32,7 @@ describe('PAYMENTS_REFUND_MESSAGE', () => {
     ['返金の依頼のIDの欠落', {}],
     ['空の返金の依頼のID', { refundRequestId: '' }],
     ['ULIDでない返金の依頼のID', { refundRequestId: 'refund-1' }],
+    ['小文字のULIDの返金の依頼のID', { refundRequestId: ULID.toLowerCase() }],
     ['Stripeの返金のID', { refundRequestId: 're_test_1' }],
     ['数値の返金の依頼のID', { refundRequestId: 1 }],
     ['nullの返金の依頼のID', { refundRequestId: null }],

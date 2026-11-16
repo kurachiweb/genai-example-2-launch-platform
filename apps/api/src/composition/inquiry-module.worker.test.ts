@@ -100,8 +100,8 @@ interface LoggedObject {
 const BASE_URL = 'https://api.launch.example';
 const RELAYED_IP = '203.0.113.7';
 const MAX_ATTACHMENT_BYTES = 20_971_520;
-const AVATAR_FILE_ID = '01JC0FILE00000000000000001';
-const OTHER_AVATAR_FILE_ID = '01JC0FILE00000000000000002';
+const AVATAR_FILE_ID = '01JC0F11E00000000000000001';
+const OTHER_AVATAR_FILE_ID = '01JC0F11E00000000000000002';
 
 const OWNER = 1;
 const OTHER = 2;
@@ -324,14 +324,14 @@ describe('APIサーバーの問い合わせの束縛', () => {
       suspendedAt: new Date('2026-11-05T02:00:00.000Z'),
     });
     await db.insert(userProfiles).values({
-      id: '01JC0PROF000000000000000001',
+      id: '01JC0PR0F000000000000000001',
       userId: userIdOf(OWNER),
       avatarFileId: AVATAR_FILE_ID,
       createdAt: T0,
       updatedAt: T0,
     });
     await db.insert(userProfiles).values({
-      id: '01JC0PROF000000000000000002',
+      id: '01JC0PR0F000000000000000002',
       userId: userIdOf(OTHER),
       avatarFileId: OTHER_AVATAR_FILE_ID,
       createdAt: T0,

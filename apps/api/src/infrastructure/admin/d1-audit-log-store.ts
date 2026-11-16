@@ -21,6 +21,7 @@ import { adminAuditLogs } from '../../../db/schema/admin/admin-audit-logs.ts';
 import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import { invalidCursorError } from '../../../lib/core/errors/invalid-cursor.ts';
+import { UPPERCASE_ULID_SOURCE } from '../../../lib/core/ids/uppercase-ulid.ts';
 import type {
   AuditLogEntryView,
   AuditLogFilter,
@@ -35,7 +36,10 @@ import { buildAuditLogStatements } from './audit-log-statements.ts';
 // D1のバインド変数の上限(100)から、操作種別と対象の種類に使う変数の分を残す
 const TARGET_IDS_PER_STATEMENT = 90;
 
-const CURSOR_PATTERN = /^(\d{1,15}):([0-9A-Z]{26})$/u;
+const CURSOR_PATTERN = new RegExp(
+  String.raw`^(\d{1,15}):(${UPPERCASE_ULID_SOURCE})$`,
+  'u',
+);
 
 const BASE64URL_OPTIONS = {
   alphabet: 'base64url',

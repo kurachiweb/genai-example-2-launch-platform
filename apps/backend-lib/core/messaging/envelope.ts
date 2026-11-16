@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { UPPERCASE_ULID_PATTERN } from '../ids/uppercase-ulid.ts';
 
 export interface QueueEnvelope {
   readonly v: 1;
@@ -34,7 +35,7 @@ export type ParsedMessage =
 const envelopeSchema = z.object({
   v: z.literal(1),
   type: z.string().min(1),
-  id: z.ulid(),
+  id: z.ulid().regex(UPPERCASE_ULID_PATTERN),
   sentAt: z.iso.datetime(),
   body: z.unknown(),
 });

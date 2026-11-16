@@ -62,6 +62,7 @@ const MATCH_JOB_NAMES = [
   'match-engine.event-cleanup',
 ];
 const NOTIFICATIONS_JOB_NAMES = ['notifications.maintenance'];
+const ENGAGEMENT_JOB_NAMES = ['engagement.comment-anonymization'];
 const REEXTRACTION_CATEGORY = 'api.search.reextraction';
 
 function createContainer() {
@@ -158,6 +159,7 @@ describe('APIサーバーの検索のモジュール', () => {
       ...PRODUCT_JOB_NAMES,
       ...MATCH_JOB_NAMES,
       ...NOTIFICATIONS_JOB_NAMES,
+      ...ENGAGEMENT_JOB_NAMES,
       REEXTRACTION_JOB_NAME,
     ]);
   });
@@ -248,6 +250,10 @@ describe('定期実行からの日次の再抽出', () => {
         expect.objectContaining({ name: MATCH_JOB_NAMES[1] }),
         expect.objectContaining({
           name: NOTIFICATIONS_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: ENGAGEMENT_JOB_NAMES[0],
           result: 'succeeded',
         }),
         expect.objectContaining({

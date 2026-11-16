@@ -34,8 +34,8 @@ const ALICE = 1;
 const BOB = 2;
 const CAROL = 3;
 
-const OLD_AVATAR = '01JC0FILE00000000000000001';
-const NEW_AVATAR = '01JC0FILE00000000000000002';
+const OLD_AVATAR = '01JC0F11E00000000000000001';
+const NEW_AVATAR = '01JC0F11E00000000000000002';
 
 const SAVED_AT = after(60_000);
 
@@ -80,7 +80,7 @@ async function insertProfile(
   } = {},
 ): Promise<void> {
   await db.insert(userProfiles).values({
-    id: `01JC0PROF${String(userIndex).padStart(17, '0')}`,
+    id: `01JC0PR0F${String(userIndex).padStart(17, '0')}`,
     userId: userIdOf(userIndex),
     headline: columns.headline ?? null,
     bioMarkdown: columns.bioMarkdown ?? null,
@@ -281,7 +281,7 @@ describe('save', () => {
     const { profiles } = await readState();
     expect(profiles).toHaveLength(1);
     expect(profiles[0]).toMatchObject({
-      id: '01JC0PROF00000000000000001',
+      id: '01JC0PR0F00000000000000001',
       headline: null,
       bioMarkdown: null,
       avatarFileId: null,

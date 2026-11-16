@@ -14,12 +14,12 @@ import type {
 } from '../ports.ts';
 import { viewMatchIdOf, viewProductIdOf } from './view-fakes.ts';
 
-export const HISTORY_USER_ID = '01JC0USER00000000000000009';
+export const HISTORY_USER_ID = '01JC0VSER00000000000000009';
 
 export const HISTORY_HANDLE = 'supporter';
 
 export const historyUpvoteIdOf = (index: number): string =>
-  `01JF0UPVOTE${String(index).padStart(15, '0')}`;
+  `01JF0VPV0TE${String(index).padStart(15, '0')}`;
 
 export const historyUserOf = (
   overrides: Partial<UserSummaryRecord> = {},

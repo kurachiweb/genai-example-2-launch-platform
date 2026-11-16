@@ -17,9 +17,9 @@ const AT = fromBusinessDateTime(parseBusinessDate('2026-11-10'), {
   minute: 0,
 });
 
-const PRODUCT_A = '01JD0PROD00000000000000001';
-const PRODUCT_B = '01JD0PROD00000000000000002';
-const PRODUCT_OUTSIDE = '01JD0PROD00000000000000009';
+const PRODUCT_A = '01JD0PR0D00000000000000001';
+const PRODUCT_B = '01JD0PR0D00000000000000002';
+const PRODUCT_OUTSIDE = '01JD0PR0D00000000000000009';
 
 const records: LogRecord[] = [];
 
@@ -180,7 +180,7 @@ describe('ItemMetricsReader.read', () => {
     const reader = new SourcedItemMetricsReader(sources);
     const productIds = Array.from(
       { length: DIRECTORY_PAGE_SIZE + 1 },
-      (_, index) => `01JD0PROD${String(index).padStart(17, '0')}`,
+      (_, index) => `01JD0PR0D${String(index).padStart(17, '0')}`,
     );
 
     let rejection: unknown;

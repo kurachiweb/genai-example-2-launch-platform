@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 const ownerIdOf = (index: number): string =>
-  `01JC0USER${String(index).padStart(17, '0')}`;
+  `01JC0VSER${String(index).padStart(17, '0')}`;
 
 const ownerIds = (count: number): string[] =>
   Array.from({ length: count }, (_, index) => ownerIdOf(index + 1));

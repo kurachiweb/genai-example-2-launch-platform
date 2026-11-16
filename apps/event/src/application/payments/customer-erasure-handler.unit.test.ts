@@ -9,7 +9,7 @@ import {
 import { CustomerErasureHandler } from './customer-erasure-handler.ts';
 import type { PaymentAccountDataEraser } from './payment-account-data-eraser.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 const CUSTOMER_ID = 'cus_test_erasure_1';
 
 const EVENT: UserLifecycleEvent = Object.freeze({

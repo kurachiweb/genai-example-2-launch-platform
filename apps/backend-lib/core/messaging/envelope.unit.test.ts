@@ -69,6 +69,7 @@ describe('parseEnvelope', () => {
     ['種別が空', { ...validEnvelope(), type: '' }],
     ['種別が文字列でない', { ...validEnvelope(), type: 1 }],
     ['IDがULIDでない', { ...validEnvelope(), id: 'not-a-ulid' }],
+    ['IDが小文字のULID', { ...validEnvelope(), id: MESSAGE_ID.toLowerCase() }],
     ['送信日時がISO 8601でない', { ...validEnvelope(), sentAt: '2026/10/25' }],
     [
       '送信日時がUTCでない',

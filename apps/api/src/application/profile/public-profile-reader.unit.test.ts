@@ -21,7 +21,7 @@ import {
   USER_ID,
 } from './testing/profile-fakes.ts';
 
-const TARGET_ID = '01JC0USER00000000000000009';
+const TARGET_ID = '01JC0VSER00000000000000009';
 
 const records: LogRecord[] = [];
 
@@ -142,7 +142,7 @@ describe('PublicProfileReader.find: 現在のハンドル', () => {
       nickname: 'ターゲット',
       headline: '見出し',
       bioMarkdown: '本文',
-      avatarFileId: '01JC0FILE00000000000000001',
+      avatarFileId: '01JC0F11E00000000000000001',
       websites: [
         { name: 'GitHub', url: 'https://github.example/target' },
         { name: null, url: 'https://blog.example/' },
@@ -160,7 +160,7 @@ describe('PublicProfileReader.find: 現在のハンドル', () => {
         nickname: 'ターゲット',
         headline: '見出し',
         bioMarkdown: '本文',
-        avatarFileId: '01JC0FILE00000000000000001',
+        avatarFileId: '01JC0F11E00000000000000001',
         websites: [
           { name: 'GitHub', url: 'https://github.example/target' },
           { name: null, url: 'https://blog.example/' },

@@ -349,7 +349,7 @@ describe('疎通確認用の購入種別', () => {
         relatedId: null,
         quantity: 1,
         amountTotal: 100,
-        paymentRecordId: '01JC0RECORD000000000000001',
+        paymentRecordId: '01JC0REC0RD000000000000001',
         paidAt: new Date('2026-11-05T00:00:00.000Z'),
         stripeSubscriptionId: null,
       },

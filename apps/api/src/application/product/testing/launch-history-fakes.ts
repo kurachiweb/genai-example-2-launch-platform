@@ -31,7 +31,7 @@ export const SESSION: SessionView = Object.freeze({
   principal: () => Promise.reject(new Error('この偽物では使わない: principal')),
 });
 
-export const TARGET_USER_ID = '01JC0USER00000000000000009';
+export const TARGET_USER_ID = '01JC0VSER00000000000000009';
 
 export const userSummaryOf = (
   overrides: Partial<UserSummaryRecord> = {},

@@ -54,7 +54,7 @@ interface RecordingNoticeStore {
 }
 
 function userIdOf(index: number): string {
-  return `01JC0USER${String(index).padStart(17, '0')}`;
+  return `01JC0VSER${String(index).padStart(17, '0')}`;
 }
 
 function noticeIdOf(index: number): string {
@@ -121,7 +121,7 @@ function createRecordingSender(
       request.kind.inputSchema.parse(request.input);
       sent.push(request);
       return Promise.resolve(
-        `01JC0EMAIL${String(sent.length).padStart(16, '0')}`,
+        `01JC0EMA11${String(sent.length).padStart(16, '0')}`,
       );
     },
   };

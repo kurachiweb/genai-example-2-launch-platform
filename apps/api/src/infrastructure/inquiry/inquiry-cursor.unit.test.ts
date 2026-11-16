@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { decodeInquiryCursor, encodeInquiryCursor } from './inquiry-cursor.ts';
 
-const INQUIRY_ID = '01JC0MINQ00000000000000001';
+const INQUIRY_ID = '01JC0M1NQ00000000000000001';
 
 const AT = new Date('2026-11-05T01:02:03.456Z');
 
@@ -54,6 +54,10 @@ describe('decodeInquiryCursor', () => {
     ['ミリ秒が16桁の値', base64urlOf(`${'1'.repeat(16)}:${INQUIRY_ID}`)],
     ['IDが小文字の値', base64urlOf(`1:${INQUIRY_ID.toLowerCase()}`)],
     ['IDが25文字の値', base64urlOf(`1:${INQUIRY_ID.slice(1)}`)],
+    ...['I', 'L', 'O', 'U'].map((letter) => [
+      `IDがCrockford Base32に無い${letter}を含む値`,
+      base64urlOf(`1:${INQUIRY_ID.slice(0, 25)}${letter}`),
+    ]),
     ['UTF-8として読めない値', new Uint8Array([0xff, 0xfe]).toBase64()],
     ['空の値', ''],
   ])('%sを、ページの位置の指定の誤りとして拒否する', (_label, cursor) => {

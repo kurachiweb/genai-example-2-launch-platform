@@ -31,10 +31,10 @@ import type {
   ProfileStore,
 } from '../ports.ts';
 
-export const USER_ID = '01JC0USER00000000000000001';
-export const OTHER_USER_ID = '01JC0USER00000000000000002';
-export const CURRENT_AVATAR_ID = '01JC0FILE00000000000000001';
-export const NEW_AVATAR_ID = '01JC0FILE00000000000000002';
+export const USER_ID = '01JC0VSER00000000000000001';
+export const OTHER_USER_ID = '01JC0VSER00000000000000002';
+export const CURRENT_AVATAR_ID = '01JC0F11E00000000000000001';
+export const NEW_AVATAR_ID = '01JC0F11E00000000000000002';
 export const PROFILE_NOW = new Date('2027-04-01T09:00:00.000Z');
 
 export const fixedClock: Clock = { now: () => PROFILE_NOW };
@@ -319,7 +319,7 @@ export function createFakeUltrasEntitlements(
   return { entitlements, queries };
 }
 
-export const TARGET_USER_ID = '01JC0USER00000000000000003';
+export const TARGET_USER_ID = '01JC0VSER00000000000000003';
 export const TARGET_FOLLOW_ID = '01JC0FOLLOW0000000000000001';
 
 export const summaryOf = (

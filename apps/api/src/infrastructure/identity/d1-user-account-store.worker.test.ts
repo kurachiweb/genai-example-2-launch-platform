@@ -47,7 +47,7 @@ function sessionIdOf(index: number): string {
 }
 
 function tokenIdOf(index: number): string {
-  return `01JC0TOKN${String(index).padStart(17, '0')}`;
+  return `01JC0T0KN${String(index).padStart(17, '0')}`;
 }
 
 function hashOf(kind: string, index: number): string {

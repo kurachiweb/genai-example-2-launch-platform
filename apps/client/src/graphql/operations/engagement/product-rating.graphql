@@ -1,0 +1,5 @@
+query ClientProductRating($productId: ID!) {
+  productRating(productId: $productId) {
+    ...ProductRating
+  }
+}

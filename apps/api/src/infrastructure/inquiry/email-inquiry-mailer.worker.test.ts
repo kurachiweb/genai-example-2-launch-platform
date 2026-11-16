@@ -30,7 +30,7 @@ const CLIENT_ORIGIN = 'https://client.example';
 
 const LOCAL_CLIENT_ORIGIN = 'http://localhost:48044';
 
-const INQUIRY_ID = '01JC0MINQ00000000000000001';
+const INQUIRY_ID = '01JC0M1NQ00000000000000001';
 
 const REPLIED_AT = new Date('2026-11-05T03:04:05.678Z');
 

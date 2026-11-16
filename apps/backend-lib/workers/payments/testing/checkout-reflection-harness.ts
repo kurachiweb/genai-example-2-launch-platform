@@ -242,7 +242,7 @@ export function createRecordingSender(): RecordingSender {
       request.kind.inputSchema.parse(request.input);
       sent.push(request);
       return Promise.resolve(
-        `01JC0EMAIL${String(sent.length).padStart(16, '0')}`,
+        `01JC0EMA11${String(sent.length).padStart(16, '0')}`,
       );
     },
   };

@@ -47,9 +47,9 @@ const MATCH_ID = '01JD0MTCH00000000000000001';
 
 const EVENT_ID = '01JD0MEVT00000000000000010';
 
-const LAUNCH_A = '01JD0LNCH00000000000000001';
+const LAUNCH_A = '01JD01NCH00000000000000001';
 
-const LAUNCH_B = '01JD0LNCH00000000000000002';
+const LAUNCH_B = '01JD01NCH00000000000000002';
 
 const clock: Clock = { now: () => NOW };
 
@@ -76,7 +76,7 @@ function entryOf(
     slot,
     launchId,
     productId:
-      launchId === null ? null : `01JD0PROD0000000000000000${String(slot)}`,
+      launchId === null ? null : `01JD0PR0D0000000000000000${String(slot)}`,
     ownerUserId:
       launchId === null ? null : `01JD0USER0000000000000000${String(slot)}`,
     upvoteCount: 0,

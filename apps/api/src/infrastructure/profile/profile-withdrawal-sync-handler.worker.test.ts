@@ -32,7 +32,7 @@ const AT = after(60_000);
 const EARLIER_DELETED_AT = after(1_000);
 
 function followIdOf(index: number): string {
-  return `01JC0FLW${String(index).padStart(18, '0')}`;
+  return `01JC0F1W${String(index).padStart(18, '0')}`;
 }
 
 function eventOf(type: UserLifecycleEventType): UserLifecycleEvent {

@@ -52,7 +52,7 @@ const at = (date: string, hour: number, minute: number): Date =>
   fromBusinessDateTime(day(date), { hour, minute });
 
 const AT = at('2026-09-07', 23, 0);
-const OWNER_ID = '01JC0USER00000000000000001';
+const OWNER_ID = '01JC0VSER00000000000000001';
 
 const launch = (
   launchId: string,

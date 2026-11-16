@@ -24,7 +24,7 @@ import type {
 } from './statement-contracts.ts';
 import { UltrasFulfillment } from './ultras-fulfillment.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
+const USER_ID = '01JC0VSER00000000000000001';
 const PURCHASE_ID = '01JC0PRCH00000000000000001';
 const OVERLAPPING_SUBSCRIPTION_ID = '01JC0SUBS00000000000000009';
 const ACTIVATION_ID = '01JC0ACTV00000000000000001';

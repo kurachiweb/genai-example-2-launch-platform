@@ -1,0 +1,5 @@
+mutation ClientDeleteComment($commentId: ID!) {
+  deleteComment(commentId: $commentId) {
+    ...LaunchComment
+  }
+}

@@ -27,6 +27,7 @@ import { mediaFiles } from '../../../db/schema/media/media-files.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
 import { invalidCursorError } from '../../core/errors/invalid-cursor.ts';
 import type { IdGenerator } from '../../core/ids/id-generator.ts';
+import { UPPERCASE_ULID_SOURCE } from '../../core/ids/uppercase-ulid.ts';
 import {
   type MediaFileView,
   type MediaLocation,
@@ -66,7 +67,10 @@ const RECORDABLE_STATUSES: readonly ModerationStatus[] = [
 
 const reasons = mediaFileQuarantineReasons;
 
-const CURSOR_PATTERN = /^(\d{1,15})-([0-9A-HJKMNP-TV-Z]{26})$/u;
+const CURSOR_PATTERN = new RegExp(
+  String.raw`^(\d{1,15})-(${UPPERCASE_ULID_SOURCE})$`,
+  'u',
+);
 
 interface QuarantineCursor {
   readonly quarantinedAt: number;

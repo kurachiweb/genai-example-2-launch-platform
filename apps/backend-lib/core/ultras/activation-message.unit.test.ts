@@ -45,6 +45,7 @@ describe('ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE', () => {
     ['知らせのIDの欠落', {}],
     ['空の知らせのID', { activationId: '' }],
     ['ULIDでない知らせのID', { activationId: 'activation-1' }],
+    ['小文字のULIDの知らせのID', { activationId: ULID.toLowerCase() }],
     ['Stripeの定期課金のID', { activationId: 'sub_test_1' }],
     ['数値の知らせのID', { activationId: 1 }],
     ['nullの知らせのID', { activationId: null }],

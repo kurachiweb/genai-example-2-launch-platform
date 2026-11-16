@@ -48,7 +48,7 @@ export const CURRENT_ONLY_NAMESPACE: HandleNamespace = defineHandleNamespace({
 });
 
 export function previousHandleIdOf(index: number): string {
-  return `01JC0PRVHDL${String(index).padStart(15, '0')}`;
+  return `01JC0PRVHD1${String(index).padStart(15, '0')}`;
 }
 
 export async function insertPreviousHandle(

@@ -1,0 +1,6 @@
+fragment ProductRating on ProductRating {
+  productId
+  average
+  count
+  viewerScore
+}

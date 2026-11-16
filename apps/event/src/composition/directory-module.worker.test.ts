@@ -134,7 +134,7 @@ describe('プロダクトライフサイクルの非同期の処理の登録口�
     ]);
   });
 
-  test('登録の検証を通り、復元と物理削除の時期の到来の最後の処理として並ぶ', () => {
+  test('登録の検証を通り、復元の最後の処理と、物理削除の時期の到来のengagementの処理の直前の処理として並ぶ', () => {
     const registry = createProductLifecycleRegistry(
       PRODUCT_LIFECYCLE_ASYNC_HANDLERS,
     );
@@ -142,9 +142,15 @@ describe('プロダクトライフサイクルの非同期の処理の登録口�
     expect(registry.handlersFor('unhidden').at(-1)?.name).toBe(
       'directory-discovery.product-index-restore',
     );
-    expect(registry.handlersFor('purge_due').at(-1)?.name).toBe(
+    expect(
+      registry
+        .handlersFor('purge_due')
+        .slice(-2)
+        .map(({ name }) => name),
+    ).toStrictEqual([
       'directory-discovery.entry-erasure',
-    );
+      'engagement.product-erasure',
+    ]);
   });
 
   test.each(['hidden', 'deleted'] as const)('%sでは動かない', (type) => {

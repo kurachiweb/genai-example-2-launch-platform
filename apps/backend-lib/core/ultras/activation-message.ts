@@ -5,6 +5,7 @@ import {
   type MessageContract,
 } from '../messaging/message-contract.ts';
 import type { RetryPolicy } from '../messaging/retry-policy.ts';
+import { UPPERCASE_ULID_PATTERN } from '../ids/uppercase-ulid.ts';
 
 export interface RunActivationHandlersBody {
   readonly activationId: string;
@@ -12,7 +13,7 @@ export interface RunActivationHandlersBody {
 
 // 利用者や定期課金の情報は受信側が知らせの行から読み直すため、本文には知らせのIDだけを持たせる
 const runActivationHandlersBodySchema = z.object({
-  activationId: z.ulid(),
+  activationId: z.ulid().regex(UPPERCASE_ULID_PATTERN),
 });
 
 export const ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE: MessageContract<

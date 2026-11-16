@@ -1,5 +1,6 @@
 import type { UserLifecycleAsyncRegistration } from '../../lib/core/identity/user-lifecycle.ts';
 import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-types.ts';
+import { EVENT_ENGAGEMENT_TYPES } from '../application/engagement/event-engagement-types.ts';
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
 import { EVENT_INQUIRY_TYPES } from '../application/inquiry/event-inquiry-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
@@ -90,6 +91,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['purge_due'],
       order: 1300,
       handler: EVENT_NOTIFICATIONS_TYPES.AccountPurgeHandler,
+    },
+    {
+      name: 'engagement.account-erasure',
+      events: ['purge_due'],
+      order: 1400,
+      handler: EVENT_ENGAGEMENT_TYPES.AccountErasureHandler,
     },
     {
       name: 'identity-auth.email-suppression-cleanup',

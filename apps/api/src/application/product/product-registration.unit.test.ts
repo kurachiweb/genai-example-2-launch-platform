@@ -87,12 +87,12 @@ async function rejectionOf(promise: Promise<unknown>): Promise<AppError> {
 }
 
 const generatedIdOf = (index: number): string =>
-  `01JD0ID${String(index).padStart(19, '0')}`;
+  `01JD01D${String(index).padStart(19, '0')}`;
 
 const screenshotIdsOf = (count: number): readonly string[] =>
   Array.from(
     { length: count },
-    (_, index) => `01JC0SHOT${String(index).padStart(17, '0')}`,
+    (_, index) => `01JC0SH0T${String(index).padStart(17, '0')}`,
   );
 
 describe('ProductRegistration.register', () => {

@@ -1,0 +1,5 @@
+mutation ClientCancelProductRating($productId: ID!) {
+  cancelProductRating(productId: $productId) {
+    ...ProductRating
+  }
+}

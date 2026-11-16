@@ -86,7 +86,7 @@ function recorded(
 function userEventOf(type: UserLifecycleEventType): UserLifecycleEvent {
   return Object.freeze({
     id: '01JC0EVT000000000000000041',
-    userId: '01JC0USER00000000000000001',
+    userId: '01JC0VSER00000000000000001',
     type,
     occurredAt: OCCURRED_AT,
   });
@@ -97,8 +97,8 @@ function productEventOf(
 ): ProductLifecycleEvent {
   return Object.freeze({
     id: '01JD0PEVT00000000000000041',
-    productId: '01JD0PROD00000000000000001',
-    ownerUserId: '01JC0USER00000000000000001',
+    productId: '01JD0PR0D00000000000000001',
+    ownerUserId: '01JC0VSER00000000000000001',
     type,
     occurredAt: OCCURRED_AT,
   });

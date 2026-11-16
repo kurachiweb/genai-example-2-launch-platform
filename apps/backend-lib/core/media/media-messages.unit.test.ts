@@ -56,6 +56,7 @@ describe('MODERATE_IMAGE_MESSAGE', () => {
     ['25文字の識別子', { fileId: FILE_ID.slice(1) }],
     ['27文字の識別子', { fileId: `${FILE_ID}0` }],
     ['ULIDに使わない文字Uを含む識別子', { fileId: `U${FILE_ID.slice(1)}` }],
+    ['小文字のULIDの識別子', { fileId: FILE_ID.toLowerCase() }],
     ['オブジェクトキー', { fileId: OBJECT_KEY }],
     ['数値の識別子', { fileId: 1 }],
     ['配列の識別子', { fileId: [FILE_ID] }],
@@ -108,6 +109,10 @@ describe('RELOCATE_FILES_MESSAGE', () => {
       },
     ],
     ['ULIDでない識別子を含む一覧', { fileIds: [FILE_ID, 'file-1'] }],
+    [
+      '小文字のULIDの識別子を含む一覧',
+      { fileIds: [FILE_ID, FILE_ID.toLowerCase()] },
+    ],
     ['一覧でない識別子', { fileIds: FILE_ID }],
     ['数値を含む一覧', { fileIds: [1] }],
   ])('%sの本文を拒否する', (_label, body) => {

@@ -3,7 +3,11 @@ import { describe, expect, test } from 'bun:test';
 import { z } from 'zod';
 
 import { createUlidGenerator } from './id-generator.ts';
-import { isUppercaseUlid, UPPERCASE_ULID_PATTERN } from './uppercase-ulid.ts';
+import {
+  isUppercaseUlid,
+  UPPERCASE_ULID_PATTERN,
+  UPPERCASE_ULID_SOURCE,
+} from './uppercase-ulid.ts';
 
 const VALID_ULID = '01JABCDEFGHJKMNPQRSTVWXYZ0';
 
@@ -61,5 +65,32 @@ describe('UPPERCASE_ULID_PATTERN', () => {
 
     expect(schema.safeParse(VALID_ULID).success).toBe(true);
     expect(schema.safeParse(VALID_ULID.toLowerCase()).success).toBe(false);
+  });
+});
+
+describe('UPPERCASE_ULID_SOURCE', () => {
+  const cursorPattern = new RegExp(
+    String.raw`^(\d{1,15}):(${UPPERCASE_ULID_SOURCE})$`,
+    'u',
+  );
+
+  test('複合の正規表現に組み込むと、大文字のULIDの部分を取り出す', () => {
+    expect(cursorPattern.exec(`1:${VALID_ULID}`)?.slice(1)).toEqual([
+      '1',
+      VALID_ULID,
+    ]);
+  });
+
+  test('複合の正規表現に組み込んでも、小文字とI・L・O・Uを含む値を受け付けない', () => {
+    expect(cursorPattern.test(`1:${VALID_ULID.toLowerCase()}`)).toBe(false);
+    for (const letter of ['I', 'L', 'O', 'U']) {
+      expect(cursorPattern.test(`1:${VALID_ULID.slice(0, 25)}${letter}`)).toBe(
+        false,
+      );
+    }
+  });
+
+  test('全体を照合する規則と同じ文字の並びだけを表す', () => {
+    expect(UPPERCASE_ULID_PATTERN.source).toBe(`^${UPPERCASE_ULID_SOURCE}$`);
   });
 });

@@ -251,10 +251,11 @@ describe('PublicProfilePage', () => {
       const menuItem: PublicProfileMenuItem = {
         id: 'test.item',
         order: 10,
-        Item: (context) => {
-          seen.push(context);
+        Item: ({ handle, nickname, isOwner, suspended }) => {
+          seen.push({ handle, nickname, isOwner, suspended });
           return <div role="menuitem">項目</div>;
         },
+        Dialog: () => null,
       };
       await renderPublicProfilePage(publicProfileOf(), {
         menuItems: [menuItem],

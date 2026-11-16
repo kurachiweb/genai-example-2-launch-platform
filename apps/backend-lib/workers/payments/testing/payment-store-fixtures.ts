@@ -29,15 +29,15 @@ export {
 } from '../../identity/testing/identity-store-fixtures.ts';
 
 export function purchaseIdOf(index: number): string {
-  return `01JC0PURCHASE${String(index).padStart(13, '0')}`;
+  return `01JC0PVRCHASE${String(index).padStart(13, '0')}`;
 }
 
 export function tokenOf(index: number): string {
-  return `01JC0TOKEN${String(index).padStart(16, '0')}`;
+  return `01JC0T0KEN${String(index).padStart(16, '0')}`;
 }
 
 export function recordIdOf(index: number): string {
-  return `01JC0RECORD${String(index).padStart(15, '0')}`;
+  return `01JC0REC0RD${String(index).padStart(15, '0')}`;
 }
 
 export function refundIdOf(index: number): string {

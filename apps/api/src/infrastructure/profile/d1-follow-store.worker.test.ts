@@ -22,7 +22,7 @@ const DAVE = 4;
 const ERIN = 5;
 
 function followIdOf(index: number): string {
-  return `01JC0FLW${String(index).padStart(18, '0')}`;
+  return `01JC0F1W${String(index).padStart(18, '0')}`;
 }
 
 async function insertFollow(
@@ -246,9 +246,9 @@ describe('list', () => {
 
   test('フォロー中を作成日時の新しい順に、利用者の表示の型で返す', async () => {
     await db.insert(userProfiles).values({
-      id: '01JC0PROF000000000000000001',
+      id: '01JC0PR0F000000000000000001',
       userId: userIdOf(ERIN),
-      avatarFileId: '01JC0FILE00000000000000001',
+      avatarFileId: '01JC0F11E00000000000000001',
       createdAt: T0,
       updatedAt: T0,
     });
@@ -270,7 +270,7 @@ describe('list', () => {
           userId: userIdOf(ERIN),
           handle: 'user5',
           nickname: '利用者5',
-          avatarFileId: '01JC0FILE00000000000000001',
+          avatarFileId: '01JC0F11E00000000000000001',
           suspended: false,
         },
         followedAt: after(300),

@@ -5,6 +5,7 @@ import {
   defineMessageContract,
   type MessageContract,
 } from '../messaging/message-contract.ts';
+import { UPPERCASE_ULID_PATTERN } from '../ids/uppercase-ulid.ts';
 
 export const MEDIA_MESSAGE_LIMITS = Object.freeze({
   relocateBatch: 25,
@@ -25,11 +26,14 @@ export interface PurgeImageCacheBody {
 
 // デッドレターや再試行で本文が運ばれ続けるため、ファイル名・主体・画像の内容を入れず、受信側が記録を読み直す識別子だけを持たせる
 const moderateImageBodySchema = z.object({
-  fileId: z.ulid(),
+  fileId: z.ulid().regex(UPPERCASE_ULID_PATTERN),
 });
 
 const relocateFilesBodySchema = z.object({
-  fileIds: z.array(z.ulid()).min(1).max(MEDIA_MESSAGE_LIMITS.relocateBatch),
+  fileIds: z
+    .array(z.ulid().regex(UPPERCASE_ULID_PATTERN))
+    .min(1)
+    .max(MEDIA_MESSAGE_LIMITS.relocateBatch),
 });
 
 const purgeImageCacheBodySchema = z.object({

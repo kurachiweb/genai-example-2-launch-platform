@@ -7,8 +7,8 @@ import {
   type UserAccountSnapshot,
 } from './user-account.ts';
 
-const USER_ID = '01JC0USER00000000000000001';
-const OTHER_USER_ID = '01JC0USER00000000000000002';
+const USER_ID = '01JC0VSER00000000000000001';
+const OTHER_USER_ID = '01JC0VSER00000000000000002';
 const AT = new Date('2026-11-01T00:00:00.000Z');
 
 const account = (

@@ -4,6 +4,7 @@ import {
   defineMessageContract,
   type MessageContract,
 } from '../message-contract.ts';
+import { UPPERCASE_ULID_PATTERN } from '../../ids/uppercase-ulid.ts';
 
 export interface RunMatchEventBody {
   readonly eventId: string;
@@ -11,7 +12,7 @@ export interface RunMatchEventBody {
 
 // デッドレターや再試行で本文が運ばれ続けるため、プロダクトの名称や利用者の情報を入れず、受信側が記録を読み直す識別子だけを持たせる
 const runMatchEventBodySchema = z.object({
-  eventId: z.ulid(),
+  eventId: z.ulid().regex(UPPERCASE_ULID_PATTERN),
 });
 
 export const RUN_MATCH_EVENT_MESSAGE: MessageContract<

@@ -1,6 +1,7 @@
 import type { Context, Hono } from 'hono';
 import { z } from 'zod';
 
+import { UPPERCASE_ULID_PATTERN } from '../../../lib/core/ids/uppercase-ulid.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { attachmentDisposition } from '../../../lib/core/media/file-name.ts';
 import { MEDIA_TYPES } from '../../../lib/core/media/identifiers.ts';
@@ -29,7 +30,7 @@ import { readInternalCaller } from '../gateway/internal-request.ts';
 
 export const FILE_CONTENT_ROUTE_PATH = '/media/files/:fileId';
 
-const FILE_ID_SCHEMA = z.ulid();
+const FILE_ID_SCHEMA = z.ulid().regex(UPPERCASE_ULID_PATTERN);
 
 // application層の判定は内部経路の呼び出し元の型を読み込めないため、対応をここで型として結ぶ
 const FILE_ACCESS_CALLERS = Object.freeze({

@@ -12,7 +12,7 @@ import { ProductIndexRestoreHandler } from './product-index-restore-handler.ts';
 
 const NOW = new Date('2026-12-02T03:00:05.000Z');
 
-const PRODUCT_ID = '01JD0PROD00000000000000001';
+const PRODUCT_ID = '01JD0PR0D00000000000000001';
 
 const EVENT: ProductLifecycleEvent = Object.freeze({
   id: '01JD0PEVT00000000000000001',

@@ -96,6 +96,7 @@ const menuItemOf = (
   id,
   order,
   Item: () => <div role="menuitem">{text}</div>,
+  Dialog: () => null,
 });
 
 const documentElement = (selector: string): Element | null =>

@@ -292,3 +292,99 @@
 - **上流の契約の参照**: product-launchの`ProductDirectory`・`ProductSummaryRecord`・`LaunchRecord`・`PRODUCT_PLATFORM_TYPES`を`core/product`の契約として参照するよう改めた。本specのapplication層は`MessagePublisher`・`RateLimitCounterClient`を使わない。
 - **変えた設計の節**: Overview(Impact)・This Spec Owns・Allowed Dependencies・Revalidation Triggers・Architecture Integration・Dependency direction・境界の図・File Structure Plan(ツリーと注記)・System Flows(コメントの投稿と返信)・Requirements Traceability・コンポーネントの表・backend-lib(`core/engagement`・`workers/engagement`の契約と識別子)・api/application(`CommentWriter`・`RatingWriter`)・api/infrastructure(`D1CommentWriter`・`D1RatingWriter`・管理の操作口)・Testing Strategy。
 - **変えたタスク**: 1.1(前提の参照)・2.1(契約と識別子の作成と単体テスト、文の部品)・2.2・2.4(文の部品への分割)・2.6(束縛)・3.2(識別子)・3.3・3.4・3.6(書き込みの単位とその実装、単体テストの偽のポートとWorkers統合テスト、静的解析の完了状態)・3.7(管理の操作口の置き場所)・9.2(静的解析の確認)。タスクの番号は変えていない。要件と受け入れ基準は変えていない。
+
+---
+
+## 実装前のギャップ分析(2026-11-15)
+
+`/kiro-validate-gap engagement`の手順で、承認済みの設計(2026-10-24、11-02改訂)が前提にした上流の契約と、現在のコードを突き合わせた。設計の作成時は上流の実装がdev-toolingだけだったが、2026-11-15の時点で本specの上流(backend-platform・api-gateway・frontend-platform・identity-auth・content-processing・user-profile-social・product-launch・match-engine・directory-discovery・admin-foundation・notificationsなど)はすべてタスクを完了している。下流(ugc-moderation・content-reporting・data-export・public-api)は未実装で、本specが次に実装する。本節は情報と選択肢の記録で、設計の改訂は決めていない。
+
+### 分析の要約
+
+- 設計が依存する上流の契約は、名前・置き場所・形ともほぼ設計どおりに実在する。登録箇所(`PRODUCT_LAUNCH_SECTIONS`・`DIRECTORY_ITEM_METRICS`・`DIRECTORY_ITEM_METRIC_SOURCES`)は空で、`PRODUCT_PAGE_SECTIONS`の`aside` 20、ユーザーとプロダクトの`purge_due`の1400、4:21の1400、技術ドキュメントの`backend/015`・`frontend/015`も空いている。directory-discoveryの単体テストは、すでに`engagement.rating`(`aside` 20)と`engagement.comment-count`(`comments` 10)の名前で順と重複の検査を確かめている。
+- 上流の実装で設計の記述とずれた点が9件ある(下の「設計とコードの相違点」)。どれも本specの振る舞いや受け入れ基準を変えないが、4件(E2Eの手順のファイル、写しの照合、4:21の起動の予算、DIの識別子の名前)はタスクの作業範囲に関わる。
+- 下流の設計との契約(`AdminCommentDirectory`・`AdminRatingDirectory`の型、`CommentModerationControl`・`RatingModerationControl`の置き場所と`statements`、`COMMENT_ACTIONS`、`RatingExportRecord.invalidatedByAdmin`)は、ugc-moderation・content-reporting・data-exportの設計と一致している(`AdminComment*`・`AdminRating*`の型の定義は両設計で差分なし)。
+- 規模はXL、リスクはMedium。新しい技術は無く、条件付きの書き込み・物理削除の順・管理画面の照会はproduct-launch・match-engineの実装に倣える。
+
+### 要件と既存資産の対応
+
+| 要件                          | 使う既存資産(実在を確認)                                                                                                                                                                                                                                                        | ギャップ                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1・2(投稿・返信)              | `AccountGuard`(`currentUser`・`requireWritableUser`・`requireVerifiedUser`)、`context.assertHuman(action)`、`withValidatedArgs`、`markdownTextSchema`・`countGraphemes`、`visibleProducts()`・`visibleUsers()`                                                                  | Missing: テーブル・ストア・ユースケース・スキーマモジュールの全部                                                  |
+| 1.4・3.5・9.6(閲覧の可否)     | `ProductDirectory.findSummaries(ids, 'visible')`・`listLaunches(ids, now)`、directory-discoveryの`decideProductPageAccess`(ハンドルの解決からの判定)                                                                                                                            | Constraint: `'visible'`の照会は可視でないプロダクトを返さない(相違点1)。同じ規則の判定の共通化は選択肢(選択肢B)    |
+| 3(一覧・件数)                 | `encodeCursor`・`decodeCursor`・`PageInfo`、`userSummaryLoader`・`UserAvatar`、GraphQLの深さの上限8(`query-limits.ts`)                                                                                                                                                          | Missing: スレッドの照会と木の組み立て                                                                              |
+| 6・13(匿名化・ライフサイクル) | `USER_LIFECYCLE_SYNC_HANDLERS`(`statementsFor(event, db)`)・`USER_LIFECYCLE_ASYNC_HANDLERS`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`SCHEDULED_JOBS`・`ScheduledJobHandler`                                                                             | Missing: 3つの処理と4:21のジョブ。Constraint: 4:21の起動の予算(相違点4)                                            |
+| 7(描画)                       | `MarkdownContent`(`size`)・`useRenderedMarkdown`・`useMarkdownOptions({ externalLinkRel, idScope })`・`LinkRelToken`                                                                                                                                                            | なし                                                                                                               |
+| 8・10・11(画面)               | `MarkdownEditor`(`maxGraphemes`・`preview`・`labelId`)、`useAppForm`・`errorMessageOf`・`PartialErrorState`・`formatElapsed`・`TurnstileWidget`・`LoginRequiredDialog`・`ClientViewer`、`ui/`の`dialog`・`dropdown-menu`・`tooltip`・`badge`・`skeleton`・`card`・`radio-group` | Missing: 評価欄・コメント欄の部品。選択肢: `Card`・`RadioGroup`の利用(相違点7)                                     |
+| 12(管理の操作口・照会)        | 参考: product-launchの`d1-admin-product-directory.ts`・`d1-product-export.ts`                                                                                                                                                                                                   | Missing: 操作口と2つの照会。Constraint: product-launchの操作口とは形が違う(相違点3)                                |
+| 14.1(コメント数)              | `DirectoryItemMetricRegistration`(`name`・`order`・`source`・`key`)、clientの`DirectoryItemMetric`(`value`・`productHandle`・`productName`を受ける部品)                                                                                                                         | なし                                                                                                               |
+| 15(テスト・文書)              | `e2e/support`の`triggerScheduled`・`executeLocalD1`・`sqlStringLiteral`・`directory-fixtures.ts`・`mailpit.ts`・`toast.ts`、`e2e/client/markdown-steps.ts`・`directory-steps.ts`・`product-steps.ts`                                                                            | Missing: E2Eの手順のファイル(相違点8)。Unknown: 写しの照合のテスト(相違点9)。サービス仕様の本specの行は未記載(1.3) |
+
+### 設計とコードの相違点
+
+1. **可視でないプロダクトの照会の結果**: 設計(Components and Interfacesの`canViewProduct`)は「`findSummaries(ids, 'visible')`が論理削除・非公開化・停止・退会を`visible`の偽で表す」とするが、実装の`'visible'`の照会は`visibleProducts()`で行を絞り、可視でないプロダクトを結果に含めない。結果に無いものを「見つからない」とする判定なら振る舞いは同じで、記述の修正で足りる。
+2. **`AccountGuard`の識別子**: 設計のAllowed Dependenciesは`IDENTITY_TYPES`を挙げるが、`AccountGuard`は`core/identity/identifiers.ts`の`IDENTITY_PLATFORM_TYPES.AccountGuard`に束縛されている(match-engineの`accountGuardOf`と同じ)。apiの`IDENTITY_TYPES`はidentity-authのapplication層の識別子である。
+3. **管理の操作口の手本**: 設計は`CommentModerationControl`・`RatingModerationControl`を「product-launchの`ProductVisibilityControl`と同じ形」とするが、実装の`ProductVisibilityControl`はapplication層にあり、`hide(productId, at)`で呼び出し側の文を受けない。本specの形(infrastructure層・`statements`付き)はugc-moderationの設計の`ControlEngagementModerationWriter`と一致するため変える必要はなく、「同じ形」という記述だけが合わない。
+4. **4:21のジョブの登録と予算**: 上流の実装では、ジョブのファイルが`<名前>_JOB_DEFINITION`を輸出し、`scheduled-jobs.ts`に並べる形が主流になった(product-launch・match-engine・notifications)。また`SCHEDULED_RUN_BUDGETS`が4:21の起動の合計の所要時間に300秒の予算を置き、超過を警告する。設計の「500件ずつ最大10回」(1日最大5,000件)がこの予算の残りに収まるかは確かめていない(Research Needed)。
+5. **詳細ページの区画の文脈**: `ProductPageContext`に`autoRefresh`・`reportAutoUpdating`が加わった(directory-discoveryの実装)。評価欄は定期の取り直しを持たないため申告しないが、設計に記述が無い。`ProductLaunchSectionContext`は`page`・`autoRefresh`・`reportAutoUpdating`を除いた文脈に`launch`(`id`・`number`・`kickedOff`・`latestKickedOff`)を足した形で、設計の前提どおりである。
+6. **ローンチの状態**: `LaunchStatus`は`scheduled`・`paired`・`in_progress`・`finished`・`canceled`の5つ。設計のキックオフ済み(`in_progress`・`finished`)の判定はそのまま使えるが、`paired`(組み合わせの決定後でキックオフ前)を拒否の境界のテストに含めると確実になる。
+7. **画面の部品**: frontend-libにdirectory-discoveryが移植した`Card`(`ui/card`、`owner-card.tsx`が使う)と`RadioGroup`(`ui/radio-group`)がある。設計の評価欄は`Card`に触れておらず、星の入力(11.13の矢印キーで1つを選ぶ操作)の作り方も決めていない。
+8. **E2Eの構成**: 現在のE2Eは、機能ごとに`<手順の名前>-steps.ts`へ画面の操作の手順を置く(CLAUDE.mdの`e2e/`の説明、`directory-steps.ts`・`markdown-steps.ts`など)。設計のファイル構成は`e2e/client/engagement.e2e.test.ts`だけで、手順のファイルが無い。マークダウンの入力欄の操作はproduct-launchの`markdown-steps.ts`を使える。ローカルのD1のロックの競合を数回実行し直す共有の補助も加わっている(コミット`9934a58d`)。
+9. **アプリ間で写した値の照合**: 上流の実装で、アプリ間で写した値をルートの`config/<ドメイン>-contract-copies.unit.test.ts`で照合する慣行ができた(`check:contract-copies`)。本specのE2Eが匿名化の境界のSQL(テーブル名・列名・13日)を写す場合や、clientがapiの値を写す場合に照合のテストが要るかは、設計に記述が無い(Research Needed)。
+
+### 実装の進め方の選択肢
+
+設計は承認済みのため、選択肢は「新規の部品と登録箇所への追記」という設計の骨格を前提に、上の相違点をどこで吸収するかの違いである。
+
+#### 選択肢A: 設計どおりに実装し、相違点は実装中に吸収する
+
+- 新規の`common-lib/engagement`・`db/schema/engagement`・`backend-lib/core/engagement`・`workers/engagement`・各アプリの`engagement`を作り、上流は登録箇所への追記だけにする。相違点1〜9は実装の判断として行い、tasks.mdのImplementation Notesと最終報告に記録する。
+- ✅ 設計とタスクの再承認が要らず、すぐ着手できる。
+- ❌ 4・8・9はタスクの作業範囲(ファイルの追加・テストの追加)を変えるため、完了状態とファイル構成が実装と食い違ったまま残る。
+
+#### 選択肢B: 既存の部品をより多く使う
+
+- 閲覧の可否を、directory-discoveryの`decideProductPageAccess`と同じ規則の純粋な関数として共有する(例: `api/src/domain`の共通の置き場所へ移す、または本specの`engagement-access.ts`から読み込む)。評価欄の枠を`Card`、星の入力を`RadioGroup`で作る。
+- ✅ 公開範囲の規則が1か所になり、詳細ページとコメント・評価の判定が食い違わない。星の入力のキーボード操作を既存の部品に任せられる。
+- ❌ `decideProductPageAccess`はハンドルの解決(`ProductHandleResolution`)を入力にしており、ID起点の本specとは入力が違う。共有するとdirectory-discoveryのファイルを変えることになり、設計の「上流は登録箇所への追記だけ」に反する。apiの`domain`の機能をまたぐ読み込みの前例も無い。`RadioGroup`は星を塗る見た目と「5段階中{n}」の名前に合わせた調整が要る。
+
+#### 選択肢C(折衷): 作業範囲に関わる相違点だけ先に設計とタスクへ反映する
+
+- 4(ジョブの定義の形と予算の確認)・8(`engagement-steps.ts`の追加)・9(写しの照合のテストの要否)・2(識別子の名前)を、着手前にdesign.mdとtasks.mdの小さな改訂にする。1・3・5・6・7は記述の修正か実装の判断として扱う。
+- ✅ タスクの完了状態と実際の作業が一致し、`/kiro-impl`の自律実行で迷う点が減る。
+- ❌ 設計とタスクの改訂と再承認の手間が少し増える。
+
+### 規模とリスク
+
+- **規模: XL(2週間以上)** — 48のサブタスクが、DB・backend-lib(core・workers)・api・event・client・E2E・技術文書とサービス仕様にまたがる。どの層も既存の手本がある。
+- **リスク: Medium** — 新しい技術・パッケージは無く、上流の契約は実在する。条件付きの書き込みによるコメントと評価の同時の確定、`purge_due`の順(product-launchの1000がプロダクトの物理削除を待つ→本specのプロダクトの1400→ユーザーの1400)、自己参照の外部キーを持つ行の深い順の削除、4:21の予算に、注意が要る。
+
+### 設計フェーズへの申し送り
+
+- **推奨の進め方**: 選択肢C。設計の骨格と仮1〜仮6は変えず、作業範囲に関わる相違点(2・4・8・9)だけを先に設計とタスクへ反映し、残り(1・3・5・6・7)は記述の修正と実装の判断で扱う。
+- **Research Needed**:
+  - 4:21の起動に現在登録されているジョブの所要時間の実績と、匿名化の5,000件(500件×10回)の所要時間が`SCHEDULED_RUN_BUDGETS`の300秒に収まるか。
+  - 本specでアプリ間に写す値(E2EのSQLのテーブル名・列名・匿名化の日数、bot対策の操作名、`order`)のうち、`config/*-contract-copies.unit.test.ts`の照合の対象にすべきもの。
+  - 星の入力を`RadioGroup`で作るか、矢印キーの選択を自作するか(アクセシビリティ規則の[前提と用語](../../../docs/GUIDES/tech/frontend/004-accessibility-rules.md#前提と用語)と、モックアップの`star-rating-input.tsx`の見た目)。
+  - 閲覧の可否の規則を`decideProductPageAccess`と共有するか、本specの`engagement-access.ts`に同じ規則を持ちテストで揃えるか。
+  - 既存の記録どおり、1スレッドの返信が多いときのNFR-PERF-007(launch-readinessの性能の検証で確かめる)。
+
+## ギャップ分析の反映(2026-11-15、開発者の指示)
+
+- **状態**: 「実装前のギャップ分析(2026-11-15)」の推奨(選択肢C)に従い、作業範囲に関わる相違点2・4・8・9を設計とタスクへ反映し、相違点1・3・5・6・7を記述の修正として直した。要件と受け入れ基準、仮1〜仮6は変えていない。
+- **調べた結果**:
+  - 4:21の起動の予算: `SCHEDULED_RUN_BUDGETS`の4:21の予算は合計300秒で、超過は警告だけを送る(`docs/GUIDES/tech/infra/003-async-processing.md`の「同じ時刻のジョブ群の時間の予算」)。本番の所要時間の実績はローカルから確かめられない(Cloudflareの観測のMCPサーバーは未認可)。本specのジョブの1回の実行は最大で更新の文10回と集計の文1回で、予算の値は変えず、超過の警告で検知する形にした。
+  - 写しの照合の対象: E2Eの補助は`common-lib`・`backend-lib/core`を読み込めるため値を写さない。写しが要るのは、`apps/db`が`common-lib`を読み込めないことによる階層(1〜3)と評価(1〜5)のCHECKだけである(help-centerの`HELP_ARTICLE_STATUSES`、notificationsの`NOTIFICATION_TOPICS`の写しと同じ扱い)。clientとapiが同じ文言を持つ2件は、下の決定で`common-lib`の定数にしたため写しを持たない。
+  - 星の入力: frontend-libの`RadioGroup`はRadixの部品で、`RadioGroupItem`は円の印を描く子を固定で持つ。client・adminの`src`にradix-uiを直接読み込む箇所は無い。
+  - 閲覧の可否: directory-discoveryの`decideProductPageAccess`は`ProductHandleResolution`を入力にし、`api/src/domain`に機能をまたぐ読み込みの前例は無い。
+- **開発者が確定した決定(2026-11-15、各問を個別に確認)**:
+
+| #   | 論点                                                   | 確定した案(推奨どおり)                                                                                        | 他の選択肢                                                                          |
+| --- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| 改1 | clientの区画とapiのエラーが同じ文言を持つ2件の置き場所 | `common-lib/engagement`の`LAUNCH_NOT_COMMENTABLE_MESSAGE`・`OWN_PRODUCT_RATING_MESSAGE`に置き、両アプリが読む | apiを元とし、clientに写しを置いてルートの照合のテストで確かめる(match-engineの前例) |
+| 改2 | 星の入力の作り方                                       | 設計どおりモックアップを移植して自作し、`RadioGroup`は使わない                                                | clientでradix-uiの`Item`を直接使う / frontend-libに星の部品を足す                   |
+| 改3 | 閲覧の可否の規則とdirectory-discoveryの判定の共有      | 本specの`engagement-access.ts`に同じ規則を持ち、同じ真理値表の単体テストで揃える                              | 共通の純粋な関数に切り出し、両specが使う                                            |
+
+- **design.mdの変更**: Allowed Dependencies(`SCHEDULED_RUN_BUDGETS`、`IDENTITY_PLATFORM_TYPES.AccountGuard`、E2Eの`directory-steps.ts`・`markdown-steps.ts`)、上流への影響の表(`COMMENT_ANONYMIZATION_JOB_DEFINITION`)、Existing Architecture Analysis(上流の実装の完了)、Architecture Integration(管理の操作口の形の記述)、File Structure Plan(`engagement-steps.ts`・`config/engagement-contract-copies.unit.test.ts`・ジョブの定義の輸出)とModified Files(`package.json`)、EngagementRules(2つの文言の定数)、EngagementSchema(CHECKの写し)、EngagementAccess(`'visible'`の照会の結果に無いことの扱い・`paired`・規則を共有しない決定)、CommentAnonymizationJob(定義の形と時間の予算)、RatingSection(`Card`・自動更新の状態を申告しない・文言の定数)、StarRatingInput(自作の決定)、LaunchCommentsSection(文言の定数・文脈)、Error Handling(文言の定数)、Testing Strategy(写しの照合・ジョブの定義・E2Eの手順のファイル)。
+- **tasks.mdの変更**: 1.1(前提の確認と文言の定数のテスト)・1.2(CHECKの写しと照合のテスト、完了状態)・3.1(規則を共有しない決定と照会の結果の扱い)・3.3・3.6(文言の定数)・4.1(`AccountGuard`の識別子)・5.2(ジョブの定義の形と予算)・6.2(星の入力を自作)・6.3(`Card`・申告しない・文言の定数)・7.8(文言の定数)・9.1(E2Eの手順のファイル)・9.2(写しの照合)。タスクの番号と依存は変えていない。
+- **独立した確認**: 変更した部分について、新しいサブエージェントによる独立した設計とタスクの確認(independent)を1回行った。判定はNEEDS_FIXES(必須1件・軽微6件)だった。必須の指摘は、E2Eの`e2e/client/markdown-steps.ts`の持ち主をcontent-processingとしていたこと(実際はproduct-launchが作った)で、Allowed Dependenciesをproduct-launchの行へ移し、Testing Strategy・タスク9.1・本書のギャップ分析の相違点8を直した。軽微の指摘(平文の入力の手順を`engagement-steps.ts`に置き上流の手順のファイルを変えないこと、2つの文言の定数をThis Spec Owns・ファイル構成・単体テストの項目に加えること、EngagementRulesとタスク1.1と追跡表に8.1・11.6を加えること、写しの照合をCHECKの`sql`のひな形ではなく名前付きのリテラルの写しの定数で比べる形にすること、タスク1.1の単体テストを文言規則の文言との一致に限ること、Revalidation Triggersに4:21の予算を加えること)もすべて直した。
