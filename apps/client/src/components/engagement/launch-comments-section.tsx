@@ -70,7 +70,7 @@ export function LaunchCommentsSection({
         )}
         <ChevronDownIcon
           aria-hidden="true"
-          className={cn(open && 'rotate-180')}
+          className={cn('transition-transform', open && 'rotate-180')}
         />
       </Button>
       <div id={panelId} hidden={!open} className="mt-3">

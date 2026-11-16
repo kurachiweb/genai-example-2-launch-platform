@@ -177,7 +177,7 @@ export function ProfileForm() {
 
 - 導線(`contactHref`・`EmptyState`の`action`の中のリンク)は通常の`<a href>`で描画し、クライアント側の遷移を行わない。
 - 問い合わせの画面を持たないアプリ(プロファイルの`contactAvailable`が偽)は、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない。`contactAvailable`が真のアプリだけが渡す。
-- `ErrorState`・`PartialErrorState`の`message`は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。`GraphQLClientError`でない例外では、問い合わせの導線が無いアプリに問い合わせを促す文を出さない(「[エラーの扱い](006-data-fetching.md#エラーの型と画面の分岐)」)。
+- `ErrorState`・`PartialErrorState`の`message`は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(固定の文言にする例外は「[続きの読み込みの失敗](015-star-rating-and-threaded-composer.md#続きの読み込みの失敗)」)。`GraphQLClientError`でない例外では、問い合わせの導線が無いアプリに問い合わせを促す文を出さない(「[エラーの扱い](006-data-fetching.md#エラーの型と画面の分岐)」)。
 - `RecoverableSlot`は、登録口(各機能が部品を1件ずつ追記する一覧)の部品を並べるページが、部品ごとに包む(「[登録口に登録された区画の取得](006-data-fetching.md#登録口に登録された区画の取得)」)。`contactAvailable`には`<プロファイル>.contactAvailable`を渡し、失敗の文言は`errorMessageOf(error, contactAvailable)`で選ぶ。`contactHref`は`ErrorState`へそのまま渡すため、`contactAvailable`が真のアプリだけが渡す。
 - `RecoverableSlot`の`frame`は、読み込み中(`LoadingSkeleton`)と失敗(`ErrorState`)の表示を包む関数で、部品が自分で描く見出しを部品が描けない間だけ補うために使う。部品が描けた後は`frame`を通さない。
 - `RecoverableSlot`の`fallback`は、読み込み中に`frame`の中へ出す表示で、省略すると`LoadingSkeleton`を出す。区画の形に合わせたスケルトンは`fallback`で渡し、`children`の内側に別の`Suspense`を置かない。内側の`Suspense`が読み込み中を受け持つと、再試行の後のフォーカスを内容の描画まで保つ仕組みが働かず、フォーカスが`<body>`へ落ちる。
@@ -261,7 +261,7 @@ import { INLINE_LINK_CLASS_NAME } from '<共通部品の配置先>/components/na
 
 ### bot判定のウィジェット
 
-`useTurnstileToken`でトークンを管理し、`TurnstileWidget`にその`widgetProps`を渡す。フォームの送信は`sendWithTurnstile`(`utilities/bot-protection/send-with-turnstile.ts`)で行い、取り出したトークンを中継の要求に付ける。
+`useTurnstileToken`でトークンを管理し、`TurnstileWidget`にその`widgetProps`を渡す。フォームの送信は`sendWithTurnstile`(`utilities/bot-protection/send-with-turnstile.ts`)で行い、取り出したトークンを中継の要求に付ける。トークンが届くまで送信のボタンを押せなくし、`waitForToken()`で取り出したトークンを呼び出し側の送信の処理へ渡す投稿欄は例外で、`sendWithTurnstile`を使わない(「[操作ごとのbot判定のトークン](015-star-rating-and-threaded-composer.md#操作ごとのbot判定のトークン)」)。
 
 ```tsx
 import { sendWithTurnstile } from '<共通部品の配置先>/utilities/bot-protection/send-with-turnstile.ts';

@@ -55,6 +55,7 @@
 - 業務日付をカレンダーで選ばせる画面や、表示中に業務時刻の境界で取り直す画面を作る前に: [業務日付のカレンダーの前提と用語](docs/GUIDES/tech/frontend/012-business-date-calendar.md#前提と用語)
 - 集計値や残り時間を表示し続ける画面や、区画を登録口から並べてページ全体で自動更新を切り替える画面を作る前に: [集計値と残り時間を表示し続ける画面の前提と用語](docs/GUIDES/tech/frontend/013-live-scoreboard.md#前提と用語)
 - 検索・絞り込み・並び順・ページ番号をURLのクエリで持つ一覧の画面を作る前に: [URLのクエリで条件を持つ一覧の前提と用語](docs/GUIDES/tech/frontend/014-url-state-listing.md#前提と用語)
+- 星の評価の入力や、その場の返信・編集の投稿欄と入れ子の一覧を持つ画面を作る前に: [星の評価の入力と入れ子の投稿欄の前提と用語](docs/GUIDES/tech/frontend/015-star-rating-and-threaded-composer.md#前提と用語)
 - フロントエンドのGraphQLの操作を追加・変更する前に: [操作の置き場所と名前](docs/GUIDES/tech/coding/004-graphql-communication.md#操作の置き場所と名前)
 - 利用者の入力の検証規則を画面のフォームやAPIサーバーに書く前に: [規則の置き場所](docs/GUIDES/tech/coding/005-input-validation.md#規則の置き場所)
 - フロントエンドで想定外の失敗をエラートラッキングへ送る処理を書く前に: [送信の入口](docs/GUIDES/tech/frontend/007-frontend-observability.md#送信の入口)

@@ -38,7 +38,7 @@ export interface RatingWriter {
 }
 
 export interface EngagementIncident {
-  // 削除から匿名化の期限を過ぎても匿名化されていないコメントの数
+  // 前日までの実行で匿名化するはずだったのに残り、削除から14日の期限までに匿名化できないおそれのあるコメントの数
   readonly kind: 'comment-anonymization-overdue';
   readonly count: number;
 }

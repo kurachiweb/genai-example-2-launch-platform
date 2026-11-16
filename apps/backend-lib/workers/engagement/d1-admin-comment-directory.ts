@@ -18,12 +18,12 @@ import { afterCursor, assertPageSize, toPage } from './admin-directory-page.ts';
 
 const EXCERPT_GRAPHEMES = 200;
 
-// 優先の順に並べたCASEで1つの状態に決め、返す状態と絞り込みに同じ式を使う。投稿者の紐付けが外れた行は外部結合のusersがNULLになり投稿者が利用できない状態になる
+// 優先の順に並べたCASEで1つの状態に決め、返す状態と絞り込みに同じ式を使う。匿名化は削除から保持期間の後に行う戻らない状態のため、削除より先に判定する。投稿者の紐付けが外れた行は外部結合のusersがNULLになり投稿者が利用できない状態になる
 function commentState(): SQL<AdminCommentState> {
   return sql<AdminCommentState>`case
     when ${isNotNull(launchComments.hiddenAt)} then 'hidden'
-    when ${isNotNull(launchComments.deletedAt)} then 'deleted'
     when ${isNotNull(launchComments.anonymizedAt)} then 'anonymized'
+    when ${isNotNull(launchComments.deletedAt)} then 'deleted'
     when ${visibleUsers()} then 'shown'
     else 'author_unavailable'
   end`;

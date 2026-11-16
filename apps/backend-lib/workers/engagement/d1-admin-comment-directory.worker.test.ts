@@ -315,7 +315,7 @@ describe('D1AdminCommentDirectory.search', () => {
       },
       {
         index: 12,
-        expected: 'deleted',
+        expected: 'anonymized',
         fixture: {
           author: null,
           columns: {
@@ -553,6 +553,11 @@ describe('D1AdminCommentDirectory.search', () => {
       ['ミリ秒が数字でない値', base64urlOf(`abc:${commentIdOf(1)}`)],
       ['IDの欠けた値', base64urlOf('1730419200000:')],
       ['IDの長さが違う値', base64urlOf('1730419200000:01JD0CMNT')],
+      ['IDが小文字の値', base64urlOf(`1:${commentIdOf(1).toLowerCase()}`)],
+      ...['I', 'L', 'O', 'U'].map((letter) => [
+        `IDがCrockford Base32に無い${letter}を含む値`,
+        base64urlOf(`1:${commentIdOf(1).slice(0, 25)}${letter}`),
+      ]),
       ['パディング付きの値', `${base64urlOf(`1:${commentIdOf(1)}`)}=`],
       ['base64urlでない文字を含む値', `${base64urlOf(`1:${commentIdOf(1)}`)}+`],
     ])(

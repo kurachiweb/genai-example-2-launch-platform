@@ -9,7 +9,7 @@ import type {
 
 const MESSAGES: Readonly<Record<EngagementIncident['kind'], string>> = {
   'comment-anonymization-overdue':
-    '削除から匿名化の期限を過ぎても匿名化されていないコメントがあります',
+    '削除から14日の匿名化の期限までに匿名化できないおそれのあるコメントが残っています',
 };
 
 const CONTEXT_NAME = 'engagement_incident';

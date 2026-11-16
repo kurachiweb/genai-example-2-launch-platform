@@ -145,7 +145,7 @@ export interface EngagementErasureStore {
     readonly at: Date;
     readonly limit: 500;
   }): Promise<number>;
-  // 削除から保持期間を過ぎて未匿名化のコメントの件数
+  // 削除の日時が閾値より前で未匿名化のコメントの件数
   countOverdue(threshold: Date): Promise<number>;
   // コメントの匿名化と評価の削除を1回の一括の書き込みで行う
   eraseAccount(input: {

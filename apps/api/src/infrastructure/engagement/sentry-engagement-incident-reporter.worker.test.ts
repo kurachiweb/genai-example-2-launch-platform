@@ -17,7 +17,7 @@ import type { EngagementIncident } from '../../application/engagement/ports.ts';
 import { SentryEngagementIncidentReporter } from './sentry-engagement-incident-reporter.ts';
 
 const OVERDUE_MESSAGE =
-  '削除から匿名化の期限を過ぎても匿名化されていないコメントがあります';
+  '削除から14日の匿名化の期限までに匿名化できないおそれのあるコメントが残っています';
 
 // 実際の初期化(重複の除外と除去処理を含む)を通すため、計装した定期実行の中で報告する
 async function reportWithSentry(
@@ -50,7 +50,7 @@ afterAll(() => {
 });
 
 describe('SentryEngagementIncidentReporter(エラートラッキング)', () => {
-  test('匿名化の期限を過ぎて残るコメントを、errorで件数を添えて送る', async () => {
+  test('匿名化の期限までに匿名化できないおそれのあるコメントを、errorで件数を添えて送る', async () => {
     const events = await reportWithSentry([
       { kind: 'comment-anonymization-overdue', count: 7 },
     ]);

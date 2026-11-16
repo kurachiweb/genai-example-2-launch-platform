@@ -208,18 +208,18 @@ const toggleOf = (number: number) =>
 const targetOf = (animation: Animation): Element | null =>
   animation.effect instanceof KeyframeEffect ? animation.effect.target : null;
 
-// 押したボタン自身の色と輪郭の変化は操作に直接応える動きのため、それ以外の動きを数える
+// 押したボタン自身の色と輪郭の変化と矢印の回転は操作に直接応える動きのため、ボタンの外の動きを数える
 const runningAnimationsIn = (
   element: Element,
   except: Element | null = null,
 ): Animation[] =>
-  element
-    .getAnimations({ subtree: true })
-    .filter(
-      (animation) =>
-        animation.playState === 'running' &&
-        (except === null || targetOf(animation) !== except),
+  element.getAnimations({ subtree: true }).filter((animation) => {
+    const target = targetOf(animation);
+    return (
+      animation.playState === 'running' &&
+      (except === null || target === null || !except.contains(target))
     );
+  });
 
 beforeEach(() => {
   vi.mocked(executeGraphQL).mockReset();
@@ -390,7 +390,19 @@ describe('LaunchCommentsSection', () => {
     await expect.element(toggleOf(1)).toHaveAccessibleName('コメント 0件');
   });
 
-  test('開閉の矢印の向きのほかに、開閉の前後で動いている要素が無い', async () => {
+  test('開閉の矢印は、マッチ履歴のサポーターの開閉と同じく回転の動きで向きを切り替える', async () => {
+    await renderBlocks({ viewer: GUEST_VIEWER_QUERY });
+    await expect.element(toggleOf(2)).toHaveAttribute('aria-expanded', 'true');
+
+    const chevron = toggleOf(2).element().querySelector('svg:last-of-type');
+
+    expect(chevron).not.toBeNull();
+    expect(getComputedStyle(chevron as Element).transitionProperty).toMatch(
+      /rotate/u,
+    );
+  });
+
+  test('開閉の矢印の回転のほかに、開閉の前後で動いている要素が無い', async () => {
     await renderBlocks({ viewer: GUEST_VIEWER_QUERY });
     await expect
       .element(commentsOf(2).getByText('まだコメントはありません。'))

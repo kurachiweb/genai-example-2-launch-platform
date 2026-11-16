@@ -308,7 +308,7 @@ export const Route = createFileRoute('/records')({
 - 取得の補助は`graphqlQueryOptions`ではなく`infiniteQueryOptions`で書き、キーは`graphqlQueryKey`に1ページの件数の変数を渡した形で始める。`queryFn`は受け取ったカーソル(`pageParam`)を`after`の変数にして`executeGraphQL`を呼び、`requireData`で失敗を例外にする。`getNextPageParam`は続きが無ければ`undefined`を返す。
 - `loader`は`queryClient.infiniteQuery(...)`(非推奨になった`fetchInfiniteQuery`・`ensureInfiniteQueryData`の後継)で読む。キャッシュが無いときは最初のページだけを読み、キャッシュがあれば、`staleTime`の間は取得せずにキャッシュを使い、過ぎていれば読み込んであったページ数ぶんを最初から読み直す(`queryClient.infiniteQuery`の既定の振る舞い)。続きのページを`loader`で新しく読み足すことはせず、利用者の操作で読む。失敗を一覧の場所に示す一覧は、前の節と同じく失敗を`.catch(() => undefined)`で捨ててキャッシュに残す。
 - 部品は`useInfiniteQuery`で読み、全ページの記録を`select`で1つの並びにする。最初の取得の失敗(`data`が無く、`isFetching`が偽で`error`がある)は一覧の位置の`PartialErrorState`と再試行(`refetch()`)にする。取り直しの失敗では、表示中の記録を残す。
-- 「さらに表示」は`hasNextPage`が真の間だけ描き、押すと`fetchNextPage()`を呼ぶ。読み込み中(`isFetchingNextPage`)は「[操作できない状態](004-accessibility-rules.md#操作できない状態)」のとおり`aria-disabled`・`aria-busy`と文言の変更で示し、押しても何もしない。続きの読み込みの失敗(`isFetchNextPageError`)は、読み込んだ記録とボタンを残したまま、ボタンの近くに`role="alert"`の文言で示し、同じボタンで読み込み直させる。
+- 「さらに表示」は`hasNextPage`が真の間だけ描き、押すと`fetchNextPage()`を呼ぶ。読み込み中(`isFetchingNextPage`)は「[操作できない状態](004-accessibility-rules.md#操作できない状態)」のとおり`aria-disabled`・`aria-busy`と文言の変更で示し、押しても何もしない。続きの読み込みの失敗(`isFetchNextPageError`)は、読み込んだ記録とボタンを残したまま、ボタンの近くに`role="alert"`の文言で示し、同じボタンで読み込み直させる。最初の取得の失敗と同じ`PartialErrorState`と再試行のボタンに置き換える例外は「[続きの読み込みの失敗](015-star-rating-and-threaded-composer.md#続きの読み込みの失敗)」に従う。
 - 続きを読み込んだ後のフォーカスは、加えた最初の記録へ移す(「[処理の後のフォーカス](004-accessibility-rules.md#処理の後のフォーカス)」)。最後のページを読むとボタンが消えるため、記録の要素に`tabIndex={-1}`を付け、押した時の件数を`useRef`に残し、読み込みの完了で描き直した後(`useLayoutEffect`)にその位置の記録へ移す。失敗した時は、ボタンが残るためフォーカスを動かさない。読み込みを待つ間に利用者がフォーカスを一覧やボタンの外へ移した時は、読み込みの後も奪い返さない。移す前に`document.activeElement`を確かめ、`null`・`document.body`(最後のページでボタンが消えた時)・`ref`で持つ「さらに表示」のボタンのどれかの時だけ移す。
 - 取り直し(`staleTime`を過ぎた後の取得や`invalidateQueries`)は、読み込んだページをすべて最初から読み直す。続きのページは、読み直した前のページの`getNextPageParam`の値で読む。
 
@@ -337,7 +337,7 @@ await sendWithTurnstile(turnstile, (turnstileToken) =>
 );
 ```
 
-- `mutate`・`mutateAsync`には`{ variables, turnstileToken }`を渡す。bot判定を求める操作は、`sendWithTurnstile`が`useTurnstileToken`から取り出したトークンを`turnstileToken`に入れる。最初のトークンが届く前の送信がbot判定に失敗した時は、次のトークンで1回だけ送り直す(「[bot判定のウィジェット](005-shared-components.md#bot判定のウィジェット)」)。
+- `mutate`・`mutateAsync`には`{ variables, turnstileToken }`を渡す。bot判定を求める操作は、`sendWithTurnstile`が`useTurnstileToken`から取り出したトークンを`turnstileToken`に入れる(`waitForToken()`のトークンを渡す投稿欄の例外は「[操作ごとのbot判定のトークン](015-star-rating-and-threaded-composer.md#操作ごとのbot判定のトークン)」)。最初のトークンが届く前の送信がbot判定に失敗した時は、次のトークンで1回だけ送り直す(「[bot判定のウィジェット](005-shared-components.md#bot判定のウィジェット)」)。
 - 変更の後は、影響する取得を`invalidateQueries`で無効にする。キーの先頭が操作の識別子のため、`[documentIdOf(<文書>)]`でその操作のすべての変数の取得をまとめて無効にできる。
 - 変更の`mutationKey`は`[<操作の識別子>]`である。
 - フォームから変更するときは、`AppForm`の`onSubmit`で`mutateAsync`を待つ。失敗の`GraphQLClientError`の`details`は欄のエラーになり、欄に対応しない詳細と詳細の無い失敗は`onSubmitError`へ渡る(「[フォーム](005-shared-components.md#フォーム)」)。入力の検証の詳細の`field`は引数からのパス(`input.title`など)のため、`serverFieldPrefix`で引数の名前を外す。
@@ -446,7 +446,7 @@ GraphQLの`DateTime`の値は、コード生成で`string`になり、APIサー�
 | 各機能の想定内のエラーコード(未認証・権限不足・対象の不在など) | 機能ごとに決める(ログインへの導線、`notFound()`など)                                                 |
 | それ以外(`internal_error`・`invalid_response`・実行前の拒否)   | `message`と再試行の操作を示す                                                                        |
 
-- 画面に出す失敗の文言は、`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で出す文言、トースト(`notify.error`・`notify.warning`)のどれでも`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。`<プロファイル>`はアプリの`src/composition/app-profile.ts`の値で、ルートと画面の部品が渡す(共通部品はアプリの値を持たない)。
+- 画面に出す失敗の文言は、`ErrorState`・`PartialErrorState`の`message`、`AppForm`の`onSubmitError`で出す文言、トースト(`notify.error`・`notify.warning`)のどれでも`errorMessageOf(error, <プロファイル>.contactAvailable)`で選び、例外の`message`を直接出さない。星の評価の欄と入れ子の投稿のスレッドの一覧の取得の失敗の`PartialErrorState`を、理由によらず固定の文言にする例外は「[続きの読み込みの失敗](015-star-rating-and-threaded-composer.md#続きの読み込みの失敗)」に従う。`<プロファイル>`はアプリの`src/composition/app-profile.ts`の値で、ルートと画面の部品が渡す(共通部品はアプリの値を持たない)。
   - `GraphQLClientError`には、その`message`を返す。APIサーバーの`internal_error`・中継の共通のエラー形式・`network_error`・`invalid_response`の文言は、問い合わせを促す文を含まない。
   - `GraphQLClientError`でない例外(プログラムの誤り、受け渡しの変換の無い例外がブラウザへ渡る時にメッセージだけになった失敗)には、例外の文言を出さず、`contactAvailable`が真なら`UNEXPECTED_ERROR_MESSAGE`(問い合わせを案内する文言)、偽なら`UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT`(時間をおいた再試行の案内で終え、問い合わせを促さない文言)を返す。問い合わせの画面を持たないアプリは`contactAvailable`を偽にする。
 - GraphQLの想定外の失敗は`executeGraphQL`がエラートラッキングへ送るため、画面で送り直さない。APIサーバーへ届かなかった失敗(`upstream_*`)は中継の処理が送る。`AppForm`の`onSubmitError`では、GraphQL以外の想定外の例外を送るかを利用側で決める。
