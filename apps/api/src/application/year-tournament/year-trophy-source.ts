@@ -9,8 +9,7 @@ import type {
   TrophyRecord,
   TrophySource,
 } from '../tournament/trophy-source.ts';
-
-const YEAR_BRACKET_PATH_PREFIX = '/tournaments/year/';
+import { yearBracketPathOf } from './year-bracket-path.ts';
 
 const trophyOf = ({ year, awardedAt }: YearProductAward): TrophyRecord => {
   const period = String(year);
@@ -19,7 +18,7 @@ const trophyOf = ({ year, awardedAt }: YearProductAward): TrophyRecord => {
     period,
     periodLabel: `${period}年`,
     awardedAt,
-    bracketPath: `${YEAR_BRACKET_PATH_PREFIX}${period}`,
+    bracketPath: yearBracketPathOf(year),
   };
 };
 
