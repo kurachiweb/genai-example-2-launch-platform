@@ -419,6 +419,7 @@
   - 開始の前に、devとstagingが共用するsandboxに価格`week_tournament_entry`があることを確かめ、無ければ本タスクを保留して開発者へ報告する(作成の依頼は1.1で行った)
   - 完了状態: ローカルでE2Eが成功する
   - _Depends: 7.3, 7.5, 7.8, 8.1, 8.3_
+  - _Blocked: devとstagingが共用するStripeのsandboxに`lookup_key`が`week_tournament_entry`の価格が無い(2026-11-17に照会して0件。比較の`payments_smoke`は存在)。開発者が価格(USD・税込・参考$5・1回限り)を作成した後に再開する_
   - _Requirements: 15.4_
 
 - [ ] 8.5 全体の検査とカバレッジを確かめる
@@ -486,3 +487,4 @@
 - 8.1: 時刻の連鎖の統合テスト`apps/api/src/composition/week-tournament-module.night.worker.test.ts`・`week-tournament-module.progression.worker.test.ts`と補助`apps/api/test/support/week-tournament-timeline.ts`(`createScheduledDispatcher`と`createCronRegistry(SCHEDULED_JOBS)`、`MODULES`にStripeGateway・EmailSenderの差し替え、Dateだけの偽の時計、送信を記録するQueue)。eventの確定の処理の代わりに`RoundProgressHandler`と同じ手順をテストで書く(`apps/event`は読まない)。凍結の後の反映は付与の判断の直後に23:45の起動を割り込ませて再現。この場面では`publishNight`は`applyResult`と重複する(順は単体テストで確かめている)。
 - 8.2(差し戻し1回): 技術ドキュメント`docs/GUIDES/tech/backend/017-single-elimination-brackets.md`・`frontend/016-tournament-bracket-view.md`(汎用の語。本プロジェクトでの読み替えは`project-values.md`の「Weekトーナメント」の節の「技術ドキュメントの汎用の語」)、各README・CLAUDE.mdの参照先、`project-values.md`の「Weekトーナメント」の節。Implementation Notesの「8.2で」の項目に従い、文言規則003・ページ配置002・`coding/004`を直した。親の決定で、共用の`AutoRefreshSwitch`に任意の`description`を足し、ブラケットのページは`BRACKET_AUTO_REFRESH_DESCRIPTION`(`components/bracket/bracket-messages.ts`)を渡す。`.kiro/`(design.md)は書き換えていない(相違は最終報告)。
 - 8.3: E2Eの補助`e2e/support/week-tournament-fixtures.ts`(`createWeekTournamentEntrants({ openOwnerHandle? })`・`closeWeekTournamentEntry`・`startWeekFinalToday`・`endWeekFinal(final, winner)`(勝たせる側に1票)・`runWeekEveningJobs({ awaitDecidedFinal? })`(`triggerScheduled`で23:40・23:45)・`readWeekFinal`・`readWeekTournamentState`・確認専用の`entitleOpenEntryWithoutPayment`(8.4では使わない))とSQL`week-tournament-fixture-sql.ts`(+単体テスト)、E2E`e2e/client/week-tournament.e2e.test.ts`。他のテストと重ならないよう2000〜2019年の未使用の週を使う(設計の「先週」と違う。`dailyRoundPolicy`で決勝は翌日になる)。後片付けは作らず乱数の値で分ける。業務時刻の23:40〜24:00は`test.skip`。8.4は同じファイルにシナリオを足し、受付中の枠の投稿者を画面で登録して(a)にハンドルを渡す。
+- 8.4(保留): Stripeのsandboxに価格`week_tournament_entry`が無いため着手していない。確かめ方は、Infisicalから`apps/api`のStripeのキーを`run-with-secrets --scope local --worker api`で注入し、StripeのAPIの価格の一覧を`lookup_keys[]=week_tournament_entry`で照会する。再開時は8.3の補助を使い、受付中の枠の投稿者を画面で登録して(a)にハンドルを渡し、空のE2E(補助の確認)の扱いを決める。
