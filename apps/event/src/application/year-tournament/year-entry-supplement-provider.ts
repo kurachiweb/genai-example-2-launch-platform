@@ -6,16 +6,13 @@ import type {
   ResultNoticeSupplementProvider,
 } from '../../../lib/core/notifications/result-notice-supplements.ts';
 import type { ProductDirectory } from '../../../lib/core/product/ports.ts';
-import {
-  type BusinessDate,
-  businessWeekdayOf,
-} from '../../../lib/core/time/business-time.ts';
 import type { Clock } from '../../../lib/core/time/clock.ts';
 import type {
   YearCalendar,
   YearEntryRecord,
   YearEntryStore,
 } from '../../../lib/core/year-tournament/ports.ts';
+import { formatFinalDateLabel } from '../../../lib/core/year-tournament/final-date-label.ts';
 import type { YearSchedule } from '../../../lib/core/year-tournament/year-schedule.ts';
 
 export interface YearEntrySupplementProviderDependencies {
@@ -33,23 +30,6 @@ const EXEMPT_LINE =
   'Ultrasの特典により参加費は免除されます。参加のための操作は不要です。';
 const PAYABLE_TITLE = 'Yearトーナメントに参加できます';
 const PAYMENT_ACTION_LABEL = '参加費を支払う';
-
-// ISO曜日(月1〜日7)の順
-const WEEKDAY_LABELS = Object.freeze([
-  '月',
-  '火',
-  '水',
-  '木',
-  '金',
-  '土',
-  '日',
-]);
-
-function formatFinalDate(finalDate: BusinessDate): string {
-  const [year, month, day] = finalDate.split('-').map(Number);
-  const weekday = WEEKDAY_LABELS[businessWeekdayOf(finalDate) - 1] ?? '';
-  return `${String(year)}年${String(month)}月${String(day)}日(${weekday})`;
-}
 
 function isWeekChampionResult(input: ResultNoticeSupplementInput): boolean {
   return input.kind === 'week' && isWinningResult(input.result);
@@ -122,7 +102,7 @@ export class YearEntrySupplementProvider implements ResultNoticeSupplementProvid
       title: PAYABLE_TITLE,
       lines: [
         `参加費の決済期限: ${formatUtcDateTime(schedule.acceptUntil)}`,
-        `期限までに決済すると、${String(schedule.year)}年のProduct of the Yearを決めるトーナメントに参加できます。決勝は${formatFinalDate(schedule.finalDate)}です。`,
+        `期限までに決済すると、${String(schedule.year)}年のProduct of the Yearを決めるトーナメントに参加できます。決勝は${formatFinalDateLabel(schedule.finalDate)}です。`,
       ],
       ...(action === undefined ? {} : { action }),
       emphasized: false,

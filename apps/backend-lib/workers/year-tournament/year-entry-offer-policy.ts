@@ -8,7 +8,6 @@ import type {
 import type { ProductDirectory } from '../../core/product/ports.ts';
 import {
   type BusinessDate,
-  businessWeekdayOf,
   toBusinessDateTime,
 } from '../../core/time/business-time.ts';
 import type { UltrasEntitlements } from '../../core/ultras/ports.ts';
@@ -17,6 +16,7 @@ import type {
   YearEntryRecord,
   YearEntryStore,
 } from '../../core/year-tournament/ports.ts';
+import { formatFinalDateLabel } from '../../core/year-tournament/final-date-label.ts';
 import { GRANTABLE_STATUSES } from '../../core/year-tournament/year-entry-rules.ts';
 import {
   YEAR_ENTRY_PRICE_LOOKUP_KEY,
@@ -57,17 +57,6 @@ const GRANTABLE: ReadonlySet<YearEntryRecord['status']> = new Set(
   GRANTABLE_STATUSES,
 );
 
-// ISO曜日(月1〜日7)の順
-const WEEKDAY_LABELS = Object.freeze([
-  '月',
-  '火',
-  '水',
-  '木',
-  '金',
-  '土',
-  '日',
-]);
-
 const TWO_DIGIT_WIDTH = 2;
 
 function rejectionOf(code: YearEntryOfferRejectionCode): PurchaseOfferDecision {
@@ -81,10 +70,6 @@ function rejectionOf(code: YearEntryOfferRejectionCode): PurchaseOfferDecision {
 function formatDate(date: BusinessDate): string {
   const [year, month, day] = date.split('-').map(Number);
   return `${String(year)}年${String(month)}月${String(day)}日`;
-}
-
-function formatFinalDate(finalDate: BusinessDate): string {
-  return `${formatDate(finalDate)}(${WEEKDAY_LABELS[businessWeekdayOf(finalDate) - 1] ?? ''})`;
 }
 
 // 購入に保存して購入確認メールにも載せるため、閲覧の年に依らず年を付ける
@@ -106,7 +91,7 @@ function offerOf(launchId: string, schedule: YearSchedule): PurchaseOffer {
     summary: Object.freeze({
       itemName: PURCHASE_KIND_LABELS.year_tournament_entry,
       quantityLabel: `1件(${String(schedule.year)}年のYearトーナメント)`,
-      serviceTiming: `決済の反映後ただちに参加資格を付与し、${formatDrawTime(schedule.drawAt)}に組み合わせを決定します。決勝は${formatFinalDate(schedule.finalDate)}です`,
+      serviceTiming: `決済の反映後ただちに参加資格を付与し、${formatDrawTime(schedule.drawAt)}に組み合わせを決定します。決勝は${formatFinalDateLabel(schedule.finalDate)}です`,
       additionalNotes: YEAR_ENTRY_CHECKOUT_NOTES,
     }),
     requiresBotVerification: false,
