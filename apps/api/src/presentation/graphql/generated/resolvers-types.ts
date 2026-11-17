@@ -2925,6 +2925,14 @@ export type WeekBracket = {
   tournament: WeekTournamentSummary;
 };
 
+/** 受付中で受付期限の前でも決済を始められない理由。文言は決済の開始の拒否と同じ */
+export type WeekEntryCheckoutBlock = {
+  __typename?: 'WeekEntryCheckoutBlock';
+  /** 決済の開始が拒否で返すエラーコード(week_entry_product_unavailable) */
+  code: Scalars['String']['output'];
+  message: Scalars['String']['output'];
+};
+
 /** 参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、LATE_ENTRYは組み合わせ決定の後に確定した予選の勝利 */
 export type WeekEntryCloseReason =
   | 'DEADLINE'
@@ -2940,6 +2948,8 @@ export type WeekEntryPanel = {
   acceptUntil: Scalars['DateTime']['output'];
   /** 組み合わせに入りブラケットを作った枠だけ。ブラケットのページの経路(/tournaments/week/<ISO週>) */
   bracketPath?: Maybe<Scalars['String']['output']>;
+  /** 決済を始められる枠のうち、プロダクトを表示できない(非公開化・投稿者の停止)間だけ値がある。参加費とultrasGuideはそのまま返す */
+  checkoutBlock?: Maybe<WeekEntryCheckoutBlock>;
   /** 終わった枠だけ */
   closeReason?: Maybe<WeekEntryCloseReason>;
   /** 決済期限 */
@@ -3352,6 +3362,7 @@ export type ResolversTypes = {
   Viewer: ResolverTypeWrapper<ViewerSource>;
   ViewerUltras: ResolverTypeWrapper<ViewerUltras>;
   WeekBracket: ResolverTypeWrapper<Omit<WeekBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversTypes['MatchProduct']>, rounds: Array<ResolversTypes['BracketRound']> }>;
+  WeekEntryCheckoutBlock: ResolverTypeWrapper<WeekEntryCheckoutBlock>;
   WeekEntryCloseReason: WeekEntryCloseReason;
   WeekEntryPanel: ResolverTypeWrapper<WeekEntryPanel>;
   WeekEntryProgress: ResolverTypeWrapper<WeekEntryProgress>;
@@ -3544,6 +3555,7 @@ export type ResolversParentTypes = {
   Viewer: ViewerSource;
   ViewerUltras: ViewerUltras;
   WeekBracket: Omit<WeekBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversParentTypes['MatchProduct']>, rounds: Array<ResolversParentTypes['BracketRound']> };
+  WeekEntryCheckoutBlock: WeekEntryCheckoutBlock;
   WeekEntryPanel: WeekEntryPanel;
   WeekEntryProgress: WeekEntryProgress;
   WeekTournamentBoard: Omit<WeekTournamentBoard, 'rounds'> & { rounds: Array<ResolversParentTypes['WeekTournamentRoundBoard']> };
@@ -4718,9 +4730,15 @@ export type WeekBracketResolvers<ContextType = GraphQLContext, ParentType extend
   tournament?: Resolver<ResolversTypes['WeekTournamentSummary'], ParentType, ContextType>;
 };
 
+export type WeekEntryCheckoutBlockResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekEntryCheckoutBlock'] = ResolversParentTypes['WeekEntryCheckoutBlock']> = {
+  code?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type WeekEntryPanelResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekEntryPanel'] = ResolversParentTypes['WeekEntryPanel']> = {
   acceptUntil?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   bracketPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  checkoutBlock?: Resolver<Maybe<ResolversTypes['WeekEntryCheckoutBlock']>, ParentType, ContextType>;
   closeReason?: Resolver<Maybe<ResolversTypes['WeekEntryCloseReason']>, ParentType, ContextType>;
   deadlineAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   drawAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
@@ -4908,6 +4926,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   Viewer?: ViewerResolvers<ContextType>;
   ViewerUltras?: ViewerUltrasResolvers<ContextType>;
   WeekBracket?: WeekBracketResolvers<ContextType>;
+  WeekEntryCheckoutBlock?: WeekEntryCheckoutBlockResolvers<ContextType>;
   WeekEntryPanel?: WeekEntryPanelResolvers<ContextType>;
   WeekEntryProgress?: WeekEntryProgressResolvers<ContextType>;
   WeekTournamentBoard?: WeekTournamentBoardResolvers<ContextType>;

@@ -91,6 +91,13 @@ const PRODUCT = productSummaryOf(productIdOf(1), {
   handle: HANDLE,
 });
 
+const HIDDEN_PRODUCT = productSummaryOf(productIdOf(1), {
+  ownerUserId: OWNER_USER_ID,
+  handle: HANDLE,
+  hidden: true,
+  visible: false,
+});
+
 const WON_LAUNCH = launchRecordOf(launchIdOf(1), productIdOf(1), {
   launchDate: LAUNCH_DATE,
   status: 'finished',
@@ -311,6 +318,7 @@ describe('DirectoryWeekEntryPanelReader 免除と参加費', () => {
       exempt: false,
       fee: { amount: 500, currency: 'usd' },
       ultrasGuide: true,
+      checkoutBlock: null,
       progress: null,
     });
     expect(reads.entitlementReads).toEqual([
@@ -318,6 +326,42 @@ describe('DirectoryWeekEntryPanelReader 免除と参加費', () => {
     ]);
     expect(reads.priceReads).toEqual([[WEEK_ENTRY_PRICE_LOOKUP_KEY]]);
   });
+
+  test('受付中で受付期限の前でもプロダクトを表示できない間は、参加費とUltrasの案内を返したまま決済を始められない理由を返す', async () => {
+    const { reader, reads } = createPanelFakes({
+      resolution: { kind: 'current', product: HIDDEN_PRODUCT },
+      entries: [entryOf(1, 'awaiting_payment')],
+    });
+
+    const panel = await reader.readForOwner(VIEWER, HANDLE, NOW);
+
+    expect(panel).toMatchObject({
+      exempt: false,
+      fee: { amount: 500, currency: 'usd' },
+      ultrasGuide: true,
+      checkoutBlock: 'week_entry_product_unavailable',
+    });
+    expect(reads.priceReads).toEqual([[WEEK_ENTRY_PRICE_LOOKUP_KEY]]);
+  });
+
+  test.each([
+    ['受付期限の後', 'awaiting_payment', AFTER_ACCEPT_UNTIL, false],
+    ['免除の枠', 'awaiting_payment', NOW, true],
+    ['資格を得た枠', 'entitled', NOW, false],
+  ] as const)(
+    '%sはプロダクトを表示できなくても決済を始められない理由を返さない',
+    async (_label, status, now, entitledDuring) => {
+      const { reader } = createPanelFakes({
+        resolution: { kind: 'current', product: HIDDEN_PRODUCT },
+        entries: [entryOf(1, status)],
+        entitledDuring,
+      });
+
+      const panel = await reader.readForOwner(VIEWER, HANDLE, now);
+
+      expect(panel?.checkoutBlock).toBeNull();
+    },
+  );
 
   test('受付中で勝利の確定から現在までに特典を受けていれば免除し、参加費を読まない', async () => {
     const { reader, reads } = createPanelFakes({

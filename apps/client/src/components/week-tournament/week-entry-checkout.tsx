@@ -34,6 +34,8 @@ export interface WeekEntryCheckoutProps {
   readonly feeAmount: number | null;
   // 決済を始められる枠でUltrasの特典を受けていない。表示はUltrasの導線の機能フラグにも従う
   readonly ultrasGuide: boolean;
+  // プロダクトを表示できない間など、受付中でも決済を始められない理由の文言。無ければnull
+  readonly blockedReason: string | null;
 }
 
 const isErrorCode = (error: unknown, code: string): boolean =>
@@ -69,11 +71,12 @@ function UltrasGuide() {
   );
 }
 
-// 参加費の購入を作って決済画面へ移る。参加費を照会できない間と決済サービスの障害の後はボタンを無効にし、送信中はフォーカスの位置を失わないようaria-disabledにする
+// 参加費の購入を作って決済画面へ移る。決済を始められない理由がある間・参加費を照会できない間・決済サービスの障害の後はボタンを無効にし、送信中はフォーカスの位置を失わないようaria-disabledにする
 export function WeekEntryCheckout({
   launchId,
   feeAmount,
   ultrasGuide,
+  blockedReason,
 }: WeekEntryCheckoutProps) {
   const navigate = useNavigate();
   const unavailableId = useId();
@@ -90,7 +93,9 @@ export function WeekEntryCheckout({
   const pending = startCheckout.isPending;
   const failure = pending ? null : startCheckout.error;
   const unavailable =
-    feeAmount === null || isErrorCode(failure, 'payments_unavailable');
+    blockedReason !== null ||
+    feeAmount === null ||
+    isErrorCode(failure, 'payments_unavailable');
   const rejection =
     failure === null || unavailable ? null : rejectionMessageOf(failure);
 
@@ -130,7 +135,7 @@ export function WeekEntryCheckout({
       {unavailable && (
         <UnavailableNotice
           id={unavailableId}
-          reason={PAYMENTS_UNAVAILABLE_REASON}
+          reason={blockedReason ?? PAYMENTS_UNAVAILABLE_REASON}
           className="text-xs"
         />
       )}

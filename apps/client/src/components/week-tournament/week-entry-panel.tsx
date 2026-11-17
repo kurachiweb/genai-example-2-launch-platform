@@ -116,6 +116,7 @@ function PanelBody({
             launchId={entry.launchId}
             feeAmount={display.feeAmount}
             ultrasGuide={display.ultrasGuide}
+            blockedReason={display.blockedReason}
           />
         </>
       );

@@ -189,6 +189,7 @@ describe('myWeekEntry', () => {
       drawAt: WEEK_WINDOW.drawAt.toISOString(),
       fee: { amount: WEEK_ENTRY_PRICE.unitAmount, currency: 'usd' },
       ultrasGuide: true,
+      checkoutBlock: null,
       serverTime: WEEK_ENTRY_TEST_NOW.toISOString(),
       progress: null,
       bracketPath: null,
@@ -196,6 +197,29 @@ describe('myWeekEntry', () => {
     expect(stripe.callsOf('resolvePrices').map(({ args }) => args)).toEqual([
       [[WEEK_ENTRY_PRICE.lookupKey]],
     ]);
+  });
+
+  test('非公開化したプロダクトの受付中の枠は、参加費と期限を返したまま決済の開始と同じ理由の文言で決済を始められないことを示す', async () => {
+    await seedEntry({ product: { hiddenAt: T0 } });
+    const sessionToken = await issueWeekEntrySession(OWNER);
+    useStripe(weekEntryStartHandlers());
+
+    const response = await fetchMyWeekEntry('product1', { sessionToken });
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data?.myWeekEntry).toEqual(
+      expect.objectContaining({
+        status: 'AWAITING_PAYMENT',
+        exempt: false,
+        fee: { amount: WEEK_ENTRY_PRICE.unitAmount, currency: 'usd' },
+        acceptUntil: WEEK_WINDOW.acceptUntil.toISOString(),
+        checkoutBlock: {
+          code: 'week_entry_product_unavailable',
+          message:
+            WEEK_ENTRY_OFFER_REJECTION_MESSAGES.week_entry_product_unavailable,
+        },
+      }),
+    );
   });
 
   test('投稿者でない利用者・存在しないハンドル・形式の違うハンドルはnullを返す', async () => {

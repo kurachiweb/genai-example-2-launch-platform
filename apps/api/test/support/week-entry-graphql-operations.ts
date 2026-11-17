@@ -100,6 +100,10 @@ export interface WeekEntryPanelFields {
   readonly drawAt: string;
   readonly fee: { readonly amount: number; readonly currency: string } | null;
   readonly ultrasGuide: boolean;
+  readonly checkoutBlock: {
+    readonly code: string;
+    readonly message: string;
+  } | null;
   readonly serverTime: string;
   readonly progress: WeekEntryProgressFields | null;
   readonly bracketPath: string | null;
@@ -122,6 +126,10 @@ export const MY_WEEK_ENTRY = /* GraphQL */ `
         currency
       }
       ultrasGuide
+      checkoutBlock {
+        code
+        message
+      }
       serverTime
       progress {
         alive

@@ -46,7 +46,16 @@ export const weekEntryOf = (
   progress: null,
   bracketPath: null,
   ultrasGuide: true,
+  checkoutBlock: null,
   ...overrides,
+});
+
+export const PRODUCT_UNAVAILABLE_MESSAGE =
+  'このプロダクトは現在Weekトーナメントに参加できません。';
+
+// 受付中で受付期限の前だが、プロダクトを非公開化している間の枠(参加費とUltrasの案内はサーバーがそのまま返す)
+export const PRODUCT_UNAVAILABLE_ENTRY = weekEntryOf({
+  checkoutBlock: { message: PRODUCT_UNAVAILABLE_MESSAGE },
 });
 
 // 受付中の枠のうち決済を始められない状態の値(参加費・Ultrasの案内はサーバーが空にする)

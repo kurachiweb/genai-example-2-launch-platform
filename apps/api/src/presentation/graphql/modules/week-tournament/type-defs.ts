@@ -144,6 +144,13 @@ export const WEEK_TOURNAMENT_TYPE_DEFS = /* GraphQL */ `
     champion: Boolean!
   }
 
+  "受付中で受付期限の前でも決済を始められない理由。文言は決済の開始の拒否と同じ"
+  type WeekEntryCheckoutBlock {
+    "決済の開始が拒否で返すエラーコード(week_entry_product_unavailable)"
+    code: String!
+    message: String!
+  }
+
   "投稿者本人の参加費の導線"
   type WeekEntryPanel {
     "決済の開始に渡すローンチのID"
@@ -167,6 +174,8 @@ export const WEEK_TOURNAMENT_TYPE_DEFS = /* GraphQL */ `
     fee: Money
     "決済を始められる枠で、投稿者がUltrasの特典を受けていない。Ultrasの導線を表示するかは画面が機能フラグで決める"
     ultrasGuide: Boolean!
+    "決済を始められる枠のうち、プロダクトを表示できない(非公開化・投稿者の停止)間だけ値がある。参加費とultrasGuideはそのまま返す"
+    checkoutBlock: WeekEntryCheckoutBlock
     "照会の時点のサーバーの時刻。秒読みを合わせるのに使う"
     serverTime: DateTime!
     "組み合わせに入った枠だけ"

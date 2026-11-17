@@ -9,6 +9,8 @@ import {
   ELIMINATED_ENTRY,
   EXEMPT_AWAITING_ENTRY,
   PAID_ENTITLED_ENTRY,
+  PRODUCT_UNAVAILABLE_ENTRY,
+  PRODUCT_UNAVAILABLE_MESSAGE,
   SERVER_TIME_48_HOURS_BEFORE,
   serverTimeBeforeAcceptUntil,
   ULTRAS_ENTITLED_ENTRY,
@@ -32,13 +34,28 @@ describe('weekEntryDisplayOf', () => {
       kind: 'payable',
       feeAmount: 500,
       ultrasGuide: true,
+      blockedReason: null,
     });
   });
 
   test('参加費を照会できない支払い待ちは、参加費を空にした決済の導線にする', () => {
     expect(
       weekEntryDisplayOf(weekEntryOf({ fee: null, ultrasGuide: false })),
-    ).toStrictEqual({ kind: 'payable', feeAmount: null, ultrasGuide: false });
+    ).toStrictEqual({
+      kind: 'payable',
+      feeAmount: null,
+      ultrasGuide: false,
+      blockedReason: null,
+    });
+  });
+
+  test('プロダクトを表示できない間の支払い待ちは、参加費を持ったまま決済を始められない理由を持つ決済の導線にする', () => {
+    expect(weekEntryDisplayOf(PRODUCT_UNAVAILABLE_ENTRY)).toStrictEqual({
+      kind: 'payable',
+      feeAmount: 500,
+      ultrasGuide: true,
+      blockedReason: PRODUCT_UNAVAILABLE_MESSAGE,
+    });
   });
 
   test('Ultrasの特典で免除される支払い待ちは、受付期限の後も免除にする', () => {

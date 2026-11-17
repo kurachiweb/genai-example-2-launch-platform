@@ -32,6 +32,8 @@ import {
   ELIMINATED_ENTRY,
   EXEMPT_AWAITING_ENTRY,
   PAID_ENTITLED_ENTRY,
+  PRODUCT_UNAVAILABLE_ENTRY,
+  PRODUCT_UNAVAILABLE_MESSAGE,
   SERVER_TIME_48_HOURS_BEFORE,
   SERVER_TIME_THREE_DAYS_BEFORE,
   serverTimeBeforeAcceptUntil,
@@ -310,6 +312,45 @@ describe('受付中で受付期限より前の決済の導線', () => {
       .element(panel().getByRole('status'))
       .toHaveTextContent(`現在ご利用いただけません。${UNAVAILABLE_REASON}`);
     expect(callsOf(ClientStartWeekTournamentCheckoutDocument)).toHaveLength(0);
+  });
+
+  test('プロダクトを表示できない間は、参加費と受付期限を出したままボタンを無効にし、決済の開始と同じ理由の文言をボタンの近くに示す', async () => {
+    respond({ entries: [PRODUCT_UNAVAILABLE_ENTRY] });
+    await renderPanel();
+
+    await expect.element(entryButton()).toBeDisabled();
+    await expect
+      .element(entryButton())
+      .toHaveAccessibleName('Weekトーナメントに参加 参加費$5.00');
+    await expect
+      .element(entryButton())
+      .toHaveAccessibleDescription(
+        `現在ご利用いただけません。 ${PRODUCT_UNAVAILABLE_MESSAGE}`,
+      );
+    await expect
+      .element(panel().getByRole('status'))
+      .toHaveTextContent(
+        `現在ご利用いただけません。${PRODUCT_UNAVAILABLE_MESSAGE}`,
+      );
+    await expect.element(panel().getByText('決済期限')).toBeVisible();
+    expect(
+      document.querySelector(`time[datetime="${WEEK_ENTRY_ACCEPT_UNTIL}"]`),
+    ).not.toBeNull();
+    await userEvent.click(entryButton(), { force: true });
+    expect(callsOf(ClientStartWeekTournamentCheckoutDocument)).toHaveLength(0);
+  });
+
+  test('参加費を取得できずプロダクトも表示できないときは、プロダクトの理由だけを示す', async () => {
+    respond({ entries: [{ ...PRODUCT_UNAVAILABLE_ENTRY, fee: null }] });
+    await renderPanel();
+
+    await expect.element(entryButton()).toBeDisabled();
+    await expect
+      .element(panel().getByRole('status'))
+      .toHaveTextContent(
+        `現在ご利用いただけません。${PRODUCT_UNAVAILABLE_MESSAGE}`,
+      );
+    expect(panel().getByRole('status').elements()).toHaveLength(1);
   });
 
   test('押した後に決済サービスの障害が返ると、ボタンを無効にし障害の案内を示す', async () => {

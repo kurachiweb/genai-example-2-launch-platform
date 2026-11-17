@@ -42,6 +42,9 @@ export interface WeekEntryProgress {
   readonly champion: boolean;
 }
 
+// 受付中で受付期限の前でも決済を始められない理由。文言は購入の可否の口の拒否の文言と同じコードで引く
+export type WeekEntryCheckoutBlock = 'week_entry_product_unavailable';
+
 export interface WeekEntryPanel {
   readonly entry: WeekEntryRecord;
   readonly tournament: WeekTournamentRecord;
@@ -50,6 +53,8 @@ export interface WeekEntryPanel {
   readonly fee: CheckoutMoney | null;
   // 決済を始められる枠で、投稿者がUltrasの特典を受けていない。機能フラグは画面が見る
   readonly ultrasGuide: boolean;
+  // 決済を始められる枠のうち、プロダクトを表示できない間だけ値がある。参加費とUltrasの案内はそのまま返す
+  readonly checkoutBlock: WeekEntryCheckoutBlock | null;
   // 組み合わせに入った枠だけ
   readonly progress: WeekEntryProgress | null;
 }
@@ -132,7 +137,7 @@ export class DirectoryWeekEntryPanelReader implements WeekEntryPanelReader {
     if (found === undefined) {
       return null;
     }
-    const { launchId, entry } = found;
+    const { launchId, entry, productVisible } = found;
     const tournament = await this.store.findTournament(entry.tournamentId);
     if (tournament === undefined) {
       throw new Error(
@@ -155,6 +160,8 @@ export class DirectoryWeekEntryPanelReader implements WeekEntryPanelReader {
       exempt,
       fee,
       ultrasGuide: payable,
+      checkoutBlock:
+        payable && !productVisible ? 'week_entry_product_unavailable' : null,
       progress,
     };
   }
@@ -164,7 +171,12 @@ export class DirectoryWeekEntryPanelReader implements WeekEntryPanelReader {
     productHandle: string,
     now: Date,
   ): Promise<
-    { readonly launchId: string; readonly entry: WeekEntryRecord } | undefined
+    | {
+        readonly launchId: string;
+        readonly entry: WeekEntryRecord;
+        readonly productVisible: boolean;
+      }
+    | undefined
   > {
     if (checkHandleFormat(productHandle, PRODUCT_HANDLE_RULE) !== 'ok') {
       return undefined;
@@ -176,7 +188,7 @@ export class DirectoryWeekEntryPanelReader implements WeekEntryPanelReader {
     ) {
       return undefined;
     }
-    const { productId } = resolution.product;
+    const { productId, visible } = resolution.product;
     const launches =
       (await this.products.listLaunches([productId], now)).get(productId) ?? [];
     const latest = launches.find(({ status }) => status !== 'canceled');
@@ -187,7 +199,9 @@ export class DirectoryWeekEntryPanelReader implements WeekEntryPanelReader {
     const entry = (await this.store.findEntriesByLaunch([launchId])).get(
       launchId,
     );
-    return entry === undefined ? undefined : { launchId, entry };
+    return entry === undefined
+      ? undefined
+      : { launchId, entry, productVisible: visible };
   }
 
   private async isExempt(

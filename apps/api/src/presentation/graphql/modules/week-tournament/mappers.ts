@@ -10,6 +10,7 @@ import type {
   WeekEntryCloseReason,
   WeekEntryStatus,
 } from '../../../../../lib/core/week-tournament/week-entry-rules.ts';
+import { WEEK_ENTRY_OFFER_REJECTION_MESSAGES } from '../../../../../lib/workers/week-tournament/week-entry-offer-policy.ts';
 import type { CheckoutMoney } from '../../../../application/payments/checkout-view.ts';
 import type {
   BracketNodeView,
@@ -23,7 +24,10 @@ import type {
 import type { WeekBoardRound } from '../../../../application/week-tournament/week-board-reader.ts';
 import type { WeekBracketView } from '../../../../application/week-tournament/week-bracket-reader.ts';
 import { weekBracketPathOf } from '../../../../application/week-tournament/week-bracket-path.ts';
-import type { WeekEntryPanel } from '../../../../application/week-tournament/week-entry-panel-reader.ts';
+import type {
+  WeekEntryCheckoutBlock,
+  WeekEntryPanel,
+} from '../../../../application/week-tournament/week-entry-panel-reader.ts';
 import type { MatchProductSource } from '../match/mappers.ts';
 
 // WeekとYearのどちらの照会も、ブラケットの表示の組み立ての値をそのまま親の値にする
@@ -178,6 +182,11 @@ export interface WeekEntryProgressModel {
   readonly champion: boolean;
 }
 
+export interface WeekEntryCheckoutBlockModel {
+  readonly code: WeekEntryCheckoutBlock;
+  readonly message: string;
+}
+
 export interface WeekEntryPanelModel {
   readonly launchId: string;
   readonly week: string;
@@ -190,6 +199,7 @@ export interface WeekEntryPanelModel {
   readonly drawAt: Date;
   readonly fee: CheckoutMoney | null;
   readonly ultrasGuide: boolean;
+  readonly checkoutBlock: WeekEntryCheckoutBlockModel | null;
   readonly serverTime: Date;
   readonly progress: WeekEntryProgressModel | null;
   readonly bracketPath: string | null;
@@ -230,6 +240,13 @@ export function toWeekEntryPanel(
     drawAt,
     fee: panel.fee,
     ultrasGuide: panel.ultrasGuide,
+    checkoutBlock:
+      panel.checkoutBlock === null
+        ? null
+        : {
+            code: panel.checkoutBlock,
+            message: WEEK_ENTRY_OFFER_REJECTION_MESSAGES[panel.checkoutBlock],
+          },
     serverTime,
     progress:
       progress === null

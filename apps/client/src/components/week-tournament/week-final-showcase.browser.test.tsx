@@ -305,6 +305,27 @@ describe('WeekFinalShowcaseの見出しと決勝の対戦カード', () => {
     ]);
   });
 
+  test('見出しの週の表記に並べて、通常の区画と同じ名前「ブラケットを見る」のリンクでそのトーナメントのブラケットのページへ導く', async () => {
+    respond([finalBoardOf()]);
+    await renderPage();
+
+    const region = finalRegion();
+    const link = region.getByRole('link', { name: 'ブラケットを見る' });
+    await expect
+      .element(link)
+      .toHaveAttribute('href', '/tournaments/week/2026-W45');
+    expect(link.element().parentElement?.textContent).toContain(
+      '2026年第45週(11/2〜11/8)',
+    );
+    expect(
+      region
+        .getByRole('heading', { level: 2 })
+        .element()
+        .compareDocumentPosition(link.element()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   test('決勝の対戦カードを本文の列ではなくページの全幅で描き、段階の印を「Week 決勝」とする', async () => {
     respond([finalBoardOf()]);
     await renderPage();

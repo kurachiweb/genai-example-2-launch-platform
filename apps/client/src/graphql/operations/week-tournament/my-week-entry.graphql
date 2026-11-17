@@ -21,5 +21,8 @@ query ClientMyWeekEntry($productHandle: String!) {
     }
     bracketPath
     ultrasGuide
+    checkoutBlock {
+      message
+    }
   }
 }

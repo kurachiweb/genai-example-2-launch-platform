@@ -2582,6 +2582,13 @@ type WeekBracket {
   tournament: WeekTournamentSummary!
 }
 
+"""受付中で受付期限の前でも決済を始められない理由。文言は決済の開始の拒否と同じ"""
+type WeekEntryCheckoutBlock {
+  """決済の開始が拒否で返すエラーコード(week_entry_product_unavailable)"""
+  code: String!
+  message: String!
+}
+
 """
 参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、LATE_ENTRYは組み合わせ決定の後に確定した予選の勝利
 """
@@ -2600,6 +2607,9 @@ type WeekEntryPanel {
 
   """組み合わせに入りブラケットを作った枠だけ。ブラケットのページの経路(/tournaments/week/<ISO週>)"""
   bracketPath: String
+
+  """決済を始められる枠のうち、プロダクトを表示できない(非公開化・投稿者の停止)間だけ値がある。参加費とultrasGuideはそのまま返す"""
+  checkoutBlock: WeekEntryCheckoutBlock
 
   """終わった枠だけ"""
   closeReason: WeekEntryCloseReason

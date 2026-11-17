@@ -1,9 +1,9 @@
-import { CalendarIcon, ChevronRightIcon, TrophyIcon } from 'lucide-react';
+import { CalendarIcon, TrophyIcon } from 'lucide-react';
 
 import { Badge } from '../../../lib/components/ui/badge/badge.tsx';
 import { LaunchDateText } from '../product/launch-date-text.tsx';
+import { WeekBracketLink } from './week-bracket-link.tsx';
 import {
-  BRACKET_LINK_LABEL,
   FINAL_DATE_LABEL,
   WEEK_TOURNAMENT_SECTION_TITLE,
 } from './week-tournament-messages.ts';
@@ -47,13 +47,7 @@ export function WeekSectionHeading({
             <LaunchDateText date={finalDate} />
           </span>
         )}
-        <a
-          href={bracketPath}
-          className="inline-flex items-center gap-0.5 font-semibold text-primary underline underline-offset-4"
-        >
-          {BRACKET_LINK_LABEL}
-          <ChevronRightIcon className="size-4" aria-hidden="true" />
-        </a>
+        <WeekBracketLink href={bracketPath} />
       </p>
     </div>
   );

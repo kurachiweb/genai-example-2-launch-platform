@@ -15,6 +15,8 @@ export type WeekEntryDisplay =
       readonly kind: 'payable';
       readonly feeAmount: number | null;
       readonly ultrasGuide: boolean;
+      // 受付中で受付期限の前でも決済を始められない理由の文言(サーバーが決済の開始の拒否と同じ文言を返す)
+      readonly blockedReason: string | null;
     }
   | { readonly kind: 'exempt' }
   | { readonly kind: 'closed' }
@@ -71,6 +73,7 @@ const awaitingDisplayOf = (entry: WeekEntryPanelView): WeekEntryDisplay => {
     kind: 'payable',
     feeAmount: entry.fee?.amount ?? null,
     ultrasGuide: entry.ultrasGuide,
+    blockedReason: entry.checkoutBlock?.message ?? null,
   };
 };
 

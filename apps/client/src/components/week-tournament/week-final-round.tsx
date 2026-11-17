@@ -4,6 +4,7 @@ import { type CSSProperties, useId } from 'react';
 import { cn } from '../../../lib/utilities/class-names.ts';
 import type { MatchFragment } from '../../graphql/generated/graphql.ts';
 import { teamColorsOf } from '../match/team-colors.ts';
+import { WeekBracketLink } from './week-bracket-link.tsx';
 import type { WeekSectionRound } from './week-board-model.ts';
 import type { WeekFinalOutcome } from './week-final-model.ts';
 import { WeekMatchCard } from './week-match-card.tsx';
@@ -77,7 +78,7 @@ const outcomeTextOf = (outcome: WeekFinalOutcome): string =>
     ? weekFinalAwardedMessage(outcome.productName)
     : WEEK_FINAL_NO_AWARD_MESSAGE;
 
-// 決勝の1行を、ページの全幅の注目の区画(「Week Final」の印・見出し・週の表記・結果の状態の文・全幅の対戦カード)で描く。
+// 決勝の1行を、ページの全幅の注目の区画(「Week Final」の印・見出し・週の表記とブラケットのページへのリンク・結果の状態の文・全幅の対戦カード)で描く。
 // 不戦勝・早期勝利の決勝は、不戦勝の一覧の文言が次のラウンドへ進む旨のため一覧に並べず、受賞の文だけで示す
 export function WeekFinalRound({
   row,
@@ -110,8 +111,9 @@ export function WeekFinalRound({
             {WEEK_FINAL_SUBTITLE}
           </span>
         </h2>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {round.tournament.label}
+        <p className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          <span>{round.tournament.label}</span>
+          <WeekBracketLink href={round.bracketPath} />
         </p>
         {/* 結果が加わった時に読み上げられるよう、文が無い間も領域を置いておく */}
         <div role="status" className="mt-4 empty:mt-0">
