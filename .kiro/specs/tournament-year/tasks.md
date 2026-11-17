@@ -275,7 +275,7 @@
   - _Depends: 3.16_
   - _Requirements: 3.1, 6.8, 7.1, 8.2, 14.7, 15.3, 15.6, 15.7_
 
-- [ ] 5.2 (P) ジョブの失敗の通知のSentryの実装を作る
+- [x] 5.2 (P) ジョブの失敗の通知のSentryの実装を作る
   - 先に、Workers統合テストで、夜の処理と再処理の失敗の知らせがログとエラートラッキング(`logentry`と`fingerprint`の規約)に識別と件数だけで出て、個人情報を含まないことを確かめる(tournament-weekの実装と同じ形)
   - 完了状態: Workers統合テストが成功する
   - _Boundary: YearTournamentIncidentReporter_
@@ -529,3 +529,4 @@
 - 4.4: eventの`YearEntrySupplementProvider`(`YearEntrySupplementProviderDependencies { store, calendar, products, clock, clientSiteOrigin }`、デコレーター無し)。Weekの勝利(`kind === 'week'`・`isWinningResult`・`launchId`あり・枠あり)だけに追記する(段階で絞らない。残り1で準決勝の勝利が優勝になる場合があるため。レビューで決勝に限る条件を差し戻し1回)。免除の判定は枠の状態(`entitled`・`ultras`)だけ、年と期限は`resolveAward`(`late`なら追記しない)。日時は`formatUtcDateTime`(年無し)、決勝日の表記「2027年5月16日(日)」は3.7の`year-entry-offer-policy.ts`の`formatFinalDate`と同じ写し(後で`core/year-tournament`へ寄せる候補)。4.5の登録: `RESULT_NOTICE_SUPPLEMENTS`に`{ name: 'tournament-year.entry-deadline', kinds: ['week'], order: 1700 }`。
 - 4.5: eventの束縛は`apps/event/src/composition/year-tournament-module.ts`の`EVENT_YEAR_TOURNAMENT_MODULE`(名前`event-year-tournament`、`MODULES`でWeekの直後、7つは`.to()`・追記の部品は`toDynamicValue`)。Weekと同名の4クラスは`YearRoundProgressHandler`・`YearProductEntryLossHandler`・`YearAccountEntryLossHandler`・`YearEntryUnlinkHandler`の別名。5つの登録口に8件を加え、上流のテスト11件の完全一致の一覧と、`result-notice-supplements.unit.test.ts`(Weekの結果にYearの期限の追記が並ぶ)・`directory-module.worker.test.ts`(`slice(-4)`)を書き換えた。eventの`test:worker`の全件(106ファイル1292件)が通る。
 - 5.1: apiの識別子は`apps/api/src/application/year-tournament/year-tournament-api-types.ts`の`YEAR_TOURNAMENT_API_TYPES`(13件)、ポートは同じディレクトリの`ports.ts`(`YearTournamentIncidentReporter`・`YearTournamentIncident`、`YearFinalDateWriter`(入力`YearFinalDateSave`))。ジョブは`year-tournament-jobs.ts`の`YearEveningBracketJob`・`YearEntryFollowUpJob`と定義`YEAR_EVENING_BRACKET_JOB_DEFINITION`・`YEAR_ENTRY_FOLLOW_UP_JOB_DEFINITION`・前提の名前`YEAR_EVENING_BRACKET_PARTICIPANT`(5.11で`scheduled-jobs.ts`・`evening-dispatch-participants.ts`へ)。設計の段(1)を`'calendar'`(`ensureUpcoming`)と`'entry-sync'`(`openPeriodStart`+`syncChampions`)に分けた(年の行の用意の失敗で取り込みを止めない。`openPeriodStart`が失敗したら`syncChampions`を呼ばない)。成功のログの`drawn`は年の一覧(Weekは件数)。テストの偽物は`testing/year-tournament-job-fakes.ts`。
+- 5.2: `apps/api/src/infrastructure/year-tournament/sentry-year-tournament-incident-reporter.ts`の`SentryYearTournamentIncidentReporter`(`@injectable()`・引数無し。5.11で`bind(YEAR_TOURNAMENT_API_TYPES.YearTournamentIncidentReporter).to(...)`)。fingerprint`['tournament-year', kind]`、タグ`tournament_year_incident`・`job`・`year`(年が1つのときだけ)、年は`safeYearOf`(安全な整数でなければ`unknown`)。Monitoringの`bracketId`はポートに無いため付けない。
