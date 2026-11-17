@@ -5,6 +5,7 @@ import {
   TOP_PAGE_SECTIONS,
 } from '../../composition/top-page-sections.ts';
 import { FullTimeCountdownSection } from './full-time-countdown-section.tsx';
+import { WeekTournamentSection } from '../week-tournament/week-tournament-section.tsx';
 import { TOP_PAGE_PLACEMENTS } from './top-page-section-order.ts';
 
 // 実行の関数はサーバー専用の処理を読み込むため、登録箇所の部品を読み込むテストでは差し替える
@@ -15,7 +16,7 @@ vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
 const SECTION_ID_PATTERN = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/u;
 
 describe('トップページの区画の登録箇所', () => {
-  test('区画にはmatch-engineのカウントダウン(上部の行の10)と予選(本文の30)を登録し、差し込みの登録箇所は空である', () => {
+  test('区画にはmatch-engineのカウントダウン(上部の行の10)・tournament-weekのWeekトーナメント(本文の20)・match-engineの予選(本文の30)を登録し、差し込みの登録箇所は空である', () => {
     expect(
       TOP_PAGE_SECTIONS.map(({ id, placement, order }) => ({
         id,
@@ -24,9 +25,11 @@ describe('トップページの区画の登録箇所', () => {
       })),
     ).toStrictEqual([
       { id: 'match-engine.countdown', placement: 'banner', order: 10 },
+      { id: 'tournament-week.matches', placement: 'main', order: 20 },
       { id: 'match-engine.qualifiers', placement: 'main', order: 30 },
     ]);
     expect(TOP_PAGE_SECTIONS[0]?.component).toBe(FullTimeCountdownSection);
+    expect(TOP_PAGE_SECTIONS[1]?.component).toBe(WeekTournamentSection);
     expect(QUALIFIER_LIST_INSERTS).toStrictEqual([]);
   });
 

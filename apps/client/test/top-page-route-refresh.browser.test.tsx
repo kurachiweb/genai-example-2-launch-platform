@@ -20,7 +20,11 @@ import {
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 
-vi.mock('../lib/start/graphql/execute-graphql.ts', () => ({ executeGraphQL }));
+vi.mock('../lib/start/graphql/execute-graphql.ts', async () => {
+  const { withoutWeekTournamentMatches } =
+    await import('./week-tournament-board-stub.ts');
+  return { executeGraphQL: withoutWeekTournamentMatches(executeGraphQL) };
+});
 
 vi.mock(
   '@marsidev/react-turnstile',
