@@ -48,6 +48,7 @@ import {
   MatchEventRunner,
 } from '../application/match/match-event-runner.ts';
 import { QualifierOutcomeHandler } from '../application/match/qualifier-outcome-handler.ts';
+import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
 import { MATCH_EVENT_HANDLERS } from './match-event-handlers.ts';
 import {
   createEventMatchModule,
@@ -204,7 +205,7 @@ describe('イベントサーバーのモジュールの一覧へのマッチの�
 });
 
 describe('マッチイベントの処理の登録口', () => {
-  test('予選の結果の記録の処理(1100)とディレクトリの掲載の記録の処理(1200)を予選の確定のイベントに登録した凍結済みの配列で、登録の検証を通る', () => {
+  test('予選の結果の記録の処理(1100)・ディレクトリの掲載の記録の処理(1200)・Weekトーナメントの枠の作成(1500)を予選の確定のイベントに、ラウンドの進行(1510)をWeekのマッチの確定のイベントに登録した凍結済みの配列で、登録の検証を通る', () => {
     expect(MATCH_EVENT_HANDLERS).toStrictEqual([
       {
         name: 'match-engine.qualifier-outcome',
@@ -219,6 +220,20 @@ describe('マッチイベントの処理の登録口', () => {
         kinds: ['qualifier'],
         order: 1200,
         handler: EVENT_DIRECTORY_TYPES.QualifierListingHandler,
+      },
+      {
+        name: 'tournament-week.qualifier-entry',
+        events: ['decided'],
+        kinds: ['qualifier'],
+        order: 1500,
+        handler: EVENT_WEEK_TOURNAMENT_TYPES.QualifierEntryHandler,
+      },
+      {
+        name: 'tournament-week.decided-round-progress',
+        events: ['decided'],
+        kinds: ['week'],
+        order: 1510,
+        handler: EVENT_WEEK_TOURNAMENT_TYPES.RoundProgressHandler,
       },
     ]);
     expect(Object.isFrozen(MATCH_EVENT_HANDLERS)).toBe(true);

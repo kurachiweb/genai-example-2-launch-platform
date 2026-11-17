@@ -199,7 +199,7 @@
   - 完了状態: Workers統合テスト・購入種別の集約点の全定義の検証の単体テスト・paymentsの束縛のWorkers統合テスト・3経路のDIの解決の検査が成功する
   - _Requirements: 2.5, 2.6, 2.7, 2.9, 3.7, 13.3, 14.1, 15.3_
 
-- [ ] 5. イベントサーバーの処理
+- [x] 5. イベントサーバーの処理
 - [x] 5.1 eventの識別子と、確定のマッチイベントの2つの処理を作る
   - eventの8つの処理のDIの識別子をここで作る(束縛と登録は5.5)
   - 確定のマッチイベントは識別子だけを運ぶため、予選の処理は`MatchDirectory.findMatches([matchId], now)`で読んだ確定のマッチの記録を枠の作成の部品へ渡す
@@ -227,7 +227,7 @@
   - _Boundary: WeekEntrySupplementProvider_
   - _Requirements: 12.6_
 
-- [ ] 5.5 eventの処理を束縛し、5つの登録口に加える
+- [x] 5.5 eventの処理を束縛し、5つの登録口に加える
   - 5.1〜5.4の処理を処理単位で束縛するモジュールを作り、eventの束縛の一覧へ加える
   - マッチイベントの登録口に2件(予選1500・Week 1510)、プロダクトのライフサイクルの登録口に2件(`deleted`・`purge_due`、1500)、ユーザーのライフサイクルの登録口に1件(`withdrawn`、1500)、Ultrasの知らせの登録口に2件(1500・1510)、結果通知の追記の登録口に1件(`qualifier`、1500)を加える
   - 登録の前に、5つの登録口を参照する上流のテストを検索で洗い出す。設計のModified Filesに挙げた、登録口が空であることや登録の一覧の完全一致を前提にしたeventのテスト(Ultras・notifications・payments・マッチ・マッチの物理削除・マッチの判定の後処理・プロダクト・engagement・directory-discoveryのモジュールのWorkers統合テスト)を、本specの登録を期待する形に書き換える(明示の横断)
@@ -462,3 +462,4 @@
 - 5.2(差し戻し1回): eventの`ProductEntryLossHandler`(毎回 喪失→ストアの`listLaunchIdsByProduct`(設計に無い、親の決定で追加。自分のデータから状態を問わずローンチを求め直す)→ローンチごとに`expireOpen({userId, kinds:['week_tournament_entry'], targetId, limit:50})`→`followUpPendingEntries({productId})`→`remaining`なら`continue`)・`AccountEntryLossHandler`(喪失→投稿者の返金待ち。未完了の決済の失効はpaymentsの`payments.open-checkout-expiry`に任せる)・`EntryUnlinkHandler`(`unlinkOrDeleteByProduct`→`BracketStore.unlinkProduct`)。返金待ちの読み切りは`follow-up-pending-entries.ts`。どれもデコレータ付きで通常の`to()`、イベントの種別を自分で確かめないので5.5の登録の`events`を正しく絞る。`unlinkOrDeleteByProduct`は`drawn`以外を返金待ちでも削除する(物理削除は保持期間の後なので返金は済んでいる前提。8.5で扱う)。
 - 5.3: eventの`WeekUltrasEntryExemptionHandler`(`grantByUltras(activation.userId, activation.activatedAt, clock.now())`)と`WeekOpenEntryCheckoutExpiryHandler`(`expireOpen({userId, kinds:['week_tournament_entry'], limit:50})`を`targetId`無しで最大5回、残れば`activationId`だけのメッセージの`Error`)。どちらもデコレータ付き・ログ無し・例外は捕まえない。5.5は`ULTRAS_ACTIVATION_HANDLERS`(`apps/event/src/composition/ultras-activation-handlers.ts`)に`tournament-week.ultras-entry-exemption`(1500)・`tournament-week.open-entry-checkout-expiry`(1510)を加え、付与→失効の順を保つ。3.8(特典の終了で資格を戻さない)は5.5の結線のテストで扱う。
 - 5.4: eventの`WeekEntrySupplementProvider({store, products, clock, clientSiteOrigin})`(デコレータ無し、5.5で`toDynamicValue`、`PRODUCT_PLATFORM_TYPES.ProductDirectory`・`PLATFORM_TYPES.Clock`・envの`CLIENT_SITE_ORIGIN`)。予選の勝利でローンチがあるときだけ: Ultrasの`entitled`は`drawAt`の日時の免除の追記(強調・ボタン無し)、受付中または枠が未作成で`now < acceptUntil`なら受付期限と導線`<origin>/p/<handle>`(日曜日は強調、見えないプロダクトはボタン省略)、他は`undefined`。期限は保存した列(週の行が無いときだけ`entryWindowFor`)。5.5は`RESULT_NOTICE_SUPPLEMENTS`に`{ name: 'tournament-week.entry-deadline', kinds: ['qualifier'], order: 1500 }`を加え、`notifications-module.worker.test.ts`の「初版の登録口は空…」の2件を書き換える。
+- 5.5: eventの`EVENT_WEEK_TOURNAMENT_MODULE`(`apps/event/src/composition/week-tournament-module.ts`、名前`event-week-tournament`、`createWeekTournamentPlatformModule('event')`の直後)と5つの登録口に8件(設計の表どおり)。登録口ごとの単体テストは`apps/event/src/composition/*.unit.test.ts`。予選の確定で枠と週の行が作られるため、上流のテストでマッチ・プロダクトを消す前に`clearWeekTournamentRows()`(`workers/week-tournament/testing/week-tournament-fixtures.ts`)を呼ぶこと(8.x・E2Eも同じ)。8.2で5つの登録口の8件を`project-values.md`へ。

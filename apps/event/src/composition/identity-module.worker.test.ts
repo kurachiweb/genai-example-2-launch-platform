@@ -344,6 +344,10 @@ describe('退会の抑止記録の削除', () => {
       { eventId: eventIdOf(10), handlerName: 'payments.open-checkout-expiry' },
       {
         eventId: eventIdOf(10),
+        handlerName: 'tournament-week.account-entry-loss',
+      },
+      {
+        eventId: eventIdOf(10),
         handlerName: 'ultras-subscription.subscription-cancellation',
       },
     ]);

@@ -119,9 +119,14 @@ export async function insertWeekEntries(
   );
 }
 
-// 外部キーの参照元から先に消す
-export async function clearWeekTournamentTables(): Promise<void> {
+// 予選の確定のマッチイベントの処理が枠と週の行を作るため、マッチ・プロダクトの行を消す上流の機能のテストは先にこれを呼ぶ
+export async function clearWeekTournamentRows(): Promise<void> {
   await db.delete(weekTournamentEntries);
   await db.delete(weekTournaments);
+}
+
+// 外部キーの参照元から先に消す
+export async function clearWeekTournamentTables(): Promise<void> {
+  await clearWeekTournamentRows();
   await clearBracketTables();
 }

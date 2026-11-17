@@ -44,6 +44,7 @@ import {
   launchIdOf,
   productIdOf,
 } from '../../lib/workers/product/testing/product-fixtures.ts';
+import { clearWeekTournamentRows } from '../../lib/workers/week-tournament/testing/week-tournament-fixtures.ts';
 import { MODULES } from './modules.ts';
 import {
   dispatchMatchEvent,
@@ -152,6 +153,7 @@ beforeEach(async () => {
   for (const method of ['debug', 'info', 'warn', 'error'] as const) {
     vi.spyOn(console, method).mockImplementation(() => {});
   }
+  await clearWeekTournamentRows();
   await clearDirectoryTables();
   await seedMatchPlatformSample();
 });

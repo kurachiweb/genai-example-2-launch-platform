@@ -419,6 +419,7 @@ describe('コメントと評価の物理削除の時期の処理の登録', () =
       'match-engine.entry-unlink',
       'directory-discovery.entry-erasure',
       PRODUCT_ERASURE_NAME,
+      'tournament-week.entry-unlink',
     ]);
   });
 

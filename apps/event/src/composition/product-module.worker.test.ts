@@ -391,9 +391,11 @@ describe('プロダクトライフサイクルの非同期の処理の登録口'
       'match-engine.entry-unlink',
       'directory-discovery.entry-erasure',
       'engagement.product-erasure',
+      'tournament-week.entry-unlink',
     ]);
     expect(namesOf('deleted')).toStrictEqual([
       'match-engine.product-decision-follow-up',
+      'tournament-week.product-entry-loss',
     ]);
   });
 

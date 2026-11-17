@@ -45,6 +45,7 @@ import {
   EVENT_ULTRAS_MODULE,
   EVENT_ULTRAS_PLATFORM_MODULE,
 } from './ultras-module.ts';
+import { EVENT_WEEK_TOURNAMENT_MODULE } from './week-tournament-module.ts';
 
 export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
   Object.freeze([
@@ -76,6 +77,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_PAYMENTS_MODULE,
     EVENT_ULTRAS_PLATFORM_MODULE,
     createWeekTournamentPlatformModule('event'),
+    EVENT_WEEK_TOURNAMENT_MODULE,
     EVENT_ULTRAS_MODULE,
     EVENT_PRODUCT_MODULE,
   ]);
