@@ -27,12 +27,14 @@ import {
   productDetailHref,
   profileHref,
   SITE_NAME,
+  weekBracketHref,
 } from '../components/layout/site-links.ts';
 import {
   PRICING_PAGE_DESCRIPTION,
   PRICING_PAGE_TITLE,
 } from '../components/ultras/pricing-messages.ts';
 import { PRICING_PAGE_HREF } from '../components/ultras/ultras-messages.ts';
+import { weekBracketPageTitle } from '../components/week-tournament/week-tournament-messages.ts';
 import type {
   LegalDocumentLoaderData,
   LegalVersionLoaderData,
@@ -44,6 +46,13 @@ import type { PublicProfileLoaderData } from '../graphql/public-profile.ts';
 export interface RootHeadInput {
   readonly stylesheetHref: string;
   readonly webAnalyticsToken: string | undefined;
+}
+
+export interface WeekBracketHeadInput {
+  // ISO週(YYYY-Www)
+  readonly week: string;
+  // 週の表記(「2026年第37週(9/7〜9/13)」)
+  readonly label: string;
 }
 
 export interface SitePageHeadInput {
@@ -186,4 +195,15 @@ export const buildProductPageHead = (
         description: loaderData.tagline,
         canonicalUrl: productDetailHref(loaderData.handle),
         ...(loaderData.listed ? {} : { noIndex: true }),
+      });
+
+// 誰でも見られる公開のページのため、ISO週のパスを正規のURLにする。取得前や失敗ではタイトルを決められないため、サイト名だけにして正規のURLも付けない
+export const buildWeekBracketHead = (
+  loaderData: WeekBracketHeadInput | undefined,
+) =>
+  loaderData === undefined
+    ? buildSitePageHead({ title: '' })
+    : buildSitePageHead({
+        title: weekBracketPageTitle(loaderData.label),
+        canonicalUrl: weekBracketHref(loaderData.week),
       });
