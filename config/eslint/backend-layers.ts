@@ -17,6 +17,13 @@ export const REACT_RESTRICTION = {
     'Reactと@react-email/*はメールの描画とテンプレートの位置(eventのsrc/infrastructure/email/renderingとtemplates)だけが読み込めます。描画は合成ルートで束縛した描画処理を経由してください。',
 };
 
+// エラートラッキングへの送信は外側の層と共有コードのworkersの部品が受け持つため、業務の処理と実行環境に依存しない部品をSentryのSDKから切り離す
+export const ERROR_TRACKING_RESTRICTION = {
+  group: ['@sentry/*'],
+  message:
+    'この位置のコードはエラートラッキングのSDK(@sentry/*)に依存できません。送信は共有コードのworkersの部品か外側の層から行ってください。',
+};
+
 type RestrictedImportPattern = Readonly<{
   group: readonly string[];
   message: string;
@@ -45,6 +52,7 @@ export const BACKEND_LAYER_PATTERNS = Object.freeze({
       message:
         'ドメイン層は実行環境・Hono・Drizzle ORM・DBスキーマに依存できません。',
     },
+    ERROR_TRACKING_RESTRICTION,
   ],
   application: [
     {
@@ -64,6 +72,7 @@ export const BACKEND_LAYER_PATTERNS = Object.freeze({
       message:
         'アプリケーション層はDBの接続を作れません。接続はインフラ層で扱ってください。',
     },
+    ERROR_TRACKING_RESTRICTION,
   ],
   infrastructureAndPresentation: [
     {

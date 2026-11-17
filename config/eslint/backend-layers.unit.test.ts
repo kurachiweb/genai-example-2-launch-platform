@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   BACKEND_LAYER_PATTERNS,
   createBackendLayerRules,
+  ERROR_TRACKING_RESTRICTION,
 } from './backend-layers.ts';
 
 describe('createBackendLayerRules', () => {
@@ -29,6 +30,28 @@ describe('createBackendLayerRules', () => {
         BACKEND_LAYER_PATTERNS.application,
         BACKEND_LAYER_PATTERNS.infrastructureAndPresentation,
       ].map((patterns) => ['error', { patterns }]),
+    );
+  });
+
+  test('ドメイン層とアプリケーション層だけがエラートラッキングのSDKを禁じる', () => {
+    const forbidsErrorTracking = (
+      patterns: readonly { readonly group: readonly string[] }[],
+    ) => patterns.some(({ group }) => group.includes('@sentry/*'));
+
+    expect({
+      domain: forbidsErrorTracking(BACKEND_LAYER_PATTERNS.domain),
+      application: forbidsErrorTracking(BACKEND_LAYER_PATTERNS.application),
+      infrastructureAndPresentation: forbidsErrorTracking(
+        BACKEND_LAYER_PATTERNS.infrastructureAndPresentation,
+      ),
+    }).toEqual({
+      domain: true,
+      application: true,
+      infrastructureAndPresentation: false,
+    });
+    expect(BACKEND_LAYER_PATTERNS.domain).toContain(ERROR_TRACKING_RESTRICTION);
+    expect(BACKEND_LAYER_PATTERNS.application).toContain(
+      ERROR_TRACKING_RESTRICTION,
     );
   });
 

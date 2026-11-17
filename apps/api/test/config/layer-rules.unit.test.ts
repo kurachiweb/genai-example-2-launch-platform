@@ -21,11 +21,25 @@ const REACT_FORBIDDEN_IMPORTS: readonly ImportCase[] = [
   allowed("import { a } from './react-email-renderer-port';"),
 ];
 
+const ERROR_TRACKING_FORBIDDEN_IMPORTS: readonly ImportCase[] = [
+  forbidden("import * as Sentry from '@sentry/cloudflare';"),
+  forbidden("import { captureException } from '@sentry/core';"),
+  forbidden("import type { ErrorEvent } from '@sentry/core';"),
+  forbidden("import { withSentry } from '@sentry/cloudflare/sub';"),
+];
+
+const ERROR_TRACKING_ALLOWED_IMPORTS: readonly ImportCase[] = [
+  allowed("import * as Sentry from '@sentry/cloudflare';"),
+  allowed("import { captureException } from '@sentry/core';"),
+  allowed("import type { ErrorEvent } from '@sentry/core';"),
+];
+
 const SOURCE_LAYER_CASES: readonly PositionCase[] = [
   {
     file: 'src/domain/sample/violation.ts',
     imports: [
       ...REACT_FORBIDDEN_IMPORTS,
+      ...ERROR_TRACKING_FORBIDDEN_IMPORTS,
       forbidden("import { a } from '../../application/sample/use-case';"),
       forbidden("import { b } from '../../infrastructure/sample/repository';"),
       forbidden("import { c } from '../../presentation/sample/route';"),
@@ -47,6 +61,7 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
     file: 'src/application/sample/violation.ts',
     imports: [
       ...REACT_FORBIDDEN_IMPORTS,
+      ...ERROR_TRACKING_FORBIDDEN_IMPORTS,
       forbidden("import { a } from '../../infrastructure/sample/repository';"),
       forbidden("import { b } from '../../presentation/sample/route';"),
       forbidden(
@@ -70,6 +85,7 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
     file: 'src/infrastructure/sample/violation.ts',
     imports: [
       ...REACT_FORBIDDEN_IMPORTS,
+      ...ERROR_TRACKING_ALLOWED_IMPORTS,
       forbidden("import { a } from '../../composition/modules';"),
       allowed("import { Entity } from '../../domain/sample/entity';"),
       allowed("import { UseCase } from '../../application/sample/use-case';"),
@@ -84,6 +100,7 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
     file: 'src/presentation/sample/violation.ts',
     imports: [
       ...REACT_FORBIDDEN_IMPORTS,
+      ...ERROR_TRACKING_ALLOWED_IMPORTS,
       forbidden("import { a } from '../../composition/modules';"),
       allowed("import { UseCase } from '../../application/sample/use-case';"),
       allowed("import { b } from '../../../lib/workers/http/hono-env';"),
@@ -94,6 +111,7 @@ const SOURCE_LAYER_CASES: readonly PositionCase[] = [
     file: 'src/composition/violation.ts',
     imports: [
       ...REACT_FORBIDDEN_IMPORTS,
+      ...ERROR_TRACKING_ALLOWED_IMPORTS,
       allowed(
         "import { Repository } from '../infrastructure/sample/repository';",
       ),
@@ -109,6 +127,7 @@ const AUTH_LAYER_CASES: readonly PositionCase[] = [
     file: 'src/domain/auth/violation.ts',
     imports: [
       ...identityImportsFromAuth('../../'),
+      ...ERROR_TRACKING_FORBIDDEN_IMPORTS,
       forbidden("import { f } from '../identity/user-account';"),
       forbidden("import { g } from '../../application/auth/ports';"),
       forbidden("import { eq } from 'drizzle-orm';"),
@@ -122,6 +141,7 @@ const AUTH_LAYER_CASES: readonly PositionCase[] = [
     file: 'src/application/auth/violation.ts',
     imports: [
       ...identityImportsFromAuth('../../'),
+      ...ERROR_TRACKING_FORBIDDEN_IMPORTS,
       forbidden("import { IDENTITY_TYPES } from '../identity/identity-types';"),
       forbidden("import { f } from '../../../lib/workers/http/hono-env';"),
       forbidden(
@@ -201,7 +221,11 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
       forbidden("import { integer } from 'drizzle-orm/sqlite-core';"),
       forbidden("import { MODULES } from '../../../src/composition/modules';"),
       forbidden("import { e } from '../../../src/domain/sample/entity';"),
+      forbidden("import * as Sentry from '@sentry/cloudflare';"),
+      forbidden("import { captureException } from '@sentry/core';"),
+      forbidden("import { withSentry } from '@sentry/cloudflare/sub';"),
       allowed("import type { Hono } from 'hono';"),
+      allowed("import type { ErrorEvent, EventHint } from '@sentry/core';"),
       allowed("import { b } from '../errors/app-error';"),
       allowed("import { z } from 'zod';"),
       allowed("import { ulid } from 'ulid';"),
@@ -211,6 +235,7 @@ const SHARED_CODE_CASES: readonly PositionCase[] = [
     file: 'lib/workers/sample/violation.ts',
     imports: [
       ...REACT_FORBIDDEN_IMPORTS,
+      ...ERROR_TRACKING_ALLOWED_IMPORTS,
       forbidden("import { MODULES } from '../../../src/composition/modules';"),
       forbidden("import { e } from '../../../src/domain/sample/entity';"),
       forbidden(

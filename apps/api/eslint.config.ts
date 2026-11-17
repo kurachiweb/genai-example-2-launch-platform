@@ -7,6 +7,7 @@ import {
   APP_SOURCE_RESTRICTION,
   BACKEND_LAYER_PATTERNS,
   createBackendLayerRules,
+  ERROR_TRACKING_RESTRICTION,
   REACT_RESTRICTION,
   RUNTIME_MESSAGE,
 } from '../../config/eslint/backend-layers.ts';
@@ -50,7 +51,7 @@ const SHARED_DIRECTORY_RULES: Linter.Config[] = [
           ],
         },
       ],
-      // モジュール登録の契約がHonoのアプリの型を参照するため、実行時に残らない型だけのimportは許す
+      // モジュール登録の契約がHonoのアプリの型を参照し、送信前の除去処理がSentryのイベントの型を参照するため、実行時に残らない型だけのimportは許す
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {
@@ -60,6 +61,7 @@ const SHARED_DIRECTORY_RULES: Linter.Config[] = [
               message: RUNTIME_MESSAGE,
               allowTypeImports: true,
             },
+            { ...ERROR_TRACKING_RESTRICTION, allowTypeImports: true },
             REACT_RESTRICTION,
           ],
         },

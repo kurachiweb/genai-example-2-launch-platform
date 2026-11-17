@@ -250,6 +250,7 @@ Sentryの初期化のオプションは、処理単位ごとに環境から`buil
 - HTTPの処理は`createSentryMiddleware(app, <オプションを返す関数>)`(`@sentry/hono/cloudflare`の`sentry`)で、定期実行とQueueの処理は`withSentryForScheduledAndQueue(<オプションを返す関数>, handler)`(`@sentry/cloudflare`の`withSentry`)で計装する。後者は`fetch`を包まず、HTTPの処理を二重に計装しない。`createWorkerHandler`が後者で定期実行とQueueの処理を包む。
 - `@sentry/cloudflare`はisolateごとにクライアントを使い回す。テストで送信先を差し替える場合は`cacheClient: false`を渡す。
 - 送信はSDKが`ctx.waitUntil`で非同期に行う。送信の失敗は、元の処理単位の応答と結果を変えない。
+- SDK(`@sentry/*`)を読み込んで送信するのは、共通ライブラリの`workers`の部品と、各アプリの外側の層(インフラ層・プレゼンテーション層・合成ルート)だけである。ドメイン層とアプリケーション層はSDKを型だけのimportも含めて読み込まず、知らせる内容を表すポートを受け取る。共通ライブラリの`core`は、送信前の除去処理がイベントの型を参照するため、型だけのimportに限って読み込める。静的解析で強制する(「[位置ごとの禁止import](../backend/002-layered-architecture-on-workers.md#位置ごとの禁止import)」)。
 
 ### 送信する例外と送信しない例外
 
