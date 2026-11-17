@@ -10,7 +10,7 @@
   - 完了状態: 単体テストが成功し、置き換えたファイルのtournament-weekとブラケットの既存の単体テストとWorkers統合テストが期待値を変えずに成功し、削った公開の関数の参照が`apps/`で0件になる
   - _Requirements: 1.1, 1.2, 1.4, 15.1_
 
-- [ ] 1.2 (P) ローンチ日の規則・マッチの日次のジョブ・夜の通知の収集の業務日付の計算を、1.1の共通の関数に寄せる
+- [x] 1.2 (P) ローンチ日の規則・マッチの日次のジョブ・夜の通知の収集の業務日付の計算を、1.1の共通の関数に寄せる
   - 実装前のギャップ分析の決定G5による、product-launch・match-engine・notificationsのコードへの明示の横断である。計算結果は変えない
   - 1.1の共通の部品の公開の後に行い、1.1が変えるtournament-week・ブラケットのファイルとは重ならない
   - ローンチ日の規則の公開の加算の関数を削って、呼び出し元(物理削除の段取りのジョブと単体テスト)を共通の関数へ移し、マッチの日次のジョブと夜の通知の収集の非公開の翌日の計算を置き換える
@@ -493,3 +493,4 @@
 
 - 開発者への依頼(1.1): Stripeの価格`year_tournament_entry`は開発者が2026-11-17に作成・税込化済みのため、新たな依頼は無い。
 - 1.1: `core/time/business-time.ts`に`addBusinessDays(date, days)`(負は過去)と`businessWeekdayOf(date): IsoWeekday`(月1〜日7)を公開した。`round-schedule.ts`の公開の`nextBusinessDate`は削除した(テストの3例は`business-time.unit.test.ts`へ移した)。docsの旧い名前(`backend/017`の178行目・`project-values.md`の1244行目)は8.2で直す。`week-schedule.ts`の`assertWeekStart`・`isSundayLaunch`は`businessWeekOf`のまま(計算を変えないため)。`days`が`NaN`のときは`RangeError`でなく`"NaN-NaN-NaN"`を返す(呼び出し元は整数の定数だけ)。
+- 1.2: 名指しの5ファイルに加え、完了状態(`apps/`に独自の業務日付の加算が無い)とCLAUDE.mdの水平展開により、notificationsの`previousBusinessDate`(`notification-jobs.ts`・`core/notifications/notification-slots.ts`)・engagementの`comment-anonymization-job.ts`・identityの`purge-orchestrator-job.ts`・`core/product/launch-status.ts`・`workers/match/d1-match-directory.ts`も`addBusinessDays`へ寄せた(計算結果は同じ)。`launch-date-rules.unit.test.ts`の`addBusinessDays`の12例は共通の部品のテストと重複するため削除した。対象外として残したもの: 時点を返す`core/ultras/entitlement-rules.ts`の`endOfBusinessDayContaining`(ultras-subscriptionの境界)、時点の加算の`qualifier-board-reader.ts`・`suppression-maintenance.ts`、clientとcommon-libの共用部品。

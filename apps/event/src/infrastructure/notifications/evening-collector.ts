@@ -1,7 +1,6 @@
 import { inject, injectable } from 'inversify';
 
 import { MATCH_PLATFORM_TYPES } from '../../../lib/core/match/identifiers.ts';
-import { MATCH_SCHEDULE } from '../../../lib/core/match/match-model.ts';
 import type { MatchDirectory } from '../../../lib/core/match/ports.ts';
 import { NOTIFICATIONS_PLATFORM_TYPES } from '../../../lib/core/notifications/identifiers.ts';
 import {
@@ -16,17 +15,14 @@ import type {
   StoredSlot,
 } from '../../../lib/core/notifications/ports.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
-  fromBusinessDateTime,
-  toBusinessDateTime,
 } from '../../../lib/core/time/business-time.ts';
 import { noticeSourceOf } from '../../../lib/workers/notifications/d1-notification-event-expander.ts';
 import type {
   SlotCollector,
   SlotCollectStep,
 } from '../../application/notifications/ports.ts';
-
-const MILLISECONDS_PER_DAY = 86_400_000;
 
 // 1回の記録の一括の書き込みの実行時間を抑えるため、通知の下書きを分けて記録する
 const DRAFTS_PER_RECORD = 500;
@@ -41,14 +37,6 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
     items.slice(index * size, (index + 1) * size),
   );
-}
-
-// 業務時刻は固定のオフセットで夏時間が無いため、0:00の24時間後の業務日付が翌日になる
-function nextBusinessDate(date: BusinessDate): BusinessDate {
-  const startOfDay = fromBusinessDateTime(date, MATCH_SCHEDULE.kickoff);
-  return toBusinessDateTime(
-    new Date(startOfDay.getTime() + MILLISECONDS_PER_DAY),
-  ).date;
 }
 
 function eveningDateOf(slot: StoredSlot): BusinessDate {
@@ -76,7 +64,7 @@ export class EveningCollector implements SlotCollector {
     const results = await this.draftsFor('match_result', date, now);
     const previews = await this.draftsFor(
       'match_preview',
-      nextBusinessDate(date),
+      addBusinessDays(date, 1),
       now,
     );
     for (const part of chunk([...results, ...previews], DRAFTS_PER_RECORD)) {

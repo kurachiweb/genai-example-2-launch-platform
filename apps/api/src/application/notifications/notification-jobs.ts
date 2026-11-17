@@ -21,10 +21,9 @@ import type {
   ScheduledJobHandler,
 } from '../../../lib/core/scheduling/cron-registry.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
   type BusinessTimeOfDay,
-  fromBusinessDateTime,
-  toBusinessDateTime,
 } from '../../../lib/core/time/business-time.ts';
 import type { Clock } from '../../../lib/core/time/clock.ts';
 import { NOTIFICATIONS_TYPES } from './notifications-types.ts';
@@ -66,7 +65,6 @@ export const NOTIFICATION_MAINTENANCE_JOB_DEFINITION: ScheduledJobDefinition =
 const MILLISECONDS_PER_MINUTE = 60_000;
 const MILLISECONDS_PER_HOUR = 3_600_000;
 const MILLISECONDS_PER_DAY = 86_400_000;
-const START_OF_DAY: BusinessTimeOfDay = Object.freeze({ hour: 0, minute: 0 });
 
 export const NOTIFICATION_SLOT_OVERDUE_AFTER_MS = MILLISECONDS_PER_HOUR;
 
@@ -89,14 +87,6 @@ export const NOTIFICATION_CLEANUP_BATCH_SIZE = 500;
 export const NOTIFICATION_CLEANUP_MAX_BATCHES = 10;
 
 const logger = getAppLogger(['api', 'application', 'notifications']);
-
-// 業務時刻は固定のオフセットで夏時間が無いため、0:00の24時間前の時点の業務日付が前日になる
-function previousBusinessDate(date: BusinessDate): BusinessDate {
-  const startOfDay = fromBusinessDateTime(date, START_OF_DAY);
-  return toBusinessDateTime(
-    new Date(startOfDay.getTime() - MILLISECONDS_PER_DAY),
-  ).date;
-}
 
 interface CleanupResult {
   readonly deleted: number;
@@ -214,7 +204,7 @@ export class NotificationMaintenanceJob implements ScheduledJobHandler {
 
     // 前日の23:45・当日の0:00のジョブが動かなかった場合も、ここで枠を作って送り出す
     for (const slot of [
-      eveningSlot(previousBusinessDate(date)),
+      eveningSlot(addBusinessDays(date, -1)),
       morningSlot(date),
     ]) {
       const stored = await this.slots.ensure(slot, now);

@@ -1,4 +1,5 @@
 import {
+  addBusinessDays,
   type BusinessDate,
   type BusinessTimeOfDay,
   fromBusinessDateTime,
@@ -29,7 +30,6 @@ export const LAUNCH_SELECTION_CUTOFF: BusinessTimeOfDay = Object.freeze({
 });
 
 const START_OF_DAY: BusinessTimeOfDay = Object.freeze({ hour: 0, minute: 0 });
-const MILLISECONDS_PER_DAY = 86_400_000;
 
 function isAtOrAfter(
   time: BusinessTimeOfDay,
@@ -45,14 +45,12 @@ export function kickoffAt(launchDate: BusinessDate): Date {
   return fromBusinessDateTime(launchDate, START_OF_DAY);
 }
 
-// 業務時刻は固定のオフセットで夏時間が無いため、24時間後の時点の業務日付が翌日になる
 export function qualifierLockThresholdDate(now: Date): BusinessDate {
   const current = toBusinessDateTime(now);
   if (!isAtOrAfter(current, PAIRING_TIME)) {
     return current.date;
   }
-  return toBusinessDateTime(new Date(now.getTime() + MILLISECONDS_PER_DAY))
-    .date;
+  return addBusinessDays(current.date, 1);
 }
 
 // 業務日付はYYYY-MM-DDの固定長のため、文字列の比較が日付の前後と一致する

@@ -13,11 +13,7 @@ import type {
   ScheduledJobDefinition,
   ScheduledJobHandler,
 } from '../../../lib/core/scheduling/cron-registry.ts';
-import {
-  type BusinessDate,
-  fromBusinessDateTime,
-  toBusinessDateTime,
-} from '../../../lib/core/time/business-time.ts';
+import { addBusinessDays } from '../../../lib/core/time/business-time.ts';
 import type { Clock } from '../../../lib/core/time/clock.ts';
 import type { MatchKickoff } from './match-kickoff.ts';
 import {
@@ -124,14 +120,6 @@ export async function sweepMissingDecidedEvents(
   }
 }
 
-// 業務時刻は固定のオフセットで夏時間が無いため、0:00の24時間後の業務日付が翌日になる
-function nextBusinessDate(date: BusinessDate): BusinessDate {
-  const startOfDay = fromBusinessDateTime(date, MATCH_SCHEDULE.kickoff);
-  return toBusinessDateTime(
-    new Date(startOfDay.getTime() + MILLISECONDS_PER_DAY),
-  ).date;
-}
-
 @injectable()
 export class MatchSettlementJob implements ScheduledJobHandler {
   constructor(
@@ -192,7 +180,7 @@ export class QualifierPairingJob implements ScheduledJobHandler {
     if (settled > 0) {
       this.reporter.report({ kind: 'match-settlement-late', count: settled });
     }
-    const matchDate = nextBusinessDate(business.date);
+    const matchDate = addBusinessDays(business.date, 1);
     const { launches, matches } = await this.pairing.pair(matchDate);
     logger.info('翌日の予選を組みました', {
       swept,

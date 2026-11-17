@@ -2,11 +2,11 @@ import { isUppercaseUlid } from '../ids/uppercase-ulid.ts';
 import { MATCH_SCHEDULE } from '../match/match-model.ts';
 import { PAIRING_TIME } from '../product/launch-status.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
   type BusinessTimeOfDay,
   fromBusinessDateTime,
   parseBusinessDate,
-  toBusinessDateTime,
 } from '../time/business-time.ts';
 
 export type NotificationSlotKind = 'evening' | 'morning' | 'award';
@@ -39,8 +39,6 @@ export const EVENING_DISPATCH_DEADLINE_SECONDS = 600;
 export const MORNING_KICKOFF_WAIT_SECONDS = 300;
 
 const MILLISECONDS_PER_SECOND = 1000;
-const MILLISECONDS_PER_DAY = 86_400_000;
-const START_OF_DAY: BusinessTimeOfDay = Object.freeze({ hour: 0, minute: 0 });
 const DATED_SLOT_KEY_PATTERN =
   /^(?<kind>evening|morning):(?<date>\d{4}-\d{2}-\d{2})$/u;
 const AWARD_SLOT_KEY_PREFIX = 'award:';
@@ -80,16 +78,8 @@ export function awardSlot(eventId: string, at: Date): NotificationSlot {
   };
 }
 
-// 業務時刻は固定のオフセットで夏時間が無いため、0:00の24時間前の時点の業務日付が前日になる
-function previousBusinessDate(date: BusinessDate): BusinessDate {
-  const startOfDay = fromBusinessDateTime(date, START_OF_DAY);
-  return toBusinessDateTime(
-    new Date(startOfDay.getTime() - MILLISECONDS_PER_DAY),
-  ).date;
-}
-
 export function previewSlotFor(matchDate: BusinessDate): NotificationSlot {
-  return eveningSlot(previousBusinessDate(matchDate));
+  return eveningSlot(addBusinessDays(matchDate, -1));
 }
 
 export function resultSlotFor(matchDate: BusinessDate): NotificationSlot {

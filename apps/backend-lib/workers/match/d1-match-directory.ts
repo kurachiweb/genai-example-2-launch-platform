@@ -40,10 +40,10 @@ import type {
   SupporterRecord,
 } from '../../core/match/ports.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
   fromBusinessDateTime,
   parseBusinessDate,
-  toBusinessDateTime,
 } from '../../core/time/business-time.ts';
 
 // D1のバインド変数の上限(100)から、IDの一覧以外に使う変数の分を残す
@@ -176,10 +176,8 @@ function datesBetween(from: BusinessDate, to: BusinessDate): BusinessDate[] {
       `日ごとの集計の期間は開始が終わり以前の1〜${String(MAX_SUMMARY_DAYS)}日で指定してください(${from}〜${to})`,
     );
   }
-  return Array.from(
-    { length: days },
-    (_, offset) =>
-      toBusinessDateTime(new Date(start + offset * MILLISECONDS_PER_DAY)).date,
+  return Array.from({ length: days }, (_, offset) =>
+    addBusinessDays(from, offset),
   );
 }
 

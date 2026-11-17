@@ -6,7 +6,6 @@ import {
   parseBusinessDate,
 } from '../../../lib/core/time/business-time.ts';
 import {
-  addBusinessDays,
   checkLaunchDate,
   computeLaunchDateWindow,
   type LaunchBasis,
@@ -25,25 +24,6 @@ const lost = (launchDate: string): LaunchBasis => ({
 const won = (launchDate: string): LaunchBasis => ({
   launchDate: day(launchDate),
   outcome: 'won',
-});
-
-describe('addBusinessDays', () => {
-  test.each([
-    ['同じ月の中', '2026-09-07', 7, '2026-09-14'],
-    ['0日はそのままの日', '2026-09-07', 0, '2026-09-07'],
-    ['月末をまたぐ', '2026-09-30', 1, '2026-10-01'],
-    ['31日の月末をまたぐ', '2026-01-31', 1, '2026-02-01'],
-    ['年末をまたぐ', '2026-12-31', 1, '2027-01-01'],
-    ['今日から90日後', '2026-09-07', 90, '2026-12-06'],
-    ['年末から90日後', '2026-12-31', 90, '2027-03-31'],
-    ['うるう年の2月28日の翌日はうるう日', '2028-02-28', 1, '2028-02-29'],
-    ['うるう日の翌日は3月1日', '2028-02-29', 1, '2028-03-01'],
-    ['平年の2月28日の翌日は3月1日', '2027-02-28', 1, '2027-03-01'],
-    ['負の日数で年末をまたいで戻る', '2027-01-05', -12, '2026-12-24'],
-    ['負の日数でうるう日へ戻る', '2028-03-01', -1, '2028-02-29'],
-  ])('%s: %s + %d日 = %s', (_, date, days, expected) => {
-    expect(addBusinessDays(day(date), days)).toBe(day(expected));
-  });
 });
 
 describe('computeLaunchDateWindow の基本の下限と上限', () => {
