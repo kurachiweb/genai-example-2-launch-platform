@@ -109,7 +109,7 @@ describe('YearTournamentDrawService.drawDue(組み合わせ決定の時刻)', ()
     });
   });
 
-  test('23:45に年を凍結し、参加資格の枠を組み合わせの対象、受付中の枠を期限切れに分類して終えた年を記録する', async () => {
+  test('23:45に年を凍結し、参加資格の枠を組み合わせの対象、受付中の枠を期限切れに分類して終えた年を記録してから、組み合わせ・記録・後処理を行う', async () => {
     const { service, calls, tournaments } = createDrawService();
 
     await expect(service.drawDue(DRAW_AT)).resolves.toEqual({
@@ -124,10 +124,14 @@ describe('YearTournamentDrawService.drawDue(組み合わせ決定の時刻)', ()
       'classify',
       'listDrawn',
       'excludeOverCapacity',
+      'bracketDraw',
+      'markDrawn',
+      'applyResult',
+      'processYear',
     ]);
     expect(tournaments.freezeOutcomes).toEqual(['frozen']);
     await expect(readTournament()).resolves.toEqual({
-      status: 'drawing',
+      status: 'finished',
       drawStartedAt: DRAW_AT,
     });
     await expect(readEntry(11)).resolves.toEqual({
@@ -214,7 +218,7 @@ describe('YearTournamentDrawService.drawDue(凍結と再開)', () => {
     expect(syncInputs).toEqual([]);
     expect(calls).not.toContain('freeze');
     await expect(readTournament()).resolves.toEqual({
-      status: 'drawing',
+      status: 'in_progress',
       drawStartedAt: DRAW_AT,
     });
     await expect(readEntry(1)).resolves.toBeUndefined();
@@ -246,7 +250,7 @@ describe('YearTournamentDrawService.drawDue(凍結と再開)', () => {
 
     expect(tournaments.freezeOutcomes).toEqual(['already']);
     await expect(readTournament()).resolves.toEqual({
-      status: 'drawing',
+      status: 'in_progress',
       drawStartedAt: DRAW_AT,
     });
     await expect(readEntry(12)).resolves.toMatchObject({
@@ -359,7 +363,7 @@ describe('YearTournamentDrawService.drawDue(凍結と同時の変更)', () => {
       closeReason: 'deleted',
       purchaseId: PURCHASE_ID,
       closedAt: DRAW_AT,
-      refundStatus: 'pending',
+      refundStatus: 'requested',
     });
     await expect(readEntry(13)).resolves.toMatchObject({
       status: 'drawn',

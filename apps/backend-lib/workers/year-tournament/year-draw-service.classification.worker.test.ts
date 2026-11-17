@@ -87,7 +87,7 @@ beforeEach(async () => {
 });
 
 describe('YearTournamentDrawService.drawDue(分類)', () => {
-  test('参加資格の枠は、可視なら組み合わせの対象、非公開化・停止なら除外、論理削除済みなら喪失とし、決済した枠だけを返金待ちにする', async () => {
+  test('参加資格の枠は、可視なら組み合わせの対象、非公開化・停止なら除外、論理削除済みなら喪失とし、決済した枠だけの返金を依頼する', async () => {
     const { service } = createDrawService();
 
     await service.drawDue(DRAW_AT);
@@ -118,7 +118,7 @@ describe('YearTournamentDrawService.drawDue(分類)', () => {
         entitledAt: T0,
         closedAt: DRAW_AT,
         classifiedYear: YEAR,
-        refundStatus: 'pending',
+        refundStatus: 'requested',
       });
     }
     await expect(readEntry(5)).resolves.toMatchObject({
@@ -126,7 +126,7 @@ describe('YearTournamentDrawService.drawDue(分類)', () => {
       closeReason: 'deleted',
       closedAt: DRAW_AT,
       classifiedYear: YEAR,
-      refundStatus: 'pending',
+      refundStatus: 'requested',
     });
     await expect(readEntry(6)).resolves.toMatchObject({
       status: 'forfeited',

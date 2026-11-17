@@ -13,7 +13,9 @@ import {
   createDrawService,
   DRAW_AT,
   entryOf,
+  readDrawnYear,
   readEntry,
+  YEAR_TOURNAMENT_ID,
 } from './testing/year-draw-fixtures.ts';
 import {
   championWeekTournamentIdOf,
@@ -72,9 +74,9 @@ beforeEach(async () => {
 });
 
 describe('YearTournamentDrawService.drawDue(参加数の上限)', () => {
-  test('参加資格を得た可視の枠が65件なら、Week優勝の日時が最も古い1件を上限による除外にして返金待ちにし、残りの64件を組み合わせの対象にする', async () => {
+  test('参加資格を得た可視の枠が65件なら、Week優勝の日時が最も古い1件を上限による除外にして返金を依頼し、残りの64件で組み合わせる', async () => {
     await seedEntries();
-    const { service, entries } = createDrawService();
+    const { service, entries, refundRequests } = createDrawService();
 
     await expect(service.drawDue(DRAW_AT)).resolves.toEqual({
       drawn: [YEAR],
@@ -91,8 +93,11 @@ describe('YearTournamentDrawService.drawDue(参加数の上限)', () => {
       entitledAt: expect.any(Date) as unknown,
       closedAt: DRAW_AT,
       classifiedYear: YEAR,
-      refundStatus: 'pending',
+      refundStatus: 'requested',
     });
+    expect(refundRequests).toEqual([
+      expect.objectContaining({ purchaseId: PURCHASE_ID }),
+    ]);
     await expect(drawnEntryIds()).resolves.toEqual(
       ENTITLED_INDEXES.slice(1).map(yearEntryIdOf),
     );
@@ -100,11 +105,20 @@ describe('YearTournamentDrawService.drawDue(参加数の上限)', () => {
       status: 'expired',
       closeReason: 'deadline',
     });
+    await expect(readDrawnYear()).resolves.toMatchObject({
+      status: 'in_progress',
+      firstRoundDate: '2027-05-25',
+      participantCount: YEAR_MAX_PARTICIPANTS,
+    });
   });
 
-  test('凍結済みの年の再実行は同じ64件を選び、除外を書き換えない', async () => {
+  test('組み合わせの前に中断した年の再実行は同じ64件を選び、除外を書き換えない', async () => {
     await seedEntries();
-    await createDrawService().service.drawDue(DRAW_AT);
+    await expect(
+      createDrawService({ failDrawOf: YEAR_TOURNAMENT_ID }).service.drawDue(
+        DRAW_AT,
+      ),
+    ).resolves.toEqual({ drawn: [], failed: [YEAR] });
     const { service, entries } = createDrawService();
 
     await expect(service.drawDue(LATER)).resolves.toEqual({
@@ -121,6 +135,10 @@ describe('YearTournamentDrawService.drawDue(参加数の上限)', () => {
     await expect(drawnEntryIds()).resolves.toEqual(
       ENTITLED_INDEXES.slice(1).map(yearEntryIdOf),
     );
+    await expect(readDrawnYear()).resolves.toMatchObject({
+      status: 'in_progress',
+      participantCount: YEAR_MAX_PARTICIPANTS,
+    });
   });
 
   test('最も古いWeek優勝の日時が同じ枠は、WeekトーナメントのIDの小さい枠を残す', async () => {

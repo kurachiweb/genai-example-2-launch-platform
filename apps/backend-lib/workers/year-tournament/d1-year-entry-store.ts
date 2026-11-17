@@ -3,6 +3,7 @@ import {
   asc,
   eq,
   gt,
+  gte,
   inArray,
   isNotNull,
   lt,
@@ -20,12 +21,10 @@ import type { Database } from '../../../db/client.ts';
 import { yearTournamentEntries } from '../../../db/schema/tournament/year-tournament-entries.ts';
 import { yearTournaments } from '../../../db/schema/tournament/year-tournaments.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
-import {
-  type BusinessDate,
-  parseBusinessDate,
-} from '../../core/time/business-time.ts';
+import { parseBusinessDate } from '../../core/time/business-time.ts';
 import type {
   NewYearEntry,
+  YearCandidateRange,
   YearEntryClassification,
   YearEntryRecord,
   YearEntryStore,
@@ -249,7 +248,7 @@ export class D1YearEntryStore implements YearEntryStore {
   }
 
   async listCandidates(
-    deadlineDate: BusinessDate,
+    { awardedFrom, awardedBefore }: YearCandidateRange,
     afterEntryId: string | undefined,
     limit: number,
   ): Promise<readonly YearEntryRecord[]> {
@@ -259,7 +258,10 @@ export class D1YearEntryStore implements YearEntryStore {
       .where(
         and(
           inArray(yearTournamentEntries.status, OPEN_ENTRY_STATUSES),
-          lt(yearTournamentEntries.awardedDate, deadlineDate),
+          awardedFrom === null
+            ? undefined
+            : gte(yearTournamentEntries.awardedDate, awardedFrom),
+          lt(yearTournamentEntries.awardedDate, awardedBefore),
           afterEntryId === undefined
             ? undefined
             : gt(yearTournamentEntries.id, afterEntryId),

@@ -446,6 +446,8 @@ describe('D1YearEntryStore.findByLaunches', () => {
 describe('D1YearEntryStore.listCandidates', () => {
   const DEADLINE_DATE = YEAR_SCHEDULE.deadlineDate;
 
+  const UNBOUNDED = { awardedFrom: null, awardedBefore: DEADLINE_DATE };
+
   // 1・2は対象、3は決済期限日の当日、4は決済期限日の後、5〜8は終わった枠
   beforeEach(async () => {
     const indexes = [5, 6, 7, 8];
@@ -484,7 +486,7 @@ describe('D1YearEntryStore.listCandidates', () => {
 
   test('受付中・参加資格の枠のうちWeek優勝の日が決済期限日より前のものだけを、枠のIDの昇順で返す', async () => {
     await expect(
-      store.listCandidates(DEADLINE_DATE, undefined, 10),
+      store.listCandidates(UNBOUNDED, undefined, 10),
     ).resolves.toEqual([
       entryRecordOf(1),
       entryRecordOf(2, {
@@ -496,13 +498,9 @@ describe('D1YearEntryStore.listCandidates', () => {
   });
 
   test('件数の上限と直前の枠のIDで続きから読む', async () => {
-    const first = await store.listCandidates(DEADLINE_DATE, undefined, 1);
-    const second = await store.listCandidates(
-      DEADLINE_DATE,
-      yearEntryIdOf(1),
-      1,
-    );
-    const rest = await store.listCandidates(DEADLINE_DATE, yearEntryIdOf(2), 1);
+    const first = await store.listCandidates(UNBOUNDED, undefined, 1);
+    const second = await store.listCandidates(UNBOUNDED, yearEntryIdOf(1), 1);
+    const rest = await store.listCandidates(UNBOUNDED, yearEntryIdOf(2), 1);
 
     expect(first.map(({ entryId }) => entryId)).toEqual([yearEntryIdOf(1)]);
     expect(second.map(({ entryId }) => entryId)).toEqual([yearEntryIdOf(2)]);
@@ -511,7 +509,7 @@ describe('D1YearEntryStore.listCandidates', () => {
 
   test('決済期限日を後にすると、その日より前の受付中の枠も返す', async () => {
     const candidates = await store.listCandidates(
-      parseBusinessDate('2027-05-31'),
+      { awardedFrom: null, awardedBefore: parseBusinessDate('2027-05-31') },
       undefined,
       10,
     );
@@ -519,6 +517,39 @@ describe('D1YearEntryStore.listCandidates', () => {
     expect(candidates.map(({ entryId }) => entryId)).toEqual([
       yearEntryIdOf(1),
       yearEntryIdOf(2),
+      yearEntryIdOf(3),
+      yearEntryIdOf(4),
+    ]);
+  });
+
+  test('下限を渡すと、Week優勝の日が下限の当日以後の枠だけを返す', async () => {
+    const candidates = await store.listCandidates(
+      {
+        awardedFrom: parseBusinessDate('2027-05-23'),
+        awardedBefore: parseBusinessDate('2027-05-31'),
+      },
+      undefined,
+      10,
+    );
+
+    expect(candidates.map(({ entryId }) => entryId)).toEqual([
+      yearEntryIdOf(2),
+      yearEntryIdOf(3),
+      yearEntryIdOf(4),
+    ]);
+  });
+
+  test('下限の前日に確定したWeek優勝の枠は返さない', async () => {
+    const candidates = await store.listCandidates(
+      {
+        awardedFrom: parseBusinessDate('2027-05-24'),
+        awardedBefore: parseBusinessDate('2027-05-31'),
+      },
+      undefined,
+      10,
+    );
+
+    expect(candidates.map(({ entryId }) => entryId)).toEqual([
       yearEntryIdOf(3),
       yearEntryIdOf(4),
     ]);

@@ -161,6 +161,12 @@ export interface YearEntryClassification {
   readonly entitlementSource?: 'ultras';
 }
 
+// Week優勝の日の範囲[awardedFrom, awardedBefore)。awardedFromがnullなら下限を設けない
+export interface YearCandidateRange {
+  readonly awardedFrom: BusinessDate | null;
+  readonly awardedBefore: BusinessDate;
+}
+
 export type YearRefundClosedStatus = Extract<
   YearRefundStatus,
   'not_needed' | 'already_refunded' | 'rejected'
@@ -180,9 +186,9 @@ export interface YearEntryStore {
   ): Promise<ReadonlyMap<string, YearEntryRecord>>;
   findEntry(entryId: string): Promise<YearEntryRecord | undefined>;
   listOpenByOwner(userId: string): Promise<readonly YearEntryRecord[]>;
-  // 受付中・参加資格の枠のうちWeek優勝の日が決済期限日より前のものを、afterEntryIdより後から枠のIDの昇順で返す
+  // 受付中・参加資格の枠のうちWeek優勝の日が範囲にあるものを、afterEntryIdより後から枠のIDの昇順で返す
   listCandidates(
-    deadlineDate: BusinessDate,
+    range: YearCandidateRange,
     afterEntryId: string | undefined,
     limit: number,
   ): Promise<readonly YearEntryRecord[]>;
