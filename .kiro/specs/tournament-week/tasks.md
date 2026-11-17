@@ -393,7 +393,7 @@
   - _Depends: 7.6, 7.7_
   - _Requirements: 10.1, 10.7_
 
-- [ ] 8. 統合・ドキュメント・E2E
+- [x] 8. 統合・ドキュメント・E2E
 - [x] 8.1 時刻の連鎖の統合テストを作る
   - apiのWorkers統合テストの環境で行い、eventの確定のマッチイベントの処理の代わりに、それが呼ぶbackend-libの`WeekProgressionService`を直接呼ぶ(`apps/event`を読み込まない)
   - 先に、Workers統合テストで、23:35の決済期限・23:40の突合と確定・23:45の組み合わせと進行の順(paymentsの10、match-engineの1100、notificationsの1300、本specの1500)で、突合で反映された決済が組み合わせに入ること、23:45より後に支払われた決済はpaymentsが自動で返金し、23:45より前に支払われ凍結の後に反映された決済は拒否と自動返金になり、どちらも組み合わせに入らないこと、確定のイベントの処理と23:45のジョブの両方の経路で翌日の0:00の開始に間に合うこと、その夜の結果・翌日の予告・受賞が全て発行された後で本specの`markReady`が記録され(notificationsの実際の`EveningDispatchGate`)、本specの準備の完了の前にはnotificationsが送り出しを依頼しないこと、notificationsの実際の発行の口で開始済みのマッチの予告が混じっても残りの通知イベントが記録されることを確かめる
@@ -414,12 +414,11 @@
   - _Depends: 5.5, 6.10_
   - _Requirements: 15.4_
 
-- [ ] 8.4 参加費・組み合わせ・受賞のE2Eシナリオを作る
+- [x] 8.4 参加費・組み合わせ・受賞のE2Eシナリオを作る
   - 順序: 受付中の枠の投稿者がプロダクト詳細ページから参加費をテストカードで支払う(paymentsのE2Eと同じく`stripe listen`の転送が要る)→参加資格を得た表示を待つ→補助(b)で期限を過去へ移す→23:40・23:45のジョブ(8.3のとおり`triggerScheduled`で起動)で組み合わせ(参加2で決勝だけ)→補助(c)で決勝を今日の開始済みにする→トップページの決勝の区画とブラケットのページにマッチが出ることを確かめる→補助(d)で終了を過去へ移す→23:40・23:45のジョブで確定と進行→プロダクト詳細ページのトロフィーに受賞が出ることを確かめる。Ultrasの案内は確かめない
   - 開始の前に、devとstagingが共用するsandboxに価格`week_tournament_entry`があることを確かめ、無ければ本タスクを保留して開発者へ報告する(作成の依頼は1.1で行った)
   - 完了状態: ローカルでE2Eが成功する
   - _Depends: 7.3, 7.5, 7.8, 8.1, 8.3_
-  - _Blocked: devとstagingが共用するStripeのsandboxに`lookup_key`が`week_tournament_entry`の価格が無い(2026-11-17に照会して0件。比較の`payments_smoke`は存在)。開発者が価格(USD・税込・参考$5・1回限り)を作成した後に再開する_
   - _Requirements: 15.4_
 
 - [x] 8.5 全体の検査とカバレッジを確かめる
@@ -491,3 +490,4 @@
 - 8.5: `bun run check`・全アプリの単体・ブラウザ・Workers統合テスト(カバレッジ付き)と週トーナメントのE2Eが通る。本specの変更ファイル(`74bf65ee..HEAD`)で計測対象の171件は全て80%以上(最低`board-resolvers.ts`の行86.67%)、型だけの`ports.ts`・`$week.tsx`・clientの合成の登録・テストとE2Eの補助の18件は各アプリのカバレッジの対象外。7.8で単体テストに書いた登録口の検査は合成のファイルとReactの部品を単体のカバレッジに0%で入れるため、既存の`directory-sections.browser.test.ts`に倣いブラウザテスト`product-section-registries.browser.test.ts`へ移した。文言の関数の単体テストと`observability-fixtures`のWorkersテストを足した。全体のE2Eはマークダウンの浮動ツールバー(dev)とログイン(preview、`SQLITE_BUSY`)の本spec外の3件が落ち、単独・他方の段の実行では通る。ブラウザとWorkersのテストを同時に走らせるとタイムアウトが多発するため順に実行する。
 - 全体検証(kiro-validate-impl、2026-11-17): Ultrasの免除の期間(勝利の確定から`min(now, 決済期限)`まで、空なら特典の判定を問い合わせない)が登録・決済の開始・組み合わせ決定・導線の照会の4か所に重複していたため、`core/week-tournament/week-entry-rules.ts`の`ultrasExemptionPeriodOf`にまとめた(振る舞いは不変)。夜の送り出しの前提の名前は`EVENING_BRACKET_PARTICIPANT`を読み込む形に、`WEEK_REFUND_REASONS`はcoreの規則の一覧を唯一の出どころにした。1.2の「`core/time`の`businessWeekOf`は本体から使われなくなった」は誤りで、`core/week-tournament/week-schedule.ts`が週の初日の判定に使う(`common-lib`の`weekStartOf`と二重、未統合)。8.4はStripeの価格が無いため保留のまま。
 - 実装後の追加修正(2026-11-17、開発者の決定): (1)受付中でもプロダクトを表示できない間は、参加費の導線のボタンと参加費を出したまま無効にし、決済の開始の拒否と同じ理由をGraphQLの`WeekEntryPanel.checkoutBlock`(`code`・`message`、文言は`WEEK_ENTRY_OFFER_REJECTION_MESSAGES`)で示す(要件10.11)。(2)トップページの決勝の区画の見出しにも共用の`WeekBracketLink`で「ブラケットを見る」を置く(要件8.5)。(3)ブラケットの進行の計画`bracket-progress-plan.ts`は`core/tournament/`へ移した(3.3の記録の`workers/tournament/`は旧パス)。(4)要件7.6の専用テスト`week-draw-service.listing.worker.test.ts`(期限切れ・喪失・補完の枠で、予選の勝利の記録・ディレクトリの掲載・既に授与した賞が変わらない)。(5)api・eventのapplication・domain層とcoreで`@sentry/*`の読み込みを静的解析で禁じた(coreは型だけ許す)。requirements.md 10.2は秒読みを自動更新がオンのプロダクト詳細だけに直し、design.mdを実装に合わせた。
+- 8.4(2026-11-17、開発者が価格`week_tournament_entry`を作成し税込に設定した後に完了。以前の「保留」の記述は解消): `e2e/client/week-tournament.e2e.test.ts`の「Weekトーナメントの参加費・組み合わせ・受賞」と手順`e2e/client/week-tournament-steps.ts`。利用者を画面で登録し、プロフィールの編集画面の初期ハンドルを(a)へ渡す。決済は既存の`checkout-steps.ts`を再利用し、参加費のボタンはハイドレーションの完了の手掛かりが無いため元の名前のボタンが見えている間だけ押し直す。決勝の区画は2つのプロダクトの対戦カードを持つものに絞り、その「ブラケットを見る」からブラケットのページへ移る。ローカルでは組み合わせ決定の予定のイベントの処理中に確定のイベントが重なるとD1の`SQLITE_BUSY`で失敗し、ローカルのQueueの再試行が約5分後まで届かないため、(d)`endWeekFinal`の最初で決勝のマッチの未処理のイベントが無くなるのを待つ(`finalPendingEventCountSql`)。修正後にファイル全体を3回続けて成功。実行のたびにsandboxに決済が1つ残る。

@@ -663,6 +663,22 @@ export function parseFinalDecidedEvent(
   return row.status;
 }
 
+export function finalPendingEventCountSql(matchId: string): string {
+  return `SELECT COUNT(*) AS pending FROM match_events WHERE match_id = ${sqlStringLiteral(matchId)} AND status = 'pending';`;
+}
+
+export function parseFinalPendingEventCount(
+  rows: readonly LocalD1Row[],
+): number {
+  const [row] = rows;
+  if (rows.length !== 1 || typeof row?.pending !== 'number') {
+    throw new Error(
+      `決勝のイベントの照会の結果の形式が正しくありません: ${JSON.stringify(rows)}`,
+    );
+  }
+  return row.pending;
+}
+
 export function weekTournamentStateSql(tournamentId: string): string {
   return `SELECT wt.status AS status, wt.outcome AS outcome, wt.bracket_id AS bracket_id, e.product_id AS champion_product_id FROM week_tournaments wt LEFT JOIN week_tournament_entries e ON e.id = wt.champion_entry_id WHERE wt.id = ${sqlStringLiteral(tournamentId)};`;
 }

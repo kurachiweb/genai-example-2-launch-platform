@@ -11,9 +11,11 @@ import {
   entryWindowCloseSql,
   FIXTURE_WEEK_COUNT,
   finalDecidedEventSql,
+  finalPendingEventCountSql,
   fixtureWeekStartsSql,
   openEntryEntitleSql,
   parseFinalDecidedEvent,
+  parseFinalPendingEventCount,
   parseFixtureWeekStarts,
   parseVerifiedUserId,
   parseWeekEntrantsInsert,
@@ -793,5 +795,38 @@ describe('weekTournamentStateSql・parseWeekTournamentState', () => {
         'T',
       ),
     ).toThrow('Weekトーナメントの照会の結果の形式が正しくありません');
+  });
+});
+
+describe('finalPendingEventCountSql・parseFinalPendingEventCount', () => {
+  test('決勝のマッチの処理を終えていないイベントの数を数え、処理済みのイベントと他のマッチのイベントを数えない', () => {
+    const plan = createdPlan();
+    startedFinal(plan);
+
+    expect(
+      parseFinalPendingEventCount(queryRows(finalPendingEventCountSql('MF'))),
+    ).toBe(0);
+
+    db.run(
+      `INSERT INTO match_events (id, match_id, match_kind, type, occurred_at, status, dispatch_count, last_dispatched_at, created_at, updated_at) VALUES ('SC', 'MF', 'week', 'scheduled', 1, 'pending', 1, 1, 1, 1)`,
+    );
+
+    expect(
+      parseFinalPendingEventCount(queryRows(finalPendingEventCountSql('MF'))),
+    ).toBe(1);
+    expect(
+      parseFinalPendingEventCount(
+        queryRows(finalPendingEventCountSql('OTHER')),
+      ),
+    ).toBe(0);
+  });
+
+  test('数の形式が想定外なら失敗する', () => {
+    expect(() => parseFinalPendingEventCount([{ pending: '1' }])).toThrow(
+      '決勝のイベントの照会の結果の形式が正しくありません',
+    );
+    expect(() => parseFinalPendingEventCount([])).toThrow(
+      '決勝のイベントの照会の結果の形式が正しくありません',
+    );
   });
 });

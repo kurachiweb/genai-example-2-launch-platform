@@ -20,11 +20,13 @@ import {
 import {
   chooseFixtureWeekStart,
   finalDecidedEventSql,
+  finalPendingEventCountSql,
   fixtureWeekStartsSql,
   entryWindowCloseSql,
   openEntryEntitleSql,
   ownerIdOf,
   parseFinalDecidedEvent,
+  parseFinalPendingEventCount,
   parseFixtureWeekStarts,
   parseVerifiedUserId,
   parseWeekEntrantsInsert,
@@ -92,9 +94,9 @@ const FINAL_ENDED_AGO_MS = MINUTE_MS;
 // 開始の後の画面の確認の途中で、他のテストが起こす23:40のジョブに決勝を確定させないよう、終了の日時を少なくともこの分だけ先にする
 const FINAL_MIN_LIVE_MS = 10 * MINUTE_MS;
 
-// 確定のイベントはキューを経てイベントサーバーが処理する。同じマッチの前のイベントの処理を待つ遅延を含めて待つ
-const DECIDED_EVENT_TIMEOUT_MS = 90_000;
-const DECIDED_EVENT_POLL_INTERVAL_MS = 1000;
+// マッチのイベントはキューを経てイベントサーバーが処理する。同じマッチの前のイベントの処理を待つ遅延と、ローカルのD1のロックの競合による再試行の遅延を含めて待つ
+const MATCH_EVENT_TIMEOUT_MS = 90_000;
+const MATCH_EVENT_POLL_INTERVAL_MS = 1000;
 
 const nextFixtureId = (): string =>
   fixtureId(new Date(), randomBytes(ID_RANDOM_BYTES));
@@ -251,11 +253,22 @@ export async function startWeekFinalToday(
   return requireWeekFinal(fixture);
 }
 
+// 確定のイベントの処理が組み合わせ決定の通知などの前のイベントの処理と重なると、ローカルのD1のロックの競合で失敗して再試行の遅延を待つことになるため、前のイベントの処理を終えてから確定させる
+async function waitForFinalEventsSettled(final: WeekFinal): Promise<void> {
+  await pollFinalEvents(final, async () => {
+    const pending = parseFinalPendingEventCount(
+      await executeLocalD1(finalPendingEventCountSql(final.matchId)),
+    );
+    return pending === 0 ? undefined : `処理中のイベント${String(pending)}件`;
+  });
+}
+
 // (d)決勝の終了の日時を過去へ移す。0票同士では受賞が無いため、勝たせる側にサポーターのUpvoteを1票入れる。確定は23:40のジョブに任せる
 export async function endWeekFinal(
   final: WeekFinal,
   winner: WeekTournamentEntrant,
 ): Promise<void> {
+  await waitForFinalEventsSettled(final);
   const now = new Date();
   const upvoteId = nextFixtureId();
   parseWeekFinalEnd(
@@ -274,23 +287,35 @@ export async function endWeekFinal(
   );
 }
 
-async function waitForDecidedEventCompleted(final: WeekFinal): Promise<void> {
-  const deadline = Date.now() + DECIDED_EVENT_TIMEOUT_MS;
-  let status: 'pending' | 'completed' | undefined;
+// 待つ状態でなければundefined、待つ間はその状態の説明を返す照会を、決勝のイベントの処理の待ちの期限まで繰り返す
+async function pollFinalEvents(
+  final: WeekFinal,
+  readWaiting: () => Promise<string | undefined>,
+): Promise<void> {
+  const deadline = Date.now() + MATCH_EVENT_TIMEOUT_MS;
   for (;;) {
-    status = parseFinalDecidedEvent(
-      await executeLocalD1(finalDecidedEventSql(final.matchId)),
-    );
-    if (status === 'completed') {
+    const waiting = await readWaiting();
+    if (waiting === undefined) {
       return;
     }
     if (Date.now() >= deadline) {
       throw new Error(
-        `決勝(${final.matchId})の確定のイベントの処理が終わりません(状態: ${status ?? '未作成'})。APIサーバーの23:40の確定のジョブとイベントサーバーのキューの処理のログを確かめてください`,
+        `決勝(${final.matchId})のイベントの処理が終わりません(${waiting})。APIサーバーの定期実行のジョブとイベントサーバーのキューの処理のログを確かめてください`,
       );
     }
-    await setTimeout(DECIDED_EVENT_POLL_INTERVAL_MS);
+    await setTimeout(MATCH_EVENT_POLL_INTERVAL_MS);
   }
+}
+
+async function waitForDecidedEventCompleted(final: WeekFinal): Promise<void> {
+  await pollFinalEvents(final, async () => {
+    const status = parseFinalDecidedEvent(
+      await executeLocalD1(finalDecidedEventSql(final.matchId)),
+    );
+    return status === 'completed'
+      ? undefined
+      : `確定のイベントの状態: ${status ?? '未作成'}`;
+  });
 }
 
 // 当日の業務日付で23:40(マッチの確定)と23:45(組み合わせ決定・進行)のジョブを起こす。ジョブの失敗も応答は成功になるため、結果はローカルのD1か画面で確かめる
