@@ -236,7 +236,7 @@
   - _Depends: 5.2, 5.3, 5.4_
   - _Requirements: 1.1, 3.2, 4.1, 12.6, 14.1, 14.3_
 
-- [ ] 6. APIサーバー
+- [x] 6. APIサーバー
 - [x] 6.1 apiの識別子と、ジョブの失敗の通知のポートと、2つのジョブ(23:45の夜の処理・4:21の再処理)を作る
   - apiの全部品(ジョブ・供給元・照会・決済の開始・失敗の通知)のDIの識別子と、ジョブの失敗を運用者へ知らせるポート(`WeekTournamentIncidentReporter`、match-engineの`MatchIncidentReporter`と同じ形)をここで作る(束縛と登録は6.10)。application層からSentryを直接呼ばない
   - 23:45の`tournament-week.evening-bracket`は毎晩、組み合わせ決定→その日に確定した予選の枠の追いつき(`listForDate({ date, kinds: ['qualifier'], now })`)→全トーナメントの進行(確定のマッチイベントへの同期の追いつき)→その夜の通知イベントの発行(`publishNight`)の順に行い、最後にnotificationsの`EveningDispatchGate.markReady({ participant: 'tournament-week.evening-bracket', date: context.business.date, at: clock.now() })`を1回呼ぶ。いずれかが例外を投げた、または組み合わせ決定・進行の失敗の一覧が空でなければ、全てを試した後に失敗の通知のポートへ渡して例外を投げ、`markReady`を呼ばない。戻り値はログにだけ使う(notificationsの仮2)
@@ -315,7 +315,7 @@
   - 完了状態: Workers統合テストが成功し、スキーマの集約点の検証を通り、apiのスキーマの生成(`generated/schema.graphql`の更新。7.1のclientの型の生成が読む)が成功する
   - _Requirements: 8.1, 8.4, 9.4, 9.6, 10.8, 13.3, 14.7_
 
-- [ ] 6.12 GraphQLの参加費の導線と決済の開始の操作を加える
+- [x] 6.12 GraphQLの参加費の導線と決済の開始の操作を加える
   - ルート型は`extend`を使わず`type Query { ... }`・`type Mutation { ... }`で書く(6.11と同じapi-gatewayの規約)
   - 先に、Workers統合テストで、未ログインの拒否、本人だけの参加費の導線、決済の開始の成功と5つの`week_entry_*`のエラー、受付期限22:59の開始は受け付け23:00は`checkout_closed`になること(paymentsの`CheckoutStarter`の経路、Stripeは模擬応答)、`payments_unavailable`の伝わり方を確かめる
   - 完了状態: Workers統合テストが成功し、スキーマの集約点の検証を通り、apiのスキーマの生成(`generated/schema.graphql`の更新。7.1のclientの型の生成が読む)が成功する
@@ -474,3 +474,4 @@
 - 6.9: `apps/api/src/application/week-tournament/week-entry-panel-reader.ts`の`DirectoryWeekEntryPanelReader.readForOwner(viewer, productHandle, now)`(現在のハンドルだけ、本人でない・枠が無いとnull、直近の取消でないローンチの枠)と`week-entry-checkout.ts`の`DefaultWeekEntryCheckout.start(session, launchId)`(`CheckoutStarter`へ`week_tournament_entry`・ローンチのID、bot判定のフック無し)。どちらも6.10で`to()`。パネルの値に設計に無い`ultrasGuide`(支払いが可能=受付中・免除でない・受付期限前と同じ条件)と`progress.eliminatedRoundName`を追加。参加費は支払いが可能なときだけ取得(`payments_unavailable`・価格無しはnull)。免除は4.5と同じ式、進行は6.4と同じ規則。6.11・6.12でGraphQLが`ultrasGuide`を公開するか決める。レビューの指摘で4.5の`WeekEntryOfferPolicy`にも、決済期限の後に確定した勝利(`wonAt > until`)ではUltrasを問い合わせないガードを加えた(直接のAPIの呼び出しで`RangeError`になっていた)。
 - 6.10: apiの`WEEK_TOURNAMENT_API_MODULE`(`apps/api/src/composition/week-tournament-module.ts`、名前`api-week-tournament`、`createWeekTournamentPlatformModule('api')`の直後。13識別子、`TrophySources`だけ`toDynamicValue`)。ジョブ`tournament-week.evening-bracket`(23:45、1500)・`tournament-week.entry-follow-up`(4:21、1500)、判定の供給元`tournament-week.result-pending`・`tournament-week.bracket-lock`・`tournament-week.launch-summary`(1500)、夜の送り出しの前提`tournament-week.evening-bracket`。上流のテスト11件の期待値を書き換えた。`notifications-module.worker.test.ts`の登録外の名前の例は`tournament-year.evening-bracket`(tournament-yearが登録するときは別の未登録の名前へ差し替えること)。23:45の起動は空のD1でも`markReady`まで成功し、準備の完了による遅延0の送り出しは期限の送り出しとは別のメッセージ(8.1)。`project-values.md`は誤りになった「登録0件」の2か所だけ直した(一覧への追加は8.2)。
 - 6.11: GraphQLのスキーマモジュール`apps/api/src/presentation/graphql/modules/week-tournament/`(`weekTournamentBoard`・`weekBracket`・`productTrophies`、`clientOnly`)。`BracketRound`・`BracketNode`・`BracketSlot`はcodegenのmappersで`BracketRoundView`等(親の値の型)に置き換え、`bracket-views.ts`のリゾルバは値だけを読む(Yearは`buildBracketRoundsView(...).rounds`をそのまま返せる。テストの補助`apps/api/test/support/week-tournament-graphql-operations.ts`の`bracketConsumerSchemaModule`)。トップページの区画は`placementOf`で分け`loadMatchView`でまとめて引く(開始前のマッチも、全マッチが両者の不戦敗の行も残す。並びはブラケットの位置の順)。業務日付の形式違反は`validation_error`(文言「日付の指定が正しくありません。」は文言規則に無い。8.2で追記)。`weekBracket`の週の形式違反と組み合わせ前は`null`。`WeekBracket.tournament.firstRoundDate`・`finalDate`は`BracketRoundsView`の最初・最後のラウンドの日(トップページは記録の`firstRoundDate`で、1回戦が遅れると両者が異なる)。ログのカテゴリ`['api','presentation','week-tournament']`。6.12は`type-defs.ts`に`WeekEntry*`と`myWeekEntry`・`type Mutation { startWeekTournamentCheckout }`を、`index.ts`に`Mutation`を足す(`errors.ts`は未作成)。7.1は`generated/schema.graphql`を読み、clientの操作を足した後に`graphql:allowlist`で許可リストを再生成する。
+- 6.12: GraphQLに`myWeekEntry(productHandle)`(`clientOnly`→`requireUser`→`readForOwner`→`toWeekEntryPanel`、本人でない・形式違反はnull)と`startWeekTournamentCheckout(launchId)`(ULIDの形式違反は`week_entry_not_found`と同じ文言の`validation_error`(`errors.ts`)→`WeekEntryCheckout.start`)を加えた(`entry-resolvers.ts`)。`week_entry_*`・`checkout_closed`はHTTP 200のGraphQLのエラー、`payments_unavailable`だけ503(ultrasと同じ)。設計に無い`WeekEntryPanel.ultrasGuide: Boolean!`を公開(7.7は`ultrasGuide && UltrasPromotionGate`で案内を出す)。`progress`は`eliminatedRoundName`だけ。`bracketPath`は`drawn`かつブラケットがある枠だけ。テストの補助`apps/api/test/support/week-entry-graphql-operations.ts`。7.1は操作の追加後にapiで`graphql:allowlist`を再生成。

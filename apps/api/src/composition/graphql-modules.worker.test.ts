@@ -145,7 +145,7 @@ describe('GRAPHQL_SCHEMA_MODULES(コメントと評価)', () => {
 });
 
 describe('GRAPHQL_SCHEMA_MODULES(Weekトーナメント)', () => {
-  test('トップページの区画・ブラケット・トロフィーの照会と、Yearと共用するブラケットの型がスキーマに含まれる', () => {
+  test('トップページの区画・ブラケット・参加費の導線・トロフィーの照会と決済の開始の操作、Yearと共用するブラケットの型がスキーマに含まれる', () => {
     const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
 
     const query = schema.getQueryType()?.getFields();
@@ -155,6 +155,13 @@ describe('GRAPHQL_SCHEMA_MODULES(Weekトーナメント)', () => {
     );
     expect(String(query?.['weekBracket']?.type)).toBe('WeekBracket');
     expect(String(query?.['productTrophies']?.type)).toBe('[Trophy!]');
+    expect(String(query?.['myWeekEntry']?.type)).toBe('WeekEntryPanel');
+    expect(
+      String(
+        schema.getMutationType()?.getFields()['startWeekTournamentCheckout']
+          ?.type,
+      ),
+    ).toBe('CheckoutStart!');
     expect(String(schema.getType('BracketRound'))).toBe('BracketRound');
     expect(String(schema.getType('BracketNode'))).toBe('BracketNode');
     expect(String(schema.getType('BracketSlot'))).toBe('BracketSlot');

@@ -18,6 +18,7 @@ import { buildBracketRoundsView } from '../../src/application/tournament/bracket
 import type { GraphQLContext } from '../../src/presentation/graphql/graphql-context.ts';
 import { matchSchemaModule } from '../../src/presentation/graphql/modules/match/index.ts';
 import { mediaSchemaModule } from '../../src/presentation/graphql/modules/media/index.ts';
+import { paymentsSchemaModule } from '../../src/presentation/graphql/modules/payments/index.ts';
 import { productSchemaModule } from '../../src/presentation/graphql/modules/product/index.ts';
 import { profileSchemaModule } from '../../src/presentation/graphql/modules/profile/index.ts';
 import { weekTournamentSchemaModule } from '../../src/presentation/graphql/modules/week-tournament/index.ts';
@@ -296,6 +297,7 @@ const clockModule: AppModule<GatewayApp> = {
   }),
 };
 
+// Weekトーナメントの型定義は参加費の導線と決済の開始でpaymentsのMoney・CheckoutStartを参照するため、paymentsのスキーマモジュールも載せる
 const weekGateway = createGraphQLGateway({
   documents: [
     WEEK_TOURNAMENT_BOARD,
@@ -308,6 +310,7 @@ const weekGateway = createGraphQLGateway({
     profileSchemaModule,
     productSchemaModule,
     matchSchemaModule,
+    paymentsSchemaModule,
     weekTournamentSchemaModule,
     bracketConsumerSchemaModule,
   ],

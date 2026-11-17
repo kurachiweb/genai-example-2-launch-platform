@@ -1285,6 +1285,8 @@ export type Mutation = {
   startTotpSetup: TotpSetup;
   /** Ultrasの加入の開始。加入できるかを確かめて購入を作り、決済画面の経路に使う購入のIDを返す */
   startUltrasCheckout: CheckoutStart;
+  /** Weekトーナメントの参加費の決済の開始。本人の受付中の枠に購入を作り、決済画面の経路に使う購入のIDを返す。受付期限の後はcheckout_closed */
+  startWeekTournamentCheckout: CheckoutStart;
   /** 未ログイン(停止中の利用者を含む)の問い合わせの送信 */
   submitGuestInquiry: Scalars['Boolean']['output'];
   /** 停止していないログイン中の利用者の問い合わせの送信 */
@@ -1638,6 +1640,11 @@ export type MutationStartAdminTotpResetArgs = {
 
 export type MutationStartTotpSetupArgs = {
   input: ReAuthenticationInput;
+};
+
+
+export type MutationStartWeekTournamentCheckoutArgs = {
+  launchId: Scalars['ID']['input'];
 };
 
 
@@ -2309,6 +2316,8 @@ export type Query = {
   myProfile: MyProfile;
   /** ログイン中の端末の一覧 */
   mySessions: Array<UserSessionSummary>;
+  /** 投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull */
+  myWeekEntry?: Maybe<WeekEntryPanel>;
   /** 登録画面で選べるローンチ日 */
   newProductLaunchWindow: LaunchDateWindow;
   /** 通知メールの送信者情報の現在の値と最後の変更。閲覧のみ以上の管理者 */
@@ -2493,6 +2502,11 @@ export type QueryMyProductArgs = {
 export type QueryMyProductsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first: Scalars['Int']['input'];
+};
+
+
+export type QueryMyWeekEntryArgs = {
+  productHandle: Scalars['String']['input'];
 };
 
 
@@ -2911,6 +2925,64 @@ export type WeekBracket = {
   tournament: WeekTournamentSummary;
 };
 
+/** 参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、LATE_ENTRYは組み合わせ決定の後に確定した予選の勝利 */
+export type WeekEntryCloseReason =
+  | 'DEADLINE'
+  | 'DELETED'
+  | 'HIDDEN_OR_SUSPENDED'
+  | 'LATE_ENTRY'
+  | 'WITHDRAWN';
+
+/** 投稿者本人の参加費の導線 */
+export type WeekEntryPanel = {
+  __typename?: 'WeekEntryPanel';
+  /** 決済の開始の受付期限(23:00) */
+  acceptUntil: Scalars['DateTime']['output'];
+  /** 組み合わせに入りブラケットを作った枠だけ。ブラケットのページの経路(/tournaments/week/<ISO週>) */
+  bracketPath?: Maybe<Scalars['String']['output']>;
+  /** 終わった枠だけ */
+  closeReason?: Maybe<WeekEntryCloseReason>;
+  /** 決済期限 */
+  deadlineAt: Scalars['DateTime']['output'];
+  /** Ultrasの特典により参加費を免除する */
+  exempt: Scalars['Boolean']['output'];
+  /** 参加費(税込のUSD)。決済を始められない枠と、決済サービスに到達できず照会できないときはnull */
+  fee?: Maybe<Money>;
+  /** 決済の開始に渡すローンチのID */
+  launchId: Scalars['ID']['output'];
+  /** 組み合わせに入った枠だけ */
+  progress?: Maybe<WeekEntryProgress>;
+  /** 照会の時点のサーバーの時刻。秒読みを合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+  status: WeekEntryStatus;
+  /** 決済を始められる枠で、投稿者がUltrasの特典を受けていない。Ultrasの導線を表示するかは画面が機能フラグで決める */
+  ultrasGuide: Scalars['Boolean']['output'];
+  /** ISO週(YYYY-Www) */
+  week: Scalars['String']['output'];
+  /** 週の表記(「2026年第37週(9/7〜9/13)」) */
+  weekLabel: Scalars['String']['output'];
+};
+
+/** 組み合わせに入った枠の進行 */
+export type WeekEntryProgress = {
+  __typename?: 'WeekEntryProgress';
+  /** 敗退しておらず、優勝もしていない */
+  alive: Scalars['Boolean']['output'];
+  /** Product of the Weekを受賞した */
+  champion: Scalars['Boolean']['output'];
+  /** 敗退したラウンド名。敗退していなければnull */
+  eliminatedRoundName?: Maybe<Scalars['String']['output']>;
+};
+
+/** Weekトーナメントの参加の枠の状態。AWAITING_PAYMENTは参加費の支払い待ち、ENTITLEDは参加資格を得た、DRAWNは組み合わせに入った、EXPIREDは期限切れ、FORFEITEDは資格の喪失、EXCLUDEDは組み合わせ決定での除外 */
+export type WeekEntryStatus =
+  | 'AWAITING_PAYMENT'
+  | 'DRAWN'
+  | 'ENTITLED'
+  | 'EXCLUDED'
+  | 'EXPIRED'
+  | 'FORFEITED';
+
 /** トップページのWeekトーナメントの区画 */
 export type WeekTournamentBoard = {
   __typename?: 'WeekTournamentBoard';
@@ -3278,6 +3350,10 @@ export type ResolversTypes = {
   Viewer: ResolverTypeWrapper<ViewerSource>;
   ViewerUltras: ResolverTypeWrapper<ViewerUltras>;
   WeekBracket: ResolverTypeWrapper<Omit<WeekBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversTypes['MatchProduct']>, rounds: Array<ResolversTypes['BracketRound']> }>;
+  WeekEntryCloseReason: WeekEntryCloseReason;
+  WeekEntryPanel: ResolverTypeWrapper<WeekEntryPanel>;
+  WeekEntryProgress: ResolverTypeWrapper<WeekEntryProgress>;
+  WeekEntryStatus: WeekEntryStatus;
   WeekTournamentBoard: ResolverTypeWrapper<Omit<WeekTournamentBoard, 'rounds'> & { rounds: Array<ResolversTypes['WeekTournamentRoundBoard']> }>;
   WeekTournamentRoundBoard: ResolverTypeWrapper<WeekTournamentRoundBoardModel>;
   WeekTournamentStatus: WeekTournamentStatus;
@@ -3466,6 +3542,8 @@ export type ResolversParentTypes = {
   Viewer: ViewerSource;
   ViewerUltras: ViewerUltras;
   WeekBracket: Omit<WeekBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversParentTypes['MatchProduct']>, rounds: Array<ResolversParentTypes['BracketRound']> };
+  WeekEntryPanel: WeekEntryPanel;
+  WeekEntryProgress: WeekEntryProgress;
   WeekTournamentBoard: Omit<WeekTournamentBoard, 'rounds'> & { rounds: Array<ResolversParentTypes['WeekTournamentRoundBoard']> };
   WeekTournamentRoundBoard: WeekTournamentRoundBoardModel;
   WeekTournamentSummary: WeekTournamentSummary;
@@ -4146,6 +4224,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   startSmokeCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
   startTotpSetup?: Resolver<ResolversTypes['TotpSetup'], ParentType, ContextType, RequireFields<MutationStartTotpSetupArgs, 'input'>>;
   startUltrasCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
+  startWeekTournamentCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationStartWeekTournamentCheckoutArgs, 'launchId'>>;
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
   unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
@@ -4481,6 +4560,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   myProducts?: Resolver<ResolversTypes['MyProductConnection'], ParentType, ContextType, RequireFields<QueryMyProductsArgs, 'first'>>;
   myProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
+  myWeekEntry?: Resolver<Maybe<ResolversTypes['WeekEntryPanel']>, ParentType, ContextType, RequireFields<QueryMyWeekEntryArgs, 'productHandle'>>;
   newProductLaunchWindow?: Resolver<ResolversTypes['LaunchDateWindow'], ParentType, ContextType>;
   notificationSenderInfo?: Resolver<ResolversTypes['NotificationSenderInfoState'], ParentType, ContextType>;
   notificationUnsubscribeLink?: Resolver<Maybe<ResolversTypes['NotificationUnsubscribeLink']>, ParentType, ContextType, RequireFields<QueryNotificationUnsubscribeLinkArgs, 'token'>>;
@@ -4634,6 +4714,28 @@ export type WeekBracketResolvers<ContextType = GraphQLContext, ParentType extend
   rounds?: Resolver<Array<ResolversTypes['BracketRound']>, ParentType, ContextType>;
   seedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   tournament?: Resolver<ResolversTypes['WeekTournamentSummary'], ParentType, ContextType>;
+};
+
+export type WeekEntryPanelResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekEntryPanel'] = ResolversParentTypes['WeekEntryPanel']> = {
+  acceptUntil?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  bracketPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  closeReason?: Resolver<Maybe<ResolversTypes['WeekEntryCloseReason']>, ParentType, ContextType>;
+  deadlineAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  exempt?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  fee?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  launchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  progress?: Resolver<Maybe<ResolversTypes['WeekEntryProgress']>, ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['WeekEntryStatus'], ParentType, ContextType>;
+  ultrasGuide?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  week?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  weekLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type WeekEntryProgressResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekEntryProgress'] = ResolversParentTypes['WeekEntryProgress']> = {
+  alive?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  champion?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  eliminatedRoundName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type WeekTournamentBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekTournamentBoard'] = ResolversParentTypes['WeekTournamentBoard']> = {
@@ -4803,6 +4905,8 @@ export type Resolvers<ContextType = GraphQLContext> = {
   Viewer?: ViewerResolvers<ContextType>;
   ViewerUltras?: ViewerUltrasResolvers<ContextType>;
   WeekBracket?: WeekBracketResolvers<ContextType>;
+  WeekEntryPanel?: WeekEntryPanelResolvers<ContextType>;
+  WeekEntryProgress?: WeekEntryProgressResolvers<ContextType>;
   WeekTournamentBoard?: WeekTournamentBoardResolvers<ContextType>;
   WeekTournamentRoundBoard?: WeekTournamentRoundBoardResolvers<ContextType>;
   WeekTournamentSummary?: WeekTournamentSummaryResolvers<ContextType>;

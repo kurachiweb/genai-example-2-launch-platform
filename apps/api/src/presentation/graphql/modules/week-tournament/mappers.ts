@@ -7,6 +7,11 @@ import type {
   WeekTournamentStatus,
 } from '../../../../../lib/core/week-tournament/ports.ts';
 import type {
+  WeekEntryCloseReason,
+  WeekEntryStatus,
+} from '../../../../../lib/core/week-tournament/week-entry-rules.ts';
+import type { CheckoutMoney } from '../../../../application/payments/checkout-view.ts';
+import type {
   BracketNodeView,
   BracketRoundView,
   BracketSlotView,
@@ -17,6 +22,8 @@ import type {
 } from '../../../../application/tournament/trophy-source.ts';
 import type { WeekBoardRound } from '../../../../application/week-tournament/week-board-reader.ts';
 import type { WeekBracketView } from '../../../../application/week-tournament/week-bracket-reader.ts';
+import { weekBracketPathOf } from '../../../../application/week-tournament/week-bracket-path.ts';
+import type { WeekEntryPanel } from '../../../../application/week-tournament/week-entry-panel-reader.ts';
 import type { MatchProductSource } from '../match/mappers.ts';
 
 // WeekとYearのどちらの照会も、ブラケットの表示の組み立ての値をそのまま親の値にする
@@ -136,3 +143,100 @@ export const toTrophy = (trophy: TrophyRecord): TrophyModel => ({
   awardedAt: trophy.awardedAt,
   bracketPath: trophy.bracketPath,
 });
+
+export type WeekEntryStatusValue =
+  | 'AWAITING_PAYMENT'
+  | 'ENTITLED'
+  | 'DRAWN'
+  | 'EXPIRED'
+  | 'FORFEITED'
+  | 'EXCLUDED';
+
+export type WeekEntryCloseReasonValue =
+  'DEADLINE' | 'DELETED' | 'WITHDRAWN' | 'HIDDEN_OR_SUSPENDED' | 'LATE_ENTRY';
+
+const WEEK_ENTRY_STATUS_VALUES = Object.freeze({
+  awaiting_payment: 'AWAITING_PAYMENT',
+  entitled: 'ENTITLED',
+  drawn: 'DRAWN',
+  expired: 'EXPIRED',
+  forfeited: 'FORFEITED',
+  excluded: 'EXCLUDED',
+} as const satisfies Record<WeekEntryStatus, WeekEntryStatusValue>);
+
+const WEEK_ENTRY_CLOSE_REASON_VALUES = Object.freeze({
+  deadline: 'DEADLINE',
+  deleted: 'DELETED',
+  withdrawn: 'WITHDRAWN',
+  hidden_or_suspended: 'HIDDEN_OR_SUSPENDED',
+  late_entry: 'LATE_ENTRY',
+} as const satisfies Record<WeekEntryCloseReason, WeekEntryCloseReasonValue>);
+
+export interface WeekEntryProgressModel {
+  readonly alive: boolean;
+  readonly eliminatedRoundName: string | null;
+  readonly champion: boolean;
+}
+
+export interface WeekEntryPanelModel {
+  readonly launchId: string;
+  readonly week: string;
+  readonly weekLabel: string;
+  readonly status: WeekEntryStatusValue;
+  readonly closeReason: WeekEntryCloseReasonValue | null;
+  readonly exempt: boolean;
+  readonly acceptUntil: Date;
+  readonly deadlineAt: Date;
+  readonly fee: CheckoutMoney | null;
+  readonly ultrasGuide: boolean;
+  readonly serverTime: Date;
+  readonly progress: WeekEntryProgressModel | null;
+  readonly bracketPath: string | null;
+}
+
+// ブラケットのページは組み合わせを書き終えてブラケットを作った後だけ開ける
+function entryBracketPathOf({
+  entry,
+  tournament,
+}: WeekEntryPanel): string | null {
+  return entry.status === 'drawn' && tournament.bracketId !== null
+    ? weekBracketPathOf(tournament.window.weekStart)
+    : null;
+}
+
+export function toWeekEntryPanel(
+  panel: WeekEntryPanel,
+  serverTime: Date,
+): WeekEntryPanelModel {
+  const { entry, tournament, progress } = panel;
+  // 導線はローンチから枠を引くため、紐付けを解除した枠は返らない
+  if (entry.launchId === null) {
+    throw new Error(`参加の枠のローンチがありません: ${entry.entryId}`);
+  }
+  const { weekStart, acceptUntil, deadlineAt } = tournament.window;
+  return {
+    launchId: entry.launchId,
+    week: isoWeekKey(weekStart),
+    weekLabel: formatWeekPeriodLabel(weekStart),
+    status: WEEK_ENTRY_STATUS_VALUES[entry.status],
+    closeReason:
+      entry.closeReason === null
+        ? null
+        : WEEK_ENTRY_CLOSE_REASON_VALUES[entry.closeReason],
+    exempt: panel.exempt,
+    acceptUntil,
+    deadlineAt,
+    fee: panel.fee,
+    ultrasGuide: panel.ultrasGuide,
+    serverTime,
+    progress:
+      progress === null
+        ? null
+        : {
+            alive: progress.alive,
+            eliminatedRoundName: progress.eliminatedRoundName,
+            champion: progress.champion,
+          },
+    bracketPath: entryBracketPathOf(panel),
+  };
+}
