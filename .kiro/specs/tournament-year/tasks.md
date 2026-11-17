@@ -296,7 +296,7 @@
   - _Depends: 5.1_
   - _Requirements: 12.8_
 
-- [ ] 5.5 (P) トロフィーの供給元を作る
+- [x] 5.5 (P) トロフィーの供給元を作る
   - 先に、単体テスト(ストアは偽物)で、受賞ごとの対象年の表記・受賞日・ブラケットへのパスと、受賞の無いプロダクトの空を確かめる
   - 登録口(tournament-weekの所有)への追加と束縛は5.11で行う
   - 完了状態: 単体テストが成功する
@@ -532,3 +532,4 @@
 - 5.2: `apps/api/src/infrastructure/year-tournament/sentry-year-tournament-incident-reporter.ts`の`SentryYearTournamentIncidentReporter`(`@injectable()`・引数無し。5.11で`bind(YEAR_TOURNAMENT_API_TYPES.YearTournamentIncidentReporter).to(...)`)。fingerprint`['tournament-year', kind]`、タグ`tournament_year_incident`・`job`・`year`(年が1つのときだけ)、年は`safeYearOf`(安全な整数でなければ`unknown`)。Monitoringの`bracketId`はポートに無いため付けない。
 - 5.3: apiの`year-relaunch-condition-source.ts`の`YearRelaunchConditionSource(YearEntryStore, BracketStore, YearCalendar, WeekChampionDirectory)`(文言`YEAR_RELAUNCH_BLOCK_MESSAGES`)と`year-product-lock-source.ts`の`YearProductLockSource(YearEntryStore, BracketStore, YearCalendar)`(文言`YEAR_PRODUCT_LOCK_MESSAGE`)、どちらも`@inject`。共用の読み取りは`year-launch-standings.ts`(`readYearLaunchStandings`・`isContending`・`wonLaunchesOf`・`YearLaunchPhase`、Weekの`week-launch-standings.ts`に倣う。5.4・5.10も使える)で、各ストアを1回まで読む。設計の「`resolveAward`の`late`を使う」は年の和集合を`describe`1回で読み`resolveTargetYear`を当てる形にした(結果は同じ、3.6と同じ判断)。「組み合わせを書き終える前の年」は年の行の`status === 'drawing'`。テストの偽物は`testing/year-decision-fakes.ts`(5.4は別の名前にする)。年数の定数4は`year-target-rules.ts`・`year-calendar.ts`・本タスクの3か所に重複(`core/year-tournament`から1つ公開する候補)。
 - 5.4: apiの`year-launch-summary-source.ts`の`YearLaunchSummarySource(YearEntryStore, BracketStore, YearCalendar, MatchDirectory)`(`@inject`)。共用の`readYearLaunchStandings`は`findAliveRefs`を読むため使わず、`findByLaunches`→(`describe`・`findParticipantStandings`・`listByLaunches`の並行)の2段で読む。`year-launch-standings.ts`から`targetYearCandidates`・`resolveTargetIn`を公開し5.3の内部も使う。受付中は`acceptUntil`(23:00)より前だけ(Weekと文言規則に合わせた。23:00〜23:35は要約が消えるが再ローンチの禁止は続く)。組み合わせに入りまだ試合を終えていない枠はシードによらず「参加決定」(文言規則と設計どおり。Weekの「1回戦進出」とは違う)。優勝は年の行の`outcome === 'awarded'`と`championEntryId`。テストの偽物は`testing/year-summary-fakes.ts`(`createYearSummaryFakes`・`standingOf`・`yearMatchOf`・`YEAR_BRACKET_ID`、5.10でも使える)。
+- 5.5: apiの`year-trophy-source.ts`の`YearTrophySource`(`@inject(YEAR_TOURNAMENT_TYPES.YearTournamentStore)`、型は`Pick<YearTournamentStore, 'listAwardsByProducts'>`)。Weekと違い時刻の上限を持たない(ポートに引数が無く、受賞は終了の記録と同時に入る)。`/tournaments/year/`のパスはファイルの中の非公開の定数。5.11への申し送り: `YEAR_TOURNAMENT_API_TYPES`にトロフィーの供給元の識別子が無いため5.11で足し(Weekの`WEEK_TOURNAMENT_API_TYPES.WeekTrophySource`と同じ形)、`TOURNAMENT_TROPHY_SOURCES`に`tournament-year.year-trophies`(10)で登録する。
