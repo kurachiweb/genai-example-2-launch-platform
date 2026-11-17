@@ -76,7 +76,7 @@ const STRIPE_ELEMENT_TIMEOUT_MS = 30_000;
 const STRIPE_REDIRECT_TIMEOUT_MS = 60_000;
 
 // 決済後のランディングは処理中の間、一定の間隔で上限の回数まで確かめ直すため、その合計に初回の確認の余裕を足す
-const RETURN_COMPLETION_TIMEOUT_MS =
+export const RETURN_COMPLETION_TIMEOUT_MS =
   CHECKOUT_RETURN_RECHECK_INTERVAL_MS * CHECKOUT_RETURN_RECHECK_LIMIT + 15_000;
 
 const TEST_CARD = Object.freeze({

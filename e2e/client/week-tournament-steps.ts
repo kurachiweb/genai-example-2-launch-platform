@@ -10,10 +10,6 @@ import {
   CHECKOUT_SUMMARY_TITLE,
 } from '../../apps/client/src/components/payments/checkout-messages.ts';
 import {
-  CHECKOUT_RETURN_RECHECK_INTERVAL_MS,
-  CHECKOUT_RETURN_RECHECK_LIMIT,
-} from '../../apps/client/src/components/payments/checkout-return-rules.ts';
-import {
   TROPHY_AWARD_NAMES,
   TROPHY_SHELF_TITLE,
 } from '../../apps/client/src/components/trophy/trophy-messages.ts';
@@ -38,7 +34,8 @@ import type {
   WeekTournamentEntrant,
   WeekTournamentFixture,
 } from '../support/week-tournament-fixtures.ts';
-import { createTestAccount, type TestAccount } from './auth/account-steps.ts';
+import { createTestAccount } from './auth/account-steps.ts';
+import { RETURN_COMPLETION_TIMEOUT_MS } from './checkout-steps.ts';
 import { productPagePath } from './directory-steps.ts';
 import { matchCardOf } from './match-steps.ts';
 import {
@@ -51,7 +48,6 @@ export const WEEK_ENTRY_CHECKOUT_SKIP_REASON =
   'Stripeのsandboxのキーか参加費の価格(week_tournament_entry)を照会できない環境のため、Weekトーナメントの参加費の決済のE2Eを飛ばします';
 
 export interface WeekEntrantOwner {
-  readonly account: TestAccount;
   readonly handle: string;
 }
 
@@ -61,10 +57,6 @@ export type WeekEntryCheckoutStart =
 const TOP_PAGE_PATH = '/';
 
 const CHECKOUT_PATH_PATTERN = /^\/checkout\/[0-9A-HJKMNP-TV-Z]{26}$/u;
-
-// 決済後のランディングは処理中の間、一定の間隔で上限の回数まで確かめ直すため、その合計に初回の確認の余裕を足す
-const RETURN_COMPLETION_TIMEOUT_MS =
-  CHECKOUT_RETURN_RECHECK_INTERVAL_MS * CHECKOUT_RETURN_RECHECK_LIMIT + 15_000;
 
 // 決勝の確定の後の進行と受賞の記録は、23:45の起動の後にAPIサーバーとイベントサーバーが続けて行うため、取得し直しながら待つ
 const TROPHY_TIMEOUT_MS = 90_000;
@@ -98,10 +90,10 @@ export async function registerWeekEntrantOwner(
   const account = createTestAccount();
   await registerVerifiedAccount(page, account);
   const form = await openProfileEditor(page, account);
-  return { account, handle: await readCurrentHandle(form) };
+  return { handle: await readCurrentHandle(form) };
 }
 
-export const weekEntryPanel = (page: Page): Locator =>
+const weekEntryPanel = (page: Page): Locator =>
   page
     .getByRole('main')
     .getByRole('group', { name: WEEK_TOURNAMENT_SECTION_TITLE, exact: true });
@@ -122,28 +114,35 @@ export async function openProductPage(
   ).toBeVisible();
 }
 
-// 参加費の導線のボタンを押して決済画面へ移る。参加費を照会できない・決済を利用できない環境ではボタンが理由とともに無効のため、その状態を返す。
-// ボタンはbot判定のウィジェットを持たずハイドレーションの完了を待つ手掛かりが無いため、決済画面へ移るまで押し直す。押下が効くと文言が送信中に変わり元の名前のボタンが消えるため、元の名前のボタンが見えている間だけ押す
+// 参加費の導線のボタンを押して決済画面へ移る。参加費を照会できない環境では押す前から、決済を利用できない環境では押した後の決済の開始の失敗で、ボタンが理由とともに無効になるため、その状態を返す。
+// 決済を利用できない旨以外の理由で無効になった場合は失敗させる。
+// ボタンはbot判定のウィジェットを持たずハイドレーションの完了を待つ手掛かりが無いため、決済画面へ移るかボタンが無効になるまで押し直す。押下が効くと文言が送信中に変わり元の名前のボタンが消えるため、元の名前のボタンが見えている間だけ押す
 export async function startWeekEntryCheckout(
   page: Page,
 ): Promise<WeekEntryCheckoutStart> {
   const button = weekEntryButton(page);
   await expect(button).toBeVisible();
-  if (await button.isDisabled()) {
+  const isCheckoutUrl = (url: URL): boolean =>
+    CHECKOUT_PATH_PATTERN.test(url.pathname);
+  const onCheckout = (): boolean => isCheckoutUrl(new URL(page.url()));
+  await expect(async () => {
+    if (!onCheckout() && (await button.isVisible())) {
+      if (await button.isDisabled({ timeout: REACTION_TIMEOUT_MS })) {
+        return;
+      }
+      await button.click({ timeout: REACTION_TIMEOUT_MS });
+    }
+    await expect(page).toHaveURL(isCheckoutUrl, {
+      timeout: REACTION_TIMEOUT_MS,
+    });
+  }).toPass({ timeout: RETRY_TIMEOUT_MS });
+  if (!onCheckout()) {
     await expect(
       weekEntryPanel(page).getByText(PAYMENTS_UNAVAILABLE_REASON),
       '参加費の導線のボタンが無効な理由',
     ).toBeVisible();
     return { kind: 'payments_unavailable' };
   }
-  const onCheckout = (url: URL): boolean =>
-    CHECKOUT_PATH_PATTERN.test(url.pathname);
-  await expect(async () => {
-    if (!onCheckout(new URL(page.url())) && (await button.isVisible())) {
-      await button.click({ timeout: REACTION_TIMEOUT_MS });
-    }
-    await expect(page).toHaveURL(onCheckout, { timeout: REACTION_TIMEOUT_MS });
-  }).toPass({ timeout: RETRY_TIMEOUT_MS });
   await expectWeekEntryCheckoutItem(page);
   return { kind: 'started' };
 }

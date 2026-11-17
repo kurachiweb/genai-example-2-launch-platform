@@ -253,7 +253,7 @@ export async function startWeekFinalToday(
   return requireWeekFinal(fixture);
 }
 
-// 確定のイベントの処理が組み合わせ決定の通知などの前のイベントの処理と重なると、ローカルのD1のロックの競合で失敗して再試行の遅延を待つことになるため、前のイベントの処理を終えてから確定させる
+// 確定のイベントの処理が、決勝のマッチの処理を終えていないイベント(組み合わせ決定の予定のイベントなど)の処理と重なると、ローカルのD1のロックの競合で失敗して再試行の遅延を待つことになるため、それらの処理を終えてから確定させる
 async function waitForFinalEventsSettled(final: WeekFinal): Promise<void> {
   await pollFinalEvents(final, async () => {
     const pending = parseFinalPendingEventCount(
