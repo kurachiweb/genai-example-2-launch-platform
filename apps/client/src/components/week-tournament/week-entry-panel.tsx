@@ -8,6 +8,10 @@ import { myWeekEntryQueryOptions } from '../../graphql/week-tournament.ts';
 import type { ClientViewer } from '../../graphql/viewer.ts';
 import { useViewer } from '../auth/use-viewer.ts';
 import { useBoundaryRefresh } from '../time/use-boundary-refresh.ts';
+import {
+  BRACKET_LINK_LABEL,
+  ENTRY_EXEMPT_TITLE,
+} from '../tournament/tournament-copy.ts';
 import { EntryDeadline } from './entry-deadline.tsx';
 import { WeekEntryCheckout } from './week-entry-checkout.tsx';
 import {
@@ -18,7 +22,6 @@ import {
   WEEK_ENTRY_EXCLUDED_MESSAGE,
   WEEK_ENTRY_EXCLUDED_REFUND_MESSAGE,
   WEEK_ENTRY_EXEMPT_MESSAGE,
-  WEEK_ENTRY_EXEMPT_TITLE,
   WEEK_ENTRY_EXPIRED_MESSAGE,
   WEEK_ENTRY_FORFEITED_MESSAGE,
   WEEK_ENTRY_FORFEITED_REFUND_MESSAGE,
@@ -33,10 +36,7 @@ import {
   weekEntryBoundariesOf,
   weekEntryDisplayOf,
 } from './week-entry-model.ts';
-import {
-  BRACKET_LINK_LABEL,
-  WEEK_TOURNAMENT_SECTION_TITLE,
-} from './week-tournament-messages.ts';
+import { WEEK_TOURNAMENT_SECTION_TITLE } from './week-tournament-messages.ts';
 
 export interface WeekEntryPanelProps {
   // 現在のハンドル
@@ -85,7 +85,7 @@ function ExemptStatus() {
     <div>
       <p className="flex items-center gap-1.5 text-sm font-extrabold text-primary">
         <BadgeCheckIcon aria-hidden="true" className="size-4" />
-        {WEEK_ENTRY_EXEMPT_TITLE}
+        {ENTRY_EXEMPT_TITLE}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">
         {WEEK_ENTRY_EXEMPT_MESSAGE}

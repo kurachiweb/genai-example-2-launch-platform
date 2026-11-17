@@ -1,7 +1,7 @@
 /* 決勝の区画の演出。祖先にdata-auto-refresh="on"があり、視差効果を減らす設定でないときだけ動かす(属性の無いページでは既定で止まる) */
 
 /* cqh単位により紙吹雪自身ではなく演出の層の高さを基準に落とし、左右に揺らしながら下端まで届かせる */
-@keyframes week-final-confetti-fall {
+@keyframes tournament-final-confetti-fall {
   0% {
     transform: translate3d(0, -6cqh, 0) rotate(0deg);
     opacity: 0;
@@ -28,7 +28,7 @@
   }
 }
 
-@keyframes week-final-spotlight-sweep {
+@keyframes tournament-final-spotlight-sweep {
   0%,
   100% {
     transform: rotate(-14deg);
@@ -38,7 +38,7 @@
   }
 }
 
-@keyframes week-final-spotlight-sweep-reverse {
+@keyframes tournament-final-spotlight-sweep-reverse {
   0%,
   100% {
     transform: rotate(14deg);
@@ -48,12 +48,12 @@
   }
 }
 
-[data-week-final-effects] {
+[data-tournament-final-effects] {
   container-type: size;
 }
 
 /* 演出が止まっている間、照明は真上を向いて留まり、宙に止まった紙吹雪は見せない */
-[data-week-final-spotlight] {
+[data-tournament-final-spotlight] {
   position: absolute;
   bottom: -10%;
   width: 22%;
@@ -68,7 +68,7 @@
   filter: blur(4px);
 }
 
-[data-week-final-confetti] {
+[data-tournament-final-confetti] {
   position: absolute;
   top: 0;
   display: none;
@@ -78,17 +78,17 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  [data-auto-refresh='on'] [data-week-final-spotlight] {
-    animation: week-final-spotlight-sweep 6s ease-in-out infinite;
+  [data-auto-refresh='on'] [data-tournament-final-spotlight] {
+    animation: tournament-final-spotlight-sweep 6s ease-in-out infinite;
   }
 
-  [data-auto-refresh='on'] [data-week-final-spotlight='right'] {
-    animation-name: week-final-spotlight-sweep-reverse;
+  [data-auto-refresh='on'] [data-tournament-final-spotlight='right'] {
+    animation-name: tournament-final-spotlight-sweep-reverse;
   }
 
-  [data-auto-refresh='on'] [data-week-final-confetti] {
+  [data-auto-refresh='on'] [data-tournament-final-confetti] {
     display: block;
-    animation: week-final-confetti-fall var(--fall-duration, 6s) linear
+    animation: tournament-final-confetti-fall var(--fall-duration, 6s) linear
       var(--fall-delay, 0s) infinite;
     will-change: transform;
   }

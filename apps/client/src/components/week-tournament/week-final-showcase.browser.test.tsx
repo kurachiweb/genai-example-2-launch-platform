@@ -259,8 +259,8 @@ const autoRefreshSwitch = () =>
 
 const all = (selector: string): HTMLElement[] =>
   Array.from(document.querySelectorAll<HTMLElement>(selector));
-const spotlights = () => all('[data-week-final-spotlight]');
-const confettiPieces = () => all('[data-week-final-confetti]');
+const spotlights = () => all('[data-tournament-final-spotlight]');
+const confettiPieces = () => all('[data-tournament-final-confetti]');
 const animationNamesOf = (elements: readonly HTMLElement[]): Set<string> =>
   new Set(elements.map((element) => getComputedStyle(element).animationName));
 
@@ -457,12 +457,12 @@ describe('WeekFinalShowcaseの演出', () => {
     expect(spotlights()).toHaveLength(2);
     expect(animationNamesOf(spotlights())).toStrictEqual(
       new Set([
-        'week-final-spotlight-sweep',
-        'week-final-spotlight-sweep-reverse',
+        'tournament-final-spotlight-sweep',
+        'tournament-final-spotlight-sweep-reverse',
       ]),
     );
     expect(animationNamesOf(confettiPieces())).toStrictEqual(
-      new Set(['week-final-confetti-fall']),
+      new Set(['tournament-final-confetti-fall']),
     );
     expect(
       confettiPieces().every(

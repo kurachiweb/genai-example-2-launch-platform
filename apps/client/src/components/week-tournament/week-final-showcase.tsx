@@ -4,16 +4,17 @@ import type { ClientViewer } from '../../graphql/viewer.ts';
 import { useViewer } from '../auth/use-viewer.ts';
 import { FOLLOW_UP_EXHAUSTED_MESSAGE } from '../match/follow-up-refetch-messages.ts';
 import type { TopPageSectionContext } from '../top/top-page-section-types.ts';
-import { useWeekBoard } from './use-week-board.ts';
 import {
-  canWeekFinalChange,
-  isWeekFinalFollowUpExhausted,
-  isWeekFinalRoundAwaitingChange,
-  weekFinalOutcomeOf,
-  weekFinalRefetchIntervalOf,
-  weekFinalRoundsOf,
-} from './week-final-model.ts';
-import { WeekFinalRound } from './week-final-round.tsx';
+  canFinalChange,
+  finalOutcomeOf,
+  finalRefetchIntervalOf,
+  finalRoundsOf,
+  isFinalFollowUpExhausted,
+  isFinalRoundAwaitingChange,
+} from '../tournament/tournament-final-model.ts';
+import { TournamentFinalRound } from '../tournament/tournament-final-round.tsx';
+import { useWeekBoard } from './use-week-board.ts';
+import { WEEK_FINAL_COPY } from './week-tournament-messages.ts';
 
 interface WeekFinalBoardProps extends TopPageSectionContext {
   readonly clientViewer: ClientViewer | null;
@@ -30,11 +31,11 @@ function WeekFinalBoard({
     board,
     clientViewer,
     autoRefresh,
-    refetchIntervalOf: weekFinalRefetchIntervalOf,
-    canChange: canWeekFinalChange,
+    refetchIntervalOf: finalRefetchIntervalOf,
+    canChange: canFinalChange,
   });
 
-  const rows = weekFinalRoundsOf(weekBoard.rounds);
+  const rows = finalRoundsOf(weekBoard.rounds);
   // 区画は照明の演出を常に持つ
   const autoUpdating = rows.length > 0;
   useEffect(() => {
@@ -44,20 +45,23 @@ function WeekFinalBoard({
   if (rows.length === 0) {
     return null;
   }
-  const exhausted = isWeekFinalFollowUpExhausted({
-    board: weekBoard,
+  const exhausted = isFinalFollowUpExhausted({
+    rounds: weekBoard.rounds,
     autoRefresh,
     updatesSinceBaseline,
   });
   return (
     <div className="flex flex-col">
-      {rows.map((row) => (
-        <WeekFinalRound
-          key={row.round.tournament.week}
+      {rows.map(({ round, ...row }) => (
+        <TournamentFinalRound
+          key={round.tournament.week}
           row={row}
-          outcome={weekFinalOutcomeOf(row)}
+          periodLabel={round.tournament.label}
+          bracketPath={round.bracketPath}
+          copy={WEEK_FINAL_COPY}
+          outcome={finalOutcomeOf(row)}
           statusMessage={
-            exhausted && isWeekFinalRoundAwaitingChange(row)
+            exhausted && isFinalRoundAwaitingChange(row)
               ? FOLLOW_UP_EXHAUSTED_MESSAGE
               : null
           }

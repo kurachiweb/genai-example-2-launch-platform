@@ -4,14 +4,16 @@ import type { ClientViewer } from '../../graphql/viewer.ts';
 import { useViewer } from '../auth/use-viewer.ts';
 import { FOLLOW_UP_EXHAUSTED_MESSAGE } from '../match/follow-up-refetch-messages.ts';
 import type { TopPageSectionContext } from '../top/top-page-section-types.ts';
-import { useWeekBoard } from './use-week-board.ts';
 import {
-  canWeekBoardChange,
-  isWeekFollowUpExhausted,
-  weekBoardRefetchIntervalOf,
-  weekSectionRoundsOf,
-} from './week-board-model.ts';
-import { WeekBoardRound } from './week-board-round.tsx';
+  boardRefetchIntervalOf,
+  canBoardChange,
+  isBoardFollowUpExhausted,
+  sectionRoundsOf,
+} from '../tournament/tournament-board-model.ts';
+import { TournamentBoardRound } from '../tournament/tournament-board-round.tsx';
+import { TournamentSectionHeading } from '../tournament/tournament-section-heading.tsx';
+import { useWeekBoard } from './use-week-board.ts';
+import { WEEK_BOARD_COPY } from './week-tournament-messages.ts';
 
 interface WeekTournamentBoardProps extends TopPageSectionContext {
   readonly clientViewer: ClientViewer | null;
@@ -28,14 +30,15 @@ function WeekTournamentBoard({
     board,
     clientViewer,
     autoRefresh,
-    refetchIntervalOf: weekBoardRefetchIntervalOf,
-    canChange: canWeekBoardChange,
+    refetchIntervalOf: boardRefetchIntervalOf,
+    canChange: canBoardChange,
   });
 
-  const rows = weekSectionRoundsOf(weekBoard.rounds);
+  const rows = sectionRoundsOf(weekBoard.rounds);
   // 対戦カードはピッチの演出を持つ
   const autoUpdating =
-    rows.some(({ cards }) => cards.length > 0) || canWeekBoardChange(weekBoard);
+    rows.some(({ cards }) => cards.length > 0) ||
+    canBoardChange(weekBoard.rounds);
   useEffect(() => {
     reportAutoUpdating(autoUpdating);
   }, [autoUpdating, reportAutoUpdating]);
@@ -43,21 +46,32 @@ function WeekTournamentBoard({
   if (rows.length === 0) {
     return null;
   }
-  const exhausted = isWeekFollowUpExhausted({
-    board: weekBoard,
+  const exhausted = isBoardFollowUpExhausted({
+    rounds: weekBoard.rounds,
     autoRefresh,
     updatesSinceBaseline,
   });
   const statusMessage = exhausted ? FOLLOW_UP_EXHAUSTED_MESSAGE : null;
   return (
     <div className="flex flex-col gap-10">
-      {rows.map((row, index) => (
-        <WeekBoardRound
-          key={`${row.round.tournament.week}:${String(row.round.round)}`}
+      {rows.map(({ round, ...row }, index) => (
+        <TournamentBoardRound
+          key={`${round.tournament.week}:${String(round.round)}`}
           row={row}
           onUpdated={onUpdated}
           statusMessage={index === 0 ? statusMessage : undefined}
-        />
+        >
+          {(headingId) => (
+            <TournamentSectionHeading
+              id={headingId}
+              title={WEEK_BOARD_COPY.sectionTitle}
+              roundName={round.roundName}
+              periodLabel={round.tournament.label}
+              finalDate={round.tournament.finalDate}
+              bracketPath={round.bracketPath}
+            />
+          )}
+        </TournamentBoardRound>
       ))}
     </div>
   );

@@ -1,5 +1,5 @@
 import type { ClientMyWeekEntryQuery } from '../../graphql/generated/graphql.ts';
-import { ENTRY_COUNTDOWN_LABEL } from './week-entry-messages.ts';
+import { ENTRY_COUNTDOWN_LABEL } from '../tournament/tournament-copy.ts';
 
 export type WeekEntryPanelView = NonNullable<
   ClientMyWeekEntryQuery['myWeekEntry']

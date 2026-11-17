@@ -11,7 +11,7 @@ import {
   ENTRY_COUNTDOWN_LABEL,
   ENTRY_COUNTDOWN_NAME,
   ENTRY_DEADLINE_LABEL,
-} from './week-entry-messages.ts';
+} from '../tournament/tournament-copy.ts';
 import {
   entryCountdownReadingOf,
   isEntryDeadlineUrgent,

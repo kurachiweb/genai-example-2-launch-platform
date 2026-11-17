@@ -9,6 +9,7 @@ import {
   CHECKOUT_RETURN_COMPLETED_MESSAGE,
   CHECKOUT_SUMMARY_TITLE,
 } from '../../apps/client/src/components/payments/checkout-messages.ts';
+import { BRACKET_LINK_LABEL } from '../../apps/client/src/components/tournament/tournament-copy.ts';
 import {
   TROPHY_AWARD_NAMES,
   TROPHY_SHELF_TITLE,
@@ -18,7 +19,6 @@ import {
   WEEK_ENTRY_ENTITLED_MESSAGE,
 } from '../../apps/client/src/components/week-tournament/week-entry-messages.ts';
 import {
-  BRACKET_LINK_LABEL,
   WEEK_FINAL_SUBTITLE,
   WEEK_FINAL_TITLE,
   WEEK_TOURNAMENT_SECTION_TITLE,

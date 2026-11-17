@@ -1,6 +1,6 @@
 @import '../lib/styles/base.css';
 @import './components/match/stadium.css';
-@import './components/week-tournament/week-final-showcase.css';
+@import './components/tournament/tournament-final-showcase.css';
 @import './components/directory/directory.css';
 @import './components/product-page/product-page.css';
 

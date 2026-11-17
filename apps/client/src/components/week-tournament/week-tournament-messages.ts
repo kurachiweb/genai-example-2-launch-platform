@@ -1,10 +1,12 @@
+import type {
+  TournamentBoardCopy,
+  TournamentBracketCopy,
+  TournamentFinalCopy,
+} from '../tournament/tournament-copy.ts';
+
 export const WEEK_TOURNAMENT_SECTION_TITLE = 'Product of the Weekトーナメント';
 
 export const WEEK_AWARD_NAME = 'Product of the Week';
-
-export const FINAL_DATE_LABEL = '決勝日';
-
-export const BRACKET_LINK_LABEL = 'ブラケットを見る';
 
 export const WEEK_FINAL_BADGE = 'Week Final';
 
@@ -28,3 +30,23 @@ export const weekBracketCountsLabel = (
 
 export const WEEK_BRACKET_ERROR_MESSAGE =
   'ブラケットを読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。';
+
+export const WEEK_BOARD_COPY: TournamentBoardCopy = Object.freeze({
+  sectionTitle: WEEK_TOURNAMENT_SECTION_TITLE,
+});
+
+export const WEEK_FINAL_COPY: TournamentFinalCopy = Object.freeze({
+  badge: WEEK_FINAL_BADGE,
+  title: WEEK_FINAL_TITLE,
+  subtitle: WEEK_FINAL_SUBTITLE,
+  awarded: weekFinalAwardedMessage,
+  noAward: WEEK_FINAL_NO_AWARD_MESSAGE,
+});
+
+export const WEEK_BRACKET_COPY: TournamentBracketCopy = Object.freeze({
+  title: WEEK_TOURNAMENT_SECTION_TITLE,
+  awardName: WEEK_AWARD_NAME,
+  pageTitle: weekBracketPageTitle,
+  counts: weekBracketCountsLabel,
+  error: WEEK_BRACKET_ERROR_MESSAGE,
+});

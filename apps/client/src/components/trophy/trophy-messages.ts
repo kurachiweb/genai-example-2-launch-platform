@@ -1,8 +1,6 @@
 import type { TrophyKind } from '../../graphql/generated/graphql.ts';
-import {
-  BRACKET_LINK_LABEL,
-  WEEK_AWARD_NAME,
-} from '../week-tournament/week-tournament-messages.ts';
+import { BRACKET_LINK_LABEL } from '../tournament/tournament-copy.ts';
+import { WEEK_AWARD_NAME } from '../week-tournament/week-tournament-messages.ts';
 
 export const TROPHY_SHELF_TITLE = 'トロフィー';
 

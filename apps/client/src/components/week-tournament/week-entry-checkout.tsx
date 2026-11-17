@@ -19,13 +19,15 @@ import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import { startWeekTournamentCheckoutMutationOptions } from '../../graphql/week-tournament.ts';
 import { PRICING_HREF } from '../layout/site-links.ts';
 import { PRICING_LINK_LABEL } from '../product/launch-messages.ts';
+import {
+  ENTRY_FEE_PREFIX,
+  ENTRY_PENDING_LABEL,
+  ENTRY_ULTRAS_GUIDE_SUFFIX,
+} from '../tournament/tournament-copy.ts';
 import { UltrasPromotionGate } from '../ultras/ultras-promotion-gate.tsx';
 import {
   WEEK_ENTRY_BUTTON_LABEL,
   WEEK_ENTRY_CLOSED_MESSAGE,
-  WEEK_ENTRY_FEE_PREFIX,
-  WEEK_ENTRY_PENDING_LABEL,
-  WEEK_ENTRY_ULTRAS_GUIDE_SUFFIX,
 } from './week-entry-messages.ts';
 
 export interface WeekEntryCheckoutProps {
@@ -59,7 +61,7 @@ function UltrasGuide() {
     <UltrasPromotionGate>
       <p className="text-xs text-muted-foreground">
         <span translate="no">Ultras</span>
-        {WEEK_ENTRY_ULTRAS_GUIDE_SUFFIX}
+        {ENTRY_ULTRAS_GUIDE_SUFFIX}
         <PathLink
           href={PRICING_HREF}
           className={cn(INLINE_LINK_CLASS_NAME, 'ml-1')}
@@ -123,11 +125,11 @@ export function WeekEntryCheckout({
       >
         <span className="inline-flex items-center gap-2">
           <TrophyIcon aria-hidden="true" />
-          {pending ? WEEK_ENTRY_PENDING_LABEL : WEEK_ENTRY_BUTTON_LABEL}
+          {pending ? ENTRY_PENDING_LABEL : WEEK_ENTRY_BUTTON_LABEL}
         </span>
         {feeAmount !== null && (
           <span className="text-xs font-normal opacity-85">
-            {WEEK_ENTRY_FEE_PREFIX}
+            {ENTRY_FEE_PREFIX}
             <MoneyText amount={feeAmount} />
           </span>
         )}

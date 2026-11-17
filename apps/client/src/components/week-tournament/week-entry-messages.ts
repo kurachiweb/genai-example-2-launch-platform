@@ -1,20 +1,7 @@
-export const ENTRY_DEADLINE_LABEL = '決済期限';
-
-export const ENTRY_COUNTDOWN_LABEL = '締め切りまであと';
-
-export const ENTRY_COUNTDOWN_NAME = '決済期限までの残り時間';
+import type { TournamentEntryCopy } from '../tournament/tournament-copy.ts';
+import { WEEK_TOURNAMENT_SECTION_TITLE } from './week-tournament-messages.ts';
 
 export const WEEK_ENTRY_BUTTON_LABEL = 'Weekトーナメントに参加';
-
-export const WEEK_ENTRY_PENDING_LABEL = '送信中';
-
-export const WEEK_ENTRY_FEE_PREFIX = '参加費';
-
-// 「Ultras」は翻訳しないため、続く文と分けて持つ
-export const WEEK_ENTRY_ULTRAS_GUIDE_SUFFIX =
-  'なら参加費が免除され、敗北後は2日で再ローンチできます。';
-
-export const WEEK_ENTRY_EXEMPT_TITLE = '参加費免除';
 
 export const WEEK_ENTRY_EXEMPT_MESSAGE =
   'Ultrasの特典によりWeekトーナメントの参加資格を得ています。参加のための操作は不要です。';
@@ -56,3 +43,21 @@ export const WEEK_ENTRY_EXCLUDED_REFUND_MESSAGE = '参加費は返金されま�
 
 export const WEEK_ENTRY_DELETE_NOTICE =
   'このプロダクトを削除するとWeekトーナメントの参加資格を失います。支払った参加費は自動で全額返金されます。';
+
+// Weekに参加数の上限は無く、除外の理由はプロダクトが公開されていないことだけ
+export const WEEK_ENTRY_COPY: TournamentEntryCopy = Object.freeze({
+  title: WEEK_TOURNAMENT_SECTION_TITLE,
+  entryButton: WEEK_ENTRY_BUTTON_LABEL,
+  exemptMessage: WEEK_ENTRY_EXEMPT_MESSAGE,
+  closedMessage: WEEK_ENTRY_CLOSED_MESSAGE,
+  entitledMessage: WEEK_ENTRY_ENTITLED_MESSAGE,
+  drawnMessage: WEEK_ENTRY_DRAWN_MESSAGE,
+  championMessage: WEEK_ENTRY_CHAMPION_MESSAGE,
+  eliminatedMessage: weekEntryEliminatedMessage,
+  expiredMessage: (late: boolean) =>
+    late ? WEEK_ENTRY_LATE_ENTRY_MESSAGE : WEEK_ENTRY_EXPIRED_MESSAGE,
+  forfeitedMessage: WEEK_ENTRY_FORFEITED_MESSAGE,
+  forfeitedRefundSuffix: WEEK_ENTRY_FORFEITED_REFUND_MESSAGE,
+  excludedMessage: () => WEEK_ENTRY_EXCLUDED_MESSAGE,
+  excludedRefundSuffix: WEEK_ENTRY_EXCLUDED_REFUND_MESSAGE,
+});

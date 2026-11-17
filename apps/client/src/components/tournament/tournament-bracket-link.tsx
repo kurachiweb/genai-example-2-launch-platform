@@ -1,9 +1,9 @@
 import { ChevronRightIcon } from 'lucide-react';
 
-import { BRACKET_LINK_LABEL } from './week-tournament-messages.ts';
+import { BRACKET_LINK_LABEL } from './tournament-copy.ts';
 
-// トップページのWeekトーナメントの区画の見出しから、そのトーナメントのブラケットのページへ導くリンク
-export function WeekBracketLink({ href }: { readonly href: string }) {
+// トップページのトーナメントの区画の見出しから、そのトーナメントのブラケットのページへ導くリンク
+export function TournamentBracketLink({ href }: { readonly href: string }) {
   return (
     <a
       href={href}
