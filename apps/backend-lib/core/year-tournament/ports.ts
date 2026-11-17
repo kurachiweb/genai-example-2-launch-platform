@@ -186,6 +186,8 @@ export interface YearEntryStore {
   ): Promise<ReadonlyMap<string, YearEntryRecord>>;
   findEntry(entryId: string): Promise<YearEntryRecord | undefined>;
   listOpenByOwner(userId: string): Promise<readonly YearEntryRecord[]>;
+  // プロダクトの枠のローンチを、枠の状態によらず重複を除いてローンチのIDの昇順で返す。紐付けを解除した枠は含めない
+  listLaunchIdsByProduct(productId: string): Promise<readonly string[]>;
   // 受付中・参加資格の枠のうちWeek優勝の日が範囲にあるものを、afterEntryIdより後から枠のIDの昇順で返す
   listCandidates(
     range: YearCandidateRange,

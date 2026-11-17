@@ -295,6 +295,22 @@ export class D1YearEntryStore implements YearEntryStore {
     return rows.map(entryRecordOf);
   }
 
+  async listLaunchIdsByProduct(productId: string): Promise<readonly string[]> {
+    const rows = await this.db
+      .selectDistinct({ launchId: yearTournamentEntries.launchId })
+      .from(yearTournamentEntries)
+      .where(
+        and(
+          eq(yearTournamentEntries.productId, productId),
+          isNotNull(yearTournamentEntries.launchId),
+        ),
+      )
+      .orderBy(asc(yearTournamentEntries.launchId));
+    return rows.flatMap(({ launchId }) =>
+      launchId === null ? [] : [launchId],
+    );
+  }
+
   // ブラケットは凍結後の同じ候補で作り直すため、紐付けを解除した枠も候補から外さない
   async listDrawn(year: number): Promise<readonly YearEntryRecord[]> {
     const rows = await this.db

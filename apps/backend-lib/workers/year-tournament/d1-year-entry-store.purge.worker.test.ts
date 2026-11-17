@@ -202,3 +202,25 @@ describe('D1YearEntryStore.unlinkOrDeleteByProduct', () => {
     expectWithinBindLimit(recording.placeholderCounts);
   });
 });
+
+describe('D1YearEntryStore.listLaunchIdsByProduct', () => {
+  test('プロダクトの枠のローンチを、枠の状態によらずローンチのIDの昇順で返す', async () => {
+    await expect(store.listLaunchIdsByProduct(productIdOf(3))).resolves.toEqual(
+      [3, 4, 5, 6, 7, 8].map(launchIdOf),
+    );
+  });
+
+  test('紐付けを解除した枠のローンチは含めない', async () => {
+    await store.unlinkOrDeleteByProduct(productIdOf(3));
+
+    await expect(store.listLaunchIdsByProduct(productIdOf(3))).resolves.toEqual(
+      [],
+    );
+  });
+
+  test('枠の無いプロダクトでは空を返す', async () => {
+    await expect(store.listLaunchIdsByProduct(productIdOf(9))).resolves.toEqual(
+      [],
+    );
+  });
+});
