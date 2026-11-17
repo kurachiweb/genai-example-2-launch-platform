@@ -67,6 +67,8 @@ const config: CodegenConfig = {
             '../modules/week-tournament/mappers.ts#BracketNodeSource',
           BracketSlot:
             '../modules/week-tournament/mappers.ts#BracketSlotSource',
+          YearTournamentRoundBoard:
+            '../modules/year-tournament/mappers.ts#YearTournamentRoundBoardModel',
           HelpArticleAuthor:
             '../modules/help/author-fields.ts#HelpArticleAuthorSource',
         },

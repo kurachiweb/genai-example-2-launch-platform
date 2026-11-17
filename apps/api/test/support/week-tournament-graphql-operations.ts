@@ -122,7 +122,7 @@ const SUMMARY_SELECTION = /* GraphQL */ `
   awarded
 `;
 
-const BYE_ENTRY_SELECTION = /* GraphQL */ `
+export const BYE_ENTRY_SELECTION = /* GraphQL */ `
   id
   product {
     handle
@@ -168,7 +168,7 @@ export const WEEK_TOURNAMENT_BOARD = /* GraphQL */ `
   }
 `;
 
-const BRACKET_ROUND_SELECTION = /* GraphQL */ `
+export const BRACKET_ROUND_SELECTION = /* GraphQL */ `
   round
   name
   date

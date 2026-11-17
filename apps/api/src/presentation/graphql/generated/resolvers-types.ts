@@ -10,6 +10,7 @@ import type { DirectoryItemModel } from '../modules/directory/mappers.ts';
 import type { ProductPageModel, ProductPageRedirectModel, ProductPageScreenshotModel, ProductPageOpponentModel, ProductLiveMatchModel } from '../modules/directory/product-page-mappers.ts';
 import type { LaunchCommentModel } from '../modules/engagement/engagement-views.ts';
 import type { WeekTournamentRoundBoardModel, BracketRoundSource, BracketNodeSource, BracketSlotSource } from '../modules/week-tournament/mappers.ts';
+import type { YearTournamentRoundBoardModel } from '../modules/year-tournament/mappers.ts';
 import type { HelpArticleAuthorSource } from '../modules/help/author-fields.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
@@ -2366,6 +2367,10 @@ export type Query = {
   weekBracket?: Maybe<WeekBracket>;
   /** トップページのWeekトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない */
   weekTournamentBoard: WeekTournamentBoard;
+  /** Yearトーナメントのブラケット。年(4桁)が不正・行が無い・組み合わせを決定していなければnull。ログインを求めない */
+  yearBracket?: Maybe<YearBracket>;
+  /** トップページのYearトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない */
+  yearTournamentBoard: YearTournamentBoard;
 };
 
 
@@ -2575,6 +2580,16 @@ export type QueryWeekBracketArgs = {
 
 
 export type QueryWeekTournamentBoardArgs = {
+  date: Scalars['String']['input'];
+};
+
+
+export type QueryYearBracketArgs = {
+  year: Scalars['String']['input'];
+};
+
+
+export type QueryYearTournamentBoardArgs = {
   date: Scalars['String']['input'];
 };
 
@@ -3047,6 +3062,72 @@ export type WeekTournamentSummary = {
   week: Scalars['String']['output'];
 };
 
+/** Yearトーナメントのブラケットのページ */
+export type YearBracket = {
+  __typename?: 'YearBracket';
+  /** 受賞したプロダクト。受賞なし・終了の前・表示できなければnull */
+  champion?: Maybe<MatchProduct>;
+  participantCount: Scalars['Int']['output'];
+  /** ラウンドの昇順。参加0・1は空 */
+  rounds: Array<BracketRound>;
+  seedCount: Scalars['Int']['output'];
+  tournament: YearTournamentSummary;
+};
+
+/** トップページのYearトーナメントの区画 */
+export type YearTournamentBoard = {
+  __typename?: 'YearTournamentBoard';
+  /** 業務日付(YYYY-MM-DD) */
+  date: Scalars['String']['output'];
+  /** 年の昇順。その日にマッチが無ければ空 */
+  rounds: Array<YearTournamentRoundBoard>;
+  /** 照会の時点のサーバーの時刻。カウントダウンを合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+};
+
+/** トップページの区画の1行。年とラウンドごとに、その日のマッチを対戦カードと不戦勝に分ける */
+export type YearTournamentRoundBoard = {
+  __typename?: 'YearTournamentRoundBoard';
+  /** ブラケットのページの経路(/tournaments/year/<年>) */
+  bracketPath: Scalars['String']['output'];
+  /** 不戦勝。ブラケットの位置の順。両者の不戦敗のマッチは含めない */
+  byes: Array<MatchBye>;
+  /** 決勝のラウンド */
+  final: Scalars['Boolean']['output'];
+  /** 決勝の実施日(業務日付のYYYY-MM-DD)。遅れがあれば見込みの日 */
+  finalDate: Scalars['String']['output'];
+  /** 対戦カード。ブラケットの位置の順 */
+  matches: Array<Match>;
+  /** ラウンドの番号(1回戦が1) */
+  round: Scalars['Int']['output'];
+  /** ラウンド名(「1回戦」「準決勝」など) */
+  roundName: Scalars['String']['output'];
+  tournament: YearTournamentSummary;
+};
+
+/** Yearトーナメントの状態。OPENは参加の受付中、DRAWINGは組み合わせの決定中、IN_PROGRESSは開催中、FINISHEDは終了 */
+export type YearTournamentStatus =
+  | 'DRAWING'
+  | 'FINISHED'
+  | 'IN_PROGRESS'
+  | 'OPEN';
+
+/** Yearトーナメントの見出しの情報 */
+export type YearTournamentSummary = {
+  __typename?: 'YearTournamentSummary';
+  /** 賞を授与すれば真、受賞なしで終了すれば偽、終了の前はnull。受賞したプロダクトが表示できなくなっても真のまま */
+  awarded?: Maybe<Scalars['Boolean']['output']>;
+  /** 設定した決勝の実施日(業務日付のYYYY-MM-DD) */
+  finalDate: Scalars['String']['output'];
+  /** 組み合わせの決定で記録した1回戦の実施日(業務日付のYYYY-MM-DD)。組み合わせの決定の前と参加0・1はnull */
+  firstRoundDate?: Maybe<Scalars['String']['output']>;
+  /** 対象年の表記(「2027年」) */
+  label: Scalars['String']['output'];
+  status: YearTournamentStatus;
+  /** 対象年 */
+  year: Scalars['Int']['output'];
+};
+
 
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
@@ -3371,6 +3452,11 @@ export type ResolversTypes = {
   WeekTournamentRoundBoard: ResolverTypeWrapper<WeekTournamentRoundBoardModel>;
   WeekTournamentStatus: WeekTournamentStatus;
   WeekTournamentSummary: ResolverTypeWrapper<WeekTournamentSummary>;
+  YearBracket: ResolverTypeWrapper<Omit<YearBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversTypes['MatchProduct']>, rounds: Array<ResolversTypes['BracketRound']> }>;
+  YearTournamentBoard: ResolverTypeWrapper<Omit<YearTournamentBoard, 'rounds'> & { rounds: Array<ResolversTypes['YearTournamentRoundBoard']> }>;
+  YearTournamentRoundBoard: ResolverTypeWrapper<YearTournamentRoundBoardModel>;
+  YearTournamentStatus: YearTournamentStatus;
+  YearTournamentSummary: ResolverTypeWrapper<YearTournamentSummary>;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -3561,6 +3647,10 @@ export type ResolversParentTypes = {
   WeekTournamentBoard: Omit<WeekTournamentBoard, 'rounds'> & { rounds: Array<ResolversParentTypes['WeekTournamentRoundBoard']> };
   WeekTournamentRoundBoard: WeekTournamentRoundBoardModel;
   WeekTournamentSummary: WeekTournamentSummary;
+  YearBracket: Omit<YearBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversParentTypes['MatchProduct']>, rounds: Array<ResolversParentTypes['BracketRound']> };
+  YearTournamentBoard: Omit<YearTournamentBoard, 'rounds'> & { rounds: Array<ResolversParentTypes['YearTournamentRoundBoard']> };
+  YearTournamentRoundBoard: YearTournamentRoundBoardModel;
+  YearTournamentSummary: YearTournamentSummary;
 };
 
 export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminAccount'] = ResolversParentTypes['AdminAccount']> = {
@@ -4599,6 +4689,8 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   viewerUltras?: Resolver<Maybe<ResolversTypes['ViewerUltras']>, ParentType, ContextType>;
   weekBracket?: Resolver<Maybe<ResolversTypes['WeekBracket']>, ParentType, ContextType, RequireFields<QueryWeekBracketArgs, 'week'>>;
   weekTournamentBoard?: Resolver<ResolversTypes['WeekTournamentBoard'], ParentType, ContextType, RequireFields<QueryWeekTournamentBoardArgs, 'date'>>;
+  yearBracket?: Resolver<Maybe<ResolversTypes['YearBracket']>, ParentType, ContextType, RequireFields<QueryYearBracketArgs, 'year'>>;
+  yearTournamentBoard?: Resolver<ResolversTypes['YearTournamentBoard'], ParentType, ContextType, RequireFields<QueryYearTournamentBoardArgs, 'date'>>;
 };
 
 export type RecoveryCodeSetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['RecoveryCodeSet'] = ResolversParentTypes['RecoveryCodeSet']> = {
@@ -4784,6 +4876,40 @@ export type WeekTournamentSummaryResolvers<ContextType = GraphQLContext, ParentT
   week?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
+export type YearBracketResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearBracket'] = ResolversParentTypes['YearBracket']> = {
+  champion?: Resolver<Maybe<ResolversTypes['MatchProduct']>, ParentType, ContextType>;
+  participantCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  rounds?: Resolver<Array<ResolversTypes['BracketRound']>, ParentType, ContextType>;
+  seedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  tournament?: Resolver<ResolversTypes['YearTournamentSummary'], ParentType, ContextType>;
+};
+
+export type YearTournamentBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearTournamentBoard'] = ResolversParentTypes['YearTournamentBoard']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  rounds?: Resolver<Array<ResolversTypes['YearTournamentRoundBoard']>, ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type YearTournamentRoundBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearTournamentRoundBoard'] = ResolversParentTypes['YearTournamentRoundBoard']> = {
+  bracketPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  byes?: Resolver<Array<ResolversTypes['MatchBye']>, ParentType, ContextType>;
+  final?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  finalDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  matches?: Resolver<Array<ResolversTypes['Match']>, ParentType, ContextType>;
+  round?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  roundName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tournament?: Resolver<ResolversTypes['YearTournamentSummary'], ParentType, ContextType>;
+};
+
+export type YearTournamentSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearTournamentSummary'] = ResolversParentTypes['YearTournamentSummary']> = {
+  awarded?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  finalDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  firstRoundDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  label?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['YearTournamentStatus'], ParentType, ContextType>;
+  year?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type Resolvers<ContextType = GraphQLContext> = {
   AdminAccount?: AdminAccountResolvers<ContextType>;
   AdminConfirmationResult?: AdminConfirmationResultResolvers<ContextType>;
@@ -4932,5 +5058,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   WeekTournamentBoard?: WeekTournamentBoardResolvers<ContextType>;
   WeekTournamentRoundBoard?: WeekTournamentRoundBoardResolvers<ContextType>;
   WeekTournamentSummary?: WeekTournamentSummaryResolvers<ContextType>;
+  YearBracket?: YearBracketResolvers<ContextType>;
+  YearTournamentBoard?: YearTournamentBoardResolvers<ContextType>;
+  YearTournamentRoundBoard?: YearTournamentRoundBoardResolvers<ContextType>;
+  YearTournamentSummary?: YearTournamentSummaryResolvers<ContextType>;
 };
 

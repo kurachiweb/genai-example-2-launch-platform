@@ -167,3 +167,25 @@ describe('GRAPHQL_SCHEMA_MODULES(Weekトーナメント)', () => {
     expect(String(schema.getType('BracketSlot'))).toBe('BracketSlot');
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(Yearトーナメント)', () => {
+  test('トップページの区画とブラケットの照会がスキーマに含まれ、ブラケットのラウンドはWeekと共用の型を返す', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const bracket = schema.getType('YearBracket') as unknown as {
+      getFields(): Record<string, { type: unknown }>;
+    };
+
+    expect(String(query?.['yearTournamentBoard']?.type)).toBe(
+      'YearTournamentBoard!',
+    );
+    expect(String(query?.['yearBracket']?.type)).toBe('YearBracket');
+    expect(String(bracket.getFields()['rounds']?.type)).toBe(
+      '[BracketRound!]!',
+    );
+    expect(String(schema.getType('YearTournamentSummary'))).toBe(
+      'YearTournamentSummary',
+    );
+  });
+});

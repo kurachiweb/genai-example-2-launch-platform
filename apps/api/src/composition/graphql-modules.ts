@@ -14,6 +14,7 @@ import { profileSchemaModule } from '../presentation/graphql/modules/profile/ind
 import { systemSchemaModule } from '../presentation/graphql/modules/system/index.ts';
 import { ultrasSchemaModule } from '../presentation/graphql/modules/ultras/index.ts';
 import { weekTournamentSchemaModule } from '../presentation/graphql/modules/week-tournament/index.ts';
+import { yearTournamentSchemaModule } from '../presentation/graphql/modules/year-tournament/index.ts';
 import type { GraphQLSchemaModule } from '../presentation/graphql/schema-module.ts';
 
 export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
@@ -33,4 +34,5 @@ export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
   notificationsSchemaModule,
   engagementSchemaModule,
   weekTournamentSchemaModule,
+  yearTournamentSchemaModule,
 ];
