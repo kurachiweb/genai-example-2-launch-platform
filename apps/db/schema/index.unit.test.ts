@@ -86,6 +86,8 @@ describe('スキーマの集約点', () => {
     'bracket_matches',
     'week_tournaments',
     'week_tournament_entries',
+    'year_tournaments',
+    'year_tournament_entries',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
