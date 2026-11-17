@@ -101,6 +101,7 @@ describe('マッチの日次のジョブの定期実行の一覧への登録', (
     expect(registry.jobsFor(PAIRING_CRON).map(({ name }) => name)).toEqual([
       'match-engine.qualifier-pairing',
       'notifications.evening-dispatch',
+      'tournament-week.evening-bracket',
     ]);
     expect(registry.jobsFor(KICKOFF_CRON).map(({ name }) => name)).toEqual([
       'match-engine.match-kickoff',

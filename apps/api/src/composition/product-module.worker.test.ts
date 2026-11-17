@@ -114,6 +114,9 @@ import {
   type ProductVisibilityControl,
   StoreProductVisibilityControl,
 } from '../application/product/product-visibility-control.ts';
+import { WeekLaunchSummarySource } from '../application/week-tournament/week-launch-summary-source.ts';
+import { WeekProductLockSource } from '../application/week-tournament/week-product-lock-source.ts';
+import { WeekRelaunchConditionSource } from '../application/week-tournament/week-relaunch-condition-source.ts';
 import { computeLaunchDateWindow } from '../domain/product/launch-date-rules.ts';
 import {
   adminIdOf,
@@ -227,24 +230,39 @@ describe('APIサーバーのプロダクトのモジュールの束縛', () => {
     ).toBeInstanceOf(DefaultProductStateEvaluator);
   });
 
-  test('判定の供給元は、初版の空の登録口から組み立てた空の一覧に解決する', () => {
+  test('判定の供給元は、登録口のWeekトーナメントの登録から名前と実装に解決した一覧になる', () => {
     const container = createContainer();
 
     expect(
       container.get<
         readonly RegisteredDecisionSource<RelaunchConditionSource>[]
       >(PRODUCT_TYPES.RelaunchConditionSources),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        name: 'tournament-week.result-pending',
+        source: expect.any(WeekRelaunchConditionSource) as unknown,
+      },
+    ]);
     expect(
       container.get<readonly RegisteredDecisionSource<ProductLockSource>[]>(
         PRODUCT_TYPES.ProductLockSources,
       ),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        name: 'tournament-week.bracket-lock',
+        source: expect.any(WeekProductLockSource) as unknown,
+      },
+    ]);
     expect(
       container.get<readonly RegisteredDecisionSource<LaunchSummarySource>[]>(
         PRODUCT_TYPES.LaunchSummarySources,
       ),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        name: 'tournament-week.launch-summary',
+        source: expect.any(WeekLaunchSummarySource) as unknown,
+      },
+    ]);
   });
 
   test('ライフサイクルの確定は、同期の処理の登録口で組み立てた部品に解決し、非公開化をD1へ確定する', async () => {

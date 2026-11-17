@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import { assertDecisionSourceRegistrations } from '../application/product/decision-sources.ts';
+import { WEEK_TOURNAMENT_API_TYPES } from '../application/week-tournament/week-tournament-api-types.ts';
 import {
   LAUNCH_SUMMARY_SOURCES,
   PRODUCT_LOCK_SOURCES,
@@ -14,10 +15,28 @@ const REGISTRIES = [
 ] as const;
 
 describe('判定の供給元の登録口', () => {
-  test('初版の3つの登録口は空である', () => {
-    expect(RELAUNCH_CONDITION_SOURCES).toStrictEqual([]);
-    expect(PRODUCT_LOCK_SOURCES).toStrictEqual([]);
-    expect(LAUNCH_SUMMARY_SOURCES).toStrictEqual([]);
+  test('3つの登録口に、Weekトーナメントの供給元をorderの1500で1つずつ登録する', () => {
+    expect(RELAUNCH_CONDITION_SOURCES).toStrictEqual([
+      {
+        name: 'tournament-week.result-pending',
+        order: 1500,
+        source: WEEK_TOURNAMENT_API_TYPES.WeekRelaunchConditionSource,
+      },
+    ]);
+    expect(PRODUCT_LOCK_SOURCES).toStrictEqual([
+      {
+        name: 'tournament-week.bracket-lock',
+        order: 1500,
+        source: WEEK_TOURNAMENT_API_TYPES.WeekProductLockSource,
+      },
+    ]);
+    expect(LAUNCH_SUMMARY_SOURCES).toStrictEqual([
+      {
+        name: 'tournament-week.launch-summary',
+        order: 1500,
+        source: WEEK_TOURNAMENT_API_TYPES.WeekLaunchSummarySource,
+      },
+    ]);
   });
 
   test.each(REGISTRIES)(

@@ -60,6 +60,7 @@ interface FlushRequest {
 
 const DATE = parseBusinessDate('2026-11-20');
 const PREVIOUS_DATE = parseBusinessDate('2026-11-19');
+const EVENING_TIME: BusinessTimeOfDay = { hour: 23, minute: 45 };
 
 function createContainer(): Container {
   return createInvocationContainer(
@@ -128,11 +129,25 @@ function notificationJobResults(logs: readonly LoggedObject[]): JobSummary[] {
     .map(({ name, result }) => ({ name, result }));
 }
 
+// 夜の枠の送り出しは前提の機能の準備の完了で依頼されるため、同じ起動の前提のジョブの結果も読む
+function eveningJobResults(logs: readonly LoggedObject[]): JobSummary[] {
+  return logs
+    .filter(({ message }) => message === '定期実行を終えました')
+    .flatMap((summary) => (summary['jobs'] ?? []) as readonly JobSummary[])
+    .filter(
+      ({ name }) =>
+        name.startsWith('notifications.') ||
+        name === 'tournament-week.evening-bracket',
+    )
+    .map(({ name, result }) => ({ name, result }));
+}
+
 beforeEach(async () => {
   await clearNotificationTables();
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -155,20 +170,34 @@ describe('APIサーバーの通知のモジュールの定期実行のジョブ'
     ).toBeInstanceOf(NotificationMaintenanceJob);
   });
 
-  test('23:45の起動で、前提の登録が無い当日の夜の枠を開いて直ちに送り出しを依頼する', async () => {
+  test('23:45の起動で、Weekトーナメントの夜の処理を前提に当日の夜の枠を開いて期限の送り出しを予約し、その準備の完了を待って送り出しを依頼する', async () => {
     const logs = recordConsole();
     const requests = recordFlushRequests();
     const slot = eveningSlot(DATE);
+    const scheduledAt = fromBusinessDateTime(DATE, EVENING_TIME);
+    // 期限の送り出しの遅延は現在時刻から決まるため、時計を予定時刻に止める
+    vi.useFakeTimers({ toFake: ['Date'], now: scheduledAt });
 
-    await runScheduled(DATE, { hour: 23, minute: 45 });
+    await runScheduled(DATE, EVENING_TIME);
 
-    expect(notificationJobResults(logs)).toEqual([
+    expect(eveningJobResults(logs)).toEqual([
       { name: 'notifications.evening-dispatch', result: 'succeeded' },
+      { name: 'tournament-week.evening-bracket', result: 'succeeded' },
     ]);
-    expect(requests).toContainEqual({ slotKey: slot.key, delaySeconds: 0 });
+    expect(
+      requests.filter(({ slotKey }) => slotKey === slot.key),
+    ).toStrictEqual([
+      {
+        slotKey: slot.key,
+        delaySeconds:
+          (slot.settleUntil.getTime() - scheduledAt.getTime()) / 1000,
+      },
+      { slotKey: slot.key, delaySeconds: 0 },
+    ]);
+    expect(slot.settleUntil.getTime()).toBeGreaterThan(scheduledAt.getTime());
     expect(await readSlotRow(slot.key)).toMatchObject({
       phase: 'waiting',
-      requiredParticipants: [],
+      requiredParticipants: ['tournament-week.evening-bracket'],
       dispatchRequestedAt: expect.any(Date) as Date,
     });
   });

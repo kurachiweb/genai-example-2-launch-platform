@@ -64,6 +64,7 @@ import {
   API_ULTRAS_PLATFORM_MODULE,
 } from './ultras-module.ts';
 import { UPLOADER_ELIGIBILITY_BINDINGS } from './uploader-eligibility.ts';
+import { WEEK_TOURNAMENT_API_MODULE } from './week-tournament-module.ts';
 
 function parseExpectedHostnames(value: string): readonly string[] {
   return value
@@ -144,6 +145,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_PAYMENTS_MODULE,
   API_ULTRAS_PLATFORM_MODULE,
   createWeekTournamentPlatformModule('api'),
+  WEEK_TOURNAMENT_API_MODULE,
   API_ULTRAS_MODULE,
   PROFILE_MODULE,
   PRODUCT_MODULE,
