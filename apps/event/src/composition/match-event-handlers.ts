@@ -2,6 +2,7 @@ import type { MatchEventRegistration } from '../../lib/core/match/match-events.t
 import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
+import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 
 // マッチの予定の作成・開始・結果の確定の後にイベントサーバーで自分のデータを変える機能が、登録をここへ追記する。
 // orderは機能ごとに割り当てた帯を使い、kindsを省いた登録は全ての種別のマッチで動く
@@ -34,5 +35,19 @@ export const MATCH_EVENT_HANDLERS: readonly MatchEventRegistration[] =
       kinds: ['week'],
       order: 1510,
       handler: EVENT_WEEK_TOURNAMENT_TYPES.RoundProgressHandler,
+    },
+    {
+      name: 'tournament-year.week-champion-entry',
+      events: ['decided'],
+      kinds: ['week'],
+      order: 1700,
+      handler: EVENT_YEAR_TOURNAMENT_TYPES.WeekChampionEntryHandler,
+    },
+    {
+      name: 'tournament-year.decided-round-progress',
+      events: ['decided'],
+      kinds: ['year'],
+      order: 1710,
+      handler: EVENT_YEAR_TOURNAMENT_TYPES.RoundProgressHandler,
     },
   ]);

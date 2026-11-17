@@ -304,6 +304,7 @@ describe('即時の終了の後続の処理の登録', () => {
       'ultras-subscription.subscription-cancellation',
       ACCOUNT_HANDLER_NAME,
       'tournament-week.account-entry-loss',
+      'tournament-year.account-entry-loss',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(
@@ -340,6 +341,7 @@ describe('即時の終了の後続の処理の登録', () => {
     ).toStrictEqual([
       PRODUCT_HANDLER_NAME,
       'tournament-week.product-entry-loss',
+      'tournament-year.product-entry-loss',
     ]);
   });
 

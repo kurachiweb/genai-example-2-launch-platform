@@ -554,6 +554,7 @@ describe('退会・停止での未完了の決済セッションの失効', () =
       'match-engine.account-decision-follow-up',
       OPEN_CHECKOUT_EXPIRY,
       'tournament-week.account-entry-loss',
+      'tournament-year.account-entry-loss',
       SUBSCRIPTION_CANCELLATION,
     ]);
     await expect(readEvent(LIFECYCLE_EVENT)).resolves.toMatchObject({

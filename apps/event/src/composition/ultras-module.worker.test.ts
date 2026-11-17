@@ -64,6 +64,7 @@ import { RunActivationHandlersHandler } from '../application/ultras/run-activati
 import { SubscriptionCancellationHandler } from '../application/ultras/subscription-cancellation-handler.ts';
 import { SubscriptionErasureHandler } from '../application/ultras/subscription-erasure-handler.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
+import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 import { D1UltrasAccountDataEraser } from '../infrastructure/ultras/d1-ultras-account-data-eraser.ts';
 import { MESSAGE_HANDLERS } from './message-handlers.ts';
 import { MODULES } from './modules.ts';
@@ -386,6 +387,7 @@ describe('退会・停止の解約と物理削除の波及処理の登録', () =
       'ultras-subscription.subscription-cancellation',
       'match-engine.account-decision-follow-up',
       'tournament-week.account-entry-loss',
+      'tournament-year.account-entry-loss',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(namesFor('suspended')).toStrictEqual([
@@ -414,7 +416,7 @@ describe('退会・停止の解約と物理削除の波及処理の登録', () =
 });
 
 describe('加入が有効になった知らせの処理の登録箇所', () => {
-  test('登録箇所はtournament-weekの参加費の免除(1500)と未完了の参加費の決済の失効(1510)を持つ凍結済みの配列で、登録の検証を通る', () => {
+  test('登録箇所はtournament-weekの参加費の免除(1500)と未完了の参加費の決済の失効(1510)、tournament-yearの参加費の免除(1700)と未完了の参加費の決済の失効(1710)を持つ凍結済みの配列で、登録の検証を通る', () => {
     const registrations = [
       {
         name: 'tournament-week.ultras-entry-exemption',
@@ -425,6 +427,16 @@ describe('加入が有効になった知らせの処理の登録箇所', () => {
         name: 'tournament-week.open-entry-checkout-expiry',
         order: 1510,
         handler: EVENT_WEEK_TOURNAMENT_TYPES.WeekOpenEntryCheckoutExpiryHandler,
+      },
+      {
+        name: 'tournament-year.ultras-entry-exemption',
+        order: 1700,
+        handler: EVENT_YEAR_TOURNAMENT_TYPES.YearUltrasEntryExemptionHandler,
+      },
+      {
+        name: 'tournament-year.open-entry-checkout-expiry',
+        order: 1710,
+        handler: EVENT_YEAR_TOURNAMENT_TYPES.YearOpenEntryCheckoutExpiryHandler,
       },
     ];
 

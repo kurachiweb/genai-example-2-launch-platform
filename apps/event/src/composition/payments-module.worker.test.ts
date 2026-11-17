@@ -314,6 +314,7 @@ describe('メッセージの処理と波及処理の登録', () => {
       'ultras-subscription.subscription-cancellation',
       'match-engine.account-decision-follow-up',
       'tournament-week.account-entry-loss',
+      'tournament-year.account-entry-loss',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(namesFor('suspended')).toStrictEqual([

@@ -34,6 +34,7 @@ import { FlushSlotHandler } from '../application/notifications/flush-slot-handle
 import { OneClickUnsubscribe } from '../application/notifications/one-click-unsubscribe.ts';
 import type { SupplementSource } from '../application/notifications/ports.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
+import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 import { D1SenderInfoProvider } from '../infrastructure/notifications/d1-sender-info-provider.ts';
 import { EveningCollector } from '../infrastructure/notifications/evening-collector.ts';
 import { EmailGroupDispatcher } from '../infrastructure/notifications/group-dispatcher.ts';
@@ -212,13 +213,19 @@ describe('イベントサーバーの通知の識別子の解決', () => {
 });
 
 describe('結果の追記の登録口', () => {
-  test('登録口はtournament-weekの決済期限の追記を予選の結果に1500で持つ凍結済みの配列で、登録の検証を通る', () => {
+  test('登録口はtournament-weekの決済期限の追記を予選の結果に1500で、tournament-yearの決済期限の追記をWeekの結果に1700で持つ凍結済みの配列で、登録の検証を通る', () => {
     expect(RESULT_NOTICE_SUPPLEMENTS).toStrictEqual([
       {
         name: 'tournament-week.entry-deadline',
         kinds: ['qualifier'],
         order: 1500,
         provider: EVENT_WEEK_TOURNAMENT_TYPES.WeekEntrySupplementProvider,
+      },
+      {
+        name: 'tournament-year.entry-deadline',
+        kinds: ['week'],
+        order: 1700,
+        provider: EVENT_YEAR_TOURNAMENT_TYPES.YearEntrySupplementProvider,
       },
     ]);
     expect(Object.isFrozen(RESULT_NOTICE_SUPPLEMENTS)).toBe(true);

@@ -341,6 +341,7 @@ describe('Upvoteの物理削除とマッチ記録の紐付けの解除の処理�
       'directory-discovery.entry-erasure',
       'engagement.product-erasure',
       'tournament-week.entry-unlink',
+      'tournament-year.entry-unlink',
     ]);
   });
 

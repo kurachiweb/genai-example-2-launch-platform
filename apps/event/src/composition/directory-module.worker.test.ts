@@ -145,12 +145,13 @@ describe('プロダクトライフサイクルの非同期の処理の登録口�
     expect(
       registry
         .handlersFor('purge_due')
-        .slice(-3)
+        .slice(-4)
         .map(({ name }) => name),
     ).toStrictEqual([
       'directory-discovery.entry-erasure',
       'engagement.product-erasure',
       'tournament-week.entry-unlink',
+      'tournament-year.entry-unlink',
     ]);
   });
 

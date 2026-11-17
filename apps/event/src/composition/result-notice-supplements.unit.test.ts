@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { MATCH_KINDS } from '../../lib/core/match/match-model.ts';
 import { createResultNoticeSupplementRegistry } from '../../lib/core/notifications/result-notice-supplements.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
+import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 import { RESULT_NOTICE_SUPPLEMENTS } from './result-notice-supplements.ts';
 
 describe('勝敗結果の通知の追記の登録口', () => {
@@ -28,7 +29,22 @@ describe('勝敗結果の通知の追記の登録口', () => {
     ]);
   });
 
-  test('予選の結果には決済期限の追記が並び、Week・Yearの結果には並ばない', () => {
+  test('tournament-yearはWeekの結果に1700で参加費の決済期限の追記を登録する', () => {
+    expect(
+      RESULT_NOTICE_SUPPLEMENTS.filter(({ name }) =>
+        name.startsWith('tournament-year.'),
+      ),
+    ).toStrictEqual([
+      {
+        name: 'tournament-year.entry-deadline',
+        kinds: ['week'],
+        order: 1700,
+        provider: EVENT_YEAR_TOURNAMENT_TYPES.YearEntrySupplementProvider,
+      },
+    ]);
+  });
+
+  test('予選の結果にはWeekの決済期限の追記が、Weekの結果にはYearの決済期限の追記が並び、Yearの結果には並ばない', () => {
     const registry = createResultNoticeSupplementRegistry(
       RESULT_NOTICE_SUPPLEMENTS,
     );
@@ -38,8 +54,7 @@ describe('勝敗結果の通知の追記の登録口', () => {
     expect(namesFor('qualifier')).toStrictEqual([
       'tournament-week.entry-deadline',
     ]);
-    expect(
-      MATCH_KINDS.filter((kind) => kind !== 'qualifier').flatMap(namesFor),
-    ).toEqual([]);
+    expect(namesFor('week')).toStrictEqual(['tournament-year.entry-deadline']);
+    expect(namesFor('year')).toStrictEqual([]);
   });
 });

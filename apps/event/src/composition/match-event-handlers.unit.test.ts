@@ -5,6 +5,7 @@ import {
   MATCH_EVENT_TYPES,
 } from '../../lib/core/match/match-events.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
+import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 import { MATCH_EVENT_HANDLERS } from './match-event-handlers.ts';
 
 const namesFor = (
@@ -44,7 +45,30 @@ describe('マッチイベントの処理の登録口', () => {
     ]);
   });
 
-  test('予選のマッチの確定では結果の記録と一覧の記録の後に枠の作成が並び、Weekのマッチの確定ではラウンドの進行だけが並ぶ', () => {
+  test('tournament-yearはWeekのマッチの確定に1700でWeek優勝の取り込みを、Yearのマッチの確定に1710でラウンドの進行を登録する', () => {
+    expect(
+      MATCH_EVENT_HANDLERS.filter(({ name }) =>
+        name.startsWith('tournament-year.'),
+      ),
+    ).toStrictEqual([
+      {
+        name: 'tournament-year.week-champion-entry',
+        events: ['decided'],
+        kinds: ['week'],
+        order: 1700,
+        handler: EVENT_YEAR_TOURNAMENT_TYPES.WeekChampionEntryHandler,
+      },
+      {
+        name: 'tournament-year.decided-round-progress',
+        events: ['decided'],
+        kinds: ['year'],
+        order: 1710,
+        handler: EVENT_YEAR_TOURNAMENT_TYPES.RoundProgressHandler,
+      },
+    ]);
+  });
+
+  test('予選のマッチの確定では結果の記録と一覧の記録の後に枠の作成が並び、Weekのマッチの確定ではラウンドの進行の後にWeek優勝の取り込みが、Yearのマッチの確定ではラウンドの進行だけが並ぶ', () => {
     expect(namesFor('decided', 'qualifier')).toStrictEqual([
       'match-engine.qualifier-outcome',
       'directory-discovery.qualifier-listing',
@@ -52,6 +76,10 @@ describe('マッチイベントの処理の登録口', () => {
     ]);
     expect(namesFor('decided', 'week')).toStrictEqual([
       'tournament-week.decided-round-progress',
+      'tournament-year.week-champion-entry',
+    ]);
+    expect(namesFor('decided', 'year')).toStrictEqual([
+      'tournament-year.decided-round-progress',
     ]);
   });
 
@@ -64,6 +92,18 @@ describe('マッチイベントの処理の登録口', () => {
 
     expect(
       others.filter((name) => name.startsWith('tournament-week.')),
+    ).toEqual([]);
+  });
+
+  test('tournament-yearの処理は、予選のマッチの確定と、予定の作成・開始のイベントでは呼ばれない', () => {
+    const others = MATCH_EVENT_TYPES.flatMap((type) =>
+      (['qualifier', 'week', 'year'] as const).flatMap((kind) =>
+        type === 'decided' && kind !== 'qualifier' ? [] : namesFor(type, kind),
+      ),
+    );
+
+    expect(
+      others.filter((name) => name.startsWith('tournament-year.')),
     ).toEqual([]);
   });
 });

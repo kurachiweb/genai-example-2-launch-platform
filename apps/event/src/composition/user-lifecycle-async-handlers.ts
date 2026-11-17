@@ -10,6 +10,7 @@ import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.
 import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
+import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 
 // 退会・停止・停止解除・物理削除の開始の後にイベントサーバーで自分のデータを変える機能が、登録をここへ追記する。
 // orderは0〜9999を各ドメインspecが使い、10000以上はアカウント機能が使う
@@ -104,6 +105,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['withdrawn'],
       order: 1500,
       handler: EVENT_WEEK_TOURNAMENT_TYPES.AccountEntryLossHandler,
+    },
+    {
+      name: 'tournament-year.account-entry-loss',
+      events: ['withdrawn'],
+      order: 1700,
+      handler: EVENT_YEAR_TOURNAMENT_TYPES.AccountEntryLossHandler,
     },
     {
       name: 'identity-auth.email-suppression-cleanup',
