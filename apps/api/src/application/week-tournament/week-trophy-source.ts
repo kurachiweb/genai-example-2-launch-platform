@@ -15,8 +15,7 @@ import type {
   TrophyRecord,
   TrophySource,
 } from '../tournament/trophy-source.ts';
-
-const WEEK_BRACKET_PATH_PREFIX = '/tournaments/week/';
+import { weekBracketPathOf } from './week-bracket-path.ts';
 
 const trophyOf = ({ weekStart, awardedAt }: WeekChampion): TrophyRecord => {
   const period = isoWeekKey(weekStart);
@@ -25,7 +24,7 @@ const trophyOf = ({ weekStart, awardedAt }: WeekChampion): TrophyRecord => {
     period,
     periodLabel: formatWeekPeriodLabel(weekStart),
     awardedAt,
-    bracketPath: `${WEEK_BRACKET_PATH_PREFIX}${period}`,
+    bracketPath: weekBracketPathOf(weekStart),
   };
 };
 
