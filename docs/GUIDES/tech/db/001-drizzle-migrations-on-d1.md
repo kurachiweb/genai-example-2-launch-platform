@@ -93,7 +93,7 @@ export const users = snakeCase.table('users', {
 - カラム名は、TypeScriptのキーをキャメルケースで書き、データベースではスネークケースにする(例: `createdAt`→`created_at`)。
   - `drizzle-orm` v1には、接続の設定や`drizzle-kit`の設定で列名の変換を指定する`casing`が無い。そのため、テーブルは`drizzle-orm/sqlite-core`の`snakeCase.table`で定義し、変換をテーブル定義に持たせる。マイグレーションの生成と実行時のクエリが同じテーブル定義を読むため、両者の列名が一致する。
   - `sqliteTable`・`sqliteTableCreator`は使用しない。列名がキーのまま(キャメルケース)で作られる。静的解析の`no-restricted-imports`で、スキーマ定義からのimportを禁止する。
-  - カラム型の関数に列名を渡すと(`text('source_id')`など)、`snakeCase.table`の中でもその名前が使われる。変換結果が意図と異なるキーは、列名を明示する。例えば、大文字に続く数字の前でも区切られるため、`totpSecretV2`は`totp_secret_v_2`になる。
+  - カラム型の関数に列名を渡すと(`text('source_id')`など)、`snakeCase.table`の中でもその名前が使われる。変換結果が意図と異なるキーは、列名を明示する。例えば、数字は直前の文字が大文字のときだけ前で区切られ、`totpSecretV2`は`totp_secret_v_2`、`ipV4Address`は`ip_v_4_address`になる。直前の文字が小文字や数字なら区切られず、`round2Count`は`round2_count`、`sha256Hash`は`sha256_hash`になる。
 
 ```typescript
 import { snakeCase, text } from 'drizzle-orm/sqlite-core';
