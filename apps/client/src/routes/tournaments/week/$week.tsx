@@ -5,12 +5,13 @@ import { createFileRoute, notFound } from '@tanstack/react-router';
 import { LIVE_REFRESH_QUERY_OPTIONS } from '../../../../lib/utilities/query/live-refresh.ts';
 import { parseIsoWeek } from '../../../../common-lib/tournament/week-period.ts';
 import { NotFoundPage } from '../../../components/pages/not-found-page.tsx';
-import { WeekBracketError } from '../../../components/week-tournament/week-bracket-error.tsx';
+import { TournamentBracketError } from '../../../components/tournament/tournament-bracket-error.tsx';
 import {
-  isWeekBracketLive,
-  weekBracketRefetchIntervalOf,
-} from '../../../components/week-tournament/week-bracket-model.ts';
+  isTournamentBracketLive,
+  tournamentBracketRefetchIntervalOf,
+} from '../../../components/tournament/tournament-bracket-model.ts';
 import { WeekBracketPage } from '../../../components/week-tournament/week-bracket-page.tsx';
+import { WEEK_BRACKET_COPY } from '../../../components/week-tournament/week-tournament-messages.ts';
 import type { ClientViewer } from '../../../graphql/viewer.ts';
 import { weekBracketQueryOptions } from '../../../graphql/week-tournament.ts';
 import {
@@ -46,6 +47,10 @@ export const Route = createFileRoute('/tournaments/week/$week')({
   component: WeekBracketRoute,
 });
 
+function WeekBracketError() {
+  return <TournamentBracketError copy={WEEK_BRACKET_COPY} />;
+}
+
 // 同じ経路のまま別の週へ移ったときに、タブの既定のラウンドと自動更新の状態を初めから作り直すため、週ごとに作り直す
 function WeekBracketRoute() {
   const { week } = Route.useParams();
@@ -64,8 +69,12 @@ function WeekBracketContent({ week, viewer }: WeekBracketContentProps) {
     ...weekBracketQueryOptions(viewer, week),
     ...LIVE_REFRESH_QUERY_OPTIONS,
     refetchInterval: (query) =>
-      weekBracketRefetchIntervalOf(query, autoRefresh),
-    refetchOnWindowFocus: (query) => isWeekBracketLive(query.state.data),
+      tournamentBracketRefetchIntervalOf(
+        query.state.data?.weekBracket,
+        autoRefresh,
+      ),
+    refetchOnWindowFocus: (query) =>
+      isTournamentBracketLive(query.state.data?.weekBracket),
     refetchOnMount: false,
   });
   if (data.weekBracket === null) {
