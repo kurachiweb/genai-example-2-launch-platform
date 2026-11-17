@@ -19,7 +19,7 @@
   - _Depends: 1.1_
   - _Requirements: 15.1_
 
-- [ ] 1.3 Weekのシード・非シードの並びと返金の依頼の拒否の写像を、種類によらないブラケットの共通の規則へ移す
+- [x] 1.3 Weekのシード・非シードの並びと返金の依頼の拒否の写像を、種類によらないブラケットの共通の規則へ移す
   - 実装前のギャップ分析の決定G2・G4による、tournament-weekのコード(並びの規則と単体テスト、枠の規則の拒否の写像と単体テスト、組み合わせ決定と返金の後処理の参照)への明示の横断である。並びと写像の規則は変えない
   - 1.1と同じWeekの組み合わせ決定のファイルを変えるため、1.1の後に行う
   - 先に、移す先の単体テストとして、Weekの並びの単体テスト(Weekトーナメント規則の例を含む)と拒否の5つのコードの写像の単体テストを、種類によらない名前で移す
@@ -494,3 +494,4 @@
 - 開発者への依頼(1.1): Stripeの価格`year_tournament_entry`は開発者が2026-11-17に作成・税込化済みのため、新たな依頼は無い。
 - 1.1: `core/time/business-time.ts`に`addBusinessDays(date, days)`(負は過去)と`businessWeekdayOf(date): IsoWeekday`(月1〜日7)を公開した。`round-schedule.ts`の公開の`nextBusinessDate`は削除した(テストの3例は`business-time.unit.test.ts`へ移した)。docsの旧い名前(`backend/017`の178行目・`project-values.md`の1244行目)は8.2で直す。`week-schedule.ts`の`assertWeekStart`・`isSundayLaunch`は`businessWeekOf`のまま(計算を変えないため)。`days`が`NaN`のときは`RangeError`でなく`"NaN-NaN-NaN"`を返す(呼び出し元は整数の定数だけ)。
 - 1.2: 名指しの5ファイルに加え、完了状態(`apps/`に独自の業務日付の加算が無い)とCLAUDE.mdの水平展開により、notificationsの`previousBusinessDate`(`notification-jobs.ts`・`core/notifications/notification-slots.ts`)・engagementの`comment-anonymization-job.ts`・identityの`purge-orchestrator-job.ts`・`core/product/launch-status.ts`・`workers/match/d1-match-directory.ts`も`addBusinessDays`へ寄せた(計算結果は同じ)。`launch-date-rules.unit.test.ts`の`addBusinessDays`の12例は共通の部品のテストと重複するため削除した。対象外として残したもの: 時点を返す`core/ultras/entitlement-rules.ts`の`endOfBusinessDayContaining`(ultras-subscriptionの境界)、時点の加算の`qualifier-board-reader.ts`・`suppression-maintenance.ts`、clientとcommon-libの共用部品。
+- 1.3: 並びは`core/tournament/launch-ordering.ts`(`LaunchOrderingKey`・`launchSeedOrder`・`launchNonSeedOrder`)、拒否の写像は`core/tournament/refund-rejection.ts`(`RefundRejectionCode`・`RefundRejectionOutcome`・`refundRejectionOutcome`)。Weekの`week-entry-follow-up.ts`の`RefundRejectionCause`(`RefundRejectionCode | 'invalid_reason'`)と`INVALID_REASON_OUTCOME`はWeekの非公開のままのため、Yearの返金の後処理(3.11)は理由の形式違反(`RangeError`)の扱いを同じ形で自前に持つ。

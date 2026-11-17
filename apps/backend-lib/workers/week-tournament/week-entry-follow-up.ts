@@ -10,6 +10,11 @@ import type { EmailSender } from '../../core/email/ports.ts';
 import type { UserContactDirectory } from '../../core/identity/ports.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import type { PaymentRefunds } from '../../core/payments/ports.ts';
+import {
+  type RefundRejectionCode,
+  type RefundRejectionOutcome,
+  refundRejectionOutcome,
+} from '../../core/tournament/refund-rejection.ts';
 import type {
   WeekEntryFollowUp,
   WeekEntryRecord,
@@ -17,10 +22,7 @@ import type {
 } from '../../core/week-tournament/ports.ts';
 import {
   refundReasonFor,
-  refundRejectionOutcome,
   type WeekRefundReason,
-  type WeekRefundRejectionCode,
-  type WeekRefundRejectionOutcome,
   weekRefundRequestKey,
 } from '../../core/week-tournament/week-entry-rules.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
@@ -59,14 +61,14 @@ const NOTICE_INCOMPLETE_MESSAGE =
 const FAILED_MESSAGE = '返金の依頼と知らせに失敗した参加の枠があります';
 
 // 理由の形式違反でpaymentsが投げるRangeErrorと、理由を決められない状態の枠を表す
-type RefundRejectionCause = WeekRefundRejectionCode | 'invalid_reason';
+type RefundRejectionCause = RefundRejectionCode | 'invalid_reason';
 
-const INVALID_REASON_OUTCOME: WeekRefundRejectionOutcome = Object.freeze({
+const INVALID_REASON_OUTCOME: RefundRejectionOutcome = Object.freeze({
   refundStatus: 'rejected',
   report: true,
 });
 
-function outcomeOf(cause: RefundRejectionCause): WeekRefundRejectionOutcome {
+function outcomeOf(cause: RefundRejectionCause): RefundRejectionOutcome {
   return cause === 'invalid_reason'
     ? INVALID_REASON_OUTCOME
     : refundRejectionOutcome(cause);
@@ -232,7 +234,7 @@ export class WeekEntryRefundFollowUp implements WeekEntryFollowUp {
     entry: WeekEntryRecord,
     purchaseId: string,
     code: RefundRejectionCause,
-    outcome: WeekRefundRejectionOutcome,
+    outcome: RefundRejectionOutcome,
   ): void {
     if (!outcome.report) {
       this.logger.error(NOT_NEEDED_MESSAGE, { purchaseId, code });

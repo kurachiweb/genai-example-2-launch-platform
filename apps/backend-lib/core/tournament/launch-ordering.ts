@@ -1,7 +1,7 @@
 import type { BusinessDate } from '../time/business-time.ts';
-import type { Comparator } from '../tournament/bracket-draw-rules.ts';
+import type { Comparator } from './bracket-draw-rules.ts';
 
-export interface WeekOrderingKey {
+export interface LaunchOrderingKey {
   readonly launchDate: BusinessDate;
   readonly upvoteCount: number;
   // 勝利した予選の開始からの経過。Upvote数0ならnull
@@ -9,13 +9,16 @@ export interface WeekOrderingKey {
 }
 
 function byUpvoteCountDescending(
-  a: WeekOrderingKey,
-  b: WeekOrderingKey,
+  a: LaunchOrderingKey,
+  b: LaunchOrderingKey,
 ): number {
   return b.upvoteCount - a.upvoteCount;
 }
 
-function byLastUpvoteAscending(a: WeekOrderingKey, b: WeekOrderingKey): number {
+function byLastUpvoteAscending(
+  a: LaunchOrderingKey,
+  b: LaunchOrderingKey,
+): number {
   if (a.lastUpvoteElapsedMs === b.lastUpvoteElapsedMs) {
     return 0;
   }
@@ -28,17 +31,20 @@ function byLastUpvoteAscending(a: WeekOrderingKey, b: WeekOrderingKey): number {
   return a.lastUpvoteElapsedMs - b.lastUpvoteElapsedMs;
 }
 
-function byLaunchDateAscending(a: WeekOrderingKey, b: WeekOrderingKey): number {
+function byLaunchDateAscending(
+  a: LaunchOrderingKey,
+  b: LaunchOrderingKey,
+): number {
   if (a.launchDate === b.launchDate) {
     return 0;
   }
   return a.launchDate < b.launchDate ? -1 : 1;
 }
 
-export const weekSeedOrder: Comparator<WeekOrderingKey> = (a, b) =>
+export const launchSeedOrder: Comparator<LaunchOrderingKey> = (a, b) =>
   byUpvoteCountDescending(a, b) || byLastUpvoteAscending(a, b);
 
-export const weekNonSeedOrder: Comparator<WeekOrderingKey> = (a, b) =>
+export const launchNonSeedOrder: Comparator<LaunchOrderingKey> = (a, b) =>
   byLaunchDateAscending(a, b) ||
   byUpvoteCountDescending(a, b) ||
   byLastUpvoteAscending(a, b);

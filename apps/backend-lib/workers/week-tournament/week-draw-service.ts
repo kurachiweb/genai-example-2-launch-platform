@@ -12,6 +12,11 @@ import {
   type BusinessDate,
 } from '../../core/time/business-time.ts';
 import type { DrawOrder } from '../../core/tournament/bracket-draw-rules.ts';
+import {
+  type LaunchOrderingKey,
+  launchNonSeedOrder,
+  launchSeedOrder,
+} from '../../core/tournament/launch-ordering.ts';
 import type {
   AdvanceResult,
   BracketDraw,
@@ -31,11 +36,6 @@ import type {
   WeekTournamentStore,
 } from '../../core/week-tournament/ports.ts';
 import { ultrasExemptionPeriodOf } from '../../core/week-tournament/week-entry-rules.ts';
-import {
-  type WeekOrderingKey,
-  weekNonSeedOrder,
-  weekSeedOrder,
-} from '../../core/week-tournament/week-ordering.ts';
 import { weekFirstRoundDate } from '../../core/week-tournament/week-schedule.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
 import { safeTagOf } from './incident-tags.ts';
@@ -53,9 +53,9 @@ const DRAW_FAILED_MESSAGE = 'Weekトーナメントの組み合わせ決定に�
 
 const DRAWN_MESSAGE = 'Weekトーナメントの組み合わせを記録しました';
 
-const WEEK_DRAW_ORDER: DrawOrder<WeekOrderingKey> = Object.freeze({
-  seed: weekSeedOrder,
-  nonSeed: weekNonSeedOrder,
+const WEEK_DRAW_ORDER: DrawOrder<LaunchOrderingKey> = Object.freeze({
+  seed: launchSeedOrder,
+  nonSeed: launchNonSeedOrder,
 });
 
 export interface WeekTournamentDrawServiceOptions {
@@ -112,7 +112,7 @@ function classificationOf(
 // 紐付けを解除した枠はローンチのIDを失うため、同順の最後の決め手に枠のIDを使う
 function candidateOf(
   entry: WeekEntryRecord,
-): BracketDrawCandidate<WeekOrderingKey> {
+): BracketDrawCandidate<LaunchOrderingKey> {
   const tieBreaker = entry.launchId ?? entry.entryId;
   return {
     ref: entry.entryId,

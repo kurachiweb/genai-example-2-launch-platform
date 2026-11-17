@@ -1,18 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 
 import { type BusinessDate, parseBusinessDate } from '../time/business-time.ts';
+import { type DrawCandidate, drawBracket } from './bracket-draw-rules.ts';
 import {
-  type DrawCandidate,
-  drawBracket,
-} from '../tournament/bracket-draw-rules.ts';
-import {
-  type WeekOrderingKey,
-  weekNonSeedOrder,
-  weekSeedOrder,
-} from './week-ordering.ts';
+  type LaunchOrderingKey,
+  launchNonSeedOrder,
+  launchSeedOrder,
+} from './launch-ordering.ts';
 
 const MILLISECONDS_PER_MINUTE = 60_000;
-const ORDER = { seed: weekSeedOrder, nonSeed: weekNonSeedOrder } as const;
+const ORDER = { seed: launchSeedOrder, nonSeed: launchNonSeedOrder } as const;
 
 function elapsed(clock: string): number {
   const [hour = 0, minute = 0] = clock.split(':').map(Number);
@@ -23,7 +20,7 @@ function key(
   launchDate: string,
   upvoteCount: number,
   lastUpvote: string | null,
-): WeekOrderingKey {
+): LaunchOrderingKey {
   return {
     launchDate: parseBusinessDate(launchDate),
     upvoteCount,
@@ -52,13 +49,12 @@ const N13_ROWS = [
   ['M', '2026-09-13', 4, '22:47'],
 ] as const;
 
-const N13_CANDIDATES: readonly DrawCandidate<WeekOrderingKey>[] = N13_ROWS.map(
-  ([ref, launchDate, upvoteCount, lastUpvote], index) => ({
+const N13_CANDIDATES: readonly DrawCandidate<LaunchOrderingKey>[] =
+  N13_ROWS.map(([ref, launchDate, upvoteCount, lastUpvote], index) => ({
     ref,
     tieBreaker: launchIdOf(index + 1),
     value: key(launchDate, upvoteCount, lastUpvote),
-  }),
-);
+  }));
 
 function refsInNumberOrder(
   result: ReturnType<typeof drawBracket>,
@@ -83,40 +79,40 @@ function firstRoundPairs(
 }
 
 function sortKeys(
-  keys: readonly WeekOrderingKey[],
-  compare: (a: WeekOrderingKey, b: WeekOrderingKey) => number,
-): readonly WeekOrderingKey[] {
+  keys: readonly LaunchOrderingKey[],
+  compare: (a: LaunchOrderingKey, b: LaunchOrderingKey) => number,
+): readonly LaunchOrderingKey[] {
   return [...keys].sort(compare);
 }
 
-describe('weekSeedOrder', () => {
+describe('launchSeedOrder', () => {
   test('Upvote数の降順に並べる', () => {
     const many = key('2026-09-13', 42, '23:59');
     const few = key('2026-09-07', 37, '00:01');
-    expect(sortKeys([few, many], weekSeedOrder)).toEqual([many, few]);
+    expect(sortKeys([few, many], launchSeedOrder)).toEqual([many, few]);
   });
 
   test('Upvote数が同じなら最終Upvote時間の昇順に並べ、ローンチ日は見ない', () => {
     const early = key('2026-09-11', 37, '14:02');
     const late = key('2026-09-07', 37, '22:01');
-    expect(sortKeys([late, early], weekSeedOrder)).toEqual([early, late]);
+    expect(sortKeys([late, early], launchSeedOrder)).toEqual([early, late]);
   });
 
   test('最終Upvote時間が無い枠は同じUpvote数の末尾になる', () => {
     const missing = key('2026-09-07', 0, null);
     const present = key('2026-09-13', 0, '23:59');
-    expect(sortKeys([missing, present], weekSeedOrder)).toEqual([
+    expect(sortKeys([missing, present], launchSeedOrder)).toEqual([
       present,
       missing,
     ]);
-    expect(weekSeedOrder(missing, present)).toBeGreaterThan(0);
-    expect(weekSeedOrder(present, missing)).toBeLessThan(0);
-    expect(weekSeedOrder(missing, key('2026-09-13', 0, null))).toBe(0);
+    expect(launchSeedOrder(missing, present)).toBeGreaterThan(0);
+    expect(launchSeedOrder(present, missing)).toBeLessThan(0);
+    expect(launchSeedOrder(missing, key('2026-09-13', 0, null))).toBe(0);
   });
 
   test('全ての項目が同じなら同順を返す', () => {
     expect(
-      weekSeedOrder(
+      launchSeedOrder(
         key('2026-09-08', 5, '12:00'),
         key('2026-09-12', 5, '12:00'),
       ),
@@ -124,11 +120,11 @@ describe('weekSeedOrder', () => {
   });
 });
 
-describe('weekNonSeedOrder', () => {
+describe('launchNonSeedOrder', () => {
   test('ローンチ日の昇順をUpvote数より先に見る', () => {
     const earlierDay = key('2026-09-10', 8, '16:22');
     const laterDay = key('2026-09-11', 37, '22:01');
-    expect(sortKeys([laterDay, earlierDay], weekNonSeedOrder)).toEqual([
+    expect(sortKeys([laterDay, earlierDay], launchNonSeedOrder)).toEqual([
       earlierDay,
       laterDay,
     ]);
@@ -138,7 +134,7 @@ describe('weekNonSeedOrder', () => {
     const many = key('2026-09-07', 12, '21:40');
     const fewEarly = key('2026-09-07', 9, '10:05');
     const fewLate = key('2026-09-07', 9, '18:00');
-    expect(sortKeys([fewLate, fewEarly, many], weekNonSeedOrder)).toEqual([
+    expect(sortKeys([fewLate, fewEarly, many], launchNonSeedOrder)).toEqual([
       many,
       fewEarly,
       fewLate,
@@ -149,7 +145,7 @@ describe('weekNonSeedOrder', () => {
     const zero = key('2026-09-09', 0, null);
     const sameDay = key('2026-09-09', 1, '23:59');
     const nextDay = key('2026-09-10', 99, '00:01');
-    expect(sortKeys([nextDay, zero, sameDay], weekNonSeedOrder)).toEqual([
+    expect(sortKeys([nextDay, zero, sameDay], launchNonSeedOrder)).toEqual([
       sameDay,
       zero,
       nextDay,
@@ -159,7 +155,7 @@ describe('weekNonSeedOrder', () => {
   test('同日・同数でも最終Upvote時間が無い枠は末尾になる', () => {
     const missing = key('2026-09-09', 0, null);
     const present = key('2026-09-09', 0, '08:00');
-    expect(sortKeys([missing, present], weekNonSeedOrder)).toEqual([
+    expect(sortKeys([missing, present], launchNonSeedOrder)).toEqual([
       present,
       missing,
     ]);
@@ -167,12 +163,15 @@ describe('weekNonSeedOrder', () => {
 
   test('全ての項目が同じなら同順を返す', () => {
     expect(
-      weekNonSeedOrder(key('2026-09-09', 0, null), key('2026-09-09', 0, null)),
+      launchNonSeedOrder(
+        key('2026-09-09', 0, null),
+        key('2026-09-09', 0, null),
+      ),
     ).toBe(0);
   });
 });
 
-describe('Weekの並びによる抽選番号', () => {
+describe('ローンチの並びによる抽選番号', () => {
   test('N = 13の例でシードはA・C・D、非シードの1回戦はE×F・G×H・I×B・J×K・L×Mになる', () => {
     const result = drawBracket(N13_CANDIDATES, ORDER);
 
@@ -229,8 +228,8 @@ describe('Weekの並びによる抽選番号', () => {
 
   test('比較を差し替えると並びが変わる', () => {
     const swapped = drawBracket(N13_CANDIDATES, {
-      seed: weekNonSeedOrder,
-      nonSeed: weekSeedOrder,
+      seed: launchNonSeedOrder,
+      nonSeed: launchSeedOrder,
     });
     expect(refsInNumberOrder(swapped)).toEqual([
       'C',
