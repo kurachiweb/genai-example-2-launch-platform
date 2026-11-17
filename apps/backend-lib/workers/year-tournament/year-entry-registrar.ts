@@ -3,7 +3,6 @@ import { captureEvent } from '@sentry/cloudflare';
 
 import { isoWeekKey } from '../../../common-lib/tournament/week-period.ts';
 import type { IdGenerator } from '../../core/ids/id-generator.ts';
-import { isUppercaseUlid } from '../../core/ids/uppercase-ulid.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import { isWinningResult } from '../../core/match/match-model.ts';
 import type {
@@ -29,6 +28,7 @@ import {
   type TargetYearResolution,
 } from '../../core/year-tournament/year-target-rules.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
+import { safeTagOf } from './incident-tags.ts';
 
 // resolveTargetYearが調べる年数(Week優勝の日の年〜3年後)
 const TARGET_LOOKUP_YEARS = 4;
@@ -38,8 +38,6 @@ const LATE_ENTRY_MESSAGE =
 
 const QUALIFIER_MISSING_MESSAGE =
   'Week優勝のローンチの予選の勝利が見つからないため、Yearトーナメントの参加の枠を作りませんでした';
-
-const UNSAFE_TAG_VALUE = 'unknown';
 
 type Incident = 'late-entry' | 'qualifier-missing';
 
@@ -123,11 +121,6 @@ function lookupOf(
     }
     return entry;
   };
-}
-
-// タグは除去処理の対象外のため、識別子の形の値だけを送る
-function safeTagOf(value: string): string {
-  return isUppercaseUlid(value) ? value : UNSAFE_TAG_VALUE;
 }
 
 function reportIncident(
