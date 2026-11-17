@@ -19,6 +19,7 @@ import type {
   ScheduledEntryInput,
 } from '../../core/match/ports.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
   parseBusinessDate,
 } from '../../core/time/business-time.ts';
@@ -36,10 +37,7 @@ import type {
   BracketRecord,
   BracketStore,
 } from '../../core/tournament/ports.ts';
-import {
-  nextBusinessDate,
-  type RoundSchedulePolicy,
-} from '../../core/tournament/round-schedule.ts';
+import type { RoundSchedulePolicy } from '../../core/tournament/round-schedule.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
 
 // 参加者・マッチの位置の書き込みと予定の作成を、マッチ50件ずつの一括にそろえる
@@ -143,7 +141,7 @@ function expectedDateOf(
     matchesOfRound(record, previousRoundOf(record, round)),
   );
   if (previous !== undefined) {
-    return nextBusinessDate(previous);
+    return addBusinessDays(previous, 1);
   }
   return record.firstRoundDate ?? undefined;
 }

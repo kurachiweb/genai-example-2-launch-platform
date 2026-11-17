@@ -10,8 +10,8 @@ import {
   NotificationPublishError,
   type NotificationPublishErrorReason,
 } from '../../core/notifications/notification-event-contract.ts';
-import { nextBusinessDate } from '../../core/tournament/round-schedule.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
   fromBusinessDateTime,
 } from '../../core/time/business-time.ts';
@@ -131,7 +131,7 @@ export class WeekTournamentNotificationPublisher implements WeekNotificationPubl
     const [today, tomorrow, awards] = await Promise.all([
       this.matches.listForDate({ date, kinds: ['week'], now: at }),
       this.matches.listForDate({
-        date: nextBusinessDate(date),
+        date: addBusinessDays(date, 1),
         kinds: ['week'],
         now: at,
       }),

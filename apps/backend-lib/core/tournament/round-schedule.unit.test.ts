@@ -5,7 +5,7 @@ import {
   fromBusinessDateTime,
   parseBusinessDate,
 } from '../time/business-time.ts';
-import { dailyRoundPolicy, nextBusinessDate } from './round-schedule.ts';
+import { dailyRoundPolicy } from './round-schedule.ts';
 
 function date(value: string): BusinessDate {
   return parseBusinessDate(value);
@@ -129,16 +129,5 @@ describe('dailyRoundPolicyの次ラウンドの日', () => {
     expect(
       other.nextRoundDate(date('2026-09-15'), at('2026-09-16', '00:10')),
     ).toBe(policy.nextRoundDate(date('2026-09-15'), at('2026-09-16', '00:10')));
-  });
-});
-
-describe('nextBusinessDate', () => {
-  test('業務日付の翌日を返す', () => {
-    expect(nextBusinessDate(date('2026-09-15'))).toBe(date('2026-09-16'));
-  });
-
-  test('月と年をまたいでも翌日になる', () => {
-    expect(nextBusinessDate(date('2026-02-28'))).toBe(date('2026-03-01'));
-    expect(nextBusinessDate(date('2026-12-31'))).toBe(date('2027-01-01'));
   });
 });

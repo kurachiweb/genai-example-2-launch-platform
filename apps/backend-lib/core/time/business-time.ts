@@ -136,6 +136,17 @@ export function fromBusinessDateTime(
   );
 }
 
+export function addBusinessDays(
+  date: BusinessDate,
+  days: number,
+): BusinessDate {
+  return formatBusinessDate(addDays(utcMidnightOf(toCalendarDate(date)), days));
+}
+
+export function businessWeekdayOf(date: BusinessDate): IsoWeekday {
+  return isoWeekdayOf(utcMidnightOf(toCalendarDate(date)));
+}
+
 export function businessWeekOf(date: BusinessDate): BusinessWeek {
   const utcMidnight = utcMidnightOf(toCalendarDate(date));
   const weekday = isoWeekdayOf(utcMidnight);

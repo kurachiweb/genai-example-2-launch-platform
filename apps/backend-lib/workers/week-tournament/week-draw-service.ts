@@ -7,17 +7,17 @@ import type {
   ProductDirectory,
   ProductSummaryRecord,
 } from '../../core/product/ports.ts';
-import type { BusinessDate } from '../../core/time/business-time.ts';
+import {
+  addBusinessDays,
+  type BusinessDate,
+} from '../../core/time/business-time.ts';
 import type { DrawOrder } from '../../core/tournament/bracket-draw-rules.ts';
 import type {
   AdvanceResult,
   BracketDraw,
   BracketDrawCandidate,
 } from '../../core/tournament/ports.ts';
-import {
-  dailyRoundPolicy,
-  nextBusinessDate,
-} from '../../core/tournament/round-schedule.ts';
+import { dailyRoundPolicy } from '../../core/tournament/round-schedule.ts';
 import type { UltrasEntitlements } from '../../core/ultras/ports.ts';
 import type {
   WeekDrawService,
@@ -73,7 +73,7 @@ export interface WeekTournamentDrawServiceOptions {
 function weekDatesOf(weekStart: BusinessDate): BusinessDate[] {
   const dates = [weekStart];
   while (dates.length < DAYS_PER_WEEK) {
-    dates.push(nextBusinessDate(dates.at(-1) ?? weekStart));
+    dates.push(addBusinessDays(dates.at(-1) ?? weekStart, 1));
   }
   return dates;
 }

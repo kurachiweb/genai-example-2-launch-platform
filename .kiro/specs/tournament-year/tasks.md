@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共用の部品への移設・テーブル・監査ログの操作種別・サービス仕様
-- [ ] 1.1 業務日付の日数の加算と曜日を業務時刻の共通の部品から公開し、トーナメントの計算を寄せる
+- [x] 1.1 業務日付の日数の加算と曜日を業務時刻の共通の部品から公開し、トーナメントの計算を寄せる
   - 前提: 本specが使う上流(dev-tooling・backend-platform・api-gateway・frontend-platform・identity-auth・email-delivery・admin-foundation・payments・ultras-subscription・notifications・product-launch・directory-discovery・match-engine・tournament-week)の実装が済んでいること(2026-11-17に設計の上流の契約を現在のコードと照合済み。sponsorshipなど未実装のspecの部品は使わない)。無ければ該当するタスクを保留して開発者へ報告する
   - 開発者が行う作業(devとstagingが共用するStripeのsandboxでの、`lookup_key`が`year_tournament_entry`の価格(参考$20、税込)の1回の作成。prodはlaunch-readinessが行う)を、この最初のタスクで報告する(8.4のE2Eの前提。3.16・5.13はStripeの模擬応答を使う)
   - 実装前のギャップ分析の決定G5による、tournament-weekのコードへの明示の横断である。計算結果は変えない
@@ -488,3 +488,8 @@
   - 整形・静的解析・型検査・4種のテストを全アプリで実行し、本specが変更したファイル(共用へ移した部品と書き換えた上流のファイルを含む)のカバレッジが80%以上であることを確かめる
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
   - _Requirements: 16.1_
+
+## Implementation Notes
+
+- 開発者への依頼(1.1): Stripeの価格`year_tournament_entry`は開発者が2026-11-17に作成・税込化済みのため、新たな依頼は無い。
+- 1.1: `core/time/business-time.ts`に`addBusinessDays(date, days)`(負は過去)と`businessWeekdayOf(date): IsoWeekday`(月1〜日7)を公開した。`round-schedule.ts`の公開の`nextBusinessDate`は削除した(テストの3例は`business-time.unit.test.ts`へ移した)。docsの旧い名前(`backend/017`の178行目・`project-values.md`の1244行目)は8.2で直す。`week-schedule.ts`の`assertWeekStart`・`isSundayLaunch`は`businessWeekOf`のまま(計算を変えないため)。`days`が`NaN`のときは`RangeError`でなく`"NaN-NaN-NaN"`を返す(呼び出し元は整数の定数だけ)。
