@@ -9,6 +9,7 @@ import type {
   ProductPageSection,
 } from '../components/product-page/product-page-section-types.ts';
 import { ScreenshotGallerySection } from '../components/product-page/screenshot-gallery-section.tsx';
+import { TrophyShelf } from '../components/trophy/trophy-shelf.tsx';
 
 // マッチ履歴の各ローンチのブロックに並べる区画の登録箇所。各specが自分の区画を追記する
 export const PRODUCT_LAUNCH_SECTIONS: readonly ProductLaunchSection[] =
@@ -57,5 +58,11 @@ export const PRODUCT_PAGE_SECTIONS: readonly ProductPageSection[] =
       placement: 'aside',
       order: 20,
       component: RatingSection,
+    },
+    {
+      id: 'tournament-week.trophies',
+      placement: 'main',
+      order: 10,
+      component: TrophyShelf,
     },
   ]);

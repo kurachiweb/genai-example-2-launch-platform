@@ -7,6 +7,7 @@ import {
 } from '../../composition/product-page-sections.ts';
 import { LaunchCommentsSection } from '../engagement/launch-comments-section.tsx';
 import { RatingSection } from '../engagement/rating-section.tsx';
+import { TrophyShelf } from '../trophy/trophy-shelf.tsx';
 import { ProductDescriptionSection } from './product-description-section.tsx';
 import { PRODUCT_PAGE_PLACEMENTS } from './product-page-section-order.ts';
 import type { ProductPagePlacement } from './product-page-section-types.ts';
@@ -22,7 +23,7 @@ const SECTION_ID_PATTERN = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/u;
 const PLACEMENTS: readonly ProductPagePlacement[] = PRODUCT_PAGE_PLACEMENTS;
 
 describe('プロダクト詳細ページの登録箇所', () => {
-  test('詳細ページの区画には本specのスクリーンショット(本文の20)・説明文(本文の30)・マッチ履歴(本文の40)・投稿者本人向けの操作(サイドバーの10)と、engagementの評価欄(サイドバーの20)を登録する', () => {
+  test('詳細ページの区画には本specのスクリーンショット(本文の20)・説明文(本文の30)・マッチ履歴(本文の40)・投稿者本人向けの操作(サイドバーの10)と、engagementの評価欄(サイドバーの20)、tournament-weekのトロフィー(本文の10)を登録する', () => {
     expect(
       PRODUCT_PAGE_SECTIONS.map(({ id, placement, order }) => ({
         id,
@@ -39,10 +40,12 @@ describe('プロダクト詳細ページの登録箇所', () => {
       },
       { id: 'directory-discovery.owner', placement: 'aside', order: 10 },
       { id: 'engagement.rating', placement: 'aside', order: 20 },
+      { id: 'tournament-week.trophies', placement: 'main', order: 10 },
     ]);
     expect(PRODUCT_PAGE_SECTIONS[0]?.component).toBe(ScreenshotGallerySection);
     expect(PRODUCT_PAGE_SECTIONS[1]?.component).toBe(ProductDescriptionSection);
     expect(PRODUCT_PAGE_SECTIONS[4]?.component).toBe(RatingSection);
+    expect(PRODUCT_PAGE_SECTIONS[5]?.component).toBe(TrophyShelf);
   });
 
   test('ローンチの区画にはengagementのコメント欄(10)を登録する', () => {

@@ -9,6 +9,7 @@ import {
   ClientProductPageDocument,
   type ClientProductPageQuery,
   ClientProductRatingDocument,
+  ClientProductTrophiesDocument,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as ProductPageRoute } from '../src/routes/p/$handle.tsx';
 import { GUEST_VIEWER_QUERY, renderPageRouter } from './page-router.tsx';
@@ -67,7 +68,7 @@ const isFailure = (value: unknown): boolean =>
   'ok' in value &&
   value.ok === false;
 
-// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄)の取得には、評価もコメントも無い結果を返す
+// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄・トロフィー)の取得には、評価もコメントも受賞も無い結果を返す
 export const respondOtherSections = (
   document: unknown,
   variables: unknown,
@@ -84,6 +85,9 @@ export const respondOtherSections = (
         },
       }),
     );
+  }
+  if (document === ClientProductTrophiesDocument) {
+    return Promise.resolve(ok({ productTrophies: [] }));
   }
   if (document === ClientLaunchCommentCountsDocument) {
     return Promise.resolve(ok({ launchCommentCounts: [] }));
