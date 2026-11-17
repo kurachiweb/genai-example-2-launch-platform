@@ -102,7 +102,7 @@
   - 完了状態: 単体テストが成功する
   - _Requirements: 2.4, 2.5, 2.6, 2.8, 2.12, 16.2_
 
-- [ ] 2.3 (P) 対象年の判定の規則を作る
+- [x] 2.3 (P) 対象年の判定の規則を作る
   - 先に、単体テストで、決済期限日の前日と当日のWeek優勝、開催しなかった前年(行が無く組み合わせ決定の時刻を過ぎた年)を飛ばして今年の対象になること(初年度)、凍結済みの年への遅れ、1月初旬の決勝日(決済期限日が前年の12月)、前年の決勝日が設定されていると扱う条件を確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: YearTargetRules_
@@ -504,3 +504,4 @@
 - 1.10: 6・7・3.7・3.10・5.xの文言は`docs/GUIDES/service/design/003-text-and-copy-rules.md`を正とする(エラー・状態・Week決勝の結果通知への追記・トップページとブラケット・管理画面・最終確認画面の表示事項・返金の知らせのメール)。決めた点: 決勝の区画の印は「Year Final」、喪失と返金の文は設計のSupporting Referencesどおり(Weekと文が違う)、導線の受付中の項目名は共用の「決済期限」、決勝日の表記は「2027年5月30日(日)」、Yearの導線はプロダクトを表示できない間もボタンを無効にしない(押下の後に拒否の文)。決済実装方針(`features/004-payments.md`)の購入種別の表のYearの行に受付期限・反映の期限・返金の依頼キー等を補った。法的通知の大枠の返金ポリシーは一致しており変更なし。3.13への申し送り: 組み合わせ決定の分類の順序は、Yearトーナメント規則(設計の状態遷移図に合わせ、受付中の枠をまず参加資格か期限切れに分け、参加資格の枠だけを喪失・除外にする)に合わせる。範囲外で気づいた相違(変えていない): `legal/001-compliance-policy.md`の注3とページ配置のYearの導線の「最長63週」は仮8と初年度で厳密でない、ページ配置の管理者側ページ一覧の「8項目は実装済み」に実装済みの「設定」が無い。
 - 2.1: `core/year-tournament/year-schedule.ts`に`YEAR_ENTRY_PRICE_LOOKUP_KEY`・`YEAR_MAX_PARTICIPANTS`(64)・`FINAL_DATE_MIN_LEAD_DAYS`(8)・`FINAL_DATE_MAX_GAP_DAYS`(448)・`YearSchedule`(`year`・`finalDate`・`deadlineDate`・`acceptUntil`・`deadlineAt`・`drawAt`・`changeLockAt`、凍結)・`defaultFinalDate(year)`・`yearScheduleFor(year, finalDate)`・`yearFirstRoundDate(finalDate, participantCount)`(1以下は`null`、`bracketShape`のラウンド数−1日前)。例外はすべて`RangeError`(`yearScheduleFor`は日曜日でない・対象年の外の決勝日で投げるため、選択の検証は先に`FinalDateChoice`で行う)。組み合わせ決定が遅れたときの1回戦の日の繰り下げは呼び出し元が`dailyRoundPolicy`で行う(Weekと同じ)。
 - 2.2: `core/year-tournament/final-date-choice.ts`に`FinalDateViolation`(6つの理由と`locked`)・`FinalDateContext`(`year`・`now`・`current: YearSchedule`(変更前の実効の日程)・`drawStarted`・`previousFinalDate`(前年を設定済みと扱う場合だけ、それ以外は`null`)・`nextExplicitFinalDate`(翌年を明示的に設定した場合だけ))・`NextYearGapWarningInput`・`editableYears(now)`・`isFinalDateChangeable(context)`・`checkFinalDateChoice(date, context)`・`finalDateChoices(context)`・`nextYearGapWarning({ finalDate, nextYearDefault })`(翌年が未設定のときだけ既定の日を渡す)。`locked`はAPIでは`final_date_locked`(5.6で変換、他の6つは`validation_error`の理由)。
+- 2.3: `core/year-tournament/year-target-rules.ts`に`YearState`(`planned`・`open`・`frozen`・`not_held`)・`YearCalendarYear`(`year`・`schedule`・`source`・`state`)・`TargetYearResolution`(`{kind:'open', year}`か`{kind:'late', year:number}`)・`resolveTargetYear(awardedDate, lookup)`(`lookup`は同期の関数。Week優勝の日の年〜3年後を3.5で先に読んでおく)・`isPreviousYearSet(previous)`(not_held以外で真)。`not_held`の判定(行が無く組み合わせ決定の時刻を過ぎた年)は`lookup`を作る側(3.5の`YearCalendar.describe`)の責務。2.2の`previousFinalDate`は`isPreviousYearSet(prev) ? prev.schedule.finalDate : null`。設計に無い決定: 4年のどれも対象にならなければ`RangeError`(通常のデータでは起きない。2.1・2.2の例外の形に合わせた)。
