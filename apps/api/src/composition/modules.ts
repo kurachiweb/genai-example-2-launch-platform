@@ -21,6 +21,7 @@ import {
 } from '../../lib/workers/rate-limit/rate-limit-counter-client.ts';
 import { createTournamentPlatformModule } from '../../lib/workers/tournament/tournament-platform-module.ts';
 import { createWeekTournamentPlatformModule } from '../../lib/workers/week-tournament/week-tournament-platform-module.ts';
+import { createYearTournamentPlatformModule } from '../../lib/workers/year-tournament/year-tournament-platform-module.ts';
 import {
   type DatabaseProbe,
   DefaultSystemStatusQuery,
@@ -145,6 +146,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_PAYMENTS_MODULE,
   API_ULTRAS_PLATFORM_MODULE,
   createWeekTournamentPlatformModule('api'),
+  createYearTournamentPlatformModule('api'),
   WEEK_TOURNAMENT_API_MODULE,
   API_ULTRAS_MODULE,
   PROFILE_MODULE,
