@@ -3,11 +3,8 @@ import {
   decideNext,
   type PlannedNode,
   type RecordedNode,
-} from '../../core/tournament/bracket-progress-rules.ts';
-import type {
-  BracketMatchRecord,
-  BracketRecord,
-} from '../../core/tournament/ports.ts';
+} from './bracket-progress-rules.ts';
+import type { BracketMatchRecord, BracketRecord } from './ports.ts';
 
 export interface Elimination {
   readonly participantNo: number;

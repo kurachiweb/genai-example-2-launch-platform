@@ -22,6 +22,11 @@ import {
   type BusinessDate,
   parseBusinessDate,
 } from '../../core/time/business-time.ts';
+import {
+  type Elimination,
+  planNext,
+  type SchedulePlan,
+} from '../../core/tournament/bracket-progress-plan.ts';
 import type { PlannedNode } from '../../core/tournament/bracket-progress-rules.ts';
 import { roundStage } from '../../core/tournament/bracket-shape.ts';
 import type {
@@ -36,11 +41,6 @@ import {
   type RoundSchedulePolicy,
 } from '../../core/tournament/round-schedule.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
-import {
-  type Elimination,
-  planNext,
-  type SchedulePlan,
-} from './bracket-progress-plan.ts';
 
 // 参加者・マッチの位置の書き込みと予定の作成を、マッチ50件ずつの一括にそろえる
 const MATCHES_PER_BATCH = 50;
