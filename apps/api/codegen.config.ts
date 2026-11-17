@@ -59,6 +59,14 @@ const config: CodegenConfig = {
             '../modules/product/mappers.ts#LaunchHistoryProductModel',
           LaunchComment:
             '../modules/engagement/engagement-views.ts#LaunchCommentModel',
+          WeekTournamentRoundBoard:
+            '../modules/week-tournament/mappers.ts#WeekTournamentRoundBoardModel',
+          BracketRound:
+            '../modules/week-tournament/mappers.ts#BracketRoundSource',
+          BracketNode:
+            '../modules/week-tournament/mappers.ts#BracketNodeSource',
+          BracketSlot:
+            '../modules/week-tournament/mappers.ts#BracketSlotSource',
           HelpArticleAuthor:
             '../modules/help/author-fields.ts#HelpArticleAuthorSource',
         },

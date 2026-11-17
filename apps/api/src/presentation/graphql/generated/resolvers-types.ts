@@ -9,6 +9,7 @@ import type { MatchSource, MatchEntrySource, MatchProductSource, UpvoteHistoryIt
 import type { DirectoryItemModel } from '../modules/directory/mappers.ts';
 import type { ProductPageModel, ProductPageRedirectModel, ProductPageScreenshotModel, ProductPageOpponentModel, ProductLiveMatchModel } from '../modules/directory/product-page-mappers.ts';
 import type { LaunchCommentModel } from '../modules/engagement/engagement-views.ts';
+import type { WeekTournamentRoundBoardModel, BracketRoundSource, BracketNodeSource, BracketSlotSource } from '../modules/week-tournament/mappers.ts';
 import type { HelpArticleAuthorSource } from '../modules/help/author-fields.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
@@ -331,6 +332,46 @@ export type AuditOperator = {
   id: Scalars['ID']['output'];
   /** 削除済みの管理者ではnull */
   nickname?: Maybe<Scalars['String']['output']>;
+};
+
+/** ブラケットの1つの位置 */
+export type BracketNode = {
+  __typename?: 'BracketNode';
+  /** マッチの予定を作っていない位置はnull */
+  match?: Maybe<Match>;
+  /** ラウンドの中の位置(1から) */
+  position: Scalars['Int']['output'];
+  /** 2つの側の枠 */
+  slots: Array<BracketSlot>;
+};
+
+/** ブラケットのラウンド。WeekとYearのどちらのブラケットも同じ型で返す */
+export type BracketRound = {
+  __typename?: 'BracketRound';
+  /** 実施日(業務日付のYYYY-MM-DD)。予定の前は見込みの日 */
+  date: Scalars['String']['output'];
+  /** ラウンド名 */
+  name: Scalars['String']['output'];
+  /** 位置の昇順。両方の側が空と確定した位置は含めない */
+  nodes: Array<BracketNode>;
+  /** ラウンドの番号(1回戦が1) */
+  round: Scalars['Int']['output'];
+};
+
+/** ブラケットのマッチの側の枠 */
+export type BracketSlot = {
+  __typename?: 'BracketSlot';
+  /** 未来の枠の表記(「シード1」「1回戦第3試合の勝者」) */
+  feedLabel?: Maybe<Scalars['String']['output']>;
+  /** 抽選番号。未確定の枠はnull */
+  participantNo?: Maybe<Scalars['Int']['output']>;
+  /** 表示できない(非公開化・論理削除・投稿者の退会や停止)・未来の枠はnull */
+  product?: Maybe<MatchProduct>;
+  /** 確定の前はnull */
+  result?: Maybe<MatchEntryResult>;
+  /** シードなら抽選番号 */
+  seed?: Maybe<Scalars['Int']['output']>;
+  upvoteCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** 不戦勝の理由。ABSENTは対戦相手なし、FORFEITはマッチ直前の相手の該当、EARLYはマッチ中の即時の終了 */
@@ -2290,6 +2331,8 @@ export type Query = {
   productPage?: Maybe<ProductPageResult>;
   /** プロダクトの評価欄の値。閲覧できないプロダクトはnull */
   productRating?: Maybe<ProductRating>;
+  /** プロダクト詳細ページのトロフィー。Yearを先頭に、同じ種類は受賞の新しい順に並べる。詳細ページを閲覧できなければnull。ログインを求めない */
+  productTrophies?: Maybe<Array<Trophy>>;
   /** 公開プロフィールの受賞バッジ。launchHistoryと同じ対象のプロダクトの受賞を、Yearを先頭に種類ごとにまとめて返す。ラベルの先頭に受賞したプロダクトの名称を付ける。利用者を表示できなければnull */
   profileAwards?: Maybe<Array<ProductAward>>;
   /** 見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す */
@@ -2310,6 +2353,10 @@ export type Query = {
   viewerNotificationSettings: NotificationSettings;
   /** ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull */
   viewerUltras?: Maybe<ViewerUltras>;
+  /** Weekトーナメントのブラケット。週(YYYY-Www)が不正・組み合わせを決定していなければnull。ログインを求めない */
+  weekBracket?: Maybe<WeekBracket>;
+  /** トップページのWeekトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない */
+  weekTournamentBoard: WeekTournamentBoard;
 };
 
 
@@ -2486,6 +2533,11 @@ export type QueryProductRatingArgs = {
 };
 
 
+export type QueryProductTrophiesArgs = {
+  productHandle: Scalars['String']['input'];
+};
+
+
 export type QueryProfileAwardsArgs = {
   userHandle: Scalars['String']['input'];
 };
@@ -2500,6 +2552,16 @@ export type QueryUpvoteHistoryArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first: Scalars['Int']['input'];
   userHandle: Scalars['String']['input'];
+};
+
+
+export type QueryWeekBracketArgs = {
+  week: Scalars['String']['input'];
+};
+
+
+export type QueryWeekTournamentBoardArgs = {
+  date: Scalars['String']['input'];
 };
 
 /** 重要な操作の本人確認 */
@@ -2600,6 +2662,24 @@ export type TotpSetup = {
   /** 認証アプリへ手入力するためのbase32 */
   secret: Scalars['String']['output'];
 };
+
+/** プロダクトの受賞 */
+export type Trophy = {
+  __typename?: 'Trophy';
+  awardedAt: Scalars['DateTime']['output'];
+  /** ブラケットのページの経路。無ければnull */
+  bracketPath?: Maybe<Scalars['String']['output']>;
+  kind: TrophyKind;
+  /** 受賞の期間(「2026-W37」「2026」) */
+  period: Scalars['String']['output'];
+  /** 期間の表記(「2026年第37週(9/7〜9/13)」「2026年」) */
+  periodLabel: Scalars['String']['output'];
+};
+
+/** トロフィーの種類 */
+export type TrophyKind =
+  | 'WEEK'
+  | 'YEAR';
 
 /** 料金ページが表示するUltrasの料金と受付の状態 */
 export type UltrasOffer = {
@@ -2819,6 +2899,70 @@ export type ViewerUltras = {
   plan?: Maybe<UltrasPlan>;
 };
 
+/** Weekトーナメントのブラケットのページ */
+export type WeekBracket = {
+  __typename?: 'WeekBracket';
+  /** 受賞したプロダクト。受賞なし・終了の前・表示できなければnull */
+  champion?: Maybe<MatchProduct>;
+  participantCount: Scalars['Int']['output'];
+  /** ラウンドの昇順。参加0・1は空 */
+  rounds: Array<BracketRound>;
+  seedCount: Scalars['Int']['output'];
+  tournament: WeekTournamentSummary;
+};
+
+/** トップページのWeekトーナメントの区画 */
+export type WeekTournamentBoard = {
+  __typename?: 'WeekTournamentBoard';
+  /** 業務日付(YYYY-MM-DD) */
+  date: Scalars['String']['output'];
+  /** 1回戦の日の昇順。その日にマッチが無ければ空 */
+  rounds: Array<WeekTournamentRoundBoard>;
+  /** 照会の時点のサーバーの時刻。カウントダウンを合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+};
+
+/** トップページの区画の1行。トーナメントとラウンドごとに、その日のマッチを対戦カードと不戦勝に分ける */
+export type WeekTournamentRoundBoard = {
+  __typename?: 'WeekTournamentRoundBoard';
+  /** ブラケットのページの経路(/tournaments/week/<ISO週>) */
+  bracketPath: Scalars['String']['output'];
+  /** 不戦勝。ブラケットの位置の順。両者の不戦敗のマッチは含めない */
+  byes: Array<MatchBye>;
+  /** 決勝のラウンド */
+  final: Scalars['Boolean']['output'];
+  /** 対戦カード。ブラケットの位置の順 */
+  matches: Array<Match>;
+  /** ラウンドの番号(1回戦が1) */
+  round: Scalars['Int']['output'];
+  /** ラウンド名(「1回戦」「準決勝」など) */
+  roundName: Scalars['String']['output'];
+  tournament: WeekTournamentSummary;
+};
+
+/** Weekトーナメントの状態。OPENは参加の受付中、DRAWINGは組み合わせの決定中、IN_PROGRESSは開催中、FINISHEDは終了 */
+export type WeekTournamentStatus =
+  | 'DRAWING'
+  | 'FINISHED'
+  | 'IN_PROGRESS'
+  | 'OPEN';
+
+/** Weekトーナメントの見出しの情報 */
+export type WeekTournamentSummary = {
+  __typename?: 'WeekTournamentSummary';
+  /** 賞を授与すれば真、受賞なしで終了すれば偽、終了の前はnull */
+  awarded?: Maybe<Scalars['Boolean']['output']>;
+  /** 決勝の実施日(業務日付のYYYY-MM-DD)。遅れがあれば見込みの日。組み合わせの決定の前と参加0・1はnull */
+  finalDate?: Maybe<Scalars['String']['output']>;
+  /** 1回戦の実施日(業務日付のYYYY-MM-DD)。組み合わせの決定の前はnull */
+  firstRoundDate?: Maybe<Scalars['String']['output']>;
+  /** 週の表記(「2026年第37週(9/7〜9/13)」) */
+  label: Scalars['String']['output'];
+  status: WeekTournamentStatus;
+  /** ISO週(YYYY-Www) */
+  week: Scalars['String']['output'];
+};
+
 
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
@@ -2946,6 +3090,9 @@ export type ResolversTypes = {
   AuditLogPage: ResolverTypeWrapper<AuditLogPage>;
   AuditOperator: ResolverTypeWrapper<AuditOperator>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
+  BracketNode: ResolverTypeWrapper<BracketNodeSource>;
+  BracketRound: ResolverTypeWrapper<BracketRoundSource>;
+  BracketSlot: ResolverTypeWrapper<BracketSlotSource>;
   ByeReason: ByeReason;
   Checkout: ResolverTypeWrapper<Checkout>;
   CheckoutRejectionReason: CheckoutRejectionReason;
@@ -3107,6 +3254,8 @@ export type ResolversTypes = {
   SupporterConnection: ResolverTypeWrapper<Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversTypes['UserSummary']> }>;
   SystemStatus: ResolverTypeWrapper<SystemStatus>;
   TotpSetup: ResolverTypeWrapper<TotpSetup>;
+  Trophy: ResolverTypeWrapper<Trophy>;
+  TrophyKind: TrophyKind;
   UltrasOffer: ResolverTypeWrapper<UltrasOffer>;
   UltrasPlan: ResolverTypeWrapper<UltrasPlan>;
   UltrasPlanStatus: UltrasPlanStatus;
@@ -3128,6 +3277,11 @@ export type ResolversTypes = {
   UserSummary: ResolverTypeWrapper<UserSummarySource>;
   Viewer: ResolverTypeWrapper<ViewerSource>;
   ViewerUltras: ResolverTypeWrapper<ViewerUltras>;
+  WeekBracket: ResolverTypeWrapper<Omit<WeekBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversTypes['MatchProduct']>, rounds: Array<ResolversTypes['BracketRound']> }>;
+  WeekTournamentBoard: ResolverTypeWrapper<Omit<WeekTournamentBoard, 'rounds'> & { rounds: Array<ResolversTypes['WeekTournamentRoundBoard']> }>;
+  WeekTournamentRoundBoard: ResolverTypeWrapper<WeekTournamentRoundBoardModel>;
+  WeekTournamentStatus: WeekTournamentStatus;
+  WeekTournamentSummary: ResolverTypeWrapper<WeekTournamentSummary>;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -3160,6 +3314,9 @@ export type ResolversParentTypes = {
   AuditLogPage: AuditLogPage;
   AuditOperator: AuditOperator;
   Boolean: Scalars['Boolean']['output'];
+  BracketNode: BracketNodeSource;
+  BracketRound: BracketRoundSource;
+  BracketSlot: BracketSlotSource;
   Checkout: Checkout;
   CheckoutReturnResult: CheckoutReturnResult;
   CheckoutStart: CheckoutStart;
@@ -3288,6 +3445,7 @@ export type ResolversParentTypes = {
   SupporterConnection: Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['UserSummary']> };
   SystemStatus: SystemStatus;
   TotpSetup: TotpSetup;
+  Trophy: Trophy;
   UltrasOffer: UltrasOffer;
   UltrasPlan: UltrasPlan;
   UltrasPortalSession: UltrasPortalSession;
@@ -3307,6 +3465,10 @@ export type ResolversParentTypes = {
   UserSummary: UserSummarySource;
   Viewer: ViewerSource;
   ViewerUltras: ViewerUltras;
+  WeekBracket: Omit<WeekBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversParentTypes['MatchProduct']>, rounds: Array<ResolversParentTypes['BracketRound']> };
+  WeekTournamentBoard: Omit<WeekTournamentBoard, 'rounds'> & { rounds: Array<ResolversParentTypes['WeekTournamentRoundBoard']> };
+  WeekTournamentRoundBoard: WeekTournamentRoundBoardModel;
+  WeekTournamentSummary: WeekTournamentSummary;
 };
 
 export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminAccount'] = ResolversParentTypes['AdminAccount']> = {
@@ -3494,6 +3656,28 @@ export type AuditLogPageResolvers<ContextType = GraphQLContext, ParentType exten
 export type AuditOperatorResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AuditOperator'] = ResolversParentTypes['AuditOperator']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type BracketNodeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['BracketNode'] = ResolversParentTypes['BracketNode']> = {
+  match?: Resolver<Maybe<ResolversTypes['Match']>, ParentType, ContextType>;
+  position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  slots?: Resolver<Array<ResolversTypes['BracketSlot']>, ParentType, ContextType>;
+};
+
+export type BracketRoundResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['BracketRound'] = ResolversParentTypes['BracketRound']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nodes?: Resolver<Array<ResolversTypes['BracketNode']>, ParentType, ContextType>;
+  round?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type BracketSlotResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['BracketSlot'] = ResolversParentTypes['BracketSlot']> = {
+  feedLabel?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  participantNo?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  product?: Resolver<Maybe<ResolversTypes['MatchProduct']>, ParentType, ContextType>;
+  result?: Resolver<Maybe<ResolversTypes['MatchEntryResult']>, ParentType, ContextType>;
+  seed?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  upvoteCount?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 };
 
 export type CheckoutResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Checkout'] = ResolversParentTypes['Checkout']> = {
@@ -4308,6 +4492,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   productOwnerStatus?: Resolver<Maybe<ResolversTypes['ProductOwnerStatus']>, ParentType, ContextType, RequireFields<QueryProductOwnerStatusArgs, 'productHandle'>>;
   productPage?: Resolver<Maybe<ResolversTypes['ProductPageResult']>, ParentType, ContextType, RequireFields<QueryProductPageArgs, 'handle'>>;
   productRating?: Resolver<Maybe<ResolversTypes['ProductRating']>, ParentType, ContextType, RequireFields<QueryProductRatingArgs, 'productId'>>;
+  productTrophies?: Resolver<Maybe<Array<ResolversTypes['Trophy']>>, ParentType, ContextType, RequireFields<QueryProductTrophiesArgs, 'productHandle'>>;
   profileAwards?: Resolver<Maybe<Array<ResolversTypes['ProductAward']>>, ParentType, ContextType, RequireFields<QueryProfileAwardsArgs, 'userHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
   qualifierBoard?: Resolver<ResolversTypes['QualifierBoard'], ParentType, ContextType>;
@@ -4318,6 +4503,8 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
   viewerNotificationSettings?: Resolver<ResolversTypes['NotificationSettings'], ParentType, ContextType>;
   viewerUltras?: Resolver<Maybe<ResolversTypes['ViewerUltras']>, ParentType, ContextType>;
+  weekBracket?: Resolver<Maybe<ResolversTypes['WeekBracket']>, ParentType, ContextType, RequireFields<QueryWeekBracketArgs, 'week'>>;
+  weekTournamentBoard?: Resolver<ResolversTypes['WeekTournamentBoard'], ParentType, ContextType, RequireFields<QueryWeekTournamentBoardArgs, 'date'>>;
 };
 
 export type RecoveryCodeSetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['RecoveryCodeSet'] = ResolversParentTypes['RecoveryCodeSet']> = {
@@ -4350,6 +4537,14 @@ export type TotpSetupResolvers<ContextType = GraphQLContext, ParentType extends 
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   otpauthUri?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   secret?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type TrophyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Trophy'] = ResolversParentTypes['Trophy']> = {
+  awardedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  bracketPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['TrophyKind'], ParentType, ContextType>;
+  period?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  periodLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type UltrasOfferResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UltrasOffer'] = ResolversParentTypes['UltrasOffer']> = {
@@ -4433,6 +4628,39 @@ export type ViewerUltrasResolvers<ContextType = GraphQLContext, ParentType exten
   plan?: Resolver<Maybe<ResolversTypes['UltrasPlan']>, ParentType, ContextType>;
 };
 
+export type WeekBracketResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekBracket'] = ResolversParentTypes['WeekBracket']> = {
+  champion?: Resolver<Maybe<ResolversTypes['MatchProduct']>, ParentType, ContextType>;
+  participantCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  rounds?: Resolver<Array<ResolversTypes['BracketRound']>, ParentType, ContextType>;
+  seedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  tournament?: Resolver<ResolversTypes['WeekTournamentSummary'], ParentType, ContextType>;
+};
+
+export type WeekTournamentBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekTournamentBoard'] = ResolversParentTypes['WeekTournamentBoard']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  rounds?: Resolver<Array<ResolversTypes['WeekTournamentRoundBoard']>, ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type WeekTournamentRoundBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekTournamentRoundBoard'] = ResolversParentTypes['WeekTournamentRoundBoard']> = {
+  bracketPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  byes?: Resolver<Array<ResolversTypes['MatchBye']>, ParentType, ContextType>;
+  final?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  matches?: Resolver<Array<ResolversTypes['Match']>, ParentType, ContextType>;
+  round?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  roundName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tournament?: Resolver<ResolversTypes['WeekTournamentSummary'], ParentType, ContextType>;
+};
+
+export type WeekTournamentSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekTournamentSummary'] = ResolversParentTypes['WeekTournamentSummary']> = {
+  awarded?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  finalDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  firstRoundDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  label?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['WeekTournamentStatus'], ParentType, ContextType>;
+  week?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type Resolvers<ContextType = GraphQLContext> = {
   AdminAccount?: AdminAccountResolvers<ContextType>;
   AdminConfirmationResult?: AdminConfirmationResultResolvers<ContextType>;
@@ -4457,6 +4685,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   AuditLogEntry?: AuditLogEntryResolvers<ContextType>;
   AuditLogPage?: AuditLogPageResolvers<ContextType>;
   AuditOperator?: AuditOperatorResolvers<ContextType>;
+  BracketNode?: BracketNodeResolvers<ContextType>;
+  BracketRound?: BracketRoundResolvers<ContextType>;
+  BracketSlot?: BracketSlotResolvers<ContextType>;
   Checkout?: CheckoutResolvers<ContextType>;
   CheckoutReturnResult?: CheckoutReturnResultResolvers<ContextType>;
   CheckoutStart?: CheckoutStartResolvers<ContextType>;
@@ -4559,6 +4790,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   SupporterConnection?: SupporterConnectionResolvers<ContextType>;
   SystemStatus?: SystemStatusResolvers<ContextType>;
   TotpSetup?: TotpSetupResolvers<ContextType>;
+  Trophy?: TrophyResolvers<ContextType>;
   UltrasOffer?: UltrasOfferResolvers<ContextType>;
   UltrasPlan?: UltrasPlanResolvers<ContextType>;
   UltrasPortalSession?: UltrasPortalSessionResolvers<ContextType>;
@@ -4570,5 +4802,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   UserSummary?: UserSummaryResolvers<ContextType>;
   Viewer?: ViewerResolvers<ContextType>;
   ViewerUltras?: ViewerUltrasResolvers<ContextType>;
+  WeekBracket?: WeekBracketResolvers<ContextType>;
+  WeekTournamentBoard?: WeekTournamentBoardResolvers<ContextType>;
+  WeekTournamentRoundBoard?: WeekTournamentRoundBoardResolvers<ContextType>;
+  WeekTournamentSummary?: WeekTournamentSummaryResolvers<ContextType>;
 };
 
