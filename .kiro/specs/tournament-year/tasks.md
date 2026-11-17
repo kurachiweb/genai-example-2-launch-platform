@@ -27,7 +27,7 @@
   - 完了状態: 移した単体テストと、tournament-weekの既存の単体テスト・Workers統合テストが期待値を変えずに成功し、旧い名前の参照が`apps/`・`docs/`で0件になる
   - _Requirements: 6.8, 7.4, 7.5, 15.1_
 
-- [ ] 1.4 (P) 違反を除いた通知の発行を通知の機能の共用の部品へ移し、Weekの通知の発行をそれで行う
+- [x] 1.4 (P) 違反を除いた通知の発行を通知の機能の共用の部品へ移し、Weekの通知の発行をそれで行う
   - 実装前のギャップ分析の決定G3による、notificationsとtournament-weekのコードへの明示の横断である。50件ずつの発行・違反の1件の除外と再発行・ログのレベルの分け方・例外の伝わり方は変えない
   - 1.3が変えるWeekの組み合わせ決定・返金の後処理とはファイルが重ならない(Weekの通知の発行は1.1が先に変える)
   - 先に、共用の部品の単体テストで、50件の分割、違反の除外と再発行、開始済みの予告の違反は`info`でそれ以外は`error`のログ(識別と理由だけ)、位置の無い拒否・範囲外の位置・一時的な失敗が例外のまま伝わることを確かめる(Weekの通知の発行の既存のテストの例を移す)
@@ -495,3 +495,4 @@
 - 1.1: `core/time/business-time.ts`に`addBusinessDays(date, days)`(負は過去)と`businessWeekdayOf(date): IsoWeekday`(月1〜日7)を公開した。`round-schedule.ts`の公開の`nextBusinessDate`は削除した(テストの3例は`business-time.unit.test.ts`へ移した)。docsの旧い名前(`backend/017`の178行目・`project-values.md`の1244行目)は8.2で直す。`week-schedule.ts`の`assertWeekStart`・`isSundayLaunch`は`businessWeekOf`のまま(計算を変えないため)。`days`が`NaN`のときは`RangeError`でなく`"NaN-NaN-NaN"`を返す(呼び出し元は整数の定数だけ)。
 - 1.2: 名指しの5ファイルに加え、完了状態(`apps/`に独自の業務日付の加算が無い)とCLAUDE.mdの水平展開により、notificationsの`previousBusinessDate`(`notification-jobs.ts`・`core/notifications/notification-slots.ts`)・engagementの`comment-anonymization-job.ts`・identityの`purge-orchestrator-job.ts`・`core/product/launch-status.ts`・`workers/match/d1-match-directory.ts`も`addBusinessDays`へ寄せた(計算結果は同じ)。`launch-date-rules.unit.test.ts`の`addBusinessDays`の12例は共通の部品のテストと重複するため削除した。対象外として残したもの: 時点を返す`core/ultras/entitlement-rules.ts`の`endOfBusinessDayContaining`(ultras-subscriptionの境界)、時点の加算の`qualifier-board-reader.ts`・`suppression-maintenance.ts`、clientとcommon-libの共用部品。
 - 1.3: 並びは`core/tournament/launch-ordering.ts`(`LaunchOrderingKey`・`launchSeedOrder`・`launchNonSeedOrder`)、拒否の写像は`core/tournament/refund-rejection.ts`(`RefundRejectionCode`・`RefundRejectionOutcome`・`refundRejectionOutcome`)。Weekの`week-entry-follow-up.ts`の`RefundRejectionCause`(`RefundRejectionCode | 'invalid_reason'`)と`INVALID_REASON_OUTCOME`はWeekの非公開のままのため、Yearの返金の後処理(3.11)は理由の形式違反(`RangeError`)の扱いを同じ形で自前に持つ。
+- 1.4: 共用の部品は`core/notifications/violation-tolerant-publish.ts`の`publishExcludingViolations({ publisher, name, events, at, logger })`(入力の型`ViolationTolerantPublishInput`も公開)。50件の分割は関数の中で行うので、Yearの通知の発行(3.9)は全件を1回で渡し、`name: 'tournament-year'`と自分のロガーを渡す。Weekの`publishAll`は共用の関数を呼ぶ薄い非公開の包みとして残した。

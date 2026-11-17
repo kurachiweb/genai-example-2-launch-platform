@@ -3,13 +3,11 @@ import type { Logger } from '@logtape/logtape';
 import { isoWeekKey } from '../../../common-lib/tournament/week-period.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import type { MatchDirectory } from '../../core/match/ports.ts';
-import {
-  type NotificationEvent,
-  type NotificationEventPublisher,
-  NOTIFICATION_PUBLISH_EVENT_LIMIT,
-  NotificationPublishError,
-  type NotificationPublishErrorReason,
+import type {
+  NotificationEvent,
+  NotificationEventPublisher,
 } from '../../core/notifications/notification-event-contract.ts';
+import { publishExcludingViolations } from '../../core/notifications/violation-tolerant-publish.ts';
 import {
   addBusinessDays,
   type BusinessDate,
@@ -26,20 +24,9 @@ const PUBLISHER = 'tournament-week';
 
 const START_OF_DAY = Object.freeze({ hour: 0, minute: 0 });
 
-const NOT_PREVIEWABLE_MESSAGE =
-  '開始済みのマッチの予告を通知イベントの発行から除きました';
-
-const REJECTED_MESSAGE = '発行を拒否された通知イベントを除きました';
-
 interface RoundInput {
   readonly decidedMatchIds: readonly string[];
   readonly previewMatchIds: readonly string[];
-}
-
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
-    items.slice(index * size, (index + 1) * size),
-  );
 }
 
 function roundEventsOf({
@@ -68,35 +55,6 @@ function awardEventOf({
     period: isoWeekKey(weekStart),
     productId,
   };
-}
-
-function subjectOf(event: NotificationEvent): Readonly<Record<string, string>> {
-  return event.type === 'award'
-    ? { productId: event.productId }
-    : { matchId: event.matchId };
-}
-
-interface Violation {
-  readonly event: NotificationEvent;
-  readonly index: number;
-  readonly reason: NotificationPublishErrorReason;
-}
-
-function violationOf(
-  error: unknown,
-  events: readonly NotificationEvent[],
-): Violation | undefined {
-  if (
-    !(error instanceof NotificationPublishError) ||
-    error.eventIndex === null
-  ) {
-    return undefined;
-  }
-  const index = error.eventIndex;
-  const event = events[index];
-  return event === undefined
-    ? undefined
-    : { event, index, reason: error.reason };
 }
 
 export class WeekTournamentNotificationPublisher implements WeekNotificationPublisher {
@@ -161,42 +119,12 @@ export class WeekTournamentNotificationPublisher implements WeekNotificationPubl
     events: readonly NotificationEvent[],
     at: Date,
   ): Promise<void> {
-    for (const page of chunk(events, NOTIFICATION_PUBLISH_EVENT_LIMIT)) {
-      await this.publishExcludingViolations(page, at);
-    }
-  }
-
-  // 発行の口は1件の違反で全件を拒否して位置だけを返すため、違反を1件ずつ除いて発行し直す。違反はまれなため、発行の前にマッチを照会しない
-  private async publishExcludingViolations(
-    events: readonly NotificationEvent[],
-    at: Date,
-  ): Promise<void> {
-    let remaining = events;
-    while (remaining.length > 0) {
-      try {
-        await this.notifications.publish({
-          publisher: PUBLISHER,
-          events: remaining,
-          at,
-        });
-        return;
-      } catch (error) {
-        const violation = violationOf(error, remaining);
-        if (violation === undefined) {
-          throw error;
-        }
-        this.logExcluded(violation);
-        remaining = remaining.toSpliced(violation.index, 1);
-      }
-    }
-  }
-
-  private logExcluded({ event, reason }: Violation): void {
-    const attributes = { ...subjectOf(event), reason };
-    if (reason === 'match-not-previewable') {
-      this.logger.info(NOT_PREVIEWABLE_MESSAGE, attributes);
-      return;
-    }
-    this.logger.error(REJECTED_MESSAGE, attributes);
+    await publishExcludingViolations({
+      publisher: this.notifications,
+      name: PUBLISHER,
+      events,
+      at,
+      logger: this.logger,
+    });
   }
 }
