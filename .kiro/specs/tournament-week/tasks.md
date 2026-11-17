@@ -422,7 +422,7 @@
   - _Blocked: devとstagingが共用するStripeのsandboxに`lookup_key`が`week_tournament_entry`の価格が無い(2026-11-17に照会して0件。比較の`payments_smoke`は存在)。開発者が価格(USD・税込・参考$5・1回限り)を作成した後に再開する_
   - _Requirements: 15.4_
 
-- [ ] 8.5 全体の検査とカバレッジを確かめる
+- [x] 8.5 全体の検査とカバレッジを確かめる
   - 整形・静的解析・型検査・4種のテストを全アプリで実行し、本specが変更したファイル(1.2・1.3で寄せ替え・改名した上流のファイルを含む)のカバレッジが80%以上であることを確かめる
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
   - _Requirements: 15.1_
@@ -488,3 +488,4 @@
 - 8.2(差し戻し1回): 技術ドキュメント`docs/GUIDES/tech/backend/017-single-elimination-brackets.md`・`frontend/016-tournament-bracket-view.md`(汎用の語。本プロジェクトでの読み替えは`project-values.md`の「Weekトーナメント」の節の「技術ドキュメントの汎用の語」)、各README・CLAUDE.mdの参照先、`project-values.md`の「Weekトーナメント」の節。Implementation Notesの「8.2で」の項目に従い、文言規則003・ページ配置002・`coding/004`を直した。親の決定で、共用の`AutoRefreshSwitch`に任意の`description`を足し、ブラケットのページは`BRACKET_AUTO_REFRESH_DESCRIPTION`(`components/bracket/bracket-messages.ts`)を渡す。`.kiro/`(design.md)は書き換えていない(相違は最終報告)。
 - 8.3: E2Eの補助`e2e/support/week-tournament-fixtures.ts`(`createWeekTournamentEntrants({ openOwnerHandle? })`・`closeWeekTournamentEntry`・`startWeekFinalToday`・`endWeekFinal(final, winner)`(勝たせる側に1票)・`runWeekEveningJobs({ awaitDecidedFinal? })`(`triggerScheduled`で23:40・23:45)・`readWeekFinal`・`readWeekTournamentState`・確認専用の`entitleOpenEntryWithoutPayment`(8.4では使わない))とSQL`week-tournament-fixture-sql.ts`(+単体テスト)、E2E`e2e/client/week-tournament.e2e.test.ts`。他のテストと重ならないよう2000〜2019年の未使用の週を使う(設計の「先週」と違う。`dailyRoundPolicy`で決勝は翌日になる)。後片付けは作らず乱数の値で分ける。業務時刻の23:40〜24:00は`test.skip`。8.4は同じファイルにシナリオを足し、受付中の枠の投稿者を画面で登録して(a)にハンドルを渡す。
 - 8.4(保留): Stripeのsandboxに価格`week_tournament_entry`が無いため着手していない。確かめ方は、Infisicalから`apps/api`のStripeのキーを`run-with-secrets --scope local --worker api`で注入し、StripeのAPIの価格の一覧を`lookup_keys[]=week_tournament_entry`で照会する。再開時は8.3の補助を使い、受付中の枠の投稿者を画面で登録して(a)にハンドルを渡し、空のE2E(補助の確認)の扱いを決める。
+- 8.5: `bun run check`・全アプリの単体・ブラウザ・Workers統合テスト(カバレッジ付き)と週トーナメントのE2Eが通る。本specの変更ファイル(`74bf65ee..HEAD`)で計測対象の171件は全て80%以上(最低`board-resolvers.ts`の行86.67%)、型だけの`ports.ts`・`$week.tsx`・clientの合成の登録・テストとE2Eの補助の18件は各アプリのカバレッジの対象外。7.8で単体テストに書いた登録口の検査は合成のファイルとReactの部品を単体のカバレッジに0%で入れるため、既存の`directory-sections.browser.test.ts`に倣いブラウザテスト`product-section-registries.browser.test.ts`へ移した。文言の関数の単体テストと`observability-fixtures`のWorkersテストを足した。全体のE2Eはマークダウンの浮動ツールバー(dev)とログイン(preview、`SQLITE_BUSY`)の本spec外の3件が落ち、単独・他方の段の実行では通る。ブラウザとWorkersのテストを同時に走らせるとタイムアウトが多発するため順に実行する。
