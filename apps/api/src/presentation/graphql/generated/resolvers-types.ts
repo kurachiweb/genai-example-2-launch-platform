@@ -1313,6 +1313,8 @@ export type Mutation = {
   updateProductCategory: ProductCategory;
   /** 機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者 */
   updateUltrasPromotionSetting: UltrasPromotionSetting;
+  /** 決勝実施日の保存。最上位管理者だけが行え、監査ログと一体で確定する。選べない日付はvalidation_error(details[0].codeに理由)、変更期限の後・組み合わせ決定の開始の後はfinal_date_locked、版の不一致はversion_conflict */
+  updateYearFinalDate: YearFinalDateSetting;
   /** メールアドレスが確認済みの利用者がマッチ中のマッチの一方の側にUpvoteする。もう一方の側にUpvote済みなら付け替え、同じ側なら何も変えない。更新後のマッチを返す */
   upvote: Match;
   /** メールアドレスの確認の確定 */
@@ -1718,6 +1720,11 @@ export type MutationUpdateProductCategoryArgs = {
 
 export type MutationUpdateUltrasPromotionSettingArgs = {
   input: UpdateUltrasPromotionSettingInput;
+};
+
+
+export type MutationUpdateYearFinalDateArgs = {
+  input: UpdateYearFinalDateInput;
 };
 
 
@@ -2378,6 +2385,8 @@ export type Query = {
   weekTournamentBoard: WeekTournamentBoard;
   /** Yearトーナメントのブラケット。年(4桁)が不正・行が無い・組み合わせを決定していなければnull。ログインを求めない */
   yearBracket?: Maybe<YearBracket>;
+  /** 現在の年と翌年の決勝実施日の設定。管理者側の呼び出し元から、全てのロールの管理者が照会できる */
+  yearFinalDateSettings: YearFinalDateSettings;
   /** トップページのYearトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない */
   yearTournamentBoard: YearTournamentBoard;
 };
@@ -2844,6 +2853,18 @@ export type UpdateUltrasPromotionSettingInput = {
   reason?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** 決勝実施日の保存の入力 */
+export type UpdateYearFinalDateInput = {
+  /** 照会で読み取った版 */
+  expectedVersion: Scalars['Int']['input'];
+  /** 決勝実施日(業務日付のYYYY-MM-DD) */
+  finalDate: Scalars['String']['input'];
+  /** 監査ログに残す理由(500文字以内、任意) */
+  reason?: InputMaybe<Scalars['String']['input']>;
+  /** 対象年(現在の年か翌年) */
+  year: Scalars['Int']['input'];
+};
+
 /** Upvote履歴の実施日ごとの件数 */
 export type UpvoteDateTotal = {
   __typename?: 'UpvoteDateTotal';
@@ -3152,6 +3173,62 @@ export type YearEntryStatus =
   | 'EXCLUDED'
   | 'EXPIRED'
   | 'FORFEITED';
+
+/** 対象年の決勝実施日の設定 */
+export type YearFinalDateSetting = {
+  __typename?: 'YearFinalDateSetting';
+  /** 決済の開始の受付期限(23:00) */
+  acceptUntil: Scalars['DateTime']['output'];
+  /** 変更期限(決勝実施日の7日前の0:00) */
+  changeLockAt: Scalars['DateTime']['output'];
+  /** 変更期限の前で組み合わせ決定が始まっていない。閲覧者のロールは含めない */
+  changeable: Scalars['Boolean']['output'];
+  /** 選べる決勝実施日(業務日付のYYYY-MM-DD)の昇順。変更できなければ空 */
+  choices: Array<Scalars['String']['output']>;
+  /** 決済期限(23:35) */
+  deadlineAt: Scalars['DateTime']['output'];
+  /** 組み合わせ決定の日時(23:45) */
+  drawAt: Scalars['DateTime']['output'];
+  /** 実効の決勝実施日(業務日付のYYYY-MM-DD) */
+  finalDate: Scalars['String']['output'];
+  /** 翌年の実効の決勝実施日 */
+  nextYearFinalDate?: Maybe<Scalars['String']['output']>;
+  /** 翌年が未設定で、その既定の日がこの年の決勝実施日の64週間後以降になるとき、翌年の既定の日 */
+  nextYearGapWarningDate?: Maybe<Scalars['String']['output']>;
+  nextYearSource?: Maybe<YearFinalDateSource>;
+  /** 前年の決勝実施日。前年を開催しない(設定済みと扱わない)ならnull */
+  previousYearFinalDate?: Maybe<Scalars['String']['output']>;
+  source: YearFinalDateSource;
+  /** 最後に変更した日時。未設定はnull */
+  updatedAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 最後に変更した管理者。未設定はnull */
+  updatedBy?: Maybe<YearFinalDateUpdater>;
+  /** 保存に渡す版。未設定は0 */
+  version: Scalars['Int']['output'];
+  /** 対象年 */
+  year: Scalars['Int']['output'];
+};
+
+/** 管理画面のYearトーナメントの決勝実施日の区画 */
+export type YearFinalDateSettings = {
+  __typename?: 'YearFinalDateSettings';
+  /** 照会の時点のサーバーの時刻 */
+  serverTime: Scalars['DateTime']['output'];
+  /** 現在の年と翌年の順 */
+  settings: Array<YearFinalDateSetting>;
+};
+
+/** 決勝実施日の決まり方。EXPLICITは最上位管理者が設定した日、DEFAULTは対象年5月の最終日曜日 */
+export type YearFinalDateSource =
+  | 'DEFAULT'
+  | 'EXPLICIT';
+
+/** 決勝実施日を最後に変更した管理者 */
+export type YearFinalDateUpdater = {
+  __typename?: 'YearFinalDateUpdater';
+  /** 削除済み・招待中の管理者はnull */
+  nickname?: Maybe<Scalars['String']['output']>;
+};
 
 /** トップページのYearトーナメントの区画 */
 export type YearTournamentBoard = {
@@ -3512,6 +3589,7 @@ export type ResolversTypes = {
   UpdateNotificationSenderInfoInput: UpdateNotificationSenderInfoInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
+  UpdateYearFinalDateInput: UpdateYearFinalDateInput;
   UpvoteDateTotal: ResolverTypeWrapper<UpvoteDateTotal>;
   UpvoteHistoryConnection: ResolverTypeWrapper<Omit<UpvoteHistoryConnection, 'nodes'> & { nodes: Array<ResolversTypes['UpvoteHistoryItem']> }>;
   UpvoteHistoryItem: ResolverTypeWrapper<UpvoteHistoryItemModel>;
@@ -3536,6 +3614,10 @@ export type ResolversTypes = {
   YearEntryPanel: ResolverTypeWrapper<YearEntryPanel>;
   YearEntryProgress: ResolverTypeWrapper<YearEntryProgress>;
   YearEntryStatus: YearEntryStatus;
+  YearFinalDateSetting: ResolverTypeWrapper<YearFinalDateSetting>;
+  YearFinalDateSettings: ResolverTypeWrapper<YearFinalDateSettings>;
+  YearFinalDateSource: YearFinalDateSource;
+  YearFinalDateUpdater: ResolverTypeWrapper<YearFinalDateUpdater>;
   YearTournamentBoard: ResolverTypeWrapper<Omit<YearTournamentBoard, 'rounds'> & { rounds: Array<ResolversTypes['YearTournamentRoundBoard']> }>;
   YearTournamentRoundBoard: ResolverTypeWrapper<YearTournamentRoundBoardModel>;
   YearTournamentStatus: YearTournamentStatus;
@@ -3715,6 +3797,7 @@ export type ResolversParentTypes = {
   UpdateNotificationSenderInfoInput: UpdateNotificationSenderInfoInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
+  UpdateYearFinalDateInput: UpdateYearFinalDateInput;
   UpvoteDateTotal: UpvoteDateTotal;
   UpvoteHistoryConnection: Omit<UpvoteHistoryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['UpvoteHistoryItem']> };
   UpvoteHistoryItem: UpvoteHistoryItemModel;
@@ -3733,6 +3816,9 @@ export type ResolversParentTypes = {
   YearBracket: Omit<YearBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversParentTypes['MatchProduct']>, rounds: Array<ResolversParentTypes['BracketRound']> };
   YearEntryPanel: YearEntryPanel;
   YearEntryProgress: YearEntryProgress;
+  YearFinalDateSetting: YearFinalDateSetting;
+  YearFinalDateSettings: YearFinalDateSettings;
+  YearFinalDateUpdater: YearFinalDateUpdater;
   YearTournamentBoard: Omit<YearTournamentBoard, 'rounds'> & { rounds: Array<ResolversParentTypes['YearTournamentRoundBoard']> };
   YearTournamentRoundBoard: YearTournamentRoundBoardModel;
   YearTournamentSummary: YearTournamentSummary;
@@ -4427,6 +4513,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   updateProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationUpdateProductArgs, 'input'>>;
   updateProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationUpdateProductCategoryArgs, 'id' | 'input'>>;
   updateUltrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType, RequireFields<MutationUpdateUltrasPromotionSettingArgs, 'input'>>;
+  updateYearFinalDate?: Resolver<ResolversTypes['YearFinalDateSetting'], ParentType, ContextType, RequireFields<MutationUpdateYearFinalDateArgs, 'input'>>;
   upvote?: Resolver<ResolversTypes['Match'], ParentType, ContextType, RequireFields<MutationUpvoteArgs, 'input'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
@@ -4777,6 +4864,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   weekBracket?: Resolver<Maybe<ResolversTypes['WeekBracket']>, ParentType, ContextType, RequireFields<QueryWeekBracketArgs, 'week'>>;
   weekTournamentBoard?: Resolver<ResolversTypes['WeekTournamentBoard'], ParentType, ContextType, RequireFields<QueryWeekTournamentBoardArgs, 'date'>>;
   yearBracket?: Resolver<Maybe<ResolversTypes['YearBracket']>, ParentType, ContextType, RequireFields<QueryYearBracketArgs, 'year'>>;
+  yearFinalDateSettings?: Resolver<ResolversTypes['YearFinalDateSettings'], ParentType, ContextType>;
   yearTournamentBoard?: Resolver<ResolversTypes['YearTournamentBoard'], ParentType, ContextType, RequireFields<QueryYearTournamentBoardArgs, 'date'>>;
 };
 
@@ -4996,6 +5084,34 @@ export type YearEntryProgressResolvers<ContextType = GraphQLContext, ParentType 
   eliminatedRoundName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
+export type YearFinalDateSettingResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearFinalDateSetting'] = ResolversParentTypes['YearFinalDateSetting']> = {
+  acceptUntil?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  changeLockAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  changeable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  choices?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  deadlineAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  drawAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  finalDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nextYearFinalDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  nextYearGapWarningDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  nextYearSource?: Resolver<Maybe<ResolversTypes['YearFinalDateSource']>, ParentType, ContextType>;
+  previousYearFinalDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['YearFinalDateSource'], ParentType, ContextType>;
+  updatedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  updatedBy?: Resolver<Maybe<ResolversTypes['YearFinalDateUpdater']>, ParentType, ContextType>;
+  version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  year?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type YearFinalDateSettingsResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearFinalDateSettings'] = ResolversParentTypes['YearFinalDateSettings']> = {
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  settings?: Resolver<Array<ResolversTypes['YearFinalDateSetting']>, ParentType, ContextType>;
+};
+
+export type YearFinalDateUpdaterResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearFinalDateUpdater'] = ResolversParentTypes['YearFinalDateUpdater']> = {
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
 export type YearTournamentBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearTournamentBoard'] = ResolversParentTypes['YearTournamentBoard']> = {
   date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   rounds?: Resolver<Array<ResolversTypes['YearTournamentRoundBoard']>, ParentType, ContextType>;
@@ -5173,6 +5289,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   YearBracket?: YearBracketResolvers<ContextType>;
   YearEntryPanel?: YearEntryPanelResolvers<ContextType>;
   YearEntryProgress?: YearEntryProgressResolvers<ContextType>;
+  YearFinalDateSetting?: YearFinalDateSettingResolvers<ContextType>;
+  YearFinalDateSettings?: YearFinalDateSettingsResolvers<ContextType>;
+  YearFinalDateUpdater?: YearFinalDateUpdaterResolvers<ContextType>;
   YearTournamentBoard?: YearTournamentBoardResolvers<ContextType>;
   YearTournamentRoundBoard?: YearTournamentRoundBoardResolvers<ContextType>;
   YearTournamentSummary?: YearTournamentSummaryResolvers<ContextType>;

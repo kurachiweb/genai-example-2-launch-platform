@@ -3,6 +3,7 @@ import {
   parseIsoWeek,
 } from '../../../../../common-lib/tournament/week-period.ts';
 import type {
+  YearFinalDateSource,
   YearTournamentRecord,
   YearTournamentStatus,
 } from '../../../../../lib/core/year-tournament/ports.ts';
@@ -16,6 +17,7 @@ import type { YearBoardRound } from '../../../../application/year-tournament/yea
 import { yearBracketPathOf } from '../../../../application/year-tournament/year-bracket-path.ts';
 import type { YearBracketView } from '../../../../application/year-tournament/year-bracket-reader.ts';
 import type { YearEntryPanel } from '../../../../application/year-tournament/year-entry-panel-reader.ts';
+import type { YearFinalDateView } from '../../../../application/year-tournament/year-final-date-service.ts';
 import type { MatchProductSource } from '../match/mappers.ts';
 
 export type YearTournamentStatusValue =
@@ -205,5 +207,63 @@ export function toYearEntryPanel(
             champion: progress.champion,
           },
     bracketPath: entryBracketPathOf(panel),
+  };
+}
+
+export type YearFinalDateSourceValue = 'EXPLICIT' | 'DEFAULT';
+
+const YEAR_FINAL_DATE_SOURCE_VALUES = Object.freeze({
+  explicit: 'EXPLICIT',
+  default: 'DEFAULT',
+} as const satisfies Record<YearFinalDateSource, YearFinalDateSourceValue>);
+
+export interface YearFinalDateSettingModel {
+  readonly year: number;
+  readonly finalDate: string;
+  readonly source: YearFinalDateSourceValue;
+  readonly acceptUntil: Date;
+  readonly deadlineAt: Date;
+  readonly drawAt: Date;
+  readonly changeLockAt: Date;
+  readonly changeable: boolean;
+  readonly choices: string[];
+  readonly previousYearFinalDate: string | null;
+  readonly nextYearFinalDate: string | null;
+  readonly nextYearSource: YearFinalDateSourceValue | null;
+  readonly nextYearGapWarningDate: string | null;
+  readonly version: number;
+  readonly updatedAt: Date | null;
+  readonly updatedBy: { readonly nickname: string | null } | null;
+}
+
+// 変更者の無い(未設定の)年はupdatedByをnull、変更者が削除済み・招待中ならニックネームだけをnullにする
+export function toYearFinalDateSetting(
+  view: YearFinalDateView,
+  nicknames: ReadonlyMap<string, string>,
+): YearFinalDateSettingModel {
+  const { schedule, nextFinalDate, updatedByAdminId } = view;
+  return {
+    year: view.year,
+    finalDate: schedule.finalDate,
+    source: YEAR_FINAL_DATE_SOURCE_VALUES[view.source],
+    acceptUntil: schedule.acceptUntil,
+    deadlineAt: schedule.deadlineAt,
+    drawAt: schedule.drawAt,
+    changeLockAt: schedule.changeLockAt,
+    changeable: view.changeable,
+    choices: [...view.choices],
+    previousYearFinalDate: view.previousFinalDate,
+    nextYearFinalDate: nextFinalDate?.date ?? null,
+    nextYearSource:
+      nextFinalDate === null
+        ? null
+        : YEAR_FINAL_DATE_SOURCE_VALUES[nextFinalDate.source],
+    nextYearGapWarningDate: view.nextYearGapWarning,
+    version: view.version,
+    updatedAt: view.updatedAt,
+    updatedBy:
+      updatedByAdminId === null
+        ? null
+        : { nickname: nicknames.get(updatedByAdminId) ?? null },
   };
 }

@@ -127,6 +127,72 @@ export const YEAR_TOURNAMENT_TYPE_DEFS = /* GraphQL */ `
     bracketPath: String
   }
 
+  "決勝実施日の決まり方。EXPLICITは最上位管理者が設定した日、DEFAULTは対象年5月の最終日曜日"
+  enum YearFinalDateSource {
+    EXPLICIT
+    DEFAULT
+  }
+
+  "決勝実施日を最後に変更した管理者"
+  type YearFinalDateUpdater {
+    "削除済み・招待中の管理者はnull"
+    nickname: String
+  }
+
+  "対象年の決勝実施日の設定"
+  type YearFinalDateSetting {
+    "対象年"
+    year: Int!
+    "実効の決勝実施日(業務日付のYYYY-MM-DD)"
+    finalDate: String!
+    source: YearFinalDateSource!
+    "決済の開始の受付期限(23:00)"
+    acceptUntil: DateTime!
+    "決済期限(23:35)"
+    deadlineAt: DateTime!
+    "組み合わせ決定の日時(23:45)"
+    drawAt: DateTime!
+    "変更期限(決勝実施日の7日前の0:00)"
+    changeLockAt: DateTime!
+    "変更期限の前で組み合わせ決定が始まっていない。閲覧者のロールは含めない"
+    changeable: Boolean!
+    "選べる決勝実施日(業務日付のYYYY-MM-DD)の昇順。変更できなければ空"
+    choices: [String!]!
+    "前年の決勝実施日。前年を開催しない(設定済みと扱わない)ならnull"
+    previousYearFinalDate: String
+    "翌年の実効の決勝実施日"
+    nextYearFinalDate: String
+    nextYearSource: YearFinalDateSource
+    "翌年が未設定で、その既定の日がこの年の決勝実施日の64週間後以降になるとき、翌年の既定の日"
+    nextYearGapWarningDate: String
+    "保存に渡す版。未設定は0"
+    version: Int!
+    "最後に変更した日時。未設定はnull"
+    updatedAt: DateTime
+    "最後に変更した管理者。未設定はnull"
+    updatedBy: YearFinalDateUpdater
+  }
+
+  "管理画面のYearトーナメントの決勝実施日の区画"
+  type YearFinalDateSettings {
+    "照会の時点のサーバーの時刻"
+    serverTime: DateTime!
+    "現在の年と翌年の順"
+    settings: [YearFinalDateSetting!]!
+  }
+
+  "決勝実施日の保存の入力"
+  input UpdateYearFinalDateInput {
+    "対象年(現在の年か翌年)"
+    year: Int!
+    "決勝実施日(業務日付のYYYY-MM-DD)"
+    finalDate: String!
+    "照会で読み取った版"
+    expectedVersion: Int!
+    "監査ログに残す理由(500文字以内、任意)"
+    reason: String
+  }
+
   type Query {
     "トップページのYearトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない"
     yearTournamentBoard(date: String!): YearTournamentBoard!
@@ -134,10 +200,14 @@ export const YEAR_TOURNAMENT_TYPE_DEFS = /* GraphQL */ `
     yearBracket(year: String!): YearBracket
     "投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull"
     myYearEntry(productHandle: String!): YearEntryPanel
+    "現在の年と翌年の決勝実施日の設定。管理者側の呼び出し元から、全てのロールの管理者が照会できる"
+    yearFinalDateSettings: YearFinalDateSettings!
   }
 
   type Mutation {
     "Yearトーナメントの参加費の決済の開始。本人の受付中の枠に購入を作り、決済画面の経路に使う購入のIDを返す。受付期限の後はcheckout_closed"
     startYearTournamentCheckout(launchId: ID!): CheckoutStart!
+    "決勝実施日の保存。最上位管理者だけが行え、監査ログと一体で確定する。選べない日付はvalidation_error(details[0].codeに理由)、変更期限の後・組み合わせ決定の開始の後はfinal_date_locked、版の不一致はversion_conflict"
+    updateYearFinalDate(input: UpdateYearFinalDateInput!): YearFinalDateSetting!
   }
 `;
