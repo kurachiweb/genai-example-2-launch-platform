@@ -294,6 +294,16 @@ describe('WeekEntryOfferPolicy', () => {
         },
       ]);
     });
+
+    test('決済期限の後に確定した勝利はUltrasを問い合わせず免除にしない', async () => {
+      const wonAfterDeadline = new Date(WEEK_WINDOW.deadlineAt.getTime() + 1);
+      await seedEntry(1, { entry: { wonAt: wonAfterDeadline } });
+      const { policy, queries } = createPolicy(true);
+      const now = new Date(wonAfterDeadline.getTime() + 60_000);
+
+      expect((await describeAs(policy, { now })).kind).toBe('available');
+      expect(queries).toStrictEqual([]);
+    });
   });
 
   describe('購入の内容', () => {

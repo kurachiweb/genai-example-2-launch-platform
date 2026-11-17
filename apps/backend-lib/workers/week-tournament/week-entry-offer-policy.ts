@@ -135,9 +135,13 @@ export class WeekEntryOfferPolicy implements PurchaseOfferPolicy {
       return rejectionOf('week_entry_product_unavailable');
     }
     // Ultrasの加入の知らせの処理が付与するまでの間も免除として扱う。決済期限の後の加入は付与されないため期間に含めない
+    // 決済期限の後に確定した勝利は免除の期間が空で、特典の判定は始まりが終わりより後の期間を例外にするため問い合わせない
     const deadlineAt = tournament.window.deadlineAt;
     const until = now < deadlineAt ? now : deadlineAt;
-    if (await this.entitlements.wasEntitledDuring(userId, entry.wonAt, until)) {
+    if (
+      entry.wonAt.getTime() <= until.getTime() &&
+      (await this.entitlements.wasEntitledDuring(userId, entry.wonAt, until))
+    ) {
       return rejectionOf('week_entry_exempt');
     }
     return { kind: 'available', offer: offerOf(targetId, tournament) };
