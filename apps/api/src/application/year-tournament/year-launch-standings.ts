@@ -10,7 +10,10 @@ import type {
   YearEntryRecord,
   YearEntryStore,
 } from '../../../lib/core/year-tournament/ports.ts';
-import { resolveTargetYear } from '../../../lib/core/year-tournament/year-target-rules.ts';
+import {
+  resolveTargetYear,
+  type TargetYearResolution,
+} from '../../../lib/core/year-tournament/year-target-rules.ts';
 import type { DecisionSubject } from '../product/decision-sources.ts';
 
 export interface WonLaunch {
@@ -76,15 +79,39 @@ function awardedDateOf(awarded: AwardedLaunch): BusinessDate | undefined {
   return isOpen(awarded.entry) ? awarded.entry.awardedDate : undefined;
 }
 
+// 分類前の枠の対象年を求めるために読む年
+export function targetYearCandidates(
+  awardedDate: BusinessDate,
+): readonly number[] {
+  const first = yearOf(awardedDate);
+  return Array.from(
+    { length: TARGET_YEAR_LOOKUP_YEARS },
+    (_, offset) => first + offset,
+  );
+}
+
+// targetYearCandidatesの年を読んだ日程から、分類前の枠の対象年を求める
+export function resolveTargetIn(
+  awardedDate: BusinessDate,
+  calendar: ReadonlyMap<number, YearCalendarEntry>,
+): TargetYearResolution {
+  return resolveTargetYear(awardedDate, (year) => {
+    const entry = calendar.get(year);
+    if (entry === undefined) {
+      throw new RangeError(`照会していない年です: ${String(year)}`);
+    }
+    return entry;
+  });
+}
+
 // 分類前の枠は対象年を持たないためWeek優勝の日から4年分を、組み合わせの対象の枠は分類した年を読む
 function yearsToDescribe(awarded: readonly AwardedLaunch[]): readonly number[] {
   const years = new Set<number>();
   for (const item of awarded) {
     const awardedDate = awardedDateOf(item);
     if (awardedDate !== undefined) {
-      const first = yearOf(awardedDate);
-      for (let offset = 0; offset < TARGET_YEAR_LOOKUP_YEARS; offset += 1) {
-        years.add(first + offset);
+      for (const year of targetYearCandidates(awardedDate)) {
+        years.add(year);
       }
     } else if (
       item.kind === 'entry' &&
@@ -129,13 +156,7 @@ function phaseOf(
 ): YearLaunchPhase | undefined {
   const awardedDate = awardedDateOf(awarded);
   if (awardedDate !== undefined) {
-    const target = resolveTargetYear(awardedDate, (year) => {
-      const entry = calendar.get(year);
-      if (entry === undefined) {
-        throw new RangeError(`照会していない年です: ${String(year)}`);
-      }
-      return entry;
-    });
+    const target = resolveTargetIn(awardedDate, calendar);
     if (awarded.kind === 'champion' || awarded.entry.status !== 'entitled') {
       return {
         kind: 'awaiting',
