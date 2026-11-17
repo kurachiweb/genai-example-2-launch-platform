@@ -3,9 +3,8 @@ import { useId } from 'react';
 import { cn } from '../../../lib/utilities/class-names.ts';
 import type { MatchFragment } from '../../graphql/generated/graphql.ts';
 import { ByeList } from '../match/bye-list.tsx';
-import { MatchCard } from '../match/match-card.tsx';
-import { useUpvote } from '../match/use-upvote.ts';
 import type { WeekSectionRound } from './week-board-model.ts';
+import { WeekMatchCard } from './week-match-card.tsx';
 import { WeekSectionHeading } from './week-section-heading.tsx';
 
 export interface WeekBoardRoundProps {
@@ -14,29 +13,6 @@ export interface WeekBoardRoundProps {
   readonly onUpdated: (match: MatchFragment) => void;
   // 見出しの下の状態の領域に出す文。結果の反映を待つ取り直しが上限に達した時に呼び出し元が渡す。undefinedなら状態の領域を置かない
   readonly statusMessage?: string | null;
-}
-
-function WeekMatchCard({
-  match,
-  onUpdated,
-}: {
-  readonly match: MatchFragment;
-  readonly onUpdated: (match: MatchFragment) => void;
-}) {
-  const { pendingEntryId, toggle, loginDialog } = useUpvote({
-    match,
-    onUpdated,
-  });
-  return (
-    <>
-      <MatchCard
-        match={match}
-        pendingEntryId={pendingEntryId}
-        onToggleUpvote={toggle}
-      />
-      {loginDialog}
-    </>
-  );
 }
 
 // トーナメントとラウンドの1行を、見出し・対戦カード(画面幅1280px以上は2列)・末尾の不戦勝の一覧で描く

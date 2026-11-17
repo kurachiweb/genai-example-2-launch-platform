@@ -6,7 +6,7 @@ import type {
 } from '../../graphql/generated/graphql.ts';
 import { FOLLOW_UP_REFETCH_LIMIT } from '../match/follow-up-refetch.ts';
 
-type WeekBoard = ClientWeekTournamentBoardQuery['weekTournamentBoard'];
+export type WeekBoard = ClientWeekTournamentBoardQuery['weekTournamentBoard'];
 
 export interface BoardRoundSplit {
   // 決勝の行はトップページの全幅の注目の区画が描くため、本文の区画は描かない

@@ -4,6 +4,7 @@ import type {
   QualifierListInsert,
   TopPageSection,
 } from '../components/top/top-page-section-types.ts';
+import { WeekFinalShowcase } from '../components/week-tournament/week-final-showcase.tsx';
 import { WeekTournamentSection } from '../components/week-tournament/week-tournament-section.tsx';
 
 // 予選の一覧の対戦カードの間に指定の件数ごとに差し込む区画の登録箇所。各specが自分の差し込みを追記する
@@ -17,6 +18,12 @@ export const TOP_PAGE_SECTIONS: readonly TopPageSection[] = Object.freeze([
     placement: 'banner',
     order: 10,
     component: FullTimeCountdownSection,
+  },
+  {
+    id: 'tournament-week.final',
+    placement: 'showcase',
+    order: 20,
+    component: WeekFinalShowcase,
   },
   {
     id: 'tournament-week.matches',

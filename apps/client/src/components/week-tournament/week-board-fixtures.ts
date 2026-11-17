@@ -114,3 +114,24 @@ export const weekBoardResult = (board: WeekBoardView = weekBoardOf()) => ({
 
 // マッチが無い日の盤面
 export const EMPTY_WEEK_BOARD = Object.freeze(weekBoardOf({ rounds: [] }));
+
+// 2026年第45週(11/2〜11/8)のトーナメントの決勝の行。既定はその日の決勝のマッチ中で、名称は「Week Left 21」と「Week Right 21」
+export const weekFinalRoundOf = (
+  overrides: Partial<WeekBoardRoundFieldsFragment> = {},
+): WeekBoardRoundFieldsFragment =>
+  weekBoardRoundOf({
+    tournament: {
+      week: '2026-W45',
+      label: '2026年第45週(11/2〜11/8)',
+      firstRoundDate: '2026-11-03',
+      finalDate: WEEK_BOARD_DATE,
+      status: 'IN_PROGRESS',
+      awarded: null,
+    },
+    round: 8,
+    roundName: '決勝',
+    final: true,
+    matches: [weekMatchOf(21, { round: 8, stage: 'FINAL' })],
+    bracketPath: '/tournaments/week/2026-W45',
+    ...overrides,
+  });
