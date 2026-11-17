@@ -1,8 +1,14 @@
+import { LIVE_REFRESH_INTERVAL_MS } from '../../../lib/utilities/query/live-refresh.ts';
 import { TALLYING_LABEL } from '../match/match-labels.ts';
 import type {
   BracketMatchStatus,
   BracketSlotOutcome,
 } from './bracket-view-model.ts';
+
+const MILLISECONDS_PER_SECOND = 1000;
+
+// ブラケットのページは残り時間と演出を持たず、結果と集計値を取り直すだけのため、自動更新の切り替えの既定の説明に代えて使う
+export const BRACKET_AUTO_REFRESH_DESCRIPTION = `オンの間は${new Intl.NumberFormat('ja-JP').format(LIVE_REFRESH_INTERVAL_MS / MILLISECONDS_PER_SECOND)}秒ごとにブラケットを取り直します。`;
 
 export const BRACKET_ROUND_TABS_LABEL = 'ラウンド';
 

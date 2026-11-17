@@ -1,5 +1,8 @@
 import { BracketChampion } from '../bracket/bracket-champion.tsx';
-import { BRACKET_SCROLL_REGION_LABEL } from '../bracket/bracket-messages.ts';
+import {
+  BRACKET_AUTO_REFRESH_DESCRIPTION,
+  BRACKET_SCROLL_REGION_LABEL,
+} from '../bracket/bracket-messages.ts';
 import { BracketRoundColumn } from '../bracket/bracket-round-column.tsx';
 import { BracketRoundTabs } from '../bracket/bracket-round-tabs.tsx';
 import { AutoRefreshSwitch } from '../match/auto-refresh-switch.tsx';
@@ -50,6 +53,7 @@ export function WeekBracketPage({
           <AutoRefreshSwitch
             checked={autoRefresh}
             onCheckedChange={onAutoRefreshChange}
+            description={BRACKET_AUTO_REFRESH_DESCRIPTION}
           />
         </div>
       ) : null}

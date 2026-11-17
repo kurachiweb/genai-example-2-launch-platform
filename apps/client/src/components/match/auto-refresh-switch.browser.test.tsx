@@ -42,6 +42,23 @@ describe('AutoRefreshSwitch', () => {
     },
   );
 
+  test('説明を渡すと、既定の説明に代えてその説明をスイッチに関連付ける', async () => {
+    await render(
+      <AutoRefreshSwitch
+        checked
+        onCheckedChange={() => undefined}
+        description="オンの間は30秒ごとにブラケットを取り直します。"
+      />,
+    );
+
+    await expect
+      .element(autoRefreshSwitch())
+      .toHaveAccessibleDescription(
+        'オンの間は30秒ごとにブラケットを取り直します。',
+      );
+    await expect.element(page.getByText(DESCRIPTION)).not.toBeInTheDocument();
+  });
+
   test('押すかSpaceキーで、切り替えた後の状態を呼び出す側へ伝える', async () => {
     const onCheckedChange = vi.fn();
     await render(

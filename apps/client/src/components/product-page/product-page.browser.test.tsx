@@ -381,6 +381,11 @@ describe('ProductPageの自動更新の切り替え', () => {
     await expect
       .element(autoRefreshSwitch())
       .toHaveAttribute('aria-checked', 'true');
+    await expect
+      .element(autoRefreshSwitch())
+      .toHaveAccessibleDescription(
+        'オンの間は30秒ごとにUpvote数を取り直し、残り時間と演出を動かします。',
+      );
     expect(page.getByRole('switch').elements()).toHaveLength(1);
     expect(pageRoot().dataset['autoRefresh']).toBe('on');
     expect(

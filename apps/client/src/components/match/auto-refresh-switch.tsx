@@ -10,12 +10,15 @@ import {
 export interface AutoRefreshSwitchProps {
   readonly checked: boolean;
   readonly onCheckedChange: (checked: boolean) => void;
+  // ページが取り直すものや動かすものが既定の説明と異なる場合に渡す
+  readonly description?: string;
 }
 
 // ページの全ての区画の定期の取り直し・毎秒の数値の更新・演出を1つで止めるため、区画の見出しの近くではなくページの上部に置く
 export function AutoRefreshSwitch({
   checked,
   onCheckedChange,
+  description = AUTO_REFRESH_DESCRIPTION,
 }: AutoRefreshSwitchProps) {
   const switchId = useId();
   const descriptionId = useId();
@@ -31,7 +34,7 @@ export function AutoRefreshSwitch({
         <Label htmlFor={switchId}>{AUTO_REFRESH_LABEL}</Label>
       </div>
       <p id={descriptionId} className="text-xs text-muted-foreground">
-        {AUTO_REFRESH_DESCRIPTION}
+        {description}
       </p>
     </div>
   );

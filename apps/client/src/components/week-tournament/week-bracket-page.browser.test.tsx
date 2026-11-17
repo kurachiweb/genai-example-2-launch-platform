@@ -113,7 +113,7 @@ describe('WeekBracketPage の見出し', () => {
 });
 
 describe('WeekBracketPage の自動更新の切り替え', () => {
-  test('開催中は、ページの上部に「自動更新」の切り替えを受け取った状態で描き、操作を呼び出し元へ伝える', async () => {
+  test('開催中は、ページの上部に「自動更新」の切り替えをブラケットの取り直しの説明とともに受け取った状態で描き、操作を呼び出し元へ伝える', async () => {
     const onAutoRefreshChange = vi.fn();
     await renderPage(weekBracketOf(), { onAutoRefreshChange });
 
@@ -121,7 +121,7 @@ describe('WeekBracketPage の自動更新の切り替え', () => {
     await expect
       .element(autoRefreshSwitch())
       .toHaveAccessibleDescription(
-        'オンの間は30秒ごとにUpvote数を取り直し、残り時間と演出を動かします。',
+        'オンの間は30秒ごとにブラケットを取り直します。',
       );
 
     await userEvent.click(autoRefreshSwitch());
