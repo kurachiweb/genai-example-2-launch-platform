@@ -230,6 +230,19 @@ export class D1WeekTournamentStore implements WeekTournamentStore {
     return record;
   }
 
+  async findTournamentsByWeeks(
+    weekStarts: readonly BusinessDate[],
+  ): Promise<ReadonlyMap<BusinessDate, WeekTournamentRecord>> {
+    const pages = await Promise.all(
+      chunk([...new Set(weekStarts)], IDS_PER_STATEMENT).map(async (page) =>
+        this.selectTournaments(inArray(weekTournaments.weekStart, page)),
+      ),
+    );
+    return new Map(
+      pages.flat().map((record) => [record.window.weekStart, record]),
+    );
+  }
+
   listDue(now: Date, limit: number): Promise<readonly WeekTournamentRecord[]> {
     return this.selectTournaments(
       and(

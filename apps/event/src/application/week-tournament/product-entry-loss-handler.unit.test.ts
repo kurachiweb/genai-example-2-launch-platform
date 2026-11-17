@@ -136,6 +136,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
     ensureTournament: notUsed,
     findTournament: notUsed,
     findTournamentByWeek: notUsed,
+    findTournamentsByWeeks: notUsed,
     listDue: notUsed,
     listInProgress: notUsed,
     findEntriesByLaunch: notUsed,

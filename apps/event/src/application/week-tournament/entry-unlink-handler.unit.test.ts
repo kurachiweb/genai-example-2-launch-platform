@@ -43,6 +43,7 @@ function createHarness(failure?: {
     ensureTournament: notUsed,
     findTournament: notUsed,
     findTournamentByWeek: notUsed,
+    findTournamentsByWeeks: notUsed,
     listDue: notUsed,
     listInProgress: notUsed,
     findEntriesByLaunch: notUsed,

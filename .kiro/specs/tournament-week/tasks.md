@@ -253,7 +253,7 @@
   - _Boundary: WeekTournamentIncidentReporter_
   - _Requirements: 12.8, 14.5, 14.6_
 
-- [ ] 6.3 再ローンチの禁止と編集の固定の2つの供給元を作る
+- [x] 6.3 再ローンチの禁止と編集の固定の2つの供給元を作る
   - 6.1で識別子が確定した後に行う最初の供給元のため(P)にしない(6.4・6.5は6.1の識別子の確定を待ってから並行できる)
   - 先に、単体テスト(ストアは偽物)で、受付中の枠の決済期限の前後(解除の日時、週の行の保存した期限)、枠の作成前の予選の勝利、参加資格を得た枠と勝ち残りの枠の禁止、期限切れ・喪失・除外・敗退・優勝で返さないこと(仮1)、勝ち残りと凍結後の固定、1回の呼び出しで読み取りが一括であることを確かめる
   - 完了状態: 単体テストが成功する
@@ -465,3 +465,4 @@
 - 5.5: eventの`EVENT_WEEK_TOURNAMENT_MODULE`(`apps/event/src/composition/week-tournament-module.ts`、名前`event-week-tournament`、`createWeekTournamentPlatformModule('event')`の直後)と5つの登録口に8件(設計の表どおり)。登録口ごとの単体テストは`apps/event/src/composition/*.unit.test.ts`。予選の確定で枠と週の行が作られるため、上流のテストでマッチ・プロダクトを消す前に`clearWeekTournamentRows()`(`workers/week-tournament/testing/week-tournament-fixtures.ts`)を呼ぶこと(8.x・E2Eも同じ)。8.2で5つの登録口の8件を`project-values.md`へ。
 - 6.1: apiの識別子`WEEK_TOURNAMENT_API_TYPES`(`apps/api/src/application/week-tournament/week-tournament-api-types.ts`、`week-tournament.api.<名前>`、13種。設計に無い`TrophySources`(登録口の注入)、共用の`ProductTrophyReader`もここ)、ポート`ports.ts`の`WeekTournamentIncidentReporter`・`WeekTournamentIncident`(`evening-bracket-failed`: `date`・`failedSteps`・`failedTournamentIds`、`entry-follow-up-failed`: `tournamentIds`・`entryCount`)、ジョブ`week-tournament-jobs.ts`の`EveningBracketJob`・`EntryFollowUpJob`(デコレータ付き、`EVENING_BRACKET_JOB_DEFINITION`・`ENTRY_FOLLOW_UP_JOB_DEFINITION`・`EVENING_BRACKET_PARTICIPANT`)。`markReady`の例外は失敗の通知へ渡さない(定期実行のディスパッチャが拾う)。4:21は`now - 10分 + 1ms`。親の決定: application層の`@sentry/*`の禁止はESLintの規則に無い(既存の全specも同じでgrepで確認)が、全バックエンドへの横断の変更になるため本specでは規則を足さない(最終報告で開発者へ挙げる)。6.2は`kind`から`job`のタグを作る。6.10は`EveningDispatchGate`がapiのnotificationsのモジュールにだけ束縛されている点に注意。
 - 6.2: `apps/api/src/infrastructure/week-tournament/sentry-week-tournament-incident-reporter.ts`の`SentryWeekTournamentIncidentReporter`(`@injectable()`、引数無し、6.10で`to()`)。`level: 'error'`、`fingerprint: ['tournament', kind]`、タグ`tournament_incident`・`job`(ジョブの定義の名前)・`tournament_id`(1件のときだけ)、コンテキスト`tournament_incident`、ログ`['api','infrastructure','week-tournament']`。設計のMonitoringのcamelCaseのタグ名とは違う(snake_caseで統一)。
+- 6.3: `apps/api/src/application/week-tournament/`の`WeekRelaunchConditionSource`(`tournament-week.entry-pending`(受付中・枠の作成前、決済期限の前だけ、`releaseAt`は保存した`deadlineAt`か規則の値)・`tournament-week.result-pending`(参加資格を得た枠・勝ち残り・凍結の後で記録前の`drawn`、`releaseAt: null`。最後のは設計の条件に無い))と`WeekProductLockSource`(`tournament-week.bracket-lock`、勝ち残りと凍結の後の記録前の`drawn`)。共通の読み取り`week-launch-standings.ts`の`readWeekLaunchStandings`(6.4で再利用可、要約の対象は`launches`で形が違う)。ストアに`findTournamentsByWeeks(weekStarts)`を追加(設計に無い、013の一定回数の問い合わせのため)。どちらも`@injectable()`で6.10で`to()`。偽物の補助`testing/week-decision-fakes.ts`。

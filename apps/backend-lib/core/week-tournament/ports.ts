@@ -94,6 +94,10 @@ export interface WeekTournamentStore {
   findTournamentByWeek(
     weekStart: BusinessDate,
   ): Promise<WeekTournamentRecord | undefined>;
+  // 週の初日ごとに引き当て、行の無い週は結果に含めない
+  findTournamentsByWeeks(
+    weekStarts: readonly BusinessDate[],
+  ): Promise<ReadonlyMap<BusinessDate, WeekTournamentRecord>>;
   // 組み合わせ決定の日時が到来した受付中・組み合わせ決定中の週を、日時の昇順で返す
   listDue(now: Date, limit: number): Promise<readonly WeekTournamentRecord[]>;
   // 進行中の週を週の初日の昇順で返す

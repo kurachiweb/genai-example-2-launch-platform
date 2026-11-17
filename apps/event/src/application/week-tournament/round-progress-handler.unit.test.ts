@@ -145,6 +145,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
     findTournament: (tournamentId) =>
       settle({ kind: 'findTournament', tournamentId }, tournament),
     findTournamentByWeek: notUsed,
+    findTournamentsByWeeks: notUsed,
     listDue: notUsed,
     listInProgress: notUsed,
     findEntriesByLaunch: notUsed,

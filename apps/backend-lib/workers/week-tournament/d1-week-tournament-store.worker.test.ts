@@ -255,6 +255,72 @@ describe('D1WeekTournamentStore.findTournament・findTournamentByWeek', () => {
   });
 });
 
+describe('D1WeekTournamentStore.findTournamentsByWeeks', () => {
+  const MILLISECONDS_PER_WEEK = 7 * 86_400_000;
+
+  function weekStartAfter(weeks: number): string {
+    return new Date(
+      Date.parse(`${WEEK_START}T00:00:00.000Z`) + weeks * MILLISECONDS_PER_WEEK,
+    )
+      .toISOString()
+      .slice(0, 10);
+  }
+
+  test('週の初日ごとに週の記録を引き当て、行の無い週と重複した週の初日を除いて返す', async () => {
+    await insertWeekTournaments([
+      { index: 1 },
+      { index: 2, weekStart: '2026-11-23', columns: { status: 'drawing' } },
+    ]);
+
+    const found = await store.findTournamentsByWeeks([
+      WEEK_START,
+      parseBusinessDate('2026-11-23'),
+      parseBusinessDate('2026-11-30'),
+      WEEK_START,
+    ]);
+
+    expect(found).toEqual(
+      new Map([
+        [WEEK_START, openRecordOf(1)],
+        [
+          parseBusinessDate('2026-11-23'),
+          { ...openRecordOf(2, '2026-11-23'), status: 'drawing' },
+        ],
+      ]),
+    );
+  });
+
+  test('空の入力では問い合わせずに空の結果を返す', async () => {
+    const recording = createRecordingDatabase();
+
+    await expect(
+      new D1WeekTournamentStore(recording.database).findTournamentsByWeeks([]),
+    ).resolves.toEqual(new Map());
+    expect(recording.placeholderCounts).toEqual([]);
+  });
+
+  test('90件を超える週はバインド変数の上限に収まるよう分けて引き当て、すべて結果に含める', async () => {
+    const weekStarts = Array.from(
+      { length: IDS_OVER_ONE_STATEMENT },
+      (_, offset) => weekStartAfter(offset),
+    );
+    await insertWeekTournaments(
+      weekStarts.map((weekStart, offset) => ({ index: offset + 1, weekStart })),
+    );
+    const recording = createRecordingDatabase();
+
+    const found = await new D1WeekTournamentStore(
+      recording.database,
+    ).findTournamentsByWeeks(weekStarts.map(parseBusinessDate));
+
+    expect([...found.keys()].toSorted()).toEqual(weekStarts);
+    expect(found.get(parseBusinessDate(weekStartAfter(94)))).toEqual(
+      openRecordOf(95, weekStartAfter(94)),
+    );
+    expectSplitWithinBindLimit(recording.placeholderCounts);
+  });
+});
+
 describe('D1WeekTournamentStore.listDue', () => {
   // 週1・2・3・4の組み合わせ決定は11/10・11/17・11/24・12/01の7:45(UTC)
   async function seedWeeks(): Promise<void> {

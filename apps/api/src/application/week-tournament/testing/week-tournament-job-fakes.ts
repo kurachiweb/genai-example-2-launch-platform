@@ -328,6 +328,7 @@ export function createFakeFollowUpStore(
     ensureTournament: unused('ensureTournament'),
     findTournament: unused('findTournament'),
     findTournamentByWeek: unused('findTournamentByWeek'),
+    findTournamentsByWeeks: unused('findTournamentsByWeeks'),
     listDue: unused('listDue'),
     listInProgress: unused('listInProgress'),
     findEntriesByLaunch: unused('findEntriesByLaunch'),

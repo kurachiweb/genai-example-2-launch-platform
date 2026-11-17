@@ -107,6 +107,7 @@ function createHarness(failure?: Error): Harness {
     ensureTournament: notUsed,
     findTournament: notUsed,
     findTournamentByWeek: notUsed,
+    findTournamentsByWeeks: notUsed,
     listDue: notUsed,
     listInProgress: notUsed,
     findEntriesByLaunch: notUsed,

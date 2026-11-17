@@ -225,6 +225,7 @@ function createHarness(scenario: Scenario = {}): Harness {
           : undefined,
       );
     },
+    findTournamentsByWeeks: notUsed,
     listDue: notUsed,
     listInProgress: notUsed,
     findEntriesByLaunch: (launchIds) => {
