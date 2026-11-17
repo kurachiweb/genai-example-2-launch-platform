@@ -7,7 +7,9 @@ import {
   isNotNull,
   lt,
   min,
+  ne,
   notExists,
+  or,
   type SQL,
   sql,
 } from 'drizzle-orm';
@@ -27,6 +29,7 @@ import type {
   YearEntryClassification,
   YearEntryRecord,
   YearEntryStore,
+  YearRefundClosedStatus,
 } from '../../core/year-tournament/ports.ts';
 import {
   GRANTABLE_STATUSES,
@@ -43,6 +46,11 @@ const CLASSIFICATIONS_PER_BATCH = 50;
 const REFUND_ON_CLOSE = sql<
   'pending' | 'not_needed'
 >`case when ${yearTournamentEntries.purchaseId} is not null then 'pending' else 'not_needed' end`;
+
+const PENDING_FOLLOW_UP = or(
+  eq(yearTournamentEntries.refundStatus, 'pending'),
+  eq(yearTournamentEntries.refundNoticeStatus, 'pending'),
+);
 
 type EntryInsertRow = typeof yearTournamentEntries.$inferInsert;
 
@@ -109,21 +117,7 @@ function entryRecordOf({
 }
 
 @injectable()
-export class D1YearEntryStore implements Pick<
-  YearEntryStore,
-  | 'insertFromChampion'
-  | 'findByWeekTournaments'
-  | 'findByLaunches'
-  | 'findEntry'
-  | 'listOpenByOwner'
-  | 'listCandidates'
-  | 'listDrawn'
-  | 'grantByUltras'
-  | 'forfeitByProduct'
-  | 'forfeitByOwner'
-  | 'classify'
-  | 'excludeOverCapacity'
-> {
+export class D1YearEntryStore implements YearEntryStore {
   constructor(@inject(PLATFORM_TYPES.Database) private readonly db: Database) {}
 
   // 同じWeek優勝の知らせや再処理が重なっても枠が1つにそろうよう、Week優勝とローンチの一意索引で重複を無視する。
@@ -382,6 +376,96 @@ export class D1YearEntryStore implements Pick<
           ),
         );
     }
+  }
+
+  // 処理中の枠を再処理で重ねて扱わないよう、基準の時刻より前に更新した枠だけを返す
+  async listPendingFollowUps(
+    olderThan: Date,
+    limit: number,
+  ): Promise<readonly YearEntryRecord[]> {
+    const rows = await this.db
+      .select(ENTRY_COLUMNS)
+      .from(yearTournamentEntries)
+      .where(
+        and(PENDING_FOLLOW_UP, lt(yearTournamentEntries.updatedAt, olderThan)),
+      )
+      .orderBy(
+        asc(yearTournamentEntries.updatedAt),
+        asc(yearTournamentEntries.id),
+      )
+      .limit(limit);
+    return rows.map(entryRecordOf);
+  }
+
+  // 重複の処理で返金の知らせを送り直さないよう、返金待ちの条件を更新の文に含める
+  async markRefundRequested(entryId: string, at: Date): Promise<void> {
+    await this.db
+      .update(yearTournamentEntries)
+      .set({
+        refundStatus: 'requested',
+        refundRequestedAt: at,
+        refundNoticeStatus: 'pending',
+        updatedAt: at,
+      })
+      .where(
+        and(
+          eq(yearTournamentEntries.id, entryId),
+          eq(yearTournamentEntries.refundStatus, 'pending'),
+        ),
+      );
+  }
+
+  async markRefundClosed(
+    entryId: string,
+    status: YearRefundClosedStatus,
+    at: Date,
+  ): Promise<void> {
+    await this.db
+      .update(yearTournamentEntries)
+      .set({ refundStatus: status, updatedAt: at })
+      .where(
+        and(
+          eq(yearTournamentEntries.id, entryId),
+          eq(yearTournamentEntries.refundStatus, 'pending'),
+        ),
+      );
+  }
+
+  async markNotice(
+    entryId: string,
+    status: 'sent' | 'skipped',
+    at: Date,
+  ): Promise<void> {
+    await this.db
+      .update(yearTournamentEntries)
+      .set({ refundNoticeStatus: status, updatedAt: at })
+      .where(
+        and(
+          eq(yearTournamentEntries.id, entryId),
+          eq(yearTournamentEntries.refundNoticeStatus, 'pending'),
+        ),
+      );
+  }
+
+  // ブラケットの参加者と年の優勝が組み合わせに入った枠を参照し続けるため、その枠は残す。
+  // 投稿者の列も外部キーのため、解除しないと利用者の物理削除が失敗する
+  async unlinkOrDeleteByProduct(
+    productId: string,
+  ): Promise<{ readonly unlinked: number; readonly deleted: number }> {
+    const ofProduct = eq(yearTournamentEntries.productId, productId);
+    const [unlinked, deleted] = await this.db.batch([
+      this.db
+        .update(yearTournamentEntries)
+        .set({ launchId: null, productId: null, ownerUserId: null })
+        .where(and(ofProduct, eq(yearTournamentEntries.status, 'drawn'))),
+      this.db
+        .delete(yearTournamentEntries)
+        .where(and(ofProduct, ne(yearTournamentEntries.status, 'drawn'))),
+    ]);
+    return {
+      unlinked: unlinked.meta.changes,
+      deleted: deleted.meta.changes,
+    };
   }
 
   // 決済で得た資格の出どころと日時は、組み合わせ決定の時点のUltrasの判定で書き換えない
