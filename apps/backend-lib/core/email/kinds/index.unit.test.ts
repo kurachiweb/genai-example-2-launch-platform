@@ -9,6 +9,7 @@ import { INQUIRY_REPLY_NOTIFICATION_KIND } from './inquiry.ts';
 import { NOTIFICATION_EMAIL_KINDS } from './notifications.ts';
 import { PAYMENTS_EMAIL_KINDS } from './payments.ts';
 import { TOURNAMENT_WEEK_EMAIL_KINDS } from './tournament-week.ts';
+import { TOURNAMENT_YEAR_EMAIL_KINDS } from './tournament-year.ts';
 import { ULTRAS_EMAIL_KINDS } from './ultras.ts';
 
 describe('EMAIL_KINDS', () => {
@@ -104,6 +105,24 @@ describe('EMAIL_KINDS', () => {
   test('Weekトーナメントの種別は返金の知らせの1種である', () => {
     expect(TOURNAMENT_WEEK_EMAIL_KINDS.map((kind) => kind.name)).toEqual([
       'tournament-week.entry-refund',
+    ]);
+  });
+
+  test.each(
+    TOURNAMENT_YEAR_EMAIL_KINDS.map((kind) => [kind.name, kind] as const),
+  )(
+    'Yearトーナメントの種別%sをトランザクションメールとして名前で引ける',
+    (name, kind) => {
+      const registry = createEmailKindRegistry(EMAIL_KINDS);
+
+      expect(registry.get(name)).toBe(kind);
+      expect(registry.get(name)?.category).toBe('transactional');
+    },
+  );
+
+  test('Yearトーナメントの種別は返金の知らせの1種である', () => {
+    expect(TOURNAMENT_YEAR_EMAIL_KINDS.map((kind) => kind.name)).toEqual([
+      'tournament-year.entry-refund',
     ]);
   });
 

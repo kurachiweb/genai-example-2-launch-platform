@@ -6,6 +6,7 @@ import { INQUIRY_REPLY_TEMPLATE } from './inquiry/inquiry-reply-template.ts';
 import { NOTIFICATION_EMAIL_TEMPLATES } from './notifications/index.ts';
 import { PAYMENT_EMAIL_TEMPLATES } from './payments/index.ts';
 import { TOURNAMENT_WEEK_EMAIL_TEMPLATES } from './tournament-week/index.ts';
+import { TOURNAMENT_YEAR_EMAIL_TEMPLATES } from './tournament-year/index.ts';
 import { ULTRAS_EMAIL_TEMPLATES } from './ultras/index.ts';
 
 export const EMAIL_TEMPLATES: readonly EmailTemplate<unknown>[] = Object.freeze(
@@ -18,5 +19,6 @@ export const EMAIL_TEMPLATES: readonly EmailTemplate<unknown>[] = Object.freeze(
     ...ULTRAS_EMAIL_TEMPLATES,
     ...NOTIFICATION_EMAIL_TEMPLATES,
     ...TOURNAMENT_WEEK_EMAIL_TEMPLATES,
+    ...TOURNAMENT_YEAR_EMAIL_TEMPLATES,
   ],
 );
