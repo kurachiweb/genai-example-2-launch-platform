@@ -1,0 +1,20 @@
+fragment WeekBoardRoundFields on WeekTournamentRoundBoard {
+  tournament {
+    week
+    label
+    firstRoundDate
+    finalDate
+    status
+    awarded
+  }
+  round
+  roundName
+  final
+  matches {
+    ...Match
+  }
+  byes {
+    ...MatchBye
+  }
+  bracketPath
+}

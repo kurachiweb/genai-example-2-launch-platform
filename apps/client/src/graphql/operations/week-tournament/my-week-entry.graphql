@@ -1,0 +1,24 @@
+query ClientMyWeekEntry($productHandle: String!) {
+  myWeekEntry(productHandle: $productHandle) {
+    launchId
+    week
+    weekLabel
+    status
+    closeReason
+    exempt
+    acceptUntil
+    deadlineAt
+    fee {
+      amount
+      currency
+    }
+    serverTime
+    progress {
+      alive
+      champion
+      eliminatedRoundName
+    }
+    bracketPath
+    ultrasGuide
+  }
+}

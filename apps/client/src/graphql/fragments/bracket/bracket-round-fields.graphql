@@ -1,0 +1,28 @@
+fragment BracketRoundFields on BracketRound {
+  round
+  name
+  date
+  nodes {
+    position
+    match {
+      id
+      kind
+      round
+      stage
+      date
+      phase
+      decision
+      endedEarly
+    }
+    slots {
+      participantNo
+      seed
+      feedLabel
+      product {
+        ...BracketMatchProductFields
+      }
+      upvoteCount
+      result
+    }
+  }
+}

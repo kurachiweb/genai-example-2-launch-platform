@@ -1,0 +1,9 @@
+query ClientProductTrophies($productHandle: String!) {
+  productTrophies(productHandle: $productHandle) {
+    kind
+    period
+    periodLabel
+    awardedAt
+    bracketPath
+  }
+}
