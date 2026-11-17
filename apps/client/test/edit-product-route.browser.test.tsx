@@ -12,7 +12,12 @@ import { resetFakeTurnstile } from '../lib/test/fake-turnstile.tsx';
 import type { MyProductSection } from '../src/components/product/product-section-types.ts';
 import { BOUNDARY_REFRESH_DELAY_MS } from '../src/components/time/use-boundary-refresh.ts';
 import {
+  serverTimeBeforeAcceptUntil,
+  weekEntryOf,
+} from '../src/components/week-tournament/week-entry-fixtures.ts';
+import {
   ClientMyProductDocument,
+  ClientMyWeekEntryDocument,
   ClientUpdateProductDocument,
 } from '../src/graphql/generated/graphql.ts';
 import type { buildSitePageHead } from '../src/head/page-heads.ts';
@@ -152,6 +157,30 @@ describe('プロダクトの編集画面の経路', () => {
     expect(
       statusSection().getByText('ローンチ日は編集画面で変更できます。').query(),
     ).toBeNull();
+  });
+
+  test('Weekトーナメントの参加の枠があれば、状態の区画に秒読みの無い参加費の導線を描く', async () => {
+    respond({
+      weekEntry: weekEntryOf({
+        serverTime: serverTimeBeforeAcceptUntil(3_600_000),
+        ultrasGuide: false,
+      }),
+    });
+    await renderEditProduct();
+
+    const entryPanel = statusSection().getByRole('group', {
+      name: 'Product of the Weekトーナメント',
+    });
+    await expect.element(entryPanel).toBeVisible();
+    await expect
+      .element(
+        entryPanel.getByRole('button', { name: /^Weekトーナメントに参加/u }),
+      )
+      .toBeVisible();
+    expect(main().getByRole('timer').elements()).toHaveLength(0);
+    expect(callsOf(ClientMyWeekEntryDocument)[0]?.[1]).toStrictEqual({
+      productHandle: 'pitch-notes',
+    });
   });
 
   test('他人・論理削除済み・不在のプロダクトは存在しないページを示す', async () => {

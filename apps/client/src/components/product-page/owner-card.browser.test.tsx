@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 
 import '../../styles.css';
 import { DisplayPreferencesProvider } from '../../../lib/components/datetime/display-preferences-provider.tsx';
@@ -195,14 +196,80 @@ const labeledAction = (label: string) =>
   function LabeledOwnerAction({
     product,
     viewer,
+    autoRefresh,
+    reportAutoUpdating,
     ...rest
   }: ProductOwnerActionContext) {
     return (
       <p data-owner-action="">
-        {`${label}:${product.handle}:${product.ownerHandle}:${String(viewer.isOwner)}:${Object.keys(rest).join(',')}`}
+        {`${label}:${product.handle}:${product.ownerHandle}:${String(viewer.isOwner)}:自動更新${String(autoRefresh)}:${typeof reportAutoUpdating}:${Object.keys(rest).join(',')}`}
       </p>
     );
   };
+
+// 申告の状態を利用者の操作で変えられる、毎秒の更新を持つ操作
+function ReportingOwnerAction({
+  reportAutoUpdating,
+}: ProductOwnerActionContext) {
+  const [active, setActive] = useState(true);
+  useEffect(() => {
+    reportAutoUpdating(active);
+  }, [active, reportAutoUpdating]);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setActive(false);
+      }}
+    >
+      秒読みを止める操作
+    </button>
+  );
+}
+
+// 申告の後に描画に失敗する操作
+function BreakableReportingOwnerAction({
+  reportAutoUpdating,
+}: ProductOwnerActionContext) {
+  const [broken, setBroken] = useState(false);
+  useEffect(() => {
+    reportAutoUpdating(true);
+  }, [reportAutoUpdating]);
+  if (broken) {
+    throw new Error('投稿者本人向けの操作の描画の失敗');
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setBroken(true);
+      }}
+    >
+      操作を壊す
+    </button>
+  );
+}
+
+// 偽を申告し続ける操作
+function IdleOwnerAction({ reportAutoUpdating }: ProductOwnerActionContext) {
+  useEffect(() => {
+    reportAutoUpdating(false);
+  }, [reportAutoUpdating]);
+  return <p>申告しない操作</p>;
+}
+
+// 受け取った申告の関数を記録し、自動更新の状態を文言に出す操作
+const receivedReporters = new Set<unknown>();
+
+function IdentityOwnerAction({
+  autoRefresh,
+  reportAutoUpdating,
+}: ProductOwnerActionContext) {
+  useEffect(() => {
+    receivedReporters.add(reportAutoUpdating);
+  }, [reportAutoUpdating]);
+  return <p>{`自動更新${String(autoRefresh)}`}</p>;
+}
 
 function ThrowingOwnerAction(): never {
   throw new Error('投稿者本人向けの操作の描画の失敗');
@@ -214,21 +281,63 @@ const registered = (
   component: ProductOwnerAction['component'] = labeledAction(id),
 ): ProductOwnerAction => ({ id, order, component });
 
+interface CardHarnessProps {
+  readonly isOwner: boolean;
+  readonly ownerActions: readonly ProductOwnerAction[];
+  readonly reportAutoUpdating: (active: boolean) => void;
+}
+
+// ページの「自動更新」の切り替えを模し、区画を描き直しても操作へ渡す値を確かめられるようにする
+function CardHarness({
+  isOwner,
+  ownerActions,
+  reportAutoUpdating,
+}: CardHarnessProps) {
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setAutoRefresh((current) => !current);
+        }}
+      >
+        自動更新を切り替える
+      </button>
+      <OwnerCard
+        {...contextOf(isOwner)}
+        autoRefresh={autoRefresh}
+        reportAutoUpdating={reportAutoUpdating}
+        ownerActions={ownerActions}
+      />
+    </>
+  );
+}
+
 const renderCard = ({
   isOwner = true,
   ownerActions = [],
+  reportAutoUpdating = () => undefined,
 }: {
   readonly isOwner?: boolean;
   readonly ownerActions?: readonly ProductOwnerAction[];
+  readonly reportAutoUpdating?: (active: boolean) => void;
 } = {}) =>
   renderInRouter(
     <DisplayPreferencesProvider initial={{ ...TOKYO_JA }}>
       <main className="bg-background p-4 text-foreground">
-        <OwnerCard {...contextOf(isOwner)} ownerActions={ownerActions} />
+        <CardHarness
+          isOwner={isOwner}
+          ownerActions={ownerActions}
+          reportAutoUpdating={reportAutoUpdating}
+        />
       </main>
     </DisplayPreferencesProvider>,
     { cachedViewer: signedInViewerQuery(), path: '/p/Pitch-Notes' },
   );
+
+const toggleAutoRefresh = () =>
+  userEvent.click(page.getByRole('button', { name: '自動更新を切り替える' }));
 
 const card = () => page.getByRole('region', { name: 'あなたのプロダクト' });
 
@@ -306,7 +415,10 @@ describe('OwnerCard', () => {
     respondWith(statusOf(planOf()));
     await renderCard({ isOwner: false });
 
-    await expect.element(page.getByRole('main')).toBeEmptyDOMElement();
+    await expect
+      .element(page.getByRole('button', { name: '自動更新を切り替える' }))
+      .toBeVisible();
+    expect(page.getByRole('main').element().children).toHaveLength(1);
     expect(statusCalls()).toStrictEqual([]);
   });
 
@@ -432,7 +544,7 @@ describe('OwnerCard', () => {
     expect(card().getByText(STATUS_FAILED_MESSAGE).query()).toBeNull();
   });
 
-  test('登録された操作を進行状況の下、「編集」「再ローンチを予約」の上にorderの順で描き、プロダクトと閲覧者だけを渡す', async () => {
+  test('登録された操作を進行状況の下、「編集」「再ローンチを予約」の上にorderの順で描き、プロダクト・閲覧者・自動更新の状態・申告の関数を渡す', async () => {
     respondWith(statusOf(planOf()));
     await renderCard({
       ownerActions: [
@@ -446,8 +558,8 @@ describe('OwnerCard', () => {
       card().element().querySelectorAll('[data-owner-action]'),
     );
     expect(actions.map((element) => element.textContent)).toStrictEqual([
-      'test.first:Pitch-Notes:pitch_maker:true:',
-      'test.second:Pitch-Notes:pitch_maker:true:',
+      'test.first:Pitch-Notes:pitch_maker:true:自動更新true:function:',
+      'test.second:Pitch-Notes:pitch_maker:true:自動更新true:function:',
     ]);
     const headline = card().getByText('予選敗北', { exact: true }).element();
     const follows = (before: Node, after: Node) =>
@@ -495,6 +607,78 @@ describe('OwnerCard', () => {
       .querySelector('[data-product-owner-action-rendered]')?.parentElement;
     expect(slot).toBeInstanceOf(HTMLElement);
     expect(getComputedStyle(slot as HTMLElement).display).toBe('contents');
+  });
+
+  describe('登録された操作の自動更新', () => {
+    const lastReport = (report: ReturnType<typeof vi.fn>): unknown =>
+      report.mock.calls.at(-1)?.[0];
+
+    test('ページの自動更新の状態を操作へ渡し、切り替えても申告の関数は替えない', async () => {
+      receivedReporters.clear();
+      respondWith(statusOf(planOf()));
+      await renderCard({
+        ownerActions: [registered('test.identity', 10, IdentityOwnerAction)],
+      });
+      await expect
+        .element(card().getByText('自動更新true', { exact: true }))
+        .toBeVisible();
+
+      await toggleAutoRefresh();
+
+      await expect
+        .element(card().getByText('自動更新false', { exact: true }))
+        .toBeVisible();
+      expect(receivedReporters.size).toBe(1);
+    });
+
+    test('操作が毎秒の更新を申告している間は区画として真を申告し、取り下げると偽を申告する', async () => {
+      respondWith(statusOf(planOf()));
+      const report = vi.fn();
+      await renderCard({
+        ownerActions: [registered('test.reporting', 10, ReportingOwnerAction)],
+        reportAutoUpdating: report,
+      });
+
+      await expect.poll(() => lastReport(report)).toBe(true);
+
+      await userEvent.click(
+        card().getByRole('button', { name: '秒読みを止める操作' }),
+      );
+
+      await expect.poll(() => lastReport(report)).toBe(false);
+    });
+
+    test('1つの操作が偽を申告しても、他の操作が申告している間は真のまま', async () => {
+      respondWith(statusOf(planOf()));
+      const report = vi.fn();
+      await renderCard({
+        ownerActions: [
+          registered('test.reporting', 10, ReportingOwnerAction),
+          registered('test.idle', 20, IdleOwnerAction),
+        ],
+        reportAutoUpdating: report,
+      });
+      await expect.element(card().getByText('申告しない操作')).toBeVisible();
+
+      await expect.poll(() => lastReport(report)).toBe(true);
+    });
+
+    test('申告した操作がエラーの境界に捕まると、その操作の申告を消して偽を申告する', async () => {
+      respondWith(statusOf(planOf()));
+      const report = vi.fn();
+      await renderCard({
+        ownerActions: [
+          registered('test.breakable', 10, BreakableReportingOwnerAction),
+        ],
+        reportAutoUpdating: report,
+      });
+      await expect.poll(() => lastReport(report)).toBe(true);
+
+      await userEvent.click(card().getByRole('button', { name: '操作を壊す' }));
+
+      await expect.element(card().getByRole('alert')).toBeVisible();
+      await expect.poll(() => lastReport(report)).toBe(false);
+    });
   });
 
   test.each(COLOR_SCHEMES)('%sの配色でaxeの違反が0件である', async (scheme) => {

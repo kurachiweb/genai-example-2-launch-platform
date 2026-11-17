@@ -14,13 +14,13 @@ import {
 import { MatchHistoryRow } from './match-history-row.tsx';
 import type {
   ProductLaunchSection,
-  ProductOwnerActionContext,
+  ProductLaunchSectionContext,
 } from './product-page-section-types.ts';
 
 export interface LaunchBlockProps {
   readonly launch: ProductPageLaunchView;
   // ローンチの区画へ渡すページの値
-  readonly context: ProductOwnerActionContext;
+  readonly context: Omit<ProductLaunchSectionContext, 'launch'>;
   // orderの順に並べ終えたローンチの区画
   readonly launchSections: readonly ProductLaunchSection[];
 }

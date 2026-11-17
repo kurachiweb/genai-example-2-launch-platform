@@ -1,9 +1,11 @@
 import { createRoute } from '@tanstack/react-router';
 
 import type { ProductLiveMatchView } from '../src/components/product-page/live-match-fixtures.ts';
+import type { WeekEntryPanelView } from '../src/components/week-tournament/week-entry-model.ts';
 import {
   ClientLaunchCommentCountsDocument,
   ClientLaunchCommentsDocument,
+  ClientMyWeekEntryDocument,
   ClientProductLiveMatchDocument,
   ClientProductOwnerStatusDocument,
   ClientProductPageDocument,
@@ -60,6 +62,8 @@ export interface ProductRouteResponses {
   >;
   // 取得のたびに先頭の結果を返し、最後の結果は返し続ける。結果の代わりに失敗の結果も置ける
   readonly liveMatches?: readonly (ProductLiveMatchView | null | object)[];
+  // 投稿者本人向けの操作のWeekトーナメントの参加の枠
+  readonly weekEntry?: WeekEntryPanelView | null;
 }
 
 const isFailure = (value: unknown): boolean =>
@@ -68,7 +72,7 @@ const isFailure = (value: unknown): boolean =>
   'ok' in value &&
   value.ok === false;
 
-// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄・トロフィー)の取得には、評価もコメントも受賞も無い結果を返す
+// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄・トロフィー・Weekトーナメントの参加費の導線)の取得には、評価もコメントも受賞も参加の枠も無い結果を返す
 export const respondOtherSections = (
   document: unknown,
   variables: unknown,
@@ -89,6 +93,9 @@ export const respondOtherSections = (
   if (document === ClientProductTrophiesDocument) {
     return Promise.resolve(ok({ productTrophies: [] }));
   }
+  if (document === ClientMyWeekEntryDocument) {
+    return Promise.resolve(ok({ myWeekEntry: null }));
+  }
   if (document === ClientLaunchCommentCountsDocument) {
     return Promise.resolve(ok({ launchCommentCounts: [] }));
   }
@@ -107,7 +114,7 @@ export const respondOtherSections = (
 
 export const respondProductRoute = (
   executeGraphQL: ExecuteGraphQLMock,
-  { pages, liveMatches = [null] }: ProductRouteResponses,
+  { pages, liveMatches = [null], weekEntry = null }: ProductRouteResponses,
 ): void => {
   const queue = [...liveMatches];
   executeGraphQL.mockImplementation((document, variables) => {
@@ -123,6 +130,9 @@ export const respondProductRoute = (
     }
     if (document === ClientProductOwnerStatusDocument) {
       return Promise.resolve(ok({ productOwnerStatus: null }));
+    }
+    if (document === ClientMyWeekEntryDocument) {
+      return Promise.resolve(ok({ myWeekEntry: weekEntry }));
     }
     return (
       respondOtherSections(document, variables) ??

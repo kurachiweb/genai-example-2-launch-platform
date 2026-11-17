@@ -53,3 +53,6 @@ export const WEEK_ENTRY_EXCLUDED_MESSAGE =
   '組み合わせ決定の時点でプロダクトが公開されていなかったため参加できませんでした。';
 
 export const WEEK_ENTRY_EXCLUDED_REFUND_MESSAGE = '参加費は返金されます。';
+
+export const WEEK_ENTRY_DELETE_NOTICE =
+  'このプロダクトを削除するとWeekトーナメントの参加資格を失います。支払った参加費は自動で全額返金されます。';
