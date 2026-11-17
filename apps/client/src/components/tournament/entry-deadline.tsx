@@ -11,11 +11,11 @@ import {
   ENTRY_COUNTDOWN_LABEL,
   ENTRY_COUNTDOWN_NAME,
   ENTRY_DEADLINE_LABEL,
-} from '../tournament/tournament-copy.ts';
+} from './tournament-copy.ts';
 import {
   entryCountdownReadingOf,
   isEntryDeadlineUrgent,
-} from './week-entry-model.ts';
+} from './tournament-entry-model.ts';
 
 export interface EntryDeadlineProps {
   // 決済の開始の受付期限(23:00、ISO形式の日時文字列)
@@ -24,12 +24,14 @@ export interface EntryDeadlineProps {
   readonly serverTime: string;
   // ページの「自動更新」の状態。偽の間は毎秒の秒読みを止めて描かない
   readonly autoRefresh: boolean;
+  // 受付期限まで48時間未満の注意色と秒読みを添えるか。偽なら日時と相対表現だけを示す
+  readonly countdown: boolean;
 }
 
 function EntryCountdown({
   acceptUntil,
   serverTime,
-}: Omit<EntryDeadlineProps, 'autoRefresh'>) {
+}: Pick<EntryDeadlineProps, 'acceptUntil' | 'serverTime'>) {
   const remainingSeconds = useServerCountdown(acceptUntil, serverTime, true);
   const reading =
     remainingSeconds === null
@@ -69,13 +71,14 @@ function EntryCountdown({
   );
 }
 
-// 受付期限まで48時間未満は日時を注意色で強調し、自動更新がオンの間だけ時:分:秒の秒読みを添える。強調はアイコンと秒読みの文言でも示し、色だけに頼らない
+// 秒読みを添える指定では、受付期限まで48時間未満は日時を注意色で強調し、自動更新がオンの間だけ時:分:秒の秒読みを添える。強調はアイコンと秒読みの文言でも示し、色だけに頼らない
 export function EntryDeadline({
   acceptUntil,
   serverTime,
   autoRefresh,
+  countdown,
 }: EntryDeadlineProps) {
-  const urgent = isEntryDeadlineUrgent(acceptUntil, serverTime);
+  const urgent = countdown && isEntryDeadlineUrgent(acceptUntil, serverTime);
   return (
     <div>
       <p className="text-xs font-bold text-muted-foreground">

@@ -14,11 +14,11 @@ import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import type { DisplayPreferences } from '../../../lib/utilities/datetime/display-preferences.ts';
 import { EntryDeadline, type EntryDeadlineProps } from './entry-deadline.tsx';
 import {
+  ENTRY_ACCEPT_UNTIL,
   SERVER_TIME_48_HOURS_BEFORE,
   SERVER_TIME_THREE_DAYS_BEFORE,
   serverTimeBeforeAcceptUntil,
-  WEEK_ENTRY_ACCEPT_UNTIL,
-} from './week-entry-fixtures.ts';
+} from './tournament-entry-fixtures.ts';
 
 const LOS_ANGELES_JA: DisplayPreferences = {
   timeZone: 'America/Los_Angeles',
@@ -46,9 +46,10 @@ const startClientClockAt = (serverTime: string): void => {
 const propsOf = (
   overrides: Partial<EntryDeadlineProps> = {},
 ): EntryDeadlineProps => ({
-  acceptUntil: WEEK_ENTRY_ACCEPT_UNTIL,
+  acceptUntil: ENTRY_ACCEPT_UNTIL,
   serverTime: SERVER_TIME_THREE_DAYS_BEFORE,
   autoRefresh: true,
+  countdown: true,
   ...overrides,
 });
 
@@ -92,7 +93,7 @@ describe('EntryDeadline', () => {
 
     await expect.element(page.getByText('決済期限')).toBeVisible();
     const time = deadlineTime().querySelector('time');
-    expect(time?.dateTime).toBe(WEEK_ENTRY_ACCEPT_UNTIL);
+    expect(time?.dateTime).toBe(ENTRY_ACCEPT_UNTIL);
     expect(time?.textContent).toBe('11月23日(月) 23:00');
     expect(deadlineTime().textContent).toBe('11月23日(月) 23:00(あと3日)');
   });
@@ -162,6 +163,24 @@ describe('EntryDeadline', () => {
     expect(readingOf()).toBeNull();
     expect(getComputedStyle(deadlineTime()).color).toBe(
       tokenColorOf('warning-strong'),
+    );
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  test('秒読みを添えない指定では、受付期限まで48時間未満でも注意色と秒読みを出さず、日時と相対表現だけを示す', async () => {
+    await renderDeadline(
+      propsOf({ serverTime: JUST_UNDER_48_HOURS, countdown: false }),
+    );
+
+    await expect.element(page.getByText('決済期限')).toBeVisible();
+    expect(timer().query()).toBeNull();
+    expect(digitsOf()).toBeNull();
+    expect(getComputedStyle(deadlineTime()).color).not.toBe(
+      tokenColorOf('warning-strong'),
+    );
+    expect(deadlineTime().querySelector('svg')).toBeNull();
+    expect(deadlineTime().querySelector('time')?.dateTime).toBe(
+      ENTRY_ACCEPT_UNTIL,
     );
     expect(vi.getTimerCount()).toBe(0);
   });
