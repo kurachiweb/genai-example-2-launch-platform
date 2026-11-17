@@ -114,7 +114,7 @@
 
 - **Sources Consulted**: Cloudflare Docs「Config Explorer」(`ratelimits`の`namespace_id`・`simple.limit`・`simple.period`)。
 - **Findings**: `simple.period`は10または60(秒)。`namespace_id`はアカウント内で名前空間を区別する正の整数の文字列で、同じ値を使うWorker・環境は回数を共有する。カウントはCloudflareのロケーション単位である。
-- **Implications**: FR-RLMIT-009は`limit: 100`・`period: 10`。Worker・環境ごとに別の`namespace_id`を割り当て、値の一覧を`docs/onboardings/project-values.md`に記載する。
+- **Implications**: FR-RLMIT-009は`limit: 500`・`period: 10`。Worker・環境ごとに別の`namespace_id`を割り当て、値の一覧を`docs/onboardings/project-values.md`に記載する。
 
 ### Wranglerの自動プロビジョニング
 
@@ -208,7 +208,7 @@
 - 別々の`wrangler dev`の間でQueuesのメッセージが届かない可能性 — 実装時に確かめ、届かなければ単一プロセスでの確認手順をオンボーディングに記載する。
 - `@sentry/hono`の`sentry(app)`と`withSentry`の併用による二重計装 — fetchは`sentry(app)`だけ、scheduled・queueは`withSentry`だけで計装し、Workers統合テストで1件の例外が1回だけ送られることを確かめる。
 - WranglerのプログラムAPI(`unstable_startWorker`・`unstable_readConfig`)は不安定版 — スモークテストと設定の検査だけに使い、使えなくなった場合はJSONCの解析と`wrangler dev`のプロセス起動に置き換える。
-- Rate Limitingバインディングはロケーション単位のため、厳密な10秒100回にはならない — 要件定義書がRate Limitingバインディングを指定しており、許容する。厳密さが必要なルールはDurable Objectsのカウンタを使う。
+- Rate Limitingバインディングはロケーション単位のため、厳密な10秒500回にはならない — 要件定義書がRate Limitingバインディングを指定しており、許容する。厳密さが必要なルールはDurable Objectsのカウンタを使う。
 
 ## References
 

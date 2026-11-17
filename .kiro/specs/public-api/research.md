@@ -30,7 +30,7 @@
 - 未確認の利用者のキーの発行: FR-USER-006の制限(投稿・評価・コメント・Upvote・フォロー・決済・加入・データエクスポート)にAPIキーの発行は無い。プロフィールの更新(user-profile-socialの4.12)とプロダクトの編集(product-launchの確認済み事項)も未確認を拒否しない。
 - 発行の回数の制限と編集: FR-RLMIT-005は「新規発行操作」を数える。名前と権限スコープの編集は新規発行ではない。FR-PAPI-005の「編集時」により、既存のキーの権限スコープの編集を設ける(名前も同じフォームで編集できる)。
 - 回数の制限の期間とリセット: backend-platformの`RateLimitCounter`(最初の要求で期間を始め、Alarmで記録を消す)がFR-RLMIT-017・019の「期間の開始から1時間・1分でAlarmによりリセット」をそのまま満たす。
-- IP単位の制限の部品: backend-platformのresearch.md(Generalization)が「public-apiのFR-RLMIT-008も`bindingRateLimit`で実装できる」としている。プリフライトは公開APIの操作ではないため数えない(Worker単位の10秒100回の制限は掛かる)。
+- IP単位の制限の部品: backend-platformのresearch.md(Generalization)が「public-apiのFR-RLMIT-008も`bindingRateLimit`で実装できる」としている。プリフライトは公開APIの操作ではないため数えない(Worker単位の10秒500回の制限は掛かる)。
 - 波及処理と`order`: 退会のAPIキーの削除は同期の波及処理(`order`を持たない)で行う。4:21のジョブと非同期の波及処理は無い(物理削除の時点では退会の同期の処理でキーが消えており、発行の書き込みの`CASE`式で退会済み・停止中の利用者のキーを作らない)。roadmapの帯(1800番台)の使用中の値は「—」のままである。
 - 新しいパッケージ: `swagger-ui-dist`(仮4)だけである。APIキーの乱数・ハッシュはWeb Crypto API(backend-platformの`KeyedHasher`)、REST・OpenAPIは`@hono/zod-openapi`(api-gateway)、画面はfrontend-platformのshadcn/uiの部品を使う。
 - steering: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替する(directory-discoveryと同じ)。

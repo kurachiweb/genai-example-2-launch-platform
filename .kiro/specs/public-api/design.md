@@ -86,7 +86,7 @@
 
 - `apps/api`・`apps/client`などは上流specの実装前で、本specのタスクは上流(特にapi-gateway・identity-auth・directory-discovery・engagement)の実装の完了を前提にする。
 - api-gatewayの公開REST: `createRestModule`が`PUBLIC_REST_ROUTES`の各関数に`OpenAPIHono`の子のアプリを渡し、`ApiKeyAuth`(Bearer)を登録し、`doc31`で`/openapi.json`、`OPTIONS /*`(204)を加えて`/v1`へマウントする。検証の失敗は`defaultHook`が`AppError(bad_request, validation_error)`にし、backend-platformの`onError`が400にする。外部経路の後処理がCORS(`*`・経路表のメソッド・`Authorization`、更新系は`Content-Type`)とセキュリティヘッダーを付ける。
-- apiのWorkerは全要求にWorker単位のIP制限(10秒100回)を掛ける。公開APIのIP単位の制限(1分60回)はその内側に本specが掛ける。
+- apiのWorkerは全要求にWorker単位のIP制限(10秒500回)を掛ける。公開APIのIP単位の制限(1分60回)はその内側に本specが掛ける。
 - 層の配置とテストの分担(`domain`・`application`はBunの単体テスト、`infrastructure`・`presentation`・`composition`はWorkers統合テスト)、`@inject`の明示はbackend-platformに従う。
 
 ### Architecture Pattern & Boundary Map

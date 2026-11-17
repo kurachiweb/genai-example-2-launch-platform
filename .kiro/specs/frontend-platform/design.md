@@ -866,7 +866,7 @@ export declare function isServerFunctionCall(url: URL): boolean;
 ```typescript
 // server/http/ip-rate-limit.ts
 export declare const IP_RATE_LIMIT: {
-  readonly limit: 100;
+  readonly limit: 500;
   readonly periodSeconds: 10;
   readonly keyPrefix: 'ip:';
   readonly unknownClient: 'unknown';
@@ -893,7 +893,7 @@ export declare function hashRateLimitKey(
 ): Promise<string>; // 1つ以上の部品。base64url(パディング無し)の86文字
 ```
 
-- 上限と期間はWrangler設定の`ratelimits`(`simple: { limit: 100, period: 10 }`)で決まり、この定数は応答の`Retry-After`と設定の検査(`wrangler-config.unit.test.ts`)に使う。
+- 上限と期間はWrangler設定の`ratelimits`(`simple: { limit: 500, period: 10 }`)で決まり、この定数は応答の`Retry-After`と設定の検査(`wrangler-config.unit.test.ts`)に使う。
 - キー(5.7): `checkIpRateLimit`は`hashRateLimitKey(pepper, ipRateLimitKey(clientIp))`でハッシュ化した値だけをバインディングへ渡し、生のIPアドレスと`ip:<IP>`を渡さない。`CF-Connecting-IP`はIPv4・IPv6として検証し、不正なら`ip:unknown`をハッシュ化する。不明な送信元はすべて同じハッシュ値になり、上限を共有する(5.2)。Rate Limitingバインディングの`key`は公式文書で任意の文字列とされ、長さの上限の記載が無いため、ハッシュ値(86文字)をそのまま渡す。
 - `hashRateLimitKey`は、backend-libの`core/rate-limit/rate-limit-key.ts`の`hashRateLimitKey(createKeyedHasher(pepper), ...parts)`と同じ値を返す。HMAC-SHA512の鍵はペッパーをUTF-8にしたもの、入力は`rate-limit-key\u0000<JSON.stringify(parts)>`のUTF-8、出力はbase64url(パディング無し)である(security/002の「ハッシュ化の方法」「レート制限のキー」)。Web Crypto(`crypto.subtle`)だけを使い、`server/**`の読み込みの制限(`cloudflare:*`などを読まない)に収まる。共通部品はbackend-libのコードを読み込めないため、`utilities/observability/redaction-patterns.ts`と同じく写しとして置き、backend-platformが方式を変えたら合わせる(Revalidation Triggers)。部品が空なら値を含めない`RangeError`にする。
 - 鍵の読み込み(`crypto.subtle.importKey`)は要求ごとに行う。環境の検証が要求ごとに行われ、ペッパーをモジュールの状態に残さないためである。
@@ -2251,7 +2251,7 @@ export interface AdminLayoutProps {
 | `observability`                  | `enabled: true`・`logs.invocation_logs: false`(13.9)                                 | 同左                            |
 | `cache`                          | `enabled: false`                                                                     | 同左                            |
 | `services`                       | `API` → `genai-example-2-api`(envで`-staging`・`-prod`)、`entrypoint: ClientGateway` | `entrypoint: AdminGateway`      |
-| `ratelimits`                     | `IP_RATE_LIMITER`・`simple: { limit: 100, period: 10 }`・`namespace_id`は表          | 同左                            |
+| `ratelimits`                     | `IP_RATE_LIMITER`・`simple: { limit: 500, period: 10 }`・`namespace_id`は表          | 同左                            |
 | `vars`                           | 「Supporting References」の値                                                        | `WEB_ANALYTICS_TOKEN`を持たない |
 | `secrets.required`               | ルートは`HASH_PEPPER`、staging・prodは`HASH_PEPPER`・`SENTRY_DSN`                    | 同左                            |
 
