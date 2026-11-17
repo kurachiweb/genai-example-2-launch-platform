@@ -90,7 +90,7 @@
   - _Requirements: 16.6_
 
 - [ ] 2. Yearの純粋な規則
-- [ ] 2.1 決勝日と期限・1回戦の日の規則を作る
+- [x] 2.1 決勝日と期限・1回戦の日の規則を作る
   - 先に、単体テストで、既定の決勝日(5月31日が日曜日の年と月曜日の年を含む複数の年)、決勝日からの決済期限日・受付期限23:00・決済期限23:35・組み合わせ決定23:45・変更期限(7日前の0:00)、参加数2・3・4・5・8・9・13・16・17・32・33・64の1回戦の日(決勝日〜5日前、N = 13はYearトーナメント規則の例どおり3日前)と参加数1以下の無し、65での例外、日曜日でない決勝日での例外を確かめる
   - 曜日と日数の計算は1.1の業務時刻の共通の関数で行う
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
@@ -502,3 +502,4 @@
 - 1.8: テーブルは`apps/db/schema/tournament/`の`yearTournaments`(`year_tournaments`)・`yearTournamentEntries`(`year_tournament_entries`)、マイグレーションは`20261117155516_tournament_year`(ローカルに適用済み)。D1での確認は`apps/db/tournament-year-schema.worker.test.ts`(apiの`bun run test:worker -- db/`)。枠の挿入の重複の無視は一意索引`year_tournament_entries_week_tournament_id_unique`。`year_tournament_entries`は`launch_id`・`product_id`・`owner_user_id`が`product_launches`・`products`・`users`への外部キー(ON DELETE無し)のため、物理削除の紐付けの解除(3.4)は`owner_user_id`も必ずnullにする。退会では枠を消さない(喪失)ため、利用者の物理削除の前に`owner_user_id`がnullになる経路(プロダクトが物理削除されない枠を含む)を3.4・4.2で確かめる。`champion_entry_id`・`week_tournament_id`・`purchase_id`・`final_date_updated_by_admin_id`には外部キーが無い。既定値は`final_date_version`(0)・`refund_status`・`refund_notice_status`('none')だけ。`project-values.md`へのテーブルの追記は8.2。
 - 1.9: 操作種別は`apps/common-lib/admin/audit-actions/tournament-year.ts`の`YEAR_FINAL_DATE_UPDATE_ACTION`(`year-final-date.update`)と`TOURNAMENT_YEAR_AUDIT_ACTIONS`。対象のIDは`year-final-date:<年>`、`fromSource`は`explicit`・`default`だけ(記録の検証は100書記素以内の文字列しか見ないため、5.6・5.7の側で値を守る)。common-libのテストはapiの`test:unit`の対象外のため、apiから`bun test common-lib/...`で実行する。
 - 1.10: 6・7・3.7・3.10・5.xの文言は`docs/GUIDES/service/design/003-text-and-copy-rules.md`を正とする(エラー・状態・Week決勝の結果通知への追記・トップページとブラケット・管理画面・最終確認画面の表示事項・返金の知らせのメール)。決めた点: 決勝の区画の印は「Year Final」、喪失と返金の文は設計のSupporting Referencesどおり(Weekと文が違う)、導線の受付中の項目名は共用の「決済期限」、決勝日の表記は「2027年5月30日(日)」、Yearの導線はプロダクトを表示できない間もボタンを無効にしない(押下の後に拒否の文)。決済実装方針(`features/004-payments.md`)の購入種別の表のYearの行に受付期限・反映の期限・返金の依頼キー等を補った。法的通知の大枠の返金ポリシーは一致しており変更なし。3.13への申し送り: 組み合わせ決定の分類の順序は、Yearトーナメント規則(設計の状態遷移図に合わせ、受付中の枠をまず参加資格か期限切れに分け、参加資格の枠だけを喪失・除外にする)に合わせる。範囲外で気づいた相違(変えていない): `legal/001-compliance-policy.md`の注3とページ配置のYearの導線の「最長63週」は仮8と初年度で厳密でない、ページ配置の管理者側ページ一覧の「8項目は実装済み」に実装済みの「設定」が無い。
+- 2.1: `core/year-tournament/year-schedule.ts`に`YEAR_ENTRY_PRICE_LOOKUP_KEY`・`YEAR_MAX_PARTICIPANTS`(64)・`FINAL_DATE_MIN_LEAD_DAYS`(8)・`FINAL_DATE_MAX_GAP_DAYS`(448)・`YearSchedule`(`year`・`finalDate`・`deadlineDate`・`acceptUntil`・`deadlineAt`・`drawAt`・`changeLockAt`、凍結)・`defaultFinalDate(year)`・`yearScheduleFor(year, finalDate)`・`yearFirstRoundDate(finalDate, participantCount)`(1以下は`null`、`bracketShape`のラウンド数−1日前)。例外はすべて`RangeError`(`yearScheduleFor`は日曜日でない・対象年の外の決勝日で投げるため、選択の検証は先に`FinalDateChoice`で行う)。組み合わせ決定が遅れたときの1回戦の日の繰り下げは呼び出し元が`dailyRoundPolicy`で行う(Weekと同じ)。
