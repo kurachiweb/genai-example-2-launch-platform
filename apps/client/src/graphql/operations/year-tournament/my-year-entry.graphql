@@ -1,0 +1,27 @@
+query ClientMyYearEntry($productHandle: String!) {
+  myYearEntry(productHandle: $productHandle) {
+    launchId
+    year
+    yearLabel
+    weekLabel
+    finalDate
+    status
+    closeReason
+    exempt
+    refundable
+    acceptUntil
+    deadlineAt
+    drawAt
+    fee {
+      amount
+      currency
+    }
+    serverTime
+    progress {
+      alive
+      champion
+      eliminatedRoundName
+    }
+    bracketPath
+  }
+}

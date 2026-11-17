@@ -1,0 +1,5 @@
+mutation ClientStartYearTournamentCheckout($launchId: ID!) {
+  startYearTournamentCheckout(launchId: $launchId) {
+    purchaseId
+  }
+}

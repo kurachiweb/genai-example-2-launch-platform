@@ -1,0 +1,62 @@
+# APIサーバーの深さの上限はフラグメントの展開を段に数えるため、roundsはBracketRoundFieldsの項目を展開せずに直接書く。結果の型がフラグメントの型と一致することはyear-tournament.unit.test.tsが確かめる
+query ClientYearBracket($year: String!) {
+  yearBracket(year: $year) {
+    tournament {
+      year
+      label
+      firstRoundDate
+      finalDate
+      status
+      awarded
+    }
+    participantCount
+    seedCount
+    rounds {
+      round
+      name
+      date
+      nodes {
+        position
+        match {
+          id
+          kind
+          round
+          stage
+          date
+          phase
+          decision
+          endedEarly
+        }
+        slots {
+          participantNo
+          seed
+          feedLabel
+          product {
+            handle
+            name
+            tagline
+            category {
+              id
+              name
+              handle
+            }
+            websiteUrl
+            logo {
+              id
+              objectKey
+              fallbackFormat
+              width
+              height
+            }
+            listed
+          }
+          upvoteCount
+          result
+        }
+      }
+    }
+    champion {
+      ...BracketMatchProductFields
+    }
+  }
+}

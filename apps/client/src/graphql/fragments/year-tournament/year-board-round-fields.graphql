@@ -1,0 +1,21 @@
+fragment YearBoardRoundFields on YearTournamentRoundBoard {
+  tournament {
+    year
+    label
+    firstRoundDate
+    finalDate
+    status
+    awarded
+  }
+  round
+  roundName
+  final
+  finalDate
+  matches {
+    ...Match
+  }
+  byes {
+    ...MatchBye
+  }
+  bracketPath
+}
