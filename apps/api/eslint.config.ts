@@ -335,6 +335,36 @@ const INQUIRY_LAYER_RULES: Linter.Config[] = [
   },
 }));
 
+// WeekとYearのブラケットのページが同じ表示を組み立てるため、種類によらない部品からWeekの部品を型も含めて読み込ませない
+const WEEK_FROM_BRACKET_VIEW_RESTRICTION = {
+  group: ['**/week-tournament', '**/week-tournament/**'],
+  message:
+    'ブラケットの表示の組み立て(bracket-view-builder)は種類によらない部品のため、Weekの部品(core/week-tournament・application/week-tournament)に依存できません。ブラケットの記録はcore/tournamentの契約から得てください。',
+};
+
+// 同じファイルに当たる後の設定のno-restricted-importsは層の規則のオプションを置き換えるため、アプリケーション層の層の規則のパターンを含め直す
+const BRACKET_VIEW_RULES: Linter.Config[] = [
+  {
+    name: 'api/tournament/bracket-view-builder',
+    files: [
+      'src/application/tournament/bracket-view-builder.ts',
+      'src/application/tournament/bracket-view-builder.*.test.ts',
+      'src/application/tournament/testing/bracket-view-fixtures.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            ...BACKEND_LAYER_PATTERNS.application,
+            WEEK_FROM_BRACKET_VIEW_RESTRICTION,
+          ],
+        },
+      ],
+    },
+  },
+];
+
 const SCRIPT_READABLE_SOURCE_FILES = [
   'composition/graphql-modules',
   'presentation/graphql/schema-module',
@@ -451,6 +481,7 @@ const config: Linter.Config[] = [
   ...BUN_LOADED_GRAPHQL_RULES,
   ...ADMIN_LAYER_RULES,
   ...INQUIRY_LAYER_RULES,
+  ...BRACKET_VIEW_RULES,
   ...GRAPHQL_SCRIPT_RULES,
   ...SHARED_DIRECTORY_RULES,
 ];
