@@ -14,6 +14,7 @@ import type {
   WeekTournamentRecord,
   WeekTournamentStore,
 } from '../../core/week-tournament/ports.ts';
+import { ultrasExemptionPeriodOf } from '../../core/week-tournament/week-entry-rules.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
 import { safeTagOf } from './incident-tags.ts';
 
@@ -111,18 +112,21 @@ export class QualifierWeekEntryRegistrar implements WeekEntryRegistrar {
     return created;
   }
 
-  // 決済期限の後に確定した勝利は免除の期間が空で、特典の判定は始まりが終わりより後の期間を例外にするため問い合わせない
   private async wasExemptBeforeDeadline(
     base: NewWeekEntryBase,
     tournament: WeekTournamentRecord,
   ): Promise<boolean> {
-    if (base.wonAt.getTime() > tournament.window.deadlineAt.getTime()) {
-      return false;
-    }
-    return this.entitlements.wasEntitledDuring(
-      base.ownerUserId,
+    const period = ultrasExemptionPeriodOf(
       base.wonAt,
       tournament.window.deadlineAt,
+    );
+    return (
+      period !== null &&
+      this.entitlements.wasEntitledDuring(
+        base.ownerUserId,
+        period.from,
+        period.to,
+      )
     );
   }
 

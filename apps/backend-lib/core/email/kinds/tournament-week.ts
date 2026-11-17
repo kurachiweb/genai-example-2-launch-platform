@@ -1,13 +1,8 @@
 import { z } from 'zod';
 
-import type { WeekRefundReason } from '../../week-tournament/week-entry-rules.ts';
+import { WEEK_REFUND_REASONS } from '../../week-tournament/week-entry-rules.ts';
 import { type AnyEmailKind, defineEmailKind } from '../email-kind.ts';
 import { linkUrlSchema as linkUrl } from './link-url.ts';
-
-const WEEK_REFUND_REASONS = Object.freeze([
-  'entitlement_lost',
-  'entitlement_suspended',
-] as const satisfies readonly WeekRefundReason[]);
 
 const text = z.string().min(1);
 

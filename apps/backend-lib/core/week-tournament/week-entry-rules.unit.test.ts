@@ -9,10 +9,12 @@ import {
   GRANTABLE_STATUSES,
   refundReasonFor,
   refundRejectionOutcome,
+  ultrasExemptionPeriodOf,
   WEEK_ENTITLEMENT_SOURCES,
   WEEK_ENTRY_CLOSE_REASONS,
   WEEK_ENTRY_STATUSES,
   WEEK_REFUND_NOTICE_STATUSES,
+  WEEK_REFUND_REASONS,
   WEEK_REFUND_STATUSES,
   type WeekEntryStatus,
   type WeekRefundReason,
@@ -22,6 +24,9 @@ import {
 } from './week-entry-rules.ts';
 
 const PURCHASE_ID = '01JD0PRCHS0000000000000001';
+
+const WON_AT = new Date('2026-09-13T14:30:00.000Z');
+const DEADLINE_AT = new Date('2026-09-14T14:35:00.000Z');
 
 describe('参加の枠の値の一覧', () => {
   test('枠の状態は受付中・参加資格あり・組み合わせ済み・期限切れ・喪失・除外の6つである', () => {
@@ -73,6 +78,7 @@ describe('参加の枠の値の一覧', () => {
     expect(Object.isFrozen(WEEK_REFUND_STATUSES)).toBe(true);
     expect(Object.isFrozen(WEEK_REFUND_NOTICE_STATUSES)).toBe(true);
     expect(Object.isFrozen(GRANTABLE_STATUSES)).toBe(true);
+    expect(Object.isFrozen(WEEK_REFUND_REASONS)).toBe(true);
   });
 });
 
@@ -121,6 +127,19 @@ describe('refundReasonFor', () => {
     expectTypeOf<WeekRefundReason>().toEqualTypeOf<
       'entitlement_lost' | 'entitlement_suspended'
     >();
+  });
+
+  test('返金の理由の一覧は喪失と停止から導く理由とちょうど一致する', () => {
+    expect([...WEEK_REFUND_REASONS]).toEqual([
+      'entitlement_lost',
+      'entitlement_suspended',
+    ]);
+    expect(
+      new Set([refundReasonFor('forfeited'), refundReasonFor('excluded')]),
+    ).toEqual(new Set(WEEK_REFUND_REASONS));
+    expectTypeOf<
+      (typeof WEEK_REFUND_REASONS)[number]
+    >().toEqualTypeOf<WeekRefundReason>();
   });
 
   test('返金の理由は決済の機能が受け付ける理由の形式に合う', () => {
@@ -217,5 +236,68 @@ describe('refundRejectionOutcome', () => {
 
   test('分類の結果は書き換えられない', () => {
     expect(Object.isFrozen(refundRejectionOutcome('not_paid'))).toBe(true);
+  });
+});
+
+describe('ultrasExemptionPeriodOf', () => {
+  test('現在を渡さなければ、勝利の確定から決済期限までを期間にする', () => {
+    expect(ultrasExemptionPeriodOf(WON_AT, DEADLINE_AT)).toEqual({
+      from: WON_AT,
+      to: DEADLINE_AT,
+    });
+  });
+
+  test('決済期限の前の現在なら、勝利の確定から現在までを期間にする', () => {
+    const now = new Date('2026-09-14T03:00:00.000Z');
+
+    expect(ultrasExemptionPeriodOf(WON_AT, DEADLINE_AT, now)).toEqual({
+      from: WON_AT,
+      to: now,
+    });
+  });
+
+  test('決済期限の後の現在なら、終わりを決済期限で止める', () => {
+    const now = new Date('2026-09-14T15:00:00.000Z');
+
+    expect(ultrasExemptionPeriodOf(WON_AT, DEADLINE_AT, now)).toEqual({
+      from: WON_AT,
+      to: DEADLINE_AT,
+    });
+  });
+
+  test('勝利の確定が期間の終わりと同時なら、その一瞬を期間にする', () => {
+    expect(ultrasExemptionPeriodOf(DEADLINE_AT, DEADLINE_AT)).toEqual({
+      from: DEADLINE_AT,
+      to: DEADLINE_AT,
+    });
+    expect(ultrasExemptionPeriodOf(WON_AT, DEADLINE_AT, WON_AT)).toEqual({
+      from: WON_AT,
+      to: WON_AT,
+    });
+  });
+
+  test('決済期限の後に確定した勝利は期間が空でnullになる', () => {
+    const lateWonAt = new Date(DEADLINE_AT.getTime() + 1);
+
+    expect(ultrasExemptionPeriodOf(lateWonAt, DEADLINE_AT)).toBeNull();
+    expect(
+      ultrasExemptionPeriodOf(
+        lateWonAt,
+        DEADLINE_AT,
+        new Date('2026-09-15T00:00:00.000Z'),
+      ),
+    ).toBeNull();
+  });
+
+  test('現在より後に確定した勝利は期間が空でnullになる', () => {
+    const now = new Date(WON_AT.getTime() - 1);
+
+    expect(ultrasExemptionPeriodOf(WON_AT, DEADLINE_AT, now)).toBeNull();
+  });
+
+  test('期間は書き換えられない', () => {
+    expect(Object.isFrozen(ultrasExemptionPeriodOf(WON_AT, DEADLINE_AT))).toBe(
+      true,
+    );
   });
 });

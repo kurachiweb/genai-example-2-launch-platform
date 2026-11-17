@@ -29,6 +29,7 @@ import type {
   WeekTournamentRecord,
   WeekTournamentStore,
 } from '../../../lib/core/week-tournament/ports.ts';
+import { ultrasExemptionPeriodOf } from '../../../lib/core/week-tournament/week-entry-rules.ts';
 import { WEEK_ENTRY_PRICE_LOOKUP_KEY } from '../../../lib/core/week-tournament/week-schedule.ts';
 import type { CheckoutMoney } from '../payments/checkout-view.ts';
 
@@ -189,7 +190,6 @@ export class DirectoryWeekEntryPanelReader implements WeekEntryPanelReader {
     return entry === undefined ? undefined : { launchId, entry };
   }
 
-  // Ultrasの加入の知らせの処理が付与するまでの間も免除として扱う。決済期限の後の加入は付与されないため期間に含めない
   private async isExempt(
     viewer: CurrentUser,
     entry: WeekEntryRecord,
@@ -202,16 +202,18 @@ export class DirectoryWeekEntryPanelReader implements WeekEntryPanelReader {
     if (entry.status !== 'awaiting_payment') {
       return false;
     }
-    const { deadlineAt } = tournament.window;
-    const until = now < deadlineAt ? now : deadlineAt;
-    // 決済期限の後に確定した勝利は特典の期間が成り立たない
-    if (entry.wonAt.getTime() > until.getTime()) {
-      return false;
-    }
-    return this.entitlements.wasEntitledDuring(
-      viewer.user.id,
+    const period = ultrasExemptionPeriodOf(
       entry.wonAt,
-      until,
+      tournament.window.deadlineAt,
+      now,
+    );
+    return (
+      period !== null &&
+      this.entitlements.wasEntitledDuring(
+        viewer.user.id,
+        period.from,
+        period.to,
+      )
     );
   }
 

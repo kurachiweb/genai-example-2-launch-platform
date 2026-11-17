@@ -30,6 +30,7 @@ import type {
   WeekTournamentRecord,
   WeekTournamentStore,
 } from '../../core/week-tournament/ports.ts';
+import { ultrasExemptionPeriodOf } from '../../core/week-tournament/week-entry-rules.ts';
 import {
   type WeekOrderingKey,
   weekNonSeedOrder,
@@ -292,40 +293,41 @@ export class WeekTournamentDrawService implements WeekDrawService {
     }
   }
 
-  // 投稿者の一覧で期間内の加入がある投稿者に絞ってから、枠ごとに勝利の確定から決済期限までを確かめる。
-  // 決済期限の後に確定した勝利は免除の期間が空で、特典の判定は始まりが終わりより後の期間を例外にするため問い合わせない
+  // 投稿者の一覧で期間内の加入がある投稿者に絞ってから、枠ごとの免除の期間を確かめる
   private async ultrasEntitledEntryIds(
     entries: readonly WeekEntryRecord[],
     deadlineAt: Date,
   ): Promise<ReadonlySet<string>> {
-    const awaiting = entries.flatMap((entry) =>
-      entry.status === 'awaiting_payment' &&
-      entry.ownerUserId !== null &&
-      entry.wonAt.getTime() <= deadlineAt.getTime()
-        ? [{ entry, ownerUserId: entry.ownerUserId }]
-        : [],
-    );
+    const awaiting = entries.flatMap((entry) => {
+      if (entry.status !== 'awaiting_payment' || entry.ownerUserId === null) {
+        return [];
+      }
+      const period = ultrasExemptionPeriodOf(entry.wonAt, deadlineAt);
+      return period === null
+        ? []
+        : [{ entryId: entry.entryId, ownerUserId: entry.ownerUserId, period }];
+    });
     if (awaiting.length === 0) {
       return new Set();
     }
-    const earliestWonAt = Math.min(
-      ...awaiting.map(({ entry }) => entry.wonAt.getTime()),
+    const earliestFrom = Math.min(
+      ...awaiting.map(({ period }) => period.from.getTime()),
     );
     const candidates = await this.entitlements.entitledUsersDuring(
       [...new Set(awaiting.map(({ ownerUserId }) => ownerUserId))],
-      new Date(earliestWonAt),
+      new Date(earliestFrom),
       deadlineAt,
     );
     const checked = await Promise.all(
       awaiting
         .filter(({ ownerUserId }) => candidates.has(ownerUserId))
-        .map(async ({ entry, ownerUserId }) =>
+        .map(async ({ entryId, ownerUserId, period }) =>
           (await this.entitlements.wasEntitledDuring(
             ownerUserId,
-            entry.wonAt,
-            deadlineAt,
+            period.from,
+            period.to,
           ))
-            ? [entry.entryId]
+            ? [entryId]
             : [],
         ),
     );

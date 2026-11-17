@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
-import { refundReasonFor } from '../../week-tournament/week-entry-rules.ts';
+import {
+  refundReasonFor,
+  WEEK_REFUND_REASONS,
+} from '../../week-tournament/week-entry-rules.ts';
 import {
   TOURNAMENT_WEEK_EMAIL_KINDS,
   TOURNAMENT_WEEK_ENTRY_REFUND_KIND,
@@ -63,8 +66,8 @@ describe('メール種別tournament-week.entry-refund', () => {
     expect(result).toEqual({ success: true, data: ENTRY_REFUND_FIELDS });
   });
 
-  test.each(['entitlement_lost', 'entitlement_suspended'] as const)(
-    '返金の理由%sを受け付ける',
+  test.each([...WEEK_REFUND_REASONS])(
+    '返金の理由の一覧の%sを受け付ける',
     (reason) => {
       expect(acceptsEntryRefund(entryRefundWith('reason', reason))).toBe(true);
     },

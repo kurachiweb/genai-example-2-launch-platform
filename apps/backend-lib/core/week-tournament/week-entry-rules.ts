@@ -52,7 +52,31 @@ export type WeekRefundNoticeStatus =
 // 一度得た参加資格はUltrasの解約や特典の終了でも戻さないため、資格を与える書き込みの対象は受付中の枠だけにする
 export const GRANTABLE_STATUSES = Object.freeze(['awaiting_payment'] as const);
 
-export type WeekRefundReason = 'entitlement_lost' | 'entitlement_suspended';
+export interface UltrasExemptionPeriod {
+  readonly from: Date;
+  readonly to: Date;
+}
+
+// Ultrasの加入の知らせの処理が参加資格を付与するまでの間も免除として扱うため、終わりは現在と決済期限の早い方にする。決済期限の後の加入は付与されないため期間に含めない。
+// 終わりより後に確定した勝利は期間が空で、特典の判定は始まりが終わりより後の期間を例外にするため、nullを返して問い合わせさせない
+export function ultrasExemptionPeriodOf(
+  wonAt: Date,
+  deadlineAt: Date,
+  now: Date = deadlineAt,
+): UltrasExemptionPeriod | null {
+  const to = now.getTime() < deadlineAt.getTime() ? now : deadlineAt;
+  if (wonAt.getTime() > to.getTime()) {
+    return null;
+  }
+  return Object.freeze({ from: wonAt, to });
+}
+
+export const WEEK_REFUND_REASONS = Object.freeze([
+  'entitlement_lost',
+  'entitlement_suspended',
+] as const);
+
+export type WeekRefundReason = (typeof WEEK_REFUND_REASONS)[number];
 
 const REFUND_REASONS: Readonly<
   Record<'forfeited' | 'excluded', WeekRefundReason>
