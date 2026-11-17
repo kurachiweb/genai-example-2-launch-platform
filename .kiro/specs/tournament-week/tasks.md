@@ -259,7 +259,7 @@
   - 完了状態: 単体テストが成功する
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6_
 
-- [ ] 6.4 (P) ローンチの要約の供給元を作る
+- [x] 6.4 (P) ローンチの要約の供給元を作る
   - 先に、単体テスト(ストアは偽物)で、要約の6つの文言(優勝・マッチ中・進出・敗退・参加決定・参加受付中)とrank、該当しない枠で返さないこと、受賞がプロダクトの識別を持ち表記が週の期間だけであること、1回の呼び出しで読み取りが一括であることを確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: WeekLaunchSummarySource_
@@ -466,3 +466,4 @@
 - 6.1: apiの識別子`WEEK_TOURNAMENT_API_TYPES`(`apps/api/src/application/week-tournament/week-tournament-api-types.ts`、`week-tournament.api.<名前>`、13種。設計に無い`TrophySources`(登録口の注入)、共用の`ProductTrophyReader`もここ)、ポート`ports.ts`の`WeekTournamentIncidentReporter`・`WeekTournamentIncident`(`evening-bracket-failed`: `date`・`failedSteps`・`failedTournamentIds`、`entry-follow-up-failed`: `tournamentIds`・`entryCount`)、ジョブ`week-tournament-jobs.ts`の`EveningBracketJob`・`EntryFollowUpJob`(デコレータ付き、`EVENING_BRACKET_JOB_DEFINITION`・`ENTRY_FOLLOW_UP_JOB_DEFINITION`・`EVENING_BRACKET_PARTICIPANT`)。`markReady`の例外は失敗の通知へ渡さない(定期実行のディスパッチャが拾う)。4:21は`now - 10分 + 1ms`。親の決定: application層の`@sentry/*`の禁止はESLintの規則に無い(既存の全specも同じでgrepで確認)が、全バックエンドへの横断の変更になるため本specでは規則を足さない(最終報告で開発者へ挙げる)。6.2は`kind`から`job`のタグを作る。6.10は`EveningDispatchGate`がapiのnotificationsのモジュールにだけ束縛されている点に注意。
 - 6.2: `apps/api/src/infrastructure/week-tournament/sentry-week-tournament-incident-reporter.ts`の`SentryWeekTournamentIncidentReporter`(`@injectable()`、引数無し、6.10で`to()`)。`level: 'error'`、`fingerprint: ['tournament', kind]`、タグ`tournament_incident`・`job`(ジョブの定義の名前)・`tournament_id`(1件のときだけ)、コンテキスト`tournament_incident`、ログ`['api','infrastructure','week-tournament']`。設計のMonitoringのcamelCaseのタグ名とは違う(snake_caseで統一)。
 - 6.3: `apps/api/src/application/week-tournament/`の`WeekRelaunchConditionSource`(`tournament-week.entry-pending`(受付中・枠の作成前、決済期限の前だけ、`releaseAt`は保存した`deadlineAt`か規則の値)・`tournament-week.result-pending`(参加資格を得た枠・勝ち残り・凍結の後で記録前の`drawn`、`releaseAt: null`。最後のは設計の条件に無い))と`WeekProductLockSource`(`tournament-week.bracket-lock`、勝ち残りと凍結の後の記録前の`drawn`)。共通の読み取り`week-launch-standings.ts`の`readWeekLaunchStandings`(6.4で再利用可、要約の対象は`launches`で形が違う)。ストアに`findTournamentsByWeeks(weekStarts)`を追加(設計に無い、013の一定回数の問い合わせのため)。どちらも`@injectable()`で6.10で`to()`。偽物の補助`testing/week-decision-fakes.ts`。
+- 6.4: `apps/api/src/application/week-tournament/week-launch-summary-source.ts`の`WeekLaunchSummarySource(WeekTournamentStore, BracketStore, MatchDirectory)`(`@injectable()`、6.10で`to()`して`LAUNCH_SUMMARY_SOURCES`へ)。rankは優勝50・マッチ中40(`inMatch`)・進出30・敗退30・参加決定20・参加受付中10(受付期限`acceptUntil`より前)。ラウンド名は`roundLabel({round, stage: roundStage(shape, round)})`。`BracketStore`に`findParticipantStandings(kind, refs)`(`BracketParticipantStanding`)を追加(設計に無い、8.2の文書。tournament-yearの偽物にも要る)。テストの補助`testing/week-summary-fakes.ts`。決勝の確定から週の行の`awarded`の記録までの間は要約を返さない(短時間)。

@@ -138,6 +138,7 @@ function createHarness(options: HarnessOptions = {}): Harness {
         new Map(bracket === undefined ? [] : [[MATCH_ID, bracket]]),
       ),
     findAliveRefs: notUsed,
+    findParticipantStandings: notUsed,
     unlinkProduct: notUsed,
   };
   const store: WeekTournamentStore = {

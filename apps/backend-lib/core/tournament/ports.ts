@@ -49,6 +49,15 @@ export interface BracketRecord {
   readonly matches: readonly BracketMatchRecord[];
 }
 
+export interface BracketParticipantStanding {
+  readonly bracketId: string;
+  readonly shape: BracketShape;
+  readonly status: BracketRecord['status'];
+  readonly participantNo: number;
+  readonly eliminatedRound: number | null;
+  readonly champion: boolean;
+}
+
 export interface BracketOfMatch {
   readonly bracketId: string;
   readonly kind: BracketKind;
@@ -70,6 +79,11 @@ export interface BracketStore {
     kind: BracketKind,
     refs: readonly string[],
   ): Promise<ReadonlySet<string>>;
+  // 参加者のrefごとにブラケットの形・敗退・優勝を返す。参加者でないrefは結果に含めない
+  findParticipantStandings(
+    kind: BracketKind,
+    refs: readonly string[],
+  ): Promise<ReadonlyMap<string, BracketParticipantStanding>>;
   // 参加者のプロダクト・ローンチ・投稿者の紐付けを解除し、解除した参加者の数を返す
   unlinkProduct(productId: string): Promise<number>;
 }

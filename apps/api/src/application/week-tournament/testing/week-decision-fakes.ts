@@ -199,6 +199,7 @@ export function createWeekDecisionFakes(scenario: WeekDecisionScenario = {}): {
     findByTournament: unused('findByTournament'),
     findById: unused('findById'),
     findByMatchIds: unused('findByMatchIds'),
+    findParticipantStandings: unused('findParticipantStandings'),
     unlinkProduct: unused('unlinkProduct'),
   };
   return { store, brackets, reads };

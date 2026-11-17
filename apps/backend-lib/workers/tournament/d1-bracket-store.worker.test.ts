@@ -409,6 +409,132 @@ describe('D1BracketStore.findAliveRefs', () => {
   });
 });
 
+describe('D1BracketStore.findParticipantStandings', () => {
+  test('参加者のrefごとにブラケットの形・状態・番号・敗退のラウンドを返し、参加者でないrefを含めない', async () => {
+    await seedActiveWeekBracket();
+
+    await expect(
+      store.findParticipantStandings('week', [
+        entryRefOf(1),
+        entryRefOf(3),
+        entryRefOf(9),
+      ]),
+    ).resolves.toEqual(
+      new Map([
+        [
+          entryRefOf(1),
+          {
+            bracketId: bracketIdOf(1),
+            shape: bracketShape(3),
+            status: 'active',
+            participantNo: 1,
+            eliminatedRound: null,
+            champion: false,
+          },
+        ],
+        [
+          entryRefOf(3),
+          {
+            bracketId: bracketIdOf(1),
+            shape: bracketShape(3),
+            status: 'active',
+            participantNo: 3,
+            eliminatedRound: 1,
+            champion: false,
+          },
+        ],
+      ]),
+    );
+  });
+
+  test('指定した種類のブラケットの参加者だけを返す', async () => {
+    await seedActiveWeekBracket();
+
+    await expect(
+      store.findParticipantStandings('year', [entryRefOf(1)]),
+    ).resolves.toEqual(new Map());
+  });
+
+  test('複数のブラケットの参加者を引き、優勝した参加者だけに優勝の印を付ける', async () => {
+    await insertBrackets([
+      {
+        index: 1,
+        participantCount: 2,
+        columns: {
+          status: 'finished',
+          outcome: 'champion',
+          championParticipantNo: 1,
+          finishedAt: new Date('2026-11-24T07:45:00.000Z'),
+        },
+      },
+      { index: 2, participantCount: 5 },
+    ]);
+    await insertParticipants([
+      linkedParticipant(1, 1, 1, 1),
+      linkedParticipant(2, 1, 2, 2, { eliminatedRound: 1 }),
+      linkedParticipant(3, 2, 4, 3),
+    ]);
+
+    const standings = await store.findParticipantStandings('week', [
+      entryRefOf(1),
+      entryRefOf(2),
+      entryRefOf(3),
+    ]);
+
+    expect(standings.get(entryRefOf(1))).toEqual({
+      bracketId: bracketIdOf(1),
+      shape: bracketShape(2),
+      status: 'finished',
+      participantNo: 1,
+      eliminatedRound: null,
+      champion: true,
+    });
+    expect(standings.get(entryRefOf(2))).toMatchObject({
+      status: 'finished',
+      eliminatedRound: 1,
+      champion: false,
+    });
+    expect(standings.get(entryRefOf(3))).toEqual({
+      bracketId: bracketIdOf(2),
+      shape: bracketShape(5),
+      status: 'active',
+      participantNo: 4,
+      eliminatedRound: null,
+      champion: false,
+    });
+  });
+
+  test('空の入力では問い合わせずに空の結果を返す', async () => {
+    const recording = createRecordingDatabase();
+
+    await expect(
+      new D1BracketStore(recording.database).findParticipantStandings(
+        'week',
+        [],
+      ),
+    ).resolves.toEqual(new Map());
+    expect(recording.placeholderCounts).toEqual([]);
+  });
+
+  test('90件を超えるrefはバインド変数の上限に収まるよう分けて引く', async () => {
+    await seedActiveWeekBracket();
+    const refs = [
+      ...Array.from({ length: IDS_OVER_ONE_STATEMENT }, (_, offset) =>
+        entryRefOf(offset + 100),
+      ),
+      entryRefOf(2),
+    ];
+    const recording = createRecordingDatabase();
+
+    const standings = await new D1BracketStore(
+      recording.database,
+    ).findParticipantStandings('week', refs);
+
+    expect([...standings.keys()]).toEqual([entryRefOf(2)]);
+    expectSplitWithinBindLimit(recording.placeholderCounts);
+  });
+});
+
 describe('D1BracketStore.unlinkProduct', () => {
   test('プロダクトの参加者のプロダクト・ローンチ・投稿者の紐付けだけを全てのブラケットで解除し、解除した数を返す', async () => {
     await seedActiveWeekBracket();

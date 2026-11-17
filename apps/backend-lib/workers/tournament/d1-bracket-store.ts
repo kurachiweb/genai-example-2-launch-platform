@@ -12,6 +12,7 @@ import type {
   BracketKind,
   BracketMatchRecord,
   BracketOfMatch,
+  BracketParticipantStanding,
   BracketRecord,
   BracketStore,
 } from '../../core/tournament/ports.ts';
@@ -112,6 +113,53 @@ export class D1BracketStore implements BracketStore {
       ),
     );
     return new Set(pages.flat().map(({ ref }) => ref));
+  }
+
+  async findParticipantStandings(
+    kind: BracketKind,
+    refs: readonly string[],
+  ): Promise<ReadonlyMap<string, BracketParticipantStanding>> {
+    const pages = await Promise.all(
+      chunk([...new Set(refs)], IDS_PER_STATEMENT).map((page) =>
+        this.db
+          .select({
+            ref: bracketParticipants.entryRef,
+            bracketId: tournamentBrackets.id,
+            participantCount: tournamentBrackets.participantCount,
+            status: tournamentBrackets.status,
+            championParticipantNo: tournamentBrackets.championParticipantNo,
+            participantNo: bracketParticipants.participantNo,
+            eliminatedRound: bracketParticipants.eliminatedRound,
+          })
+          .from(bracketParticipants)
+          .innerJoin(
+            tournamentBrackets,
+            eq(tournamentBrackets.id, bracketParticipants.bracketId),
+          )
+          .where(
+            and(
+              eq(tournamentBrackets.kind, kind),
+              inArray(bracketParticipants.entryRef, page),
+            ),
+          ),
+      ),
+    );
+    return new Map(
+      pages.flat().map(
+        ({ ref, participantCount, championParticipantNo, ...standing }) =>
+          [
+            ref,
+            {
+              bracketId: standing.bracketId,
+              shape: bracketShape(participantCount),
+              status: standing.status,
+              participantNo: standing.participantNo,
+              eliminatedRound: standing.eliminatedRound,
+              champion: championParticipantNo === standing.participantNo,
+            },
+          ] as const,
+      ),
+    );
   }
 
   async unlinkProduct(productId: string): Promise<number> {

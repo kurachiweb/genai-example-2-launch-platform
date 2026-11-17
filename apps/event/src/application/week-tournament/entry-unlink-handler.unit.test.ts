@@ -73,6 +73,7 @@ function createHarness(failure?: {
     findById: notUsed,
     findByMatchIds: notUsed,
     findAliveRefs: notUsed,
+    findParticipantStandings: notUsed,
     unlinkProduct: (productId) =>
       settle({ kind: 'unlinkParticipants', productId }, 1),
   };
