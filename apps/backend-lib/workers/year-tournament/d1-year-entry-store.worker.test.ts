@@ -524,3 +524,91 @@ describe('D1YearEntryStore.listCandidates', () => {
     ]);
   });
 });
+
+describe('D1YearEntryStore.findEntry', () => {
+  test('枠のIDで枠の記録を読み、紐付けを解除した枠も読む', async () => {
+    await insertYearEntries([
+      entryOf(1, {
+        status: 'entitled',
+        entitlementSource: 'payment',
+        purchaseId: PURCHASE_ID,
+        entitledAt: AT,
+      }),
+      {
+        index: 2,
+        launch: null,
+        product: null,
+        owner: null,
+        columns: {
+          status: 'drawn',
+          entitlementSource: 'ultras',
+          classifiedYear: 2027,
+        },
+      },
+    ]);
+
+    await expect(store.findEntry(yearEntryIdOf(1))).resolves.toEqual(
+      entryRecordOf(1, {
+        status: 'entitled',
+        entitlementSource: 'payment',
+        purchaseId: PURCHASE_ID,
+      }),
+    );
+    await expect(store.findEntry(yearEntryIdOf(2))).resolves.toEqual(
+      entryRecordOf(2, {
+        launchId: null,
+        productId: null,
+        ownerUserId: null,
+        status: 'drawn',
+        entitlementSource: 'ultras',
+        classifiedYear: 2027,
+      }),
+    );
+  });
+
+  test('枠が無ければundefinedを返す', async () => {
+    await expect(store.findEntry(yearEntryIdOf(9))).resolves.toBeUndefined();
+  });
+});
+
+describe('D1YearEntryStore.listOpenByOwner', () => {
+  // 利用者1のプロダクト1〜4と利用者2のプロダクト5
+  beforeEach(async () => {
+    await insertUser(2);
+    await insertProduct(5, 2);
+    await insertLaunch(5, 5);
+  });
+
+  test('投稿者の受付中・参加資格の枠を、凍結済みの年の枠も含めて枠のIDの昇順で返し、終わった枠と他の投稿者の枠を含めない', async () => {
+    await insertYearTournaments([{ index: 1, columns: FROZEN }]);
+    await insertYearEntries([
+      entryOf(3, {
+        status: 'entitled',
+        entitlementSource: 'ultras',
+        entitledAt: AT,
+      }),
+      entryOf(1),
+      entryOf(2, {
+        status: 'forfeited',
+        closeReason: 'withdrawn',
+        closedAt: AT,
+        refundStatus: 'not_needed',
+      }),
+      entryOf(4, {
+        status: 'drawn',
+        entitlementSource: 'ultras',
+        classifiedYear: 2027,
+      }),
+      { index: 5, launch: 5, product: 5, owner: 2 },
+    ]);
+
+    await expect(store.listOpenByOwner(userIdOf(1))).resolves.toEqual([
+      entryRecordOf(1),
+      entryRecordOf(3, { status: 'entitled', entitlementSource: 'ultras' }),
+    ]);
+  });
+
+  test('受付中・参加資格の枠が無ければ空の一覧を返す', async () => {
+    await expect(store.listOpenByOwner(userIdOf(1))).resolves.toEqual([]);
+  });
+});

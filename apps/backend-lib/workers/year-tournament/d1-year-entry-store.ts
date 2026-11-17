@@ -1,14 +1,17 @@
 import {
   and,
   asc,
+  eq,
   gt,
   inArray,
   isNotNull,
   lt,
   min,
+  notExists,
   type SQL,
   sql,
 } from 'drizzle-orm';
+import type { BatchItem } from 'drizzle-orm/batch';
 import { inject, injectable } from 'inversify';
 
 import type { Database } from '../../../db/client.ts';
@@ -21,13 +24,25 @@ import {
 } from '../../core/time/business-time.ts';
 import type {
   NewYearEntry,
+  YearEntryClassification,
   YearEntryRecord,
   YearEntryStore,
 } from '../../core/year-tournament/ports.ts';
-import { OPEN_ENTRY_STATUSES } from '../../core/year-tournament/year-entry-rules.ts';
+import {
+  GRANTABLE_STATUSES,
+  OPEN_ENTRY_STATUSES,
+} from '../../core/year-tournament/year-entry-rules.ts';
 
 // D1のバインド変数の上限(100)から、IDの一覧以外に使う変数の分を残す
 const IDS_PER_STATEMENT = 90;
+
+// 分類の書き込みを、ブラケットの書き込みと同じ50件ずつの一括にそろえる
+const CLASSIFICATIONS_PER_BATCH = 50;
+
+// 決済の無い枠は返金の依頼が要らないため、返金の再処理の対象にしない
+const REFUND_ON_CLOSE = sql<
+  'pending' | 'not_needed'
+>`case when ${yearTournamentEntries.purchaseId} is not null then 'pending' else 'not_needed' end`;
 
 type EntryInsertRow = typeof yearTournamentEntries.$inferInsert;
 
@@ -45,6 +60,13 @@ function chunk<T>(items: readonly T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
     items.slice(index * size, (index + 1) * size),
   );
+}
+
+function batchOf(
+  statements: readonly BatchItem<'sqlite'>[],
+): [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]] | undefined {
+  const [first, ...rest] = statements;
+  return first === undefined ? undefined : [first, ...rest];
 }
 
 const ENTRY_COLUMNS = {
@@ -92,7 +114,15 @@ export class D1YearEntryStore implements Pick<
   | 'insertFromChampion'
   | 'findByWeekTournaments'
   | 'findByLaunches'
+  | 'findEntry'
+  | 'listOpenByOwner'
   | 'listCandidates'
+  | 'listDrawn'
+  | 'grantByUltras'
+  | 'forfeitByProduct'
+  | 'forfeitByOwner'
+  | 'classify'
+  | 'excludeOverCapacity'
 > {
   constructor(@inject(PLATFORM_TYPES.Database) private readonly db: Database) {}
 
@@ -228,5 +258,207 @@ export class D1YearEntryStore implements Pick<
       .orderBy(asc(yearTournamentEntries.id))
       .limit(limit);
     return rows.map(entryRecordOf);
+  }
+
+  async findEntry(entryId: string): Promise<YearEntryRecord | undefined> {
+    const [row] = await this.db
+      .select(ENTRY_COLUMNS)
+      .from(yearTournamentEntries)
+      .where(eq(yearTournamentEntries.id, entryId));
+    return row === undefined ? undefined : entryRecordOf(row);
+  }
+
+  // 加入の知らせの処理が対象年ごとに期間を判定するため、凍結済みの年の枠も返す
+  async listOpenByOwner(userId: string): Promise<readonly YearEntryRecord[]> {
+    const rows = await this.db
+      .select(ENTRY_COLUMNS)
+      .from(yearTournamentEntries)
+      .where(
+        and(
+          eq(yearTournamentEntries.ownerUserId, userId),
+          inArray(yearTournamentEntries.status, OPEN_ENTRY_STATUSES),
+        ),
+      )
+      .orderBy(asc(yearTournamentEntries.id));
+    return rows.map(entryRecordOf);
+  }
+
+  // ブラケットは凍結後の同じ候補で作り直すため、紐付けを解除した枠も候補から外さない
+  async listDrawn(year: number): Promise<readonly YearEntryRecord[]> {
+    const rows = await this.db
+      .select(ENTRY_COLUMNS)
+      .from(yearTournamentEntries)
+      .where(
+        and(
+          eq(yearTournamentEntries.classifiedYear, year),
+          eq(yearTournamentEntries.status, 'drawn'),
+        ),
+      )
+      .orderBy(asc(yearTournamentEntries.id));
+    return rows.map(entryRecordOf);
+  }
+
+  // 凍結と同時の加入の知らせが凍結後の資格を変えないよう、凍結の対象外の条件を読み取りでなく更新の文に含める
+  async grantByUltras(
+    entryIds: readonly string[],
+    at: Date,
+  ): Promise<readonly string[]> {
+    const granted: string[] = [];
+    for (const page of chunk([...new Set(entryIds)], IDS_PER_STATEMENT)) {
+      const rows = await this.db
+        .update(yearTournamentEntries)
+        .set({
+          status: 'entitled',
+          entitlementSource: 'ultras',
+          entitledAt: at,
+          updatedAt: at,
+        })
+        .where(
+          and(
+            inArray(yearTournamentEntries.id, page),
+            inArray(yearTournamentEntries.status, GRANTABLE_STATUSES),
+            this.notFrozen(),
+          ),
+        )
+        .returning({ entryId: yearTournamentEntries.id });
+      granted.push(...rows.map(({ entryId }) => entryId));
+    }
+    return granted.toSorted();
+  }
+
+  forfeitByProduct(productId: string, at: Date): Promise<readonly string[]> {
+    return this.forfeit(
+      eq(yearTournamentEntries.productId, productId),
+      'deleted',
+      at,
+    );
+  }
+
+  forfeitByOwner(userId: string, at: Date): Promise<readonly string[]> {
+    return this.forfeit(
+      eq(yearTournamentEntries.ownerUserId, userId),
+      'withdrawn',
+      at,
+    );
+  }
+
+  async classify(
+    year: number,
+    updates: readonly YearEntryClassification[],
+    at: Date,
+  ): Promise<void> {
+    const statements = updates.map((update) =>
+      this.classifyStatement(year, update, at),
+    );
+    for (const part of chunk(statements, CLASSIFICATIONS_PER_BATCH)) {
+      const batch = batchOf(part);
+      if (batch !== undefined) {
+        await this.db.batch(batch);
+      }
+    }
+  }
+
+  // 組み合わせ決定の再実行で除外を重ねないよう、その年の組み合わせの対象の条件を更新の文に含める
+  async excludeOverCapacity(
+    year: number,
+    entryIds: readonly string[],
+    at: Date,
+  ): Promise<void> {
+    for (const page of chunk([...new Set(entryIds)], IDS_PER_STATEMENT)) {
+      await this.db
+        .update(yearTournamentEntries)
+        .set({
+          status: 'excluded',
+          closeReason: 'over_capacity',
+          closedAt: at,
+          refundStatus: REFUND_ON_CLOSE,
+          updatedAt: at,
+        })
+        .where(
+          and(
+            inArray(yearTournamentEntries.id, page),
+            eq(yearTournamentEntries.classifiedYear, year),
+            eq(yearTournamentEntries.status, 'drawn'),
+          ),
+        );
+    }
+  }
+
+  // 決済で得た資格の出どころと日時は、組み合わせ決定の時点のUltrasの判定で書き換えない
+  private classifyStatement(
+    year: number,
+    {
+      entryId,
+      status,
+      closeReason,
+      entitlementSource,
+    }: YearEntryClassification,
+    at: Date,
+  ) {
+    return this.db
+      .update(yearTournamentEntries)
+      .set({
+        status,
+        closeReason,
+        ...(entitlementSource === undefined
+          ? {}
+          : {
+              entitlementSource: sql`coalesce(${yearTournamentEntries.entitlementSource}, ${entitlementSource})`,
+              entitledAt: sql`coalesce(${yearTournamentEntries.entitledAt}, ${at.getTime()})`,
+            }),
+        closedAt: at,
+        classifiedYear: year,
+        ...(status === 'forfeited' || status === 'excluded'
+          ? { refundStatus: REFUND_ON_CLOSE }
+          : {}),
+        updatedAt: at,
+      })
+      .where(
+        and(
+          eq(yearTournamentEntries.id, entryId),
+          inArray(yearTournamentEntries.status, OPEN_ENTRY_STATUSES),
+        ),
+      );
+  }
+
+  // 凍結と同時の削除・退会が凍結後の資格を変えないよう、凍結の対象外の条件を読み取りでなく更新の文に含める
+  private async forfeit(
+    target: SQL,
+    reason: 'deleted' | 'withdrawn',
+    at: Date,
+  ): Promise<readonly string[]> {
+    const rows = await this.db
+      .update(yearTournamentEntries)
+      .set({
+        status: 'forfeited',
+        closeReason: reason,
+        closedAt: at,
+        refundStatus: REFUND_ON_CLOSE,
+        updatedAt: at,
+      })
+      .where(
+        and(
+          target,
+          inArray(yearTournamentEntries.status, OPEN_ENTRY_STATUSES),
+          this.notFrozen(),
+        ),
+      )
+      .returning({ entryId: yearTournamentEntries.id });
+    return rows.map(({ entryId }) => entryId).toSorted();
+  }
+
+  // 枠は対象年を持たないため、決済期限日がWeek優勝の日より後の凍結済みの年があれば、その年の枠として凍結の対象にする
+  private notFrozen(): SQL {
+    return notExists(
+      this.db
+        .select({ one: sql`1` })
+        .from(yearTournaments)
+        .where(
+          and(
+            isNotNull(yearTournaments.drawStartedAt),
+            gt(yearTournaments.deadlineDate, yearTournamentEntries.awardedDate),
+          ),
+        ),
+    );
   }
 }
