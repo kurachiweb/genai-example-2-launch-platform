@@ -8,6 +8,7 @@ query ClientMyWeekEntry($productHandle: String!) {
     exempt
     acceptUntil
     deadlineAt
+    drawAt
     fee {
       amount
       currency

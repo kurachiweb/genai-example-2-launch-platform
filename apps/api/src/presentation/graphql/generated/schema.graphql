@@ -2607,6 +2607,9 @@ type WeekEntryPanel {
   """決済期限"""
   deadlineAt: DateTime!
 
+  """組み合わせ決定の日時(23:45)"""
+  drawAt: DateTime!
+
   """Ultrasの特典により参加費を免除する"""
   exempt: Boolean!
 

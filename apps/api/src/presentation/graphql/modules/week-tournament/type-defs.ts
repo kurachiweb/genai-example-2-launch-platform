@@ -161,6 +161,8 @@ export const WEEK_TOURNAMENT_TYPE_DEFS = /* GraphQL */ `
     acceptUntil: DateTime!
     "決済期限"
     deadlineAt: DateTime!
+    "組み合わせ決定の日時(23:45)"
+    drawAt: DateTime!
     "参加費(税込のUSD)。決済を始められない枠と、決済サービスに到達できず照会できないときはnull"
     fee: Money
     "決済を始められる枠で、投稿者がUltrasの特典を受けていない。Ultrasの導線を表示するかは画面が機能フラグで決める"

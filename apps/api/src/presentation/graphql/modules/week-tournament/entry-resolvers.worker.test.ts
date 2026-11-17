@@ -186,6 +186,7 @@ describe('myWeekEntry', () => {
       exempt: false,
       acceptUntil: WEEK_WINDOW.acceptUntil.toISOString(),
       deadlineAt: WEEK_WINDOW.deadlineAt.toISOString(),
+      drawAt: WEEK_WINDOW.drawAt.toISOString(),
       fee: { amount: WEEK_ENTRY_PRICE.unitAmount, currency: 'usd' },
       ultrasGuide: true,
       serverTime: WEEK_ENTRY_TEST_NOW.toISOString(),

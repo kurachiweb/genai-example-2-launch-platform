@@ -1048,7 +1048,7 @@ export type ClientMyWeekEntryQueryVariables = Exact<{
 }>;
 
 
-export type ClientMyWeekEntryQuery = { myWeekEntry: { launchId: string, week: string, weekLabel: string, status: WeekEntryStatus, closeReason: WeekEntryCloseReason | null, exempt: boolean, acceptUntil: string, deadlineAt: string, serverTime: string, bracketPath: string | null, ultrasGuide: boolean, fee: { amount: number, currency: string } | null, progress: { alive: boolean, champion: boolean, eliminatedRoundName: string | null } | null } | null };
+export type ClientMyWeekEntryQuery = { myWeekEntry: { launchId: string, week: string, weekLabel: string, status: WeekEntryStatus, closeReason: WeekEntryCloseReason | null, exempt: boolean, acceptUntil: string, deadlineAt: string, drawAt: string, serverTime: string, bracketPath: string | null, ultrasGuide: boolean, fee: { amount: number, currency: string } | null, progress: { alive: boolean, champion: boolean, eliminatedRoundName: string | null } | null } | null };
 
 export type ClientProductTrophiesQueryVariables = Exact<{
   productHandle: string;
@@ -1172,7 +1172,7 @@ export const ClientCreateUltrasPortalSessionDocument = {"__meta__":{"hash":"sha2
 export const ClientStartUltrasCheckoutDocument = {"__meta__":{"hash":"sha256:0a375f8e36296fbd5183b733275bf56caf25b57a4c1e8cc70d7a20c1332c810b"}} as unknown as DocumentNode<ClientStartUltrasCheckoutMutation, ClientStartUltrasCheckoutMutationVariables>;
 export const ClientUltrasOfferDocument = {"__meta__":{"hash":"sha256:ec8b30862af3edab7eb2b918ef55d266e4c8aae6e5838c65307b900746226507"}} as unknown as DocumentNode<ClientUltrasOfferQuery, ClientUltrasOfferQueryVariables>;
 export const ClientViewerUltrasDocument = {"__meta__":{"hash":"sha256:ec4d291e8aa98f0a09302d916b16f1734bf43689c87af4d47a2ad6674c7d76f1"}} as unknown as DocumentNode<ClientViewerUltrasQuery, ClientViewerUltrasQueryVariables>;
-export const ClientMyWeekEntryDocument = {"__meta__":{"hash":"sha256:611d999e67d39af9acf94ab4cf0f1fdc36dc5d9aedf1470a958fcaf3d7ce388f"}} as unknown as DocumentNode<ClientMyWeekEntryQuery, ClientMyWeekEntryQueryVariables>;
+export const ClientMyWeekEntryDocument = {"__meta__":{"hash":"sha256:8268cc656a90589476dd922f3b039b6dc5cf53ab5070492cdc28fcd05d8a9f36"}} as unknown as DocumentNode<ClientMyWeekEntryQuery, ClientMyWeekEntryQueryVariables>;
 export const ClientProductTrophiesDocument = {"__meta__":{"hash":"sha256:019fe05a6be005d71e079e51e87d5c22903688d37807c8ac0efb9074a549f30b"}} as unknown as DocumentNode<ClientProductTrophiesQuery, ClientProductTrophiesQueryVariables>;
 export const ClientStartWeekTournamentCheckoutDocument = {"__meta__":{"hash":"sha256:4bcb0b568cade69790012fa22c2779a2fc21d671e8cafbeea073db1169167c34"}} as unknown as DocumentNode<ClientStartWeekTournamentCheckoutMutation, ClientStartWeekTournamentCheckoutMutationVariables>;
 export const ClientWeekBracketDocument = {"__meta__":{"hash":"sha256:91429c8085e24c2b28be957879af6e0d82fb44b52f984ace1f0b4e6ae30c3079"}} as unknown as DocumentNode<ClientWeekBracketQuery, ClientWeekBracketQueryVariables>;

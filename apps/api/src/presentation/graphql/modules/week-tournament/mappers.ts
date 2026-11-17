@@ -187,6 +187,7 @@ export interface WeekEntryPanelModel {
   readonly exempt: boolean;
   readonly acceptUntil: Date;
   readonly deadlineAt: Date;
+  readonly drawAt: Date;
   readonly fee: CheckoutMoney | null;
   readonly ultrasGuide: boolean;
   readonly serverTime: Date;
@@ -213,7 +214,7 @@ export function toWeekEntryPanel(
   if (entry.launchId === null) {
     throw new Error(`参加の枠のローンチがありません: ${entry.entryId}`);
   }
-  const { weekStart, acceptUntil, deadlineAt } = tournament.window;
+  const { weekStart, acceptUntil, deadlineAt, drawAt } = tournament.window;
   return {
     launchId: entry.launchId,
     week: isoWeekKey(weekStart),
@@ -226,6 +227,7 @@ export function toWeekEntryPanel(
     exempt: panel.exempt,
     acceptUntil,
     deadlineAt,
+    drawAt,
     fee: panel.fee,
     ultrasGuide: panel.ultrasGuide,
     serverTime,

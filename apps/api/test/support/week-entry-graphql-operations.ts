@@ -97,6 +97,7 @@ export interface WeekEntryPanelFields {
   readonly exempt: boolean;
   readonly acceptUntil: string;
   readonly deadlineAt: string;
+  readonly drawAt: string;
   readonly fee: { readonly amount: number; readonly currency: string } | null;
   readonly ultrasGuide: boolean;
   readonly serverTime: string;
@@ -115,6 +116,7 @@ export const MY_WEEK_ENTRY = /* GraphQL */ `
       exempt
       acceptUntil
       deadlineAt
+      drawAt
       fee {
         amount
         currency

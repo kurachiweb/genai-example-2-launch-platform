@@ -2944,6 +2944,8 @@ export type WeekEntryPanel = {
   closeReason?: Maybe<WeekEntryCloseReason>;
   /** 決済期限 */
   deadlineAt: Scalars['DateTime']['output'];
+  /** 組み合わせ決定の日時(23:45) */
+  drawAt: Scalars['DateTime']['output'];
   /** Ultrasの特典により参加費を免除する */
   exempt: Scalars['Boolean']['output'];
   /** 参加費(税込のUSD)。決済を始められない枠と、決済サービスに到達できず照会できないときはnull */
@@ -4721,6 +4723,7 @@ export type WeekEntryPanelResolvers<ContextType = GraphQLContext, ParentType ext
   bracketPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   closeReason?: Resolver<Maybe<ResolversTypes['WeekEntryCloseReason']>, ParentType, ContextType>;
   deadlineAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  drawAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   exempt?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   fee?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
   launchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
