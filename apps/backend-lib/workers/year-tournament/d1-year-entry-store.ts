@@ -116,6 +116,22 @@ function entryRecordOf({
   };
 }
 
+// 枠は対象年を持たないため、決済期限日がWeek優勝の日より後の凍結済みの年があれば、その年の枠として凍結の対象にする。
+// 枠の表を更新する文の条件に使う(相関の副問い合わせ)
+export function yearEntryNotFrozen(db: Database): SQL {
+  return notExists(
+    db
+      .select({ one: sql`1` })
+      .from(yearTournaments)
+      .where(
+        and(
+          isNotNull(yearTournaments.drawStartedAt),
+          gt(yearTournaments.deadlineDate, yearTournamentEntries.awardedDate),
+        ),
+      ),
+  );
+}
+
 @injectable()
 export class D1YearEntryStore implements YearEntryStore {
   constructor(@inject(PLATFORM_TYPES.Database) private readonly db: Database) {}
@@ -531,18 +547,7 @@ export class D1YearEntryStore implements YearEntryStore {
     return rows.map(({ entryId }) => entryId).toSorted();
   }
 
-  // 枠は対象年を持たないため、決済期限日がWeek優勝の日より後の凍結済みの年があれば、その年の枠として凍結の対象にする
   private notFrozen(): SQL {
-    return notExists(
-      this.db
-        .select({ one: sql`1` })
-        .from(yearTournaments)
-        .where(
-          and(
-            isNotNull(yearTournaments.drawStartedAt),
-            gt(yearTournaments.deadlineDate, yearTournamentEntries.awardedDate),
-          ),
-        ),
-    );
+    return yearEntryNotFrozen(this.db);
   }
 }
