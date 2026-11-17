@@ -23,7 +23,13 @@ const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 vi.mock('../lib/start/graphql/execute-graphql.ts', async () => {
   const { withoutWeekTournamentMatches } =
     await import('./week-tournament-board-stub.ts');
-  return { executeGraphQL: withoutWeekTournamentMatches(executeGraphQL) };
+  const { withoutYearTournamentMatches } =
+    await import('./year-tournament-board-stub.ts');
+  return {
+    executeGraphQL: withoutYearTournamentMatches(
+      withoutWeekTournamentMatches(executeGraphQL),
+    ),
+  };
 });
 
 vi.mock(

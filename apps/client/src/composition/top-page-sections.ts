@@ -6,6 +6,7 @@ import type {
 } from '../components/top/top-page-section-types.ts';
 import { WeekFinalShowcase } from '../components/week-tournament/week-final-showcase.tsx';
 import { WeekTournamentSection } from '../components/week-tournament/week-tournament-section.tsx';
+import { YearTournamentSection } from '../components/year-tournament/year-tournament-section.tsx';
 
 // 予選の一覧の対戦カードの間に指定の件数ごとに差し込む区画の登録箇所。各specが自分の差し込みを追記する
 export const QUALIFIER_LIST_INSERTS: readonly QualifierListInsert[] =
@@ -24,6 +25,12 @@ export const TOP_PAGE_SECTIONS: readonly TopPageSection[] = Object.freeze([
     placement: 'showcase',
     order: 20,
     component: WeekFinalShowcase,
+  },
+  {
+    id: 'tournament-year.matches',
+    placement: 'main',
+    order: 10,
+    component: YearTournamentSection,
   },
   {
     id: 'tournament-week.matches',

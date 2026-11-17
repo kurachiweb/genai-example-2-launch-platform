@@ -23,6 +23,11 @@ import {
   boardRoundOf,
   SECTION_TITLE,
 } from './tournament-board-fixtures.ts';
+import { YEAR_BOARD_COPY } from '../year-tournament/year-tournament-messages.ts';
+import {
+  YEAR_BRACKET_PATH,
+  YEAR_TOURNAMENT_LABEL,
+} from '../year-tournament/year-tournament-fixtures.ts';
 import { splitBoardRound } from './tournament-board-model.ts';
 import { TournamentBoardRound } from './tournament-board-round.tsx';
 import { TournamentSectionHeading } from './tournament-section-heading.tsx';
@@ -42,7 +47,10 @@ const DESKTOP = { width: 1280, height: 900 } as const;
 
 const renderRound = async (
   round: BoardRoundFixture = boardRoundOf(),
-  { statusMessage }: { readonly statusMessage?: string | null } = {},
+  {
+    statusMessage,
+    title = SECTION_TITLE,
+  }: { readonly statusMessage?: string | null; readonly title?: string } = {},
 ) => {
   const onUpdated = vi.fn<(match: MatchFragment) => void>();
   await emulateBrowserDisplay({ timeZone: 'Asia/Tokyo', locale: 'ja-JP' });
@@ -57,7 +65,7 @@ const renderRound = async (
           {(headingId) => (
             <TournamentSectionHeading
               id={headingId}
-              title={SECTION_TITLE}
+              title={title}
               roundName={round.roundName}
               periodLabel={round.periodLabel}
               finalDate={round.finalDate}
@@ -72,8 +80,8 @@ const renderRound = async (
   return { onUpdated };
 };
 
-const region = () =>
-  page.getByRole('region', { name: new RegExp(`^${SECTION_TITLE}`, 'u') });
+const region = (title: string = SECTION_TITLE) =>
+  page.getByRole('region', { name: new RegExp(`^${title}`, 'u') });
 
 const timeOf = (dateTime: string): HTMLTimeElement | null =>
   document.querySelector(`time[datetime="${dateTime}"]`);
@@ -249,4 +257,41 @@ describe('TournamentBoardRoundのアクセシビリティ', () => {
       expect(await runAxe(document.body)).toStrictEqual([]);
     },
   );
+});
+
+describe('TournamentBoardRoundのYearの文言の例', () => {
+  test('Yearの文言を渡すと、見出しに「Product of the Yearトーナメント」とラウンド名を置き、対象年・決勝日・ブラケットへの通常のリンクを並べる', async () => {
+    await renderRound(
+      boardRoundOf({
+        roundName: '準決勝',
+        periodLabel: YEAR_TOURNAMENT_LABEL,
+        finalDate: '2027-05-30',
+        bracketPath: YEAR_BRACKET_PATH,
+        matches: [
+          boardMatchOf(11, { round: 2, stage: 'SEMIFINAL' }, 'YEAR'),
+          boardMatchOf(12, { round: 2, stage: 'SEMIFINAL' }, 'YEAR'),
+        ],
+      }),
+      { title: YEAR_BOARD_COPY.sectionTitle },
+    );
+
+    const yearRegion = region(YEAR_BOARD_COPY.sectionTitle);
+    await expect
+      .element(yearRegion.getByRole('heading', { level: 2 }))
+      .toHaveTextContent('Product of the Yearトーナメント準決勝');
+    await expect
+      .element(yearRegion.getByText('2027年', { exact: true }))
+      .toBeVisible();
+    const finalDate = timeOf('2027-05-30');
+    expect(finalDate?.textContent).toMatch(/5月30日$/u);
+    expect(finalDate?.parentElement?.textContent).toMatch(/^決勝日/u);
+    const link = yearRegion.getByRole('link', { name: 'ブラケットを見る' });
+    await expect
+      .element(link)
+      .toHaveAttribute('href', '/tournaments/year/2027');
+    expect(link.element().getAttribute('target')).toBeNull();
+    expect(
+      yearRegion.getByRole('article').elements()[0]?.textContent,
+    ).toContain('Year 準決勝');
+  });
 });

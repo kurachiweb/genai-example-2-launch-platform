@@ -22,7 +22,13 @@ import {
   boardMatchOf,
   FINAL_COPY,
 } from './tournament-board-fixtures.ts';
+import { YEAR_FINAL_COPY } from '../year-tournament/year-tournament-messages.ts';
+import {
+  YEAR_BRACKET_PATH,
+  YEAR_TOURNAMENT_LABEL,
+} from '../year-tournament/year-tournament-fixtures.ts';
 import { splitBoardRound } from './tournament-board-model.ts';
+import type { TournamentFinalCopy } from './tournament-copy.ts';
 import { finalOutcomeOf } from './tournament-final-model.ts';
 import { TournamentFinalRound } from './tournament-final-round.tsx';
 
@@ -65,9 +71,11 @@ const renderFinal = async (
   {
     statusMessage = null,
     host = 'on',
+    copy = FINAL_COPY,
   }: {
     readonly statusMessage?: string | null;
     readonly host?: MotionHost;
+    readonly copy?: TournamentFinalCopy;
   } = {},
 ) => {
   const row = splitBoardRound(round);
@@ -78,7 +86,7 @@ const renderFinal = async (
           row={row}
           periodLabel={round.periodLabel}
           bracketPath={round.bracketPath}
-          copy={FINAL_COPY}
+          copy={copy}
           outcome={finalOutcomeOf(row)}
           statusMessage={statusMessage}
           onUpdated={vi.fn()}
@@ -89,11 +97,11 @@ const renderFinal = async (
   );
 };
 
-const finalRegion = () =>
+const finalRegion = (title = 'Test') =>
   page.getByRole('region', {
-    name: /^Product of the Test\s?トーナメント決勝$/u,
+    name: new RegExp(`^Product of the ${title}\\s?トーナメント決勝$`, 'u'),
   });
-const finalStatus = () => finalRegion().getByRole('status');
+const finalStatus = (title?: string) => finalRegion(title).getByRole('status');
 
 const all = (selector: string): HTMLElement[] =>
   Array.from(document.querySelectorAll<HTMLElement>(selector));
@@ -240,6 +248,49 @@ describe('TournamentFinalRoundのアクセシビリティ', () => {
       await expect.element(finalStatus()).toHaveTextContent(AWARDED_MESSAGE);
 
       expect(await runAxe(document.body)).toStrictEqual([]);
+    },
+  );
+});
+
+describe('TournamentFinalRoundのYearの文言の例', () => {
+  const yearFinalRound = (matches: readonly MatchFragment[]) =>
+    boardFinalRoundOf({
+      periodLabel: YEAR_TOURNAMENT_LABEL,
+      bracketPath: YEAR_BRACKET_PATH,
+      matches,
+    });
+
+  test('Yearの文言を渡すと、「Year Final」の印・「Product of the Year」・「トーナメント決勝」の見出しと、対象年に並べたブラケットへのリンクを置く', async () => {
+    await renderFinal(yearFinalRound([finalMatchOf()]), {
+      copy: YEAR_FINAL_COPY,
+    });
+
+    await expect
+      .element(finalRegion('Year').getByRole('heading', { level: 2 }))
+      .toHaveTextContent('Product of the Yearトーナメント決勝');
+    await expect
+      .element(finalRegion('Year').getByText('Year Final', { exact: true }))
+      .toBeVisible();
+    const link = finalRegion('Year').getByRole('link', {
+      name: 'ブラケットを見る',
+    });
+    await expect
+      .element(link)
+      .toHaveAttribute('href', '/tournaments/year/2027');
+    expect(link.element().parentElement?.textContent).toContain('2027年');
+  });
+
+  test.each([
+    ['VOTES', 'フルタイム！Right 21がProduct of the Yearを受賞🎉'],
+    ['NO_VOTES', NO_AWARD_MESSAGE],
+  ] as const)(
+    '決勝の結果が%sなら、確定の後にYearの文言「%s」を状態の文で示す',
+    async (decision, message) => {
+      await renderFinal(yearFinalRound([decidedFinalOf(decision)]), {
+        copy: YEAR_FINAL_COPY,
+      });
+
+      await expect.element(finalStatus('Year')).toHaveTextContent(message);
     },
   );
 });
