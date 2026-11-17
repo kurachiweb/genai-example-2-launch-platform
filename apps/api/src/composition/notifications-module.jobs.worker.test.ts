@@ -137,7 +137,8 @@ function eveningJobResults(logs: readonly LoggedObject[]): JobSummary[] {
     .filter(
       ({ name }) =>
         name.startsWith('notifications.') ||
-        name === 'tournament-week.evening-bracket',
+        name === 'tournament-week.evening-bracket' ||
+        name === 'tournament-year.evening-bracket',
     )
     .map(({ name, result }) => ({ name, result }));
 }
@@ -170,7 +171,7 @@ describe('APIサーバーの通知のモジュールの定期実行のジョブ'
     ).toBeInstanceOf(NotificationMaintenanceJob);
   });
 
-  test('23:45の起動で、Weekトーナメントの夜の処理を前提に当日の夜の枠を開いて期限の送り出しを予約し、その準備の完了を待って送り出しを依頼する', async () => {
+  test('23:45の起動で、Week・Yearトーナメントの夜の処理を前提に当日の夜の枠を開いて期限の送り出しを予約し、両方の準備の完了を待って送り出しを依頼する', async () => {
     const logs = recordConsole();
     const requests = recordFlushRequests();
     const slot = eveningSlot(DATE);
@@ -183,6 +184,7 @@ describe('APIサーバーの通知のモジュールの定期実行のジョブ'
     expect(eveningJobResults(logs)).toEqual([
       { name: 'notifications.evening-dispatch', result: 'succeeded' },
       { name: 'tournament-week.evening-bracket', result: 'succeeded' },
+      { name: 'tournament-year.evening-bracket', result: 'succeeded' },
     ]);
     expect(
       requests.filter(({ slotKey }) => slotKey === slot.key),
@@ -197,7 +199,10 @@ describe('APIサーバーの通知のモジュールの定期実行のジョブ'
     expect(slot.settleUntil.getTime()).toBeGreaterThan(scheduledAt.getTime());
     expect(await readSlotRow(slot.key)).toMatchObject({
       phase: 'waiting',
-      requiredParticipants: ['tournament-week.evening-bracket'],
+      requiredParticipants: [
+        'tournament-week.evening-bracket',
+        'tournament-year.evening-bracket',
+      ],
       dispatchRequestedAt: expect.any(Date) as Date,
     });
   });

@@ -154,6 +154,7 @@ describe('確定から翌日の開始までのラウンドの進行', () => {
       ]);
       expect(await readReadyParticipants(FIRST_ROUND_SLOT.key)).toEqual([
         'tournament-week.evening-bracket',
+        'tournament-year.evening-bracket',
       ]);
     },
   );
@@ -179,7 +180,9 @@ describe('通知の機能の実際の発行の口への発行', () => {
       { name: 'notifications.evening-dispatch', result: 'succeeded' },
       { name: 'tournament-week.evening-bracket', result: 'failed' },
     ]);
-    expect(await readReadyParticipants(FIRST_ROUND_SLOT.key)).toEqual([]);
+    expect(await readReadyParticipants(FIRST_ROUND_SLOT.key)).toEqual([
+      'tournament-year.evening-bracket',
+    ]);
     expect(await readSlotRow(FIRST_ROUND_SLOT.key)).toMatchObject({
       dispatchRequestedAt: null,
     });

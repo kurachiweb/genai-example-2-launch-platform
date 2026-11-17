@@ -75,6 +75,7 @@ import {
   WEEK_WINDOW,
   weekTournamentIdOf,
 } from '../../lib/workers/week-tournament/testing/week-tournament-fixtures.ts';
+import { clearYearTournamentRows } from '../../lib/workers/year-tournament/testing/year-tournament-fixtures.ts';
 import { MODULES } from '../../src/composition/modules.ts';
 import { SCHEDULED_JOBS } from '../../src/composition/scheduled-jobs.ts';
 
@@ -488,8 +489,9 @@ export async function readReadyParticipants(slotKey: string) {
   return rows.map(({ participant }) => participant);
 }
 
-// paymentsの表は利用者を参照するため、Weekとマッチ・プロダクト・利用者の行より先に消す
+// paymentsの表は利用者を参照し、Yearの枠は23:45の夜の処理がWeekの優勝から作るため、Weekとマッチ・プロダクト・利用者の行より先に消す
 export async function clearTimelineTables(): Promise<void> {
+  await clearYearTournamentRows();
   await db.delete(weekTournamentEntries);
   await db.delete(weekTournaments);
   await db.delete(paymentRefunds);

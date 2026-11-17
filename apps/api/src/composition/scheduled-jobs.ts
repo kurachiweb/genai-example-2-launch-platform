@@ -31,6 +31,10 @@ import {
   ENTRY_FOLLOW_UP_JOB_DEFINITION,
   EVENING_BRACKET_JOB_DEFINITION,
 } from '../application/week-tournament/week-tournament-jobs.ts';
+import {
+  YEAR_ENTRY_FOLLOW_UP_JOB_DEFINITION,
+  YEAR_EVENING_BRACKET_JOB_DEFINITION,
+} from '../application/year-tournament/year-tournament-jobs.ts';
 
 export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   {
@@ -99,6 +103,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   NOTIFICATION_MAINTENANCE_JOB_DEFINITION,
   COMMENT_ANONYMIZATION_JOB_DEFINITION,
   ENTRY_FOLLOW_UP_JOB_DEFINITION,
+  YEAR_ENTRY_FOLLOW_UP_JOB_DEFINITION,
   {
     name: 'content-processing.keyword-reextraction',
     at: { hour: 4, minute: 21 },
@@ -111,6 +116,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   MATCH_KICKOFF_JOB_DEFINITION,
   EVENING_DISPATCH_JOB_DEFINITION,
   EVENING_BRACKET_JOB_DEFINITION,
+  YEAR_EVENING_BRACKET_JOB_DEFINITION,
   MORNING_DISPATCH_JOB_DEFINITION,
   // 4:21のメールの後始末と、送り直したイベントの波及処理による抑止記録の削除が同じ起動で重ならないよう、12時間離す
   {

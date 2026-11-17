@@ -213,7 +213,7 @@ describe('APIサーバーの通知の束縛', () => {
     ).not.toThrow();
   });
 
-  test('束縛から取り出した部品が、Weekトーナメントの夜の処理を前提に夜の枠を開くと期限の送り出しを処理単位のQueueへ送り、入口は登録の無い名前を拒否し、前提の準備の完了で直ちの送り出しを送る', async () => {
+  test('束縛から取り出した部品が、Week・Yearトーナメントの夜の処理を前提に夜の枠を開くと期限の送り出しを処理単位のQueueへ送り、入口は登録の無い名前を拒否し、前提の全ての準備の完了で直ちの送り出しを送る', async () => {
     const { queue, sent } = createRecordingQueue();
     const container = createContainer('scheduled', queue);
     const date = parseBusinessDate('2026-11-20');
@@ -229,7 +229,7 @@ describe('APIサーバーの通知の束縛', () => {
     ).resolves.toEqual({ requested: false });
     await expect(
       gate.markReady({
-        participant: 'tournament-year.evening-bracket',
+        participant: 'tournament-cup.evening-bracket',
         date,
         at: slot.dueAt,
       }),
@@ -237,6 +237,16 @@ describe('APIサーバーの通知の束縛', () => {
     await expect(
       gate.markReady({
         participant: 'tournament-week.evening-bracket',
+        date,
+        at: slot.dueAt,
+      }),
+    ).resolves.toEqual({
+      kind: 'waiting',
+      missing: ['tournament-year.evening-bracket'],
+    });
+    await expect(
+      gate.markReady({
+        participant: 'tournament-year.evening-bracket',
         date,
         at: slot.dueAt,
       }),

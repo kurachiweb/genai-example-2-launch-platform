@@ -58,7 +58,7 @@ describe('通知のジョブの定期実行の一覧への登録', () => {
     expect(() => createCronRegistry(SCHEDULED_JOBS)).not.toThrow();
   });
 
-  test('23:45の起動(45 7 * * *)と0:00の起動(0 8 * * *)では、マッチのジョブ(order 1100)の後に通知のジョブが動き、23:45は夜の送り出しの前提のWeekトーナメントのジョブ(order 1500)が続く', () => {
+  test('23:45の起動(45 7 * * *)と0:00の起動(0 8 * * *)では、マッチのジョブ(order 1100)の後に通知のジョブが動き、23:45は夜の送り出しの前提のWeekトーナメント(order 1500)・Yearトーナメント(order 1700)のジョブが続く', () => {
     const registry = createCronRegistry(SCHEDULED_JOBS);
     const namesAndOrders = (cron: string) =>
       registry.jobsFor(cron).map(({ name, order }) => ({ name, order }));
@@ -69,6 +69,7 @@ describe('通知のジョブの定期実行の一覧への登録', () => {
       { name: 'match-engine.qualifier-pairing', order: 1100 },
       { name: 'notifications.evening-dispatch', order: 1300 },
       { name: 'tournament-week.evening-bracket', order: 1500 },
+      { name: 'tournament-year.evening-bracket', order: 1700 },
     ]);
     expect(namesAndOrders(MORNING_CRON)).toEqual([
       { name: 'match-engine.match-kickoff', order: 1100 },

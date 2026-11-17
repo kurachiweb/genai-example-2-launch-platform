@@ -36,7 +36,7 @@ describe('Weekトーナメントのジョブの定期実行の一覧への登録
     expect(() => createCronRegistry(SCHEDULED_JOBS)).not.toThrow();
   });
 
-  test('23:45の起動(45 7 * * *)では、マッチのペアリング(1100)と通知の夜の枠(1300)の後に夜の処理が最後に動く', () => {
+  test('23:45の起動(45 7 * * *)では、マッチのペアリング(1100)と通知の夜の枠(1300)の後・Yearトーナメントの夜の処理(1700)の前に夜の処理が動く', () => {
     const jobs = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(EVENING_CRON)
       .map(({ name, order }) => ({ name, order }));
@@ -46,10 +46,11 @@ describe('Weekトーナメントのジョブの定期実行の一覧への登録
       { name: 'match-engine.qualifier-pairing', order: 1100 },
       { name: 'notifications.evening-dispatch', order: 1300 },
       { name: 'tournament-week.evening-bracket', order: 1500 },
+      { name: 'tournament-year.evening-bracket', order: 1700 },
     ]);
   });
 
-  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、コメントの匿名化(1400)の後・検索のキーワードの再抽出(2300)の前に再処理が動く', () => {
+  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、コメントの匿名化(1400)の後・Yearトーナメントの再処理(1700)の前に再処理が動く', () => {
     const jobs = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(MAINTENANCE_CRON)
       .map(({ name, order }) => ({ name, order }));
@@ -62,7 +63,7 @@ describe('Weekトーナメントのジョブの定期実行の一覧への登録
     expect(jobs.slice(index - 1, index + 2)).toEqual([
       { name: 'engagement.comment-anonymization', order: 1400 },
       { name: 'tournament-week.entry-follow-up', order: 1500 },
-      { name: 'content-processing.keyword-reextraction', order: 2300 },
+      { name: 'tournament-year.entry-follow-up', order: 1700 },
     ]);
   });
 

@@ -32,6 +32,7 @@ import {
   EveningBracketJob,
 } from '../application/week-tournament/week-tournament-jobs.ts';
 import { WeekTrophySource } from '../application/week-tournament/week-trophy-source.ts';
+import { YearTrophySource } from '../application/year-tournament/year-trophy-source.ts';
 import * as mainModule from '../index.ts';
 import { SentryWeekTournamentIncidentReporter } from '../infrastructure/week-tournament/sentry-week-tournament-incident-reporter.ts';
 import { MODULES } from './modules.ts';
@@ -152,12 +153,16 @@ describe.each(INVOCATION_KINDS)(
       },
     );
 
-    test('トロフィーの供給元の一覧は、登録口のWeekの受賞の供給元を名前と実装に解決する', () => {
+    test('トロフィーの供給元の一覧は、登録口のYearとWeekの受賞の供給元をorderの順に名前と実装に解決する', () => {
       expect(
         createContainer(kind).get<readonly RegisteredTrophySource[]>(
           WEEK_TOURNAMENT_API_TYPES.TrophySources,
         ),
       ).toEqual([
+        {
+          name: 'tournament-year.year-trophies',
+          source: expect.any(YearTrophySource) as unknown,
+        },
         {
           name: 'tournament-week.week-trophies',
           source: expect.any(WeekTrophySource) as unknown,

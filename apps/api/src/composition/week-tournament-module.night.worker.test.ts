@@ -68,6 +68,7 @@ import {
   type Timeline,
 } from '../../test/support/week-tournament-timeline.ts';
 import { EVENING_BRACKET_PARTICIPANT } from '../application/week-tournament/week-tournament-jobs.ts';
+import { YEAR_EVENING_BRACKET_PARTICIPANT } from '../application/year-tournament/year-tournament-jobs.ts';
 
 interface SlotSnapshot {
   readonly events: readonly PublishedEvent[];
@@ -448,7 +449,13 @@ describe('夜の送り出しの準備の完了(notificationsの実際のEveningD
       },
       {
         delaySeconds: 0,
-        snapshot: { events: nightEvents, ready: [EVENING_BRACKET_PARTICIPANT] },
+        snapshot: {
+          events: nightEvents,
+          ready: [
+            EVENING_BRACKET_PARTICIPANT,
+            YEAR_EVENING_BRACKET_PARTICIPANT,
+          ],
+        },
       },
     ]);
     expect(await readPublishedEvents()).toEqual(nightEvents);
