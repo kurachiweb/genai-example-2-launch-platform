@@ -246,7 +246,7 @@
   - _Depends: 4.14_
   - _Requirements: 4.7, 5.1, 6.3, 12.2, 12.3, 12.7, 12.8, 14.6_
 
-- [ ] 6.2 ジョブの失敗の通知のSentryの実装を作る
+- [x] 6.2 ジョブの失敗の通知のSentryの実装を作る
   - 6.1のポートを実装するため(P)にしない
   - 先に、Workers統合テストで、失敗の理由(`evening-bracket-failed`・`entry-follow-up-failed`)ごとに文言を`logentry`、まとめる単位を`fingerprint`に置いた`captureEvent`が送られ、タグがジョブとトーナメントの識別だけでプロダクトの名称・メールアドレス・ハンドルを含まないことを確かめる
   - 完了状態: Workers統合テストが成功する
@@ -464,3 +464,4 @@
 - 5.4: eventの`WeekEntrySupplementProvider({store, products, clock, clientSiteOrigin})`(デコレータ無し、5.5で`toDynamicValue`、`PRODUCT_PLATFORM_TYPES.ProductDirectory`・`PLATFORM_TYPES.Clock`・envの`CLIENT_SITE_ORIGIN`)。予選の勝利でローンチがあるときだけ: Ultrasの`entitled`は`drawAt`の日時の免除の追記(強調・ボタン無し)、受付中または枠が未作成で`now < acceptUntil`なら受付期限と導線`<origin>/p/<handle>`(日曜日は強調、見えないプロダクトはボタン省略)、他は`undefined`。期限は保存した列(週の行が無いときだけ`entryWindowFor`)。5.5は`RESULT_NOTICE_SUPPLEMENTS`に`{ name: 'tournament-week.entry-deadline', kinds: ['qualifier'], order: 1500 }`を加え、`notifications-module.worker.test.ts`の「初版の登録口は空…」の2件を書き換える。
 - 5.5: eventの`EVENT_WEEK_TOURNAMENT_MODULE`(`apps/event/src/composition/week-tournament-module.ts`、名前`event-week-tournament`、`createWeekTournamentPlatformModule('event')`の直後)と5つの登録口に8件(設計の表どおり)。登録口ごとの単体テストは`apps/event/src/composition/*.unit.test.ts`。予選の確定で枠と週の行が作られるため、上流のテストでマッチ・プロダクトを消す前に`clearWeekTournamentRows()`(`workers/week-tournament/testing/week-tournament-fixtures.ts`)を呼ぶこと(8.x・E2Eも同じ)。8.2で5つの登録口の8件を`project-values.md`へ。
 - 6.1: apiの識別子`WEEK_TOURNAMENT_API_TYPES`(`apps/api/src/application/week-tournament/week-tournament-api-types.ts`、`week-tournament.api.<名前>`、13種。設計に無い`TrophySources`(登録口の注入)、共用の`ProductTrophyReader`もここ)、ポート`ports.ts`の`WeekTournamentIncidentReporter`・`WeekTournamentIncident`(`evening-bracket-failed`: `date`・`failedSteps`・`failedTournamentIds`、`entry-follow-up-failed`: `tournamentIds`・`entryCount`)、ジョブ`week-tournament-jobs.ts`の`EveningBracketJob`・`EntryFollowUpJob`(デコレータ付き、`EVENING_BRACKET_JOB_DEFINITION`・`ENTRY_FOLLOW_UP_JOB_DEFINITION`・`EVENING_BRACKET_PARTICIPANT`)。`markReady`の例外は失敗の通知へ渡さない(定期実行のディスパッチャが拾う)。4:21は`now - 10分 + 1ms`。親の決定: application層の`@sentry/*`の禁止はESLintの規則に無い(既存の全specも同じでgrepで確認)が、全バックエンドへの横断の変更になるため本specでは規則を足さない(最終報告で開発者へ挙げる)。6.2は`kind`から`job`のタグを作る。6.10は`EveningDispatchGate`がapiのnotificationsのモジュールにだけ束縛されている点に注意。
+- 6.2: `apps/api/src/infrastructure/week-tournament/sentry-week-tournament-incident-reporter.ts`の`SentryWeekTournamentIncidentReporter`(`@injectable()`、引数無し、6.10で`to()`)。`level: 'error'`、`fingerprint: ['tournament', kind]`、タグ`tournament_incident`・`job`(ジョブの定義の名前)・`tournament_id`(1件のときだけ)、コンテキスト`tournament_incident`、ログ`['api','infrastructure','week-tournament']`。設計のMonitoringのcamelCaseのタグ名とは違う(snake_caseで統一)。
