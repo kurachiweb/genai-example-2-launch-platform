@@ -2,6 +2,7 @@ import type { Resolvers } from '../../generated/resolvers-types.ts';
 import { defineSchemaModule } from '../../schema-module.ts';
 import { boardResolvers } from './board-resolvers.ts';
 import { bracketResolvers } from './bracket-resolvers.ts';
+import { entryResolvers } from './entry-resolvers.ts';
 import { YEAR_TOURNAMENT_TYPE_DEFS } from './type-defs.ts';
 
 const yearTournamentResolvers = {
@@ -9,7 +10,9 @@ const yearTournamentResolvers = {
   Query: {
     ...boardResolvers.Query,
     ...bracketResolvers.Query,
+    ...entryResolvers.Query,
   },
+  Mutation: entryResolvers.Mutation,
 } satisfies Resolvers;
 
 export const yearTournamentSchemaModule = defineSchemaModule({

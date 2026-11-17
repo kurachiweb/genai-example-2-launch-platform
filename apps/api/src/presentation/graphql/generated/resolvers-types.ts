@@ -1288,6 +1288,8 @@ export type Mutation = {
   startUltrasCheckout: CheckoutStart;
   /** Weekトーナメントの参加費の決済の開始。本人の受付中の枠に購入を作り、決済画面の経路に使う購入のIDを返す。受付期限の後はcheckout_closed */
   startWeekTournamentCheckout: CheckoutStart;
+  /** Yearトーナメントの参加費の決済の開始。本人の受付中の枠に購入を作り、決済画面の経路に使う購入のIDを返す。受付期限の後はcheckout_closed */
+  startYearTournamentCheckout: CheckoutStart;
   /** 未ログイン(停止中の利用者を含む)の問い合わせの送信 */
   submitGuestInquiry: Scalars['Boolean']['output'];
   /** 停止していないログイン中の利用者の問い合わせの送信 */
@@ -1645,6 +1647,11 @@ export type MutationStartTotpSetupArgs = {
 
 
 export type MutationStartWeekTournamentCheckoutArgs = {
+  launchId: Scalars['ID']['input'];
+};
+
+
+export type MutationStartYearTournamentCheckoutArgs = {
   launchId: Scalars['ID']['input'];
 };
 
@@ -2319,6 +2326,8 @@ export type Query = {
   mySessions: Array<UserSessionSummary>;
   /** 投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull */
   myWeekEntry?: Maybe<WeekEntryPanel>;
+  /** 投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull */
+  myYearEntry?: Maybe<YearEntryPanel>;
   /** 登録画面で選べるローンチ日 */
   newProductLaunchWindow: LaunchDateWindow;
   /** 通知メールの送信者情報の現在の値と最後の変更。閲覧のみ以上の管理者 */
@@ -2511,6 +2520,11 @@ export type QueryMyProductsArgs = {
 
 
 export type QueryMyWeekEntryArgs = {
+  productHandle: Scalars['String']['input'];
+};
+
+
+export type QueryMyYearEntryArgs = {
   productHandle: Scalars['String']['input'];
 };
 
@@ -3074,6 +3088,71 @@ export type YearBracket = {
   tournament: YearTournamentSummary;
 };
 
+/** 参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、OVER_CAPACITYは参加数の上限による除外、LATE_ENTRYは組み合わせ決定の後に確定したWeek優勝 */
+export type YearEntryCloseReason =
+  | 'DEADLINE'
+  | 'DELETED'
+  | 'HIDDEN_OR_SUSPENDED'
+  | 'LATE_ENTRY'
+  | 'OVER_CAPACITY'
+  | 'WITHDRAWN';
+
+/** 投稿者本人の参加費の導線 */
+export type YearEntryPanel = {
+  __typename?: 'YearEntryPanel';
+  /** 決済の開始の受付期限(23:00) */
+  acceptUntil: Scalars['DateTime']['output'];
+  /** 組み合わせに入りブラケットを作った枠だけ。ブラケットのページの経路(/tournaments/year/<年>) */
+  bracketPath?: Maybe<Scalars['String']['output']>;
+  /** 終わった枠だけ */
+  closeReason?: Maybe<YearEntryCloseReason>;
+  /** 決済期限 */
+  deadlineAt: Scalars['DateTime']['output'];
+  /** 組み合わせ決定の日時(23:45) */
+  drawAt: Scalars['DateTime']['output'];
+  /** Ultrasの特典により参加費を免除する */
+  exempt: Scalars['Boolean']['output'];
+  /** 参加費(税込のUSD)。決済を始められない枠と、決済サービスに到達できず照会できないときはnull */
+  fee?: Maybe<Money>;
+  /** 対象年の決勝の実施日(業務日付のYYYY-MM-DD) */
+  finalDate: Scalars['String']['output'];
+  /** 決済の開始に渡すローンチのID */
+  launchId: Scalars['ID']['output'];
+  /** 組み合わせに入った枠だけ */
+  progress?: Maybe<YearEntryProgress>;
+  /** 支払った参加費が自動の全額返金の対象(返金の依頼の前か依頼中) */
+  refundable: Scalars['Boolean']['output'];
+  /** 照会の時点のサーバーの時刻。秒読みを合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+  status: YearEntryStatus;
+  /** Week優勝の週の表記(「2026年第47週(11/16〜11/22)」) */
+  weekLabel: Scalars['String']['output'];
+  /** 対象年 */
+  year: Scalars['Int']['output'];
+  /** 対象年の表記(「2027年」) */
+  yearLabel: Scalars['String']['output'];
+};
+
+/** 組み合わせに入った枠の進行 */
+export type YearEntryProgress = {
+  __typename?: 'YearEntryProgress';
+  /** 敗退しておらず、優勝もしていない */
+  alive: Scalars['Boolean']['output'];
+  /** Product of the Yearを受賞した */
+  champion: Scalars['Boolean']['output'];
+  /** 敗退したラウンド名。敗退していなければnull */
+  eliminatedRoundName?: Maybe<Scalars['String']['output']>;
+};
+
+/** Yearトーナメントの参加の枠の状態。AWAITING_PAYMENTは参加費の支払い待ち、ENTITLEDは参加資格を得た、DRAWNは組み合わせに入った、EXPIREDは期限切れ、FORFEITEDは資格の喪失、EXCLUDEDは組み合わせ決定での除外 */
+export type YearEntryStatus =
+  | 'AWAITING_PAYMENT'
+  | 'DRAWN'
+  | 'ENTITLED'
+  | 'EXCLUDED'
+  | 'EXPIRED'
+  | 'FORFEITED';
+
 /** トップページのYearトーナメントの区画 */
 export type YearTournamentBoard = {
   __typename?: 'YearTournamentBoard';
@@ -3453,6 +3532,10 @@ export type ResolversTypes = {
   WeekTournamentStatus: WeekTournamentStatus;
   WeekTournamentSummary: ResolverTypeWrapper<WeekTournamentSummary>;
   YearBracket: ResolverTypeWrapper<Omit<YearBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversTypes['MatchProduct']>, rounds: Array<ResolversTypes['BracketRound']> }>;
+  YearEntryCloseReason: YearEntryCloseReason;
+  YearEntryPanel: ResolverTypeWrapper<YearEntryPanel>;
+  YearEntryProgress: ResolverTypeWrapper<YearEntryProgress>;
+  YearEntryStatus: YearEntryStatus;
   YearTournamentBoard: ResolverTypeWrapper<Omit<YearTournamentBoard, 'rounds'> & { rounds: Array<ResolversTypes['YearTournamentRoundBoard']> }>;
   YearTournamentRoundBoard: ResolverTypeWrapper<YearTournamentRoundBoardModel>;
   YearTournamentStatus: YearTournamentStatus;
@@ -3648,6 +3731,8 @@ export type ResolversParentTypes = {
   WeekTournamentRoundBoard: WeekTournamentRoundBoardModel;
   WeekTournamentSummary: WeekTournamentSummary;
   YearBracket: Omit<YearBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversParentTypes['MatchProduct']>, rounds: Array<ResolversParentTypes['BracketRound']> };
+  YearEntryPanel: YearEntryPanel;
+  YearEntryProgress: YearEntryProgress;
   YearTournamentBoard: Omit<YearTournamentBoard, 'rounds'> & { rounds: Array<ResolversParentTypes['YearTournamentRoundBoard']> };
   YearTournamentRoundBoard: YearTournamentRoundBoardModel;
   YearTournamentSummary: YearTournamentSummary;
@@ -4329,6 +4414,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   startTotpSetup?: Resolver<ResolversTypes['TotpSetup'], ParentType, ContextType, RequireFields<MutationStartTotpSetupArgs, 'input'>>;
   startUltrasCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
   startWeekTournamentCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationStartWeekTournamentCheckoutArgs, 'launchId'>>;
+  startYearTournamentCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationStartYearTournamentCheckoutArgs, 'launchId'>>;
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
   unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
@@ -4665,6 +4751,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   myProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
   myWeekEntry?: Resolver<Maybe<ResolversTypes['WeekEntryPanel']>, ParentType, ContextType, RequireFields<QueryMyWeekEntryArgs, 'productHandle'>>;
+  myYearEntry?: Resolver<Maybe<ResolversTypes['YearEntryPanel']>, ParentType, ContextType, RequireFields<QueryMyYearEntryArgs, 'productHandle'>>;
   newProductLaunchWindow?: Resolver<ResolversTypes['LaunchDateWindow'], ParentType, ContextType>;
   notificationSenderInfo?: Resolver<ResolversTypes['NotificationSenderInfoState'], ParentType, ContextType>;
   notificationUnsubscribeLink?: Resolver<Maybe<ResolversTypes['NotificationUnsubscribeLink']>, ParentType, ContextType, RequireFields<QueryNotificationUnsubscribeLinkArgs, 'token'>>;
@@ -4884,6 +4971,31 @@ export type YearBracketResolvers<ContextType = GraphQLContext, ParentType extend
   tournament?: Resolver<ResolversTypes['YearTournamentSummary'], ParentType, ContextType>;
 };
 
+export type YearEntryPanelResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearEntryPanel'] = ResolversParentTypes['YearEntryPanel']> = {
+  acceptUntil?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  bracketPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  closeReason?: Resolver<Maybe<ResolversTypes['YearEntryCloseReason']>, ParentType, ContextType>;
+  deadlineAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  drawAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  exempt?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  fee?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  finalDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  launchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  progress?: Resolver<Maybe<ResolversTypes['YearEntryProgress']>, ParentType, ContextType>;
+  refundable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['YearEntryStatus'], ParentType, ContextType>;
+  weekLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  year?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  yearLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type YearEntryProgressResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearEntryProgress'] = ResolversParentTypes['YearEntryProgress']> = {
+  alive?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  champion?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  eliminatedRoundName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
 export type YearTournamentBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearTournamentBoard'] = ResolversParentTypes['YearTournamentBoard']> = {
   date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   rounds?: Resolver<Array<ResolversTypes['YearTournamentRoundBoard']>, ParentType, ContextType>;
@@ -5059,6 +5171,8 @@ export type Resolvers<ContextType = GraphQLContext> = {
   WeekTournamentRoundBoard?: WeekTournamentRoundBoardResolvers<ContextType>;
   WeekTournamentSummary?: WeekTournamentSummaryResolvers<ContextType>;
   YearBracket?: YearBracketResolvers<ContextType>;
+  YearEntryPanel?: YearEntryPanelResolvers<ContextType>;
+  YearEntryProgress?: YearEntryProgressResolvers<ContextType>;
   YearTournamentBoard?: YearTournamentBoardResolvers<ContextType>;
   YearTournamentRoundBoard?: YearTournamentRoundBoardResolvers<ContextType>;
   YearTournamentSummary?: YearTournamentSummaryResolvers<ContextType>;
