@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
 import {
   FINAL_DATE_CONFIRM_DESCRIPTION,
   FINAL_DATE_CONFIRM_LABEL,
@@ -17,7 +18,6 @@ import {
   type FinalDateViolationReason,
   finalDateConfirmTitleOf,
   finalDateViolationMessageOf,
-  formatFinalDateLabel,
   isFinalDateViolationReason,
   nextYearGapWarningOf,
   yearLabelOf,
@@ -29,20 +29,6 @@ const NEIGHBORS = Object.freeze({
 });
 
 describe('決勝実施日の表記', () => {
-  test.each([
-    ['2027-05-30', '2027年5月30日(日)'],
-    ['2027-12-31', '2027年12月31日(金)'],
-    ['2028-01-01', '2028年1月1日(土)'],
-    ['2028-01-02', '2028年1月2日(日)'],
-    ['2028-02-29', '2028年2月29日(火)'],
-  ])('業務日付%sは閲覧の年によらず年と曜日を付けて%sと示す', (date, label) => {
-    expect(formatFinalDateLabel(date)).toBe(label);
-  });
-
-  test('業務日付の形でない値は例外にする', () => {
-    expect(() => formatFinalDateLabel('2027-5-30')).toThrow(RangeError);
-  });
-
   test('カードの見出しは対象年の表記にする', () => {
     expect(yearLabelOf(2027)).toBe('2027年');
   });
@@ -137,9 +123,9 @@ describe('選択と保存の文言', () => {
   test('確認のダイアログの題名は対象年を示し、変更後の日付の前後の文言を持つ', () => {
     const { before, after } = finalDateConfirmTitleOf(2027);
 
-    expect(`${before}${formatFinalDateLabel('2027-06-06')}${after}`).toBe(
-      '2027年の決勝実施日を2027年6月6日(日)に変更しますか?',
-    );
+    expect(
+      `${before}${formatBusinessDateWithWeekdayLabel('2027-06-06')}${after}`,
+    ).toBe('2027年の決勝実施日を2027年6月6日(日)に変更しますか?');
   });
 
   test('確認のダイアログの説明は変更後の受付期限と組み合わせ決定の日時の前後の文言を持ち、Week優勝の期間も変わる旨を添える', () => {

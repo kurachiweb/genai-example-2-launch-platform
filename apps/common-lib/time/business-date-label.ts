@@ -31,10 +31,16 @@ export const formatBusinessDateLabel = (
   return year === currentYear ? monthDay : `${String(year)}年${monthDay}`;
 };
 
+function weekdayOf({ year, month, day }: BusinessDateParts): string {
+  const utcMidnight = new Date(0);
+  // Date.UTCは0〜99年を1900年代に読み替えるため、年を直接設定する
+  utcMidnight.setUTCFullYear(year, month - 1, day);
+  return WEEKDAY_NAMES[utcMidnight.getUTCDay()] ?? '';
+}
+
 // メールや保存した記録にも載る日付は、閲覧の年によらず年と曜日を付ける。曜日も業務日付の暦日から求める
 export const formatBusinessDateWithWeekdayLabel = (date: string): string => {
-  const { year, month, day } = partsOf(date);
-  const weekday =
-    WEEKDAY_NAMES[new Date(Date.UTC(year, month - 1, day)).getUTCDay()] ?? '';
-  return `${String(year)}年${String(month)}月${String(day)}日(${weekday})`;
+  const parts = partsOf(date);
+  const { year, month, day } = parts;
+  return `${String(year)}年${String(month)}月${String(day)}日(${weekdayOf(parts)})`;
 };

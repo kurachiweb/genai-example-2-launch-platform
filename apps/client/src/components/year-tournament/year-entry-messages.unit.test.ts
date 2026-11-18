@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
-  formatYearFinalDateLabel,
   YEAR_ENTRY_COPY,
   yearEntryIntroMessage,
 } from './year-entry-messages.ts';
@@ -20,21 +19,6 @@ describe('Yearトーナメントの参加費の導線の文言', () => {
         '2026年第37週(9/7〜9/13)のProduct of the Week受賞により、2027年のYearトーナメントに参加できます。決勝は',
       after: 'です。',
     });
-  });
-
-  test.each([
-    ['2027-05-30', '2027年5月30日(日)'],
-    ['2028-05-28', '2028年5月28日(日)'],
-    ['2027-01-04', '2027年1月4日(月)'],
-  ])(
-    '決勝日%sは、閲覧の年によらず年と曜日を付けて「%s」と示す',
-    (date, label) => {
-      expect(formatYearFinalDateLabel(date)).toBe(label);
-    },
-  );
-
-  test('業務日付の形でない決勝日は例外にする', () => {
-    expect(() => formatYearFinalDateLabel('2027/05/30')).toThrow(RangeError);
   });
 
   test('期限切れは、組み合わせ決定の後のWeek優勝の反映かで文を分ける', () => {

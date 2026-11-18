@@ -47,7 +47,6 @@ export const YEAR_FINAL_COPY: TournamentFinalCopy = Object.freeze({
 export const YEAR_BRACKET_COPY: TournamentBracketCopy = Object.freeze({
   title: YEAR_TOURNAMENT_SECTION_TITLE,
   awardName: YEAR_AWARD_NAME,
-  pageTitle: yearBracketPageTitle,
   counts: yearBracketCountsLabel,
   error: YEAR_BRACKET_ERROR_MESSAGE,
 });

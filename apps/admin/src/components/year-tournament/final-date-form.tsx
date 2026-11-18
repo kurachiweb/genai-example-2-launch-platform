@@ -5,6 +5,7 @@ import {
   ConfirmActionDialog,
   type ConfirmActionInput,
 } from '../../../lib/components/admin/confirm-action-dialog.tsx';
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
 import { DateTime } from '../../../lib/components/datetime/date-time.tsx';
 import { notify } from '../../../lib/components/feedback/notify.ts';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
@@ -36,7 +37,6 @@ import {
   FINAL_DATE_VERSION_CONFLICT_MESSAGE,
   finalDateConfirmTitleOf,
   finalDateViolationMessageOf,
-  formatFinalDateLabel,
   isFinalDateViolationReason,
 } from './final-date-labels.ts';
 import { scheduleOfChoice } from './final-date-schedule.ts';
@@ -94,7 +94,9 @@ interface FinalDateTextProps {
 }
 
 function FinalDateText({ date }: FinalDateTextProps) {
-  return <time dateTime={date}>{formatFinalDateLabel(date)}</time>;
+  return (
+    <time dateTime={date}>{formatBusinessDateWithWeekdayLabel(date)}</time>
+  );
 }
 
 export interface FinalDateFormProps {

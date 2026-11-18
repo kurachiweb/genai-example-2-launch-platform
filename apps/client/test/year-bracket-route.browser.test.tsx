@@ -14,6 +14,7 @@ import {
   SYSTEM_NOTIFY_SCHEDULER,
   TOKYO_JA,
 } from '../src/components/product-page/product-page-testing.tsx';
+import type { YearBracketView } from '../src/components/year-tournament/year-bracket-model.ts';
 import {
   AWARDED_YEAR_BRACKET,
   HIDDEN_CHAMPION_YEAR_BRACKET,
@@ -22,7 +23,6 @@ import {
   YEAR_FINAL_DATE,
   YEAR_TOURNAMENT_LABEL,
   YEAR_TOURNAMENT_YEAR,
-  type YearBracketView,
   yearBracketOf,
 } from '../src/components/year-tournament/year-tournament-fixtures.ts';
 import { ClientYearBracketDocument } from '../src/graphql/generated/graphql.ts';

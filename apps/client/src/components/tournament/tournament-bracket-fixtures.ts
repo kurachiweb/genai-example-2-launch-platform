@@ -24,7 +24,6 @@ export const BRACKET_ERROR_MESSAGE =
 export const BRACKET_COPY: TournamentBracketCopy = Object.freeze({
   title: BRACKET_TITLE,
   awardName: BRACKET_AWARD_NAME,
-  pageTitle: (periodLabel: string) => `${periodLabel} ${BRACKET_TITLE}`,
   counts: (participantCount: number, seedCount: number) =>
     `テストの参加${String(participantCount)}・シード${String(seedCount)}`,
   error: BRACKET_ERROR_MESSAGE,

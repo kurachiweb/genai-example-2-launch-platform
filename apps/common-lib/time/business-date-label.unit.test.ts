@@ -62,6 +62,26 @@ describe('formatBusinessDateWithWeekdayLabel', () => {
     );
   });
 
+  test.each([
+    { date: '2025-12-31', expected: '2025年12月31日(水)' },
+    { date: '2026-01-01', expected: '2026年1月1日(木)' },
+    { date: '2027-12-31', expected: '2027年12月31日(金)' },
+    { date: '2028-01-01', expected: '2028年1月1日(土)' },
+  ])('年をまたぐ$dateの曜日を暦日から求める', ({ date, expected }) => {
+    expect(formatBusinessDateWithWeekdayLabel(date)).toBe(expected);
+  });
+
+  test.each([
+    { date: '0001-01-01', expected: '1年1月1日(月)' },
+    { date: '0050-06-15', expected: '50年6月15日(水)' },
+    { date: '0099-12-31', expected: '99年12月31日(木)' },
+  ])(
+    '0001〜0099年の$dateも1900年代に読み替えずに曜日を求める',
+    ({ date, expected }) => {
+      expect(formatBusinessDateWithWeekdayLabel(date)).toBe(expected);
+    },
+  );
+
   test('YYYY-MM-DDの形でない値はRangeErrorにする', () => {
     expect(() => formatBusinessDateWithWeekdayLabel('2027-5-30')).toThrow(
       RangeError,

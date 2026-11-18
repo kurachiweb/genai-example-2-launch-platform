@@ -1,5 +1,6 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
 import {
   myYearEntryQueryOptions,
   startYearTournamentCheckoutMutationOptions,
@@ -10,7 +11,6 @@ import { useViewer } from '../auth/use-viewer.ts';
 import type { TournamentEntryCheckoutStart } from '../tournament/tournament-entry-checkout.tsx';
 import { TournamentEntryPanelBody } from '../tournament/tournament-entry-panel-body.tsx';
 import {
-  formatYearFinalDateLabel,
   YEAR_ENTRY_COPY,
   yearEntryIntroMessage,
 } from './year-entry-messages.ts';
@@ -46,7 +46,7 @@ function YearEntryIntro({ entry }: { readonly entry: YearEntryPanelView }) {
     <>
       {before}
       <time dateTime={entry.finalDate}>
-        {formatYearFinalDateLabel(entry.finalDate)}
+        {formatBusinessDateWithWeekdayLabel(entry.finalDate)}
       </time>
       {after}
     </>

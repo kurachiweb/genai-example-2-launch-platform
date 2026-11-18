@@ -14,10 +14,10 @@ import {
   FINAL_DATE_SUBMIT_LABEL,
   FINAL_DATE_SUPER_ADMIN_ONLY_NOTICE,
   finalDateConfirmTitleOf,
-  formatFinalDateLabel,
   yearLabelOf,
 } from '../../apps/admin/src/components/year-tournament/final-date-labels.ts';
 import { defaultFinalDate } from '../../apps/backend-lib/core/year-tournament/year-schedule.ts';
+import { formatBusinessDateWithWeekdayLabel } from '../../apps/common-lib/time/business-date-label.ts';
 import { YEAR_FINAL_DATE_UPDATE_ACTION } from '../../apps/common-lib/admin/audit-actions/tournament-year.ts';
 import {
   AUDITED_ACTION_NOTICE,
@@ -108,7 +108,7 @@ export async function chooseFinalDate(
     current: from,
     preferred: defaultFinalDate(year),
   });
-  const label = formatFinalDateLabel(to);
+  const label = formatBusinessDateWithWeekdayLabel(to);
   await listbox.getByRole('option', { name: label, exact: true }).click();
   await expect(listbox).toHaveCount(0);
   await expect(combobox).toContainText(label);
@@ -126,7 +126,7 @@ export async function saveFinalDate(
   await submitButton(card).click();
   const { before, after } = finalDateConfirmTitleOf(year);
   const dialog = page.getByRole('dialog', {
-    name: `${before}${formatFinalDateLabel(date)}${after}`,
+    name: `${before}${formatBusinessDateWithWeekdayLabel(date)}${after}`,
   });
   await expect(dialog).toContainText(AUDITED_ACTION_NOTICE);
   await dialog.getByLabel(OPTIONAL_REASON_LABEL, { exact: true }).fill(reason);

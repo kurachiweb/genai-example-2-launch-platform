@@ -4,6 +4,7 @@ import {
   YEAR_BOARD_COPY,
   YEAR_BRACKET_COPY,
   YEAR_FINAL_COPY,
+  yearBracketPageTitle,
 } from './year-tournament-messages.ts';
 
 describe('Yearトーナメントの文言', () => {
@@ -29,7 +30,7 @@ describe('Yearトーナメントの文言', () => {
   });
 
   test('ブラケットのページの題名は「<年>年のProduct of the Yearトーナメント」で、見出しと優勝の印はトーナメントと賞の名前である', () => {
-    expect(YEAR_BRACKET_COPY.pageTitle('2027年')).toBe(
+    expect(yearBracketPageTitle('2027年')).toBe(
       '2027年のProduct of the Yearトーナメント',
     );
     expect(YEAR_BRACKET_COPY.title).toBe('Product of the Yearトーナメント');

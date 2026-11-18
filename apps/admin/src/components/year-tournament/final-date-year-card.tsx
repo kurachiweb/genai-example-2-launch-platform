@@ -1,6 +1,7 @@
 import { TriangleAlertIcon } from 'lucide-react';
 import { type ReactNode, useId } from 'react';
 
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
 import { DateTime } from '../../../lib/components/datetime/date-time.tsx';
 import { Badge } from '../../../lib/components/ui/badge/badge.tsx';
 import type { AdminYearFinalDateSetting } from '../../graphql/admin-year-final-date.ts';
@@ -16,7 +17,6 @@ import {
   FINAL_DATE_SUPER_ADMIN_ONLY_NOTICE,
   FINAL_DATE_UPDATED_AT_LABEL,
   FINAL_DATE_UPDATED_BY_LABEL,
-  formatFinalDateLabel,
   nextYearGapWarningOf,
   yearLabelOf,
 } from './final-date-labels.ts';
@@ -67,7 +67,7 @@ export function FinalDateYearCard({
         <dt className={TERM_CLASS_NAME}>{FINAL_DATE_LABEL}</dt>
         <dd className="flex flex-wrap items-center gap-2">
           <time dateTime={finalDate} className="font-semibold">
-            {formatFinalDateLabel(finalDate)}
+            {formatBusinessDateWithWeekdayLabel(finalDate)}
           </time>
           <Badge variant={source === 'EXPLICIT' ? 'default' : 'outline'}>
             {FINAL_DATE_SOURCE_LABELS[source]}

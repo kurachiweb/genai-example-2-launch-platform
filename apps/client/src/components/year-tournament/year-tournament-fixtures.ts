@@ -1,6 +1,5 @@
 import type {
   BracketMatchProductFieldsFragment,
-  ClientYearBracketQuery,
   ClientYearTournamentBoardQuery,
   MatchByeFragment,
   MatchFragment,
@@ -20,13 +19,10 @@ import type {
   BracketViewRound,
 } from '../bracket/bracket-view-props.ts';
 import { byeOf, entryOf, matchOf, productOf } from '../match/match-fixtures.ts';
+import type { YearBracketView } from './year-bracket-model.ts';
 
 export type YearBoardView =
   ClientYearTournamentBoardQuery['yearTournamentBoard'];
-
-export type YearBracketView = NonNullable<
-  ClientYearBracketQuery['yearBracket']
->;
 
 export const YEAR_TOURNAMENT_YEAR = 2027;
 

@@ -57,24 +57,6 @@ export const yearEntryIntroMessage = (
     after: 'です。',
   });
 
-const BUSINESS_DATE_PATTERN = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/u;
-
-const WEEKDAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'] as const;
-
-// 決勝日は翌年以降のこともあるため閲覧の年によらず年と曜日を付ける。業務日付の暦日のまま示し、閲覧者のタイムゾーンで日をずらさない
-export const formatYearFinalDateLabel = (date: string): string => {
-  const groups = BUSINESS_DATE_PATTERN.exec(date)?.groups;
-  if (groups === undefined) {
-    throw new RangeError(`業務日付の形でない値です: ${date}`);
-  }
-  const year = Number(groups.year);
-  const month = Number(groups.month);
-  const day = Number(groups.day);
-  const weekday =
-    WEEKDAY_NAMES[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
-  return `${String(year)}年${String(month)}月${String(day)}日(${weekday ?? ''})`;
-};
-
 const excludedMessageOf = (reason: TournamentEntryExcludedReason): string =>
   reason === 'over_capacity'
     ? YEAR_ENTRY_EXCLUDED_OVER_CAPACITY_MESSAGE

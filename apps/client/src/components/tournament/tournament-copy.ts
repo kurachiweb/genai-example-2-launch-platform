@@ -42,8 +42,6 @@ export interface TournamentBracketCopy {
   readonly title: string;
   // 優勝の表示の賞の名前
   readonly awardName: string;
-  // ページのheadの題名
-  readonly pageTitle: (periodLabel: string) => string;
   readonly counts: (participantCount: number, seedCount: number) => string;
   readonly error: string;
 }

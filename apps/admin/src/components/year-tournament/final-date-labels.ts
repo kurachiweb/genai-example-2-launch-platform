@@ -1,3 +1,4 @@
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
 import type { YearFinalDateSource } from '../../graphql/generated/graphql.ts';
 
 export const FINAL_DATE_SECTION_TITLE = 'Yearトーナメントの決勝実施日';
@@ -60,31 +61,13 @@ export interface FinalDateNeighbors {
   readonly nextYearFinalDate: string | null;
 }
 
-const BUSINESS_DATE_PATTERN = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/u;
-
-const WEEKDAY_NAMES = ['日', '月', '火', '水', '木', '金', '土'] as const;
-
-// 決勝実施日は翌年のこともあるため閲覧の年によらず年と曜日を付ける。業務日付の暦日のまま示し、閲覧者のタイムゾーンで日をずらさない
-export const formatFinalDateLabel = (date: string): string => {
-  const groups = BUSINESS_DATE_PATTERN.exec(date)?.groups;
-  if (groups === undefined) {
-    throw new RangeError(`業務日付の形でない値です: ${date}`);
-  }
-  const year = Number(groups.year);
-  const month = Number(groups.month);
-  const day = Number(groups.day);
-  const weekday =
-    WEEKDAY_NAMES[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
-  return `${String(year)}年${String(month)}月${String(day)}日(${weekday ?? ''})`;
-};
-
 export const yearLabelOf = (year: number): string => `${String(year)}年`;
 
 export const nextYearGapWarningOf = (nextYearDefaultDate: string): string =>
-  `翌年の決勝実施日が未設定のため、既定の${formatFinalDateLabel(nextYearDefaultDate)}では64週以上空きます。参加数を64以下に保つため、翌年の決勝実施日を設定してください。`;
+  `翌年の決勝実施日が未設定のため、既定の${formatBusinessDateWithWeekdayLabel(nextYearDefaultDate)}では64週以上空きます。参加数を64以下に保つため、翌年の決勝実施日を設定してください。`;
 
 const neighborLabelOf = (date: string | null): string =>
-  date === null ? '' : formatFinalDateLabel(date);
+  date === null ? '' : formatBusinessDateWithWeekdayLabel(date);
 
 export const finalDateViolationMessageOf = (
   reason: FinalDateViolationReason,

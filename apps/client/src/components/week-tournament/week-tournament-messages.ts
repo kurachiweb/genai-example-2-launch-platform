@@ -46,7 +46,6 @@ export const WEEK_FINAL_COPY: TournamentFinalCopy = Object.freeze({
 export const WEEK_BRACKET_COPY: TournamentBracketCopy = Object.freeze({
   title: WEEK_TOURNAMENT_SECTION_TITLE,
   awardName: WEEK_AWARD_NAME,
-  pageTitle: weekBracketPageTitle,
   counts: weekBracketCountsLabel,
   error: WEEK_BRACKET_ERROR_MESSAGE,
 });

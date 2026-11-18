@@ -124,17 +124,6 @@ describe('TournamentBracketPage の見出し', () => {
       .element(page.getByText('テストの参加13・シード3'))
       .toBeVisible();
   });
-
-  test('文書の題名の文言はページの中に描かず、h1は文言の題名と期間の表記で組み立てる', async () => {
-    await renderPage(tournamentBracketOf());
-
-    await expect
-      .element(pageTitle())
-      .not.toHaveTextContent(BRACKET_COPY.pageTitle(BRACKET_PERIOD_LABEL));
-    expect(
-      page.getByText(BRACKET_COPY.pageTitle(BRACKET_PERIOD_LABEL)).elements(),
-    ).toHaveLength(0);
-  });
 });
 
 describe('TournamentBracketPage の自動更新の切り替え', () => {
