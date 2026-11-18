@@ -3,6 +3,7 @@ import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-
 import { EVENT_ENGAGEMENT_TYPES } from '../application/engagement/event-engagement-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
+import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
 import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 
@@ -63,6 +64,12 @@ export const PRODUCT_LIFECYCLE_ASYNC_HANDLERS: readonly ProductLifecycleAsyncReg
       events: ['purge_due'],
       order: 1500,
       handler: EVENT_WEEK_TOURNAMENT_TYPES.EntryUnlinkHandler,
+    },
+    {
+      name: 'sponsorship.product-purge',
+      events: ['purge_due'],
+      order: 1600,
+      handler: EVENT_SPONSORSHIP_TYPES.ProductPurgeHandler,
     },
     {
       name: 'tournament-year.product-entry-loss',

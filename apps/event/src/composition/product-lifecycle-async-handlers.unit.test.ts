@@ -5,6 +5,7 @@ import {
   PRODUCT_LIFECYCLE_EVENT_TYPES,
   type ProductLifecycleEventType,
 } from '../../lib/core/product/product-lifecycle.ts';
+import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
 import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 import { PRODUCT_LIFECYCLE_ASYNC_HANDLERS } from './product-lifecycle-async-handlers.ts';
@@ -64,7 +65,22 @@ describe('プロダクトライフサイクルの処理の登録口', () => {
     ]);
   });
 
-  test('論理削除では即時の終了の後続の処理の後に、物理削除の時期の到来ではengagementの削除の後に並び、tournament-yearはtournament-weekの後に並ぶ', () => {
+  test('sponsorshipは物理削除の時期の到来に1600で申込の削除だけを登録する', () => {
+    expect(
+      PRODUCT_LIFECYCLE_ASYNC_HANDLERS.filter(({ name }) =>
+        name.startsWith('sponsorship.'),
+      ),
+    ).toStrictEqual([
+      {
+        name: 'sponsorship.product-purge',
+        events: ['purge_due'],
+        order: 1600,
+        handler: EVENT_SPONSORSHIP_TYPES.ProductPurgeHandler,
+      },
+    ]);
+  });
+
+  test('論理削除では即時の終了の後続の処理の後に、物理削除の時期の到来ではengagementの削除の後に並び、sponsorshipはtournament-weekとtournament-yearの間に並ぶ', () => {
     expect(namesFor('deleted')).toStrictEqual([
       'match-engine.product-decision-follow-up',
       'tournament-week.product-entry-loss',
@@ -76,11 +92,12 @@ describe('プロダクトライフサイクルの処理の登録口', () => {
       'directory-discovery.entry-erasure',
       'engagement.product-erasure',
       'tournament-week.entry-unlink',
+      'sponsorship.product-purge',
       'tournament-year.entry-unlink',
     ]);
   });
 
-  test.each(['tournament-week.', 'tournament-year.'])(
+  test.each(['tournament-week.', 'tournament-year.', 'sponsorship.'])(
     '%sの処理は、非公開化と非公開化の解除では呼ばれない',
     (prefix) => {
       const others = PRODUCT_LIFECYCLE_EVENT_TYPES.filter(

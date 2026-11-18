@@ -7,9 +7,12 @@ import { afterAll, describe, expect, test } from 'vitest';
 import { SPONSORSHIP_DISPATCH_NOTICES_MESSAGE } from '../../lib/core/messaging/contracts/sponsorship.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { createQueueDispatcher } from '../../lib/workers/messaging/queue-consumer.ts';
+import { AccountPurgeHandler } from '../application/sponsorship/account-purge-handler.ts';
 import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { NoticeDispatchHandler } from '../application/sponsorship/notice-dispatch-handler.ts';
+import { ProductPurgeHandler } from '../application/sponsorship/product-purge-handler.ts';
 import { D1NoticeClaimStore } from '../infrastructure/sponsorship/d1-notice-claim-store.ts';
+import { D1SponsorshipPurgeStore } from '../infrastructure/sponsorship/d1-sponsorship-purge-store.ts';
 import { MESSAGE_HANDLERS } from './message-handlers.ts';
 import { MODULES } from './modules.ts';
 import { EVENT_SPONSORSHIP_MODULE } from './sponsorship-module.ts';
@@ -18,15 +21,15 @@ import { EVENT_YEAR_TOURNAMENT_MODULE } from './year-tournament-module.ts';
 const IMPLEMENTATIONS = [
   ['NoticeDispatchHandler', NoticeDispatchHandler],
   ['NoticeClaimStore', D1NoticeClaimStore],
+  ['AccountPurgeHandler', AccountPurgeHandler],
+  ['ProductPurgeHandler', ProductPurgeHandler],
+  ['SponsorshipPurgeStore', D1SponsorshipPurgeStore],
 ] as const;
 
-// 掲載の終わりの精算(6.3)と物理削除(6.2)の部品は、それぞれのタスクで束縛を足すときにIMPLEMENTATIONSへ移す
+// 掲載の終わりの精算(6.3)の部品は、束縛を足すときにIMPLEMENTATIONSへ移す
 const UNBOUND = [
   'PeriodEndSettlementHandler',
   'PeriodEndSettlementCommitter',
-  'AccountPurgeHandler',
-  'ProductPurgeHandler',
-  'SponsorshipPurgeStore',
 ] as const;
 
 function createContainer(): Container {

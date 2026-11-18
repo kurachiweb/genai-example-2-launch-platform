@@ -5,6 +5,7 @@ import {
   USER_LIFECYCLE_EVENT_TYPES,
   type UserLifecycleEventType,
 } from '../../lib/core/identity/user-lifecycle.ts';
+import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
 import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 import { USER_LIFECYCLE_ASYNC_HANDLERS } from './user-lifecycle-async-handlers.ts';
@@ -50,6 +51,27 @@ describe('ユーザーライフサイクルの処理の登録口', () => {
         handler: EVENT_YEAR_TOURNAMENT_TYPES.AccountEntryLossHandler,
       },
     ]);
+  });
+
+  test('sponsorshipは物理削除の開始に1600で申込の削除だけを登録し、全てのドメインの物理削除の処理の後に並ぶ', () => {
+    expect(
+      USER_LIFECYCLE_ASYNC_HANDLERS.filter(({ name }) =>
+        name.startsWith('sponsorship.'),
+      ),
+    ).toStrictEqual([
+      {
+        name: 'sponsorship.account-purge',
+        events: ['purge_due'],
+        order: 1600,
+        handler: EVENT_SPONSORSHIP_TYPES.AccountPurgeHandler,
+      },
+    ]);
+    expect(namesFor('purge_due').at(-1)).toBe('sponsorship.account-purge');
+    expect(
+      USER_LIFECYCLE_EVENT_TYPES.filter((type) => type !== 'purge_due')
+        .flatMap((type) => namesFor(type))
+        .filter((name) => name.startsWith('sponsorship.')),
+    ).toEqual([]);
   });
 
   test('退会では未完了の決済の失効・解約・即時の終了の後続の処理の後、アカウント機能の処理の前に並び、tournament-yearはtournament-weekの後に並ぶ', () => {

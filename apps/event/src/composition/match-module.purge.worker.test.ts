@@ -315,6 +315,7 @@ describe('Upvoteの物理削除とマッチ記録の紐付けの解除の処理�
       UPVOTE_ERASURE_NAME,
       'notifications.account-purge',
       'engagement.account-erasure',
+      'sponsorship.account-purge',
     ]);
   });
 
@@ -341,6 +342,7 @@ describe('Upvoteの物理削除とマッチ記録の紐付けの解除の処理�
       'directory-discovery.entry-erasure',
       'engagement.product-erasure',
       'tournament-week.entry-unlink',
+      'sponsorship.product-purge',
       'tournament-year.entry-unlink',
     ]);
   });

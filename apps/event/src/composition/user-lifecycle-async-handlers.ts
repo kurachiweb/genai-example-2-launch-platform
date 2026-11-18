@@ -8,6 +8,7 @@ import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-no
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
+import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
 import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
@@ -105,6 +106,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['withdrawn'],
       order: 1500,
       handler: EVENT_WEEK_TOURNAMENT_TYPES.AccountEntryLossHandler,
+    },
+    {
+      name: 'sponsorship.account-purge',
+      events: ['purge_due'],
+      order: 1600,
+      handler: EVENT_SPONSORSHIP_TYPES.AccountPurgeHandler,
     },
     {
       name: 'tournament-year.account-entry-loss',
