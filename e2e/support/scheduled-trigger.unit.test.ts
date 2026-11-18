@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import {
   addBusinessDays as addBackendBusinessDays,
+  businessWeekdayOf,
+  businessWeekOf,
   parseBusinessDate,
 } from '../../apps/backend-lib/core/time/business-time.ts';
 import {
@@ -299,6 +301,21 @@ describe('addBusinessDays', () => {
     ({ date, days }) => {
       expect(addBusinessDays(date, days)).toBe(
         addBackendBusinessDays(parseBusinessDate(date), days),
+      );
+    },
+  );
+
+  test.each(['2026-12-31', '2027-01-03', '2028-02-29'])(
+    '%sに7日を加えた日付は、バックエンドの業務日付の曜日が同じで次のISO週に属する',
+    (date) => {
+      const next = parseBusinessDate(addBusinessDays(date, 7));
+      const week = businessWeekOf(parseBusinessDate(date));
+
+      expect(businessWeekdayOf(next)).toBe(
+        businessWeekdayOf(parseBusinessDate(date)),
+      );
+      expect(businessWeekOf(next).start).toBe(
+        parseBusinessDate(addBusinessDays(week.start, 7)),
       );
     },
   );
