@@ -7,6 +7,8 @@ import {
   productDetailHref,
   profileHref,
   userMenuLabel,
+  weekBracketHref,
+  yearBracketHref,
 } from './site-links.ts';
 
 describe('myProductEditHref', () => {
@@ -47,5 +49,17 @@ describe('userMenuLabel', () => {
 describe('helpArticleHref', () => {
   test('ヘルプトップのパスの下に記事のハンドルを置いたヘルプ記事詳細のパスにする', () => {
     expect(helpArticleHref('Upvote-Rules')).toBe('/help/Upvote-Rules');
+  });
+});
+
+describe('weekBracketHref', () => {
+  test('週の識別をWeekトーナメントのブラケットのパスに置く', () => {
+    expect(weekBracketHref('2026-W45')).toBe('/tournaments/week/2026-W45');
+  });
+});
+
+describe('yearBracketHref', () => {
+  test('対象年をYearトーナメントのブラケットのパスに置く', () => {
+    expect(yearBracketHref(2027)).toBe('/tournaments/year/2027');
   });
 });

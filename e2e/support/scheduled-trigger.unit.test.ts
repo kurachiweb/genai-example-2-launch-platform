@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import {
+  addBusinessDays as addBackendBusinessDays,
+  parseBusinessDate,
+} from '../../apps/backend-lib/core/time/business-time.ts';
+import {
   addBusinessDays,
   buildScheduledTriggerURL,
   businessDateOf,
@@ -284,6 +288,20 @@ describe('addBusinessDays', () => {
   ])('$dateに$days日を加えると$expectedになる', ({ date, days, expected }) => {
     expect(addBusinessDays(date, days)).toBe(expected);
   });
+
+  test.each([
+    { date: '2026-10-31', days: 1 },
+    { date: '2028-02-28', days: 1 },
+    { date: '2027-01-01', days: -1 },
+    { date: '2026-11-18', days: -365 },
+  ])(
+    '$dateに$days日を加えた日付は、バックエンドの業務日付の加算と同じ日付になる',
+    ({ date, days }) => {
+      expect(addBusinessDays(date, days)).toBe(
+        addBackendBusinessDays(parseBusinessDate(date), days),
+      );
+    },
+  );
 
   test('不正な業務日付は例外になる', () => {
     expect(() => addBusinessDays('2026-02-30', 1)).toThrow(RangeError);

@@ -4,10 +4,9 @@ import { LIVE_REFRESH_INTERVAL_MS } from '../../../lib/utilities/query/live-refr
 import type { MatchFragment } from '../../graphql/generated/graphql.ts';
 import { FOLLOW_UP_REFETCH_LIMIT } from '../match/follow-up-refetch.ts';
 import {
-  BOARD_FIXTURE_ACCESS,
   boardByeOf,
-  boardDataOf,
   boardMatchOf,
+  type BoardRoundFixture,
   boardRoundOf,
 } from './tournament-board-fixtures.ts';
 import {
@@ -17,8 +16,29 @@ import {
   isBoardFollowUpExhausted,
   sectionRoundsOf,
   splitBoardRound,
+  type TournamentBoardAccess,
   withUpdatedBoardMatch,
 } from './tournament-board-model.ts';
+
+// 種類の照会の結果の代わりに、盤面の下に行を持つ値
+interface BoardFixtureData {
+  readonly board: { readonly rounds: readonly BoardRoundFixture[] };
+}
+
+const BOARD_FIXTURE_ACCESS: TournamentBoardAccess<
+  BoardFixtureData,
+  BoardRoundFixture
+> = Object.freeze({
+  roundsOf: (data: BoardFixtureData) => data.board.rounds,
+  withRounds: (
+    data: BoardFixtureData,
+    rounds: readonly BoardRoundFixture[],
+  ): BoardFixtureData => ({ ...data, board: { ...data.board, rounds } }),
+});
+
+const boardDataOf = (
+  rounds: readonly BoardRoundFixture[] = [boardRoundOf()],
+): BoardFixtureData => ({ board: { rounds } });
 
 const finishedMatchOf = (n: number): MatchFragment =>
   boardMatchOf(n, { phase: 'FINISHED', decision: 'VOTES' });

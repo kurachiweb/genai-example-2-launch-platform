@@ -4,10 +4,7 @@ import type {
 } from '../../graphql/generated/graphql.ts';
 import type { MatchKindValue } from '../match/match-labels.ts';
 import { byeOf, entryOf, matchOf, productOf } from '../match/match-fixtures.ts';
-import type {
-  TournamentBoardAccess,
-  TournamentBoardRound,
-} from './tournament-board-model.ts';
+import type { TournamentBoardRound } from './tournament-board-model.ts';
 import type {
   TournamentBoardCopy,
   TournamentFinalCopy,
@@ -26,22 +23,6 @@ export interface BoardRoundFixture extends TournamentBoardRound {
   readonly matches: readonly MatchFragment[];
   readonly byes: readonly MatchByeFragment[];
 }
-
-// 種類の照会の結果の代わりに、盤面の下に行を持つ値
-export interface BoardFixtureData {
-  readonly board: { readonly rounds: readonly BoardRoundFixture[] };
-}
-
-export const BOARD_FIXTURE_ACCESS: TournamentBoardAccess<
-  BoardFixtureData,
-  BoardRoundFixture
-> = Object.freeze({
-  roundsOf: (data: BoardFixtureData) => data.board.rounds,
-  withRounds: (
-    data: BoardFixtureData,
-    rounds: readonly BoardRoundFixture[],
-  ): BoardFixtureData => ({ ...data, board: { ...data.board, rounds } }),
-});
 
 export const SECTION_TITLE = 'Product of the Testトーナメント';
 
@@ -158,7 +139,3 @@ export const boardFinalRoundOf = (
     matches: [boardMatchOf(21, { round: 8, stage: 'FINAL' })],
     ...overrides,
   });
-
-export const boardDataOf = (
-  rounds: readonly BoardRoundFixture[] = [boardRoundOf()],
-): BoardFixtureData => ({ board: { rounds } });
