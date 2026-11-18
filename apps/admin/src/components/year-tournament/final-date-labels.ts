@@ -105,3 +105,25 @@ export const finalDateViolationMessageOf = (
       return `翌年の決勝実施日(${neighborLabelOf(neighbors.nextYearFinalDate)})まで64週以上空く日付は選べません。`;
   }
 };
+
+export const FINAL_DATE_NO_CHOICES_MESSAGE = '選べる日付がありません。';
+
+export const FINAL_DATE_SUBMIT_LABEL = '保存する';
+
+export const FINAL_DATE_CONFIRM_LABEL = '保存する';
+
+export const FINAL_DATE_SAVED_MESSAGE = '決勝実施日を保存しました。';
+
+export const finalDateConfirmTitleOf = (year: number, date: string): string =>
+  `${yearLabelOf(year)}の決勝実施日を${formatFinalDateLabel(date)}に変更しますか?`;
+
+export interface FinalDateScheduleLabels {
+  readonly acceptUntil: string;
+  readonly drawAt: string;
+}
+
+export const finalDateConfirmDescriptionOf = ({
+  acceptUntil,
+  drawAt,
+}: FinalDateScheduleLabels): string =>
+  `受付期限は${acceptUntil}、組み合わせ決定は${drawAt}になり、対象となるWeek優勝の期間も変わります。`;
