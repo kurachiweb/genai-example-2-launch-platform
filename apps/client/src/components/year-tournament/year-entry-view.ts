@@ -19,6 +19,13 @@ const excludedReasonOf = (
   }
 };
 
+// 組み合わせ決定の前で受付中か参加資格を得た枠だけが、削除で参加資格を失い参加費の返金の対象になる
+export const hasYearEntryDeleteNotice = (
+  entry: YearEntryPanelView | null,
+): boolean =>
+  entry !== null &&
+  (entry.status === 'AWAITING_PAYMENT' || entry.status === 'ENTITLED');
+
 // Yearの参加費の導線はUltrasの案内を添えず、プロダクトを表示できない間も押下の後の拒否で理由を示す。
 // 返金の対象は、決済の有無と返金の依頼の状態を知るサーバーの値に従う
 export function yearEntryInputOf(

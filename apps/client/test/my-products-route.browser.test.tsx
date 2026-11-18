@@ -26,6 +26,7 @@ import type { WeekEntryPanelView } from '../src/components/week-tournament/week-
 import {
   ClientMyProductsDocument,
   ClientMyWeekEntryDocument,
+  ClientMyYearEntryDocument,
   type ClientMyProductsQuery,
   type ClientMyProductsQueryVariables,
 } from '../src/graphql/generated/graphql.ts';
@@ -191,7 +192,7 @@ const productsFrom = (start: number, count: number): MyProductNode[] =>
 
 type Responder = (variables: ClientMyProductsQueryVariables) => unknown;
 
-// 登録された参加費の導線の取得には、ハンドルごとの参加の枠(無ければnull)を返す
+// 登録されたWeekの参加費の導線の取得には、ハンドルごとの参加の枠(無ければnull)を返し、Yearの参加費の導線の取得には枠が無いことを返す
 const respond = (
   responder: Responder,
   weekEntries: Readonly<Record<string, WeekEntryPanelView>> = {},
@@ -209,6 +210,9 @@ const respond = (
           ok: true,
           data: { myWeekEntry: weekEntries[productHandle] ?? null },
         });
+      }
+      if (document === ClientMyYearEntryDocument) {
+        return Promise.resolve({ ok: true, data: { myYearEntry: null } });
       }
       throw new Error('想定していない操作が実行されました。');
     },

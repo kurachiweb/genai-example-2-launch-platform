@@ -22,6 +22,7 @@ import {
   type ClientMyProductQuery,
   ClientMyProductsDocument,
   ClientMyWeekEntryDocument,
+  ClientMyYearEntryDocument,
   ClientProductCategoriesDocument,
   type ClientProductCategoriesQuery,
   ClientProductHandleAvailabilityDocument,
@@ -198,6 +199,9 @@ export const respond = ({
     }
     if (document === ClientMyWeekEntryDocument) {
       return ok({ myWeekEntry: weekEntry });
+    }
+    if (document === ClientMyYearEntryDocument) {
+      return ok({ myYearEntry: null });
     }
     if (document === ClientMyProductsDocument) {
       return ok({

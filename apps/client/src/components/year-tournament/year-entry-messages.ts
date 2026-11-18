@@ -44,6 +44,9 @@ export const YEAR_ENTRY_EXCLUDED_OVER_CAPACITY_MESSAGE =
 
 export const YEAR_ENTRY_REFUND_MESSAGE = '参加費は自動で全額返金されます。';
 
+export const YEAR_ENTRY_DELETE_NOTICE =
+  'このプロダクトを削除するとYearトーナメントの参加資格を失います。支払った参加費は自動で全額返金されます。';
+
 // 「<週の表記>のProduct of the Week受賞により、<年>年のYearトーナメントに参加できます。決勝は<決勝日>です。」の決勝日の前後の文言
 export const yearEntryIntroMessage = (
   weekLabel: string,

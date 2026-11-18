@@ -11,6 +11,7 @@ import type {
 import { ScreenshotGallerySection } from '../components/product-page/screenshot-gallery-section.tsx';
 import { TrophyShelf } from '../components/trophy/trophy-shelf.tsx';
 import { WeekEntryOwnerAction } from '../components/week-tournament/week-entry-owner-action.tsx';
+import { YearEntryOwnerAction } from '../components/year-tournament/year-entry-owner-action.tsx';
 
 // マッチ履歴の各ローンチのブロックに並べる区画の登録箇所。各specが自分の区画を追記する
 export const PRODUCT_LAUNCH_SECTIONS: readonly ProductLaunchSection[] =
@@ -29,6 +30,11 @@ export const PRODUCT_OWNER_ACTIONS: readonly ProductOwnerAction[] =
       id: 'tournament-week.entry',
       order: 10,
       component: WeekEntryOwnerAction,
+    },
+    {
+      id: 'tournament-year.entry',
+      order: 20,
+      component: YearEntryOwnerAction,
     },
   ]);
 

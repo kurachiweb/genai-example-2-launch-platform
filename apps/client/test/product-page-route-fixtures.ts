@@ -6,6 +6,7 @@ import {
   ClientLaunchCommentCountsDocument,
   ClientLaunchCommentsDocument,
   ClientMyWeekEntryDocument,
+  ClientMyYearEntryDocument,
   ClientProductLiveMatchDocument,
   ClientProductOwnerStatusDocument,
   ClientProductPageDocument,
@@ -72,7 +73,7 @@ const isFailure = (value: unknown): boolean =>
   'ok' in value &&
   value.ok === false;
 
-// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄・トロフィー・Weekトーナメントの参加費の導線)の取得には、評価もコメントも受賞も参加の枠も無い結果を返す
+// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄・トロフィー・WeekとYearのトーナメントの参加費の導線)の取得には、評価もコメントも受賞も参加の枠も無い結果を返す
 export const respondOtherSections = (
   document: unknown,
   variables: unknown,
@@ -95,6 +96,9 @@ export const respondOtherSections = (
   }
   if (document === ClientMyWeekEntryDocument) {
     return Promise.resolve(ok({ myWeekEntry: null }));
+  }
+  if (document === ClientMyYearEntryDocument) {
+    return Promise.resolve(ok({ myYearEntry: null }));
   }
   if (document === ClientLaunchCommentCountsDocument) {
     return Promise.resolve(ok({ launchCommentCounts: [] }));

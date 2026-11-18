@@ -9,6 +9,7 @@ import { LaunchCommentsSection } from '../engagement/launch-comments-section.tsx
 import { RatingSection } from '../engagement/rating-section.tsx';
 import { TrophyShelf } from '../trophy/trophy-shelf.tsx';
 import { WeekEntryOwnerAction } from '../week-tournament/week-entry-owner-action.tsx';
+import { YearEntryOwnerAction } from '../year-tournament/year-entry-owner-action.tsx';
 import { ProductDescriptionSection } from './product-description-section.tsx';
 import { PRODUCT_PAGE_PLACEMENTS } from './product-page-section-order.ts';
 import type { ProductPagePlacement } from './product-page-section-types.ts';
@@ -56,11 +57,15 @@ describe('プロダクト詳細ページの登録箇所', () => {
     expect(PRODUCT_LAUNCH_SECTIONS[0]?.component).toBe(LaunchCommentsSection);
   });
 
-  test('投稿者本人向けの操作にはtournament-weekの参加費の導線(10)を登録する', () => {
+  test('投稿者本人向けの操作にはtournament-weekの参加費の導線(10)とtournament-yearの参加費の導線(20)を登録する', () => {
     expect(
       PRODUCT_OWNER_ACTIONS.map(({ id, order }) => ({ id, order })),
-    ).toStrictEqual([{ id: 'tournament-week.entry', order: 10 }]);
+    ).toStrictEqual([
+      { id: 'tournament-week.entry', order: 10 },
+      { id: 'tournament-year.entry', order: 20 },
+    ]);
     expect(PRODUCT_OWNER_ACTIONS[0]?.component).toBe(WeekEntryOwnerAction);
+    expect(PRODUCT_OWNER_ACTIONS[1]?.component).toBe(YearEntryOwnerAction);
   });
 
   test.each([
