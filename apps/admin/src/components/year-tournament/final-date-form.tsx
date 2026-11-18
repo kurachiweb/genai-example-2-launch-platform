@@ -5,7 +5,7 @@ import {
   ConfirmActionDialog,
   type ConfirmActionInput,
 } from '../../../lib/components/admin/confirm-action-dialog.tsx';
-import { useDisplayPreferences } from '../../../lib/components/datetime/use-display-preferences.ts';
+import { DateTime } from '../../../lib/components/datetime/date-time.tsx';
 import { notify } from '../../../lib/components/feedback/notify.ts';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { Label } from '../../../lib/components/ui/label/label.tsx';
@@ -15,7 +15,6 @@ import { SelectItem } from '../../../lib/components/ui/select/select-item.tsx';
 import { SelectTrigger } from '../../../lib/components/ui/select/select-trigger.tsx';
 import { SelectValue } from '../../../lib/components/ui/select/select-value.tsx';
 import { graphqlMutationOptions } from '../../../lib/start/graphql/graphql-query-options.ts';
-import { formatDateTime } from '../../../lib/utilities/datetime/date-time-formats.ts';
 import {
   errorMessageOf,
   GraphQLClientError,
@@ -27,6 +26,7 @@ import {
 } from '../../graphql/admin-year-final-date.ts';
 import { AdminUpdateYearFinalDateDocument } from '../../graphql/generated/graphql.ts';
 import {
+  FINAL_DATE_CONFIRM_DESCRIPTION,
   FINAL_DATE_CONFIRM_LABEL,
   FINAL_DATE_LABEL,
   FINAL_DATE_LOCKED_MESSAGE,
@@ -34,7 +34,6 @@ import {
   FINAL_DATE_SAVED_MESSAGE,
   FINAL_DATE_SUBMIT_LABEL,
   FINAL_DATE_VERSION_CONFLICT_MESSAGE,
-  finalDateConfirmDescriptionOf,
   finalDateConfirmTitleOf,
   finalDateViolationMessageOf,
   formatFinalDateLabel,
@@ -90,11 +89,11 @@ const defaultChoiceOf = ({
 }: AdminYearFinalDateSetting): string | undefined =>
   choices.includes(finalDate) ? finalDate : choices[0];
 
-interface FinalDateChoiceTextProps {
+interface FinalDateTextProps {
   readonly date: string;
 }
 
-function FinalDateChoiceText({ date }: FinalDateChoiceTextProps) {
+function FinalDateText({ date }: FinalDateTextProps) {
   return <time dateTime={date}>{formatFinalDateLabel(date)}</time>;
 }
 
@@ -105,7 +104,6 @@ export interface FinalDateFormProps {
 // 最上位管理者が変更期限より前の年の決勝実施日を、サーバーが返した候補から選んで確認の後に保存する欄
 export function FinalDateForm({ setting }: FinalDateFormProps) {
   const selectId = useId();
-  const preferences = useDisplayPreferences();
   const queryClient = useQueryClient();
   const updateFinalDate = useMutation(
     graphqlMutationOptions(AdminUpdateYearFinalDateDocument),
@@ -132,6 +130,7 @@ export function FinalDateForm({ setting }: FinalDateFormProps) {
       : defaultChoice;
   const confirmDate = pendingDate ?? choice;
   const schedule = scheduleOfChoice(setting, confirmDate);
+  const confirmTitle = finalDateConfirmTitleOf(year);
 
   const closeDialog = (): void => {
     setPendingDate(undefined);
@@ -178,7 +177,7 @@ export function FinalDateForm({ setting }: FinalDateFormProps) {
           <SelectContent>
             {choices.map((date) => (
               <SelectItem key={date} value={date}>
-                <FinalDateChoiceText date={date} />
+                <FinalDateText date={date} />
               </SelectItem>
             ))}
           </SelectContent>
@@ -199,15 +198,22 @@ export function FinalDateForm({ setting }: FinalDateFormProps) {
             closeDialog();
           }
         }}
-        title={finalDateConfirmTitleOf(year, confirmDate)}
-        description={finalDateConfirmDescriptionOf({
-          acceptUntil: formatDateTime(
-            schedule.acceptUntil,
-            'longDateTime',
-            preferences,
-          ),
-          drawAt: formatDateTime(schedule.drawAt, 'longDateTime', preferences),
-        })}
+        title={
+          <>
+            {confirmTitle.before}
+            <FinalDateText date={confirmDate} />
+            {confirmTitle.after}
+          </>
+        }
+        description={
+          <>
+            {FINAL_DATE_CONFIRM_DESCRIPTION.beforeAcceptUntil}
+            <DateTime value={schedule.acceptUntil} format="longDateTime" />
+            {FINAL_DATE_CONFIRM_DESCRIPTION.beforeDrawAt}
+            <DateTime value={schedule.drawAt} format="longDateTime" />
+            {FINAL_DATE_CONFIRM_DESCRIPTION.after}
+          </>
+        }
         confirmLabel={FINAL_DATE_CONFIRM_LABEL}
         reason="optional"
         audited

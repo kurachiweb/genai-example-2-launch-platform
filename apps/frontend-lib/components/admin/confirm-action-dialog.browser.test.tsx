@@ -1,4 +1,4 @@
-import { type RefObject, useRef, useState } from 'react';
+import { type ReactNode, type RefObject, useRef, useState } from 'react';
 import { afterEach, describe, expect, type Mock, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
@@ -31,9 +31,31 @@ const AFTER_ACTION = '一覧へ戻る';
 
 const FAILURE_ACTION = '一覧を開く';
 
+const NODE_TITLE = '2027年の決勝実施日を2027年6月6日(日)に変更しますか?';
+
+const NODE_DESCRIPTION =
+  '受付期限は2027年6月1日(火) 16:00になり、対象となる期間も変わります。';
+
+const NODE_TITLE_CONTENT = (
+  <>
+    2027年の決勝実施日を<time dateTime="2027-06-06">2027年6月6日(日)</time>
+    に変更しますか?
+  </>
+);
+
+const NODE_DESCRIPTION_CONTENT = (
+  <>
+    受付期限は
+    <time dateTime="2027-06-01T07:00:00.000Z">2027年6月1日(火) 16:00</time>
+    になり、対象となる期間も変わります。
+  </>
+);
+
 type OnConfirm = ConfirmActionDialogProps['onConfirm'];
 
 interface HarnessProps {
+  readonly title?: ReactNode;
+  readonly description?: ReactNode;
   readonly reason: ConfirmActionDialogProps['reason'];
   readonly audited?: boolean;
   readonly onConfirm: Mock<OnConfirm>;
@@ -43,6 +65,8 @@ interface HarnessProps {
 }
 
 function Harness({
+  title = TITLE,
+  description = DESCRIPTION,
   reason,
   audited = true,
   onConfirm,
@@ -70,8 +94,8 @@ function Harness({
       <ConfirmActionDialog
         open={open}
         onOpenChange={setOpen}
-        title={TITLE}
-        description={DESCRIPTION}
+        title={title}
+        description={description}
         confirmLabel={CONFIRM_LABEL}
         reason={reason}
         audited={audited}
@@ -134,6 +158,38 @@ describe('ConfirmActionDialog', () => {
     await expect.element(dialog()).toHaveAccessibleDescription(DESCRIPTION);
     await expect.element(confirmButton()).toBeVisible();
     await expect.element(cancelButton()).toBeVisible();
+  });
+
+  test('題名と説明に日時の<time>などの要素を含めると、要素の文字を含む題名と説明をダイアログの名前と説明にし、要素をそのまま描く', async () => {
+    await render(
+      <Harness
+        title={NODE_TITLE_CONTENT}
+        description={NODE_DESCRIPTION_CONTENT}
+        reason="none"
+        onConfirm={confirmMock()}
+      />,
+    );
+
+    await page.getByRole('button', { name: OPENER, exact: true }).click();
+
+    const nodeDialog = page.getByRole('dialog', { name: NODE_TITLE });
+    await expect.element(nodeDialog).toBeVisible();
+    await expect
+      .element(nodeDialog)
+      .toHaveAccessibleDescription(NODE_DESCRIPTION);
+    const heading = nodeDialog.getByRole('heading', { name: NODE_TITLE });
+    await expect.element(heading).toBeVisible();
+    expect(
+      heading.element().querySelector('time')?.getAttribute('datetime'),
+    ).toBe('2027-06-06');
+    const describedBy = nodeDialog.element().getAttribute('aria-describedby');
+    expect(
+      document
+        .getElementById(describedBy ?? '')
+        ?.querySelector('time')
+        ?.getAttribute('datetime'),
+    ).toBe('2027-06-01T07:00:00.000Z');
+    expect(await runAxe(document.body)).toStrictEqual([]);
   });
 
   describe('理由が必須のとき', () => {

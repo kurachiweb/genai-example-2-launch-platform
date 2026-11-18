@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  FINAL_DATE_CONFIRM_DESCRIPTION,
   FINAL_DATE_CONFIRM_LABEL,
   FINAL_DATE_LOCKED_MESSAGE,
   FINAL_DATE_LOCKED_NOTICE,
@@ -14,7 +15,6 @@ import {
   FINAL_DATE_VERSION_CONFLICT_MESSAGE,
   FINAL_DATE_VIOLATION_REASONS,
   type FinalDateViolationReason,
-  finalDateConfirmDescriptionOf,
   finalDateConfirmTitleOf,
   finalDateViolationMessageOf,
   formatFinalDateLabel,
@@ -134,18 +134,20 @@ describe('選択と保存の文言', () => {
     expect(FINAL_DATE_CONFIRM_LABEL).toBe('保存する');
   });
 
-  test('確認のダイアログの題名は対象年と変更後の日付を曜日つきで示す', () => {
-    expect(finalDateConfirmTitleOf(2027, '2027-06-06')).toBe(
+  test('確認のダイアログの題名は対象年を示し、変更後の日付の前後の文言を持つ', () => {
+    const { before, after } = finalDateConfirmTitleOf(2027);
+
+    expect(`${before}${formatFinalDateLabel('2027-06-06')}${after}`).toBe(
       '2027年の決勝実施日を2027年6月6日(日)に変更しますか?',
     );
   });
 
-  test('確認のダイアログの説明は変更後の受付期限と組み合わせ決定の日時を示し、Week優勝の期間も変わる旨を添える', () => {
+  test('確認のダイアログの説明は変更後の受付期限と組み合わせ決定の日時の前後の文言を持ち、Week優勝の期間も変わる旨を添える', () => {
+    const { beforeAcceptUntil, beforeDrawAt, after } =
+      FINAL_DATE_CONFIRM_DESCRIPTION;
+
     expect(
-      finalDateConfirmDescriptionOf({
-        acceptUntil: '2027年6月1日(火) 16:00',
-        drawAt: '2027年6月1日(火) 16:45',
-      }),
+      `${beforeAcceptUntil}2027年6月1日(火) 16:00${beforeDrawAt}2027年6月1日(火) 16:45${after}`,
     ).toBe(
       '受付期限は2027年6月1日(火) 16:00、組み合わせ決定は2027年6月1日(火) 16:45になり、対象となるWeek優勝の期間も変わります。',
     );

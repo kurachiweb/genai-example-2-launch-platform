@@ -124,8 +124,9 @@ export async function saveFinalDate(
   reason: string,
 ): Promise<void> {
   await submitButton(card).click();
+  const { before, after } = finalDateConfirmTitleOf(year);
   const dialog = page.getByRole('dialog', {
-    name: finalDateConfirmTitleOf(year, date),
+    name: `${before}${formatFinalDateLabel(date)}${after}`,
   });
   await expect(dialog).toContainText(AUDITED_ACTION_NOTICE);
   await dialog.getByLabel(OPTIONAL_REASON_LABEL, { exact: true }).fill(reason);

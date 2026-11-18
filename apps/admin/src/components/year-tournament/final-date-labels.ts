@@ -114,16 +114,18 @@ export const FINAL_DATE_CONFIRM_LABEL = '保存する';
 
 export const FINAL_DATE_SAVED_MESSAGE = '決勝実施日を保存しました。';
 
-export const finalDateConfirmTitleOf = (year: number, date: string): string =>
-  `${yearLabelOf(year)}の決勝実施日を${formatFinalDateLabel(date)}に変更しますか?`;
+// 「<年>年の決勝実施日を<日付>に変更しますか?」の日付の前後の文言
+export const finalDateConfirmTitleOf = (
+  year: number,
+): { readonly before: string; readonly after: string } =>
+  Object.freeze({
+    before: `${yearLabelOf(year)}の決勝実施日を`,
+    after: 'に変更しますか?',
+  });
 
-export interface FinalDateScheduleLabels {
-  readonly acceptUntil: string;
-  readonly drawAt: string;
-}
-
-export const finalDateConfirmDescriptionOf = ({
-  acceptUntil,
-  drawAt,
-}: FinalDateScheduleLabels): string =>
-  `受付期限は${acceptUntil}、組み合わせ決定は${drawAt}になり、対象となるWeek優勝の期間も変わります。`;
+// 「受付期限は<日時>、組み合わせ決定は<日時>になり、対象となるWeek優勝の期間も変わります。」の日時の前後の文言
+export const FINAL_DATE_CONFIRM_DESCRIPTION = Object.freeze({
+  beforeAcceptUntil: '受付期限は',
+  beforeDrawAt: '、組み合わせ決定は',
+  after: 'になり、対象となるWeek優勝の期間も変わります。',
+});

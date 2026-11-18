@@ -234,12 +234,47 @@ describe('確認のダイアログ', () => {
     await expect.element(dialog().getByText(REASON_NOTICE)).toBeVisible();
     await expect.element(dialog().getByText(AUDITED_NOTICE)).toBeVisible();
     await expect.element(confirmButton()).toBeVisible();
+    await expect
+      .element(page.getByRole('dialog', { name: CONFIRM_TITLE }))
+      .toHaveAccessibleDescription(CONFIRM_DESCRIPTION);
 
     await userEvent.click(cancelButton());
 
     await expect.element(dialog()).not.toBeInTheDocument();
     await expect.element(submitButton()).toHaveFocus();
     expect(update).not.toHaveBeenCalled();
+  });
+
+  test('題名の選んだ日付は業務日付の<time>、説明の変更後の受付期限と組み合わせ決定は時点のISO形式の<time>で示す', async () => {
+    respond();
+    await renderForm(NEXT_YEAR_SETTING);
+
+    await openConfirm();
+
+    const heading = dialog().getByRole('heading', { name: CONFIRM_TITLE });
+    await expect.element(heading).toBeVisible();
+    const headingTimes = [...heading.element().querySelectorAll('time')];
+    expect(
+      headingTimes.map((element) => [
+        element.getAttribute('datetime'),
+        element.textContent,
+      ]),
+    ).toStrictEqual([['2027-06-06', '2027年6月6日(日)']]);
+    const descriptionId = dialog().element().getAttribute('aria-describedby');
+    const descriptionTimes = [
+      ...(document
+        .getElementById(descriptionId ?? '')
+        ?.querySelectorAll('time') ?? []),
+    ];
+    expect(
+      descriptionTimes.map((element) => [
+        element.getAttribute('datetime'),
+        element.textContent,
+      ]),
+    ).toStrictEqual([
+      ['2027-06-01T07:00:00.000Z', '2027年6月1日(火) 16:00'],
+      ['2027-06-01T07:45:00.000Z', '2027年6月1日(火) 16:45'],
+    ]);
   });
 
   test('変更後の日時は閲覧者のタイムゾーンで示す', async () => {

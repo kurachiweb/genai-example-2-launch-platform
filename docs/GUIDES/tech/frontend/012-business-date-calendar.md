@@ -220,6 +220,27 @@ export const scheduleOfChoice = (
 
 - 選んだだけで保存していない日の期限は、規則の日数と時刻を画面に写さず、サーバーが返した現在の期限を、現在の値と選んだ日の暦日の差だけずらして求める。日数と時刻をサーバーと二重に持たない。
 - 期限は表示のタイムゾーンで示す。
+- 題名と説明の中の選んだ日は業務日付の`<time dateTime="YYYY-MM-DD">`、期限は日時の表示部品の`<time>`で示す(「[業務日付と開始の日時の表示](#業務日付と開始の日時の表示)」)。題名と説明の文言は、日付と日時の前後の文字列に分けて持ち、画面の部品で`<time>`と組み合わせて`ConfirmActionDialog`の`title`・`description`へ要素として渡す。
+
+```tsx
+<ConfirmActionDialog
+  title={
+    <>
+      {title.before}
+      <BusinessDateText date={selected} />
+      {title.after}
+    </>
+  }
+  description={
+    <>
+      {description.beforeDeadline}
+      <DateTime value={schedule.acceptUntil} format="longDateTime" />
+      {description.after}
+    </>
+  }
+  {...rest}
+/>
+```
 
 ### 拒否と版の競合
 

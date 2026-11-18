@@ -43,6 +43,25 @@ export const WithoutReason: Story = {
   },
 };
 
+export const WithDateTimeElements: Story = {
+  args: {
+    title: (
+      <>
+        2027年の決勝実施日を<time dateTime="2027-06-06">2027年6月6日(日)</time>
+        に変更しますか?
+      </>
+    ),
+    description: (
+      <>
+        受付期限は
+        <time dateTime="2027-06-01T07:00:00.000Z">2027年6月1日(火) 16:00</time>
+        になり、対象となる期間も変わります。
+      </>
+    ),
+    confirmLabel: '保存する',
+  },
+};
+
 export const ReasonTooLong: Story = {
   args: { reason: 'required' },
   play: async ({ userEvent }) => {

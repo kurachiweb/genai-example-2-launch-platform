@@ -29,8 +29,9 @@ export interface ConfirmActionInput {
 export interface ConfirmActionDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-  readonly title: string;
-  readonly description: string;
+  // 題名は見出し(<h2>)、説明は段落(<p>)の中に描くため、文字列か、日時の<time>などの文中に置ける要素だけを渡す
+  readonly title: ReactNode;
+  readonly description: ReactNode;
   readonly confirmLabel: string;
   readonly reason: ConfirmActionReason;
   readonly audited: boolean;
