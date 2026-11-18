@@ -11,6 +11,7 @@ import type { ProductPageModel, ProductPageRedirectModel, ProductPageScreenshotM
 import type { LaunchCommentModel } from '../modules/engagement/engagement-views.ts';
 import type { WeekTournamentRoundBoardModel, BracketRoundSource, BracketNodeSource, BracketSlotSource } from '../modules/week-tournament/mappers.ts';
 import type { YearTournamentRoundBoardModel } from '../modules/year-tournament/mappers.ts';
+import type { SponsorableProductModel, SponsoredAdModel, SponsorshipProductModel } from '../modules/sponsorship/sponsorship-views.ts';
 import type { HelpArticleAuthorSource } from '../modules/help/author-fields.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
@@ -283,6 +284,16 @@ export type AdminViewer = {
   remainingRecoveryCodes: Scalars['Int']['output'];
   role: AdminRole;
   title?: Maybe<Scalars['String']['output']>;
+};
+
+/** スポンサー広告の申込 */
+export type ApplySponsorshipInput = {
+  /** 掲載終了日(業務日付のYYYY-MM-DD) */
+  endsOn: Scalars['String']['input'];
+  productId: Scalars['ID']['input'];
+  /** 掲載開始日(業務日付のYYYY-MM-DD) */
+  startsOn: Scalars['String']['input'];
+  tier: SponsorshipTier;
 };
 
 /** 監査ログの詳細の1項目 */
@@ -1163,6 +1174,8 @@ export type Mutation = {
   adminLogin: AdminSecondFactorRequired;
   /** この端末のログアウト */
   adminLogout: Scalars['Boolean']['output'];
+  /** 申込を未決済で記録し、決済を始めて決済画面の経路に使う購入のIDを返す */
+  applySponsorship: CheckoutStart;
   /** 閲覧者のプロダクトへの評価を物理削除する。評価が無くても成功する */
   cancelProductRating: ProductRating;
   /** メールアドレスが確認済みの利用者がマッチ中のマッチのUpvoteを取り消す。Upvoteしていなくても成功する。更新後のマッチを返す */
@@ -1270,6 +1283,8 @@ export type Mutation = {
   resetAdminPassword: Scalars['Boolean']['output'];
   /** パスワードリセットの確定 */
   resetPassword: Scalars['Boolean']['output'];
+  /** 本人の開始日前の未決済の申込の決済を始め直す */
+  resumeSponsorshipCheckout: CheckoutStart;
   /** 操作している端末以外のセッションの一括の失効。失効させた件数を返す */
   revokeOtherSessions: Scalars['Int']['output'];
   /** セッションの個別の失効 */
@@ -1327,6 +1342,11 @@ export type Mutation = {
 export type MutationAdminLoginArgs = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
+};
+
+
+export type MutationApplySponsorshipArgs = {
+  input: ApplySponsorshipInput;
 };
 
 
@@ -1621,6 +1641,11 @@ export type MutationResetPasswordArgs = {
 };
 
 
+export type MutationResumeSponsorshipCheckoutArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationRevokeSessionArgs = {
   id: Scalars['ID']['input'];
 };
@@ -1795,6 +1820,43 @@ export type MyProfile = {
   previousHandle?: Maybe<Scalars['String']['output']>;
   suspended: Scalars['Boolean']['output'];
   websites: Array<ProfileWebsite>;
+};
+
+/** 自分の広告一覧の1件 */
+export type MySponsorship = {
+  __typename?: 'MySponsorship';
+  /** 支払った金額。未決済はnull */
+  amountPaid?: Maybe<Money>;
+  /** 未決済で開始日が今日以降なら真。決済を再開できる */
+  canResume: Scalars['Boolean']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  /** 開始日と終了日を含む日数 */
+  days: Scalars['Int']['output'];
+  /** 表示停止の日数分の返金。精算前・無ければnull */
+  displayStopRefund?: Maybe<SponsorshipRefund>;
+  /** 掲載終了日(業務日付のYYYY-MM-DD) */
+  endsOn: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 論理削除済みのプロダクトはnull */
+  product?: Maybe<SponsorshipProduct>;
+  /** 掲載開始日(業務日付のYYYY-MM-DD) */
+  startsOn: Scalars['String']['output'];
+  status: SponsorshipStatus;
+  /** 強制終了日(業務日付のYYYY-MM-DD)。強制終了していなければnull */
+  terminatedOn?: Maybe<Scalars['String']['output']>;
+  terminationReason?: Maybe<Scalars['String']['output']>;
+  /** 強制終了の未掲載日数分の返金。無ければnull */
+  terminationRefund?: Maybe<SponsorshipRefund>;
+  tier: SponsorshipTier;
+};
+
+/** 自分の広告一覧 */
+export type MySponsorshipConnection = {
+  __typename?: 'MySponsorshipConnection';
+  /** 次の基準時刻の0:00。掲載予定から掲載中・掲載中から終了への切り替わりで取り直す */
+  nextDayStartsAt: Scalars['DateTime']['output'];
+  nodes: Array<MySponsorship>;
+  pageInfo: PageInfo;
 };
 
 /** 通知種別ごとの受信可否 */
@@ -2255,6 +2317,8 @@ export type QualifierOutcome =
 
 export type Query = {
   __typename?: 'Query';
+  /** 本人のプロダクトの掲載中・掲載予定の広告の件数。本人のプロダクトでなければ0 */
+  activeSponsorshipCount: Scalars['Int']['output'];
   /** 招待中を含む全管理者を登録の新しい順に返す */
   adminAccounts: Array<AdminAccount>;
   /** 見つからなければnull */
@@ -2331,6 +2395,8 @@ export type Query = {
   myProfile: MyProfile;
   /** ログイン中の端末の一覧 */
   mySessions: Array<UserSessionSummary>;
+  /** ログイン中の利用者の申込の新しい順(1〜20件) */
+  mySponsorships: MySponsorshipConnection;
   /** 投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull */
   myWeekEntry?: Maybe<WeekEntryPanel>;
   /** 投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull */
@@ -2365,6 +2431,12 @@ export type Query = {
   publicProfile?: Maybe<PublicProfileResult>;
   /** トップページの当日の予選。開始済みの予選を対戦カードと不戦勝に分けて返す。ログインを求めない */
   qualifierBoard: QualifierBoard;
+  /** 掲載中の広告。ログインを求めない */
+  sponsoredPlacements: SponsoredPlacements;
+  /** 料金ページのスポンサー広告の価格と申込の対象。ログインを求めない */
+  sponsorshipOffer: SponsorshipOffer;
+  /** 申込の対象のプロダクトとティアの掲載期間の選べる範囲。対象外はsponsorship_product_ineligible、形式の違う開始日はvalidation_error */
+  sponsorshipPeriodWindow: SponsorshipPeriodWindow;
   /** APIサーバーの時刻とデータベースへの到達可否 */
   systemStatus: SystemStatus;
   /** Ultrasの月額の価格と新規の加入の受付の状態。ログイン不要 */
@@ -2389,6 +2461,11 @@ export type Query = {
   yearFinalDateSettings: YearFinalDateSettings;
   /** トップページのYearトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない */
   yearTournamentBoard: YearTournamentBoard;
+};
+
+
+export type QueryActiveSponsorshipCountArgs = {
+  productHandle: Scalars['String']['input'];
 };
 
 
@@ -2528,6 +2605,12 @@ export type QueryMyProductsArgs = {
 };
 
 
+export type QueryMySponsorshipsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first: Scalars['Int']['input'];
+};
+
+
 export type QueryMyWeekEntryArgs = {
   productHandle: Scalars['String']['input'];
 };
@@ -2587,6 +2670,13 @@ export type QueryProfileAwardsArgs = {
 
 export type QueryPublicProfileArgs = {
   handle: Scalars['String']['input'];
+};
+
+
+export type QuerySponsorshipPeriodWindowArgs = {
+  productId: Scalars['ID']['input'];
+  startsOn?: InputMaybe<Scalars['String']['input']>;
+  tier: SponsorshipTier;
 };
 
 
@@ -2691,6 +2781,127 @@ export type SecondFactorRequired = {
   /** 第2要素の段階の要求と組にする値 */
   challenge: Scalars['String']['output'];
   expiresAt: Scalars['DateTime']['output'];
+};
+
+/** 申込の対象のプロダクト */
+export type SponsorableProduct = {
+  __typename?: 'SponsorableProduct';
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  logo?: Maybe<MediaImage>;
+  name: Scalars['String']['output'];
+};
+
+/** 広告スペースに表示する広告 */
+export type SponsoredAd = {
+  __typename?: 'SponsoredAd';
+  /** 申込のID */
+  id: Scalars['ID']['output'];
+  logo?: Maybe<MediaImage>;
+  productName: Scalars['String']['output'];
+  /** Silverはnull */
+  tagline?: Maybe<Scalars['String']['output']>;
+  tier: SponsorshipTier;
+  /** 外部WebサイトURL。検証を通らなければnull */
+  websiteUrl?: Maybe<Scalars['String']['output']>;
+};
+
+/** ティアごとの広告。同じティアの中は照会ごとに無作為の順 */
+export type SponsoredPlacements = {
+  __typename?: 'SponsoredPlacements';
+  gold: Array<SponsoredAd>;
+  legend: Array<SponsoredAd>;
+  silver: Array<SponsoredAd>;
+};
+
+/** 選べない日の範囲(両端を含む業務日付のYYYY-MM-DD) */
+export type SponsorshipDateRange = {
+  __typename?: 'SponsorshipDateRange';
+  from: Scalars['String']['output'];
+  reason: SponsorshipDateUnavailableReason;
+  to: Scalars['String']['output'];
+};
+
+/** 選べない理由。範囲の外の日の理由(今日より前・365日後より後・開始日より前・366日を超える)は画面が範囲の種類から決める */
+export type SponsorshipDateUnavailableReason =
+  | 'OVERLAP';
+
+/** 選べる業務日付。earliestからlatestまでのうちunavailableの範囲を除く日を選べる */
+export type SponsorshipDateWindow = {
+  __typename?: 'SponsorshipDateWindow';
+  earliest: Scalars['String']['output'];
+  latest: Scalars['String']['output'];
+  unavailable: Array<SponsorshipDateRange>;
+};
+
+/** 料金ページのスポンサー広告の区画 */
+export type SponsorshipOffer = {
+  __typename?: 'SponsorshipOffer';
+  /** 閲覧者の申込の対象のプロダクトの名称の順。未ログインはnull */
+  eligibleProducts?: Maybe<Array<SponsorableProduct>>;
+  /** Legend・Gold・Silverの順 */
+  tiers: Array<SponsorshipTierOffer>;
+};
+
+/** 掲載期間の選べる範囲 */
+export type SponsorshipPeriodWindow = {
+  __typename?: 'SponsorshipPeriodWindow';
+  /** 業務日付の今日(YYYY-MM-DD) */
+  businessToday: Scalars['String']['output'];
+  /** 終了日の選べる範囲。startsOnを渡さない、またはstartsOnが選べない日ならnull */
+  end?: Maybe<SponsorshipDateWindow>;
+  /** 次の基準時刻の0:00。画面はこの時点で取り直す */
+  nextDayStartsAt: Scalars['DateTime']['output'];
+  /** 開始日の選べる範囲 */
+  start: SponsorshipDateWindow;
+};
+
+/** 自分の広告の対象のプロダクト */
+export type SponsorshipProduct = {
+  __typename?: 'SponsorshipProduct';
+  handle: Scalars['String']['output'];
+  /** プロダクトのページを表示できる */
+  listed: Scalars['Boolean']['output'];
+  logo?: Maybe<MediaImage>;
+  name: Scalars['String']['output'];
+};
+
+/** 日割りで依頼した返金 */
+export type SponsorshipRefund = {
+  __typename?: 'SponsorshipRefund';
+  /** 依頼した額。残りの全額で依頼したときはnull */
+  amount?: Maybe<Money>;
+  days: Scalars['Int']['output'];
+  status: SponsorshipRefundStatus;
+};
+
+/** 依頼した返金の状態。REQUESTEDは依頼済み、ALREADY_REFUNDEDは返金できる残りが無く返金済み、REJECTEDは拒否 */
+export type SponsorshipRefundStatus =
+  | 'ALREADY_REFUNDED'
+  | 'REJECTED'
+  | 'REQUESTED';
+
+/** 掲載状況。PAUSEDはプロダクトの非公開化か投稿者の停止による表示停止中 */
+export type SponsorshipStatus =
+  | 'ACTIVE'
+  | 'ENDED'
+  | 'PAUSED'
+  | 'PENDING_PAYMENT'
+  | 'SCHEDULED'
+  | 'TERMINATED';
+
+/** スポンサー広告のティア */
+export type SponsorshipTier =
+  | 'GOLD'
+  | 'LEGEND'
+  | 'SILVER';
+
+/** ティアごとの1日あたりの税込の価格 */
+export type SponsorshipTierOffer = {
+  __typename?: 'SponsorshipTierOffer';
+  tier: SponsorshipTier;
+  /** 決済サービスから取得できなければnull */
+  unitPrice?: Maybe<Money>;
 };
 
 export type SupporterConnection = {
@@ -3405,6 +3616,7 @@ export type ResolversTypes = {
   AdminSecondFactorRequired: ResolverTypeWrapper<AdminSecondFactorRequired>;
   AdminTotpSetup: ResolverTypeWrapper<AdminTotpSetup>;
   AdminViewer: ResolverTypeWrapper<AdminViewerSource>;
+  ApplySponsorshipInput: ApplySponsorshipInput;
   AuditDetail: ResolverTypeWrapper<AuditDetail>;
   AuditLogEntry: ResolverTypeWrapper<AuditLogEntry>;
   AuditLogFilterInput: AuditLogFilterInput;
@@ -3513,6 +3725,8 @@ export type ResolversTypes = {
   MyProductRedirect: ResolverTypeWrapper<MyProductRedirect>;
   MyProductResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['MyProductResult']>;
   MyProfile: ResolverTypeWrapper<MyProfileModel>;
+  MySponsorship: ResolverTypeWrapper<Omit<MySponsorship, 'product'> & { product?: Maybe<ResolversTypes['SponsorshipProduct']> }>;
+  MySponsorshipConnection: ResolverTypeWrapper<Omit<MySponsorshipConnection, 'nodes'> & { nodes: Array<ResolversTypes['MySponsorship']> }>;
   NotificationPreference: ResolverTypeWrapper<NotificationPreference>;
   NotificationSenderInfo: ResolverTypeWrapper<NotificationSenderInfo>;
   NotificationSenderInfoState: ResolverTypeWrapper<NotificationSenderInfoState>;
@@ -3571,6 +3785,20 @@ export type ResolversTypes = {
   SaveLegalDocumentDraftInput: SaveLegalDocumentDraftInput;
   SecondFactorInput: SecondFactorInput;
   SecondFactorRequired: ResolverTypeWrapper<SecondFactorRequired>;
+  SponsorableProduct: ResolverTypeWrapper<SponsorableProductModel>;
+  SponsoredAd: ResolverTypeWrapper<SponsoredAdModel>;
+  SponsoredPlacements: ResolverTypeWrapper<Omit<SponsoredPlacements, 'gold' | 'legend' | 'silver'> & { gold: Array<ResolversTypes['SponsoredAd']>, legend: Array<ResolversTypes['SponsoredAd']>, silver: Array<ResolversTypes['SponsoredAd']> }>;
+  SponsorshipDateRange: ResolverTypeWrapper<SponsorshipDateRange>;
+  SponsorshipDateUnavailableReason: SponsorshipDateUnavailableReason;
+  SponsorshipDateWindow: ResolverTypeWrapper<SponsorshipDateWindow>;
+  SponsorshipOffer: ResolverTypeWrapper<Omit<SponsorshipOffer, 'eligibleProducts'> & { eligibleProducts?: Maybe<Array<ResolversTypes['SponsorableProduct']>> }>;
+  SponsorshipPeriodWindow: ResolverTypeWrapper<SponsorshipPeriodWindow>;
+  SponsorshipProduct: ResolverTypeWrapper<SponsorshipProductModel>;
+  SponsorshipRefund: ResolverTypeWrapper<SponsorshipRefund>;
+  SponsorshipRefundStatus: SponsorshipRefundStatus;
+  SponsorshipStatus: SponsorshipStatus;
+  SponsorshipTier: SponsorshipTier;
+  SponsorshipTierOffer: ResolverTypeWrapper<SponsorshipTierOffer>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
   SupporterConnection: ResolverTypeWrapper<Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversTypes['UserSummary']> }>;
   SystemStatus: ResolverTypeWrapper<SystemStatus>;
@@ -3648,6 +3876,7 @@ export type ResolversParentTypes = {
   AdminSecondFactorRequired: AdminSecondFactorRequired;
   AdminTotpSetup: AdminTotpSetup;
   AdminViewer: AdminViewerSource;
+  ApplySponsorshipInput: ApplySponsorshipInput;
   AuditDetail: AuditDetail;
   AuditLogEntry: AuditLogEntry;
   AuditLogFilterInput: AuditLogFilterInput;
@@ -3733,6 +3962,8 @@ export type ResolversParentTypes = {
   MyProductRedirect: MyProductRedirect;
   MyProductResult: ResolversUnionTypes<ResolversParentTypes>['MyProductResult'];
   MyProfile: MyProfileModel;
+  MySponsorship: Omit<MySponsorship, 'product'> & { product?: Maybe<ResolversParentTypes['SponsorshipProduct']> };
+  MySponsorshipConnection: Omit<MySponsorshipConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['MySponsorship']> };
   NotificationPreference: NotificationPreference;
   NotificationSenderInfo: NotificationSenderInfo;
   NotificationSenderInfoState: NotificationSenderInfoState;
@@ -3781,6 +4012,16 @@ export type ResolversParentTypes = {
   SaveLegalDocumentDraftInput: SaveLegalDocumentDraftInput;
   SecondFactorInput: SecondFactorInput;
   SecondFactorRequired: SecondFactorRequired;
+  SponsorableProduct: SponsorableProductModel;
+  SponsoredAd: SponsoredAdModel;
+  SponsoredPlacements: Omit<SponsoredPlacements, 'gold' | 'legend' | 'silver'> & { gold: Array<ResolversParentTypes['SponsoredAd']>, legend: Array<ResolversParentTypes['SponsoredAd']>, silver: Array<ResolversParentTypes['SponsoredAd']> };
+  SponsorshipDateRange: SponsorshipDateRange;
+  SponsorshipDateWindow: SponsorshipDateWindow;
+  SponsorshipOffer: Omit<SponsorshipOffer, 'eligibleProducts'> & { eligibleProducts?: Maybe<Array<ResolversParentTypes['SponsorableProduct']>> };
+  SponsorshipPeriodWindow: SponsorshipPeriodWindow;
+  SponsorshipProduct: SponsorshipProductModel;
+  SponsorshipRefund: SponsorshipRefund;
+  SponsorshipTierOffer: SponsorshipTierOffer;
   String: Scalars['String']['output'];
   SupporterConnection: Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['UserSummary']> };
   SystemStatus: SystemStatus;
@@ -4435,6 +4676,7 @@ export type MoneyResolvers<ContextType = GraphQLContext, ParentType extends Reso
 export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   adminLogin?: Resolver<ResolversTypes['AdminSecondFactorRequired'], ParentType, ContextType, RequireFields<MutationAdminLoginArgs, 'email' | 'password'>>;
   adminLogout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  applySponsorship?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationApplySponsorshipArgs, 'input'>>;
   cancelProductRating?: Resolver<ResolversTypes['ProductRating'], ParentType, ContextType, RequireFields<MutationCancelProductRatingArgs, 'productId'>>;
   cancelUpvote?: Resolver<ResolversTypes['Match'], ParentType, ContextType, RequireFields<MutationCancelUpvoteArgs, 'matchId'>>;
   changeAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationChangeAdminPasswordArgs, 'newPassword' | 'reAuthentication'>>;
@@ -4491,6 +4733,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   resendVerificationEmail?: Resolver<ResolversTypes['ResendVerificationResult'], ParentType, ContextType>;
   resetAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetAdminPasswordArgs, 'newPassword' | 'token'>>;
   resetPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetPasswordArgs, 'input'>>;
+  resumeSponsorshipCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationResumeSponsorshipCheckoutArgs, 'id'>>;
   revokeOtherSessions?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   revokeSession?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokeSessionArgs, 'id'>>;
   saveLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationSaveLegalDocumentDraftArgs, 'input'>>;
@@ -4561,6 +4804,29 @@ export type MyProfileResolvers<ContextType = GraphQLContext, ParentType extends 
   previousHandle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   suspended?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   websites?: Resolver<Array<ResolversTypes['ProfileWebsite']>, ParentType, ContextType>;
+};
+
+export type MySponsorshipResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MySponsorship'] = ResolversParentTypes['MySponsorship']> = {
+  amountPaid?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  canResume?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  displayStopRefund?: Resolver<Maybe<ResolversTypes['SponsorshipRefund']>, ParentType, ContextType>;
+  endsOn?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  product?: Resolver<Maybe<ResolversTypes['SponsorshipProduct']>, ParentType, ContextType>;
+  startsOn?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['SponsorshipStatus'], ParentType, ContextType>;
+  terminatedOn?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  terminationReason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  terminationRefund?: Resolver<Maybe<ResolversTypes['SponsorshipRefund']>, ParentType, ContextType>;
+  tier?: Resolver<ResolversTypes['SponsorshipTier'], ParentType, ContextType>;
+};
+
+export type MySponsorshipConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MySponsorshipConnection'] = ResolversParentTypes['MySponsorshipConnection']> = {
+  nextDayStartsAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  nodes?: Resolver<Array<ResolversTypes['MySponsorship']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
 };
 
 export type NotificationPreferenceResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['NotificationPreference'] = ResolversParentTypes['NotificationPreference']> = {
@@ -4799,6 +5065,7 @@ export type QualifierBoardResolvers<ContextType = GraphQLContext, ParentType ext
 };
 
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+  activeSponsorshipCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType, RequireFields<QueryActiveSponsorshipCountArgs, 'productHandle'>>;
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
   adminHelpArticle?: Resolver<Maybe<ResolversTypes['AdminHelpArticle']>, ParentType, ContextType, RequireFields<QueryAdminHelpArticleArgs, 'id'>>;
   adminHelpArticles?: Resolver<Array<ResolversTypes['AdminHelpArticleRow']>, ParentType, ContextType>;
@@ -4837,6 +5104,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   myProducts?: Resolver<ResolversTypes['MyProductConnection'], ParentType, ContextType, RequireFields<QueryMyProductsArgs, 'first'>>;
   myProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
+  mySponsorships?: Resolver<ResolversTypes['MySponsorshipConnection'], ParentType, ContextType, RequireFields<QueryMySponsorshipsArgs, 'first'>>;
   myWeekEntry?: Resolver<Maybe<ResolversTypes['WeekEntryPanel']>, ParentType, ContextType, RequireFields<QueryMyWeekEntryArgs, 'productHandle'>>;
   myYearEntry?: Resolver<Maybe<ResolversTypes['YearEntryPanel']>, ParentType, ContextType, RequireFields<QueryMyYearEntryArgs, 'productHandle'>>;
   newProductLaunchWindow?: Resolver<ResolversTypes['LaunchDateWindow'], ParentType, ContextType>;
@@ -4854,6 +5122,9 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   profileAwards?: Resolver<Maybe<Array<ResolversTypes['ProductAward']>>, ParentType, ContextType, RequireFields<QueryProfileAwardsArgs, 'userHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
   qualifierBoard?: Resolver<ResolversTypes['QualifierBoard'], ParentType, ContextType>;
+  sponsoredPlacements?: Resolver<ResolversTypes['SponsoredPlacements'], ParentType, ContextType>;
+  sponsorshipOffer?: Resolver<ResolversTypes['SponsorshipOffer'], ParentType, ContextType>;
+  sponsorshipPeriodWindow?: Resolver<ResolversTypes['SponsorshipPeriodWindow'], ParentType, ContextType, RequireFields<QuerySponsorshipPeriodWindowArgs, 'productId' | 'tier'>>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   ultrasOffer?: Resolver<ResolversTypes['UltrasOffer'], ParentType, ContextType>;
   ultrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType>;
@@ -4882,6 +5153,70 @@ export type SecondFactorRequiredResolvers<ContextType = GraphQLContext, ParentTy
   challenge?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type SponsorableProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorableProduct'] = ResolversParentTypes['SponsorableProduct']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type SponsoredAdResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsoredAd'] = ResolversParentTypes['SponsoredAd']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  productName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tagline?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  tier?: Resolver<ResolversTypes['SponsorshipTier'], ParentType, ContextType>;
+  websiteUrl?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type SponsoredPlacementsResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsoredPlacements'] = ResolversParentTypes['SponsoredPlacements']> = {
+  gold?: Resolver<Array<ResolversTypes['SponsoredAd']>, ParentType, ContextType>;
+  legend?: Resolver<Array<ResolversTypes['SponsoredAd']>, ParentType, ContextType>;
+  silver?: Resolver<Array<ResolversTypes['SponsoredAd']>, ParentType, ContextType>;
+};
+
+export type SponsorshipDateRangeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipDateRange'] = ResolversParentTypes['SponsorshipDateRange']> = {
+  from?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['SponsorshipDateUnavailableReason'], ParentType, ContextType>;
+  to?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type SponsorshipDateWindowResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipDateWindow'] = ResolversParentTypes['SponsorshipDateWindow']> = {
+  earliest?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  latest?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  unavailable?: Resolver<Array<ResolversTypes['SponsorshipDateRange']>, ParentType, ContextType>;
+};
+
+export type SponsorshipOfferResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipOffer'] = ResolversParentTypes['SponsorshipOffer']> = {
+  eligibleProducts?: Resolver<Maybe<Array<ResolversTypes['SponsorableProduct']>>, ParentType, ContextType>;
+  tiers?: Resolver<Array<ResolversTypes['SponsorshipTierOffer']>, ParentType, ContextType>;
+};
+
+export type SponsorshipPeriodWindowResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipPeriodWindow'] = ResolversParentTypes['SponsorshipPeriodWindow']> = {
+  businessToday?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  end?: Resolver<Maybe<ResolversTypes['SponsorshipDateWindow']>, ParentType, ContextType>;
+  nextDayStartsAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  start?: Resolver<ResolversTypes['SponsorshipDateWindow'], ParentType, ContextType>;
+};
+
+export type SponsorshipProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipProduct'] = ResolversParentTypes['SponsorshipProduct']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  listed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type SponsorshipRefundResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipRefund'] = ResolversParentTypes['SponsorshipRefund']> = {
+  amount?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['SponsorshipRefundStatus'], ParentType, ContextType>;
+};
+
+export type SponsorshipTierOfferResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipTierOffer'] = ResolversParentTypes['SponsorshipTierOffer']> = {
+  tier?: Resolver<ResolversTypes['SponsorshipTier'], ParentType, ContextType>;
+  unitPrice?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
 };
 
 export type SupporterConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SupporterConnection'] = ResolversParentTypes['SupporterConnection']> = {
@@ -5229,6 +5564,8 @@ export type Resolvers<ContextType = GraphQLContext> = {
   MyProductRedirect?: MyProductRedirectResolvers<ContextType>;
   MyProductResult?: MyProductResultResolvers<ContextType>;
   MyProfile?: MyProfileResolvers<ContextType>;
+  MySponsorship?: MySponsorshipResolvers<ContextType>;
+  MySponsorshipConnection?: MySponsorshipConnectionResolvers<ContextType>;
   NotificationPreference?: NotificationPreferenceResolvers<ContextType>;
   NotificationSenderInfo?: NotificationSenderInfoResolvers<ContextType>;
   NotificationSenderInfoState?: NotificationSenderInfoStateResolvers<ContextType>;
@@ -5264,6 +5601,16 @@ export type Resolvers<ContextType = GraphQLContext> = {
   RecoveryCodeSet?: RecoveryCodeSetResolvers<ContextType>;
   RelaunchBlockView?: RelaunchBlockViewResolvers<ContextType>;
   SecondFactorRequired?: SecondFactorRequiredResolvers<ContextType>;
+  SponsorableProduct?: SponsorableProductResolvers<ContextType>;
+  SponsoredAd?: SponsoredAdResolvers<ContextType>;
+  SponsoredPlacements?: SponsoredPlacementsResolvers<ContextType>;
+  SponsorshipDateRange?: SponsorshipDateRangeResolvers<ContextType>;
+  SponsorshipDateWindow?: SponsorshipDateWindowResolvers<ContextType>;
+  SponsorshipOffer?: SponsorshipOfferResolvers<ContextType>;
+  SponsorshipPeriodWindow?: SponsorshipPeriodWindowResolvers<ContextType>;
+  SponsorshipProduct?: SponsorshipProductResolvers<ContextType>;
+  SponsorshipRefund?: SponsorshipRefundResolvers<ContextType>;
+  SponsorshipTierOffer?: SponsorshipTierOfferResolvers<ContextType>;
   SupporterConnection?: SupporterConnectionResolvers<ContextType>;
   SystemStatus?: SystemStatusResolvers<ContextType>;
   TotpSetup?: TotpSetupResolvers<ContextType>;

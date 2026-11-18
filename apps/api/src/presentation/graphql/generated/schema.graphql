@@ -255,6 +255,17 @@ type AdminViewer {
   title: String
 }
 
+"""スポンサー広告の申込"""
+input ApplySponsorshipInput {
+  """掲載終了日(業務日付のYYYY-MM-DD)"""
+  endsOn: String!
+  productId: ID!
+
+  """掲載開始日(業務日付のYYYY-MM-DD)"""
+  startsOn: String!
+  tier: SponsorshipTier!
+}
+
 """監査ログの詳細の1項目"""
 type AuditDetail {
   key: String!
@@ -1197,6 +1208,9 @@ type Mutation {
   """この端末のログアウト"""
   adminLogout: Boolean!
 
+  """申込を未決済で記録し、決済を始めて決済画面の経路に使う購入のIDを返す"""
+  applySponsorship(input: ApplySponsorshipInput!): CheckoutStart!
+
   """閲覧者のプロダクトへの評価を物理削除する。評価が無くても成功する"""
   cancelProductRating(productId: ID!): ProductRating!
 
@@ -1365,6 +1379,9 @@ type Mutation {
   """パスワードリセットの確定"""
   resetPassword(input: ResetPasswordInput!): Boolean!
 
+  """本人の開始日前の未決済の申込の決済を始め直す"""
+  resumeSponsorshipCheckout(id: ID!): CheckoutStart!
+
   """操作している端末以外のセッションの一括の失効。失効させた件数を返す"""
   revokeOtherSessions: Int!
 
@@ -1514,6 +1531,49 @@ type MyProfile {
   previousHandle: String
   suspended: Boolean!
   websites: [ProfileWebsite!]!
+}
+
+"""自分の広告一覧の1件"""
+type MySponsorship {
+  """支払った金額。未決済はnull"""
+  amountPaid: Money
+
+  """未決済で開始日が今日以降なら真。決済を再開できる"""
+  canResume: Boolean!
+  createdAt: DateTime!
+
+  """開始日と終了日を含む日数"""
+  days: Int!
+
+  """表示停止の日数分の返金。精算前・無ければnull"""
+  displayStopRefund: SponsorshipRefund
+
+  """掲載終了日(業務日付のYYYY-MM-DD)"""
+  endsOn: String!
+  id: ID!
+
+  """論理削除済みのプロダクトはnull"""
+  product: SponsorshipProduct
+
+  """掲載開始日(業務日付のYYYY-MM-DD)"""
+  startsOn: String!
+  status: SponsorshipStatus!
+
+  """強制終了日(業務日付のYYYY-MM-DD)。強制終了していなければnull"""
+  terminatedOn: String
+  terminationReason: String
+
+  """強制終了の未掲載日数分の返金。無ければnull"""
+  terminationRefund: SponsorshipRefund
+  tier: SponsorshipTier!
+}
+
+"""自分の広告一覧"""
+type MySponsorshipConnection {
+  """次の基準時刻の0:00。掲載予定から掲載中・掲載中から終了への切り替わりで取り直す"""
+  nextDayStartsAt: DateTime!
+  nodes: [MySponsorship!]!
+  pageInfo: PageInfo!
 }
 
 """通知種別ごとの受信可否"""
@@ -2019,6 +2079,9 @@ enum QualifierOutcome {
 }
 
 type Query {
+  """本人のプロダクトの掲載中・掲載予定の広告の件数。本人のプロダクトでなければ0"""
+  activeSponsorshipCount(productHandle: String!): Int!
+
   """招待中を含む全管理者を登録の新しい順に返す"""
   adminAccounts: [AdminAccount!]!
 
@@ -2137,6 +2200,9 @@ type Query {
   """ログイン中の端末の一覧"""
   mySessions: [UserSessionSummary!]!
 
+  """ログイン中の利用者の申込の新しい順(1〜20件)"""
+  mySponsorships(after: String, first: Int!): MySponsorshipConnection!
+
   """投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull"""
   myWeekEntry(productHandle: String!): WeekEntryPanel
 
@@ -2195,6 +2261,17 @@ type Query {
 
   """トップページの当日の予選。開始済みの予選を対戦カードと不戦勝に分けて返す。ログインを求めない"""
   qualifierBoard: QualifierBoard!
+
+  """掲載中の広告。ログインを求めない"""
+  sponsoredPlacements: SponsoredPlacements!
+
+  """料金ページのスポンサー広告の価格と申込の対象。ログインを求めない"""
+  sponsorshipOffer: SponsorshipOffer!
+
+  """
+  申込の対象のプロダクトとティアの掲載期間の選べる範囲。対象外はsponsorship_product_ineligible、形式の違う開始日はvalidation_error
+  """
+  sponsorshipPeriodWindow(productId: ID!, startsOn: String, tier: SponsorshipTier!): SponsorshipPeriodWindow!
 
   """APIサーバーの時刻とデータベースへの到達可否"""
   systemStatus: SystemStatus!
@@ -2311,6 +2388,129 @@ type SecondFactorRequired {
   """第2要素の段階の要求と組にする値"""
   challenge: String!
   expiresAt: DateTime!
+}
+
+"""申込の対象のプロダクト"""
+type SponsorableProduct {
+  handle: String!
+  id: ID!
+  logo: MediaImage
+  name: String!
+}
+
+"""広告スペースに表示する広告"""
+type SponsoredAd {
+  """申込のID"""
+  id: ID!
+  logo: MediaImage
+  productName: String!
+
+  """Silverはnull"""
+  tagline: String
+  tier: SponsorshipTier!
+
+  """外部WebサイトURL。検証を通らなければnull"""
+  websiteUrl: String
+}
+
+"""ティアごとの広告。同じティアの中は照会ごとに無作為の順"""
+type SponsoredPlacements {
+  gold: [SponsoredAd!]!
+  legend: [SponsoredAd!]!
+  silver: [SponsoredAd!]!
+}
+
+"""選べない日の範囲(両端を含む業務日付のYYYY-MM-DD)"""
+type SponsorshipDateRange {
+  from: String!
+  reason: SponsorshipDateUnavailableReason!
+  to: String!
+}
+
+"""選べない理由。範囲の外の日の理由(今日より前・365日後より後・開始日より前・366日を超える)は画面が範囲の種類から決める"""
+enum SponsorshipDateUnavailableReason {
+  OVERLAP
+}
+
+"""選べる業務日付。earliestからlatestまでのうちunavailableの範囲を除く日を選べる"""
+type SponsorshipDateWindow {
+  earliest: String!
+  latest: String!
+  unavailable: [SponsorshipDateRange!]!
+}
+
+"""料金ページのスポンサー広告の区画"""
+type SponsorshipOffer {
+  """閲覧者の申込の対象のプロダクトの名称の順。未ログインはnull"""
+  eligibleProducts: [SponsorableProduct!]
+
+  """Legend・Gold・Silverの順"""
+  tiers: [SponsorshipTierOffer!]!
+}
+
+"""掲載期間の選べる範囲"""
+type SponsorshipPeriodWindow {
+  """業務日付の今日(YYYY-MM-DD)"""
+  businessToday: String!
+
+  """終了日の選べる範囲。startsOnを渡さない、またはstartsOnが選べない日ならnull"""
+  end: SponsorshipDateWindow
+
+  """次の基準時刻の0:00。画面はこの時点で取り直す"""
+  nextDayStartsAt: DateTime!
+
+  """開始日の選べる範囲"""
+  start: SponsorshipDateWindow!
+}
+
+"""自分の広告の対象のプロダクト"""
+type SponsorshipProduct {
+  handle: String!
+
+  """プロダクトのページを表示できる"""
+  listed: Boolean!
+  logo: MediaImage
+  name: String!
+}
+
+"""日割りで依頼した返金"""
+type SponsorshipRefund {
+  """依頼した額。残りの全額で依頼したときはnull"""
+  amount: Money
+  days: Int!
+  status: SponsorshipRefundStatus!
+}
+
+"""依頼した返金の状態。REQUESTEDは依頼済み、ALREADY_REFUNDEDは返金できる残りが無く返金済み、REJECTEDは拒否"""
+enum SponsorshipRefundStatus {
+  ALREADY_REFUNDED
+  REJECTED
+  REQUESTED
+}
+
+"""掲載状況。PAUSEDはプロダクトの非公開化か投稿者の停止による表示停止中"""
+enum SponsorshipStatus {
+  ACTIVE
+  ENDED
+  PAUSED
+  PENDING_PAYMENT
+  SCHEDULED
+  TERMINATED
+}
+
+"""スポンサー広告のティア"""
+enum SponsorshipTier {
+  GOLD
+  LEGEND
+  SILVER
+}
+
+"""ティアごとの1日あたりの税込の価格"""
+type SponsorshipTierOffer {
+  tier: SponsorshipTier!
+
+  """決済サービスから取得できなければnull"""
+  unitPrice: Money
 }
 
 type SupporterConnection {

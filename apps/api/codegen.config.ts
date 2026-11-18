@@ -69,6 +69,12 @@ const config: CodegenConfig = {
             '../modules/week-tournament/mappers.ts#BracketSlotSource',
           YearTournamentRoundBoard:
             '../modules/year-tournament/mappers.ts#YearTournamentRoundBoardModel',
+          SponsorableProduct:
+            '../modules/sponsorship/sponsorship-views.ts#SponsorableProductModel',
+          SponsoredAd:
+            '../modules/sponsorship/sponsorship-views.ts#SponsoredAdModel',
+          SponsorshipProduct:
+            '../modules/sponsorship/sponsorship-views.ts#SponsorshipProductModel',
           HelpArticleAuthor:
             '../modules/help/author-fields.ts#HelpArticleAuthorSource',
         },

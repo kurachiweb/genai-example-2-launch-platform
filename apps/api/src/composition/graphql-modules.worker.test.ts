@@ -189,3 +189,28 @@ describe('GRAPHQL_SCHEMA_MODULES(Yearトーナメント)', () => {
     );
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(スポンサー広告)', () => {
+  test('利用者側の料金・掲載期間の選べる範囲・広告・自分の一覧・削除の確認の件数の照会と、申込・決済の再開の操作がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['sponsorshipOffer']?.type)).toBe('SponsorshipOffer!');
+    expect(String(query?.['sponsorshipPeriodWindow']?.type)).toBe(
+      'SponsorshipPeriodWindow!',
+    );
+    expect(String(query?.['sponsoredPlacements']?.type)).toBe(
+      'SponsoredPlacements!',
+    );
+    expect(String(query?.['mySponsorships']?.type)).toBe(
+      'MySponsorshipConnection!',
+    );
+    expect(String(query?.['activeSponsorshipCount']?.type)).toBe('Int!');
+    expect(String(mutation?.['applySponsorship']?.type)).toBe('CheckoutStart!');
+    expect(String(mutation?.['resumeSponsorshipCheckout']?.type)).toBe(
+      'CheckoutStart!',
+    );
+  });
+});
