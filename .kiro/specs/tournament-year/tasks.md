@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 共用の部品への移設・テーブル・監査ログの操作種別・サービス仕様
+- [x] 1. 基盤: 共用の部品への移設・テーブル・監査ログの操作種別・サービス仕様
 - [x] 1.1 業務日付の日数の加算と曜日を業務時刻の共通の部品から公開し、トーナメントの計算を寄せる
   - 前提: 本specが使う上流(dev-tooling・backend-platform・api-gateway・frontend-platform・identity-auth・email-delivery・admin-foundation・payments・ultras-subscription・notifications・product-launch・directory-discovery・match-engine・tournament-week)の実装が済んでいること(2026-11-17に設計の上流の契約を現在のコードと照合済み。sponsorshipなど未実装のspecの部品は使わない)。無ければ該当するタスクを保留して開発者へ報告する
   - 開発者が行う作業(devとstagingが共用するStripeのsandboxでの、`lookup_key`が`year_tournament_entry`の価格(参考$20、税込)の1回の作成。prodはlaunch-readinessが行う)を、この最初のタスクで報告する(8.4のE2Eの前提。3.16・5.13はStripeの模擬応答を使う)
@@ -89,7 +89,7 @@
   - _Boundary: `docs/GUIDES/service`の該当する6文書_
   - _Requirements: 16.6_
 
-- [ ] 2. Yearの純粋な規則
+- [x] 2. Yearの純粋な規則
 - [x] 2.1 決勝日と期限・1回戦の日の規則を作る
   - 先に、単体テストで、既定の決勝日(5月31日が日曜日の年と月曜日の年を含む複数の年)、決勝日からの決済期限日・受付期限23:00・決済期限23:35・組み合わせ決定23:45・変更期限(7日前の0:00)、参加数2・3・4・5・8・9・13・16・17・32・33・64の1回戦の日(決勝日〜5日前、N = 13はYearトーナメント規則の例どおり3日前)と参加数1以下の無し、65での例外、日曜日でない決勝日での例外を確かめる
   - 曜日と日数の計算は1.1の業務時刻の共通の関数で行う
@@ -122,7 +122,7 @@
   - _Boundary: YearEntryRules_
   - _Requirements: 5.6, 5.8, 6.7, 9.5_
 
-- [ ] 3. Yearの部品
+- [x] 3. Yearの部品
 - [x] 3.1 年のトーナメントのストアと、Yearの部品の契約と識別子を作る
   - Yearの部品の契約と型(`NewYearEntry`・`YearAwardedProduct`を含む。`YearEntryOfferPolicy`・`YearEntryFulfillment`はpaymentsの契約を実装するため除く)を純粋な部品(`apps/backend-lib/core/year-tournament/ports.ts`)に、Yearの全部品のDIの識別子`YEAR_TOURNAMENT_TYPES`を`core/year-tournament/identifiers.ts`にここで作る。api・eventとdata-exportのapplication層が契約と識別子を読み込むため、`workers`に置かない。年のストアのD1の実装は`workers/year-tournament/d1-year-tournament-store.ts`に作る(3.2〜3.4の枠のストアは`d1-year-entry-store.ts`)。束縛と登録は3.16でまとめて行い、3.2〜3.15は束縛と登録のファイルを変えない(テストは部品を直接組み立てる)
   - 先に、ローカルD1のWorkers統合テストで、年の行の用意の重複の無視(既定の日の列)、複数の年の読み取り、組み合わせ決定の時刻が到来した年の一覧、凍結の1回だけの成功、組み合わせの記録(参加0・1の終了と受賞の日時を含む)、終了の記録が1回だけ、凍結済みの最新の決済期限日、受賞の日時の範囲での受賞の読み取り(紐付けを解除した優勝の枠の除外)、プロダクトごとの受賞の読み取り(紐付けを解除した受賞の除外)を確かめる
@@ -227,7 +227,7 @@
   - 完了状態: apiとeventのWorkers統合テストの全件(書き換えた上流のテストを含む)・購入種別の集約点の全定義の検証の単体テスト・3経路のDIの解決の検査が成功する
   - _Requirements: 4.5, 4.6, 4.7, 4.9, 15.2, 16.3_
 
-- [ ] 4. イベントサーバーの処理
+- [x] 4. イベントサーバーの処理
 - [x] 4.1 eventの識別子と、確定のマッチイベントの2つの処理を作る
   - eventの8つの処理のDIの識別子をここで作る(束縛と登録は4.5)
   - 先に、単体テスト(部品は偽物)で、Weekのマッチの確定で直近8日のWeek優勝の取り込みを呼ぶこと、Yearのマッチの確定でその年を進め結果の反映(発行と終了の記録)を行うこと、種別の違うマッチと本specの年に無いブラケットを無視すること、例外を再試行に任せることを確かめる
@@ -264,7 +264,7 @@
   - _Depends: 4.2, 4.3, 4.4_
   - _Requirements: 3.1, 5.2, 6.1, 14.6, 15.2, 15.4_
 
-- [ ] 5. APIサーバー
+- [x] 5. APIサーバー
 - [x] 5.1 apiの識別子、ジョブの失敗の通知のポート、2つのジョブ(23:45の夜の処理と夜の送り出しの準備の完了の通知、4:21の再処理)を作る
   - apiの全部品(ジョブ・失敗の通知・供給元・照会・決済の開始・決勝実施日)のDIの識別子をここで作る(束縛と登録は5.11)
   - apiのapplication層のポート(ジョブの失敗の通知と、5.6・5.7が使う決勝実施日の書き込み)をここで作る。ジョブの失敗は、そのポート(失敗した段・年・件数だけを持つ)越しに知らせ、Sentryを直接呼ばない(tournament-weekと同じ形)
@@ -360,7 +360,7 @@
   - 完了状態: Workers統合テストが成功し、apiのスキーマの生成(7.1のadminの型の生成が読む)が成功する
   - _Requirements: 2.1, 2.7, 2.8, 2.9, 2.10, 2.11_
 
-- [ ] 6. 利用者側の画面
+- [x] 6. 利用者側の画面
 - [x] 6.1 本specの利用者側のGraphQLの操作・フラグメント・取得の補助を加え、型を生成して許可リストを再生成する
   - トップページの区画・ブラケット・参加費の導線の照会と決済の開始の操作を、clientの`src/graphql/operations/year-tournament/`に1ファイル1操作の`.graphql`で書く。操作名は`Client`で始め(`ClientYearTournamentBoard`・`ClientYearBracket`・`ClientMyYearEntry`・`ClientStartYearTournamentCheckout`)、`graphql()`を呼ばない
   - トップページの行のフラグメント`YearBoardRoundFields`を`src/graphql/fragments/year-tournament/`に置く(共用の部品が依存する決勝の印・対戦カード・不戦勝はWeekと同じ選択)。`ClientYearBracket`はtournament-weekのフラグメント`BracketRoundFields`(`rounds`)と`BracketMatchProductFields`(`champion`)を名前で展開し、`tournament`の`awarded`・`status`・`year`・`finalDate`と`participantCount`・`seedCount`を取得し、フラグメントを再定義しない
@@ -417,7 +417,7 @@
   - _Depends: 6.5_
   - _Requirements: 12.1, 12.6_
 
-- [ ] 7. 管理画面
+- [x] 7. 管理画面
 - [x] 7.1 本specの管理画面のGraphQLの操作を加え、型を生成して許可リストを再生成する
   - 決勝実施日の照会と保存の操作を、adminの`src/graphql/operations/year-tournament/`(G9)に1ファイル1操作の`.graphql`で書く。操作名は`Admin`で始め(`AdminYearFinalDateSettings`・`AdminUpdateYearFinalDate`)、`graphql()`を呼ばない
   - frontend-platformの「操作の追加手順」どおり、adminで`bun run graphql:generate`、apiで`bun run graphql:allowlist`を実行する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない
@@ -443,7 +443,7 @@
   - 完了状態: ブラウザテストと書き換えた上流のテストが成功し、ローカルで最上位管理者が決勝実施日を保存すると監査ログの画面に記録が出る
   - _Requirements: 2.1_
 
-- [ ] 8. 統合・ドキュメント・E2E
+- [x] 8. 統合・ドキュメント・E2E
 - [x] 8.1 組み合わせ決定の日の時刻の連鎖の統合テストを作る
   - apiのWorkers統合テストの環境で行い、eventの確定のマッチイベントの処理の代わりに、それが呼ぶbackend-libの`YearProgressionService`・`YearEntryRegistrar`を直接呼ぶ(`apps/event`を読み込まない)
   - 先に、Workers統合テストで、23:35の決済期限・23:40の突合と確定・23:45のWeekの組み合わせと進行・Yearの夜の処理の順(paymentsの10、match-engineの1100、notificationsの1300、tournament-weekの`tournament-week.evening-bracket`の1500、本specの1700)で、突合で反映された決済が組み合わせに入り、反映の期限(23:45)の後の完了が組み合わせに入らないこと、同じ夜のWeek優勝が翌年の対象になること、1回戦の予告と準決勝以前の結果と翌日の予告が本specの`markReady`より前に発行されていること、Yearのジョブの`markReady`の後に夜の枠の送り出しが依頼され(tournament-weekも呼んだ場合)、Yearのジョブを失敗させた夜は`markReady`が無く23:55の期限まで依頼されないことを、notificationsの`EveningDispatchGate`の実装で確かめる
