@@ -27,15 +27,24 @@ function scheduleColumnsOf(schedule: YearSchedule) {
   };
 }
 
-// 年の行が読み取った版のままで、凍結しておらず、変更前の変更期限より前であること。
+// 行の無い年は版0として比べる。年の値は定数で渡し、外側の文の行と取り違えないようにする
+function yearVersionIs(year: number, version: number): SQL {
+  return sql`COALESCE((SELECT ${yearTournaments.finalDateVersion} FROM ${yearTournaments} WHERE ${yearTournaments.year} = ${year}), 0) = ${version}`;
+}
+
+// 年の行が読み取った版のままで、凍結しておらず、変更前の変更期限より前であり、
+// 64週の間隔の検証に使った前年と翌年の版も読み取ったままであること。
 // 監査ログの条件は書き込みの時点で評価され、偽なら行の用意と決勝日の更新も含めて一括の書き込み全体が取り消される
 function stillChangeable(input: YearFinalDateSave): SQL {
+  const { year } = input.schedule;
   return sql.join(
     [
-      eq(yearTournaments.year, input.schedule.year),
+      eq(yearTournaments.year, year),
       eq(yearTournaments.finalDateVersion, input.expectedVersion),
       isNull(yearTournaments.drawStartedAt),
       gt(yearTournaments.changeLockAt, input.now),
+      yearVersionIs(year - 1, input.previousYearVersion),
+      yearVersionIs(year + 1, input.nextYearVersion),
     ],
     sql` AND `,
   );
@@ -97,7 +106,7 @@ export class D1YearFinalDateWriter implements YearFinalDateWriter {
     }
   }
 
-  // 取り消された後の行を読み直し、凍結済みか変更期限以降なら版に関わらずlockedにする
+  // 取り消された後の行を読み直し、凍結済みか変更期限以降なら自分の年と隣の年の版に関わらずlockedにする
   private async rejectionOf({
     schedule,
     defaultSchedule,

@@ -74,10 +74,14 @@ export interface YearFinalDateService {
 }
 
 interface YearFinalDateSnapshot {
+  readonly previous: YearCalendarEntry;
   readonly entry: YearCalendarEntry;
   readonly context: FinalDateContext;
   readonly next: YearCalendarEntry;
 }
+
+const versionOf = (entry: YearCalendarEntry): number =>
+  entry.record?.version ?? 0;
 
 function entryOf(
   entries: ReadonlyMap<number, YearCalendarEntry>,
@@ -99,6 +103,7 @@ function snapshotOf(
   const entry = entryOf(entries, year);
   const next = entryOf(entries, year + 1);
   return {
+    previous,
     entry,
     next,
     context: {
@@ -135,7 +140,7 @@ function viewOf({
       nextYearDefault:
         next.source === 'default' ? next.schedule.finalDate : null,
     }),
-    version: entry.record?.version ?? 0,
+    version: versionOf(entry),
     updatedAt: entry.record?.updatedAt ?? null,
     updatedByAdminId: entry.record?.updatedByAdminId ?? null,
   };
@@ -172,7 +177,7 @@ export class DefaultYearFinalDateService implements YearFinalDateService {
         nextExplicitFinalDate: null,
       });
     }
-    const { entry, context } = snapshotOf(
+    const { previous, entry, context, next } = snapshotOf(
       await this.describeEditable(now),
       year,
       now,
@@ -205,6 +210,8 @@ export class DefaultYearFinalDateService implements YearFinalDateService {
       schedule: yearScheduleFor(year, finalDate),
       defaultSchedule: yearScheduleFor(year, defaultFinalDate(year)),
       expectedVersion: input.expectedVersion,
+      previousYearVersion: versionOf(previous),
+      nextYearVersion: versionOf(next),
       adminId: input.adminId,
       audit,
       now,

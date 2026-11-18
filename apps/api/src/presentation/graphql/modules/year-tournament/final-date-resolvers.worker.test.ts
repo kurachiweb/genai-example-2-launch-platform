@@ -602,5 +602,49 @@ describe('updateYearFinalDate', () => {
       await expect(readYearTournamentRow(2027)).resolves.toEqual(before);
       await expect(readAuditLogSummaries()).resolves.toHaveLength(1);
     });
+
+    test('翌年が保存された後の古い画面からの現在の年の保存は、自分の年の版が一致しても保存した翌年の日で検証し直す', async () => {
+      const currentYearStart = fromBusinessDateTime(
+        parseBusinessDate('2027-03-01'),
+        { hour: 12, minute: 0 },
+      );
+      setYearFinalDateTestNow(currentYearStart);
+      await signInYearFinalDateAdmins();
+      const stale = await fetchYearFinalDateSettings(
+        asYearFinalDateAdmin(superAdmin),
+      );
+      expect(stale.data?.yearFinalDateSettings?.settings[0]).toMatchObject({
+        year: 2027,
+        version: 0,
+        choices: expect.arrayContaining([EARLIER_2027]) as string[],
+      });
+      const nextYear = await updateYearFinalDate(
+        { year: 2028, finalDate: '2028-08-13', expectedVersion: 0 },
+        asYearFinalDateAdmin(secondSuperAdmin),
+      );
+      expect(nextYear.errors).toBeUndefined();
+      setYearFinalDateTestNow(new Date(currentYearStart.getTime() + MINUTE_MS));
+      await signInYearFinalDateAdmins();
+
+      const tooEarly = await updateYearFinalDate(
+        { year: 2027, finalDate: EARLIER_2027, expectedVersion: 0 },
+        asYearFinalDateAdmin(superAdmin),
+      );
+      const accepted = await updateYearFinalDate(
+        { year: 2027, finalDate: '2027-06-06', expectedVersion: 0 },
+        asYearFinalDateAdmin(superAdmin),
+      );
+
+      expect(detailsOf(tooEarly)).toEqual([
+        expect.objectContaining({ code: 'too_far_from_next' }),
+      ]);
+      expect(accepted.errors).toBeUndefined();
+      expect(accepted.data?.updateYearFinalDate).toMatchObject({
+        year: 2027,
+        finalDate: '2027-06-06',
+        version: 1,
+        nextYearFinalDate: '2028-08-13',
+      });
+    });
   });
 });

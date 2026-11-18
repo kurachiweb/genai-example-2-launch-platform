@@ -36,6 +36,10 @@ export interface YearFinalDateSave {
   readonly defaultSchedule: YearSchedule;
   // 行が無い年は0
   readonly expectedVersion: number;
+  // 64週の間隔の検証に使った前年と翌年の版。行が無い年は0。
+  // 隣の年が同時に保存されると検証に使った日が古くなるため、自分の年の版と合わせて照合する
+  readonly previousYearVersion: number;
+  readonly nextYearVersion: number;
   readonly adminId: string;
   readonly audit: PreparedAuditEntry;
   readonly now: Date;
@@ -43,7 +47,7 @@ export interface YearFinalDateSave {
 
 export interface YearFinalDateWriter {
   // 行の用意・決勝日と期限の列の書き直し・監査ログを1つの一括の書き込みで確定する。
-  // 凍結済みか変更期限以降ならlocked、読み取った版と違えばversion_conflictで、何も書かない
+  // 凍結済みか変更期限以降ならlocked、自分の年か前年・翌年の版が読み取った版と違えばversion_conflictで、何も書かない
   save(
     input: YearFinalDateSave,
   ): Promise<'saved' | 'version_conflict' | 'locked'>;

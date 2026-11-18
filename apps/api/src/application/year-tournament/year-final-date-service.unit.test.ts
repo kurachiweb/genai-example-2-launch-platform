@@ -312,6 +312,8 @@ describe('DefaultYearFinalDateService.update', () => {
       schedule: scheduleOf(2027, '2027-07-04'),
       defaultSchedule: defaultScheduleOf(2027),
       expectedVersion: 2,
+      previousYearVersion: 0,
+      nextYearVersion: 1,
       adminId: SUPER_ADMIN_ID,
       now: NOW,
     });
@@ -368,6 +370,8 @@ describe('DefaultYearFinalDateService.update', () => {
       schedule: scheduleOf(2028, '2028-06-04'),
       defaultSchedule: defaultScheduleOf(2028),
       expectedVersion: 0,
+      previousYearVersion: 0,
+      nextYearVersion: 0,
     });
     expect(view).toMatchObject({
       year: 2028,
@@ -378,6 +382,54 @@ describe('DefaultYearFinalDateService.update', () => {
       updatedByAdminId: SUPER_ADMIN_ID,
     });
   });
+
+  test.each([
+    {
+      name: '現在の年',
+      rows: [{ ...PREVIOUS_ROW, version: 5 }, CURRENT_ROW, NEXT_ROW],
+      year: 2027,
+      finalDate: '2027-07-04',
+      expectedVersion: 2,
+      previousYearVersion: 5,
+      nextYearVersion: 1,
+    },
+    {
+      name: '行の無い翌々年を隣に持つ翌年',
+      rows: ALL_ROWS,
+      year: 2028,
+      finalDate: '2028-08-20',
+      expectedVersion: 1,
+      previousYearVersion: 2,
+      nextYearVersion: 0,
+    },
+  ])(
+    '$nameは、検証に使った読み取りの前年と翌年の版(行の無い年は0)を保存の条件へ渡す',
+    async ({
+      rows,
+      year,
+      finalDate,
+      expectedVersion,
+      previousYearVersion,
+      nextYearVersion,
+    }) => {
+      const { service, saved } = setup({ rows });
+
+      await service.update({
+        adminId: SUPER_ADMIN_ID,
+        year,
+        finalDate: parseBusinessDate(finalDate),
+        expectedVersion,
+        now: NOW,
+      });
+
+      expect(saved).toHaveLength(1);
+      expect(saved[0]).toMatchObject({
+        expectedVersion,
+        previousYearVersion,
+        nextYearVersion,
+      });
+    },
+  );
 
   const VALIDATION_MESSAGE = '入力内容を確認してください。';
 

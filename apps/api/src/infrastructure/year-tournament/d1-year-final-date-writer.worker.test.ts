@@ -24,6 +24,7 @@ import {
   insertYearTournaments,
   YEAR,
   YEAR_SCHEDULE,
+  type YearTournamentFixture,
   yearTournamentIdOf,
 } from '../../../lib/workers/year-tournament/testing/year-tournament-fixtures.ts';
 import { YearTournamentCalendar } from '../../../lib/workers/year-tournament/year-calendar.ts';
@@ -116,6 +117,8 @@ function saveOf(
     schedule,
     defaultSchedule: defaultScheduleOf(schedule.year),
     expectedVersion,
+    previousYearVersion: 0,
+    nextYearVersion: 0,
     adminId: adminIdOf(operator),
     audit,
     now,
@@ -370,6 +373,122 @@ describe('D1YearFinalDateWriter', () => {
       ).resolves.toBe('version_conflict');
 
       await expectNothingWritten([]);
+    });
+  });
+
+  describe('隣の年の版', () => {
+    function neighborYearOf(
+      index: number,
+      year: number,
+      version: number,
+    ): YearTournamentFixture {
+      return {
+        index,
+        year,
+        columns: {
+          finalDateSource: version === 0 ? 'default' : 'explicit',
+          finalDateVersion: version,
+        },
+      };
+    }
+
+    test('読み取った後に前年の版が進んでいればversion_conflictを返し、年の行も監査ログも変えない', async () => {
+      await insertYearTournaments([
+        { index: 1 },
+        neighborYearOf(2, YEAR - 1, 2),
+      ]);
+      const before = await readYearRows();
+
+      await expect(
+        new D1YearFinalDateWriter(db).save({
+          ...saveOf(1, LATER_SCHEDULE, 0, NOW),
+          previousYearVersion: 1,
+        }),
+      ).resolves.toBe('version_conflict');
+
+      await expectNothingWritten(before);
+    });
+
+    test('読み取った後に翌年の行が作られて保存されていればversion_conflictを返し、年の行も監査ログも変えない', async () => {
+      await insertYearTournaments([
+        { index: 1 },
+        neighborYearOf(3, YEAR + 1, 1),
+      ]);
+      const before = await readYearRows();
+
+      await expect(
+        new D1YearFinalDateWriter(db).save(saveOf(1, LATER_SCHEDULE, 0, NOW)),
+      ).resolves.toBe('version_conflict');
+
+      await expectNothingWritten(before);
+    });
+
+    test('読み取った後に翌年の版が進んでいれば、行の無い年の保存もversion_conflictを返し、行の用意を取り消す', async () => {
+      await insertYearTournaments([neighborYearOf(3, YEAR + 1, 4)]);
+      const before = await readYearRows();
+
+      await expect(
+        new D1YearFinalDateWriter(db).save({
+          ...saveOf(1, LATER_SCHEDULE, 0, NOW),
+          nextYearVersion: 3,
+        }),
+      ).resolves.toBe('version_conflict');
+
+      await expectNothingWritten(before);
+    });
+
+    test('前年と翌年の版が読み取ったままなら保存し、隣の年の行は変えない', async () => {
+      await insertYearTournaments([
+        { index: 1 },
+        neighborYearOf(2, YEAR - 1, 2),
+        neighborYearOf(3, YEAR + 1, 1),
+      ]);
+      const [previousBefore, , nextBefore] = await readYearRows();
+
+      await expect(
+        new D1YearFinalDateWriter(db).save({
+          ...saveOf(1, LATER_SCHEDULE, 0, NOW),
+          previousYearVersion: 2,
+          nextYearVersion: 1,
+        }),
+      ).resolves.toBe('saved');
+
+      await expect(readYearRows()).resolves.toEqual([
+        previousBefore,
+        expect.objectContaining({
+          year: YEAR,
+          ...scheduleColumnsOf(LATER_SCHEDULE),
+          finalDateVersion: 1,
+        }),
+        nextBefore,
+      ]);
+      await expect(readAuditLogRows()).resolves.toHaveLength(1);
+    });
+
+    test('読み取った後に隣の年の行が既定の日の版0で作られただけなら、行の無い年として読んだ版0のまま保存できる', async () => {
+      await insertYearTournaments([
+        { index: 1 },
+        neighborYearOf(2, YEAR - 1, 0),
+        neighborYearOf(3, YEAR + 1, 0),
+      ]);
+
+      await expect(
+        new D1YearFinalDateWriter(db).save(saveOf(1, LATER_SCHEDULE, 0, NOW)),
+      ).resolves.toBe('saved');
+    });
+
+    test('隣の年の版が違っても、凍結済みの年はversion_conflictでなくlockedを返す', async () => {
+      await insertYearTournaments([
+        { index: 1, columns: { status: 'drawing', drawStartedAt: NOW } },
+        neighborYearOf(3, YEAR + 1, 1),
+      ]);
+      const before = await readYearRows();
+
+      await expect(
+        new D1YearFinalDateWriter(db).save(saveOf(1, LATER_SCHEDULE, 0, NOW)),
+      ).resolves.toBe('locked');
+
+      await expectNothingWritten(before);
     });
   });
 
