@@ -14,7 +14,7 @@
   - _Boundary: RefundRejection、tournament-week・tournament-yearの返金の後処理の読み込み先_
   - _Requirements: 14.7, 14.8, 14.12_
 
-- [ ] 1.3 (P) 利用者側の画面の、業務日付とカレンダーの日の写しを中立の置き場所へ移す
+- [x] 1.3 (P) 利用者側の画面の、業務日付とカレンダーの日の写しを中立の置き場所へ移す
   - product-launchのローンチ日のカレンダーの部品にある業務日付とカレンダーの日の相互の写しを、どのドメインにも属さない時刻の部品の置き場所へ移し、ローンチ日の入力欄と単体テストの読み込み先を書き換える。ローンチ日の選べない理由を決める関数はproduct-launchに残す
   - 完了状態: 移した単体テストと、ローンチ日の入力欄の既存のブラウザテストが期待値を変えずに成功する
   - _Boundary: BusinessDateCalendar、product-launchのローンチ日の入力欄の読み込み先_
@@ -406,3 +406,4 @@
 
 - 1.1: `apps/common-lib/time/business-date-arithmetic.ts`に`addBusinessDays`・`countBusinessDaysInclusive(from, to)`(UTCの0:00の差+1、`to < from`は0)・`CalendarDate`・`parseCalendarDate`(形式違反と実在しない日付で`RangeError`、既存の文言「業務日付はYYYY-MM-DDの形式で指定してください」「存在しない業務日付です」を保つ)・`utcMidnightOf`・`formatCalendarDate`を置いた。`core/time/business-time.ts`は`../../../common-lib/time/...`の相対パスで読み込み、公開の関数は不変(`businessWeekOf`が使う非公開の`addDays`・`MILLISECONDS_PER_DAY`は残した)。`backend/019`の共通ライブラリの表は10.1で直す。範囲外で残した独自の日付の解析・加算: `common-lib/time/business-date-label.ts`の`partsOf`、`common-lib/tournament/week-period.ts`、`common-lib/directory/directory-period.ts`の`addDays`、`client/src/components/product/business-time.ts`、`e2e/support/scheduled-trigger.ts`。
 - 1.2: 写像は`apps/backend-lib/core/payments/refund-rejection.ts`(`refundRejectionOutcome`・`RefundRejectionCode`・`RefundRejectionOutcome`、型の読み込みの相対パス1行以外は不変)。読み込み元はWeek・Yearの`*-entry-follow-up.ts`と`*-entry-rules.unit.test.ts`の4件だけだった。文書の旧パス(`project-values.md`の1258・1271・1304行目、`backend/017`の例)は10.1・10.2で直す。
+- 1.3: `apps/client/src/components/time/business-date-calendar.ts`に`calendarDayOf`・`businessDateOfCalendarDay`(名前と中身は不変)。`unavailableReasonOn`は`components/product/launch-date-calendar.ts`に残した。8.2の`SponsorshipPeriodField`は`../time/business-date-calendar.ts`から読む。`frontend/012`の15行目(`components/<ドメイン>/`)は10.1で直す。
