@@ -29,7 +29,7 @@
   - _Depends: 1.1_
   - _Requirements: 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 3.6, 7.3, 10.3, 13.2, 14.2_
 
-- [ ] 2.2 申込と表示停止の区間のテーブルとマイグレーションを作る
+- [x] 2.2 申込と表示停止の区間のテーブルとマイグレーションを作る
   - 先に、テーブルの定義の単体テストで、列(投稿者によるプロダクトの論理削除の日時と、強制終了と表示停止の返金の状態・日数・金額・依頼の識別を含む)とCHECK制約(ティア・保存の状態・3つの通知の値・2つの返金の状態の値(なし・依頼済み・返金不要・返金済み・拒否)・日数の範囲・決済済みと強制終了の列の有無)、利用者とプロダクトへの外部キーに`ON DELETE`が無いこと、6つの索引(通知の依頼待ちと、未精算か終了通知の未依頼の決済済みの部分索引を含む)、表示停止の区間のテーブルの主体の種類のCHECK制約と索引と外部キーが無いことを確かめる
   - 購入種別の値`sponsorship`は決済のテーブルのCHECKに追加済みのため、決済のテーブルは変えない
   - mainの最新を取り込んでから通常のマイグレーションを生成する
@@ -408,3 +408,4 @@
 - 1.2: 写像は`apps/backend-lib/core/payments/refund-rejection.ts`(`refundRejectionOutcome`・`RefundRejectionCode`・`RefundRejectionOutcome`、型の読み込みの相対パス1行以外は不変)。読み込み元はWeek・Yearの`*-entry-follow-up.ts`と`*-entry-rules.unit.test.ts`の4件だけだった。文書の旧パス(`project-values.md`の1258・1271・1304行目、`backend/017`の例)は10.1・10.2で直す。
 - 1.3: `apps/client/src/components/time/business-date-calendar.ts`に`calendarDayOf`・`businessDateOfCalendarDay`(名前と中身は不変)。`unavailableReasonOn`は`components/product/launch-date-calendar.ts`に残した。8.2の`SponsorshipPeriodField`は`../time/business-date-calendar.ts`から読む。`frontend/012`の15行目(`components/<ドメイン>/`)は10.1で直す。
 - 2.1: `apps/common-lib/sponsorship/`の`sponsorship-tiers.ts`・`sponsorship-period.ts`(`BusinessDateString`もここ)・`sponsorship-status.ts`・`refund-estimate.ts`。設計に無い名前付きの型`SponsorshipDatePeriod`・`SponsorshipUnavailableRange`・`SponsorshipPeriodWindows`・`DisplayStopDates`を足した。`computePeriodWindows`は入力を自分で開始日順に並べ、`startsOn`の形式違反・実在しない日付で`RangeError`(3.x・4.2の`readPeriodWindow`で`validation_error`へ写す)。`computeRefundEstimate`は整数でない値・負・`days=0`・`unexposedDays > days`で`RangeError`(呼び出し元はこの入力にならないこと)。`isTerminable`は申込の論理削除を見ない(照会と前進の文で除く)。`countStoppedDays`は日付を受けるため、区間の時点から日付への変換(区間の最後の瞬間を含む日。0:00ちょうどの解除は前日)は3.8・3.10の責任で、その変換のテストを3.8・3.10で確かめる。終了日のカレンダーの`unavailable`は`latest`より後に並ぶため、その日は`too_long`でなく`overlap`の理由になる。
+- 2.2: テーブルは`apps/db/schema/sponsorship/`の`sponsorships`・`sponsorship_display_stops`、マイグレーションは`20261118081744_sponsorship`(ローカルに適用済み)、D1での確認は`apps/db/sponsorship-schema.worker.test.ts`。日時の列は`timestamp_ms`、`deleted_at`は`softDelete()`(`db/003`どおり、設計のコード片の並びと違う)。`apps/db`はcommon-libを読めないため、ティアと366を写し、`config/sponsorship-contract-copies.unit.test.ts`で照合する(ルートの`check:contract-copies`と`scripts/tooling/run-all.unit.test.ts`の期待値に追加。レビューで1回差し戻し)。決済済み・強制終了の列のCHECKは「その状態なら必須」の向きだけ、範囲のCHECKは`days`だけ。前進の文は状態を`CASE ... ELSE NULL END`にしてNOT NULLの違反で取り消す(CHECKはNULLで違反にならない。D1で確認済み)。`sponsorships`は`users`・`products`への外部キー(`ON DELETE`無し)のため、6.2の物理削除は上流の物理削除より先に申込の行を消す。`sponsorship_display_stops`は外部キー無し。部分索引`sponsorships_unsettled_end_idx`は統計の無い状態で`sponsorships_display_idx`に負けることがあるので、3.1の精算の照会で実行計画を確かめる。`project-values.md`のテーブルと「手で同期する値」の行は10.2で書く。

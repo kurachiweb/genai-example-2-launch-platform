@@ -88,6 +88,8 @@ describe('スキーマの集約点', () => {
     'week_tournament_entries',
     'year_tournaments',
     'year_tournament_entries',
+    'sponsorships',
+    'sponsorship_display_stops',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
