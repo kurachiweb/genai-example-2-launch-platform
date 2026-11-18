@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react';
 
+import { SponsorshipPricingSection } from '../components/sponsorship/sponsorship-pricing-section.tsx';
+import { SPONSORSHIP_PRICING_SECTION_TITLE } from '../components/sponsorship/sponsorship-messages.ts';
 import { ULTRAS_PRICING_SECTION_TITLE } from '../components/ultras/ultras-messages.ts';
 import { UltrasPricingSection } from '../components/ultras/ultras-pricing-section.tsx';
 
@@ -21,5 +23,11 @@ export const PRICING_SECTIONS: readonly PricingSection[] = Object.freeze([
     order: 10,
     title: ULTRAS_PRICING_SECTION_TITLE,
     component: UltrasPricingSection,
+  },
+  {
+    id: 'sponsorship.sponsorship-pricing',
+    order: 20,
+    title: SPONSORSHIP_PRICING_SECTION_TITLE,
+    component: SponsorshipPricingSection,
   },
 ]);
