@@ -5,7 +5,9 @@ import { describe, expect, test } from 'vitest';
 
 import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { DefaultMySponsorshipsReader } from '../application/sponsorship/my-sponsorships-reader.ts';
 import { DefaultSponsorshipApplication } from '../application/sponsorship/sponsorship-application.ts';
+import { DefaultSponsorshipOfferReader } from '../application/sponsorship/sponsorship-offer-reader.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import { MODULES } from './modules.ts';
 import { SPONSORSHIP_API_MODULE } from './sponsorship-module.ts';
@@ -17,12 +19,12 @@ const INVOCATION_KINDS = ['fetch', 'scheduled'] as const;
 
 const IMPLEMENTATIONS = [
   ['SponsorshipApplication', DefaultSponsorshipApplication],
+  ['SponsorshipOfferReader', DefaultSponsorshipOfferReader],
+  ['MySponsorshipsReader', DefaultMySponsorshipsReader],
 ] as const;
 
 // 実装の無い部品の識別子。実装と束縛を加えたらIMPLEMENTATIONSへ移す
 const UNBOUND: readonly SponsorshipTypeName[] = [
-  'SponsorshipOfferReader',
-  'MySponsorshipsReader',
   'AdminSponsorshipsReader',
   'SponsorshipTermination',
   'SponsorshipTerminationWriter',
