@@ -43,6 +43,7 @@ import {
   EVENT_SEARCH_MODULE,
   EVENT_SEARCH_PLATFORM_MODULE,
 } from './search-module.ts';
+import { EVENT_SPONSORSHIP_MODULE } from './sponsorship-module.ts';
 import {
   EVENT_ULTRAS_MODULE,
   EVENT_ULTRAS_PLATFORM_MODULE,
@@ -84,6 +85,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     createSponsorshipPlatformModule('event'),
     EVENT_WEEK_TOURNAMENT_MODULE,
     EVENT_YEAR_TOURNAMENT_MODULE,
+    EVENT_SPONSORSHIP_MODULE,
     EVENT_ULTRAS_MODULE,
     EVENT_PRODUCT_MODULE,
   ]);

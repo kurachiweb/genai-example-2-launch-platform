@@ -22,6 +22,7 @@ import {
   FLUSH_NOTIFICATION_SLOT_MESSAGE,
   NOTIFICATION_RETRY_POLICY,
 } from '../../lib/core/messaging/contracts/notifications.ts';
+import { SPONSORSHIP_DISPATCH_NOTICES_MESSAGE } from '../../lib/core/messaging/contracts/sponsorship.ts';
 import type { MessageHandlerRegistration } from '../../lib/core/messaging/message-contract.ts';
 import { PAYMENTS_REFUND_MESSAGE } from '../../lib/core/payments/refund-message.ts';
 import { PRODUCT_LIFECYCLE_RETRY_POLICY } from '../../lib/core/product/product-lifecycle.ts';
@@ -40,6 +41,7 @@ import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-no
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
 import { REFUND_PAYMENT_RETRY_POLICY } from '../application/payments/refund-payment-handler.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
+import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 
 export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
@@ -106,5 +108,9 @@ export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
       contract: EXPAND_NOTIFICATION_EVENT_MESSAGE,
       handler: EVENT_NOTIFICATIONS_TYPES.ExpandEventHandler,
       retry: NOTIFICATION_RETRY_POLICY,
+    },
+    {
+      contract: SPONSORSHIP_DISPATCH_NOTICES_MESSAGE,
+      handler: EVENT_SPONSORSHIP_TYPES.NoticeDispatchHandler,
     },
   ]);
