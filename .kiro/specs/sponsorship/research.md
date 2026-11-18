@@ -345,3 +345,258 @@
 
 - ultras-subscriptionの実装前のギャップ分析への開発者の決定で、料金ページの区画の登録口`PRICING_SECTIONS`の形が、adminの前例に合わせて`id`(`'<spec名>.<名詞句>'`。`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例)・`order`・`title`(区画の見出し。`CATEGORY_SECTIONS`の前例)・`component`になった。ページは区画ごとにfrontend-libへ移した`RecoverableSlot`で包み、1つの区画の描画や取得の失敗をその区画の位置に留め、読み込み中と失敗の間は`title`の見出しを補う。
 - 本specの登録に、部品が描く見出しと同じ文言の`title`を加えた(design.mdの登録の行、tasks.mdの登録のタスク)。要件と受け入れ基準は変えていない。タスクの番号は変えていない。
+
+---
+
+## 実装前のギャップ分析(2026-11-18、`/kiro-validate-gap`)
+
+### 分析の前提
+
+- 本specの要件・設計・タスクは承認済み(受け入れ基準116件・46のサブタスク)だが、設計の最後の改訂(2026-11-02)の時点で実装済みの上流は一部だった。その後、上流のpayments・ultras-subscription・product-launch・directory-discovery・match-engine・identity-auth・user-profile-social・email-delivery・admin-foundation・frontend-platform・backend-platformと、並行のengagement・notifications・tournament-week・tournament-yearが実装された。本分析は、設計が前提にした上流の契約と現在のコードの食い違い、2026-11-02の後に加わった技術ドキュメント(`backend/009`・`010`・`012`・`013`・`016`・`017`・`019`、`frontend/010`・`012`〜`016`)との差、要件定義書の番号との差を洗い出す。
+- スポンサー広告の実装(テーブル・`core/sponsorship`・`workers/sponsorship`・画面)はまだ無い。上流が先に用意したものは次のとおり。購入種別`sponsorship`(`common-lib/payments/purchase-kinds.ts`・`payment_purchases`と`payment_records`のCHECK・GraphQLの`PurchaseKind`の`SPONSORSHIP`)、監査ログの対象の種類`sponsorship`(`common-lib/admin/audit-action.ts`)、各登録口のコメントの予約(料金ページ20・設定のナビゲーション80・管理画面のメニュー90)。
+- `.kiro/steering`はroadmap.mdだけで、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specと実装で代替した。
+- 外部の依存の調査は不要(新しいパッケージ・外部APIなし)。
+- 判断は行わず、選択肢と影響を示す。
+
+### 照合の結果の要約
+
+上流の契約の名前・置き場所・形は概ね設計どおりに実装されている。本specが使う登録口の`order`はすべて空いている。
+
+- トップページ: `banner` 5(カウントダウンは10)・`aside` 10・`bottom` 10、`QUALIFIER_LIST_INSERTS`(空)
+- ディレクトリ: `DIRECTORY_PAGE_SECTIONS`・`DIRECTORY_LIST_INSERTS`(空)
+- プロダクト詳細ページ: `banner` 10・`aside` 30(所有者10・評価20)・`bottom` 20
+- `PRODUCT_DELETE_NOTICES`の30(Week 10・Year 20)
+- 両方の非同期のライフサイクルの1600と、4:21の1600
+
+`PaymentRefundStatements.prepare`、`FulfillmentPlan`の`reject`(`ineligible`だけ)、`PurchaseOffer`の`quantity`(1〜366)、`PricingSection`の`title`、`ProductDeleteNotice`の`productHandle`、GraphQLの`CheckoutStart`も設計どおりにある。技術ドキュメントの番号`backend/018`・`frontend/017`も空いている。
+
+食い違いの多くは、2026-11-02の後に技術ドキュメントとtournament-week・tournament-yearの実装前のギャップ分析で確定した規約(返金の拒否の扱い・業務日付の計算・業務日付のカレンダー・登録口のテスト)が、本specの設計に残っているものである。実装を壊すもの2件・形の違い6件・規約の違い6件・既存の部品との重複4件・古い記述2件を挙げる。
+
+### 要件と既存の資産の対応
+
+| 要件                           | 使う既存の資産                                                                                                                                                                                                                                                | ギャップ                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 1 申込の対象・ティア・期間     | `ProductDirectory.findSummaries('visible' \| 'not-deleted')`・`listLaunches`、`LaunchStatus`、`addBusinessDays`(`core/time`)、`Calendar`(`unavailableReasonOf`)・`LaunchDateField`(前例)                                                                      | Missing: 規則とテーブル。Constraint: C-1・D-2                                 |
+| 2 価格と決済の開始             | `PriceCatalog.getPrices`、`CheckoutStarter.start`、`PRICING_SECTIONS`(20は予約済み)・`RecoverableSlot`、`TournamentEntryCheckout`(前例)、`UnavailableNotice`、`useTurnstileToken`、`ClientViewer.status`・`emailVerified`                                     | Missing: 区画・申込・再開。Constraint: S-2・D-4                               |
+| 3 掲載権の確定                 | `PurchaseOfferPolicy`・`PurchaseFulfillment`・`FulfillablePurchase`、`PURCHASE_KIND_REGISTRATIONS`(未登録)、`week-entry-fulfillment.ts`のNOT NULLの違反の前進の文(前例)                                                                                       | Missing: 購入種別の口の実装と登録。Constraint: B-2・C-4                       |
+| 4〜6 表示の条件・配置・並び    | `visibleProducts()`、`TOP_PAGE_SECTIONS`・`QUALIFIER_LIST_INSERTS`・`DIRECTORY_PAGE_SECTIONS`・`DIRECTORY_LIST_INSERTS`・`PRODUCT_PAGE_SECTIONS`、`MediaPicture`(`square`の32・64)、`checkExternalUrl`、`frontend/013`の区画の空の扱い                        | Missing: 部品と照会。Constraint: S-1                                          |
+| 7 自分の広告一覧               | `SETTINGS_NAV_ITEMS`(80は予約済み)・`SettingsShell`、続きの読み込みの一覧の前例(`my-product-list.tsx`・`follow-list.tsx`)、`formatBusinessDateLabel`・`LaunchDateText`                                                                                        | Missing: 一覧。Constraint: D-4                                                |
+| 8 開始・終了の通知             | `ScheduledJobDefinition`(`at`・`order`)、`defineMessageContract`・`MessageHandlingResult`(`defer`)、`defineEmailKind`(`transactional`)・`EmailSender`・`UserContactDirectory.findContact`                                                                     | Missing: 0:07のジョブ・処理・種別。Constraint: C-2                            |
+| 9・10 管理画面の一覧と強制終了 | `ADMIN_NAV_ITEMS`(90は予約済み)、`AdminFilterBar`・`AdminDataTable`(前後のカーソル)・`cursor-trail.ts`、`ConfirmActionDialog`(`title`・`description`は`ReactNode`)・`ReasonField`・`RoleGate`、`requireAdmin`、`defineAuditAction`・`buildAuditLogStatements` | Missing: 画面・ユースケース・操作種別。Constraint: S-5・C-5                   |
+| 11 退会・削除・物理削除        | ユーザーとプロダクトのライフサイクルの同期の登録口(`{ name, events, handler }`、`statementsFor(event, db)`)と非同期の登録口(1600は空き)、`PRODUCT_DELETE_NOTICES`(30は空き)                                                                                   | Missing: 4つの処理と注記。Constraint: B-2                                     |
+| 12 連携と運用                  | `SponsorshipExport`の後続(data-export)、`captureEvent`(`logentry`・`fingerprint`)の前例(`refund-failure-reporting.ts`)                                                                                                                                        | Missing: 部品                                                                 |
+| 13 ドキュメントとテスト        | `triggerScheduled`(`businessTime`は必須の`"HH:mm"`)、`executeLocalD1`・`sqlStringLiteral`、`admin-bootstrap.ts`、`mailpit.ts`(`waitForEmailWithSubject`など)                                                                                                  | Missing: 2つの技術ドキュメント・サービス仕様の残り。Constraint: C-6・D-3・O-1 |
+| 14 日割りの自動返金            | `PaymentRefundStatements.prepare`・`PaymentRefunds.dispatch`、`refundRejectionOutcome`(`core/tournament`)、`ProductVisibilityControl`・`D1UserLifecycleCommitter`(非公開化と停止の確定)                                                                       | Missing: 区間と精算。Constraint: B-1・C-3・D-1                                |
+
+### 上流の契約との食い違い
+
+#### 実装を壊すもの(設計の改訂を要する)
+
+- **B-1 返金の依頼の拒否の扱い**(tournament-weekのG4・tournament-yearのG4と同じ論点): 設計の`RefundSettlement`は、`amount_exceeds_refundable`なら金額`null`(残りの全額)で1回だけ依頼し直し、それ以外の拒否(`purchase_not_found`・`not_paid`・`invalid_amount`)を`failed`とSentryへの通知にする。現在の契約と規約とは次の点で合わない。
+  - `validateRefundAmount`(`core/payments/refund-rules.ts`)は、金額`null`でも残りが0なら`amount_exceeds_refundable`を返す。管理者がStripeで全額を返金済みの購入では依頼し直しも拒否され、2回目の結果の扱いが設計に無い。
+  - 技術ドキュメント[返金の後処理](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md#返金の後処理)は、拒否のコードごとの扱いを決めている。`not_paid`・`purchase_not_found`は返金不要で知らせない。`amount_exceeds_refundable`は返金済みとして運用者へ知らせる。`invalid_amount`・`invalid_request_key`は拒否として知らせ、再処理から外す。この写像は「種類ごとに写さない」とし、共用の`refundRejectionOutcome`(`core/tournament/refund-rejection.ts`)にある。
+  - 設計の返金の状態(`none`・`requested`・`not_needed`・`failed`)には、返金済みと拒否に当たる値が無い。
+  - `prepare`は、理由が`^[a-z0-9_]{1,64}$`に合わなければ拒否を返さず`RangeError`を投げる。設計の理由`sponsorship_terminated`・`sponsorship_display_stopped`はこの形式に合う。
+  - 一部の返金(未掲載日数分)の後に残りを超える拒否が来たときに、残りの全額で依頼し直す設計の意図(要件14.7)は、`backend/017`の分類(返金済み)と両立させる必要がある。
+- **B-2 未登録の購入種別の例と、登録の一覧の完全一致を前提にした上流のテスト**(tournament-yearのB-5と同じ): `sponsorship`を登録すると、次のテストが落ちる。設計の「上流への影響」は全行「契約どおり」とだけ書き、テストの書き換えを挙げていない。
+  - paymentsのテストは`sponsorship`を「まだ登録されていない購入種別」の例に使う。例は`checkout-session-reflection.rejection.worker.test.ts`と、project-values.mdの「後続のspecへの申し送り」の`payments-platform-module.worker.test.ts`。申し送りは「登録する後続のspecは、まだ登録されていない別の値へ差し替える」とする。
+  - 登録口を名前で参照するテストが約60ファイルある。例は`admin-nav-order.unit.test.ts`・`settings-nav-order.unit.test.ts`・`top-page-sections.browser.test.ts`・`directory-sections.browser.test.ts`・`product-page-sections.browser.test.ts`・`product-section-registries.browser.test.ts`・`core/email/kinds/index.unit.test.ts`・`core/messaging/contracts/index.unit.test.ts`・`audit-entry.unit.test.ts`・`cron-sync.unit.test.ts`・`product-lifecycle-async-handlers.unit.test.ts`と、apiとeventの各モジュールのWorkers統合テスト。多くは一覧を完全一致で確かめる。
+  - 名前を参照せず振る舞いで影響を受けるテストは検索で拾えないため、apiとeventのWorkers統合テストの全件の実行が要る。
+
+#### 形の違い(実装時に合わせる)
+
+- **S-1 広告スペースの置き場所の描画**: 設計の`GoldListPlacement`は「1024px以上は幅280pxの列」とする。現在の描画は次のとおりで、280pxの幅を部品が自分で決められるのはトップページだけである。
+  - トップページの`aside`は幅を持たず(`lg:shrink-0`だけ)、1024px未満では本文の下に積まれる。
+  - ディレクトリの`aside`は`lg:w-80`(320px)の固定である。
+  - プロダクト詳細ページのサイドバーは`20rem`(1280px以上は`22rem`)である。
+  - その他の描画: トップページの`bottom`は幅の器を持たないため、Silverの部品が`max-w-7xl`と左右の余白を持つ必要がある。ディレクトリの差し込みは`<li data-directory-insert>`の中に描かれるため、部品は`li`を描かない。広告が0件で何も描かない区画は、`frontend/013`の`data-<ページ>-section-rendered`の印と`display: contents`の仕組みで空の列を畳む。
+  - 要件5.3・ページ配置の「幅280pxのサイドバー」を、置き場所の列の幅に合わせる表現にするかの確認が要る。
+- **S-2 閲覧者の状態**: `ClientViewer`は停止を`status: 'SUSPENDED'`で持ち、真偽値の`suspended`を持たない(`emailVerified`は真偽値)。
+- **S-3 ライフサイクルの同期の処理**: ユーザーとプロダクトの同期の処理の契約は、apiの`infrastructure`(`user-lifecycle-sync-handler.ts`・`product-lifecycle-sync-handler.ts`)の`statementsFor(event, db)`である。登録は`{ name, events, handler }`で`order`を持たず、一覧の並びの順に動く。設計の置き場所(apiの`infrastructure/sponsorship`)と合う。
+- **S-4 画像の部品**: `MediaPicture`はGraphQLの型ではなく、frontend-libの画面の部品(`display: { kind: 'square', size: 32 | 64 | 128 }`)である。Allowed Dependenciesの「GraphQLの`MediaImage`・`MediaPicture`」は、「GraphQLの`MediaImage`とfrontend-libの`MediaPicture`」に読み替える。
+- **S-5 管理画面の一覧の状態**: 管理画面の一覧の規約([管理画面のシェル](../../../docs/GUIDES/tech/frontend/009-admin-console-shell.md))は、絞り込みとページのカーソルをURLの検索パラメータに持ち、不正な値を未指定として捨てる。前例は監査ログと問い合わせの一覧で、`validateSearch`・`loaderDeps`・`after`と`cursor-trail.ts`を使う。設計は`status`・`tier`をURLに持つが、前後のページを「カーソルの積み重ね」とだけ書き、カーソルをURLに持つかを定めていない。
+- **S-6 決済の開始の画面**: tournament-week・yearの決済の開始(`TournamentEntryCheckout`)は、bot判定を使わず、未決済の状態に同じボタンを再び出して開始の操作をやり直す。成功で`/checkout/$purchaseId`へ遷移し、`payments_unavailable`でボタンを無効にして`UnavailableNotice`を示す。本specは要件(FR-SPONS-015)によりbot判定と「決済へ進む」の再開の操作を持つため、前例と形が異なる。失敗の文言と無効化の示し方は前例に合わせられる。
+
+#### 規約の違い
+
+- **C-1 業務日付の入力**: [業務日付のカレンダー](../../../docs/GUIDES/tech/frontend/012-business-date-calendar.md)(2026-11-09)は次のことを定めている。設計は開始日・終了日を`<input type="date">`(`min`・`max`は`businessToday`と上限から)と画面の`validatePeriod`で選ばせるため、規約と異なる。
+  - 選べる日が多く一部の日だけが選べない日付は、共通部品の`Calendar`(`unavailableReasonOf`)で選ばせる。
+  - 選べる範囲と選べない日はサーバーが`DateWindowView`(`earliest`・`latest`・`unavailable[]`)で返し、画面は規則を持たない。
+  - 今日は業務日付で求め、`calendarDayOf`・`businessDateOfCalendarDay`で変換する。業務日付は`<time dateTime>`と`formatBusinessDateLabel`で示し、`DateTime`を使わない。境界の時刻(0:00)で`useBoundaryRefresh`により取り直す。
+  - 仮5の重なり(同じプロダクト・同じティアの掲載中・掲載予定の期間)は、選べない日と理由として示せる。要件1.6・1.7のフォーカスアウト時の文言は、カレンダーの選べない日と理由の表示に置き換わる可能性がある。
+- **C-2 0:07の定期実行**: 設計の「apiの`wrangler.jsonc`(3環境)の`triggers.crons`に`7 8 * * *`」とWranglerの型の再生成は、project-values.mdの規則と異なる。規則は「cron式はルートの`triggers.crons`だけに書き、環境へ継承する」で、`cron-sync.unit.test.ts`が`SCHEDULED_JOBS`の時刻とcron式の一致を確かめる。現在、`env.staging`・`env.prod`は`triggers`を持たない。0:07は新しい時刻になる。`SCHEDULED_RUN_BUDGETS`(4:21・23:40・23:45・0:00の300秒)への予算の追加は、`infra/003`では必須でない。
+- **C-3 返金の依頼キーの形**: `backend/017`の規約と両トーナメントの実装は`<接頭辞>:<購入のID>:<理由>`(`tournament-week:<購入ID>:<理由>`)である。設計の`sponsorship-termination:<申込ID>`・`sponsorship-display-stop:<申込ID>`は、`backend/009`の条件(1〜128文字・`reflection:`で始めない)は満たすが、形が異なる。
+- **C-4 購入種別の登録の名前**: 前例は`workers/<ドメイン>/<ドメイン>-registrations.ts`が`<ドメイン>_PURCHASE_KIND_REGISTRATION`を書き出し、paymentsの`purchase-kind-registrations.ts`が読み込む(`ULTRAS_`・`WEEK_TOURNAMENT_`・`YEAR_TOURNAMENT_`)。設計の`SPONSORSHIP_PURCHASE_REGISTRATION`と置き場所は前例の命名と異なる(軽微)。
+- **C-5 監査ログの書き込みの条件**: [監査ログ](../../../docs/GUIDES/tech/backend/008-audit-logging.md)は、操作の確定と監査ログを同じ一括の書き込みに入れ、確定の条件を`buildAuditLogStatements`の条件(`{ kind: 'condition' }`)で表すとする。設計の`D1TerminationWriter`は条件付きの前進の文で強制終了を確定するが、監査ログの文の条件の付け方を明記していない。並行した2回の強制終了で監査ログが2件残らないことの確認が要る。
+- **C-6 E2Eの置き場所**: CLAUDE.mdとtournament-week・yearの前例は、次の形を取る。設計のFile Structure Planは手順のファイルを持たず、行を作る補助をSQLの組み立てと単体テストに分けていない。
+  - テストは`e2e/<アプリ>/<機能>/`に置き、画面の操作の手順`<手順の名前>-steps.ts`を並べる。
+  - ローカルD1へ入れるSQLの組み立ては、単体テスト付きの`e2e/support/<名前>-fixture-sql.ts`に分ける。
+
+#### 既存の部品との重複
+
+- **D-1 返金の拒否の写像**: B-1のとおり、`backend/017`の写像は`core/tournament/refund-rejection.ts`にトーナメントの置き場所で共用化されている。本specが使うには、そのまま読み込むか、種類によらない置き場所(例: `core/payments`)へ移すかを決める必要がある。
+- **D-2 業務日付の日数の計算**: [基準日から逆算する日程](../../../docs/GUIDES/tech/backend/019-anchor-date-schedules.md)(2026-11-18)は、業務日付の加算を共通ライブラリの`addBusinessDays`の1つで行い、機能ごとに写さず、ミリ秒の差を日数に割らないとする。設計は次の部品を持つ。
+  - `common-lib/sponsorship/sponsorship-period.ts`の独自の`addBusinessDays`と`countDays`(両端を含む日数)。
+  - `refund-estimate.ts`の日数の計算。
+  - 共用の`addBusinessDays`・`businessWeekdayOf`は`backend-lib/core/time/business-time.ts`にあり、画面と共用する`common-lib`からは読み込めない(`common-lib/time`には表記の関数だけがある)。日数の差の共用の関数は無い(`workers/match/d1-match-directory.ts`の非公開の`datesBetween`だけ)。C-1でサーバーが選べる範囲を返す形にすれば、画面が期間の規則を持つ必要は減る。
+- **D-3 技術ドキュメント`backend/018`の主題の重なり**: 設計の`backend/018-date-range-entitlements.md`の計画の内容は、既存の文書と重なる。
+  - 条件付きの前進と反映の期限は`backend/009`・`017`と重なる。
+  - 依頼キーと掲載の終わりの1回の依頼は`backend/009`の返金の依頼の口・`017`と重なる。
+  - 権利の期間と時点の判定は`backend/010`と重なる。
+  - `backend/012`が`007`へリンクする形にならい、重なる部分はリンクに留め、本specに固有の内容に絞れる。固有の内容は、両端を含む業務日付の範囲、前進の文の中の重なりの判定、表示停止の区間の日数、整数の日割り、通知の依頼待ちの列である。
+- **D-4 画面の前例**: 次の前例を設計は参照していない。
+  - 決済の開始の部品`TournamentEntryCheckout`と`UnavailableNotice`(S-6)。
+  - 続きの読み込みの一覧(`my-product-list.tsx`・`follow-list.tsx`・`upvote-history-list.tsx`。共通部品は無い)。
+  - 業務日付の表示`LaunchDateText`と`formatBusinessDateLabel`・`formatBusinessDateWithWeekdayLabel`(`common-lib/time/business-date-label.ts`)。
+
+#### 古い記述
+
+- **O-1** 設計とタスクに、実装が進む前の記述が残る。
+  - 設計のExisting Architecture Analysisの「上流の20specは…実装済みはdev-toolingだけ」と、「上流への影響」のapiの`wrangler.jsonc`(3環境)。
+  - サービス仕様のうち、次の文書は本specの決定に更新済みで、Modified Filesの該当の作業は一致の確認になる。ページ配置(ディレクトリの広告・枠の上限なし・削除の確認の注記・料金ページの区画)、法的通知の大枠の返金ポリシー(強制終了と表示停止の日割りの自動返金、削除と退会の返金なし)、料金とプラン、決済実装方針、データエクスポート。
+  - 未反映の文書もある。日次タイムラインの4:21の表の`sponsorship.maintenance`(1600)と、文言規則の広告の返金の2文(ugc-moderationの停止・非公開化の通知が参照する文)。
+  - 要件定義書はFR-SPONS-004に「1〜366日」を持つが、サービス仕様は要件定義書を参照するだけで366日を書いていない。
+- **O-2 要件の追跡のID**: 要件定義書の改訂(2026-10-25)で、仮決定と本specの受け入れ基準に当たる要件が加わった。requirements.mdはこれらのIDを参照していない。
+
+| 要件定義書のID    | 内容                                              | 対応する本specの受け入れ基準 | 現在の参照        |
+| ----------------- | ------------------------------------------------- | ---------------------------- | ----------------- |
+| FR-SPONS-003      | 掲載枠の上限なし(仮1)                             | 4.5                          | 仮1               |
+| FR-SPONS-005・006 | 重なりの申込の拒否と、決済確定の時点の不付与(仮5) | 1.8・3.2                     | 仮5               |
+| FR-SPONS-017      | 0:07以降の決済の当日の開始通知(仮2)               | 8.4                          | 仮2               |
+| FR-SPONS-021      | 表示停止の日数分の日割りの自動返金(仮3)           | 10.11・14.1・14.3            | FR-SPONS-020      |
+| FR-SPONS-022      | 表示停止日数の数え方(重なりは1日)                 | 14.2                         | 仮3               |
+| FR-SPONS-023      | 個別削除・退会での返金なし                        | 11.5・14.9                   | 無し              |
+| FR-ADMUG-046      | 強制終了と同時の自動返金                          | 10.7・14.4                   | FR-ADMUG-045・仮3 |
+
+受け入れ基準の振る舞いは変わらない。
+
+#### 情報(設計の変更は不要)
+
+- 購入種別`sponsorship`の値は、`PURCHASE_KINDS`・購入と決済履歴のCHECK・GraphQLの`PurchaseKind`に追加済みで、本specのマイグレーションで購入種別の値を足す必要は無い。必要なのは`PURCHASE_KIND_REGISTRATIONS`への登録だけである。監査ログの対象の種類`sponsorship`も追加済みである。
+- `PaymentRefundStatements.prepare`は実装済みで、同じ依頼キーの2回目は金額の検証より先に`duplicate: true`と空の文を返す(要件14.6の前提どおり)。ただし、他のspecはまだこの口を使っていない(Week・Yearは`PaymentRefunds.request`を使う)。本specが最初の利用者になるため、確定の一括の書き込みに入れる使い方の統合テストの比重が上がる。
+- 表示停止の契機は発火できる。プロダクトの非公開化と復元はproduct-launchの`ProductVisibilityControl`、利用者の停止と解除は`D1UserLifecycleCommitter`が確定する。操作の画面(ugc-moderation)は未実装のため、表示停止の経路は登録口の処理を直接呼ぶテストで確かめることになる。
+- [まとめて送る通知メール](../../../docs/GUIDES/tech/backend/016-batched-notification-delivery.md)は、受信設定に従う通知メールが対象である。設計の開始・終了・強制終了のメール(`category: 'transactional'`、配信停止のリンクなし)は対象外で、設計の変更は要らない。
+- [集約のライフサイクルイベント](../../../docs/GUIDES/tech/backend/012-aggregate-lifecycle-events.md)は、投稿者の退会・停止をユーザーのライフサイクル、プロダクトの`deleted`を投稿者の個別削除だけに使い分ける。プロダクトを指す行はプロダクトの`purge_due`で消すとする。設計の4つの同期の処理と2つの物理削除(1600)の分け方はこれに合う。
+- [判定の供給元](../../../docs/GUIDES/tech/backend/013-pluggable-decision-sources.md)の登録口は使わない(設計は削除の確認の注記だけを登録する)。
+- [URLのクエリで条件を持つ一覧](../../../docs/GUIDES/tech/frontend/014-url-state-listing.md)は、ページ番号で移動する共有可能な一覧の規約で、本specの管理画面の一覧(前後のカーソル)は対象外である。
+- [表示中の画面の定期再取得](../../../docs/GUIDES/tech/frontend/010-live-refresh-queries.md)の、外部サービスから戻った後の上限付きの取り直しは、paymentsの決済後のランディングが受け持つ。本specの画面は定期の取り直しを持たない(0:00の状態の切り替わりはC-1の`useBoundaryRefresh`の対象)。
+- `triggerScheduled`は`{ worker, businessDate, businessTime: 'HH:mm' }`を受け取り、`businessTime`は必須である。設計の引数の並びどおりである。
+
+### 実装の進め方の選択肢
+
+#### 選択肢A: 設計とタスクを先に改訂してから実装する
+
+- B・S・C・D・Oのすべてをdesign.md・tasks.mdへ反映し、変更部分のレビューを経て承認し直してから`/kiro-impl`を始める(tournament-week・yearが取った進め方)。
+- ✅ `backend/017`・`019`、`frontend/012`で確定した規約を最初から書け、tournament-yearと同じ指摘の繰り返しを避けられる
+- ✅ 共用化の判断(D-1・D-2)と日付の入力の形(C-1)を、実装の前に開発者が決められる
+- ❌ 設計の改訂・タスクの再生成・レビューの手間が先に掛かる
+
+#### 選択肢B: 実装の中で吸収し、Implementation Notesへ記録する
+
+- 設計を変えずに実装を始め、各タスクで既存のコードと前例に合わせ、相違をtasks.mdのImplementation Notesと最終の報告に残す。
+- ✅ すぐに着手でき、S・C-2〜C-6・Oの多くは名前と置き場所の小さな違いである
+- ❌ B-1は返金の正しさ(二重の依頼・依頼の漏れ・運用者への知らせ)に関わり、実装者が設計と規約の食い違いを都度判断することになる
+- ❌ C-1は画面とGraphQLの照会(選べる範囲の返却)の形を変え、タスクの境界(共有の規則・apiの照会・clientの部品)をまたぐ
+
+#### 選択肢C: 壊すものと画面の形の判断だけ先に直す(折衷)
+
+- B-1・B-2・C-1・D-1・D-2を先に設計とタスクへ反映し、S・C-2〜C-6・D-3・D-4・Oは実装時に既存のコードへ合わせてImplementation Notesに残す。
+- ✅ 改訂の範囲を手戻りの大きい箇所に絞れる
+- ❌ C-2・C-6は前例で既に確定しており、後回しにしても判断の余地が無い(先に直しても手間は小さい)
+
+### 工数とリスク
+
+- **工数: L(1〜2週間)** — 46のサブタスクで、2テーブル・共有モジュール・apiとeventの十数の登録・0:07の新しい定期実行・clientの広告の部品と申込・自分の一覧・adminの一覧と強制終了・E2Eにわたる。購入種別の口・返金・管理画面・ライフサイクルの規約はtournament-week・yearと上流に前例があり、作成時の見積りより統合の不確実さは小さい。C-1でカレンダーとサーバーの選べる範囲に改める場合と、B-2の上流のテストの書き換えの分だけ増える。
+- **リスク: Medium** — 技術の未知は無いが、正しさの要が3つある。
+  - 日割りの自動返金(強制終了と表示停止の2種類、残りの全額、返金済みの購入)の正しさ。最初の利用者になる`PaymentRefundStatements.prepare`との組み合わせも含む。
+  - 掲載権の前進の文の中の重なりの判定。
+  - サーバーの無作為の並びとハイドレーションの一致(5.9・6.1)。
+
+### 設計フェーズ(改訂)への推奨
+
+- 推奨は選択肢A。tournament-yearの実装前のギャップ分析と同じ型の指摘が並び、B-1・C-2〜C-6は前例で方針が確定しているため、設計へ写す作業が中心になる。開発者の判断が要るのは主に返金の拒否・日付の入力・共用化の論点である。
+- 先に決める論点:
+  - B-1・D-1: 返金の拒否を`backend/017`の分類(返金不要・返金済み・拒否)にそろえ、`refundRejectionOutcome`を共用するか。共用する場合は、`core/tournament`のまま読み込むか、種類によらない置き場所(`core/payments`など)へ移してWeek・Yearの参照を書き換えるか(水平展開)。残りを超える拒否で残りの全額で依頼し直す設計(要件14.7)を残すかと、その2回目の拒否を返金済みとして扱うかも決める。返金の状態に`already_refunded`・`rejected`を足すかも同時に決める。
+  - C-1: 開始日・終了日を、`frontend/012`どおり`Calendar`とサーバーが返す選べる範囲(重なりの日を理由付きで選べない日にする)で選ばせるか、設計どおりブラウザの日付の入力欄にするか(規約の例外として文書に残す)。カレンダーにする場合、要件1.6・1.7のフォーカスアウト時の文言の扱いを決める。
+  - D-2: 期間の規則の日数の計算を、`addBusinessDays`を`common-lib/time`へ移して`backend-lib/core/time`が再び書き出す形で共用するか、本specの`common-lib/sponsorship`に持つか(`backend/019`の「機能ごとに写さない」の例外になる)、C-1でサーバーだけが規則を持つ形にするか。
+  - S-1: Goldの幅を、トップページだけ280pxにして他は置き場所の列の幅に合わせるか(要件5.3とページ配置の表現の改訂を伴う)。
+  - C-3: 返金の依頼キーを`backend/017`の`<接頭辞>:<購入のID>:<理由>`に合わせるか、申込IDの鍵のまま残すか(購入に1つの申込が対応するため、どちらでも一意である)。
+  - D-3: `backend/018`を、`009`・`010`・`017`へのリンクと本specに固有の内容に絞るか。
+- 開発者に質問せず、既存のコードと規約に合わせられる事項: B-2(上流のテストの書き換えを「上流への影響」とタスクに加え、各登録のタスクの完了状態にapiとeventのWorkers統合テストの全件の実行を含める)、S-2〜S-6、C-2・C-4〜C-6、D-4、O-1、O-2(requirements.mdの参照のIDを現在の番号に合わせる)。
+- Research Needed:
+  - B-1: `PaymentRefundStatements.prepare`を強制終了の一括の書き込みに入れたとき、並行した2回の強制終了と、精算の再実行で依頼が1件になることを統合テストで確かめる方法(本specが最初の利用者)。
+  - B-2: 本specの登録で書き換えが要る上流のテストの一覧(検索と全件の実行で洗い出す)。
+  - 4:21の精算のメッセージの送信が、同じ時刻の他のspec(100〜1500・1700・2300)と共有する300秒の予算に収まるかの見積り(設計は送信だけで重い処理をeventへ渡すため、影響は小さい見込み)。
+
+## 実装前のギャップ分析の決定事項(2026-11-18に開発者が確定)
+
+### 開発者が確定した論点
+
+前節の「先に決める論点」の6件を開発者へ1件ずつ質問し、次のとおり確定した。G4は推奨と異なる選択肢で確定した。
+
+| #   | 論点(前節の番号)                         | 確定した案                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | 他の選択肢                                                                                          | 影響する箇所                                                                                                                                                                                                                                                         |
+| --- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | 返金の拒否の扱い(B-1・D-1)               | 拒否を`backend/017`の3分類にそろえる。`not_paid`・`purchase_not_found`は返金不要で知らせない。`amount_exceeds_refundable`は返金済みとして運用者へ知らせる。`invalid_amount`・`invalid_request_key`と理由の形式違反の`RangeError`は、拒否として知らせて再処理から外す。残りを超える拒否で残りの全額(金額`null`)で1回だけ依頼し直す設計(要件14.7)は残し、その2回目の拒否を返金済みとする。写像`refundRejectionOutcome`を`core/tournament/refund-rejection.ts`から`core/payments`へ移して共用し、tournament-week・yearの参照と単体テストを書き換える(水平展開)。返金の状態(`termination_refund_status`・`stop_refund_status`と`RefundStatus`)に`already_refunded`・`rejected`を足す | `core/tournament`のまま読み込む / 依頼し直しをやめてすぐ返金済みにする(要件14.7の改訂) / 設計どおり | 要件14.7・14.8、設計の`RefundSettlement`・`RefundOutcome`・テーブルのCHECK・自分の一覧と管理画面と通知の返金の表示・Sentryの通知の種類、tournament-week・yearの`week-entry-follow-up.ts`・`year-entry-follow-up.ts`の読み込み先、`backend/017`の写像の置き場所の記述 |
+| G2  | 掲載開始日・終了日の入力(C-1)            | `frontend/012`どおり共通部品の`Calendar`(`unavailableReasonOf`)で選ばせる。サーバーが、選んだプロダクトとティアごとに、選べる範囲(今日〜365日後)と、仮5で重なる掲載中・掲載予定の日を理由付きの選べない日として返し、画面は期間の規則を持たない。要件1.6・1.7のフォーカスアウト時の文言は、選べない日の理由とサーバーの検証の文言に置き換える                                                                                                                                                                                                                                                                                                                                    | 画面が範囲の規則を持ちサーバーは重なりだけ返す / 設計どおり日付の入力欄                             | 要件1.4〜1.8(改訂)、設計の`SponsorshipApplicationForm`・`sponsorshipOffer`の照会(選べる範囲の返却)・`validatePeriod`の使い方、`frontend/017`の記述、ページ配置と文言規則の申込の区画                                                                                 |
+| G3  | 業務日付の日数の計算の置き場所(D-2)      | `addBusinessDays`と、新しい両端を含む日数の関数を`common-lib/time`に置き、`backend-lib/core/time/business-time.ts`はそれを書き出し直す(既存の利用者の読み込み先は変えない)。本specの規則と画面は`common-lib/time`を使い、`sponsorship-period.ts`に独自の関数を持たない                                                                                                                                                                                                                                                                                                                                                                                                           | 本specに持つ(`backend/019`の例外) / サーバーだけが計算する                                          | 設計の`sponsorship-period.ts`・`refund-estimate.ts`、`common-lib/time`の新しい関数と単体テスト、`backend/019`の共通ライブラリの記述                                                                                                                                  |
+| G4  | Goldの広告の列の幅(S-1)                  | **推奨と異なる案で確定。** 全ページでGoldの縦の並びの部品を280pxにする。ディレクトリ(320px)とプロダクト詳細ページ(20rem・22rem)の広い列では余白が残る。要件5.3とページ配置は変えず、上流のページの列の幅も変えない                                                                                                                                                                                                                                                                                                                                                                                                                                                               | トップページだけ280pxにし他は列の幅に合わせる(推奨だった案) / 上流の列を280pxにそろえる             | 設計の`GoldAdStack`・`GoldListPlacement`・`GoldSidebarPlacement`の幅と置き方(広い列の中での位置)、ブラウザテストの幅の確認                                                                                                                                           |
+| G5  | 返金の依頼キーの形(C-3)                  | `backend/017`の`<接頭辞>:<購入のID>:<理由>`にそろえ、`sponsorship:<購入ID>:sponsorship_terminated`・`sponsorship:<購入ID>:sponsorship_display_stopped`にする                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 設計どおり申込IDのキー                                                                              | 要件14.6(広告ごと・種類ごとに一意は保たれる)、設計の`RefundSettlement`の依頼キー・Testing Strategy、上流・後続specへの影響の依頼キーの記述                                                                                                                           |
+| G6  | 技術ドキュメント`backend/018`の範囲(D-3) | `backend/018`を新設し、条件付きの前進・反映の期限・返金の依頼の口・権利の期間の判定は`backend/009`・`010`・`017`の節へリンクする。本文は、両端を含む業務日付の範囲、前進の文の中の重なりの判定、表示停止の区間の日数、整数の日割り、日次の開始・終了の通知の依頼待ちの列に絞る                                                                                                                                                                                                                                                                                                                                                                                                   | 設計どおり自己完結で書く / 新設せず`backend/010`へ足す                                              | 要件13.4、設計のTechDocsの記述、`docs/GUIDES/tech/backend/README.md`の行                                                                                                                                                                                             |
+
+### 既存のコードと規約に合わせて決めた事項
+
+開発者に質問せず、既存のコード・規約・tournament-week・yearの決定に合わせて次のとおり扱う(設計の改訂で反映する)。
+
+- B-2: 本specの登録で落ちる上流のテストの書き換えを、設計の「上流への影響」とタスクに加える。paymentsのテストの未登録の購入種別の例`sponsorship`は、まだ登録されていない別の値へ差し替える(project-values.mdの申し送り)。各登録のタスクは、登録の前に上流のテストを検索で洗い出し、完了状態にapiとeventのWorkers統合テストの全件の実行を含める。
+- S-1(G4以外): トップページの`bottom`ではSilverの部品が`max-w-7xl`と左右の余白を持つ。ディレクトリの差し込みの部品は`li`を描かない。0件の区画は`frontend/013`の`data-<ページ>-section-rendered`の印で空の列を畳む。
+- S-2〜S-6: 現在の契約の形に合わせる。対象は`ClientViewer.status === 'SUSPENDED'`、同期の処理の`statementsFor(event, db)`と`order`の無い登録、frontend-libの`MediaPicture`(`square`の32・64)。管理画面の一覧の絞り込みとカーソルはURLの検索パラメータ(`status`・`tier`・`after`)と`cursor-trail.ts`で持ち、不正な値は未指定として捨てる。決済の開始の失敗の文言と`payments_unavailable`の`UnavailableNotice`は`TournamentEntryCheckout`の前例に合わせる。
+- C-2: cron式`7 8 * * *`はapiの`wrangler.jsonc`のルートの`triggers.crons`だけに足し、`cron-sync.unit.test.ts`の期待値を合わせる。0:07の予算は`SCHEDULED_RUN_BUDGETS`に足さない(`infra/003`で必須でない)。
+- C-4: 購入種別の登録は`workers/sponsorship/sponsorship-registrations.ts`が`SPONSORSHIP_PURCHASE_KIND_REGISTRATION`を書き出し、paymentsの`purchase-kind-registrations.ts`が読み込む。
+- C-5: 強制終了の監査ログの文には条件(`guard`)を付けない。前進の文が条件を満たさなければNOT NULLの違反で一括の書き込み全体(監査ログを含む)が取り消されるため、並行した2回の強制終了でも監査ログは1件になる。前進の文と同じ条件を監査ログの文に付けると、前進の文の後では状態が既に`terminated`のため、監査ログの文が必ず取り消される。統合テストで監査ログが1件であることを確かめる(設計の改訂のレビューの指摘により、当初の「条件を付ける」を改めた)。
+- C-6: E2Eはtournament-week・yearの前例どおり`e2e/client/`・`e2e/admin/`の直下に置き(`sponsorship.e2e.test.ts`・`sponsorship-termination.e2e.test.ts`)、画面の操作の手順`sponsorship-steps.ts`・`sponsorship-termination-steps.ts`を並べる。ローカルD1へ入れるSQLの組み立ては、単体テスト付きの`e2e/support/sponsorship-fixture-sql.ts`に分ける。CLAUDE.mdのディレクトリ構成は機能ごとのサブディレクトリを書くが、サブディレクトリはauth・inquiryだけで、近い前例の平置きに合わせた(設計の改訂のレビューの指摘により、当初のサブディレクトリを改めた)。
+- D-4: 続きの読み込みの一覧は`my-product-list.tsx`などの前例に、業務日付の表示は`LaunchDateText`と`formatBusinessDateLabel`に合わせる。
+- O-1: 設計の古い記述(実装済みの上流、`wrangler.jsonc`の3環境、GraphQLの`MediaPicture`)を直す。サービス仕様のうち更新済みのもの(ページ配置・法的通知の大枠・料金とプラン・決済実装方針・データエクスポート)は、Modified Filesの作業を一致の確認に改める。
+- O-2: requirements.mdの受け入れ基準が参照する要件IDを、要件定義書の現在の番号に合わせる(FR-SPONS-003・005・006・017・021〜023、FR-ADMUG-046)。G2の要件の改訂と同時に行う。
+
+### 上流・他specへの影響
+
+- tournament-week・tournament-year: G1で`refundRejectionOutcome`の読み込み先を`core/payments`へ書き換える。振る舞いとテストの期待値は変えない。`backend/017`の写像の置き場所の記述を合わせる。承認済みのspecの記録(両specのdesign.md・tasks.md)は書き換えず、移した後の置き場所は本specの設計を正とする(tournament-yearの前例)。
+- product-launch・match-engine・notificationsなど`addBusinessDays`の利用者: G3で`core/time`が`common-lib/time`の関数を書き出し直すため、読み込み先は変わらない。`backend/019`の共通ライブラリの記述を合わせる。
+- payments: B-2でテストの未登録の購入種別の例を差し替える。`refundRejectionOutcome`の受け入れ先になる(G1)。
+- directory-discovery: G4で上流のページの列の幅は変えない。
+
+## 設計の改訂(2026-11-18、`/kiro-spec-design sponsorship`)
+
+- **発見の種別**: Extension(light discovery)。上流は実装済みで、契約の照合は「実装前のギャップ分析」で済んでいるため、決定G1〜G6と規約に合わせた事項の反映に要る既存のコードだけを読み直した。読み直したのは、`core/time/business-time.ts`(`addBusinessDays`と非公開の解析・整形)、`core/tournament/refund-rejection.ts`とWeek・Yearの`*-entry-follow-up.ts`の拒否の扱い(`RangeError`を`invalid_reason`として`rejected`にする形)、`workers/week-tournament/incident-tags.ts`の`safeTagOf`、`core/payments/refund-rules.ts`の`validateRefundAmount`(残りが0なら金額`null`でも`amount_exceeds_refundable`)、`workers/payments/payment-refunds.ts`の`prepare`の判定の順、`frontend/012`の`DateWindowView`と暦日の写しと境界の取り直しの規約、clientの`components/product/launch-date-calendar.ts`・`launch-date-field.tsx`(画面に直接置く`Calendar`)・`components/time/use-boundary-refresh.ts`、product-launchのGraphQLの`LaunchDateWindow`、各ページの区画の描画済みの目印(`data-<ページ>-section-rendered`)、apiの`infrastructure/admin/audit-log-statements.ts`の`guard`、`e2e/client`・`e2e/admin`・`e2e/support`の配置、adminの監査ログの一覧の経路と`client/src/graphql/week-tournament.ts`・`head/page-heads.ts`である。外部の依存の調査は不要(新しいパッケージ・APIなし)。
+- **参照したスキルと規則**: cc-sddの`kiro-spec-design`の規則(design-discovery-light・design-synthesis・design-review-gate)、CLAUDE.mdの技術規則の参照先([業務日付のカレンダー](../../../docs/GUIDES/tech/frontend/012-business-date-calendar.md)、[集計値と残り時間を表示し続ける画面](../../../docs/GUIDES/tech/frontend/013-live-scoreboard.md)の区画の規約、[単一敗退のブラケット](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md)の返金の後処理、[基準日から逆算する日程](../../../docs/GUIDES/tech/backend/019-anchor-date-schedules.md)の業務日付の加算、[監査ログ](../../../docs/GUIDES/tech/backend/008-audit-logging.md)、[非同期処理](../../../docs/GUIDES/tech/infra/003-async-processing.md)の定期実行、[依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析))。
+- **要件の改訂**: G2で1.6・1.7・1.8を、カレンダーの選べない日と理由で示す形に改めた。0:00を越えたときの取り直し(1.11)を加えた。G1で10.6・14.7・14.8・14.11を改め、依頼の形式の誤りの拒否(14.12)を分けて加えた。O-2で要件定義書の現在の番号(FR-SPONS-003・005・006・017・021〜023、FR-ADMUG-046)を参照に加えた。受け入れ基準は118件になった。`requirements.md`の「実装前のギャップ分析での決定」にG1〜G6の行を加えた。
+- **統合(synthesis)**:
+  - 一般化: 業務日付の加算と両端を含む日数を`common-lib/time/business-date-arithmetic.ts`へ置いた。暦日の解析・UTCの0:00・整形の補助も同じ場所へ移し、`core/time/business-time.ts`はそれを読み込む(G3)。返金の拒否の写像を`core/payments/refund-rejection.ts`へ移した(G1)。clientの暦日の写しを中立の`components/time/business-date-calendar.ts`へ移した(G2)。いずれも振る舞いを変えない移設で、利用者のテストの期待値を変えない。
+  - 既存に合わせる: 選べる範囲は`frontend/012`の`DateWindowView`の形(`earliest`・`latest`・理由付きの`unavailable`)とし、product-launchの`LaunchDateWindow`にならってGraphQLの型を置いた。次の部品と規約は前例に合わせた。購入種別の登録の定数(`SPONSORSHIP_PURCHASE_KIND_REGISTRATION`)、拒否の文言の唯一の出どころ(`SPONSORSHIP_OFFER_REJECTION_MESSAGES`)、Sentryの指紋とタグの形(`['sponsorship', <異常の種類>]`)、E2Eの手順とSQLの組み立て、clientの取得の補助と`page-heads.ts`、adminの一覧のURLの検索パラメータとカーソルの積み重ねは、tournament-week・yearと監査ログの一覧に合わせた。
+  - 一般化しなかったもの: `safeTagOf`(`workers/week-tournament/incident-tags.ts`)は共用の場所へ移さず、本specは`core/ids`の`isUppercaseUlid`を直接使う(2行の規則で、week-tournamentを読み込まないため)。
+  - 簡素化: 選べる範囲の照会は、選べない開始日でもエラーにせず終了日の範囲を`null`で返す形にした。画面は開始日の範囲から理由を求めるため、照会の失敗の分岐が通信の失敗だけになる。範囲の外の日の理由(過去・遠すぎる・開始日より前・366日超え)はサーバーが返さず、画面が範囲の種類から決める(`frontend/012`の`earliest`・`latest`の外の扱いと同じ)。監査ログの文には条件を付けない(前進の文の取り消しで一括の書き込み全体が取り消されるため)。
+- **設計への反映**: 次の節を改めた。
+  - 概要と境界: Overview(Impact・Goals)、Boundary Commitments(共用化の移設・登録の定数・技術ドキュメントの範囲)、Allowed Dependencies(実装された契約の形)、Revalidation Triggers(返金の拒否の写像・共用の日付の計算・カレンダーの規約)、上流への影響(共用化の3行、cronのルートだけの登録、上流のテストの書き換えの一覧)。
+  - 構成: Existing Architecture Analysis、Dependency direction、Technology Stack、File Structure Plan(`common-lib/time`・`core/payments/refund-rejection.ts`・`sponsorship-registrations.ts`・`sponsorship-incident-reporting.ts`・clientの`components/time/`・`graphql/sponsorship.ts`・`sponsorship-messages.ts`・`sponsorship-period-field.tsx`・`sponsorship-date-reasons.ts`・`sponsorship-period-text.tsx`・`sponsorship-period-window.graphql`・adminの`admin-sponsorship-search.ts`・apiの`sponsorship-scheduled-jobs.unit.test.ts`・E2Eの手順とSQLの組み立て)、Modified Files。
+  - 流れと対応: System Flows(選べる範囲の節を新設、返金の拒否の3分類、依頼キー、監査ログの条件、強制終了の返金が残りの全額のときの表示停止の扱い)、追跡表、コンポーネントの表。
+  - 契約と画面: `computePeriodWindows`・共用化の部品・`listPaidPeriods`・`readPeriodWindow`・返金の状態・`reportSponsorshipIncident`・GraphQLの型と操作の表、clientの申込の画面とカレンダー・自分の一覧・Goldの幅280px(G4)・区画の空の畳み方、adminの一覧と結果の文言。
+  - その他: 技術ドキュメント(G6)、データモデル、エラーの表と文言、Monitoring、Testing Strategy、Migration Strategy、Supporting References。
+- **レビューゲート**: 機械的な検査で次の3点を確かめた。要件の118件の受け入れ基準のIDがすべて設計にあること(範囲の表記と`N.\*`を含む字句の照合)。古い記述が残っていないこと(返金の状態の`failed`、申込IDの依頼キー、`type="date"`、独自の`countDays`、3環境のcron、`SPONSORSHIP_PURCHASE_REGISTRATION`)。新しい部品のファイルがファイル構成にあること。新しいサブエージェントによる独立した判断のレビューを2回行った。
+  - 1回目: NEEDS_FIXES(必須3件・軽微8件)。必須は3件だった。research.mdの決定事項C-5(監査ログの条件)・C-6(E2Eのサブディレクトリ)と設計の食い違いは、根拠のある設計の側に決定事項の記述をそろえた。選べない開始日での照会の失敗の扱いが未定義だった点は、エラーにせず`end: null`を返す形にした。軽微の8件もすべて直した。共用化する補助の範囲、範囲の切り詰めと空の範囲、強制終了の返金が残りの全額のときの表示停止の二重の依頼、タグの値の検査とログ、部品の名前の衝突、新しいテストのファイルの分類、取り直しの後の申込のボタンの無効、tasks.mdの作り直し(設計の承認の後)である。
+  - 2回目: PASS。軽微の3件(表示停止の返金額0円の優先、そのテスト、エラーの表の`startsOn`の形式違反の場面と文言)も直した。
+- **残る作業**: 設計の承認の後に`/kiro-spec-tasks sponsorship`でタスクを作り直す。要件・設計の変更でtasks.mdは古いため、spec.jsonのタスクの承認を外した。作り直しでは、共用化の移設(G1〜G3)を最初のタスクに置き、移した部品の利用者の既存のテストが期待値を変えずに通ることを完了状態にする。上流のテストの書き換え(B-2)は、各登録のタスクに検索と全件の実行として含める。
+
+## タスクの計画の再生成(2026-11-18、`/kiro-spec-tasks sponsorship`、承認待ち)
+
+- 承認済みの要件(118件)と改訂した設計から、既存の`tasks.md`(46のサブタスク)を引き継いでタスクを作り直した(11の大きなタスク・52のサブタスク)。
+- **主な変更**:
+  - 共用化の移設(G1〜G3)を最初のグループ1に置き、以降のグループの番号を1つずつずらした。移設の完了状態は、移した部品の利用者の既存のテストが期待値を変えずに通ることである。業務時刻の部品(1.1)は、apiとeventのWorkers統合テストの全件も完了状態に含める。
+  - 申込のフォームのタスクを、掲載期間のカレンダーの欄(8.2)と申込のフォーム(8.3)に分けた。
+  - 返金の精算のタスクから、運営者への知らせ(3.9)を分けた。
+  - 選べる範囲の照会(2.1の純粋な関数・3.1の掲載期間の一覧・4.2のユースケース・5.1のGraphQL)を各タスクに加えた。
+  - 返金の状態(返金済み・拒否)と依頼キー(`sponsorship:<購入ID>:<理由>`)、cron式のルートだけの登録、E2Eの手順とSQLの組み立ての構成、管理画面の一覧のURLの検索パラメータと`head`、Goldの幅280px(G4)、技術ドキュメントの範囲(G6)と共用化に合わせた既存の3文書の修正も、各タスクに反映した。
+  - 登録口に追記する各タスクに、上流のテストの書き換え(B-2)を含めた。apiとeventのWorkers統合テストの全件の実行は、3.11・4.8・5.2・6.3・7.1・9.1の完了状態にまとめ、他の登録のタスクはまとめ先を明記した。
+- **レビュー**: 要件の118件の受け入れ基準のIDがすべてタスクにあることを機械的に確かめた。新しいサブエージェントによる独立したタスクグラフの健全性レビュー(independent)を2回行った。
+  - 1回目: NEEDS_FIXES(必須2件・軽微6件)。必須は2件だった。掲載期間の表示の部品の担当が並行のタスクで衝突していた点は、7.3へ移して直した。登録の後のWorkers統合テストの全件の実行が一部に無かった点は、完了状態に加えるか、まとめ先を明記して直した。軽微の6件もすべて直した。1.1の全件の実行、3.9の分割、全体の検査を最後へ移すこと、design.mdの古いタスク番号(11.1・11.2・11.4)、取得の補助の担当、管理画面の`head`である。管理画面の`head`はdesign.mdの管理画面の節にも`buildAdminPageHead`を加えた。
+  - 2回目: PASS。任意の指摘(3.10の担当範囲の明記)も反映した。
+- タスクの承認(`approvals.tasks.approved`)は開発者の確認を待つ。
