@@ -79,7 +79,7 @@ import { clearYearTournamentRows } from '../../lib/workers/year-tournament/testi
 import { MODULES } from '../../src/composition/modules.ts';
 import { SCHEDULED_JOBS } from '../../src/composition/scheduled-jobs.ts';
 
-type ModuleOverride = Pick<AppModule, 'bindings'>;
+export type ModuleOverride = Pick<AppModule, 'bindings'>;
 
 export interface QueuedMessage {
   readonly envelope: QueueEnvelope;
@@ -110,6 +110,8 @@ export interface Timeline {
 
 export interface TimelineOptions {
   readonly inspect?: (envelope: QueueEnvelope) => Promise<unknown>;
+  // Stripeの決済セッションのメタデータの購入種別(既定はWeekトーナメント参加費)
+  readonly purchaseKind?: string;
 }
 
 // 組み合わせ決定の月曜日と、その週のトーナメントの1回戦・2回戦の日
@@ -125,12 +127,12 @@ export const OWNER = 1;
 
 const ENTITLED_AT = new Date('2026-11-22T00:00:00.000Z');
 
-const TIMELINE_JOB_PREFIXES = [
+export const TIMELINE_JOB_PREFIXES: readonly string[] = [
   'payments.',
   'match-engine.',
   'notifications.',
   'tournament-week.',
-] as const;
+];
 
 export function instantOf(
   date: string,
@@ -148,22 +150,28 @@ export function setClock(at: Date): void {
   vi.setSystemTime(at);
 }
 
-function weekSessionOf(index: number): StripeCheckoutSessionSnapshot {
+function sessionOf(
+  index: number,
+  purchaseKind: string,
+): StripeCheckoutSessionSnapshot {
   return snapshotOf(index, {
     metadata: {
       ...snapshotOf(index).metadata,
-      purchase_kind: 'week_tournament_entry',
+      purchase_kind: purchaseKind,
     },
   });
 }
 
-function stripeGatewayOf(unavailable: ReadonlySet<number>): StripeGateway {
+function stripeGatewayOf(
+  unavailable: ReadonlySet<number>,
+  purchaseKind: string,
+): StripeGateway {
   return createFakeStripeGateway({
     retrieveCheckoutSession: (sessionId) => {
       const index = Number(sessionId.split('_').at(-1));
       return unavailable.has(index)
         ? Promise.reject(new Error('Stripeの一時的な障害'))
-        : Promise.resolve(weekSessionOf(index));
+        : Promise.resolve(sessionOf(index, purchaseKind));
     },
   });
 }
@@ -214,7 +222,10 @@ export function createTimeline(options: TimelineOptions = {}): Timeline {
     JOBS_QUEUE: createRecordingQueue(queued, options.inspect),
   };
   const external = externalServicesOf(
-    stripeGatewayOf(stripeUnavailable),
+    stripeGatewayOf(
+      stripeUnavailable,
+      options.purchaseKind ?? 'week_tournament_entry',
+    ),
     emails,
   );
   const registry = createCronRegistry(SCHEDULED_JOBS);
@@ -264,13 +275,14 @@ export function scheduledRunsOf(
     readonly message: string;
     readonly [key: string]: unknown;
   }[],
+  prefixes: readonly string[] = TIMELINE_JOB_PREFIXES,
 ): JobSummary[][] {
   return logs
     .filter(({ message }) => message === '定期実行を終えました')
     .map((summary) =>
       ((summary['jobs'] ?? []) as readonly JobSummary[])
         .filter(({ name }) =>
-          TIMELINE_JOB_PREFIXES.some((prefix) => name.startsWith(prefix)),
+          prefixes.some((prefix) => name.startsWith(prefix)),
         )
         .map(({ name, result }) => ({ name, result })),
     );
