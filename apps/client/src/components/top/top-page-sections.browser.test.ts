@@ -7,6 +7,7 @@ import {
 import { FullTimeCountdownSection } from './full-time-countdown-section.tsx';
 import { WeekFinalShowcase } from '../week-tournament/week-final-showcase.tsx';
 import { WeekTournamentSection } from '../week-tournament/week-tournament-section.tsx';
+import { YearFinalShowcase } from '../year-tournament/year-final-showcase.tsx';
 import { YearTournamentSection } from '../year-tournament/year-tournament-section.tsx';
 import {
   groupTopPageSections,
@@ -24,7 +25,7 @@ const componentOf = (id: string) =>
   TOP_PAGE_SECTIONS.find((section) => section.id === id)?.component;
 
 describe('トップページの区画の登録箇所', () => {
-  test('区画にはmatch-engineのカウントダウン(上部の行の10)・tournament-weekの決勝(全幅の注目の20)・tournament-yearのYearトーナメント(本文の10)・tournament-weekのWeekトーナメント(本文の20)・match-engineの予選(本文の30)を登録し、差し込みの登録箇所は空である', () => {
+  test('区画にはmatch-engineのカウントダウン(上部の行の10)・tournament-yearの決勝(全幅の注目の10)・tournament-weekの決勝(全幅の注目の20)・tournament-yearのYearトーナメント(本文の10)・tournament-weekのWeekトーナメント(本文の20)・match-engineの予選(本文の30)を登録し、差し込みの登録箇所は空である', () => {
     expect(
       TOP_PAGE_SECTIONS.map(({ id, placement, order }) => ({
         id,
@@ -33,6 +34,7 @@ describe('トップページの区画の登録箇所', () => {
       })),
     ).toStrictEqual([
       { id: 'match-engine.countdown', placement: 'banner', order: 10 },
+      { id: 'tournament-year.final', placement: 'showcase', order: 10 },
       { id: 'tournament-week.final', placement: 'showcase', order: 20 },
       { id: 'tournament-year.matches', placement: 'main', order: 10 },
       { id: 'tournament-week.matches', placement: 'main', order: 20 },
@@ -41,6 +43,7 @@ describe('トップページの区画の登録箇所', () => {
     expect(componentOf('match-engine.countdown')).toBe(
       FullTimeCountdownSection,
     );
+    expect(componentOf('tournament-year.final')).toBe(YearFinalShowcase);
     expect(componentOf('tournament-week.final')).toBe(WeekFinalShowcase);
     expect(componentOf('tournament-year.matches')).toBe(YearTournamentSection);
     expect(componentOf('tournament-week.matches')).toBe(WeekTournamentSection);
@@ -55,6 +58,12 @@ describe('トップページの区画の登録箇所', () => {
       'tournament-week.matches',
       'match-engine.qualifiers',
     ]);
+  });
+
+  test('全幅の注目ではYearトーナメントの決勝の区画を、Weekトーナメントの決勝の区画より上に描く', () => {
+    expect(
+      groupTopPageSections(TOP_PAGE_SECTIONS).showcase.map(({ id }) => id),
+    ).toStrictEqual(['tournament-year.final', 'tournament-week.final']);
   });
 
   test.each([

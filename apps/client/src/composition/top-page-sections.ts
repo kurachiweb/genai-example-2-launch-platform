@@ -6,6 +6,7 @@ import type {
 } from '../components/top/top-page-section-types.ts';
 import { WeekFinalShowcase } from '../components/week-tournament/week-final-showcase.tsx';
 import { WeekTournamentSection } from '../components/week-tournament/week-tournament-section.tsx';
+import { YearFinalShowcase } from '../components/year-tournament/year-final-showcase.tsx';
 import { YearTournamentSection } from '../components/year-tournament/year-tournament-section.tsx';
 
 // 予選の一覧の対戦カードの間に指定の件数ごとに差し込む区画の登録箇所。各specが自分の差し込みを追記する
@@ -19,6 +20,12 @@ export const TOP_PAGE_SECTIONS: readonly TopPageSection[] = Object.freeze([
     placement: 'banner',
     order: 10,
     component: FullTimeCountdownSection,
+  },
+  {
+    id: 'tournament-year.final',
+    placement: 'showcase',
+    order: 10,
+    component: YearFinalShowcase,
   },
   {
     id: 'tournament-week.final',
