@@ -9,6 +9,7 @@ export interface AdminNavItem {
 export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = Object.freeze([
   { to: '/', label: 'ダッシュボード', order: 10 },
   { to: '/inquiries', label: '問い合わせ', order: 80 },
+  { to: '/sponsorships', label: 'スポンサー広告', order: 90 },
   { to: '/help-articles', label: 'ヘルプ記事', order: 100 },
   { to: '/categories', label: 'カテゴリ', order: 110 },
   { to: '/legal-documents', label: '法務文書', order: 120 },

@@ -32,7 +32,7 @@ import {
   sponsorshipRefundRequestedParts,
 } from './sponsorship-messages.ts';
 import { SponsorshipPeriodText } from './sponsorship-period-text.tsx';
-import { SponsorshipStatusBadge } from './sponsorship-status-badge.tsx';
+import { SponsorshipStatusBadge } from '../../../lib/components/sponsorship/sponsorship-status-badge.tsx';
 
 export type MySponsorship =
   ClientMySponsorshipsQuery['mySponsorships']['nodes'][number];

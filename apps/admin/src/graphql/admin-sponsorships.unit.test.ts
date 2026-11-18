@@ -4,6 +4,9 @@ import { graphqlQueryKey } from '../../lib/utilities/graphql/persisted-document.
 import {
   adminSponsorshipsQueryOptions,
   adminSponsorshipTerminationPreviewQueryOptions,
+  toAdminSponsorshipPage,
+  toSponsorshipStatus,
+  toSponsorshipTier,
 } from './admin-sponsorships.ts';
 import {
   AdminSponsorshipsDocument,
@@ -35,5 +38,43 @@ describe('adminSponsorshipTerminationPreviewQueryOptions', () => {
     ]).toStrictEqual([
       ...graphqlQueryKey(AdminSponsorshipTerminationPreviewDocument, { id }),
     ]);
+  });
+});
+
+describe('toSponsorshipStatus・toSponsorshipTier', () => {
+  test('GraphQLの大文字の列挙を、表示名を引く共用部品の値へ写す', () => {
+    expect(
+      (
+        [
+          'PENDING_PAYMENT',
+          'SCHEDULED',
+          'ACTIVE',
+          'PAUSED',
+          'ENDED',
+          'TERMINATED',
+        ] as const
+      ).map(toSponsorshipStatus),
+    ).toStrictEqual([
+      'pending_payment',
+      'scheduled',
+      'active',
+      'paused',
+      'ended',
+      'terminated',
+    ]);
+    expect(
+      (['LEGEND', 'GOLD', 'SILVER'] as const).map(toSponsorshipTier),
+    ).toStrictEqual(['legend', 'gold', 'silver']);
+  });
+});
+
+describe('toAdminSponsorshipPage', () => {
+  test('応答から申込の一覧のページを取り出す', () => {
+    const page = {
+      nodes: [],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    };
+
+    expect(toAdminSponsorshipPage({ adminSponsorships: page })).toBe(page);
   });
 });

@@ -1,9 +1,9 @@
-import { Badge } from '../../../lib/components/ui/badge/badge.tsx';
-import type { BadgeVariant } from '../../../lib/components/ui/badge/badge-variants.ts';
 import {
   SPONSORSHIP_STATUS_LABELS,
   type SponsorshipStatus,
 } from '../../../common-lib/sponsorship/sponsorship-status.ts';
+import { Badge } from '../ui/badge/badge.tsx';
+import type { BadgeVariant } from '../ui/badge/badge-variants.ts';
 
 export interface SponsorshipStatusBadgeProps {
   readonly status: SponsorshipStatus;
@@ -14,7 +14,7 @@ interface StatusAppearance {
   readonly className?: string;
 }
 
-// 掲載中を最も目立たせ、利用者の対応や注意が要る未決済・表示停止中・強制終了を枠で区別する。色だけに頼らず表示名の文言で状態を示す
+// 掲載中を最も目立たせ、対応や注意が要る未決済・表示停止中・強制終了を枠で区別する。色だけに頼らず表示名の文言で状態を示す
 const STATUS_APPEARANCES: Readonly<
   Record<SponsorshipStatus, StatusAppearance>
 > = Object.freeze({

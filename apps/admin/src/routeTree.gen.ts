@@ -26,6 +26,7 @@ import { Route as AuthenticatedInquiriesIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedLegalDocumentsIndexRouteImport } from './routes/_authenticated/legal-documents/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as AuthenticatedSponsorshipsIndexRouteImport } from './routes/_authenticated/sponsorships/index'
 import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
 import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
 import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/password-reset/confirm'
@@ -128,6 +129,12 @@ const AuthenticatedSettingsIndexRoute =
     path: '/settings/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSponsorshipsIndexRoute =
+  AuthenticatedSponsorshipsIndexRouteImport.update({
+    id: '/sponsorships/',
+    path: '/sponsorships/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthEmailChangeConfirmRoute = AuthEmailChangeConfirmRouteImport.update({
   id: '/auth/email-change/confirm',
   path: '/auth/email-change/confirm',
@@ -176,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/sponsorships/': typeof AuthenticatedSponsorshipsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/legal-documents/$kind/': typeof AuthenticatedLegalDocumentsKindIndexRoute
   '/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
@@ -199,6 +207,7 @@ export interface FileRoutesByTo {
   '/inquiries': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents': typeof AuthenticatedLegalDocumentsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/sponsorships': typeof AuthenticatedSponsorshipsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
   '/legal-documents/$kind': typeof AuthenticatedLegalDocumentsKindIndexRoute
   '/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
@@ -224,6 +233,7 @@ export interface FileRoutesById {
   '/_authenticated/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/_authenticated/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/_authenticated/sponsorships/': typeof AuthenticatedSponsorshipsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/_authenticated/legal-documents/$kind/': typeof AuthenticatedLegalDocumentsKindIndexRoute
   '/_authenticated/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/inquiries/'
     | '/legal-documents/'
     | '/settings/'
+    | '/sponsorships/'
     | '/auth/password-reset/'
     | '/legal-documents/$kind/'
     | '/legal-documents/$kind/revisions/$versionNumber'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/inquiries'
     | '/legal-documents'
     | '/settings'
+    | '/sponsorships'
     | '/auth/password-reset'
     | '/legal-documents/$kind'
     | '/legal-documents/$kind/revisions/$versionNumber'
@@ -296,6 +308,7 @@ export interface FileRouteTypes {
     | '/_authenticated/inquiries/'
     | '/_authenticated/legal-documents/'
     | '/_authenticated/settings/'
+    | '/_authenticated/sponsorships/'
     | '/auth/password-reset/'
     | '/_authenticated/legal-documents/$kind/'
     | '/_authenticated/legal-documents/$kind/revisions/$versionNumber'
@@ -432,6 +445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sponsorships/': {
+      id: '/_authenticated/sponsorships/'
+      path: '/sponsorships'
+      fullPath: '/sponsorships/'
+      preLoaderRoute: typeof AuthenticatedSponsorshipsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/auth/email-change/confirm': {
       id: '/auth/email-change/confirm'
       path: '/auth/email-change/confirm'
@@ -484,6 +504,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedInquiriesIndexRoute: typeof AuthenticatedInquiriesIndexRoute
   AuthenticatedLegalDocumentsIndexRoute: typeof AuthenticatedLegalDocumentsIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
+  AuthenticatedSponsorshipsIndexRoute: typeof AuthenticatedSponsorshipsIndexRoute
   AuthenticatedLegalDocumentsKindIndexRoute: typeof AuthenticatedLegalDocumentsKindIndexRoute
   AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute: typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
 }
@@ -503,6 +524,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedInquiriesIndexRoute: AuthenticatedInquiriesIndexRoute,
   AuthenticatedLegalDocumentsIndexRoute: AuthenticatedLegalDocumentsIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
+  AuthenticatedSponsorshipsIndexRoute: AuthenticatedSponsorshipsIndexRoute,
   AuthenticatedLegalDocumentsKindIndexRoute:
     AuthenticatedLegalDocumentsKindIndexRoute,
   AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute:
