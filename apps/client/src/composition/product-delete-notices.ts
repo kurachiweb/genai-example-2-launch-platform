@@ -1,4 +1,5 @@
 import type { ProductDeleteNotice } from '../components/product/product-section-types.ts';
+import { ProductSponsorshipDeleteNotice } from '../components/sponsorship/product-sponsorship-delete-notice.tsx';
 import { WeekEntryDeleteNotice } from '../components/week-tournament/week-entry-delete-notice.tsx';
 import { YearEntryDeleteNotice } from '../components/year-tournament/year-entry-delete-notice.tsx';
 
@@ -14,5 +15,10 @@ export const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[] =
       id: 'tournament-year.entry-loss',
       order: 20,
       component: YearEntryDeleteNotice,
+    },
+    {
+      id: 'sponsorship.active-ads',
+      order: 30,
+      component: ProductSponsorshipDeleteNotice,
     },
   ]);

@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 import { MY_PRODUCT_SECTIONS } from '../../composition/my-product-sections.ts';
 import { PRODUCT_DELETE_NOTICES } from '../../composition/product-delete-notices.ts';
+import { ProductSponsorshipDeleteNotice } from '../sponsorship/product-sponsorship-delete-notice.tsx';
 import { WeekEntryDeleteNotice } from '../week-tournament/week-entry-delete-notice.tsx';
 import { WeekEntryMyProductSection } from '../week-tournament/week-entry-my-product-section.tsx';
 import { YearEntryDeleteNotice } from '../year-tournament/year-entry-delete-notice.tsx';
@@ -26,15 +27,19 @@ describe('自分のプロダクトの区画と削除の注意書きの登録箇�
     expect(MY_PRODUCT_SECTIONS[1]?.component).toBe(YearEntryMyProductSection);
   });
 
-  test('削除の注意書きにはtournament-weekの参加資格の喪失(10)とtournament-yearの参加資格の喪失(20)を登録する', () => {
+  test('削除の注意書きにはtournament-weekの参加資格の喪失(10)、tournament-yearの参加資格の喪失(20)、sponsorshipの掲載中・掲載予定の広告(30)を登録する', () => {
     expect(
       PRODUCT_DELETE_NOTICES.map(({ id, order }) => ({ id, order })),
     ).toStrictEqual([
       { id: 'tournament-week.entry-loss', order: 10 },
       { id: 'tournament-year.entry-loss', order: 20 },
+      { id: 'sponsorship.active-ads', order: 30 },
     ]);
     expect(PRODUCT_DELETE_NOTICES[0]?.component).toBe(WeekEntryDeleteNotice);
     expect(PRODUCT_DELETE_NOTICES[1]?.component).toBe(YearEntryDeleteNotice);
+    expect(PRODUCT_DELETE_NOTICES[2]?.component).toBe(
+      ProductSponsorshipDeleteNotice,
+    );
   });
 
   test.each([
