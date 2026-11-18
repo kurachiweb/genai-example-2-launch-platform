@@ -2008,7 +2008,7 @@ erDiagram
 
 ### Monitoring
 
-- `getAppLogger(['api'|'event', 'application', 'sponsorship'])`で、申込・プロダクト・利用者のIDと件数・結果の種類だけを記録する(12.3)。名称・メールアドレス・ハンドル・理由は記録しない。
+- apiのユースケースは`['api', 'application', 'sponsorship']`、eventの処理は`['event', 'sponsorship']`、apiとeventの両方で動く共有の部品は`[<アプリ名>, 'sponsorship', 'fulfillment' | 'refund']`のカテゴリで、申込・プロダクト・利用者のIDと件数・結果の種類だけを記録する(12.3)。名称・メールアドレス・ハンドル・理由は記録しない。
 - ジョブとメッセージの処理の例外はbackend-platformの規約でSentryへ通知され、再試行の上限はデッドレターから通知される(12.5)。`afterCommit`・強制終了の後の送信の依頼の失敗は`warn`(4:21で回復)。返金の依頼の返金済み・拒否は`SponsorshipIncidentReporting`の`captureEvent`(指紋`['sponsorship', <異常の種類>]`、タグ`sponsorship_incident`・`sponsorship_id`・`refund_kind`・`refund_code`。申込IDと拒否のコードだけを含める。前例はtournament-weekの`['tournament', <異常の種類>]`)。返金不要(`not_needed`)は知らせない(14.8)。
 
 ## Testing Strategy
