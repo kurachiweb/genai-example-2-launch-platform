@@ -36,6 +36,8 @@ export interface TournamentEntryPanelBodyProps<TData> {
   readonly onBoundaryReached: () => void;
   // 秒読みを持つ間は自動更新の状態によらずtrue、それ以外はfalseを申告する。ページは切り替えを描くかの判定に使う
   readonly onAutoUpdatingChange?: ((active: boolean) => void) | undefined;
+  // 決済の導線の間だけ決済期限の前に添える種類の案内(対象年・決勝日など)。無ければ何も添えない
+  readonly payableIntro?: ReactNode | undefined;
 }
 
 interface StateProps<TData> {
@@ -45,6 +47,7 @@ interface StateProps<TData> {
   readonly countdown: boolean;
   readonly autoRefresh: boolean;
   readonly checkout: TournamentEntryCheckoutStart<TData>;
+  readonly payableIntro: ReactNode | undefined;
 }
 
 const STATUS_TEXT_CLASS = 'text-sm font-bold';
@@ -98,11 +101,15 @@ function EntryState<TData>({
   countdown,
   autoRefresh,
   checkout,
+  payableIntro,
 }: StateProps<TData>) {
   switch (display.kind) {
     case 'payable':
       return (
         <>
+          {payableIntro !== undefined && (
+            <p className="text-sm">{payableIntro}</p>
+          )}
           <EntryDeadline
             acceptUntil={entry.acceptUntil}
             serverTime={entry.serverTime}
@@ -169,6 +176,7 @@ export function TournamentEntryPanelBody<TData>({
   checkout,
   onBoundaryReached,
   onAutoUpdatingChange,
+  payableIntro,
 }: TournamentEntryPanelBodyProps<TData>) {
   const titleId = useId();
   useBoundaryRefresh(
@@ -205,6 +213,7 @@ export function TournamentEntryPanelBody<TData>({
         countdown={countdown}
         autoRefresh={autoRefresh}
         checkout={checkout}
+        payableIntro={payableIntro}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { mutationOptions, notifyManager } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
@@ -120,6 +121,7 @@ interface RenderOptions {
   readonly autoRefresh?: boolean;
   readonly onBoundaryReached?: () => void;
   readonly onAutoUpdatingChange?: (active: boolean) => void;
+  readonly payableIntro?: ReactNode;
 }
 
 const renderBody = async (
@@ -129,6 +131,7 @@ const renderBody = async (
     autoRefresh = true,
     onBoundaryReached = vi.fn(),
     onAutoUpdatingChange,
+    payableIntro,
   }: RenderOptions = {},
 ) => {
   await emulateBrowserDisplay(TOKYO_JA);
@@ -143,6 +146,7 @@ const renderBody = async (
           checkout={CHECKOUT}
           onBoundaryReached={onBoundaryReached}
           onAutoUpdatingChange={onAutoUpdatingChange}
+          payableIntro={payableIntro}
         />
         <p>他の操作</p>
       </main>
@@ -331,6 +335,43 @@ describe('受付中で受付期限より前の決済の導線', () => {
   });
 });
 
+describe('決済の導線の案内', () => {
+  const INTRO = 'Testの案内の文。';
+
+  test('案内を渡すと、決済の導線の間だけ決済期限の前に示す', async () => {
+    await renderBody(entryInputOf(), {
+      payableIntro: (
+        <>
+          {INTRO}
+          <time dateTime="2027-05-30">5月30日</time>
+        </>
+      ),
+    });
+
+    const intro = panel().getByText(INTRO);
+    await expect.element(intro).toBeVisible();
+    expect(intro.element().textContent).toBe(`${INTRO}5月30日`);
+    expect(
+      intro
+        .element()
+        .compareDocumentPosition(panel().getByText('決済期限').element()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  test.each([
+    ['受付中の免除', EXEMPT_AWAITING_ENTRY],
+    ['受付期限の後の支払い待ち', CLOSED_AWAITING_ENTRY],
+    ['決済の参加資格', PAID_ENTITLED_ENTRY],
+    ['組み合わせの勝ち残り', ALIVE_ENTRY],
+  ])('%sの枠には、案内を示さない', async (_name, entry) => {
+    await renderBody(entry, { payableIntro: INTRO });
+
+    await expect.element(panel()).toBeVisible();
+    expect(panelText()).not.toContain(INTRO);
+  });
+});
+
 describe('受付期限までの残り時間の強調と秒読みの有無', () => {
   test('秒読みを添える指定では、受付期限まで48時間未満で注意色・秒読みを示し、秒読みを持つ旨を申告する', async () => {
     const report = vi.fn();
@@ -477,6 +518,11 @@ describe('受付中でない枠と免除の状態', () => {
       '返金の対象の非公開・停止による除外',
       excludedEntryOf(true),
       `Testのプロダクトが公開されていないため除外されました。${ENTRY_EXCLUDED_REFUND_SUFFIX}`,
+    ],
+    [
+      '返金の対象の上限による除外',
+      excludedEntryOf(true, 'over_capacity'),
+      `Testの参加数の上限により除外されました。${ENTRY_EXCLUDED_REFUND_SUFFIX}`,
     ],
     [
       '返金の対象でない上限による除外',

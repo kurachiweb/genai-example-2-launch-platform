@@ -192,6 +192,23 @@ describe('tournamentEntryDisplayOf', () => {
     });
   });
 
+  test('参加数の上限による除外は、上限の理由を持ち、返金の対象のときだけ返金の文を添える', () => {
+    expect(
+      tournamentEntryDisplayOf(excludedEntryOf(true, 'over_capacity')),
+    ).toStrictEqual({
+      kind: 'excluded',
+      reason: 'over_capacity',
+      refund: true,
+    });
+    expect(
+      tournamentEntryDisplayOf(excludedEntryOf(false, 'over_capacity')),
+    ).toStrictEqual({
+      kind: 'excluded',
+      reason: 'over_capacity',
+      refund: false,
+    });
+  });
+
   test('理由の無い除外は、プロダクトが公開されていないことによる除外にする', () => {
     expect(tournamentEntryDisplayOf(excludedEntryOf(true, null))).toStrictEqual(
       {
