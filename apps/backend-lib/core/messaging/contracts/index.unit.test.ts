@@ -20,6 +20,10 @@ import {
 } from './notifications.ts';
 import { RUN_PRODUCT_LIFECYCLE_MESSAGE } from './product.ts';
 import { SEARCH_INDEX_REFRESH_MESSAGE } from './search-index-refresh.ts';
+import {
+  SPONSORSHIP_DISPATCH_NOTICES_MESSAGE,
+  SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
+} from './sponsorship.ts';
 
 describe('MESSAGE_CONTRACTS', () => {
   test('集約した契約に種別の重複が無い', () => {
@@ -87,6 +91,19 @@ describe('MESSAGE_CONTRACTS', () => {
     [
       '通知イベントの展開の契約notifications.expand-event',
       EXPAND_NOTIFICATION_EVENT_MESSAGE,
+    ],
+  ])('%sを集約している', (_label, contract) => {
+    expect(MESSAGE_CONTRACTS).toContain(contract);
+  });
+
+  test.each([
+    [
+      'スポンサー広告の通知の送信の契約sponsorship.dispatch-notices',
+      SPONSORSHIP_DISPATCH_NOTICES_MESSAGE,
+    ],
+    [
+      'スポンサー広告の掲載の終わりの精算の契約sponsorship.settle-period-end',
+      SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
     ],
   ])('%sを集約している', (_label, contract) => {
     expect(MESSAGE_CONTRACTS).toContain(contract);

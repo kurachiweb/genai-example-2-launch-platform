@@ -8,6 +8,7 @@ import { EMAIL_KINDS } from './index.ts';
 import { INQUIRY_REPLY_NOTIFICATION_KIND } from './inquiry.ts';
 import { NOTIFICATION_EMAIL_KINDS } from './notifications.ts';
 import { PAYMENTS_EMAIL_KINDS } from './payments.ts';
+import { SPONSORSHIP_EMAIL_KINDS } from './sponsorship.ts';
 import { TOURNAMENT_WEEK_EMAIL_KINDS } from './tournament-week.ts';
 import { TOURNAMENT_YEAR_EMAIL_KINDS } from './tournament-year.ts';
 import { ULTRAS_EMAIL_KINDS } from './ultras.ts';
@@ -123,6 +124,24 @@ describe('EMAIL_KINDS', () => {
   test('Yearトーナメントの種別は返金の知らせの1種である', () => {
     expect(TOURNAMENT_YEAR_EMAIL_KINDS.map((kind) => kind.name)).toEqual([
       'tournament-year.entry-refund',
+    ]);
+  });
+
+  test.each(SPONSORSHIP_EMAIL_KINDS.map((kind) => [kind.name, kind] as const))(
+    'スポンサー広告の種別%sをトランザクションメールとして名前で引ける',
+    (name, kind) => {
+      const registry = createEmailKindRegistry(EMAIL_KINDS);
+
+      expect(registry.get(name)).toBe(kind);
+      expect(registry.get(name)?.category).toBe('transactional');
+    },
+  );
+
+  test('スポンサー広告の種別は掲載開始・掲載終了・強制終了の通知の3種である', () => {
+    expect(SPONSORSHIP_EMAIL_KINDS.map((kind) => kind.name)).toEqual([
+      'sponsorship.start-notice',
+      'sponsorship.end-notice',
+      'sponsorship.termination-notice',
     ]);
   });
 
