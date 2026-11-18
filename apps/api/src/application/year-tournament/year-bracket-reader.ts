@@ -1,5 +1,9 @@
 import { inject, injectable } from 'inversify';
 
+import {
+  chunk,
+  IDS_PER_STATEMENT,
+} from '../../../lib/core/d1/statement-chunks.ts';
 import type { CurrentUser } from '../../../lib/core/identity/account-guard.ts';
 import { PRODUCT_PLATFORM_TYPES } from '../../../lib/core/product/identifiers.ts';
 import type { ProductDirectory } from '../../../lib/core/product/ports.ts';
@@ -42,15 +46,6 @@ export interface YearBracketReader {
 }
 
 const YEAR_KEY_PATTERN = /^\d{4}$/;
-
-// マッチの表示の照会の1回の呼び出しを、上流のD1の読み取りの1文のIDの上限(90件)にそろえる
-const MATCH_IDS_PER_READ = 90;
-
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
-    items.slice(index * size, (index + 1) * size),
-  );
-}
 
 @injectable()
 export class DirectoryYearBracketReader implements YearBracketReader {
@@ -102,7 +97,7 @@ export class DirectoryYearBracketReader implements YearBracketReader {
     const pages = await Promise.all(
       chunk(
         record.matches.map(({ matchId }) => matchId),
-        MATCH_IDS_PER_READ,
+        IDS_PER_STATEMENT,
       ).map((matchIds) =>
         this.views.findViews({
           matchIds,

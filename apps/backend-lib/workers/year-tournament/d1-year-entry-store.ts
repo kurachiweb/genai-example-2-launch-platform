@@ -17,6 +17,7 @@ import {
 import type { BatchItem } from 'drizzle-orm/batch';
 import { inject, injectable } from 'inversify';
 
+import { chunk, IDS_PER_STATEMENT } from '../../core/d1/statement-chunks.ts';
 import type { Database } from '../../../db/client.ts';
 import { yearTournamentEntries } from '../../../db/schema/tournament/year-tournament-entries.ts';
 import { yearTournaments } from '../../../db/schema/tournament/year-tournaments.ts';
@@ -34,9 +35,6 @@ import {
   GRANTABLE_STATUSES,
   OPEN_ENTRY_STATUSES,
 } from '../../core/year-tournament/year-entry-rules.ts';
-
-// D1のバインド変数の上限(100)から、IDの一覧以外に使う変数の分を残す
-const IDS_PER_STATEMENT = 90;
 
 // 分類の書き込みを、ブラケットの書き込みと同じ50件ずつの一括にそろえる
 const CLASSIFICATIONS_PER_BATCH = 50;
@@ -61,12 +59,6 @@ function paramOf<Key extends EntryInsertColumn>(
   value: EntryInsertRow[Key],
 ): SQL {
   return sql`${sql.param(value, yearTournamentEntries[key])}`;
-}
-
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
-    items.slice(index * size, (index + 1) * size),
-  );
 }
 
 function batchOf(

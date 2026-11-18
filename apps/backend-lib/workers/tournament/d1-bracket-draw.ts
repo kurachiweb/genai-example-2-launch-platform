@@ -2,6 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import { inject, injectable } from 'inversify';
 
+import { chunk } from '../../core/d1/statement-chunks.ts';
 import type { Database } from '../../../db/client.ts';
 import { bracketParticipants } from '../../../db/schema/tournament/bracket-participants.ts';
 import { tournamentBrackets } from '../../../db/schema/tournament/tournament-brackets.ts';
@@ -22,12 +23,6 @@ import type {
 
 // 参加者の書き込みを、進行の位置の書き込みと同じ50件ずつの一括にそろえる
 const PARTICIPANTS_PER_BATCH = 50;
-
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
-    items.slice(index * size, (index + 1) * size),
-  );
-}
 
 function batchOf(
   statements: readonly BatchItem<'sqlite'>[],

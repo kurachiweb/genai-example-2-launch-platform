@@ -3,7 +3,7 @@ import {
   type AppErrorKind,
 } from '../../../lib/core/errors/app-error.ts';
 import type { BusinessDate } from '../../../lib/core/time/business-time.ts';
-import { formatFinalDateLabel } from '../../../lib/core/year-tournament/final-date-label.ts';
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
 import type { FinalDateViolation } from '../../../lib/core/year-tournament/final-date-choice.ts';
 
 interface YearFinalDateErrorDefinition {
@@ -40,7 +40,7 @@ export interface FinalDateViolationContext {
 const VALIDATION_ERROR_MESSAGE = '入力内容を確認してください。';
 
 const dateLabelOf = (date: BusinessDate | null): string =>
-  date === null ? '' : formatFinalDateLabel(date);
+  date === null ? '' : formatBusinessDateWithWeekdayLabel(date);
 
 const violationMessageOf = (
   violation: FinalDateChoiceViolation,

@@ -239,6 +239,7 @@ export const articleSchemaModule = defineSchemaModule({
 ```
 
 - モジュールは`src/composition/graphql-modules.ts`の`GRAPHQL_SCHEMA_MODULES`に加える。リゾルバが使うユースケースとポートの実装は、`src/composition/modules.ts`のモジュールで処理単位のコンテナに束縛する(「[モジュール](002-layered-architecture-on-workers.md#モジュール)」)。
+- 同じ種類の複数のモジュール(期間の違う同じ形の機能など)が同じリゾルバの補助・引数の検証・項目のリゾルバを使うときは、モジュールごとに写さず、スキーマモジュールとして登録しない中立のディレクトリ(`modules/<共用の名前>/`)に置いて各モジュールから読み込む。中立のディレクトリは型定義と`index.ts`を持たず、型ごとに異なる文言やロガーは引数で受け取る。
 - 型定義は`/* GraphQL */`を付けたテンプレート文字列のSDLで書く。
 - モジュール・登録箇所・スキーマモジュールの契約・スキーマの合成・基盤の型定義・日時のスカラー・上限・エラーコードのファイルは、生成・検査のコマンドと単体テストがBunで読み込む。静的解析で`cloudflare:*`・`@sentry/*`・`**/infrastructure/**`の読み込みを禁止する。モジュールのWorkers統合テスト(`modules/**/*.worker.test.ts`)はBunが読み込まないため、この禁止から外し、層の規則だけを当てる。D1などのバインディングをworkerdの実行環境から受け取り、インフラ層の実装を束縛して確かめるためである。
 

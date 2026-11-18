@@ -3,6 +3,7 @@ import { captureEvent } from '@sentry/cloudflare';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 
+import { chunk, IDS_PER_STATEMENT } from '../../core/d1/statement-chunks.ts';
 import type { Database } from '../../../db/client.ts';
 import { bracketMatches } from '../../../db/schema/tournament/bracket-matches.ts';
 import { bracketParticipants } from '../../../db/schema/tournament/bracket-participants.ts';
@@ -43,9 +44,6 @@ import type { LoggingOptions } from '../logging/configure-logging.ts';
 // 参加者・マッチの位置の書き込みと予定の作成を、マッチ50件ずつの一括にそろえる
 const MATCHES_PER_BATCH = 50;
 
-// D1のバインド変数の上限(100)から、IDの一覧以外に使う変数の分を残す
-const IDS_PER_STATEMENT = 90;
-
 const ROUND_LATE_MESSAGE =
   'ラウンドの予定を実施日の0:00までに作れなかったため、実施日を遅らせました';
 
@@ -72,12 +70,6 @@ interface PositionRow {
 }
 
 type StoredMatchRow = typeof bracketMatches.$inferSelect;
-
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) =>
-    items.slice(index * size, (index + 1) * size),
-  );
-}
 
 function batchOf(
   statements: readonly BatchItem<'sqlite'>[],

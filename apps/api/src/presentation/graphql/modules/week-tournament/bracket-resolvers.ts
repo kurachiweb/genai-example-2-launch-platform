@@ -3,7 +3,11 @@ import { WEEK_TOURNAMENT_API_TYPES } from '../../../../application/week-tourname
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { toWeekBracket } from './mappers.ts';
-import { accountGuardOf, clientOnly, clockOf } from './resolver-support.ts';
+import {
+  accountGuardOf,
+  clientOnly,
+  clockOf,
+} from '../tournament/resolver-support.ts';
 
 const readerOf = (context: GraphQLContext): WeekBracketReader =>
   context.resolve<WeekBracketReader>(

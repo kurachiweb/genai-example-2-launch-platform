@@ -5,6 +5,7 @@ import { defaultFinalDate, yearScheduleFor } from './year-schedule.ts';
 import {
   isPreviousYearSet,
   resolveTargetYear,
+  TARGET_YEAR_LOOKUP_YEARS,
   type YearCalendarYear,
   type YearState,
 } from './year-target-rules.ts';
@@ -144,6 +145,18 @@ describe('resolveTargetYear', () => {
       RangeError,
     );
     expect(looked).toEqual([2027, 2028, 2029, 2030]);
+  });
+
+  test('調べる年の数を、日程を先に読む側が使う定数として公開する', () => {
+    const looked: number[] = [];
+    expect(() =>
+      resolveTargetYear(date('2027-01-10'), (year) => {
+        looked.push(year);
+        return calendarYear(year, { state: 'not_held' });
+      }),
+    ).toThrow(RangeError);
+    expect(TARGET_YEAR_LOOKUP_YEARS).toBe(4);
+    expect(looked).toHaveLength(TARGET_YEAR_LOOKUP_YEARS);
   });
 });
 

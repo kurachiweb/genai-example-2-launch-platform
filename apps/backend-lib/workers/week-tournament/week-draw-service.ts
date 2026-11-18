@@ -1,6 +1,7 @@
 import type { Logger } from '@logtape/logtape';
 import { captureException } from '@sentry/cloudflare';
 
+import { IDS_PER_STATEMENT } from '../../core/d1/statement-chunks.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import type { MatchDirectory } from '../../core/match/ports.ts';
 import type {
@@ -45,7 +46,7 @@ import { qualifierWinnersOf } from './week-entry-registrar.ts';
 const DRAW_DUE_LIMIT = 4;
 
 // プロダクトの照会が1回に読む件数にそろえる
-const CLASSIFICATION_PAGE_SIZE = 90;
+const CLASSIFICATION_PAGE_SIZE = IDS_PER_STATEMENT;
 
 const DAYS_PER_WEEK = 7;
 

@@ -12,6 +12,7 @@ import type {
 } from '../../../lib/core/year-tournament/ports.ts';
 import {
   resolveTargetYear,
+  TARGET_YEAR_LOOKUP_YEARS,
   type TargetYearResolution,
 } from '../../../lib/core/year-tournament/year-target-rules.ts';
 import type { DecisionSubject } from '../product/decision-sources.ts';
@@ -46,9 +47,6 @@ export interface YearStandingReaders {
   // 渡したときだけ、枠の無いローンチのWeek優勝を読む
   readonly champions?: WeekChampionDirectory;
 }
-
-// resolveTargetYearが調べる年数(Week優勝の日の年〜3年後)
-const TARGET_YEAR_LOOKUP_YEARS = 4;
 
 type AwardedLaunch =
   | { readonly kind: 'entry'; readonly entry: YearEntryRecord }

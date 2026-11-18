@@ -13,7 +13,7 @@ import { withValidatedArgs } from '../../validated-args.ts';
 import { adminOnly } from '../admin/resolver-support.ts';
 import { UPDATE_YEAR_FINAL_DATE_ARGS } from './inputs.ts';
 import { toYearFinalDateSetting } from './mappers.ts';
-import { clockOf } from './resolver-support.ts';
+import { clockOf } from '../tournament/resolver-support.ts';
 
 const INPUT_ARGUMENT = 'input';
 

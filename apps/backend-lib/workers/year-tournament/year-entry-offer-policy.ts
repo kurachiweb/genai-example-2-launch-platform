@@ -16,7 +16,7 @@ import type {
   YearEntryRecord,
   YearEntryStore,
 } from '../../core/year-tournament/ports.ts';
-import { formatFinalDateLabel } from '../../core/year-tournament/final-date-label.ts';
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
 import { GRANTABLE_STATUSES } from '../../core/year-tournament/year-entry-rules.ts';
 import {
   YEAR_ENTRY_PRICE_LOOKUP_KEY,
@@ -91,7 +91,7 @@ function offerOf(launchId: string, schedule: YearSchedule): PurchaseOffer {
     summary: Object.freeze({
       itemName: PURCHASE_KIND_LABELS.year_tournament_entry,
       quantityLabel: `1件(${String(schedule.year)}年のYearトーナメント)`,
-      serviceTiming: `決済の反映後ただちに参加資格を付与し、${formatDrawTime(schedule.drawAt)}に組み合わせを決定します。決勝は${formatFinalDateLabel(schedule.finalDate)}です`,
+      serviceTiming: `決済の反映後ただちに参加資格を付与し、${formatDrawTime(schedule.drawAt)}に組み合わせを決定します。決勝は${formatBusinessDateWithWeekdayLabel(schedule.finalDate)}です`,
       additionalNotes: YEAR_ENTRY_CHECKOUT_NOTES,
     }),
     requiresBotVerification: false,

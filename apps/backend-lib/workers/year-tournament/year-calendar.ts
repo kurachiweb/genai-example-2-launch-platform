@@ -16,12 +16,11 @@ import {
 } from '../../core/year-tournament/year-schedule.ts';
 import {
   resolveTargetYear,
+  TARGET_YEAR_LOOKUP_YEARS,
   type TargetYearResolution,
   type YearCalendarYear,
 } from '../../core/year-tournament/year-target-rules.ts';
 
-// resolveTargetYearが調べる年数(Week優勝の日の年〜3年後)
-const AWARD_LOOKUP_YEARS = 4;
 // 翌年の決勝日を1月にすると組み合わせ決定が現在の年の年末になり、翌年も凍結済みになり得るため2年後まで調べる
 const UPCOMING_LOOKUP_YEARS = 3;
 
@@ -108,7 +107,7 @@ export class YearTournamentCalendar implements YearCalendar {
     now: Date,
   ): Promise<TargetYearResolution> {
     const entries = await this.describe(
-      yearsFrom(yearOf(awardedDate), AWARD_LOOKUP_YEARS),
+      yearsFrom(yearOf(awardedDate), TARGET_YEAR_LOOKUP_YEARS),
       now,
     );
     const resolution = resolveTargetYear(awardedDate, (year) =>

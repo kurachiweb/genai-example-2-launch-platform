@@ -25,13 +25,11 @@ import type {
 } from '../../core/year-tournament/ports.ts';
 import {
   resolveTargetYear,
+  TARGET_YEAR_LOOKUP_YEARS,
   type TargetYearResolution,
 } from '../../core/year-tournament/year-target-rules.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
 import { safeTagOf } from './incident-tags.ts';
-
-// resolveTargetYearが調べる年数(Week優勝の日の年〜3年後)
-const TARGET_LOOKUP_YEARS = 4;
 
 const LATE_ENTRY_MESSAGE =
   '組み合わせ決定の凍結の後に届いたWeek優勝を、Yearトーナメントの期限切れの参加の枠で記録しました';
@@ -104,7 +102,7 @@ function entryOf(
 function yearsCovering(entries: readonly ChampionEntry[]): number[] {
   const years = entries.map(({ awardedDate }) => yearOf(awardedDate));
   const first = Math.min(...years);
-  const last = Math.max(...years) + TARGET_LOOKUP_YEARS - 1;
+  const last = Math.max(...years) + TARGET_YEAR_LOOKUP_YEARS - 1;
   return Array.from(
     { length: last - first + 1 },
     (_, offset) => first + offset,

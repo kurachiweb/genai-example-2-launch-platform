@@ -6,7 +6,7 @@ import {
   fromBusinessDateTime,
   parseBusinessDate,
 } from '../../../../../lib/core/time/business-time.ts';
-import { formatFinalDateLabel } from '../../../../../lib/core/year-tournament/final-date-label.ts';
+import { formatBusinessDateWithWeekdayLabel } from '../../../../../common-lib/time/business-date-label.ts';
 import {
   type YearSchedule,
   yearScheduleFor,
@@ -444,7 +444,7 @@ describe('updateYearFinalDate', () => {
         {
           field: 'input.finalDate',
           code: 'too_far_from_previous',
-          message: `前年の決勝実施日(${formatFinalDateLabel(SCHEDULE_2026.finalDate)})から64週以上空く日付は選べません。`,
+          message: `前年の決勝実施日(${formatBusinessDateWithWeekdayLabel(SCHEDULE_2026.finalDate)})から64週以上空く日付は選べません。`,
         },
       ]);
       await expectNothingWritten();
@@ -479,7 +479,7 @@ describe('updateYearFinalDate', () => {
         {
           field: 'input.finalDate',
           code: 'too_far_from_next',
-          message: `翌年の決勝実施日(${formatFinalDateLabel(next.finalDate)})まで64週以上空く日付は選べません。`,
+          message: `翌年の決勝実施日(${formatBusinessDateWithWeekdayLabel(next.finalDate)})まで64週以上空く日付は選べません。`,
         },
       ]);
       await expectNothingWritten();

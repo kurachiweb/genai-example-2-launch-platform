@@ -12,7 +12,7 @@ import type {
   YearEntryRecord,
   YearEntryStore,
 } from '../../../lib/core/year-tournament/ports.ts';
-import { formatFinalDateLabel } from '../../../lib/core/year-tournament/final-date-label.ts';
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
 import type { YearSchedule } from '../../../lib/core/year-tournament/year-schedule.ts';
 
 export interface YearEntrySupplementProviderDependencies {
@@ -102,7 +102,7 @@ export class YearEntrySupplementProvider implements ResultNoticeSupplementProvid
       title: PAYABLE_TITLE,
       lines: [
         `参加費の決済期限: ${formatUtcDateTime(schedule.acceptUntil)}`,
-        `期限までに決済すると、${String(schedule.year)}年のProduct of the Yearを決めるトーナメントに参加できます。決勝は${formatFinalDateLabel(schedule.finalDate)}です。`,
+        `期限までに決済すると、${String(schedule.year)}年のProduct of the Yearを決めるトーナメントに参加できます。決勝は${formatBusinessDateWithWeekdayLabel(schedule.finalDate)}です。`,
       ],
       ...(action === undefined ? {} : { action }),
       emphasized: false,

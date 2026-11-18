@@ -1,6 +1,7 @@
 import type { Logger } from '@logtape/logtape';
 import { captureException } from '@sentry/cloudflare';
 
+import { IDS_PER_STATEMENT } from '../../core/d1/statement-chunks.ts';
 import { getAppLogger } from '../../core/logging/app-logger.ts';
 import type {
   ProductDirectory,
@@ -47,7 +48,7 @@ import { safeTagOf } from './incident-tags.ts';
 const DRAW_DUE_LIMIT = 2;
 
 // プロダクトの照会が1回に読む件数にそろえる
-const CLASSIFICATION_PAGE_SIZE = 90;
+const CLASSIFICATION_PAGE_SIZE = IDS_PER_STATEMENT;
 
 const DRAW_FAILED_MESSAGE = 'Yearトーナメントの組み合わせ決定に失敗しました';
 

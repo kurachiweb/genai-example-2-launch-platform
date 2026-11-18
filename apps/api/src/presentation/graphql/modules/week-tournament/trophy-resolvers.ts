@@ -3,7 +3,7 @@ import { WEEK_TOURNAMENT_API_TYPES } from '../../../../application/week-tourname
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { toTrophy } from './mappers.ts';
-import { accountGuardOf, clientOnly } from './resolver-support.ts';
+import { accountGuardOf, clientOnly } from '../tournament/resolver-support.ts';
 
 const readerOf = (context: GraphQLContext): ProductTrophyReader =>
   context.resolve<ProductTrophyReader>(

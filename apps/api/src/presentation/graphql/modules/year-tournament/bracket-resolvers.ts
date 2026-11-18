@@ -3,7 +3,11 @@ import { YEAR_TOURNAMENT_API_TYPES } from '../../../../application/year-tourname
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { toYearBracket } from './mappers.ts';
-import { accountGuardOf, clientOnly, clockOf } from './resolver-support.ts';
+import {
+  accountGuardOf,
+  clientOnly,
+  clockOf,
+} from '../tournament/resolver-support.ts';
 
 const readerOf = (context: GraphQLContext): YearBracketReader =>
   context.resolve<YearBracketReader>(

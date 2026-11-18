@@ -6,7 +6,11 @@ import type { GraphQLContext } from '../../graphql-context.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
 import { START_YEAR_TOURNAMENT_CHECKOUT_ARGS } from './inputs.ts';
 import { toYearEntryPanel } from './mappers.ts';
-import { accountGuardOf, clientOnly, clockOf } from './resolver-support.ts';
+import {
+  accountGuardOf,
+  clientOnly,
+  clockOf,
+} from '../tournament/resolver-support.ts';
 
 const panelReaderOf = (context: GraphQLContext): YearEntryPanelReader =>
   context.resolve<YearEntryPanelReader>(

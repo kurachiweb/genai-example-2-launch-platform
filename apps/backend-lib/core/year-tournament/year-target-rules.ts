@@ -14,7 +14,8 @@ export type TargetYearResolution =
   | { readonly kind: 'open'; readonly year: YearCalendarYear }
   | { readonly kind: 'late'; readonly year: number };
 
-const MAX_YEARS_TO_LOOK_AHEAD = 4;
+// resolveTargetYearが調べる年の数(Week優勝の日の年〜3年後)。日程を先に読む側もこの年数を読む
+export const TARGET_YEAR_LOOKUP_YEARS = 4;
 
 function yearOf(date: BusinessDate): number {
   return Number(date.slice(0, 4));
@@ -25,7 +26,7 @@ export function resolveTargetYear(
   lookup: (year: number) => YearCalendarYear,
 ): TargetYearResolution {
   const firstYear = yearOf(awardedDate);
-  for (let offset = 0; offset < MAX_YEARS_TO_LOOK_AHEAD; offset += 1) {
+  for (let offset = 0; offset < TARGET_YEAR_LOOKUP_YEARS; offset += 1) {
     const candidate = lookup(firstYear + offset);
     if (
       candidate.state === 'not_held' ||
@@ -39,7 +40,7 @@ export function resolveTargetYear(
     return Object.freeze({ kind: 'open', year: candidate });
   }
   throw new RangeError(
-    `Week優勝の日から${String(MAX_YEARS_TO_LOOK_AHEAD)}年の間に対象年がありません: ${awardedDate}`,
+    `Week優勝の日から${String(TARGET_YEAR_LOOKUP_YEARS)}年の間に対象年がありません: ${awardedDate}`,
   );
 }
 

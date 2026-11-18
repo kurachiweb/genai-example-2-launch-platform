@@ -4,20 +4,21 @@
 
 ## 前提と用語
 
-部品の置き場所は、共通部品のディレクトリと、画面のアプリの`src/`からのパスで示す。
+部品の置き場所は、共通部品のディレクトリと、画面のアプリの`src/`からのパスと、フロントエンドとバックエンドの共用部品の配置先(`<共用部品の配置先>`)からのパスで示す。
 
 選べる日が多く、範囲の中の一部の日だけが選べない日付(予約の日など)はカレンダーで選ばせる。曜日や期間で選べる日が少なく限られる日付(期間ごとの基準日を特定の曜日から選ぶなど)は、サーバーが返す候補の一覧から選ばせる(「[サーバーが返す候補から選ばせる日付](#サーバーが返す候補から選ばせる日付)」)。後者をカレンダーで選ばせると、ほとんどの日が選べない日になり、利用者は選べる日を探して選べない日を1つずつたどることになる。
 
-| 部品                                                        | 置き場所                                                                                                                                                                           | 役割                                                                   |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `Calendar`(`unavailableReasonOf`)                           | 共通部品の`components/ui/calendar/calendar.tsx`                                                                                                                                    | 月ごとのカレンダー。理由のある日をフォーカスできる選べない日として示す |
-| `BUSINESS_UTC_OFFSET_MINUTES`・境界の時刻・`businessDateOf` | 画面のアプリの`components/<ドメイン>/business-time.ts`                                                                                                                             | バックエンドの業務時刻の値の写しと、業務日付・境界の日時の計算         |
-| `calendarDayOf`・`businessDateOfCalendarDay`                | 画面のアプリの`components/<ドメイン>/`                                                                                                                                             | 業務日付とカレンダーの日(閲覧者のローカルの0:00の`Date`)の相互の写し   |
-| `useBoundaryRefresh`・`BOUNDARY_REFRESH_DELAY_MS`           | 画面のアプリの`components/<ドメイン>/use-boundary-refresh.ts`。複数のドメインが使うときは、どのドメインにも属さない中立の場所(`components/time/use-boundary-refresh.ts`など)に置く | 表示中に業務時刻の境界を越えたときのタイマーによる取り直し             |
-| 業務日付の整形と表示の部品                                  | 画面のアプリの`components/<ドメイン>/`                                                                                                                                             | 業務日付を文字列のまま`<time>`要素で示す                               |
-| `Select`・`Label`                                           | 共通部品の`components/ui/select/`・`components/ui/label/`                                                                                                                          | サーバーが返す候補から1つの業務日付を選ばせる欄                        |
-| `ConfirmActionDialog`                                       | 共通部品の`components/admin/confirm-action-dialog.tsx`                                                                                                                             | 管理者の操作の確認・理由の入力・失敗の表示                             |
-| 選んだ日の期限の求め方・拒否の文言                          | 画面のアプリの`components/<ドメイン>/`                                                                                                                                             | サーバーが返した期限を選んだ日へずらす計算と、拒否のコードごとの文言   |
+| 部品                                                                            | 置き場所                                                                                                                                                                           | 役割                                                                         |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `Calendar`(`unavailableReasonOf`)                                               | 共通部品の`components/ui/calendar/calendar.tsx`                                                                                                                                    | 月ごとのカレンダー。理由のある日をフォーカスできる選べない日として示す       |
+| `BUSINESS_UTC_OFFSET_MINUTES`・境界の時刻・`businessDateOf`                     | 画面のアプリの`components/<ドメイン>/business-time.ts`                                                                                                                             | バックエンドの業務時刻の値の写しと、業務日付・境界の日時の計算               |
+| `calendarDayOf`・`businessDateOfCalendarDay`                                    | 画面のアプリの`components/<ドメイン>/`                                                                                                                                             | 業務日付とカレンダーの日(閲覧者のローカルの0:00の`Date`)の相互の写し         |
+| `useBoundaryRefresh`・`BOUNDARY_REFRESH_DELAY_MS`                               | 画面のアプリの`components/<ドメイン>/use-boundary-refresh.ts`。複数のドメインが使うときは、どのドメインにも属さない中立の場所(`components/time/use-boundary-refresh.ts`など)に置く | 表示中に業務時刻の境界を越えたときのタイマーによる取り直し                   |
+| 業務日付の整形(`formatBusinessDateLabel`・`formatBusinessDateWithWeekdayLabel`) | 共用部品の`<共用部品の配置先>/time/business-date-label.ts`                                                                                                                         | 業務日付の文字列の年・月・日から、年を省く表記と、年と曜日を付ける表記を作る |
+| 業務日付の表示の部品                                                            | 画面のアプリの`components/<ドメイン>/`                                                                                                                                             | 業務日付を文字列のまま`<time>`要素で示す                                     |
+| `Select`・`Label`                                                               | 共通部品の`components/ui/select/`・`components/ui/label/`                                                                                                                          | サーバーが返す候補から1つの業務日付を選ばせる欄                              |
+| `ConfirmActionDialog`                                                           | 共通部品の`components/admin/confirm-action-dialog.tsx`                                                                                                                             | 管理者の操作の確認・理由の入力・失敗の表示                                   |
+| 選んだ日の期限の求め方・拒否の文言                                              | 画面のアプリの`components/<ドメイン>/`                                                                                                                                             | サーバーが返した期限を選んだ日へずらす計算と、拒否のコードごとの文言         |
 
 | 用語               | 意味                                                                                                   |
 | ------------------ | ------------------------------------------------------------------------------------------------------ |
@@ -115,13 +116,16 @@ const reasonOf = useCallback(
 ```tsx
 export function BusinessDateText({ date }: { readonly date: string }) {
   const currentYear = useCurrentYear();
-  return <time dateTime={date}>{formatBusinessDate(date, currentYear)}</time>;
+  return (
+    <time dateTime={date}>{formatBusinessDateLabel(date, currentYear)}</time>
+  );
 }
 ```
 
 - 業務日付を日時の表示部品へ渡すと、業務日付の0:00の時点を表示のタイムゾーンへ変換するため、UTCより東か西かで前日や翌日になる。
 - 日付だけの`datetime`属性(`YYYY-MM-DD`)は、HTMLの有効な日付の文字列で、ISO 8601の暦日の形である。時刻を持たない値は時刻を付けずに示す。
 - 年の省略など日付の示し方は文言の規則に従う。「今年」は表示のタイムゾーンの今年で判定する。
+- 表記の関数は共用部品の`business-date-label.ts`から読み込み、画面のアプリに写さない。画面とサーバーの文言(エラーやメールの文)で同じ業務日付を同じ表記で示すためである。閲覧の年によらず年と曜日を付ける日付(翌年以降になり得る基準日や、メール・保存した記録にも載る日付)は`formatBusinessDateWithWeekdayLabel`で示し、曜日も業務日付の暦日から求める。
 - 保存済みの予約の開始の日時はサーバーが返す値を使う。選んだだけで保存していない日の開始の日時は、写した時差から画面で求める(「[業務時刻の値の写し](#業務時刻の値の写し)」)。
 
 ## 業務時刻の値の写し
