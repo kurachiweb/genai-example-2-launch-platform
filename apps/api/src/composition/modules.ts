@@ -61,6 +61,7 @@ import {
   API_SEARCH_PLATFORM_MODULE,
 } from './search-module.ts';
 import { SESSION_BINDINGS } from './session.ts';
+import { SPONSORSHIP_API_MODULE } from './sponsorship-module.ts';
 import {
   API_ULTRAS_MODULE,
   API_ULTRAS_PLATFORM_MODULE,
@@ -152,6 +153,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   createSponsorshipPlatformModule('api'),
   WEEK_TOURNAMENT_API_MODULE,
   YEAR_TOURNAMENT_API_MODULE,
+  SPONSORSHIP_API_MODULE,
   API_ULTRAS_MODULE,
   PROFILE_MODULE,
   PRODUCT_MODULE,
