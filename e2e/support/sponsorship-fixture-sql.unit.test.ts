@@ -9,9 +9,11 @@ import type { LocalD1Row } from './local-d1-command.ts';
 import {
   FIXTURE_DAILY_UNIT_AMOUNTS,
   launchKickOffSql,
+  launchLossSql,
   paidSponsorshipInsertSql,
   type PaidSponsorshipPlan,
   parseLaunchKickOff,
+  parseLaunchLoss,
   parsePaidSponsorshipInsert,
   parseSponsorProduct,
   planPaidSponsorship,
@@ -263,6 +265,87 @@ describe('launchKickOffSql・parseLaunchKickOff', () => {
         `業務日付はYYYY-MM-DDの実在する日付で指定してください: ${launchDate}`,
       );
     }
+  });
+});
+
+describe('launchLossSql・parseLaunchLoss', () => {
+  const decision = { today: TODAY, now: NOW };
+
+  const kickOffLaunch = (): void => {
+    db.run(
+      `UPDATE product_launches SET launch_date = '${YESTERDAY}' WHERE id = '${LAUNCH_ID}'`,
+    );
+  };
+
+  test('キックオフ済みの未確定のローンチを敗北で確定させ、確定の日時を記録する', () => {
+    kickOffLaunch();
+
+    const rows = executeAll(launchLossSql(PRODUCT, decision));
+
+    expect(() => {
+      parseLaunchLoss(rows, PRODUCT);
+    }).not.toThrow();
+    expect(
+      queryRows(
+        `SELECT launch_date, outcome, decided_at, cancelled_at, updated_at FROM product_launches WHERE id = '${LAUNCH_ID}'`,
+      ),
+    ).toEqual([
+      {
+        launch_date: YESTERDAY,
+        outcome: 'lost',
+        decided_at: NOW.getTime(),
+        cancelled_at: null,
+        updated_at: NOW.getTime(),
+      },
+    ]);
+  });
+
+  test('キックオフ前・確定済み・取消済みのローンチは書き換えず、失敗する', () => {
+    const states = [
+      () => undefined,
+      () => {
+        kickOffLaunch();
+        db.run(
+          `UPDATE product_launches SET outcome = 'won', decided_at = 1 WHERE id = '${LAUNCH_ID}'`,
+        );
+      },
+      () => {
+        kickOffLaunch();
+        db.run(
+          `UPDATE product_launches SET cancelled_at = 1 WHERE id = '${LAUNCH_ID}'`,
+        );
+      },
+    ];
+    for (const arrange of states) {
+      db.run(
+        `UPDATE product_launches SET launch_date = '${FUTURE_LAUNCH_DATE}', outcome = NULL, decided_at = NULL, cancelled_at = NULL WHERE id = '${LAUNCH_ID}'`,
+      );
+      arrange();
+      const before = queryRows(
+        `SELECT outcome, decided_at, updated_at FROM product_launches WHERE id = '${LAUNCH_ID}'`,
+      );
+
+      const rows = executeAll(launchLossSql(PRODUCT, decision));
+
+      expect(() => {
+        parseLaunchLoss(rows, PRODUCT);
+      }).toThrow(
+        `プロダクト(${PRODUCT_ID})のキックオフ済みの未確定のローンチ(${LAUNCH_ID})を敗北で確定できませんでした`,
+      );
+      expect(
+        queryRows(
+          `SELECT outcome, decided_at, updated_at FROM product_launches WHERE id = '${LAUNCH_ID}'`,
+        ),
+      ).toEqual(before);
+    }
+  });
+
+  test('今日は実在する業務日付でなければ失敗する', () => {
+    expect(() =>
+      launchLossSql(PRODUCT, { ...decision, today: '2026-02-30' }),
+    ).toThrow(
+      '業務日付はYYYY-MM-DDの実在する日付で指定してください: 2026-02-30',
+    );
   });
 });
 

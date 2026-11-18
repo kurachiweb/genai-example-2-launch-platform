@@ -154,6 +154,27 @@ export function parseLaunchKickOff(
   }
 }
 
+// キックオフ済みのまま残したローンチはマッチ中として削除と変更が止まるため、削除の確認を開けるよう予選の敗北で確定させる
+export function launchLossSql(
+  product: SponsorProduct,
+  { today, now }: Omit<LaunchKickOff, 'launchDate'>,
+): string {
+  utcMidnightOf(today);
+  const at = timeLiteral(now);
+  return `UPDATE product_launches SET outcome = 'lost', decided_at = ${at}, updated_at = ${at} WHERE id = ${sqlStringLiteral(product.launchId)} AND product_id = ${sqlStringLiteral(product.productId)} AND launch_date < ${sqlStringLiteral(today)} AND outcome IS NULL AND cancelled_at IS NULL RETURNING id;`;
+}
+
+export function parseLaunchLoss(
+  rows: readonly LocalD1Row[],
+  product: SponsorProduct,
+): void {
+  if (rows.length !== 1 || rows[0]?.id !== product.launchId) {
+    throw new Error(
+      `プロダクト(${product.productId})のキックオフ済みの未確定のローンチ(${product.launchId})を敗北で確定できませんでした: ${JSON.stringify(rows)}`,
+    );
+  }
+}
+
 export function planPaidSponsorship({
   product,
   tier,

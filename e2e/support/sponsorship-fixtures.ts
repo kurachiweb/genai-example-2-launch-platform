@@ -6,9 +6,11 @@ import { executeLocalD1 } from './local-d1.ts';
 import { addBusinessDays, businessDateOf } from './scheduled-trigger.ts';
 import {
   launchKickOffSql,
+  launchLossSql,
   paidSponsorshipInsertSql,
   type PaidSponsorshipPlan,
   parseLaunchKickOff,
+  parseLaunchLoss,
   parsePaidSponsorshipInsert,
   parseSponsorProduct,
   planPaidSponsorship,
@@ -54,6 +56,19 @@ export async function kickOffProduct(
     product,
   );
   return product;
+}
+
+// キックオフ済みにしたプロダクトのローンチを予選の敗北で確定させ、マッチ中の間は止まる削除の確認を開けるようにする。広告の申込の対象のままである
+export async function decideKickedOffLaunchAsLost(
+  product: SponsorProduct,
+): Promise<void> {
+  const now = new Date();
+  parseLaunchLoss(
+    await executeLocalD1(
+      launchLossSql(product, { today: businessDateOf(now), now }),
+    ),
+    product,
+  );
 }
 
 // 決済を画面で行わずに、指定したティア・期間の決済済みの申込と対応する決済済みの購入の行を作る。掲載開始の通知は0:07のジョブ(triggerScheduled)で送らせる
