@@ -5,6 +5,7 @@ import { MATCH_TYPES } from '../application/match/match-types.ts';
 import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
 import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
+import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import type { UserLifecycleSyncRegistration } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 
 // 利用者の退会・停止・停止解除と同じ一括の書き込みで自分のデータを変える機能が、登録をここへ追記する
@@ -49,5 +50,10 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       name: 'engagement.withdrawal',
       events: ['withdrawn'],
       handler: ENGAGEMENT_TYPES.EngagementWithdrawalSyncHandler,
+    },
+    {
+      name: 'sponsorship.account-withdrawal',
+      events: ['withdrawn'],
+      handler: SPONSORSHIP_TYPES.AccountWithdrawalSyncHandler,
     },
   ];

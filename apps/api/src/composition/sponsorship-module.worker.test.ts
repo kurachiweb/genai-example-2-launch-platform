@@ -13,7 +13,9 @@ import { DefaultSponsorshipApplication } from '../application/sponsorship/sponso
 import { DefaultSponsorshipOfferReader } from '../application/sponsorship/sponsorship-offer-reader.ts';
 import { DefaultSponsorshipTermination } from '../application/sponsorship/sponsorship-termination.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
+import { AccountWithdrawalSyncHandler } from '../infrastructure/sponsorship/account-withdrawal-sync-handler.ts';
 import { D1TerminationWriter } from '../infrastructure/sponsorship/d1-termination-writer.ts';
+import { ProductDeletionSyncHandler } from '../infrastructure/sponsorship/product-deletion-sync-handler.ts';
 import { MODULES } from './modules.ts';
 import { SPONSORSHIP_API_MODULE } from './sponsorship-module.ts';
 import { YEAR_TOURNAMENT_API_MODULE } from './year-tournament-module.ts';
@@ -31,12 +33,12 @@ const IMPLEMENTATIONS = [
   ['SponsorshipTerminationWriter', D1TerminationWriter],
   ['DailyNoticesJob', DailyNoticesJob],
   ['MaintenanceJob', MaintenanceJob],
+  ['AccountWithdrawalSyncHandler', AccountWithdrawalSyncHandler],
+  ['ProductDeletionSyncHandler', ProductDeletionSyncHandler],
 ] as const;
 
 // 実装の無い部品の識別子。実装と束縛を加えたらIMPLEMENTATIONSへ移す
 const UNBOUND: readonly SponsorshipTypeName[] = [
-  'AccountWithdrawalSyncHandler',
-  'ProductDeletionSyncHandler',
   'AccountDisplayStopSyncHandler',
   'ProductDisplayStopSyncHandler',
 ];
