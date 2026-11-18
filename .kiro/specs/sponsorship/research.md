@@ -600,3 +600,9 @@
   - 1回目: NEEDS_FIXES(必須2件・軽微6件)。必須は2件だった。掲載期間の表示の部品の担当が並行のタスクで衝突していた点は、7.3へ移して直した。登録の後のWorkers統合テストの全件の実行が一部に無かった点は、完了状態に加えるか、まとめ先を明記して直した。軽微の6件もすべて直した。1.1の全件の実行、3.9の分割、全体の検査を最後へ移すこと、design.mdの古いタスク番号(11.1・11.2・11.4)、取得の補助の担当、管理画面の`head`である。管理画面の`head`はdesign.mdの管理画面の節にも`buildAdminPageHead`を加えた。
   - 2回目: PASS。任意の指摘(3.10の担当範囲の明記)も反映した。
 - タスクの承認(`approvals.tasks.approved`)は開発者の確認を待つ。
+
+## 実装に合わせた設計の改訂(2026-11-18、タスク10.1)
+
+- タスク1.1〜9.3の実装でImplementation Notesに記録した設計との相違を、`design.md`の記述へ反映した。振る舞いの変更は無く、実装を正として記述を合わせた。
+- 主な改訂: 反映の期限を開始日の翌日0:00の1ミリ秒前に(3.11)、`resume`の`not_found`と`not_payable`の分け方(4.1)、価格の`unitPrice`と一覧の`endCursor`(4.2・4.3)、ロールを入力の`requireRole`で受け取る形(4.3・4.5)、強制終了の見積もりを`RefundEstimator`に閉じることと理由の検証を監査の`prepare`に任せること(4.5)、cronをルートの`triggers.crons`に足す記述(4.6)、`claim`の戻り値(6.1)、`PeriodEndSettlementFailureReporter`と1回に除く例外の上限(6.3)、`createSponsorshipPlatformModule`(3.11)、拒否の文言の`core/sponsorship/offer-rejection.ts`(3.6)、テストの補助の`workers/sponsorship/testing/`(3.1)、広告の照会のキー(7.2)、`SponsoredPlacementBoundary`と画面幅の印(7.4〜7.6)、`TopPageSilverPlacement`(7.6)、選んだ日の表示とカレンダーの最後の月(8.2)、自分の一覧の失敗の固定の文(8.4)、adminのルートとページの部品(9.2)、`SponsorshipStatusBadge`の共通部品への移動(9.2)、返金の知らせを確定の後の`dispatch`で送ること(3.10)、二重決済を`prepare`で拒否しないこと(3.7)。
+- 技術ドキュメントは`backend/018`・`frontend/017`を新設し、`frontend/012`・`013`、`backend/008`・`017`・`019`、`infra/004`・`security/007`を直し、範囲の記述を写す`docs/GUIDES/tech/README.md`・ルートの`README.md`・CLAUDE.md(参照先とディレクトリ構成)と`service/features/004-payments.md`の反映の期限も直した(G6、13.4)。

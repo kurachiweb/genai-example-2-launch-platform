@@ -99,6 +99,51 @@ export const exampleResolvers = {
 - 入口が返す`CurrentAdmin`(ID・ロール・ニックネーム・セッションのID)をユースケースへ渡し、ユースケースは管理者を読み直さずに操作者として使う。ユースケースの書き込みの条件には`operatorSnapshotOf(current)`を使う。
 - 操作者と対象の組み合わせで決まる規則(自分自身の削除・最上位管理者を対象にした操作など)は、入口ではなくユースケースがドメインの判定(`checkDeletable`など)で拒否する。
 
+#### ユースケースが最低のロールを宣言する形
+
+管理者の機能の外にあるユースケースが、自分の操作に要る最低のロールを自分で宣言したい場合は、リゾルバが`requireAdmin`を包んだ関数をユースケースへ渡す。層の規則により、そのユースケースは管理者の機能のapplication層にある認可の部品(`AdminAuthorizer`)を読み込めないためである(「[依存方向と静的解析](../backend/002-layered-architecture-on-workers.md#依存方向と静的解析)」)。
+
+```typescript
+// application層。管理者の機能のapplication層を読み込まずに、関数の型だけを公開する
+export type AdminRoleRequirement = (
+  minimum: AdminRole,
+) => Promise<CurrentAdmin>;
+
+export class DefaultExampleTermination {
+  async terminate(input: {
+    readonly requireRole: AdminRoleRequirement;
+    readonly exampleId: string;
+  }): Promise<TerminationResult> {
+    const current = await input.requireRole('moderator');
+    // 読み取りと書き込みはロールの宣言の後に行う
+  }
+}
+
+// presentation層
+const roleRequirementOf =
+  (context: GraphQLContext): AdminRoleRequirement =>
+  (minimum) =>
+    requireAdmin(context, minimum);
+
+export const exampleResolvers = {
+  Mutation: {
+    terminateExample: adminOnly(
+      withValidatedArgs(TERMINATE_ARGS, (_parent, input, context) =>
+        exampleTermination(context).terminate({
+          requireRole: roleRequirementOf(context),
+          exampleId: input.id,
+        }),
+      ),
+    ),
+  },
+} satisfies Resolvers;
+```
+
+- 処理の順は、呼び出し元の確認(`adminOnly`)→引数の検証(`withValidatedArgs`)→ユースケースの最初の`requireRole(minimum)`の宣言にする。ユースケースは宣言より前に対象を読まず、書き込まない。照会と確定のように同じ対象に複数の操作がある場合は、それぞれの操作の最初で宣言する。
+- 渡す関数は`requireAdmin(context, minimum)`をそのまま呼ぶため、拒否の順序と種類([拒否の順序と種類](#拒否の順序と種類)の2〜4)と、ロールの不足のレベル`warning`のログはpresentation層の入口が残す。ユースケースはロールの不足を自分で判定・記録せず、例外をそのまま返す。
+- 宣言が返す`CurrentAdmin`は、リゾルバが入口を呼ぶ形と同じく操作者として使う(監査ログの操作者など)。
+- ユースケースの単体テストは、渡す関数を偽物にして、宣言する最低のロールの値と、拒否のときに読み取り・書き込みを行わないことを確かめる。
+
 ### 拒否の順序と種類
 
 | 順  | 確かめること                                                          | 拒否              |
