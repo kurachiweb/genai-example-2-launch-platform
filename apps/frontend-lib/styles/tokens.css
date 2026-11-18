@@ -42,6 +42,8 @@
   --silver: oklch(0.84 0.01 253);
   --legend-a: oklch(0.2 0.01 260);
   --legend-b: oklch(0.42 0.02 260);
+  /* Legendのグラデーションはどちらの配色でも暗いため、その上の文字はダークの配色でも明るい色にする。ダークの配色で上書きしない */
+  --legend-foreground: oklch(0.99 0 0);
   --code-block: oklch(0.22 0.02 160);
   --code-block-foreground: oklch(0.95 0.01 150);
   /* 認証アプリが読み取れるよう、QRコードはダークの配色でも白い地に黒いセルで描く。ダークの配色で上書きしない */
@@ -215,6 +217,7 @@
   --color-warning-strong: var(--warning-strong);
   --color-defeat: var(--defeat);
   --color-silver: var(--silver);
+  --color-legend-foreground: var(--legend-foreground);
   --color-code-block: var(--code-block);
   --color-code-block-foreground: var(--code-block-foreground);
   --color-qr-code: var(--qr-code);
