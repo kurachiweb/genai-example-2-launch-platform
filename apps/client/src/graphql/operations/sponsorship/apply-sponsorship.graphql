@@ -1,0 +1,5 @@
+mutation ClientApplySponsorship($input: ApplySponsorshipInput!) {
+  applySponsorship(input: $input) {
+    purchaseId
+  }
+}

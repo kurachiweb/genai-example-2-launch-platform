@@ -1,0 +1,53 @@
+query ClientMySponsorships($first: Int!, $after: String) {
+  mySponsorships(first: $first, after: $after) {
+    nodes {
+      id
+      product {
+        handle
+        name
+        logo {
+          id
+          objectKey
+          fallbackFormat
+          width
+          height
+        }
+        listed
+      }
+      tier
+      startsOn
+      endsOn
+      days
+      amountPaid {
+        amount
+        currency
+      }
+      status
+      terminatedOn
+      terminationReason
+      terminationRefund {
+        days
+        amount {
+          amount
+          currency
+        }
+        status
+      }
+      displayStopRefund {
+        days
+        amount {
+          amount
+          currency
+        }
+        status
+      }
+      canResume
+      createdAt
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    nextDayStartsAt
+  }
+}
