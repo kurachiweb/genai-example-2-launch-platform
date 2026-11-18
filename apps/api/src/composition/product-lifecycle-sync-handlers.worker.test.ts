@@ -13,7 +13,7 @@ const UNUSED_ID_GENERATOR = {
 };
 
 describe('PRODUCT_LIFECYCLE_SYNC_HANDLERS', () => {
-  test('match-engineの即時の終了とdirectory-discoveryの索引文書の削除を非公開化と削除に、sponsorshipの申込へのプロダクトの論理削除の記録を削除に登録し、復元には登録しない', () => {
+  test('match-engineの即時の終了とdirectory-discoveryの索引文書の削除を非公開化と削除に、sponsorshipの申込へのプロダクトの論理削除の記録を削除に、sponsorshipの表示停止の区間の記録を非公開化と復元に登録する', () => {
     expect(PRODUCT_LIFECYCLE_SYNC_HANDLERS).toStrictEqual([
       {
         name: 'match-engine.product-match-closure',
@@ -29,6 +29,11 @@ describe('PRODUCT_LIFECYCLE_SYNC_HANDLERS', () => {
         name: 'sponsorship.product-deletion',
         events: ['deleted'],
         handler: SPONSORSHIP_TYPES.ProductDeletionSyncHandler,
+      },
+      {
+        name: 'sponsorship.product-display-stop',
+        events: ['hidden', 'unhidden'],
+        handler: SPONSORSHIP_TYPES.ProductDisplayStopSyncHandler,
       },
     ]);
   });

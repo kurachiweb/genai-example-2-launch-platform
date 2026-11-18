@@ -32,6 +32,10 @@ import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-l
 import type { ProductLifecycleSyncHandler } from '../infrastructure/product/product-lifecycle-sync-handler.ts';
 import { AccountWithdrawalSyncHandler } from '../infrastructure/sponsorship/account-withdrawal-sync-handler.ts';
 import { D1TerminationWriter } from '../infrastructure/sponsorship/d1-termination-writer.ts';
+import {
+  AccountDisplayStopSyncHandler,
+  ProductDisplayStopSyncHandler,
+} from '../infrastructure/sponsorship/display-stop-sync-handlers.ts';
 import { ProductDeletionSyncHandler } from '../infrastructure/sponsorship/product-deletion-sync-handler.ts';
 
 // スポンサー広告の共通の束縛(createSponsorshipPlatformModule)と、利用者の確認・決済の開始・価格・プロダクト・利用者のプロフィールの束縛は他のモジュールの束縛を使う
@@ -68,5 +72,11 @@ export const SPONSORSHIP_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ProductLifecycleSyncHandler>(
       SPONSORSHIP_TYPES.ProductDeletionSyncHandler,
     ).to(ProductDeletionSyncHandler);
+    bind<UserLifecycleSyncHandler>(
+      SPONSORSHIP_TYPES.AccountDisplayStopSyncHandler,
+    ).to(AccountDisplayStopSyncHandler);
+    bind<ProductLifecycleSyncHandler>(
+      SPONSORSHIP_TYPES.ProductDisplayStopSyncHandler,
+    ).to(ProductDisplayStopSyncHandler);
   }),
 };

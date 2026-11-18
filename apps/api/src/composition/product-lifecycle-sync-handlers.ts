@@ -21,4 +21,9 @@ export const PRODUCT_LIFECYCLE_SYNC_HANDLERS: readonly ProductLifecycleSyncRegis
       events: ['deleted'],
       handler: SPONSORSHIP_TYPES.ProductDeletionSyncHandler,
     },
+    {
+      name: 'sponsorship.product-display-stop',
+      events: ['hidden', 'unhidden'],
+      handler: SPONSORSHIP_TYPES.ProductDisplayStopSyncHandler,
+    },
   ];

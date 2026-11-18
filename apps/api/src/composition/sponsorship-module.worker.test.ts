@@ -15,12 +15,14 @@ import { DefaultSponsorshipTermination } from '../application/sponsorship/sponso
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import { AccountWithdrawalSyncHandler } from '../infrastructure/sponsorship/account-withdrawal-sync-handler.ts';
 import { D1TerminationWriter } from '../infrastructure/sponsorship/d1-termination-writer.ts';
+import {
+  AccountDisplayStopSyncHandler,
+  ProductDisplayStopSyncHandler,
+} from '../infrastructure/sponsorship/display-stop-sync-handlers.ts';
 import { ProductDeletionSyncHandler } from '../infrastructure/sponsorship/product-deletion-sync-handler.ts';
 import { MODULES } from './modules.ts';
 import { SPONSORSHIP_API_MODULE } from './sponsorship-module.ts';
 import { YEAR_TOURNAMENT_API_MODULE } from './year-tournament-module.ts';
-
-type SponsorshipTypeName = keyof typeof SPONSORSHIP_TYPES;
 
 const INVOCATION_KINDS = ['fetch', 'scheduled'] as const;
 
@@ -35,13 +37,9 @@ const IMPLEMENTATIONS = [
   ['MaintenanceJob', MaintenanceJob],
   ['AccountWithdrawalSyncHandler', AccountWithdrawalSyncHandler],
   ['ProductDeletionSyncHandler', ProductDeletionSyncHandler],
+  ['AccountDisplayStopSyncHandler', AccountDisplayStopSyncHandler],
+  ['ProductDisplayStopSyncHandler', ProductDisplayStopSyncHandler],
 ] as const;
-
-// 実装の無い部品の識別子。実装と束縛を加えたらIMPLEMENTATIONSへ移す
-const UNBOUND: readonly SponsorshipTypeName[] = [
-  'AccountDisplayStopSyncHandler',
-  'ProductDisplayStopSyncHandler',
-];
 
 function createContainer(kind: InvocationScopeInfo['kind']): Container {
   return createInvocationContainer(
@@ -72,10 +70,10 @@ describe('APIサーバーのモジュールの一覧へのスポンサー広告�
     );
   });
 
-  test('解決を確かめる識別子と束縛を待つ識別子を合わせるとSPONSORSHIP_TYPESの全てになる', () => {
-    expect(
-      [...IMPLEMENTATIONS.map(([name]) => name), ...UNBOUND].toSorted(),
-    ).toEqual(Object.keys(SPONSORSHIP_TYPES).toSorted());
+  test('解決を確かめる識別子はSPONSORSHIP_TYPESの全てである', () => {
+    expect(IMPLEMENTATIONS.map(([name]) => name).toSorted()).toEqual(
+      Object.keys(SPONSORSHIP_TYPES).toSorted(),
+    );
   });
 });
 
@@ -90,11 +88,5 @@ describe.each(INVOCATION_KINDS)(
         ).toBeInstanceOf(implementation);
       },
     );
-
-    test.each(UNBOUND)('%sはまだ束縛しない', (name) => {
-      expect(createContainer(kind).isBound(SPONSORSHIP_TYPES[name])).toBe(
-        false,
-      );
-    });
   },
 );

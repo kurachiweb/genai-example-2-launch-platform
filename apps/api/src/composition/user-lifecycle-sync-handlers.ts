@@ -56,4 +56,9 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       events: ['withdrawn'],
       handler: SPONSORSHIP_TYPES.AccountWithdrawalSyncHandler,
     },
+    {
+      name: 'sponsorship.account-display-stop',
+      events: ['suspended', 'unsuspended'],
+      handler: SPONSORSHIP_TYPES.AccountDisplayStopSyncHandler,
+    },
   ];
