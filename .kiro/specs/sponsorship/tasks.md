@@ -8,7 +8,7 @@
   - 完了状態: 新しい単体テストと、業務時刻の部品の既存の単体テストが期待値を変えずに成功し、業務日付の加算の既存の利用者(tournament-week・tournament-year・product-launchなど)の型検査と単体テストが読み込み先を変えずに成功し、業務時刻の部品を使うapiとeventのWorkers統合テストの全件が成功する
   - _Requirements: 1.4, 1.5_
 
-- [ ] 1.2 (P) 返金の依頼の拒否の写像を、決済の共通ライブラリへ移す
+- [x] 1.2 (P) 返金の依頼の拒否の写像を、決済の共通ライブラリへ移す
   - トーナメントの共通ライブラリにある返金の依頼の拒否のコードから返金の状態(返金不要・返金済み・拒否)への写像と型と単体テストを、決済の共通ライブラリへ中身を変えずに移し、tournament-weekとtournament-yearの返金の後処理と単体テストの読み込み先を書き換える
   - 完了状態: 移した単体テストと、tournament-week・tournament-yearの返金の後処理の既存のテスト(単体テストとWorkers統合テスト)が期待値を変えずに成功し、トーナメントの共通ライブラリに写像が残っていない
   - _Boundary: RefundRejection、tournament-week・tournament-yearの返金の後処理の読み込み先_
@@ -405,3 +405,4 @@
 ## Implementation Notes
 
 - 1.1: `apps/common-lib/time/business-date-arithmetic.ts`に`addBusinessDays`・`countBusinessDaysInclusive(from, to)`(UTCの0:00の差+1、`to < from`は0)・`CalendarDate`・`parseCalendarDate`(形式違反と実在しない日付で`RangeError`、既存の文言「業務日付はYYYY-MM-DDの形式で指定してください」「存在しない業務日付です」を保つ)・`utcMidnightOf`・`formatCalendarDate`を置いた。`core/time/business-time.ts`は`../../../common-lib/time/...`の相対パスで読み込み、公開の関数は不変(`businessWeekOf`が使う非公開の`addDays`・`MILLISECONDS_PER_DAY`は残した)。`backend/019`の共通ライブラリの表は10.1で直す。範囲外で残した独自の日付の解析・加算: `common-lib/time/business-date-label.ts`の`partsOf`、`common-lib/tournament/week-period.ts`、`common-lib/directory/directory-period.ts`の`addDays`、`client/src/components/product/business-time.ts`、`e2e/support/scheduled-trigger.ts`。
+- 1.2: 写像は`apps/backend-lib/core/payments/refund-rejection.ts`(`refundRejectionOutcome`・`RefundRejectionCode`・`RefundRejectionOutcome`、型の読み込みの相対パス1行以外は不変)。読み込み元はWeek・Yearの`*-entry-follow-up.ts`と`*-entry-rules.unit.test.ts`の4件だけだった。文書の旧パス(`project-values.md`の1258・1271・1304行目、`backend/017`の例)は10.1・10.2で直す。

@@ -7,7 +7,7 @@ import {
 import {
   type RefundRejectionCode,
   refundRejectionOutcome,
-} from '../tournament/refund-rejection.ts';
+} from '../payments/refund-rejection.ts';
 import {
   GRANTABLE_STATUSES,
   OPEN_ENTRY_STATUSES,

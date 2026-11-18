@@ -17,7 +17,7 @@ import {
   type RefundRejectionCode,
   type RefundRejectionOutcome,
   refundRejectionOutcome,
-} from '../../core/tournament/refund-rejection.ts';
+} from '../../core/payments/refund-rejection.ts';
 import type {
   YearCalendar,
   YearEntryFollowUp,

@@ -1,4 +1,4 @@
-import type { RefundRequestResult } from '../payments/ports.ts';
+import type { RefundRequestResult } from './ports.ts';
 
 export type RefundRejectionCode = Extract<
   RefundRequestResult,

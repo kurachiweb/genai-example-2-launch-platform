@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, test } from 'bun:test';
 
-import type { RefundRequestResult } from '../payments/ports.ts';
+import type { RefundRequestResult } from './ports.ts';
 import {
   type RefundRejectionCode,
   type RefundRejectionOutcome,
