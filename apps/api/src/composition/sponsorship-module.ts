@@ -2,11 +2,14 @@ import type { Hono } from 'hono';
 import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
   type AdminSponsorshipsReader,
   DefaultAdminSponsorshipsReader,
 } from '../application/sponsorship/admin-sponsorships-reader.ts';
+import { DailyNoticesJob } from '../application/sponsorship/jobs/daily-notices-job.ts';
+import { MaintenanceJob } from '../application/sponsorship/jobs/maintenance-job.ts';
 import {
   DefaultMySponsorshipsReader,
   type MySponsorshipsReader,
@@ -49,5 +52,11 @@ export const SPONSORSHIP_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<SponsorshipTerminationWriter>(
       SPONSORSHIP_TYPES.SponsorshipTerminationWriter,
     ).to(D1TerminationWriter);
+    bind<ScheduledJobHandler>(SPONSORSHIP_TYPES.DailyNoticesJob).to(
+      DailyNoticesJob,
+    );
+    bind<ScheduledJobHandler>(SPONSORSHIP_TYPES.MaintenanceJob).to(
+      MaintenanceJob,
+    );
   }),
 };

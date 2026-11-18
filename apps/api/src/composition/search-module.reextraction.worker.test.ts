@@ -273,6 +273,10 @@ describe('検索対象のある日次の再抽出', () => {
           result: 'succeeded',
         }),
         expect.objectContaining({
+          name: 'sponsorship.maintenance',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
           name: 'tournament-year.entry-follow-up',
           result: 'succeeded',
         }),

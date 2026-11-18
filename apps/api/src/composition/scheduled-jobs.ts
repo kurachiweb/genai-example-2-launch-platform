@@ -26,6 +26,8 @@ import { PENDING_CHECKOUT_SWEEP_JOB_DEFINITION } from '../application/payments/j
 import { PRODUCT_LIFECYCLE_REDISPATCH_JOB_DEFINITION } from '../application/product/jobs/product-lifecycle-redispatch-job.ts';
 import { PRODUCT_PURGE_ORCHESTRATOR_JOB_DEFINITION } from '../application/product/jobs/product-purge-orchestrator-job.ts';
 import { ORPHANED_FILE_SWEEP_JOB_DEFINITION } from '../application/profile/jobs/orphaned-file-sweep-job.ts';
+import { SPONSORSHIP_DAILY_NOTICES_JOB_DEFINITION } from '../application/sponsorship/jobs/daily-notices-job.ts';
+import { SPONSORSHIP_MAINTENANCE_JOB_DEFINITION } from '../application/sponsorship/jobs/maintenance-job.ts';
 import { PENDING_DISPATCH_SWEEP_JOB_DEFINITION } from '../application/ultras/jobs/pending-dispatch-sweep-job.ts';
 import {
   ENTRY_FOLLOW_UP_JOB_DEFINITION,
@@ -103,6 +105,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   NOTIFICATION_MAINTENANCE_JOB_DEFINITION,
   COMMENT_ANONYMIZATION_JOB_DEFINITION,
   ENTRY_FOLLOW_UP_JOB_DEFINITION,
+  SPONSORSHIP_MAINTENANCE_JOB_DEFINITION,
   YEAR_ENTRY_FOLLOW_UP_JOB_DEFINITION,
   {
     name: 'content-processing.keyword-reextraction',
@@ -118,6 +121,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   EVENING_BRACKET_JOB_DEFINITION,
   YEAR_EVENING_BRACKET_JOB_DEFINITION,
   MORNING_DISPATCH_JOB_DEFINITION,
+  SPONSORSHIP_DAILY_NOTICES_JOB_DEFINITION,
   // 4:21のメールの後始末と、送り直したイベントの波及処理による抑止記録の削除が同じ起動で重ならないよう、12時間離す
   {
     name: 'identity-auth.lifecycle-redispatch',

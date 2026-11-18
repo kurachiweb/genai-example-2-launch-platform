@@ -50,7 +50,7 @@ describe('Weekトーナメントのジョブの定期実行の一覧への登録
     ]);
   });
 
-  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、コメントの匿名化(1400)の後・Yearトーナメントの再処理(1700)の前に再処理が動く', () => {
+  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、コメントの匿名化(1400)の後・スポンサー広告の日次の処理(1600)の前に再処理が動く', () => {
     const jobs = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(MAINTENANCE_CRON)
       .map(({ name, order }) => ({ name, order }));
@@ -63,7 +63,7 @@ describe('Weekトーナメントのジョブの定期実行の一覧への登録
     expect(jobs.slice(index - 1, index + 2)).toEqual([
       { name: 'engagement.comment-anonymization', order: 1400 },
       { name: 'tournament-week.entry-follow-up', order: 1500 },
-      { name: 'tournament-year.entry-follow-up', order: 1700 },
+      { name: 'sponsorship.maintenance', order: 1600 },
     ]);
   });
 

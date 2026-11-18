@@ -13,6 +13,7 @@ import type {
   SponsorshipRecord,
   SponsorshipStore,
 } from '../../core/sponsorship/ports.ts';
+import { SPONSORSHIP_DAILY_NOTICES_TIME } from '../../core/sponsorship/notice-schedule.ts';
 import {
   addBusinessDays,
   type BusinessDate,
@@ -39,9 +40,6 @@ const REJECTED: FulfillmentPlan = Object.freeze({
 
 const START_OF_DAY = Object.freeze({ hour: 0, minute: 0 });
 
-// 開始通知を依頼待ちにする日次のジョブの時刻
-const START_NOTICE_JOB_TIME = Object.freeze({ hour: 0, minute: 7 });
-
 // 外側の文がsponsorshipsを対象にしても列の参照が副問い合わせの側に取られないよう、別名で読む
 const other = alias(sponsorships, 'other_sponsorship');
 
@@ -50,7 +48,7 @@ function startNoticeOf(
   startsOn: BusinessDate,
   paidAt: Date,
 ): 'pending' | 'none' {
-  const jobAt = fromBusinessDateTime(startsOn, START_NOTICE_JOB_TIME);
+  const jobAt = fromBusinessDateTime(startsOn, SPONSORSHIP_DAILY_NOTICES_TIME);
   const nextDay = fromBusinessDateTime(
     addBusinessDays(startsOn, 1),
     START_OF_DAY,
