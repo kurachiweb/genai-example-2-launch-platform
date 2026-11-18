@@ -18,6 +18,11 @@ import {
 import type { BracketViewRound } from '../bracket/bracket-view-props.ts';
 import { renderInMatchFrame } from '../match/match-testing.tsx';
 import {
+  YEAR_FINAL_DATE,
+  YEAR_TOURNAMENT_LABEL,
+} from '../year-tournament/year-tournament-fixtures.ts';
+import { YEAR_BRACKET_COPY } from '../year-tournament/year-tournament-messages.ts';
+import {
   AWARDED_TOURNAMENT_BRACKET,
   BRACKET_AWARD_NAME,
   BRACKET_COPY,
@@ -303,6 +308,79 @@ describe('TournamentBracketPage の照会の結果からの受け渡し', () => 
       .toBeVisible();
     await expect.element(scrollRegion()).not.toBeInTheDocument();
     await expect.element(tabList()).not.toBeInTheDocument();
+  });
+});
+
+describe('TournamentBracketPageのYearの文言の例', () => {
+  const renderYearPage = async (
+    bracket: TournamentBracketPageView,
+    finalDate?: string,
+  ) => {
+    await renderInMatchFrame(
+      <TournamentBracketPage
+        copy={YEAR_BRACKET_COPY}
+        periodLabel={YEAR_TOURNAMENT_LABEL}
+        {...(finalDate === undefined ? {} : { finalDate })}
+        bracket={bracket}
+        autoRefresh
+        onAutoRefreshChange={vi.fn()}
+      />,
+      { host: 'none' },
+    );
+  };
+
+  const header = (): HTMLElement => {
+    const element = pageTitle().element().closest('header');
+    if (!(element instanceof HTMLElement)) {
+      throw new Error('ページの見出しの領域が無い');
+    }
+    return element;
+  };
+
+  test('Yearの文言と決勝日を渡すと、h1に「Product of the Yearトーナメント」と対象年を置き、決勝日を業務日付の<time>で、参加数とシード数を「参加13・シード3」で添える', async () => {
+    await renderYearPage(
+      tournamentBracketOf({ participantCount: 13, seedCount: 3 }),
+      YEAR_FINAL_DATE,
+    );
+
+    await expect
+      .element(pageTitle())
+      .toHaveTextContent(
+        `Product of the Yearトーナメント ${YEAR_TOURNAMENT_LABEL}`,
+      );
+    await expect.element(page.getByText('参加13・シード3')).toBeVisible();
+    expect(
+      [...header().querySelectorAll('time')].map((time) =>
+        time.getAttribute('datetime'),
+      ),
+    ).toStrictEqual([YEAR_FINAL_DATE]);
+    expect(header().textContent).toMatch(/決勝日(2027年)?5月30日/u);
+    expect(await runAxe(document.body)).toStrictEqual([]);
+  });
+
+  test('Yearの文言で受賞して終えたトーナメントは、「Product of the Year」の印で受賞したプロダクトを示す', async () => {
+    await renderYearPage(AWARDED_TOURNAMENT_BRACKET, YEAR_FINAL_DATE);
+
+    await expect
+      .element(
+        page.getByRole('heading', { level: 2, name: 'Product of the Year' }),
+      )
+      .toBeVisible();
+    await expect
+      .element(
+        page
+          .getByRole('region', { name: 'Product of the Year' })
+          .getByRole('link', { name: 'Bracket Product 1' }),
+      )
+      .toHaveAttribute('href', '/p/bracket-product-1');
+  });
+
+  test('決勝日を渡さなければ、見出しに決勝日の項目を置かない', async () => {
+    await renderYearPage(tournamentBracketOf());
+
+    await expect.element(pageTitle()).toBeVisible();
+    expect(header().querySelectorAll('time')).toHaveLength(0);
+    expect(header().textContent).not.toContain('決勝日');
   });
 });
 

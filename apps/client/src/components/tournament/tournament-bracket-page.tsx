@@ -1,3 +1,5 @@
+import { CalendarIcon } from 'lucide-react';
+
 import { BracketChampion } from '../bracket/bracket-champion.tsx';
 import {
   BRACKET_AUTO_REFRESH_DESCRIPTION,
@@ -6,17 +8,23 @@ import {
 import { BracketRoundColumn } from '../bracket/bracket-round-column.tsx';
 import { BracketRoundTabs } from '../bracket/bracket-round-tabs.tsx';
 import { AutoRefreshSwitch } from '../match/auto-refresh-switch.tsx';
+import { LaunchDateText } from '../product/launch-date-text.tsx';
 import {
   bracketViewPropsOf,
   isTournamentBracketLive,
   type TournamentBracketPageView,
 } from './tournament-bracket-model.ts';
-import type { TournamentBracketCopy } from './tournament-copy.ts';
+import {
+  FINAL_DATE_LABEL,
+  type TournamentBracketCopy,
+} from './tournament-copy.ts';
 
 export interface TournamentBracketPageProps {
   readonly copy: TournamentBracketCopy;
   // 見出しで題名に続ける期間の表記(週・年)
   readonly periodLabel: string;
+  // 見出しに添える決勝日(業務日付)。省くと決勝日の項目を置かない
+  readonly finalDate?: string;
   readonly bracket: TournamentBracketPageView;
   // 開催中の定期の取り直しを続けるか。終了したトーナメントでは使わない
   readonly autoRefresh: boolean;
@@ -27,6 +35,7 @@ export interface TournamentBracketPageProps {
 export function TournamentBracketPage({
   copy,
   periodLabel,
+  finalDate,
   bracket,
   autoRefresh,
   onAutoRefreshChange,
@@ -44,6 +53,13 @@ export function TournamentBracketPage({
             {periodLabel}
           </span>
         </h1>
+        {finalDate !== undefined && (
+          <p className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+            <CalendarIcon className="size-4" aria-hidden="true" />
+            {FINAL_DATE_LABEL}
+            <LaunchDateText date={finalDate} />
+          </p>
+        )}
         <p className="text-sm font-semibold text-muted-foreground">
           {copy.counts(bracket.participantCount, bracket.seedCount)}
         </p>

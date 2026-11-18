@@ -46,6 +46,7 @@ import { Route as LegalRevisionsVersionNumberRouteImport } from './routes/legal/
 import { Route as PrivacyRevisionsVersionNumberRouteImport } from './routes/privacy/revisions/$versionNumber'
 import { Route as TermsRevisionsVersionNumberRouteImport } from './routes/terms/revisions/$versionNumber'
 import { Route as TournamentsWeekWeekRouteImport } from './routes/tournaments/week/$week'
+import { Route as TournamentsYearYearRouteImport } from './routes/tournaments/year/$year'
 import { Route as AuthenticatedMyProductsIndexRouteImport } from './routes/_authenticated/my/products/index'
 import { Route as AuthenticatedMyProductsNewRouteImport } from './routes/_authenticated/my/products/new'
 import { Route as AuthenticatedMyProductsHandleEditRouteImport } from './routes/_authenticated/my/products/$handle/edit'
@@ -251,6 +252,11 @@ const TournamentsWeekWeekRoute = TournamentsWeekWeekRouteImport.update({
   path: '/tournaments/week/$week',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TournamentsYearYearRoute = TournamentsYearYearRouteImport.update({
+  id: '/tournaments/year/$year',
+  path: '/tournaments/year/$year',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedMyProductsIndexRoute =
   AuthenticatedMyProductsIndexRouteImport.update({
     id: '/my/products/',
@@ -305,6 +311,7 @@ export interface FileRoutesByFullPath {
   '/privacy/revisions/$versionNumber': typeof PrivacyRevisionsVersionNumberRoute
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/tournaments/week/$week': typeof TournamentsWeekWeekRoute
+  '/tournaments/year/$year': typeof TournamentsYearYearRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/my/products/new': typeof AuthenticatedMyProductsNewRoute
@@ -345,6 +352,7 @@ export interface FileRoutesByTo {
   '/privacy/revisions/$versionNumber': typeof PrivacyRevisionsVersionNumberRoute
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/tournaments/week/$week': typeof TournamentsWeekWeekRoute
+  '/tournaments/year/$year': typeof TournamentsYearYearRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
   '/my/products/new': typeof AuthenticatedMyProductsNewRoute
@@ -388,6 +396,7 @@ export interface FileRoutesById {
   '/privacy/revisions/$versionNumber': typeof PrivacyRevisionsVersionNumberRoute
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
   '/tournaments/week/$week': typeof TournamentsWeekWeekRoute
+  '/tournaments/year/$year': typeof TournamentsYearYearRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/_authenticated/my/products/new': typeof AuthenticatedMyProductsNewRoute
@@ -431,6 +440,7 @@ export interface FileRouteTypes {
     | '/privacy/revisions/$versionNumber'
     | '/terms/revisions/$versionNumber'
     | '/tournaments/week/$week'
+    | '/tournaments/year/$year'
     | '/settings/'
     | '/auth/password-reset/'
     | '/my/products/new'
@@ -471,6 +481,7 @@ export interface FileRouteTypes {
     | '/privacy/revisions/$versionNumber'
     | '/terms/revisions/$versionNumber'
     | '/tournaments/week/$week'
+    | '/tournaments/year/$year'
     | '/settings'
     | '/auth/password-reset'
     | '/my/products/new'
@@ -513,6 +524,7 @@ export interface FileRouteTypes {
     | '/privacy/revisions/$versionNumber'
     | '/terms/revisions/$versionNumber'
     | '/tournaments/week/$week'
+    | '/tournaments/year/$year'
     | '/_authenticated/settings/'
     | '/auth/password-reset/'
     | '/_authenticated/my/products/new'
@@ -545,6 +557,7 @@ export interface RootRouteChildren {
   PrivacyRevisionsVersionNumberRoute: typeof PrivacyRevisionsVersionNumberRoute
   TermsRevisionsVersionNumberRoute: typeof TermsRevisionsVersionNumberRoute
   TournamentsWeekWeekRoute: typeof TournamentsWeekWeekRoute
+  TournamentsYearYearRoute: typeof TournamentsYearYearRoute
   AuthPasswordResetIndexRoute: typeof AuthPasswordResetIndexRoute
 }
 
@@ -809,6 +822,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TournamentsWeekWeekRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tournaments/year/$year': {
+      id: '/tournaments/year/$year'
+      path: '/tournaments/year/$year'
+      fullPath: '/tournaments/year/$year'
+      preLoaderRoute: typeof TournamentsYearYearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/my/products/': {
       id: '/_authenticated/my/products/'
       path: '/my/products'
@@ -911,6 +931,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRevisionsVersionNumberRoute: PrivacyRevisionsVersionNumberRoute,
   TermsRevisionsVersionNumberRoute: TermsRevisionsVersionNumberRoute,
   TournamentsWeekWeekRoute: TournamentsWeekWeekRoute,
+  TournamentsYearYearRoute: TournamentsYearYearRoute,
   AuthPasswordResetIndexRoute: AuthPasswordResetIndexRoute,
 }
 export const routeTree = rootRouteImport

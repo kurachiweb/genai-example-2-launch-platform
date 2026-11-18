@@ -28,6 +28,7 @@ import {
   profileHref,
   SITE_NAME,
   weekBracketHref,
+  yearBracketHref,
 } from '../components/layout/site-links.ts';
 import {
   PRICING_PAGE_DESCRIPTION,
@@ -35,6 +36,7 @@ import {
 } from '../components/ultras/pricing-messages.ts';
 import { PRICING_PAGE_HREF } from '../components/ultras/ultras-messages.ts';
 import { weekBracketPageTitle } from '../components/week-tournament/week-tournament-messages.ts';
+import { yearBracketPageTitle } from '../components/year-tournament/year-tournament-messages.ts';
 import type {
   LegalDocumentLoaderData,
   LegalVersionLoaderData,
@@ -52,6 +54,12 @@ export interface WeekBracketHeadInput {
   // ISO週(YYYY-Www)
   readonly week: string;
   // 週の表記(「2026年第37週(9/7〜9/13)」)
+  readonly label: string;
+}
+
+export interface YearBracketHeadInput {
+  readonly year: number;
+  // 対象年の表記(「2027年」)
   readonly label: string;
 }
 
@@ -206,4 +214,15 @@ export const buildWeekBracketHead = (
     : buildSitePageHead({
         title: weekBracketPageTitle(loaderData.label),
         canonicalUrl: weekBracketHref(loaderData.week),
+      });
+
+// 誰でも見られる公開のページのため、年のパスを正規のURLにする。取得前や失敗ではタイトルを決められないため、サイト名だけにして正規のURLも付けない
+export const buildYearBracketHead = (
+  loaderData: YearBracketHeadInput | undefined,
+) =>
+  loaderData === undefined
+    ? buildSitePageHead({ title: '' })
+    : buildSitePageHead({
+        title: yearBracketPageTitle(loaderData.label),
+        canonicalUrl: yearBracketHref(loaderData.year),
       });

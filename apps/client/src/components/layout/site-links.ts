@@ -54,6 +54,9 @@ export const productDetailHref = (productHandle: string): string =>
 export const weekBracketHref = (week: string): string =>
   `/tournaments/week/${week}`;
 
+export const yearBracketHref = (year: number): string =>
+  `/tournaments/year/${String(year)}`;
+
 // 他の条件を付けずに、ディレクトリをそのカテゴリで絞り込む
 export const directoryCategoryHref = (categoryHandle: string): string =>
   `${DIRECTORY_HREF}?${new URLSearchParams({ category: categoryHandle }).toString()}`;
