@@ -186,6 +186,32 @@ export async function expectSponsoredAd(
   ).toBeVisible();
 }
 
+// 指定したページから、プロダクトの広告が消えたことを確かめる。広告の取得が失敗しても位置ごと描かれず消えたように見えるため、
+// ログイン中の利用者には広告が0件でも申込の導線とともに描かれるSilverの位置が出る(取得が成功した)まで開き直してから確かめる
+export async function expectNoSponsoredAd(
+  page: Page,
+  path: string,
+  product: Pick<ProductInput, 'name'>,
+): Promise<void> {
+  const silver = placementOf(page, 'silver');
+  await expect(async () => {
+    await page.goto(path);
+    await expect(
+      silver.getByRole('link', {
+        name: SPONSORSHIP_APPLY_LINK_LABEL,
+        exact: true,
+      }),
+      `${path}の${sponsorshipPlacementLabel('silver')}が描かれていません`,
+    ).toBeVisible({ timeout: REACTION_TIMEOUT_MS });
+  }).toPass({ timeout: RETRY_TIMEOUT_MS });
+  await expect(
+    page.getByRole('link', {
+      name: sponsoredAdLinkLabel(product.name),
+      exact: true,
+    }),
+  ).toHaveCount(0);
+}
+
 const mySponsorshipItemOf = (page: Page, productName: string): Locator =>
   page
     .getByRole('main')

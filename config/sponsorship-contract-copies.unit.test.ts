@@ -139,3 +139,52 @@ describe('申込のbot判定の操作名の写し(apps/client/src/components/spo
     );
   });
 });
+
+const BACKEND_SPONSORSHIP_PORTS = 'apps/backend-lib/core/sponsorship/ports.ts';
+const E2E_SPONSORSHIP_TERMINATION_STEPS =
+  'e2e/admin/sponsorship-termination-steps.ts';
+
+const readStringProperty = (
+  path: string,
+  name: string,
+  property: string,
+): string => {
+  const initializer = readInitializer(path, name);
+  if (!ts.isObjectLiteralExpression(initializer)) {
+    throw new Error(
+      `${path}の${name}の初期化子がオブジェクトリテラルではありません: ${initializer.getText()}`,
+    );
+  }
+  const assignment = onlyOne(
+    initializer.properties.filter(
+      (node): node is ts.PropertyAssignment =>
+        ts.isPropertyAssignment(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === property,
+    ),
+    `${path}の${name}の${property}`,
+  );
+  if (!ts.isStringLiteral(assignment.initializer)) {
+    throw new Error(
+      `${path}の${name}の${property}が文字列リテラルではありません: ${assignment.initializer.getText()}`,
+    );
+  }
+  return assignment.initializer.text;
+};
+
+describe('強制終了の返金の依頼の理由の写し(e2e/admin/sponsorship-termination-steps.ts)', () => {
+  test('TERMINATION_REFUND_REASONがbackend-libのSPONSORSHIP_REFUND_REASONSのterminationと一致する', () => {
+    expect(
+      readString(
+        E2E_SPONSORSHIP_TERMINATION_STEPS,
+        'TERMINATION_REFUND_REASON',
+      ),
+    ).toBe(
+      readStringProperty(
+        BACKEND_SPONSORSHIP_PORTS,
+        'SPONSORSHIP_REFUND_REASONS',
+        'termination',
+      ),
+    );
+  });
+});
