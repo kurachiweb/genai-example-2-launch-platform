@@ -8,14 +8,16 @@
 
 部品の置き場所は、`<APIサーバーのアプリ>`と画面のアプリの`src/`からのパスで示す。`<ドメイン>`は種類によらないブラケットの部品のディレクトリの名前、`<種類>`はトーナメントの種類ごとに置き換える。参加の対象は、参加者が持ち込む集約(作品・チームなど)を指す。
 
-| 部品                                                                            | 置き場所                                                                        | 役割                                                                           |
-| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `buildBracketRoundsView`                                                        | `<APIサーバーのアプリ>`の`application/<ドメイン>/bracket-view-builder.ts`       | ブラケットの記録と対戦の表示から、ラウンド・位置・枠の表示の形を作る純粋な関数 |
-| ラウンド・位置・枠のGraphQLの型                                                 | 種類ごとのスキーマモジュールの`type-defs.ts`・`mappers.ts`                      | 表示の形をそのまま返す型と、親の値の置き換え                                   |
-| ラウンドと優勝した参加の対象のフラグメント                                      | 画面のアプリの`graphql/fragments/bracket/`                                      | 種類によらない部品の引数の型                                                   |
-| `BracketRoundColumn`・`BracketRoundTabs`・`BracketMatchCard`・`BracketChampion` | 画面のアプリの`components/bracket/`                                             | ラウンドの列・ラウンドのタブ・位置の対戦・優勝                                 |
-| 表示の判定と文言                                                                | 画面のアプリの`components/bracket/bracket-view-model.ts`・`bracket-messages.ts` | 枠の描き分け・勝敗・対戦の状態・既定のタブ・優勝の状態                         |
-| ブラケットのページ                                                              | 画面のアプリの`components/<種類>/`と`routes/<ブラケットのページのパス>`         | 種類ごとの照会・見出し・賞の名前・自動更新                                     |
+| 部品                                                                            | 置き場所                                                                                                                                               | 役割                                                                                                                     |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `buildBracketRoundsView`                                                        | `<APIサーバーのアプリ>`の`application/<ドメイン>/bracket-view-builder.ts`                                                                              | ブラケットの記録と対戦の表示から、ラウンド・位置・枠の表示の形を作る純粋な関数                                           |
+| ラウンド・位置・枠のGraphQLの型                                                 | 種類ごとのスキーマモジュールの`type-defs.ts`・`mappers.ts`                                                                                             | 表示の形をそのまま返す型と、親の値の置き換え                                                                             |
+| ラウンドと優勝した参加の対象のフラグメント                                      | 画面のアプリの`graphql/fragments/bracket/`                                                                                                             | 種類によらない部品の引数の型                                                                                             |
+| `BracketRoundColumn`・`BracketRoundTabs`・`BracketMatchCard`・`BracketChampion` | 画面のアプリの`components/bracket/`                                                                                                                    | ラウンドの列・ラウンドのタブ・位置の対戦・優勝                                                                           |
+| 表示の判定と文言                                                                | 画面のアプリの`components/bracket/bracket-view-model.ts`・`bracket-messages.ts`                                                                        | 枠の描き分け・勝敗・対戦の状態・既定のタブ・優勝の状態                                                                   |
+| `TournamentBracketPage`・`TournamentBracketError`                               | 画面のアプリの`components/<ドメイン>/`                                                                                                                 | 種類によらないブラケットのページの本体(見出し・参加数とシード数・自動更新の切り替え・優勝・列とタブ)と、取得の失敗の表示 |
+| 開催中の判定・取り直しの間隔・文言の型                                          | 画面のアプリの`components/<ドメイン>/`(`isTournamentBracketLive`・`tournamentBracketRefetchIntervalOf`・`bracketViewPropsOf`・`TournamentBracketCopy`) | ブラケットの値から開催中と取り直しの間隔を決め、種類ごとの文言の形を定める                                               |
+| ブラケットのページの経路と包み                                                  | 画面のアプリの`components/<種類>/`と`routes/<ブラケットのページのパス>`                                                                                | 種類ごとの照会・文言・期間の表記・head・自動更新の状態                                                                   |
 
 | 用語               | 意味                                                                                                 |
 | ------------------ | ---------------------------------------------------------------------------------------------------- |
@@ -99,6 +101,16 @@
 - 既定のタブは、確定していない位置を持つ最初のラウンドにし、全て確定していれば最後のラウンドにする。ラウンドが無ければタブを描かない。
 - 優勝の区画は、受賞したなら優勝した参加の対象(参加の対象が無ければ表示できない優勝)を、受賞せずに終えたなら受賞なしを描き、終了の前は何も描かない。参加1でラウンドが無い受賞も同じく描く。
 
+### 種類ごとのページと共用の本体
+
+ページの本体(`TournamentBracketPage`)と取得の失敗の表示(`TournamentBracketError`)は種類によらない部品にし、種類ごとのページは照会・文言・期間の表記を渡す包みにする。
+
+- 種類ごとの文言(題名・賞の名前・参加数とシード数の文・失敗の文)は、文言の型(`TournamentBracketCopy`)の値として種類のディレクトリに置き、本体は種類の文言を読み込まない。
+- 本体は、種類の照会の結果のブラケットが満たす構造の型(`TournamentBracketPageView`)を受ける。種類の照会の結果の型を本体に持ち込まない。
+- 見出しに添える基準の日(決勝の日など)のように、種類によって有無が変わる表示は、本体に任意の受け口を足す。受け口を省いた種類の表示を変えないことを、本体のブラウザテストで確かめる。
+- 経路の`loader`・`head`・`errorComponent`・`notFoundComponent`と、自動更新の状態(`useState`)は種類ごとの経路に置く。
+- 本体のテストは架空の種類の文言とブラケットの値のフィクスチャで行い、種類の文言を読み込まない。種類ごとのページのテストは、種類の照会と文言が本体に渡ることを確かめる。
+
 ## 列とタブ
 
 画面幅`<列とタブを切り替える画面幅>`以上はラウンドを列にして左から順に横に並べ、それ未満はラウンドをタブで切り替えて1列で示す。
@@ -117,15 +129,15 @@ const { data } = useSuspenseQuery({
   ...bracketQueryOptions(viewer, key),
   ...LIVE_REFRESH_QUERY_OPTIONS,
   refetchInterval: (query) =>
-    autoRefresh && isLive(query.state.data)
-      ? LIVE_REFRESH_QUERY_OPTIONS.refetchInterval
-      : false,
-  refetchOnWindowFocus: (query) => isLive(query.state.data),
+    tournamentBracketRefetchIntervalOf(query.state.data?.bracket, autoRefresh),
+  refetchOnWindowFocus: (query) =>
+    isTournamentBracketLive(query.state.data?.bracket),
   refetchOnMount: false,
 });
 ```
 
 - 開催中の判定は取得した値(トーナメントの状態)で行う(「[取得した値による判定](010-live-refresh-queries.md#取得した値による判定)」)。
+- 開催中の判定と取り直しの間隔は、種類によらない部品の関数(`isTournamentBracketLive`・`tournamentBracketRefetchIntervalOf`)にブラケットの値(照会の結果の中のブラケット)を渡して求める。照会の結果の形は種類ごとに違うため、関数は照会の結果を受けない。
 - 自動更新の切り替えはオンから始め、オフの間は定期の取り直しだけを止め、画面へ戻ったときの取り直しは続ける。
 - 切り替えの説明(`aria-describedby`で結び付ける文)は、このページが取り直すもの(ブラケット)だけに触れる文言を切り替えの部品の引数で渡す。他のページと共有する切り替えの既定の説明が残り時間や演出に触れていても、ブラケットのページはそれらを持たないためである。
 - `loader`はパスの引数の形式を共用部品の解析で確かめ、形式に合わない値は照会せずに404にする。開催中は表示中に取り直すため、`loader`は鮮度を0にして毎回新しく取得し、部品は表示した時点では取り直さない(`refetchOnMount: false`)。照会の結果がnull(組み合わせ前など)なら404にし、部品が取り直しでnullを受けたときも同じ404の画面にする(「[loaderとの組み合わせ](010-live-refresh-queries.md#loaderとの組み合わせ)」)。
