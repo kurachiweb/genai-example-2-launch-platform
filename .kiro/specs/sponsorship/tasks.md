@@ -87,7 +87,7 @@
   - _Depends: 3.1, 2.3_
   - _Requirements: 8.1, 8.2, 8.3, 12.6, 14.3_
 
-- [ ] 3.5 (P) データエクスポートの部品を作る
+- [x] 3.5 (P) データエクスポートの部品を作る
   - product-launchのエクスポートの契約(論理削除済みを含むプロダクトの一覧)でプロダクトの名称とハンドルを得る
   - 先に、Workers統合テストで、`sponsorships.json`の項目と状態(未決済・掲載予定・掲載中・終了・強制終了、表示停止中は掲載予定・掲載中、プロダクトの論理削除で終わった広告は終了)、論理削除された申込の除外、決済履歴の識別を確かめる
   - 完了状態: Workers統合テストが成功する
@@ -415,3 +415,4 @@
 - 3.2: `workers/sponsorship/d1-eligible-product-reader.ts`の`D1EligibleProductReader`(`@inject(PRODUCT_PLATFORM_TYPES.LaunchExport)`・`@inject(PRODUCT_PLATFORM_TYPES.ProductDirectory)`、3.11で`SPONSORSHIP_PLATFORM_TYPES.EligibleProductReader`へ束縛)。`list`は`listByUser`の`in_progress`・`finished`のローンチのプロダクトを`findSummaries(ids, 'visible')`で可視に絞り本人に限る(照会2回)。並びは`Intl.Collator('ja')`の名称順、同名はID昇順(`directory-category-reader.ts`の前例)。`isEligible`は先に可視・本人を確かめる。停止中の投稿者のプロダクトは`'visible'`の定義で対象外。
 - 3.3: `core/sponsorship/shuffle-by-tier.ts`の`shuffleByTier`(Fisher–Yates、乱数の関数`(bound) => number`を受ける)と`createUniformRandom`(32ビットの乱数源から偏り無く0以上bound未満、端数は引き直し)、`workers/sponsorship/d1-placement-reader.ts`の`D1PlacementReader`(`PLATFORM_TYPES.Database`・`PRODUCT_PLATFORM_TYPES.ProductDirectory`を注入、3.11で束縛)。問い合わせ1回(上流の`visibleProducts()`で可視)と`findSummaries(ids,'visible')`1回、0件なら`findSummaries`を呼ばない。乱数はDIで注入せず`crypto.getRandomValues`。表示停止の区間のテーブルは読まない(可視の条件で表示の有無が決まる)。レビューで1回差し戻し: 最初は`core/match/qualifier-pairing.ts`の`createUniformRandomSource`を読み込んでいた(設計のAllowed Dependenciesに無い機能間の依存)ため、同じ処理の写しを`core/sponsorship`に置いた(将来`core/random`などへまとめる候補)。
 - 3.4: `workers/sponsorship/d1-notice-scheduler.ts`の`D1NoticeScheduler`(`Database`・`Clock`)と`queue-notice-requester.ts`の`QueueNoticeRequester`(`MessagePublisher`・`Clock`。設計は`MessagePublisher`だけだが本文の`requestedAt`に時計が要る)、3.11で束縛。`markDue`は開始(`starts_on = today`)と終了(`ends_on < today`かつ`stop_refund_status <> 'none'`)の2文を1回の`db.batch`で`none`→`pending`にし、変えた行だけ`updated_at`を時計の時刻にする。終了の文は`INDEXED BY sponsorships_unsettled_end_idx`の副問い合わせ(`end_notice='none'`のリテラルが部分索引の条件を満たすため使える。この条件を外すと実行時に失敗する)。設計のシーケンス図の「昨日終了」でなく表とタスクの「終了日が過ぎた」に合わせた(`end_notice='none'`で二重送信は無い)。`markDue`は`product_deleted_at`を見ない(送信時に送らないと決める)。強制終了の通知の依頼待ちは4.4の強制終了の一括の書き込みで作る。6.1への申し送り: `hasPending`は論理削除・強制終了の行を含む全ての依頼待ちを数えるため、依頼待ちの通知の読み出しも同じ行を対象にして`skipped`にすること(除くと4:21のジョブが毎日空の依頼を送り続ける)。
+- 3.5: `workers/sponsorship/d1-sponsorship-export.ts`の`D1SponsorshipExport`(`PLATFORM_TYPES.Database`・`PRODUCT_PLATFORM_TYPES.ProductExport`、3.11で束縛。束縛先に`ProductExport`の束縛が要る)。申込の行は`Database`で直接読む(`user_id`・`deleted_at IS NULL`、`created_at`・`id`の昇順)。プロダクトの状態は申込の`productDeletedAt`か`ProductExport.deletedAt`で`deleted`、`hiddenByAdmin`で`hidden`(投稿者の停止は分からないが`toExportStatus`の結果は同じ)。申込のプロダクトが申込者の`ProductExport`に無ければIDだけの`Error`を投げる(所有者の移転・物理削除の順序・カテゴリの削除で起きないことをレビューで確認)。0件なら`ProductExport`を読まない。
