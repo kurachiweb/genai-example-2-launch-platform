@@ -1,7 +1,6 @@
 import { inject, injectable } from 'inversify';
 
 import { PURCHASE_KIND_LABELS } from '../../../common-lib/payments/purchase-kinds.ts';
-import { validatePeriod } from '../../../common-lib/sponsorship/sponsorship-period.ts';
 import { SPONSORSHIP_PURCHASE_CONDITIONS } from '../../../common-lib/sponsorship/sponsorship-purchase-conditions.ts';
 import {
   SPONSORSHIP_PRICE_LOOKUP_KEYS,
@@ -29,6 +28,7 @@ import {
   fromBusinessDateTime,
   toBusinessDateTime,
 } from '../../core/time/business-time.ts';
+import { payabilityRejectionOf } from './sponsorship-payability.ts';
 
 const START_OF_DAY = Object.freeze({ hour: 0, minute: 0 });
 
@@ -108,30 +108,12 @@ export class SponsorshipOfferPolicy implements PurchaseOfferPolicy {
     if (record.startsOn < today) {
       return rejectionOf('sponsorship_not_payable');
     }
-    const violations = validatePeriod({
-      startsOn: record.startsOn,
-      endsOn: record.endsOn,
-      today,
+    const rejection = await payabilityRejectionOf(record, now, {
+      store: this.store,
+      eligibleProducts: this.eligibleProducts,
     });
-    if (violations.startsOn !== undefined || violations.endsOn !== undefined) {
-      return rejectionOf('sponsorship_period_invalid');
-    }
-    if (
-      !(await this.eligibleProducts.isEligible(userId, record.productId, now))
-    ) {
-      return rejectionOf('sponsorship_product_ineligible');
-    }
-    if (
-      await this.store.hasPaidOverlap({
-        productId: record.productId,
-        tier: record.tier,
-        startsOn: record.startsOn,
-        endsOn: record.endsOn,
-        excludeId: record.id,
-      })
-    ) {
-      return rejectionOf('sponsorship_overlap');
-    }
-    return { kind: 'available', offer: offerOf(record) };
+    return rejection === undefined
+      ? { kind: 'available', offer: offerOf(record) }
+      : rejectionOf(rejection);
   }
 }
