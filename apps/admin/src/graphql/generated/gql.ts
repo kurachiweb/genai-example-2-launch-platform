@@ -75,6 +75,8 @@ type Documents = {
     "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": typeof types.AdminSystemStatusDocument,
     "query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": typeof types.AdminUltrasPromotionSettingDocument,
     "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": typeof types.AdminUpdateUltrasPromotionSettingDocument,
+    "mutation AdminUpdateYearFinalDate($input: UpdateYearFinalDateInput!) {\n  updateYearFinalDate(input: $input) {\n    year\n    finalDate\n    source\n    acceptUntil\n    deadlineAt\n    drawAt\n    changeLockAt\n    changeable\n    choices\n    previousYearFinalDate\n    nextYearFinalDate\n    nextYearSource\n    nextYearGapWarningDate\n    version\n    updatedAt\n    updatedBy {\n      nickname\n    }\n  }\n}": typeof types.AdminUpdateYearFinalDateDocument,
+    "query AdminYearFinalDateSettings {\n  yearFinalDateSettings {\n    serverTime\n    settings {\n      year\n      finalDate\n      source\n      acceptUntil\n      deadlineAt\n      drawAt\n      changeLockAt\n      changeable\n      choices\n      previousYearFinalDate\n      nextYearFinalDate\n      nextYearSource\n      nextYearGapWarningDate\n      version\n      updatedAt\n      updatedBy {\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminYearFinalDateSettingsDocument,
 };
 const documents: Documents = {
     "fragment AdminHelpArticleRow on AdminHelpArticleRow {\n  id\n  handle\n  title\n  categoryId\n  categoryName\n  status\n  pinned\n  sortOrder\n  creatorAdminId\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  createdAt\n  updatedAt\n}": types.AdminHelpArticleRowFragmentDoc,
@@ -138,6 +140,8 @@ const documents: Documents = {
     "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": types.AdminSystemStatusDocument,
     "query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": types.AdminUltrasPromotionSettingDocument,
     "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": types.AdminUpdateUltrasPromotionSettingDocument,
+    "mutation AdminUpdateYearFinalDate($input: UpdateYearFinalDateInput!) {\n  updateYearFinalDate(input: $input) {\n    year\n    finalDate\n    source\n    acceptUntil\n    deadlineAt\n    drawAt\n    changeLockAt\n    changeable\n    choices\n    previousYearFinalDate\n    nextYearFinalDate\n    nextYearSource\n    nextYearGapWarningDate\n    version\n    updatedAt\n    updatedBy {\n      nickname\n    }\n  }\n}": types.AdminUpdateYearFinalDateDocument,
+    "query AdminYearFinalDateSettings {\n  yearFinalDateSettings {\n    serverTime\n    settings {\n      year\n      finalDate\n      source\n      acceptUntil\n      deadlineAt\n      drawAt\n      changeLockAt\n      changeable\n      choices\n      previousYearFinalDate\n      nextYearFinalDate\n      nextYearSource\n      nextYearGapWarningDate\n      version\n      updatedAt\n      updatedBy {\n        nickname\n      }\n    }\n  }\n}": types.AdminYearFinalDateSettingsDocument,
 };
 
 /**
@@ -398,6 +402,14 @@ export function graphql(source: "query AdminUltrasPromotionSetting {\n  ultrasPr
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}"): (typeof documents)["mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminUpdateYearFinalDate($input: UpdateYearFinalDateInput!) {\n  updateYearFinalDate(input: $input) {\n    year\n    finalDate\n    source\n    acceptUntil\n    deadlineAt\n    drawAt\n    changeLockAt\n    changeable\n    choices\n    previousYearFinalDate\n    nextYearFinalDate\n    nextYearSource\n    nextYearGapWarningDate\n    version\n    updatedAt\n    updatedBy {\n      nickname\n    }\n  }\n}"): (typeof documents)["mutation AdminUpdateYearFinalDate($input: UpdateYearFinalDateInput!) {\n  updateYearFinalDate(input: $input) {\n    year\n    finalDate\n    source\n    acceptUntil\n    deadlineAt\n    drawAt\n    changeLockAt\n    changeable\n    choices\n    previousYearFinalDate\n    nextYearFinalDate\n    nextYearSource\n    nextYearGapWarningDate\n    version\n    updatedAt\n    updatedBy {\n      nickname\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminYearFinalDateSettings {\n  yearFinalDateSettings {\n    serverTime\n    settings {\n      year\n      finalDate\n      source\n      acceptUntil\n      deadlineAt\n      drawAt\n      changeLockAt\n      changeable\n      choices\n      previousYearFinalDate\n      nextYearFinalDate\n      nextYearSource\n      nextYearGapWarningDate\n      version\n      updatedAt\n      updatedBy {\n        nickname\n      }\n    }\n  }\n}"): (typeof documents)["query AdminYearFinalDateSettings {\n  yearFinalDateSettings {\n    serverTime\n    settings {\n      year\n      finalDate\n      source\n      acceptUntil\n      deadlineAt\n      drawAt\n      changeLockAt\n      changeable\n      choices\n      previousYearFinalDate\n      nextYearFinalDate\n      nextYearSource\n      nextYearGapWarningDate\n      version\n      updatedAt\n      updatedBy {\n        nickname\n      }\n    }\n  }\n}"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

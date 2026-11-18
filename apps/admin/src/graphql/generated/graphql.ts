@@ -161,6 +161,23 @@ export type UpdateUltrasPromotionSettingInput = {
   reason?: string | null | undefined;
 };
 
+/** 決勝実施日の保存の入力 */
+export type UpdateYearFinalDateInput = {
+  /** 照会で読み取った版 */
+  expectedVersion: number;
+  /** 決勝実施日(業務日付のYYYY-MM-DD) */
+  finalDate: string;
+  /** 監査ログに残す理由(500文字以内、任意) */
+  reason?: string | null | undefined;
+  /** 対象年(現在の年か翌年) */
+  year: number;
+};
+
+/** 決勝実施日の決まり方。EXPLICITは最上位管理者が設定した日、DEFAULTは対象年5月の最終日曜日 */
+export type YearFinalDateSource =
+  | 'DEFAULT'
+  | 'EXPLICIT';
+
 export type AdminHelpArticleRowFragment = { id: string, handle: string, title: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, sortOrder: number, creatorAdminId: string, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
 
 export type AdminHelpArticleFragment = { id: string, handle: string, previousHandle: string | null, title: string, subtitle: string, body: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, revision: number, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
@@ -576,6 +593,18 @@ export type AdminUpdateUltrasPromotionSettingMutationVariables = Exact<{
 
 export type AdminUpdateUltrasPromotionSettingMutation = { updateUltrasPromotionSetting: { enabled: boolean, updatedAt: string | null, updatedByNickname: string | null, version: number } };
 
+export type AdminUpdateYearFinalDateMutationVariables = Exact<{
+  input: UpdateYearFinalDateInput;
+}>;
+
+
+export type AdminUpdateYearFinalDateMutation = { updateYearFinalDate: { year: number, finalDate: string, source: YearFinalDateSource, acceptUntil: string, deadlineAt: string, drawAt: string, changeLockAt: string, changeable: boolean, choices: Array<string>, previousYearFinalDate: string | null, nextYearFinalDate: string | null, nextYearSource: YearFinalDateSource | null, nextYearGapWarningDate: string | null, version: number, updatedAt: string | null, updatedBy: { nickname: string | null } | null } };
+
+export type AdminYearFinalDateSettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminYearFinalDateSettingsQuery = { yearFinalDateSettings: { serverTime: string, settings: Array<{ year: number, finalDate: string, source: YearFinalDateSource, acceptUntil: string, deadlineAt: string, drawAt: string, changeLockAt: string, changeable: boolean, choices: Array<string>, previousYearFinalDate: string | null, nextYearFinalDate: string | null, nextYearSource: YearFinalDateSource | null, nextYearGapWarningDate: string | null, version: number, updatedAt: string | null, updatedBy: { nickname: string | null } | null }> } };
+
 export const AdminHelpArticleRowFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminHelpArticleRow"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminHelpArticleRow"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"categoryName"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"pinned"}},{"kind":"Field","name":{"kind":"Name","value":"sortOrder"}},{"kind":"Field","name":{"kind":"Name","value":"creatorAdminId"}},{"kind":"Field","name":{"kind":"Name","value":"creator"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<AdminHelpArticleRowFragment, unknown>;
 export const AdminHelpArticleFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminHelpArticle"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminHelpArticle"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"previousHandle"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"subtitle"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"categoryName"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"pinned"}},{"kind":"Field","name":{"kind":"Name","value":"creator"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"revision"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<AdminHelpArticleFragment, unknown>;
 export const HelpCategoryFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"HelpCategory"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"HelpCategory"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"systemDefault"}},{"kind":"Field","name":{"kind":"Name","value":"sortOrder"}},{"kind":"Field","name":{"kind":"Name","value":"articleCount"}}]}}]} as unknown as DocumentNode<HelpCategoryFragment, unknown>;
@@ -637,3 +666,5 @@ export const AdminUpdateProductCategoryDocument = {"__meta__":{"hash":"sha256:be
 export const AdminSystemStatusDocument = {"__meta__":{"hash":"sha256:cfd1cd38df39a20ba4d85b44cdc75b45715595ad92ef45f03d4bc5fd3146590c"}} as unknown as DocumentNode<AdminSystemStatusQuery, AdminSystemStatusQueryVariables>;
 export const AdminUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:2edd177a6140620bf171c97fd69c0c289130634ffcd31adf626abf21935f6c24"}} as unknown as DocumentNode<AdminUltrasPromotionSettingQuery, AdminUltrasPromotionSettingQueryVariables>;
 export const AdminUpdateUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:0414939a189f0129ea30b0206151b9cc04ec191ecc0c8cafd7ec3e0ee57b270f"}} as unknown as DocumentNode<AdminUpdateUltrasPromotionSettingMutation, AdminUpdateUltrasPromotionSettingMutationVariables>;
+export const AdminUpdateYearFinalDateDocument = {"__meta__":{"hash":"sha256:5271a6772d537ccb6faa843e035b9a424e666d168f0b9584f416bc2a6998a30f"}} as unknown as DocumentNode<AdminUpdateYearFinalDateMutation, AdminUpdateYearFinalDateMutationVariables>;
+export const AdminYearFinalDateSettingsDocument = {"__meta__":{"hash":"sha256:459543dcdf5f207fc911ad17d4292649a096459a24f6a78c6f2eb12ab5ee94b2"}} as unknown as DocumentNode<AdminYearFinalDateSettingsQuery, AdminYearFinalDateSettingsQueryVariables>;

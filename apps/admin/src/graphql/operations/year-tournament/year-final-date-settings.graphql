@@ -1,0 +1,25 @@
+query AdminYearFinalDateSettings {
+  yearFinalDateSettings {
+    serverTime
+    settings {
+      year
+      finalDate
+      source
+      acceptUntil
+      deadlineAt
+      drawAt
+      changeLockAt
+      changeable
+      choices
+      previousYearFinalDate
+      nextYearFinalDate
+      nextYearSource
+      nextYearGapWarningDate
+      version
+      updatedAt
+      updatedBy {
+        nickname
+      }
+    }
+  }
+}
