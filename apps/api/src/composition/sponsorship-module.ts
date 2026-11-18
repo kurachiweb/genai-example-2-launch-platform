@@ -19,7 +19,9 @@ import {
   DefaultSponsorshipOfferReader,
   type SponsorshipOfferReader,
 } from '../application/sponsorship/sponsorship-offer-reader.ts';
+import type { SponsorshipTerminationWriter } from '../application/sponsorship/sponsorship-termination.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
+import { D1TerminationWriter } from '../infrastructure/sponsorship/d1-termination-writer.ts';
 
 // スポンサー広告の共通の束縛(createSponsorshipPlatformModule)と、利用者の確認・決済の開始・価格・プロダクト・利用者のプロフィールの束縛は他のモジュールの束縛を使う
 export const SPONSORSHIP_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
@@ -37,5 +39,8 @@ export const SPONSORSHIP_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<AdminSponsorshipsReader>(SPONSORSHIP_TYPES.AdminSponsorshipsReader).to(
       DefaultAdminSponsorshipsReader,
     );
+    bind<SponsorshipTerminationWriter>(
+      SPONSORSHIP_TYPES.SponsorshipTerminationWriter,
+    ).to(D1TerminationWriter);
   }),
 };

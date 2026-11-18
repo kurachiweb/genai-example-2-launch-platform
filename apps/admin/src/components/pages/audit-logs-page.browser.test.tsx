@@ -275,6 +275,7 @@ describe('絞り込み', () => {
       'ヘルプ記事カテゴリの並べ替え',
       '通知メールの送信者情報の変更',
       'Yearトーナメント決勝実施日の変更',
+      'スポンサー広告の強制終了',
     ]);
     await expect
       .poll(async () => runAxe(page.getByRole('listbox').element()))
