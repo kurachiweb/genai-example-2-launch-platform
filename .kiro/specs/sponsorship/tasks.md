@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 共用化の移設(実装前のギャップ分析の決定G1〜G3)
-- [ ] 1.1 業務日付の加算と両端を含む日数の数え方を、フロントエンドとバックエンドの共用部品へ移す
+- [x] 1.1 業務日付の加算と両端を含む日数の数え方を、フロントエンドとバックエンドの共用部品へ移す
   - 前提: 上流のspecと並行のengagement・notifications・tournament-week・tournament-yearが実装済みであること(2026-11-18の実装前のギャップ分析で契約を照合済み)。本specが使う契約が見つからなければ、該当するタスクを保留して開発者へ報告する
   - 共用部品の業務日付の計算の置き場所に、日付の加算と両端を含む日数の数え方と、暦日の解析(形式と実在の検査)・UTCの0:00・整形の補助を置く。バックエンドの共通ライブラリの業務時刻の部品は、非公開の解析・整形の補助を削除してそれを読み込み、公開の関数(日付の加算・曜日・週・時点との相互の変換)の名前・引数・戻り値の型と振る舞いを変えない
   - 先に、単体テストで、月末・年末・うるう年をまたぐ加算、負の日数、両端を含む日数、終わりが始まりより前の0、形式違反と実在しない日付の拒否を確かめる。日数は暦日のUTCの0:00同士の差で求め、業務時刻の時点の差を日数に割らない
@@ -401,3 +401,7 @@
   - 3環境のStripeに価格`sponsorship_legend_daily`・`sponsorship_gold_daily`・`sponsorship_silver_daily`を開発者が作る必要がある旨、apiのcron式`7 8 * * *`の追加がデプロイで反映される旨、roadmapの帯の割り当ての表の本specの「使用中の値」(4:21は1600、波及処理は1600、0:07は1600)、仮1〜仮6(2026-10-24)と実装前のギャップ分析の決定G1〜G6(2026-11-18)が開発者が確定した決定である旨、CLAUDE.mdのディレクトリ構成のE2Eの機能ごとのサブディレクトリの記述と本specの平置き(tournament-week・yearの前例)の相違を、作業の報告に記録する
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に確定した決定と運用の事項と文書の相違が載っている
   - _Requirements: 12.3, 13.1, 13.2_
+
+## Implementation Notes
+
+- 1.1: `apps/common-lib/time/business-date-arithmetic.ts`に`addBusinessDays`・`countBusinessDaysInclusive(from, to)`(UTCの0:00の差+1、`to < from`は0)・`CalendarDate`・`parseCalendarDate`(形式違反と実在しない日付で`RangeError`、既存の文言「業務日付はYYYY-MM-DDの形式で指定してください」「存在しない業務日付です」を保つ)・`utcMidnightOf`・`formatCalendarDate`を置いた。`core/time/business-time.ts`は`../../../common-lib/time/...`の相対パスで読み込み、公開の関数は不変(`businessWeekOf`が使う非公開の`addDays`・`MILLISECONDS_PER_DAY`は残した)。`backend/019`の共通ライブラリの表は10.1で直す。範囲外で残した独自の日付の解析・加算: `common-lib/time/business-date-label.ts`の`partsOf`、`common-lib/tournament/week-period.ts`、`common-lib/directory/directory-period.ts`の`addDays`、`client/src/components/product/business-time.ts`、`e2e/support/scheduled-trigger.ts`。
