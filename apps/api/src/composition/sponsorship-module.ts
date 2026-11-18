@@ -4,6 +4,10 @@ import { ContainerModule } from 'inversify';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
+  type AdminSponsorshipsReader,
+  DefaultAdminSponsorshipsReader,
+} from '../application/sponsorship/admin-sponsorships-reader.ts';
+import {
   DefaultMySponsorshipsReader,
   type MySponsorshipsReader,
 } from '../application/sponsorship/my-sponsorships-reader.ts';
@@ -17,7 +21,7 @@ import {
 } from '../application/sponsorship/sponsorship-offer-reader.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 
-// スポンサー広告の共通の束縛(createSponsorshipPlatformModule)と、利用者の確認・決済の開始・価格・プロダクトの束縛は他のモジュールの束縛を使う
+// スポンサー広告の共通の束縛(createSponsorshipPlatformModule)と、利用者の確認・決済の開始・価格・プロダクト・利用者のプロフィールの束縛は他のモジュールの束縛を使う
 export const SPONSORSHIP_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'api-sponsorship',
   bindings: new ContainerModule(({ bind }) => {
@@ -29,6 +33,9 @@ export const SPONSORSHIP_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<MySponsorshipsReader>(SPONSORSHIP_TYPES.MySponsorshipsReader).to(
       DefaultMySponsorshipsReader,
+    );
+    bind<AdminSponsorshipsReader>(SPONSORSHIP_TYPES.AdminSponsorshipsReader).to(
+      DefaultAdminSponsorshipsReader,
     );
   }),
 };

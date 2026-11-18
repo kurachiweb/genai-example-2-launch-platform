@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest';
 
 import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { DefaultAdminSponsorshipsReader } from '../application/sponsorship/admin-sponsorships-reader.ts';
 import { DefaultMySponsorshipsReader } from '../application/sponsorship/my-sponsorships-reader.ts';
 import { DefaultSponsorshipApplication } from '../application/sponsorship/sponsorship-application.ts';
 import { DefaultSponsorshipOfferReader } from '../application/sponsorship/sponsorship-offer-reader.ts';
@@ -21,11 +22,11 @@ const IMPLEMENTATIONS = [
   ['SponsorshipApplication', DefaultSponsorshipApplication],
   ['SponsorshipOfferReader', DefaultSponsorshipOfferReader],
   ['MySponsorshipsReader', DefaultMySponsorshipsReader],
+  ['AdminSponsorshipsReader', DefaultAdminSponsorshipsReader],
 ] as const;
 
 // 実装の無い部品の識別子。実装と束縛を加えたらIMPLEMENTATIONSへ移す
 const UNBOUND: readonly SponsorshipTypeName[] = [
-  'AdminSponsorshipsReader',
   'SponsorshipTermination',
   'SponsorshipTerminationWriter',
   'DailyNoticesJob',

@@ -1,3 +1,5 @@
+import type { AdminRole } from '../../../../common-lib/admin/admin-roles.ts';
+import type { CurrentAdmin } from '../../../../lib/core/admin/current-admin.ts';
 import { AppError } from '../../../../lib/core/errors/app-error.ts';
 import type { AccountGuard } from '../../../../lib/core/identity/account-guard.ts';
 import type {
@@ -12,6 +14,12 @@ import type {
   ProductSummaryRecord,
 } from '../../../../lib/core/product/ports.ts';
 import type {
+  UserLookupScope,
+  UserProfileDirectory,
+  UserSummaryRecord,
+} from '../../../../lib/core/profile/ports.ts';
+import type {
+  AdminSponsorshipFilter,
   EligibleProduct,
   EligibleProductReader,
   SponsorshipDatePeriodRecord,
@@ -50,6 +58,26 @@ export function productSummaryOf(
   };
 }
 
+export function userSummaryOf(
+  overrides: Partial<UserSummaryRecord> = {},
+): UserSummaryRecord {
+  return {
+    userId: USER_ID,
+    handle: 'sponsor',
+    nickname: '広告主',
+    avatarFileId: null,
+    suspended: false,
+    ...overrides,
+  };
+}
+
+export const CURRENT_ADMIN: CurrentAdmin = Object.freeze({
+  id: '01JF0SPADMN000000000000001',
+  role: 'viewer',
+  nickname: '運営者',
+  sessionId: '01JF0SPASES000000000000001',
+});
+
 export function stripePriceOf(
   lookupKey: string,
   unitAmount: number,
@@ -77,6 +105,13 @@ export const paymentsUnavailableError = (): AppError =>
     message: '現在、決済を利用できません。',
   });
 
+export const forbiddenError = (): AppError =>
+  new AppError({
+    kind: 'forbidden',
+    code: 'forbidden',
+    message: 'この操作を行う権限がありません。',
+  });
+
 export const unauthenticatedError = (): AppError =>
   new AppError({
     kind: 'unauthenticated',
@@ -86,6 +121,7 @@ export const unauthenticatedError = (): AppError =>
 
 export type ReaderCall =
   | { readonly kind: 'requireUser' }
+  | { readonly kind: 'requireRole'; readonly minimum: AdminRole }
   | { readonly kind: 'getPrices'; readonly lookupKeys: readonly string[] }
   | { readonly kind: 'list'; readonly userId: string; readonly now: Date }
   | {
@@ -104,6 +140,17 @@ export type ReaderCall =
       readonly page: SponsorshipPageInput;
     }
   | {
+      readonly kind: 'listForAdmin';
+      readonly filter: AdminSponsorshipFilter;
+      readonly today: BusinessDate;
+      readonly page: SponsorshipPageInput;
+    }
+  | {
+      readonly kind: 'findUserSummaries';
+      readonly userIds: readonly string[];
+      readonly scope: UserLookupScope;
+    }
+  | {
       readonly kind: 'countActiveForProduct';
       readonly productId: string;
       readonly today: BusinessDate;
@@ -117,6 +164,7 @@ export type ReaderCall =
 
 export interface ReaderFakeOptions {
   readonly guardError?: AppError;
+  readonly roleError?: AppError;
   readonly prices?: PriceCatalogResult;
   readonly pricesError?: Error;
   readonly eligibleProducts?: readonly EligibleProduct[];
@@ -125,16 +173,19 @@ export interface ReaderFakeOptions {
   readonly page?: SponsorshipPage;
   readonly activeCount?: number;
   readonly summaries?: readonly ProductSummaryRecord[];
+  readonly userSummaries?: readonly UserSummaryRecord[];
   readonly resolution?: ProductHandleResolution;
 }
 
 export interface ReaderFakes {
   readonly calls: ReaderCall[];
   readonly guard: AccountGuard;
+  readonly requireRole: (minimum: AdminRole) => Promise<CurrentAdmin>;
   readonly prices: PriceCatalog;
   readonly eligibleProducts: EligibleProductReader;
   readonly store: SponsorshipStore;
   readonly products: ProductDirectory;
+  readonly profiles: UserProfileDirectory;
 }
 
 const unexpected = (): Promise<never> =>
@@ -160,6 +211,12 @@ export function createReaderFakes(
     },
     requireWritableUser: unexpected,
     requireVerifiedUser: unexpected,
+  };
+  const requireRole = (minimum: AdminRole): Promise<CurrentAdmin> => {
+    calls.push({ kind: 'requireRole', minimum });
+    return options.roleError === undefined
+      ? Promise.resolve(CURRENT_ADMIN)
+      : Promise.reject(options.roleError);
   };
   const prices: PriceCatalog = {
     getPrices: (lookupKeys) => {
@@ -191,7 +248,10 @@ export function createReaderFakes(
       calls.push({ kind: 'listByOwner', userId, page });
       return Promise.resolve(options.page ?? EMPTY_PAGE);
     },
-    listForAdmin: unexpected,
+    listForAdmin: (filter, today, page) => {
+      calls.push({ kind: 'listForAdmin', filter, today, page });
+      return Promise.resolve(options.page ?? EMPTY_PAGE);
+    },
     countActiveForProduct: (productId, today) => {
       calls.push({ kind: 'countActiveForProduct', productId, today });
       return Promise.resolve(options.activeCount ?? 0);
@@ -218,5 +278,27 @@ export function createReaderFakes(
     findDetail: unexpected,
     listLaunches: unexpected,
   };
-  return { calls, guard, prices, eligibleProducts, store, products };
+  const profiles: UserProfileDirectory = {
+    findSummaries: (userIds, scope) => {
+      calls.push({ kind: 'findUserSummaries', userIds, scope });
+      return Promise.resolve(
+        new Map(
+          (options.userSummaries ?? [])
+            .filter(({ userId }) => userIds.includes(userId))
+            .map((summary) => [summary.userId, summary]),
+        ),
+      );
+    },
+    resolveHandle: unexpected,
+  };
+  return {
+    calls,
+    guard,
+    requireRole,
+    prices,
+    eligibleProducts,
+    store,
+    products,
+    profiles,
+  };
 }
