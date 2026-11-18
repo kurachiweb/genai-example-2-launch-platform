@@ -11,6 +11,10 @@ const COMMON_SPONSORSHIP_TIERS =
 const COMMON_SPONSORSHIP_PERIOD =
   'apps/common-lib/sponsorship/sponsorship-period.ts';
 const DB_SPONSORSHIPS = 'apps/db/schema/sponsorship/sponsorships.ts';
+const API_SPONSORSHIP_RESOLVER_SUPPORT =
+  'apps/api/src/presentation/graphql/modules/sponsorship/resolver-support.ts';
+const CLIENT_SPONSORSHIP_BOT_ACTIONS =
+  'apps/client/src/components/sponsorship/bot-actions.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
   ts.createSourceFile(
@@ -79,6 +83,16 @@ const readNumber = (path: string, name: string): number => {
   return Number(initializer.getText().replaceAll('_', ''));
 };
 
+const readString = (path: string, name: string): string => {
+  const initializer = readInitializer(path, name);
+  if (!ts.isStringLiteral(initializer)) {
+    throw new Error(
+      `${path}の${name}の初期化子が文字列リテラルではありません: ${initializer.getText()}`,
+    );
+  }
+  return initializer.text;
+};
+
 const readStringArray = (path: string, name: string): readonly string[] => {
   const initializer = readInitializer(path, name);
   if (!ts.isArrayLiteralExpression(initializer)) {
@@ -106,6 +120,22 @@ describe('申込のティアと日数の上限の写し(apps/db/schema/sponsorsh
   test('CHECK制約に使う掲載期間の日数の上限がcommon-libのSPONSORSHIP_MAX_DAYSと一致する', () => {
     expect(readNumber(DB_SPONSORSHIPS, 'SPONSORSHIP_MAX_DAYS')).toBe(
       readNumber(COMMON_SPONSORSHIP_PERIOD, 'SPONSORSHIP_MAX_DAYS'),
+    );
+  });
+});
+
+describe('申込のbot判定の操作名の写し(apps/client/src/components/sponsorship/bot-actions.ts)', () => {
+  test('SPONSORSHIP_APPLY_BOT_ACTIONがAPIサーバーのスキーマモジュールの同じ名前の操作名と一致する', () => {
+    expect(
+      readString(
+        CLIENT_SPONSORSHIP_BOT_ACTIONS,
+        'SPONSORSHIP_APPLY_BOT_ACTION',
+      ),
+    ).toBe(
+      readString(
+        API_SPONSORSHIP_RESOLVER_SUPPORT,
+        'SPONSORSHIP_APPLY_BOT_ACTION',
+      ),
     );
   });
 });

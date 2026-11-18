@@ -2,6 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 
 import { sponsorshipOfferQueryOptions } from '../../graphql/sponsorship.ts';
 import { useViewer } from '../auth/use-viewer.ts';
+import { SponsorshipApplicationForm } from './sponsorship-application-form.tsx';
 import {
   SPONSORSHIP_PRICING_SECTION_ID,
   SPONSORSHIP_PRICING_SECTION_TITLE,
@@ -24,6 +25,7 @@ export function SponsorshipPricingSection() {
         {SPONSORSHIP_PRICING_SECTION_TITLE}
       </h2>
       <TierPriceList tiers={data.sponsorshipOffer.tiers} />
+      <SponsorshipApplicationForm offer={data.sponsorshipOffer} />
     </section>
   );
 }
