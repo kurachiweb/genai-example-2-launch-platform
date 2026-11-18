@@ -213,4 +213,21 @@ describe('GRAPHQL_SCHEMA_MODULES(スポンサー広告)', () => {
       'CheckoutStart!',
     );
   });
+
+  test('管理者側の申込の一覧・強制終了の照会の照会と、強制終了の操作がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['adminSponsorships']?.type)).toBe(
+      'AdminSponsorshipConnection!',
+    );
+    expect(String(query?.['sponsorshipTerminationPreview']?.type)).toBe(
+      'SponsorshipTerminationPreview!',
+    );
+    expect(String(mutation?.['terminateSponsorship']?.type)).toBe(
+      'SponsorshipTerminationResult!',
+    );
+  });
 });

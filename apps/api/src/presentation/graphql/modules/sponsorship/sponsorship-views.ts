@@ -6,14 +6,21 @@ import { checkExternalUrl } from '../../../../../common-lib/url/external-url.ts'
 import type {
   EligibleProduct,
   PlacedAd,
+  RefundStatus,
   SponsorshipRefundRecord,
 } from '../../../../../lib/core/sponsorship/ports.ts';
 import {
   type BusinessDate,
   toBusinessDateTime,
 } from '../../../../../lib/core/time/business-time.ts';
+import type { AdminSponsorshipView } from '../../../../application/sponsorship/admin-sponsorships-reader.ts';
+import type {
+  TerminationPreview,
+  TerminationResult,
+} from '../../../../application/sponsorship/sponsorship-termination.ts';
 import type { SponsorshipView } from '../../../../application/sponsorship/sponsorship-view.ts';
 import type {
+  AdminSponsorship,
   Money,
   MySponsorship,
   Resolvers,
@@ -21,6 +28,8 @@ import type {
   SponsorshipRefund,
   SponsorshipRefundStatus,
   SponsorshipStatus,
+  SponsorshipTerminationPreview,
+  SponsorshipTerminationResult,
   SponsorshipTier,
 } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
@@ -160,6 +169,64 @@ export const toMySponsorship = (
   displayStopRefund: toRefund(record.stopRefund),
   canResume: status === 'pending_payment' && record.startsOn >= today,
   createdAt: record.createdAt,
+});
+
+export const toAdminSponsorship = (
+  view: AdminSponsorshipView,
+): AdminSponsorship => {
+  const { record, product } = view;
+  return {
+    id: record.id,
+    productName: product?.name ?? null,
+    productHandle: product?.handle ?? null,
+    productDeleted: product === undefined,
+    applicantNickname: view.applicantNickname,
+    tier: TIER_VALUES[record.tier],
+    startsOn: record.startsOn,
+    endsOn: record.endsOn,
+    days: record.days,
+    amountPaid:
+      record.amountTotal === null ? null : toMoney(record.amountTotal),
+    status: STATUS_VALUES[view.status],
+    terminable: view.terminable,
+    purchaseId: record.purchaseId,
+    createdAt: record.createdAt,
+  };
+};
+
+type TerminationFigures = Omit<SponsorshipTerminationPreview, '__typename'>;
+
+export const toTerminationPreview = (
+  preview: TerminationPreview,
+): TerminationFigures => ({
+  id: preview.sponsorshipId,
+  days: preview.days,
+  amountPaid: toMoney(preview.amountTotal),
+  unexposedDays: preview.unexposedDays,
+  refundEstimate: toMoney(preview.refundEstimate),
+  stoppedDays: preview.stoppedDays,
+  stopRefundAmount: toMoney(preview.stopRefundAmount),
+});
+
+// 返金額が0で依頼しなかった(not_needed)返金は、状態を示さない
+const refundStatusOf = (status: RefundStatus): SponsorshipRefundStatus | null =>
+  REFUND_STATUS_VALUES[status] ?? null;
+
+const requestedMoneyOf = (amount: number | null): Money | null =>
+  amount === null ? null : toMoney(amount);
+
+export const toTerminationResult = (
+  result: TerminationResult,
+): SponsorshipTerminationResult => ({
+  ...toTerminationPreview(result),
+  terminatedOn: result.terminatedOn,
+  terminationRefundStatus: refundStatusOf(result.terminationRefundStatus),
+  stopRefundStatus: refundStatusOf(result.stopRefundStatus),
+  terminationRefundRequested: requestedMoneyOf(
+    result.terminationRefundRequested,
+  ),
+  stopRefundRequested: requestedMoneyOf(result.stopRefundRequested),
+  purchaseId: result.purchaseId,
 });
 
 // 一覧の各行で要求されるため、画像の記録は一括読み込みで1回の照会にまとめる。記録が無い画像はnullにする

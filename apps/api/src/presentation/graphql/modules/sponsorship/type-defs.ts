@@ -159,6 +159,94 @@ export const SPONSORSHIP_TYPE_DEFS = /* GraphQL */ `
     endsOn: String!
   }
 
+  "管理画面の一覧の掲載状況の絞り込み。表示停止中は掲載予定・掲載中に含む"
+  enum AdminSponsorshipStatusFilter {
+    PENDING_PAYMENT
+    SCHEDULED
+    ACTIVE
+    ENDED
+    TERMINATED
+  }
+
+  "管理画面の一覧の絞り込み。省略した条件は絞り込まない"
+  input AdminSponsorshipFilter {
+    status: AdminSponsorshipStatusFilter
+    tier: SponsorshipTier
+  }
+
+  "管理画面の申込の一覧の1件"
+  type AdminSponsorship {
+    id: ID!
+    "論理削除済みのプロダクトはnull"
+    productName: String
+    "論理削除済みのプロダクトはnull"
+    productHandle: String
+    productDeleted: Boolean!
+    "申込者のニックネーム。照会できなければnull"
+    applicantNickname: String
+    tier: SponsorshipTier!
+    "掲載開始日(業務日付のYYYY-MM-DD)"
+    startsOn: String!
+    "掲載終了日(業務日付のYYYY-MM-DD)"
+    endsOn: String!
+    days: Int!
+    "支払った金額。未決済はnull"
+    amountPaid: Money
+    status: SponsorshipStatus!
+    "掲載予定・掲載中(表示停止中を含む)なら真"
+    terminable: Boolean!
+    "決済を探すための購入のID。未決済はnull"
+    purchaseId: ID
+    createdAt: DateTime!
+  }
+
+  "管理画面の申込の一覧"
+  type AdminSponsorshipConnection {
+    nodes: [AdminSponsorship!]!
+    pageInfo: PageInfo!
+  }
+
+  "強制終了の確認に示す日数と金額"
+  type SponsorshipTerminationPreview {
+    "申込のID"
+    id: ID!
+    "掲載期間の日数"
+    days: Int!
+    amountPaid: Money!
+    "強制終了日と掲載開始日の遅い方から掲載終了日までの日数"
+    unexposedDays: Int!
+    "未掲載日数分の返金目安額"
+    refundEstimate: Money!
+    "強制終了日より前の表示停止日数"
+    stoppedDays: Int!
+    "表示停止日数分の返金額"
+    stopRefundAmount: Money!
+  }
+
+  "強制終了の確定の結果"
+  type SponsorshipTerminationResult {
+    "申込のID"
+    id: ID!
+    "強制終了日(業務日付のYYYY-MM-DD)"
+    terminatedOn: String!
+    days: Int!
+    amountPaid: Money!
+    unexposedDays: Int!
+    refundEstimate: Money!
+    stoppedDays: Int!
+    stopRefundAmount: Money!
+    "未掲載日数分の返金の状態。返金額が0ならnull"
+    terminationRefundStatus: SponsorshipRefundStatus
+    "表示停止日数分の返金の状態。返金額が0ならnull"
+    stopRefundStatus: SponsorshipRefundStatus
+    "実際に依頼した額。残りの全額で依頼したとき・依頼しなかったときはnull"
+    terminationRefundRequested: Money
+    "実際に依頼した額。残りの全額で依頼したとき・依頼しなかったときはnull"
+    stopRefundRequested: Money
+    "決済を探すための購入のID"
+    purchaseId: ID!
+  }
+
   type Query {
     "料金ページのスポンサー広告の価格と申込の対象。ログインを求めない"
     sponsorshipOffer: SponsorshipOffer!
@@ -174,6 +262,14 @@ export const SPONSORSHIP_TYPE_DEFS = /* GraphQL */ `
     mySponsorships(first: Int!, after: String): MySponsorshipConnection!
     "本人のプロダクトの掲載中・掲載予定の広告の件数。本人のプロダクトでなければ0"
     activeSponsorshipCount(productHandle: String!): Int!
+    "退会者を除く申込の新しい順(1〜50件)。閲覧のみ以上の管理者"
+    adminSponsorships(
+      filter: AdminSponsorshipFilter
+      first: Int!
+      after: String
+    ): AdminSponsorshipConnection!
+    "強制終了の未掲載日数・返金目安額・表示停止日数・表示停止の返金額。モデレーター以上の管理者。強制終了できなければsponsorship_not_terminable"
+    sponsorshipTerminationPreview(id: ID!): SponsorshipTerminationPreview!
   }
 
   type Mutation {
@@ -181,5 +277,10 @@ export const SPONSORSHIP_TYPE_DEFS = /* GraphQL */ `
     applySponsorship(input: ApplySponsorshipInput!): CheckoutStart!
     "本人の開始日前の未決済の申込の決済を始め直す"
     resumeSponsorshipCheckout(id: ID!): CheckoutStart!
+    "理由(500文字以内)を付けて広告を強制終了し、未掲載日数分と表示停止日数分の返金を依頼する。モデレーター以上の管理者"
+    terminateSponsorship(
+      id: ID!
+      reason: String!
+    ): SponsorshipTerminationResult!
   }
 `;

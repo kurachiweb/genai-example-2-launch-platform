@@ -232,6 +232,60 @@ type AdminSecondFactorRequired {
   expiresAt: DateTime!
 }
 
+"""管理画面の申込の一覧の1件"""
+type AdminSponsorship {
+  """支払った金額。未決済はnull"""
+  amountPaid: Money
+
+  """申込者のニックネーム。照会できなければnull"""
+  applicantNickname: String
+  createdAt: DateTime!
+  days: Int!
+
+  """掲載終了日(業務日付のYYYY-MM-DD)"""
+  endsOn: String!
+  id: ID!
+  productDeleted: Boolean!
+
+  """論理削除済みのプロダクトはnull"""
+  productHandle: String
+
+  """論理削除済みのプロダクトはnull"""
+  productName: String
+
+  """決済を探すための購入のID。未決済はnull"""
+  purchaseId: ID
+
+  """掲載開始日(業務日付のYYYY-MM-DD)"""
+  startsOn: String!
+  status: SponsorshipStatus!
+
+  """掲載予定・掲載中(表示停止中を含む)なら真"""
+  terminable: Boolean!
+  tier: SponsorshipTier!
+}
+
+"""管理画面の申込の一覧"""
+type AdminSponsorshipConnection {
+  nodes: [AdminSponsorship!]!
+  pageInfo: PageInfo!
+}
+
+"""管理画面の一覧の絞り込み。省略した条件は絞り込まない"""
+input AdminSponsorshipFilter {
+  status: AdminSponsorshipStatusFilter
+  tier: SponsorshipTier
+}
+
+"""管理画面の一覧の掲載状況の絞り込み。表示停止中は掲載予定・掲載中に含む"""
+enum AdminSponsorshipStatusFilter {
+  ACTIVE
+  ENDED
+  PENDING_PAYMENT
+  SCHEDULED
+  TERMINATED
+}
+
 """認証アプリへ登録する多要素認証の設定"""
 type AdminTotpSetup {
   expiresAt: DateTime!
@@ -1428,6 +1482,9 @@ type Mutation {
   """停止していないログイン中の利用者の問い合わせの送信"""
   submitMemberInquiry(input: MemberInquiryInput!): MemberInquiry!
 
+  """理由(500文字以内)を付けて広告を強制終了し、未掲載日数分と表示停止日数分の返金を依頼する。モデレーター以上の管理者"""
+  terminateSponsorship(id: ID!, reason: String!): SponsorshipTerminationResult!
+
   """停止中でない利用者がフォローを解除する。フォローしていなくても成功する"""
   unfollowUser(handle: String!): FollowState!
 
@@ -2115,6 +2172,9 @@ type Query {
   """管理者向けのプロダクトカテゴリの一覧。productCategoriesと同じ順"""
   adminProductCategories: [ProductCategory!]!
 
+  """退会者を除く申込の新しい順(1〜50件)。閲覧のみ以上の管理者"""
+  adminSponsorships(after: String, filter: AdminSponsorshipFilter, first: Int!): AdminSponsorshipConnection!
+
   """退会済みを除く「未対応」のログインと未ログインの問い合わせの合計件数。閲覧のみ以上"""
   adminUnhandledInquiryCount: Int!
 
@@ -2272,6 +2332,11 @@ type Query {
   申込の対象のプロダクトとティアの掲載期間の選べる範囲。対象外はsponsorship_product_ineligible、形式の違う開始日はvalidation_error
   """
   sponsorshipPeriodWindow(productId: ID!, startsOn: String, tier: SponsorshipTier!): SponsorshipPeriodWindow!
+
+  """
+  強制終了の未掲載日数・返金目安額・表示停止日数・表示停止の返金額。モデレーター以上の管理者。強制終了できなければsponsorship_not_terminable
+  """
+  sponsorshipTerminationPreview(id: ID!): SponsorshipTerminationPreview!
 
   """APIサーバーの時刻とデータベースへの到達可否"""
   systemStatus: SystemStatus!
@@ -2496,6 +2561,60 @@ enum SponsorshipStatus {
   PENDING_PAYMENT
   SCHEDULED
   TERMINATED
+}
+
+"""強制終了の確認に示す日数と金額"""
+type SponsorshipTerminationPreview {
+  amountPaid: Money!
+
+  """掲載期間の日数"""
+  days: Int!
+
+  """申込のID"""
+  id: ID!
+
+  """未掲載日数分の返金目安額"""
+  refundEstimate: Money!
+
+  """表示停止日数分の返金額"""
+  stopRefundAmount: Money!
+
+  """強制終了日より前の表示停止日数"""
+  stoppedDays: Int!
+
+  """強制終了日と掲載開始日の遅い方から掲載終了日までの日数"""
+  unexposedDays: Int!
+}
+
+"""強制終了の確定の結果"""
+type SponsorshipTerminationResult {
+  amountPaid: Money!
+  days: Int!
+
+  """申込のID"""
+  id: ID!
+
+  """決済を探すための購入のID"""
+  purchaseId: ID!
+  refundEstimate: Money!
+  stopRefundAmount: Money!
+
+  """実際に依頼した額。残りの全額で依頼したとき・依頼しなかったときはnull"""
+  stopRefundRequested: Money
+
+  """表示停止日数分の返金の状態。返金額が0ならnull"""
+  stopRefundStatus: SponsorshipRefundStatus
+  stoppedDays: Int!
+
+  """強制終了日(業務日付のYYYY-MM-DD)"""
+  terminatedOn: String!
+
+  """実際に依頼した額。残りの全額で依頼したとき・依頼しなかったときはnull"""
+  terminationRefundRequested: Money
+
+  """未掲載日数分の返金の状態。返金額が0ならnull"""
+  terminationRefundStatus: SponsorshipRefundStatus
+  unexposedDays: Int!
 }
 
 """スポンサー広告のティア"""

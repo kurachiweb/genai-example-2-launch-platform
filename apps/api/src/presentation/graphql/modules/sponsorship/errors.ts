@@ -9,3 +9,6 @@ export const PRODUCT_ID_INVALID_MESSAGE =
 
 export const SPONSORSHIP_ID_INVALID_MESSAGE =
   SPONSORSHIP_ERRORS.sponsorship_not_found.message;
+
+export const TERMINATION_TARGET_INVALID_MESSAGE =
+  SPONSORSHIP_ERRORS.sponsorship_not_terminable.message;
