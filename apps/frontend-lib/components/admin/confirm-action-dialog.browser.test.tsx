@@ -62,6 +62,7 @@ interface HarnessProps {
   readonly failureMessageOf?: Mock<(error: unknown) => string>;
   readonly failureActionOf?: ConfirmActionDialogProps['failureActionOf'];
   readonly withReturnFocus?: boolean;
+  readonly confirmDisabled?: boolean;
 }
 
 function Harness({
@@ -73,6 +74,7 @@ function Harness({
   failureMessageOf = vi.fn(() => FAILURE_MESSAGE),
   failureActionOf,
   withReturnFocus = false,
+  confirmDisabled,
 }: HarnessProps) {
   const [open, setOpen] = useState(false);
   const afterRef = useRef<HTMLButtonElement>(null);
@@ -103,6 +105,7 @@ function Harness({
         failureMessageOf={failureMessageOf}
         {...(failureActionOf === undefined ? {} : { failureActionOf })}
         returnFocusRef={returnFocusRef}
+        {...(confirmDisabled === undefined ? {} : { confirmDisabled })}
       />
     </div>
   );
@@ -260,6 +263,32 @@ describe('ConfirmActionDialog', () => {
     await confirmButton().click();
 
     expect(onConfirm).toHaveBeenCalledExactlyOnceWith({ reason: undefined });
+  });
+
+  test('呼び出す側が確定を止めている間は、理由が条件を満たしても確定のボタンを無効にし、止めるのをやめると確定できる', async () => {
+    const onConfirm = confirmMock();
+    const screen = await render(
+      <Harness reason="required" onConfirm={onConfirm} confirmDisabled />,
+    );
+    await openDialog();
+
+    await reasonBox('理由(必須)').fill('規約に反する投稿を繰り返したため');
+    await expect.element(confirmButton()).toBeDisabled();
+    await expect.element(confirmButton()).toHaveAttribute('disabled');
+
+    await screen.rerender(
+      <Harness
+        reason="required"
+        onConfirm={onConfirm}
+        confirmDisabled={false}
+      />,
+    );
+    await expect.element(confirmButton()).toBeEnabled();
+    await confirmButton().click();
+
+    expect(onConfirm).toHaveBeenCalledExactlyOnceWith({
+      reason: '規約に反する投稿を繰り返したため',
+    });
   });
 
   test('理由の欄の近くに、個人情報を含めない旨を表示する', async () => {

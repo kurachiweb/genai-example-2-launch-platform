@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getRouteApi } from '@tanstack/react-router';
-import { useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 
 import { AdminPageHeader } from '../../../lib/components/admin/admin-page-header.tsx';
 import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
@@ -11,6 +11,7 @@ import {
 } from '../../../lib/utilities/pagination/cursor-trail.ts';
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
 import {
+  type AdminSponsorshipTerminationResult,
   adminSponsorshipsQueryOptions,
   toAdminSponsorshipPage,
 } from '../../graphql/admin-sponsorships.ts';
@@ -26,8 +27,13 @@ import {
   SPONSORSHIPS_TITLE,
 } from '../sponsorship/admin-sponsorships-messages.ts';
 import { SponsorshipStatusFilter } from '../sponsorship/sponsorship-status-filter.tsx';
+import { TerminateSponsorshipDialog } from '../sponsorship/terminate-sponsorship-dialog.tsx';
+import { TerminationResultNotice } from '../sponsorship/termination-result-notice.tsx';
 
 const routeApi = getRouteApi('/_authenticated/sponsorships/');
+
+// 強制終了の確認を閉じた後のフォーカスの移り先。開いた元の「強制終了」は確定や拒否の後の取り直しで消える
+type TerminationFocus = 'opener' | 'result' | 'list';
 
 export function SponsorshipsPage() {
   const search = routeApi.useSearch();
@@ -37,6 +43,14 @@ export function SponsorshipsPage() {
     select: toAdminSponsorshipPage,
   });
   const [trail, setTrail] = useState(EMPTY_CURSOR_TRAIL);
+  const [terminatingId, setTerminatingId] = useState<string>();
+  const [terminateOpen, setTerminateOpen] = useState(false);
+  const [terminationFocus, setTerminationFocus] =
+    useState<TerminationFocus>('opener');
+  const [terminationResult, setTerminationResult] =
+    useState<AdminSponsorshipTerminationResult>();
+  const resultHeadingRef = useRef<HTMLHeadingElement>(null);
+  const listHeadingRef = useRef<HTMLHeadingElement>(null);
   const scope = adminSponsorshipFilterScopeOf(search);
   const previous = previousPageOf(trail, scope, search.after);
   const pageInfo = sponsorships.data?.pageInfo;
@@ -47,6 +61,12 @@ export function SponsorshipsPage() {
   const show = (next: AdminSponsorshipSearch) => {
     void navigate({ search: next });
   };
+  const terminationReturnFocusRef: RefObject<HTMLElement | null> | undefined =
+    terminationFocus === 'result'
+      ? resultHeadingRef
+      : terminationFocus === 'list'
+        ? listHeadingRef
+        : undefined;
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8">
@@ -54,6 +74,12 @@ export function SponsorshipsPage() {
         title={SPONSORSHIPS_TITLE}
         description={SPONSORSHIPS_DESCRIPTION}
       />
+      {terminationResult === undefined ? null : (
+        <TerminationResultNotice
+          result={terminationResult}
+          headingRef={resultHeadingRef}
+        />
+      )}
       <SponsorshipStatusFilter
         search={search}
         onApply={show}
@@ -90,6 +116,27 @@ export function SponsorshipsPage() {
             show(adminSponsorshipSearchAt(search, nextCursor));
           },
         }}
+        onTerminate={(row) => {
+          setTerminatingId(row.id);
+          setTerminationFocus('opener');
+          setTerminateOpen(true);
+        }}
+        headingRef={listHeadingRef}
+      />
+      <TerminateSponsorshipDialog
+        sponsorshipId={terminatingId}
+        open={terminateOpen}
+        onOpenChange={setTerminateOpen}
+        onTerminated={(result) => {
+          setTerminationResult(result);
+          setTerminationFocus('result');
+        }}
+        onNotTerminable={() => {
+          setTerminationFocus('list');
+        }}
+        {...(terminationReturnFocusRef === undefined
+          ? {}
+          : { returnFocusRef: terminationReturnFocusRef })}
       />
     </div>
   );

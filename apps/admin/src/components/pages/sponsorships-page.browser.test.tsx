@@ -21,6 +21,9 @@ import {
   type SponsorshipsHandler,
   sponsorshipsQueryOf,
   sponsorshipsVariablesOf,
+  type TerminateHandler,
+  terminateVariablesOf,
+  terminationResultOf,
 } from '../../../test/admin-sponsorships-fixtures.ts';
 import type { AdminRole } from '../../graphql/generated/graphql.ts';
 import { loadAdminSponsorshipsPage } from '../../graphql/admin-sponsorships.ts';
@@ -64,15 +67,18 @@ async function chooseOption(
 const renderWith = async ({
   role = 'VIEWER',
   sponsorships,
+  terminate,
   path = SPONSORSHIPS_PATH,
 }: {
   readonly role?: AdminRole;
   readonly sponsorships?: SponsorshipsHandler;
+  readonly terminate?: TerminateHandler;
   readonly path?: string;
 } = {}) => {
   respondAdminSponsorshipsGraphQL(executeGraphQL, {
     role,
     ...(sponsorships === undefined ? {} : { sponsorships }),
+    ...(terminate === undefined ? {} : { terminate }),
   });
   return renderAdminSponsorshipsPage(role, path);
 };
@@ -412,6 +418,147 @@ describe('ページ送り', () => {
 
     await expect.element(rowOf(SCHEDULED_ROW.id)).toBeVisible();
     expect(router.state.location.search).toEqual({ tier: 'GOLD' });
+  });
+});
+
+describe('強制終了', () => {
+  const TERMINATED_PAUSED_ROW = Object.freeze({
+    ...PAUSED_ROW,
+    status: 'TERMINATED' as const,
+    terminable: false,
+  });
+
+  const dialog = () =>
+    page.getByRole('dialog', { name: 'スポンサー広告の強制終了' });
+  const reasonBox = () =>
+    dialog().getByRole('textbox', { name: '理由(必須)', exact: true });
+  const confirmButton = () =>
+    dialog().getByRole('button', { name: '強制終了する', exact: true });
+  const pausedTerminateButton = () =>
+    rowOf(PAUSED_ROW.id).getByRole('button', {
+      name: `申込${PAUSED_ROW.id}を強制終了`,
+    });
+  const resultRegion = () =>
+    main().getByRole('region', {
+      name: `申込${PAUSED_ROW.id}の強制終了の結果`,
+    });
+  const listHeading = () =>
+    main().getByRole('heading', { level: 2, name: 'スポンサー広告の一覧' });
+
+  // 強制終了の後の取り直しでは、強制終了した行を強制終了できない状態で返す
+  const terminatingList = () => {
+    let terminated = false;
+    return {
+      sponsorships: () =>
+        success(
+          sponsorshipsQueryOf(
+            terminated
+              ? [SCHEDULED_ROW, TERMINATED_PAUSED_ROW]
+              : [SCHEDULED_ROW, PAUSED_ROW],
+          ),
+        ),
+      markTerminated: () => {
+        terminated = true;
+      },
+    };
+  };
+
+  test('「強制終了」で照会の値を示す確認のダイアログを開き、確定すると結果を題名の下に示して結果の見出しへフォーカスを移し、一覧を取り直す', async () => {
+    const list = terminatingList();
+    const result = terminationResultOf();
+    await renderWith({
+      role: 'MODERATOR',
+      sponsorships: list.sponsorships,
+      terminate: () => {
+        list.markTerminated();
+        return success({ terminateSponsorship: result });
+      },
+    });
+    await userEvent.click(pausedTerminateButton());
+
+    await expect
+      .element(dialog())
+      .toHaveAccessibleDescription(
+        '未掲載日数5日・返金目安額$50.00(支払った金額$210.00・21日間)。これまでの表示停止3日分$30.00。強制終了を確定すると、これらの金額が自動で返金されます。',
+      );
+    const listCallsBefore = sponsorshipsVariablesOf(executeGraphQL).length;
+    await reasonBox().fill('虚偽の広告表示が確認されたため');
+    await confirmButton().click();
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    expect(terminateVariablesOf(executeGraphQL)).toStrictEqual([
+      { id: PAUSED_ROW.id, reason: '虚偽の広告表示が確認されたため' },
+    ]);
+    await expect.element(resultRegion()).toBeVisible();
+    await expect
+      .element(resultRegion().getByRole('heading', { level: 2 }))
+      .toHaveFocus();
+    await expect
+      .element(resultRegion().getByText(PAUSED_ROW.purchaseId ?? ''))
+      .toBeVisible();
+    await expect
+      .poll(() => sponsorshipsVariablesOf(executeGraphQL).length)
+      .toBeGreaterThan(listCallsBefore);
+    await expect.element(pausedTerminateButton()).not.toBeInTheDocument();
+    expect(cellTexts(PAUSED_ROW.id)[6]).toBe('強制終了');
+  });
+
+  test('強制終了できない広告は、ダイアログの中に文言を示して理由の入力を保ち、一覧を取り直し、閉じると一覧の見出しへフォーカスを移す', async () => {
+    const list = terminatingList();
+    await renderWith({
+      role: 'MODERATOR',
+      sponsorships: list.sponsorships,
+      terminate: () => {
+        list.markTerminated();
+        return failure({
+          code: 'sponsorship_not_terminable',
+          message:
+            'この広告は強制終了できません。一覧を再読み込みしてください。',
+          status: 409,
+        });
+      },
+    });
+    await userEvent.click(pausedTerminateButton());
+    await expect.element(confirmButton()).toBeVisible();
+    await reasonBox().fill('虚偽の広告表示が確認されたため');
+    const listCallsBefore = sponsorshipsVariablesOf(executeGraphQL).length;
+    await confirmButton().click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent(
+        'この広告は強制終了できません。一覧を再読み込みしてください。',
+      );
+    await expect
+      .element(reasonBox())
+      .toHaveValue('虚偽の広告表示が確認されたため');
+    await expect
+      .poll(() => sponsorshipsVariablesOf(executeGraphQL).length)
+      .toBeGreaterThan(listCallsBefore);
+
+    await userEvent.click(
+      dialog().getByRole('button', { name: 'キャンセル', exact: true }),
+    );
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(listHeading()).toHaveFocus();
+    await expect.element(pausedTerminateButton()).not.toBeInTheDocument();
+    expect(cellTexts(PAUSED_ROW.id)[6]).toBe('強制終了');
+    expect(resultRegion().query()).toBeNull();
+  });
+
+  test('取り消すと強制終了せずに閉じ、押した「強制終了」へフォーカスを戻す', async () => {
+    await renderWith({ role: 'MODERATOR' });
+    await userEvent.click(pausedTerminateButton());
+    await expect.element(confirmButton()).toBeVisible();
+
+    await userEvent.click(
+      dialog().getByRole('button', { name: 'キャンセル', exact: true }),
+    );
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(pausedTerminateButton()).toHaveFocus();
+    expect(terminateVariablesOf(executeGraphQL)).toStrictEqual([]);
   });
 });
 

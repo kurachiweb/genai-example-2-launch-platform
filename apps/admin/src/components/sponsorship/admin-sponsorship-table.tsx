@@ -1,4 +1,4 @@
-import { useId, useRef } from 'react';
+import { type RefObject, useId, useRef } from 'react';
 
 import { SPONSORSHIP_TIER_LABELS } from '../../../common-lib/sponsorship/sponsorship-tiers.ts';
 import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
@@ -37,6 +37,8 @@ export interface AdminSponsorshipTableProps {
   readonly pagination: AdminDataTablePagination;
   // 強制終了の確認を開く。モデレーター以上の管理者に、強制終了できる行のボタンで呼ぶ
   readonly onTerminate?: (sponsorship: AdminSponsorshipRow) => void;
+  // 一覧の見出し。取り直しで消えた行の操作から、フォーカスを移す先にする
+  readonly headingRef?: RefObject<HTMLHeadingElement | null>;
 }
 
 function ProductCell({ row }: { readonly row: AdminSponsorshipRow }) {
@@ -170,9 +172,11 @@ export function AdminSponsorshipTable({
   error,
   pagination,
   onTerminate,
+  headingRef: givenHeadingRef,
 }: AdminSponsorshipTableProps) {
   const headingId = useId();
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const ownHeadingRef = useRef<HTMLHeadingElement>(null);
+  const headingRef = givenHeadingRef ?? ownHeadingRef;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       {/* 再試行で消える再試行のボタンからフォーカスを<body>へ落とさないよう、移り先としてプログラムからだけフォーカスできるようにする */}

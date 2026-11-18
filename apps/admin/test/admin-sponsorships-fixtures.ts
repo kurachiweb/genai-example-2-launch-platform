@@ -4,12 +4,18 @@ import type { Mock } from 'vitest';
 import { toAdminSponsorshipSearch } from '../src/components/sponsorship/admin-sponsorship-search.ts';
 import {
   type AdminSponsorshipRow,
+  type AdminSponsorshipTerminationPreview,
+  type AdminSponsorshipTerminationResult,
   loadAdminSponsorshipsPage,
 } from '../src/graphql/admin-sponsorships.ts';
 import {
   AdminSponsorshipsDocument,
   type AdminSponsorshipsQuery,
   type AdminSponsorshipsQueryVariables,
+  AdminSponsorshipTerminationPreviewDocument,
+  type AdminSponsorshipTerminationPreviewQueryVariables,
+  AdminTerminateSponsorshipDocument,
+  type AdminTerminateSponsorshipMutationVariables,
   type AdminRole,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as AuthenticatedRoute } from '../src/routes/_authenticated/route.tsx';
@@ -111,19 +117,95 @@ export const FIRST_PAGE = sponsorshipsQueryOf([
   PENDING_ROW,
 ]);
 
+// 表示停止の無い掲載予定の申込の照会。開始日の前の強制終了のため全日が未掲載になる
+export const SCHEDULED_PREVIEW: AdminSponsorshipTerminationPreview =
+  Object.freeze({
+    id: SCHEDULED_ROW.id,
+    days: 7,
+    amountPaid: usd(7000),
+    unexposedDays: 7,
+    refundEstimate: usd(7000),
+    stoppedDays: 0,
+    stopRefundAmount: usd(0),
+  });
+
+// 掲載中に表示停止した申込の照会
+export const PAUSED_PREVIEW: AdminSponsorshipTerminationPreview = Object.freeze(
+  {
+    id: PAUSED_ROW.id,
+    days: 21,
+    amountPaid: usd(21000),
+    unexposedDays: 5,
+    refundEstimate: usd(5000),
+    stoppedDays: 3,
+    stopRefundAmount: usd(3000),
+  },
+);
+
+// 表示停止した申込の確定の結果。既定は両方の返金を依頼した額で依頼した結果
+export const terminationResultOf = (
+  overrides: Partial<AdminSponsorshipTerminationResult> = {},
+): AdminSponsorshipTerminationResult => ({
+  id: PAUSED_ROW.id,
+  terminatedOn: '2026-11-26',
+  days: PAUSED_PREVIEW.days,
+  amountPaid: PAUSED_PREVIEW.amountPaid,
+  unexposedDays: PAUSED_PREVIEW.unexposedDays,
+  refundEstimate: PAUSED_PREVIEW.refundEstimate,
+  stoppedDays: PAUSED_PREVIEW.stoppedDays,
+  stopRefundAmount: PAUSED_PREVIEW.stopRefundAmount,
+  terminationRefundStatus: 'REQUESTED',
+  stopRefundStatus: 'REQUESTED',
+  terminationRefundRequested: usd(5000),
+  stopRefundRequested: usd(3000),
+  purchaseId: PAUSED_ROW.purchaseId ?? '',
+  ...overrides,
+});
+
 export type SponsorshipsHandler = (
   variables: AdminSponsorshipsQueryVariables,
 ) => Promise<unknown>;
 
-// 一覧とログイン中の管理者の取得に応答し、一覧はテストが渡した応答にする
+export type TerminationPreviewHandler = (
+  variables: AdminSponsorshipTerminationPreviewQueryVariables,
+) => Promise<unknown>;
+
+export type TerminateHandler = (
+  variables: AdminTerminateSponsorshipMutationVariables,
+) => Promise<unknown>;
+
+const PREVIEWS: ReadonlyMap<string, AdminSponsorshipTerminationPreview> =
+  new Map([
+    [SCHEDULED_PREVIEW.id, SCHEDULED_PREVIEW],
+    [PAUSED_PREVIEW.id, PAUSED_PREVIEW],
+  ]);
+
+// 一覧の行の申込IDに対応する照会を返す
+export const respondPreview: TerminationPreviewHandler = ({ id }) => {
+  const preview = PREVIEWS.get(String(id));
+  if (preview === undefined) {
+    throw new Error(`照会の応答の無い申込IDです: ${String(id)}`);
+  }
+  return success({ sponsorshipTerminationPreview: preview });
+};
+
+const unexpectedTermination: TerminateHandler = () => {
+  throw new Error('想定していない強制終了が実行されました。');
+};
+
+// 一覧・強制終了の照会と確定・ログイン中の管理者の取得に応答し、一覧と強制終了はテストが渡した応答にする
 export function respondAdminSponsorshipsGraphQL(
   executeGraphQL: Mock,
   {
     role,
     sponsorships = () => success(FIRST_PAGE),
+    preview = respondPreview,
+    terminate = unexpectedTermination,
   }: {
     readonly role: AdminRole;
     readonly sponsorships?: SponsorshipsHandler;
+    readonly preview?: TerminationPreviewHandler;
+    readonly terminate?: TerminateHandler;
   },
 ): void {
   respondAdminGraphQL(executeGraphQL, {
@@ -134,9 +216,31 @@ export function respondAdminSponsorshipsGraphQL(
         (variables: unknown) =>
           sponsorships(variables as AdminSponsorshipsQueryVariables),
       ],
+      [
+        AdminSponsorshipTerminationPreviewDocument,
+        (variables: unknown) =>
+          preview(
+            variables as AdminSponsorshipTerminationPreviewQueryVariables,
+          ),
+      ],
+      [
+        AdminTerminateSponsorshipDocument,
+        (variables: unknown) =>
+          terminate(variables as AdminTerminateSponsorshipMutationVariables),
+      ],
     ]),
   });
 }
+
+export const terminateVariablesOf = (
+  executeGraphQL: Mock,
+): readonly AdminTerminateSponsorshipMutationVariables[] =>
+  executeGraphQL.mock.calls
+    .filter(([document]) => document === AdminTerminateSponsorshipDocument)
+    .map(
+      ([, variables]) =>
+        variables as AdminTerminateSponsorshipMutationVariables,
+    );
 
 // アプリの経路の設定を、画面のテスト用のルーターの同じ位置(同じ経路のID)の経路へ写す。経路の設定の検索パラメータの検証・loaderの依存・loaderは型がアプリの経路の木に結び付き写せないため、同じ関数を渡す(同じ関数であることは画面のテストが確かめる)
 const createRoutes = (rootRoute: PageRootRoute) => {
