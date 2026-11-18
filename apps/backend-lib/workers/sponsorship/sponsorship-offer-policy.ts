@@ -32,6 +32,15 @@ import { payabilityRejectionOf } from './sponsorship-payability.ts';
 
 const START_OF_DAY = Object.freeze({ hour: 0, minute: 0 });
 
+// 決済の機能は反映の期限ちょうどの支払いを期限内とするため、開始日の翌日0:00の確定を期限切れにするには期限をその直前の時刻にする
+function fulfillableUntilOf(startsOn: SponsorshipRecord['startsOn']): Date {
+  const nextDay = fromBusinessDateTime(
+    addBusinessDays(startsOn, 1),
+    START_OF_DAY,
+  );
+  return new Date(nextDay.getTime() - 1);
+}
+
 function rejectionOf(
   code: SponsorshipOfferRejectionCode,
 ): PurchaseOfferDecision {
@@ -63,10 +72,7 @@ function offerOf(record: SponsorshipRecord): PurchaseOffer {
     exclusivityKey: `sponsorship:${record.id}`,
     deadlineAt: null,
     acceptUntil: null,
-    fulfillableUntil: fromBusinessDateTime(
-      addBusinessDays(record.startsOn, 1),
-      START_OF_DAY,
-    ),
+    fulfillableUntil: fulfillableUntilOf(record.startsOn),
     summary: Object.freeze({
       itemName: `${PURCHASE_KIND_LABELS.sponsorship}(${SPONSORSHIP_TIER_LABELS[record.tier]})`,
       quantityLabel: `${String(record.days)}日間(${period})`,

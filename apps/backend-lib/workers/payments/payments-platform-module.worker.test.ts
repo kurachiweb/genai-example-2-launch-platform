@@ -12,6 +12,7 @@ import {
   test,
 } from 'vitest';
 
+import type { PurchaseKind } from '../../../common-lib/payments/purchase-kinds.ts';
 import type { AppModule } from '../../core/di/app-module.ts';
 import { PAYMENTS_TYPES } from '../../core/payments/identifiers.ts';
 import type {
@@ -32,6 +33,7 @@ import {
   ULTRAS_SUBSCRIPTION_EVENT_SINK_REGISTRATION,
 } from '../ultras/ultras-registrations.ts';
 import { WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION } from '../week-tournament/week-tournament-registrations.ts';
+import { SPONSORSHIP_PURCHASE_KIND_REGISTRATION } from '../sponsorship/sponsorship-registrations.ts';
 import { YEAR_TOURNAMENT_PURCHASE_KIND_REGISTRATION } from '../year-tournament/year-tournament-registrations.ts';
 import { StripeCheckoutSessionReflection } from './checkout-session-reflection.ts';
 import { D1CustomerStore } from './d1-customer-store.ts';
@@ -90,6 +92,11 @@ const SMOKE_DISABLED_ENV: PaymentsEnv = {
   ...SMOKE_ENABLED_ENV,
   PAYMENTS_SMOKE_ENABLED: 'false',
 };
+
+const UNREGISTERED_KIND_NAME: string = 'gift_card';
+
+// 購入種別の型の値は全て登録済みのため、型に無い値で未登録の購入種別の扱いを確かめる
+const UNREGISTERED_PURCHASE_KIND = UNREGISTERED_KIND_NAME as PurchaseKind;
 
 function createContainer(
   smokeEnabled: PaymentsEnv['PAYMENTS_SMOKE_ENABLED'] = 'true',
@@ -248,12 +255,13 @@ describe('createPaymentsPlatformModule', () => {
 });
 
 describe('購入種別の登録', () => {
-  test('登録箇所は疎通確認用・Ultras・Weekトーナメント参加費・Yearトーナメント参加費の購入種別をこの順に登録し、定期課金の受け取り口はUltrasの加入状態の受け取り口だけを持つ', () => {
+  test('登録箇所は疎通確認用・Ultras・Weekトーナメント参加費・Yearトーナメント参加費・スポンサー広告の購入種別をこの順に登録し、定期課金の受け取り口はUltrasの加入状態の受け取り口だけを持つ', () => {
     expect(PURCHASE_KIND_REGISTRATIONS).toEqual([
       SMOKE_PURCHASE_REGISTRATION,
       ULTRAS_PURCHASE_KIND_REGISTRATION,
       WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION,
       YEAR_TOURNAMENT_PURCHASE_KIND_REGISTRATION,
+      SPONSORSHIP_PURCHASE_KIND_REGISTRATION,
     ]);
     expect(SUBSCRIPTION_EVENT_SINKS).toEqual([
       ULTRAS_SUBSCRIPTION_EVENT_SINK_REGISTRATION,
@@ -272,10 +280,12 @@ describe('購入種別の登録', () => {
     );
   });
 
-  test('登録していない購入種別は解決されず、UltrasとWeekトーナメント参加費とYearトーナメント参加費は疎通確認の有効の条件によらず解決される', () => {
+  test('登録していない購入種別は解決されず、UltrasとWeekトーナメント参加費とYearトーナメント参加費とスポンサー広告は疎通確認の有効の条件によらず解決される', () => {
     const registry = registryOf(createContainer());
 
-    expect(registry.resolve('sponsorship', SMOKE_ENABLED_ENV)).toBeUndefined();
+    expect(
+      registry.resolve(UNREGISTERED_PURCHASE_KIND, SMOKE_ENABLED_ENV),
+    ).toBeUndefined();
     for (const paymentsEnv of [SMOKE_ENABLED_ENV, SMOKE_DISABLED_ENV]) {
       expect(registry.resolve('ultras', paymentsEnv)).toBe(
         ULTRAS_PURCHASE_KIND_REGISTRATION,
@@ -285,6 +295,9 @@ describe('購入種別の登録', () => {
       );
       expect(registry.resolve('year_tournament_entry', paymentsEnv)).toBe(
         YEAR_TOURNAMENT_PURCHASE_KIND_REGISTRATION,
+      );
+      expect(registry.resolve('sponsorship', paymentsEnv)).toBe(
+        SPONSORSHIP_PURCHASE_KIND_REGISTRATION,
       );
     }
   });

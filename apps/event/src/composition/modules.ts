@@ -9,6 +9,7 @@ import { ENGAGEMENT_PLATFORM_MODULE } from '../../lib/workers/engagement/engagem
 import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-platform-module.ts';
 import { PRODUCT_PLATFORM_MODULE } from '../../lib/workers/product/product-platform-module.ts';
 import { PROFILE_PLATFORM_MODULE } from '../../lib/workers/profile/profile-platform-module.ts';
+import { createSponsorshipPlatformModule } from '../../lib/workers/sponsorship/sponsorship-platform-module.ts';
 import { createTournamentPlatformModule } from '../../lib/workers/tournament/tournament-platform-module.ts';
 import { createWeekTournamentPlatformModule } from '../../lib/workers/week-tournament/week-tournament-platform-module.ts';
 import { createYearTournamentPlatformModule } from '../../lib/workers/year-tournament/year-tournament-platform-module.ts';
@@ -80,6 +81,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_ULTRAS_PLATFORM_MODULE,
     createWeekTournamentPlatformModule('event'),
     createYearTournamentPlatformModule('event'),
+    createSponsorshipPlatformModule('event'),
     EVENT_WEEK_TOURNAMENT_MODULE,
     EVENT_YEAR_TOURNAMENT_MODULE,
     EVENT_ULTRAS_MODULE,

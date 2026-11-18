@@ -331,7 +331,7 @@ describe('SponsorshipOfferPolicy', () => {
   });
 
   describe('購入の内容', () => {
-    test('数量を日数、反映の期限を掲載開始日の翌日0:00、二重決済の鍵を申込ごとにし、決済画面の表示事項を渡す', async () => {
+    test('数量を日数、反映の期限を掲載開始日の翌日0:00の直前、二重決済の鍵を申込ごとにし、決済画面の表示事項を渡す', async () => {
       await seedSponsorship();
 
       expect(await describeAs()).toStrictEqual({
@@ -343,7 +343,7 @@ describe('SponsorshipOfferPolicy', () => {
           exclusivityKey: `sponsorship:${sponsorshipIdOf(1)}`,
           deadlineAt: null,
           acceptUntil: null,
-          fulfillableUntil: new Date('2026-12-02T08:00:00.000Z'),
+          fulfillableUntil: new Date('2026-12-02T07:59:59.999Z'),
           summary: {
             itemName: 'スポンサー広告(Gold)',
             quantityLabel: '7日間(2026年12月1日〜12月7日)',
@@ -368,7 +368,7 @@ describe('SponsorshipOfferPolicy', () => {
 
       expect(offer.priceLookupKey).toBe('sponsorship_legend_daily');
       expect(offer.fulfillableUntil).toStrictEqual(
-        new Date('2026-12-29T08:00:00.000Z'),
+        new Date('2026-12-29T07:59:59.999Z'),
       );
       expect(offer.summary).toStrictEqual({
         itemName: 'スポンサー広告(Legend)',
