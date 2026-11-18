@@ -37,12 +37,20 @@ import {
   startSponsorshipCheckout,
   waitForSponsorshipApplicationForm,
 } from './sponsorship-steps.ts';
+import {
+  expectLegendAdHydratedWithoutRefetch,
+  expectLegendAdStreamedAfterMainContent,
+  STREAMING_USER_AGENT,
+} from './sponsorship-streaming-steps.ts';
 
 // 利用者の登録とメールの確認、画像の送信を含むプロダクトの登録に加え、3つのページ・自分の広告一覧・削除の確認・料金ページの確認と通知の待ちを1つの流れで行う
 const FIXTURE_FLOW_TIMEOUT_MS = PRODUCT_FLOW_TIMEOUT_MS + 120_000;
 
 // 掲載期間の日が料金ページのカレンダーで重なりとして示されることを数日にわたって確かめつつ、前回までの実行の広告が並ぶ期間を短くする
 const FIXTURE_DAYS = 3;
+
+// 応答の読み直しとページの開き直しの待ちを2回分含める
+const STREAMING_CHECK_TIMEOUT_MS = 60_000;
 
 const BUSINESS_DAY_BOUNDARY_SKIP_REASON =
   '業務日付の境界の直前は、今日から始まる広告を作った後に業務日付が変わり得るため、スポンサー広告のE2Eを飛ばします';
@@ -90,6 +98,33 @@ test.describe('スポンサー広告の掲載と通知(補助の決済済みの�
       businessTime: '00:07',
     });
     await expectSponsorshipStartNotice(account, product.name, triggeredAt);
+  });
+});
+
+// 広告の区画はページのloaderで待たずにSuspenseの中で取得し、取得の遅い区画が他の区画の表示を待たせないことを確かめる最初の区画である
+test.describe('トップページの広告の区画のストリーミングの描画', () => {
+  test.use({ userAgent: STREAMING_USER_AGENT });
+
+  test('Legendの広告の内容が、ページの見出しと予選の区画の後から隠れた要素と差し込みのスクリプトの形で同じ応答の中に届き、ハイドレーションの後も広告の照会を中継の経路へ送らずにLegendの位置に出る', async ({
+    page,
+    baseURL,
+  }) => {
+    test.setTimeout(PRODUCT_FLOW_TIMEOUT_MS + STREAMING_CHECK_TIMEOUT_MS);
+    test.skip(
+      isNearBusinessDayBoundary(new Date()),
+      BUSINESS_DAY_BOUNDARY_SKIP_REASON,
+    );
+    if (baseURL === undefined) {
+      throw new Error('E2E対象のURLが設定されていません');
+    }
+    const { account, product } = await registerSponsorshipOwner(page);
+    await createPaidSponsorship(await kickOffProduct(product.handle), {
+      tier: 'legend',
+      endsOn: businessDateOf(new Date()),
+    });
+
+    await expectLegendAdStreamedAfterMainContent(page, baseURL, product);
+    await expectLegendAdHydratedWithoutRefetch(page, account, product);
   });
 });
 

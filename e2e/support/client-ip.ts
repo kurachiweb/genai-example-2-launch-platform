@@ -2,10 +2,10 @@ import { randomBytes } from 'node:crypto';
 
 import type { BrowserContext } from '@playwright/test';
 
-const CONNECTING_IP_HEADER = 'CF-Connecting-IP';
+export const CONNECTING_IP_HEADER = 'CF-Connecting-IP';
 
 // 文書用に予約されたIPv6のアドレス範囲(2001:db8::/32)から、実行をまたいでも衝突しない長さの乱数で選ぶ
-const randomDocumentationIpv6 = (): string => {
+export const randomDocumentationIpv6 = (): string => {
   const groups = randomBytes(12).toString('hex').match(/.{4}/gu)?.join(':');
   return `2001:db8:${groups ?? '0'}`;
 };

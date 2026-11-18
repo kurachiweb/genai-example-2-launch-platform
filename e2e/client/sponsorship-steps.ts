@@ -267,7 +267,7 @@ const sponsorshipHeading = (page: Page): Locator =>
   });
 
 // トップページは操作の前にハイドレーションの完了を待つ手掛かりが無いため、開閉にハイドレーションを要する利用者のメニューを一度開いて閉じる
-async function waitForHydration(
+export async function waitForHydration(
   page: Page,
   account: TestAccount,
 ): Promise<void> {
