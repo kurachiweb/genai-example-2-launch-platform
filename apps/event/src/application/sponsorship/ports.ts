@@ -42,6 +42,16 @@ export interface PeriodEndSettlementCommitter {
   ): Promise<PeriodEndSettlementResult>;
 }
 
+export interface PeriodEndSettlementFailure {
+  readonly sponsorshipId: string;
+  readonly error: unknown;
+}
+
+// 精算の処理は例外になった広告を飛ばして続けるため、メッセージの処理の計装が例外として拾わない失敗をエラートラッキングへ知らせる
+export interface PeriodEndSettlementFailureReporter {
+  report(failure: PeriodEndSettlementFailure): void;
+}
+
 export interface SponsorshipPurgeStore {
   // 申込の行と利用者の表示停止の区間
   purgeByUser(userId: string): Promise<void>;

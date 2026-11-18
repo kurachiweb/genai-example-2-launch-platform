@@ -22,7 +22,10 @@ import {
   FLUSH_NOTIFICATION_SLOT_MESSAGE,
   NOTIFICATION_RETRY_POLICY,
 } from '../../lib/core/messaging/contracts/notifications.ts';
-import { SPONSORSHIP_DISPATCH_NOTICES_MESSAGE } from '../../lib/core/messaging/contracts/sponsorship.ts';
+import {
+  SPONSORSHIP_DISPATCH_NOTICES_MESSAGE,
+  SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
+} from '../../lib/core/messaging/contracts/sponsorship.ts';
 import type { MessageHandlerRegistration } from '../../lib/core/messaging/message-contract.ts';
 import { PAYMENTS_REFUND_MESSAGE } from '../../lib/core/payments/refund-message.ts';
 import { PRODUCT_LIFECYCLE_RETRY_POLICY } from '../../lib/core/product/product-lifecycle.ts';
@@ -112,5 +115,9 @@ export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
     {
       contract: SPONSORSHIP_DISPATCH_NOTICES_MESSAGE,
       handler: EVENT_SPONSORSHIP_TYPES.NoticeDispatchHandler,
+    },
+    {
+      contract: SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
+      handler: EVENT_SPONSORSHIP_TYPES.PeriodEndSettlementHandler,
     },
   ]);

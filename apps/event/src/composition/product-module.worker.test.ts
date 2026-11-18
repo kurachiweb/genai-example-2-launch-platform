@@ -392,6 +392,7 @@ describe('プロダクトライフサイクルの非同期の処理の登録口'
       'directory-discovery.entry-erasure',
       'engagement.product-erasure',
       'tournament-week.entry-unlink',
+      'sponsorship.product-purge',
       'tournament-year.entry-unlink',
     ]);
     expect(namesOf('deleted')).toStrictEqual([

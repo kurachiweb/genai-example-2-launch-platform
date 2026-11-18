@@ -4,14 +4,19 @@ import { env } from 'cloudflare:workers';
 import type { Container } from 'inversify';
 import { afterAll, describe, expect, test } from 'vitest';
 
-import { SPONSORSHIP_DISPATCH_NOTICES_MESSAGE } from '../../lib/core/messaging/contracts/sponsorship.ts';
+import {
+  SPONSORSHIP_DISPATCH_NOTICES_MESSAGE,
+  SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
+} from '../../lib/core/messaging/contracts/sponsorship.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { createQueueDispatcher } from '../../lib/workers/messaging/queue-consumer.ts';
 import { AccountPurgeHandler } from '../application/sponsorship/account-purge-handler.ts';
 import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { NoticeDispatchHandler } from '../application/sponsorship/notice-dispatch-handler.ts';
+import { PeriodEndSettlementHandler } from '../application/sponsorship/period-end-settlement-handler.ts';
 import { ProductPurgeHandler } from '../application/sponsorship/product-purge-handler.ts';
 import { D1NoticeClaimStore } from '../infrastructure/sponsorship/d1-notice-claim-store.ts';
+import { D1PeriodEndSettlementCommitter } from '../infrastructure/sponsorship/d1-period-end-settlement-committer.ts';
 import { D1SponsorshipPurgeStore } from '../infrastructure/sponsorship/d1-sponsorship-purge-store.ts';
 import { MESSAGE_HANDLERS } from './message-handlers.ts';
 import { MODULES } from './modules.ts';
@@ -21,15 +26,11 @@ import { EVENT_YEAR_TOURNAMENT_MODULE } from './year-tournament-module.ts';
 const IMPLEMENTATIONS = [
   ['NoticeDispatchHandler', NoticeDispatchHandler],
   ['NoticeClaimStore', D1NoticeClaimStore],
+  ['PeriodEndSettlementHandler', PeriodEndSettlementHandler],
+  ['PeriodEndSettlementCommitter', D1PeriodEndSettlementCommitter],
   ['AccountPurgeHandler', AccountPurgeHandler],
   ['ProductPurgeHandler', ProductPurgeHandler],
   ['SponsorshipPurgeStore', D1SponsorshipPurgeStore],
-] as const;
-
-// 掲載の終わりの精算(6.3)の部品は、束縛を足すときにIMPLEMENTATIONSへ移す
-const UNBOUND = [
-  'PeriodEndSettlementHandler',
-  'PeriodEndSettlementCommitter',
 ] as const;
 
 function createContainer(): Container {
@@ -75,10 +76,10 @@ describe('イベントサーバーのモジュールの一覧へのスポンサ�
     );
   });
 
-  test('解決を確かめる識別子と未束縛の識別子を合わせると、EVENT_SPONSORSHIP_TYPESの全てである', () => {
-    expect(
-      [...IMPLEMENTATIONS.map(([name]) => name), ...UNBOUND].toSorted(),
-    ).toEqual(Object.keys(EVENT_SPONSORSHIP_TYPES).toSorted());
+  test('解決を確かめる識別子は、EVENT_SPONSORSHIP_TYPESの全てである', () => {
+    expect(IMPLEMENTATIONS.map(([name]) => name).toSorted()).toEqual(
+      Object.keys(EVENT_SPONSORSHIP_TYPES).toSorted(),
+    );
   });
 
   test.each(IMPLEMENTATIONS)(
@@ -107,5 +108,19 @@ describe('スポンサー広告のメッセージの処理の登録', () => {
     expect(() =>
       createQueueDispatcher(MESSAGE_HANDLERS, MODULES),
     ).not.toThrow();
+  });
+
+  test('sponsorship.settle-period-endを掲載の終わりの精算の処理へ、既定の再試行の方針で登録する', () => {
+    expect(
+      MESSAGE_HANDLERS.filter(
+        ({ contract }) =>
+          contract.type === SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE.type,
+      ),
+    ).toStrictEqual([
+      {
+        contract: SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
+        handler: EVENT_SPONSORSHIP_TYPES.PeriodEndSettlementHandler,
+      },
+    ]);
   });
 });
