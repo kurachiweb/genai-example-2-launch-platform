@@ -36,6 +36,16 @@ describe('sponsorshipError', () => {
     expect(error.message).toBe('この申込は見つかりませんでした。');
   });
 
+  test('sponsorship_not_terminableは一覧の再読み込みを促す文言をconflict(409)で返す', () => {
+    const error = sponsorshipError('sponsorship_not_terminable');
+
+    expect(STATUS_BY_KIND[error.kind]).toBe(409);
+    expect(error.code).toBe('sponsorship_not_terminable');
+    expect(error.message).toBe(
+      'この広告は強制終了できません。一覧を再読み込みしてください。',
+    );
+  });
+
   test('定義は実行時に書き換えられない', () => {
     expect(Object.isFrozen(SPONSORSHIP_ERRORS)).toBe(true);
   });

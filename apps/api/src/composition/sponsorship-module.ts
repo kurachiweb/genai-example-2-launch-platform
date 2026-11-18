@@ -19,7 +19,11 @@ import {
   DefaultSponsorshipOfferReader,
   type SponsorshipOfferReader,
 } from '../application/sponsorship/sponsorship-offer-reader.ts';
-import type { SponsorshipTerminationWriter } from '../application/sponsorship/sponsorship-termination.ts';
+import {
+  DefaultSponsorshipTermination,
+  type SponsorshipTermination,
+  type SponsorshipTerminationWriter,
+} from '../application/sponsorship/sponsorship-termination.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import { D1TerminationWriter } from '../infrastructure/sponsorship/d1-termination-writer.ts';
 
@@ -38,6 +42,9 @@ export const SPONSORSHIP_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<AdminSponsorshipsReader>(SPONSORSHIP_TYPES.AdminSponsorshipsReader).to(
       DefaultAdminSponsorshipsReader,
+    );
+    bind<SponsorshipTermination>(SPONSORSHIP_TYPES.SponsorshipTermination).to(
+      DefaultSponsorshipTermination,
     );
     bind<SponsorshipTerminationWriter>(
       SPONSORSHIP_TYPES.SponsorshipTerminationWriter,

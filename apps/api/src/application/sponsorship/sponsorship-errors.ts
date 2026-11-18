@@ -30,6 +30,10 @@ export const SPONSORSHIP_ERRORS = Object.freeze({
     kind: 'conflict',
     message: SPONSORSHIP_OFFER_REJECTION_MESSAGES.sponsorship_not_payable,
   },
+  sponsorship_not_terminable: {
+    kind: 'conflict',
+    message: 'この広告は強制終了できません。一覧を再読み込みしてください。',
+  },
 } satisfies Readonly<Record<string, SponsorshipErrorDefinition>>);
 
 export type SponsorshipErrorCode = keyof typeof SPONSORSHIP_ERRORS;

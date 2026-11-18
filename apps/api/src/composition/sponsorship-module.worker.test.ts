@@ -9,6 +9,7 @@ import { DefaultAdminSponsorshipsReader } from '../application/sponsorship/admin
 import { DefaultMySponsorshipsReader } from '../application/sponsorship/my-sponsorships-reader.ts';
 import { DefaultSponsorshipApplication } from '../application/sponsorship/sponsorship-application.ts';
 import { DefaultSponsorshipOfferReader } from '../application/sponsorship/sponsorship-offer-reader.ts';
+import { DefaultSponsorshipTermination } from '../application/sponsorship/sponsorship-termination.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import { D1TerminationWriter } from '../infrastructure/sponsorship/d1-termination-writer.ts';
 import { MODULES } from './modules.ts';
@@ -24,12 +25,12 @@ const IMPLEMENTATIONS = [
   ['SponsorshipOfferReader', DefaultSponsorshipOfferReader],
   ['MySponsorshipsReader', DefaultMySponsorshipsReader],
   ['AdminSponsorshipsReader', DefaultAdminSponsorshipsReader],
+  ['SponsorshipTermination', DefaultSponsorshipTermination],
   ['SponsorshipTerminationWriter', D1TerminationWriter],
 ] as const;
 
 // 実装の無い部品の識別子。実装と束縛を加えたらIMPLEMENTATIONSへ移す
 const UNBOUND: readonly SponsorshipTypeName[] = [
-  'SponsorshipTermination',
   'DailyNoticesJob',
   'MaintenanceJob',
   'AccountWithdrawalSyncHandler',
