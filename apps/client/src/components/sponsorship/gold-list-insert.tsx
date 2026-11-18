@@ -4,6 +4,7 @@ import { goldInsertTracker } from './gold-insert-tracker.ts';
 import { SponsoredAdCard } from './sponsored-ad-card.tsx';
 import { SponsoredPlacementBoundary } from './sponsored-placement-boundary.tsx';
 import { useSponsoredPlacements } from './use-sponsored-placements.ts';
+import { VIEWPORT_ONLY_ATTRIBUTES } from './viewport-only.ts';
 
 export interface GoldListInsertProps {
   readonly position: number;
@@ -24,7 +25,7 @@ function GoldInsertCard({ position }: GoldListInsertProps) {
     return null;
   }
   return (
-    <div className="lg:hidden">
+    <div className="lg:hidden" {...VIEWPORT_ONLY_ATTRIBUTES.narrow}>
       <SponsoredAdCard ad={ad} />
     </div>
   );

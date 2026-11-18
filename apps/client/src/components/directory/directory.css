@@ -28,3 +28,21 @@
 ) {
   display: none;
 }
+
+/* 広い画面だけ(data-wide-only)の要素は1024px未満では表示されないため、それ以外に描いた区画が無ければ横の列ごと外す */
+@media (width < 64rem) {
+  [data-directory-aside]:not(
+    :has(> div > :not([data-directory-section-rendered], [data-wide-only]))
+  ) {
+    display: none;
+  }
+}
+
+/* 狭い画面だけ(data-narrow-only)の差し込みは1024px以上では表示されないため、それ以外に描いたものが無ければ一覧の項目ごと外す */
+@media (width >= 64rem) {
+  [data-directory-insert]:not(
+    :has(> div > :not([data-directory-insert-rendered], [data-narrow-only]))
+  ) {
+    display: none;
+  }
+}

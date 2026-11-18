@@ -1,3 +1,4 @@
+import { cn } from '../../../lib/utilities/class-names.ts';
 import { SponsoredAdCard } from './sponsored-ad-card.tsx';
 import { SponsoredPlacementBoundary } from './sponsored-placement-boundary.tsx';
 import type { SponsoredPlacementProps } from './sponsored-placement-types.ts';
@@ -5,16 +6,20 @@ import { SponsorshipApplyLink } from './sponsorship-apply-link.tsx';
 import { sponsorshipPlacementLabel } from './sponsorship-messages.ts';
 import { useSponsoredPlacements } from './use-sponsored-placements.ts';
 
-function SilverRow({ viewer }: SponsoredPlacementProps) {
+export interface SilverPlacementProps extends SponsoredPlacementProps {
+  // 置き場所が幅の器を持たないページだけが、最大幅と余白を渡す
+  readonly className?: string;
+}
+
+function SilverRow({ viewer, className }: SilverPlacementProps) {
   const { silver } = useSponsoredPlacements();
   if (silver.length === 0 && !viewer.signedIn) {
     return null;
   }
-  // トップページのフッター直上の置き場所は幅の器を持たないため、ページの本文と同じ最大幅と左右の余白をここで持つ
   return (
     <section
       aria-label={sponsorshipPlacementLabel('silver')}
-      className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-2 px-4 pt-10"
+      className={cn('flex flex-wrap items-center gap-2', className)}
     >
       {silver.length > 0 && (
         <ul className="flex min-w-0 flex-wrap gap-2">
@@ -30,10 +35,10 @@ function SilverRow({ viewer }: SponsoredPlacementProps) {
   );
 }
 
-export function SilverPlacement({ viewer }: SponsoredPlacementProps) {
+export function SilverPlacement({ viewer, className }: SilverPlacementProps) {
   return (
     <SponsoredPlacementBoundary>
-      <SilverRow viewer={viewer} />
+      <SilverRow viewer={viewer} className={className} />
     </SponsoredPlacementBoundary>
   );
 }

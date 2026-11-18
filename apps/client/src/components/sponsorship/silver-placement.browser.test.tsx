@@ -41,11 +41,6 @@ const OTHER_CONTENT = 'ページの他の内容';
 
 const VIEWPORT_HEIGHT = 900;
 
-// max-w-7xl
-const MAX_WIDTH_PX = 1280;
-
-const SIDE_PADDING_PX = 16;
-
 const respond = (result: unknown) => {
   executeGraphQL.mockImplementation((document: unknown) =>
     document === ClientSponsoredPlacementsDocument
@@ -145,12 +140,9 @@ describe('SilverPlacement', () => {
     );
   });
 
-  test.each([
-    ['最大幅より広い', 1600],
-    ['最大幅より狭い', 375],
-  ])(
-    '置き場所が%s(画面幅%ipx)ときも、最大幅を超えずに中央に置き、左右に余白を持つ',
-    async (_label, viewportWidth) => {
+  test.each([1600, 375])(
+    '画面幅%ipxで、置き場所の幅の器に任せ、自分では余白と上の間隔を持たずに置き場所の幅いっぱいに並べる',
+    async (viewportWidth) => {
       await page.viewport(viewportWidth, VIEWPORT_HEIGHT);
       respondWith(placementsOf({ silver: 3 }));
 
@@ -161,14 +153,15 @@ describe('SilverPlacement', () => {
         .getByTestId('placement-host')
         .element()
         .getBoundingClientRect();
-      const width = Math.min(MAX_WIDTH_PX, available.width);
       const section = region().element();
       const rect = section.getBoundingClientRect();
-      expect(rect.width).toBe(width);
-      expect(rect.left - available.left).toBe((available.width - width) / 2);
+      expect(rect.width).toBe(available.width);
+      expect(rect.left).toBe(available.left);
+      expect(rect.top).toBe(available.top);
       const style = getComputedStyle(section);
-      expect(style.paddingLeft).toBe(`${String(SIDE_PADDING_PX)}px`);
-      expect(style.paddingRight).toBe(`${String(SIDE_PADDING_PX)}px`);
+      expect(style.paddingLeft).toBe('0px');
+      expect(style.paddingRight).toBe('0px');
+      expect(style.paddingTop).toBe('0px');
     },
   );
 

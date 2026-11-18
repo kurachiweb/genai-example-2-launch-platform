@@ -9,6 +9,9 @@ import type {
   ProductPageSection,
 } from '../components/product-page/product-page-section-types.ts';
 import { ScreenshotGallerySection } from '../components/product-page/screenshot-gallery-section.tsx';
+import { GoldSidebarPlacement } from '../components/sponsorship/gold-sidebar-placement.tsx';
+import { LegendPlacement } from '../components/sponsorship/legend-placement.tsx';
+import { SilverPlacement } from '../components/sponsorship/silver-placement.tsx';
 import { TrophyShelf } from '../components/trophy/trophy-shelf.tsx';
 import { WeekEntryOwnerAction } from '../components/week-tournament/week-entry-owner-action.tsx';
 import { YearEntryOwnerAction } from '../components/year-tournament/year-entry-owner-action.tsx';
@@ -77,5 +80,23 @@ export const PRODUCT_PAGE_SECTIONS: readonly ProductPageSection[] =
       placement: 'main',
       order: 10,
       component: TrophyShelf,
+    },
+    {
+      id: 'sponsorship.legend',
+      placement: 'banner',
+      order: 10,
+      component: LegendPlacement,
+    },
+    {
+      id: 'sponsorship.gold',
+      placement: 'aside',
+      order: 30,
+      component: GoldSidebarPlacement,
+    },
+    {
+      id: 'sponsorship.silver',
+      placement: 'bottom',
+      order: 20,
+      component: SilverPlacement,
     },
   ]);

@@ -18,13 +18,14 @@ function GoldColumns({ viewer }: SponsoredPlacementProps) {
       <GoldAdStack
         ads={gold}
         signedIn={viewer.signedIn}
-        className="hidden lg:sticky lg:top-20 lg:flex"
+        shownOn="wide"
+        className="lg:sticky lg:top-20"
       />
       {insertedCount !== null && (
         <GoldAdStack
           ads={gold.slice(insertedCount)}
           signedIn={viewer.signedIn}
-          className="lg:hidden"
+          shownOn="narrow"
         />
       )}
     </>

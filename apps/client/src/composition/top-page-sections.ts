@@ -1,4 +1,8 @@
 import { FullTimeCountdownSection } from '../components/top/full-time-countdown-section.tsx';
+import { GoldListInsert } from '../components/sponsorship/gold-list-insert.tsx';
+import { GoldListPlacement } from '../components/sponsorship/gold-list-placement.tsx';
+import { LegendPlacement } from '../components/sponsorship/legend-placement.tsx';
+import { TopPageSilverPlacement } from '../components/sponsorship/top-page-silver-placement.tsx';
 import { qualifierBoardSectionOf } from '../components/top/qualifier-board-section.tsx';
 import type {
   QualifierListInsert,
@@ -11,7 +15,14 @@ import { YearTournamentSection } from '../components/year-tournament/year-tourna
 
 // 予選の一覧の対戦カードの間に指定の件数ごとに差し込む区画の登録箇所。各specが自分の差し込みを追記する
 export const QUALIFIER_LIST_INSERTS: readonly QualifierListInsert[] =
-  Object.freeze([]);
+  Object.freeze([
+    {
+      id: 'sponsorship.gold-insert',
+      order: 10,
+      every: 2,
+      component: GoldListInsert,
+    },
+  ]);
 
 // トップページの置き場所ごとに並べる区画の登録箇所。各specが自分の区画を追記する
 export const TOP_PAGE_SECTIONS: readonly TopPageSection[] = Object.freeze([
@@ -50,5 +61,23 @@ export const TOP_PAGE_SECTIONS: readonly TopPageSection[] = Object.freeze([
     placement: 'main',
     order: 30,
     component: qualifierBoardSectionOf(QUALIFIER_LIST_INSERTS),
+  },
+  {
+    id: 'sponsorship.legend',
+    placement: 'banner',
+    order: 5,
+    component: LegendPlacement,
+  },
+  {
+    id: 'sponsorship.gold',
+    placement: 'aside',
+    order: 10,
+    component: GoldListPlacement,
+  },
+  {
+    id: 'sponsorship.silver',
+    placement: 'bottom',
+    order: 10,
+    component: TopPageSilverPlacement,
   },
 ]);

@@ -13,9 +13,11 @@ import {
   type ClientProductPageQuery,
   ClientProductRatingDocument,
   ClientProductTrophiesDocument,
+  ClientSponsoredPlacementsDocument,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as ProductPageRoute } from '../src/routes/p/$handle.tsx';
 import { GUEST_VIEWER_QUERY, renderPageRouter } from './page-router.tsx';
+import { NO_SPONSORED_PLACEMENTS_RESULT } from './sponsored-placements-stub.ts';
 import { signedInViewerQuery } from './viewer-fixtures.ts';
 
 interface ExecuteGraphQLMock {
@@ -73,7 +75,7 @@ const isFailure = (value: unknown): boolean =>
   'ok' in value &&
   value.ok === false;
 
-// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄・トロフィー・WeekとYearのトーナメントの参加費の導線)の取得には、評価もコメントも受賞も参加の枠も無い結果を返す
+// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄・トロフィー・WeekとYearのトーナメントの参加費の導線・スポンサー広告)の取得には、評価もコメントも受賞も参加の枠も広告も無い結果を返す
 export const respondOtherSections = (
   document: unknown,
   variables: unknown,
@@ -102,6 +104,9 @@ export const respondOtherSections = (
   }
   if (document === ClientLaunchCommentCountsDocument) {
     return Promise.resolve(ok({ launchCommentCounts: [] }));
+  }
+  if (document === ClientSponsoredPlacementsDocument) {
+    return Promise.resolve(NO_SPONSORED_PLACEMENTS_RESULT);
   }
   if (document === ClientLaunchCommentsDocument) {
     return Promise.resolve(
