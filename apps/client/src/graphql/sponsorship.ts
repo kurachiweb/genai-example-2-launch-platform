@@ -8,7 +8,10 @@ import {
 import { executeGraphQL } from '../../lib/start/graphql/execute-graphql.ts';
 import { graphqlMutationOptions } from '../../lib/start/graphql/graphql-query-options.ts';
 import { requireData } from '../../lib/utilities/graphql/graphql-result.ts';
-import { graphqlQueryKey } from '../../lib/utilities/graphql/persisted-document.ts';
+import {
+  documentIdOf,
+  graphqlQueryKey,
+} from '../../lib/utilities/graphql/persisted-document.ts';
 import type { BusinessDateString } from '../../common-lib/sponsorship/sponsorship-period.ts';
 import type { SponsorshipStatus } from '../../common-lib/sponsorship/sponsorship-status.ts';
 import type { SponsorshipTier } from '../../common-lib/sponsorship/sponsorship-tiers.ts';
@@ -107,6 +110,15 @@ export const sponsorshipPeriodWindowQueryOptions = (
       ),
   });
 };
+
+// 0:00の境界と、申込の重なりの拒否で選べる範囲が変わるため、表示中の範囲を取り直し、表示していない範囲は次に表示した時に取り直す
+export async function invalidateSponsorshipPeriodWindowQueries(
+  queryClient: QueryClient,
+): Promise<void> {
+  await queryClient.invalidateQueries({
+    queryKey: [documentIdOf(ClientSponsorshipPeriodWindowDocument)],
+  });
+}
 
 const FIRST_PAGE_VARIABLES: ClientMySponsorshipsQueryVariables = Object.freeze({
   first: MY_SPONSORSHIPS_PAGE_SIZE,

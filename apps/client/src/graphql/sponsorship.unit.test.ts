@@ -30,6 +30,7 @@ import {
 import {
   activeSponsorshipCountQueryOptions,
   applySponsorshipMutationOptions,
+  invalidateSponsorshipPeriodWindowQueries,
   loadMySponsorships,
   MY_SPONSORSHIPS_PAGE_SIZE,
   mySponsorshipsQueryOptions,
@@ -313,6 +314,41 @@ describe('sponsorshipPeriodWindowQueryOptions', () => {
       },
     ]);
     expect(result).toStrictEqual(data);
+  });
+});
+
+describe('invalidateSponsorshipPeriodWindowQueries', () => {
+  test('プロダクト・ティア・開始日・閲覧者によらず選べる範囲の取得を全て無効にし、価格の取得は残す', async () => {
+    const queryClient = new QueryClient();
+    const keys = [
+      sponsorshipPeriodWindowQueryOptions(VIEWER, {
+        productId: PRODUCT_ID,
+        tier: 'gold',
+        startsOn: null,
+      }).queryKey,
+      sponsorshipPeriodWindowQueryOptions(VIEWER, {
+        productId: OTHER_PRODUCT_ID,
+        tier: 'legend',
+        startsOn: '2026-12-01',
+      }).queryKey,
+      sponsorshipPeriodWindowQueryOptions(OTHER_VIEWER, {
+        productId: PRODUCT_ID,
+        tier: 'silver',
+        startsOn: null,
+      }).queryKey,
+    ];
+    for (const key of keys) {
+      queryClient.setQueryData([...key], {});
+    }
+    const offerKey = [...sponsorshipOfferQueryOptions(VIEWER).queryKey];
+    queryClient.setQueryData(offerKey, {});
+
+    await invalidateSponsorshipPeriodWindowQueries(queryClient);
+
+    for (const key of keys) {
+      expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true);
+    }
+    expect(queryClient.getQueryState(offerKey)?.isInvalidated).toBe(false);
   });
 });
 
