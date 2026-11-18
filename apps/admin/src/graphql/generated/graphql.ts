@@ -40,6 +40,20 @@ export type AdminSecondFactorInput = {
   totpCode?: string | null | undefined;
 };
 
+/** 管理画面の一覧の絞り込み。省略した条件は絞り込まない */
+export type AdminSponsorshipFilter = {
+  status?: AdminSponsorshipStatusFilter | null | undefined;
+  tier?: SponsorshipTier | null | undefined;
+};
+
+/** 管理画面の一覧の掲載状況の絞り込み。表示停止中は掲載予定・掲載中に含む */
+export type AdminSponsorshipStatusFilter =
+  | 'ACTIVE'
+  | 'ENDED'
+  | 'PENDING_PAYMENT'
+  | 'SCHEDULED'
+  | 'TERMINATED';
+
 /** 監査ログの絞り込みの条件。指定した条件をすべて満たすものだけを返す */
 export type AuditLogFilterInput = {
   action?: string | null | undefined;
@@ -133,6 +147,27 @@ export type SaveLegalDocumentDraftInput = {
   expectedStateVersion: number;
   kind: LegalDocumentKind;
 };
+
+/** 依頼した返金の状態。REQUESTEDは依頼済み、ALREADY_REFUNDEDは返金できる残りが無く返金済み、REJECTEDは拒否 */
+export type SponsorshipRefundStatus =
+  | 'ALREADY_REFUNDED'
+  | 'REJECTED'
+  | 'REQUESTED';
+
+/** 掲載状況。PAUSEDはプロダクトの非公開化か投稿者の停止による表示停止中 */
+export type SponsorshipStatus =
+  | 'ACTIVE'
+  | 'ENDED'
+  | 'PAUSED'
+  | 'PENDING_PAYMENT'
+  | 'SCHEDULED'
+  | 'TERMINATED';
+
+/** スポンサー広告のティア */
+export type SponsorshipTier =
+  | 'GOLD'
+  | 'LEGEND'
+  | 'SILVER';
 
 export type UpdateHelpArticleInput = {
   expectedRevision: number;
@@ -576,6 +611,30 @@ export type AdminUpdateProductCategoryMutationVariables = Exact<{
 
 export type AdminUpdateProductCategoryMutation = { updateProductCategory: { id: string } };
 
+export type AdminSponsorshipsQueryVariables = Exact<{
+  filter?: AdminSponsorshipFilter | null | undefined;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminSponsorshipsQuery = { adminSponsorships: { nodes: Array<{ id: string, productName: string | null, productHandle: string | null, productDeleted: boolean, applicantNickname: string | null, tier: SponsorshipTier, startsOn: string, endsOn: string, days: number, status: SponsorshipStatus, terminable: boolean, purchaseId: string | null, createdAt: string, amountPaid: { amount: number, currency: string } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type AdminSponsorshipTerminationPreviewQueryVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type AdminSponsorshipTerminationPreviewQuery = { sponsorshipTerminationPreview: { id: string, days: number, unexposedDays: number, stoppedDays: number, amountPaid: { amount: number, currency: string }, refundEstimate: { amount: number, currency: string }, stopRefundAmount: { amount: number, currency: string } } };
+
+export type AdminTerminateSponsorshipMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminTerminateSponsorshipMutation = { terminateSponsorship: { id: string, days: number, unexposedDays: number, stoppedDays: number, terminatedOn: string, terminationRefundStatus: SponsorshipRefundStatus | null, stopRefundStatus: SponsorshipRefundStatus | null, purchaseId: string, amountPaid: { amount: number, currency: string }, refundEstimate: { amount: number, currency: string }, stopRefundAmount: { amount: number, currency: string }, terminationRefundRequested: { amount: number, currency: string } | null, stopRefundRequested: { amount: number, currency: string } | null } };
+
 export type AdminSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -663,6 +722,9 @@ export const AdminProductCategoriesDocument = {"__meta__":{"hash":"sha256:da18b6
 export const AdminCreateProductCategoryDocument = {"__meta__":{"hash":"sha256:e0f1015c3d9281d12b8a93a04fd52222e396bcb9b5c7304e18297297605f5238"}} as unknown as DocumentNode<AdminCreateProductCategoryMutation, AdminCreateProductCategoryMutationVariables>;
 export const AdminDeleteProductCategoryDocument = {"__meta__":{"hash":"sha256:416fe8b1adab0808e5e87e5ef61f4de669a7058f9d0823a52190bfc290dc9904"}} as unknown as DocumentNode<AdminDeleteProductCategoryMutation, AdminDeleteProductCategoryMutationVariables>;
 export const AdminUpdateProductCategoryDocument = {"__meta__":{"hash":"sha256:be16568665cb19771f99ba5a2a07896166f243af3357d62ce762b520c267ca51"}} as unknown as DocumentNode<AdminUpdateProductCategoryMutation, AdminUpdateProductCategoryMutationVariables>;
+export const AdminSponsorshipsDocument = {"__meta__":{"hash":"sha256:5900d001f11c79fe9980f749cb103cd8002a99f51ea7b95de168cac065e7b286"}} as unknown as DocumentNode<AdminSponsorshipsQuery, AdminSponsorshipsQueryVariables>;
+export const AdminSponsorshipTerminationPreviewDocument = {"__meta__":{"hash":"sha256:849b82ae23246d5e9acd510d1102cf83215fa61a4a48582fd8dd10dc8311fdc1"}} as unknown as DocumentNode<AdminSponsorshipTerminationPreviewQuery, AdminSponsorshipTerminationPreviewQueryVariables>;
+export const AdminTerminateSponsorshipDocument = {"__meta__":{"hash":"sha256:7d365ad65a441610a574b759038fad5f15363c13d3b511155e43bd48a9c24efd"}} as unknown as DocumentNode<AdminTerminateSponsorshipMutation, AdminTerminateSponsorshipMutationVariables>;
 export const AdminSystemStatusDocument = {"__meta__":{"hash":"sha256:cfd1cd38df39a20ba4d85b44cdc75b45715595ad92ef45f03d4bc5fd3146590c"}} as unknown as DocumentNode<AdminSystemStatusQuery, AdminSystemStatusQueryVariables>;
 export const AdminUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:2edd177a6140620bf171c97fd69c0c289130634ffcd31adf626abf21935f6c24"}} as unknown as DocumentNode<AdminUltrasPromotionSettingQuery, AdminUltrasPromotionSettingQueryVariables>;
 export const AdminUpdateUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:0414939a189f0129ea30b0206151b9cc04ec191ecc0c8cafd7ec3e0ee57b270f"}} as unknown as DocumentNode<AdminUpdateUltrasPromotionSettingMutation, AdminUpdateUltrasPromotionSettingMutationVariables>;

@@ -1,0 +1,20 @@
+query AdminSponsorshipTerminationPreview($id: ID!) {
+  sponsorshipTerminationPreview(id: $id) {
+    id
+    days
+    amountPaid {
+      amount
+      currency
+    }
+    unexposedDays
+    refundEstimate {
+      amount
+      currency
+    }
+    stoppedDays
+    stopRefundAmount {
+      amount
+      currency
+    }
+  }
+}

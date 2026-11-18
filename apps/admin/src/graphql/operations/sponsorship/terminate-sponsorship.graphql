@@ -1,0 +1,32 @@
+mutation AdminTerminateSponsorship($id: ID!, $reason: String!) {
+  terminateSponsorship(id: $id, reason: $reason) {
+    id
+    days
+    amountPaid {
+      amount
+      currency
+    }
+    unexposedDays
+    refundEstimate {
+      amount
+      currency
+    }
+    stoppedDays
+    stopRefundAmount {
+      amount
+      currency
+    }
+    terminatedOn
+    terminationRefundStatus
+    stopRefundStatus
+    terminationRefundRequested {
+      amount
+      currency
+    }
+    stopRefundRequested {
+      amount
+      currency
+    }
+    purchaseId
+  }
+}
