@@ -43,7 +43,7 @@
   - 種類ごとの文言の型(トップページ・決勝・ブラケット・参加費の導線の4つ)と種類によらない文言(「決勝日」「ブラケットを見る」「決済期限」「締め切りまであと」など)を、ここでまとめて作る。Weekの4つの型の値もここでWeekの文言のファイル(トップページ・決勝・ブラケットの文言と、参加費の導線の文言の2ファイル)に書き出し、種類によらない文言を読み込んでいたWeekの部品(期限の表示・決済の開始・導線のモデルと本体・ブラケットのページと失敗の表示を含む)の読み込み元を直す。1.6・1.7は文言の型とWeekの文言のファイルを変えない
   - 盤面のモデル・盤面の購読・行と見出しと対戦カード・決勝のモデルと行と演出のスタイルと、見出しと決勝の行が使うブラケットへのリンクを、設計の「clientの共用の部品」の表のとおり移し、照会・盤面の取り出し・差し替え・見出しの値・文言を引数で受ける形にする。Weekの区画と決勝の演出と盤面の購読は、Weekの値を渡す包みにする
   - 先に、移したモデルの単体テストと部品のブラウザテストを移す先へ移す。共用の部品のテストの値は`components/tournament/`の中に置き、Weekのフィクスチャを読み込まない(Yearの文言の例は6.2で加える)
-  - 完了状態: 移したテストと、Weekの区画と決勝の演出の既存のブラウザテストが期待値を変えずに成功し、共用の部品(テストを含む)がWeekとYearの部品を読み込まないことを検索で確かめる
+  - 完了状態: 移したテストと、Weekの区画と決勝の演出の既存のブラウザテストが期待値を変えずに成功し(演出のCSSの名前を`data-tournament-final-*`・keyframes`tournament-final-*`へ改めたため、決勝の演出のテストの識別子だけは書き換える)、共用の部品(テストを含む)がWeekとYearの部品を読み込まないことを検索で確かめる
   - _Boundary: TournamentClientPartsのトップページの区画と決勝の演出、tournament-weekのトップページの区画_
   - _Requirements: 10.1, 10.4, 10.5, 10.6, 10.7, 15.1_
 
@@ -163,7 +163,7 @@
   - _Requirements: 4.1, 4.3, 4.4_
 
 - [x] 3.8 参加資格の付与(フルフィルメント)の判断と文を作る
-  - 先に、Workers統合テストで、受付中の枠への付与の文と購入の記録、資格を得た枠・論理削除済みのプロダクト・投稿者の不一致の拒否、決済期限23:34の反映は新しいローンチがあっても付与し23:35以後の反映は新しいローンチがあれば拒否すること(仮6)、返した文を凍結の後に一括の書き込みで実行するとNOT NULL制約の違反で失敗すること、決済済みの枠がUltrasの加入で変わらないことを確かめる(paymentsの反映の経路の確認は3.16)
+  - 先に、Workers統合テストで、受付中の枠への付与の文と購入の記録、資格を得た枠・論理削除済みのプロダクト・投稿者の不一致の拒否、決済期限23:35:00ちょうどまでの反映は新しいローンチがあっても付与し、それより後(23:35:01以後)の反映は新しいローンチがあれば拒否すること(仮6、決済期限の後に反映された場合)、返した文を凍結の後に一括の書き込みで実行するとNOT NULL制約の違反で失敗すること、決済済みの枠がUltrasの加入で変わらないことを確かめる(paymentsの反映の経路の確認は3.16)
   - 完了状態: Workers統合テストが成功する
   - _Requirements: 4.5, 4.7, 4.8, 5.6, 16.3_
 
@@ -268,8 +268,8 @@
 - [x] 5.1 apiの識別子、ジョブの失敗の通知のポート、2つのジョブ(23:45の夜の処理と夜の送り出しの準備の完了の通知、4:21の再処理)を作る
   - apiの全部品(ジョブ・失敗の通知・供給元・照会・決済の開始・決勝実施日)のDIの識別子をここで作る(束縛と登録は5.11)
   - apiのapplication層のポート(ジョブの失敗の通知と、5.6・5.7が使う決勝実施日の書き込み)をここで作る。ジョブの失敗は、そのポート(失敗した段・年・件数だけを持つ)越しに知らせ、Sentryを直接呼ばない(tournament-weekと同じ形)
-  - 23:45の`tournament-year.evening-bracket`(1700)は毎晩、次に開催する年の行の用意とWeek優勝の取り込み→組み合わせ決定→進行(未処理の確定のマッチへの追いつき)→時計を読み直した時刻までのその夜の一括の発行→`EveningDispatchGate.markReady({ participant: 'tournament-year.evening-bracket', date: context.business.date, at: clock.now() })`の順に行う
-  - 先に、単体テスト(部品と送り出しの入口とポートは偽物)で、5段の順序、組み合わせも進行も無い夜も`markReady`を最後に1回呼ぶこと、`date`がジョブの予定時刻の業務日付であること、一括の発行の時刻が進行の後に読み直した時刻であること、どの段が失敗しても残りの段を続けてポートへ知らせ`markReady`を呼ばずに例外になること、`markReady`の戻り値(`waiting`・`dispatch-requested`・`already-requested`)で処理が変わらないこと、`EveningDispatchError`が例外として伝わること、4:21の返金と知らせの再処理(10分以上前・100件)とその失敗の知らせを確かめる
+  - 23:45の`tournament-year.evening-bracket`(1700)は毎晩、次に開催する年の行の用意(段`calendar`)→Week優勝の取り込み(段`entry-sync`。年の行の用意の失敗で取り込みを止めない)→組み合わせ決定→進行(未処理の確定のマッチへの追いつき)→時計を読み直した時刻までのその夜の一括の発行→`EveningDispatchGate.markReady({ participant: 'tournament-year.evening-bracket', date: context.business.date, at: clock.now() })`の順に行う
+  - 先に、単体テスト(部品と送り出しの入口とポートは偽物)で、段の順序、組み合わせも進行も無い夜も`markReady`を最後に1回呼ぶこと、`date`がジョブの予定時刻の業務日付であること、一括の発行の時刻が進行の後に読み直した時刻であること、どの段が失敗しても残りの段を続けてポートへ知らせ`markReady`を呼ばずに例外になること、`markReady`の戻り値(`waiting`・`dispatch-requested`・`already-requested`)で処理が変わらないこと、`EveningDispatchError`が例外として伝わること、4:21の返金と知らせの再処理(10分以上前・100件)とその失敗の知らせを確かめる
   - Yearとブラケットの部品は`core/year-tournament`・`core/tournament`の契約と識別子で受け取る
   - 完了状態: 単体テストが成功し、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 3.16_
@@ -363,7 +363,7 @@
 - [x] 6. 利用者側の画面
 - [x] 6.1 本specの利用者側のGraphQLの操作・フラグメント・取得の補助を加え、型を生成して許可リストを再生成する
   - トップページの区画・ブラケット・参加費の導線の照会と決済の開始の操作を、clientの`src/graphql/operations/year-tournament/`に1ファイル1操作の`.graphql`で書く。操作名は`Client`で始め(`ClientYearTournamentBoard`・`ClientYearBracket`・`ClientMyYearEntry`・`ClientStartYearTournamentCheckout`)、`graphql()`を呼ばない
-  - トップページの行のフラグメント`YearBoardRoundFields`を`src/graphql/fragments/year-tournament/`に置く(共用の部品が依存する決勝の印・対戦カード・不戦勝はWeekと同じ選択)。`ClientYearBracket`はtournament-weekのフラグメント`BracketRoundFields`(`rounds`)と`BracketMatchProductFields`(`champion`)を名前で展開し、`tournament`の`awarded`・`status`・`year`・`finalDate`と`participantCount`・`seedCount`を取得し、フラグメントを再定義しない
+  - トップページの行のフラグメント`YearBoardRoundFields`を`src/graphql/fragments/year-tournament/`に置く(共用の部品が依存する決勝の印・対戦カード・不戦勝はWeekと同じ選択)。`BracketRoundFields`・`YearBoardRoundFields`を照会の中で名前で展開するとapiの照会の深さの上限(8)を超えるため、Weekと同じく照会に同じ項目を直接書き、名前で展開するのは`ClientYearBracket`の`champion`の`BracketMatchProductFields`だけにする。フラグメントは型だけを生成し、照会の結果の型との一致を`expectTypeOf`で固定する。`ClientYearBracket`は`tournament`の`awarded`・`status`・`year`・`finalDate`と`participantCount`・`seedCount`を取得し、フラグメントを再定義しない
   - 取得と変更の補助(4つの照会と変更の`queryOptions`・`mutationOptions`)を、tournament-weekの補助と同じ形で作る
   - frontend-platformの「操作の追加手順」どおり、clientで`bun run graphql:generate`、apiで`bun run graphql:allowlist`を実行する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない
   - 先に、取得の補助の単体テストで、照会のキーと変数・閲覧者の受け渡しを確かめる
@@ -391,7 +391,7 @@
   - _Requirements: 10.5_
 
 - [x] 6.4 (P) Yearのブラケットのページを作る
-  - 経路の`loader`・`head`(ページのheadの組み立てへの追記)・失敗と404の部品・経路の年ごとの作り直しを、tournament-weekの`/tournaments/week/$week`と同じ形で作り、本体は1.6の共用のページへYearの題名・参加数とシード数の表記・`BracketViewProps`(`awarded`は`yearBracket.tournament.awarded`(nullは偽)、`finished`は年の状態が終了か)を渡す
+  - 経路の`loader`・`head`(ページのheadの組み立てへの追記)・失敗と404の部品・経路の年ごとの作り直しを、tournament-weekの`/tournaments/week/$week`と同じ形で作り、年の形式は共用の年の解析(common-libの`parseTournamentYear`。apiのブラケットの照会と同じ)で確かめる。本体は1.6の共用のページへYearの文言・期間の表記・見出しの決勝日・照会の`yearBracket`を渡し、`BracketViewProps`(`awarded`は`yearBracket.tournament.awarded`(nullは偽)、`finished`は年の状態が終了か)は共用のページが作る
   - 共用のブラケットのページの部品のテストに、Yearの文言の例を加える
   - 先に、ブラウザテストで、見出し(対象年・決勝日・参加数とシード数)、共用の4部品への`BracketViewProps`の受け渡し(進行中・受賞・受賞なし、受賞したプロダクトが表示できない年で`champion`がnullかつ`awarded`が真になり「非公開のプロダクト」の受賞として描かれること、終了前の`awarded`のnullを偽として渡すこと)、開催中だけ自動更新がオンの間に取り直すこと、キーボードで全マッチをたどれること(列とタブの両方)、画面幅767pxと768pxでの表示の切り替え、4桁でない年と未決定の年の404、アクセシビリティの検査の違反が0件を確かめる
   - 完了状態: ブラウザテストが成功し、`/tournaments/year/<年>`をローカルで開ける
@@ -427,18 +427,18 @@
 
 - [x] 7.2 業務日付と拒否の理由の表記、年ごとのカードを作る
   - 7.1の生成物を使うため(P)にしない。部品はadminの`components/year-tournament/`に置く(G9)
-  - 先に、表記の単体テストで、業務日付の曜日つきの表記(年またぎ)と拒否の理由ごとの文言と区画の題名を確かめる
+  - 先に、表記の単体テストで、拒否の理由ごとの文言と区画の題名を確かめる(業務日付の曜日つきの表記はcommon-libの共用の`formatBusinessDateWithWeekdayLabel`を使い、年またぎはその単体テストで確かめる)。カードは編集の欄を`children`の受け口として受け、翌年の注意は照会の`nextYearGapWarningDate`から示す
   - 先に、ブラウザテストで、実効の決勝日の`<time datetime>`と出どころのバッジ・期限の表示・最後に変更した日時と管理者、最上位管理者でない場合と変更期限を過ぎた場合の参照だけの表示と理由、翌年の注意、アクセシビリティの検査の違反が0件を確かめる
   - 完了状態: 単体テストとブラウザテストが成功する
   - _Requirements: 2.1, 2.3, 2.12_
 
 - [x] 7.3 決勝実施日の選択と保存のフォームを作る
-  - 先に、ブラウザテストで、候補の`<select>`(ラベル・既定の選択・候補が無いときの案内)、任意の理由の上限と注記、確認のダイアログの文(変更後の受付期限・組み合わせ決定・対象期間の変化)、保存の成功の通知、保存の失敗でダイアログが理由の入力を保ったまま`failureMessageOf`の文言を`role="alert"`で示すこと(拒否の理由・`final_date_locked`・`version_conflict`の案内と、それ以外の失敗で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言が出て問い合わせを促す文が出ないこと)、アクセシビリティの検査の違反が0件を確かめる
+  - 先に、ブラウザテストで、候補を選ぶ共用の`Select`(`role="combobox"`。ラベル・既定の選択・候補が無いときの案内)、任意の理由の上限と注記、確認のダイアログの文(変更後の受付期限・組み合わせ決定・対象期間の変化)、保存の成功の通知、保存の失敗でダイアログが理由の入力を保ったまま`failureMessageOf`の文言を`role="alert"`で示すこと(拒否の理由・`final_date_locked`・`version_conflict`の案内と、それ以外の失敗で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言が出て問い合わせを促す文が出ないこと)、アクセシビリティの検査の違反が0件を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Requirements: 2.2, 2.11, 2.13_
 
 - [x] 7.4 決勝実施日の区画を作り、設定ページの区画の登録口に見出しと同じ`title`で加える
-  - 先に、ブラウザテストで、見出しと説明と2年分のカードの表示、取得の失敗の縮退(`ErrorState`に`contactHref`を渡さず、問い合わせのボタンと問い合わせを促す文が出ず、文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)、設定ページの区画の並び(本specの10が機能フラグの20より上)を確かめる
+  - 先に、ブラウザテストで、見出しと説明と2年分のカードの表示、最初の取得の失敗を`throwOnError`で設定ページの`RecoverableSlot`へ投げて区画の位置で縮退すること(問い合わせのボタンと問い合わせを促す文が出ない)、設定ページの区画の並び(本specの10が機能フラグの20より上)を確かめる
   - 登録口に`tournament-year.final-date`(10)を、7.2の表記のファイルの題名の定数で加える。登録の前に、設定ページの区画の登録口を参照する上流のテストを検索で洗い出し、登録の一覧を完全一致で確かめるものを書き換える
   - 完了状態: ブラウザテストと書き換えた上流のテストが成功し、ローカルで最上位管理者が決勝実施日を保存すると監査ログの画面に記録が出る
   - _Requirements: 2.1_
@@ -446,7 +446,7 @@
 - [x] 8. 統合・ドキュメント・E2E
 - [x] 8.1 組み合わせ決定の日の時刻の連鎖の統合テストを作る
   - apiのWorkers統合テストの環境で行い、eventの確定のマッチイベントの処理の代わりに、それが呼ぶbackend-libの`YearProgressionService`・`YearEntryRegistrar`を直接呼ぶ(`apps/event`を読み込まない)
-  - 先に、Workers統合テストで、23:35の決済期限・23:40の突合と確定・23:45のWeekの組み合わせと進行・Yearの夜の処理の順(paymentsの10、match-engineの1100、notificationsの1300、tournament-weekの`tournament-week.evening-bracket`の1500、本specの1700)で、突合で反映された決済が組み合わせに入り、反映の期限(23:45)の後の完了が組み合わせに入らないこと、同じ夜のWeek優勝が翌年の対象になること、1回戦の予告と準決勝以前の結果と翌日の予告が本specの`markReady`より前に発行されていること、Yearのジョブの`markReady`の後に夜の枠の送り出しが依頼され(tournament-weekも呼んだ場合)、Yearのジョブを失敗させた夜は`markReady`が無く23:55の期限まで依頼されないことを、notificationsの`EveningDispatchGate`の実装で確かめる
+  - 先に、Workers統合テストで、23:35の決済期限の後、23:40の決済の突合(paymentsの10)とマッチの確定(match-engineの1100)、23:45のペアリング(match-engineの1100)・夜の枠の送り出し(notificationsの1300)・Weekの組み合わせと進行(tournament-weekの`tournament-week.evening-bracket`の1500)・Yearの夜の処理(本specの1700)の順で、突合で反映された決済が組み合わせに入り、反映の期限(23:45)の後の完了が組み合わせに入らないこと、同じ夜のWeek優勝が翌年の対象になること、1回戦の予告と準決勝以前の結果と翌日の予告が本specの`markReady`より前に発行されていること、Yearのジョブの`markReady`の後に夜の枠の送り出しが依頼され(tournament-weekも呼んだ場合)、Yearのジョブを失敗させた夜は`markReady`が無く23:55の期限まで依頼されないことを、notificationsの`EveningDispatchGate`の実装で確かめる
   - 完了状態: Workers統合テストが成功する
   - _Depends: 5.11_
   - _Requirements: 4.9, 7.2, 14.3, 14.7, 15.3, 16.3_

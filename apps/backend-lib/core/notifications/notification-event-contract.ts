@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { parseIsoWeek } from '../../../common-lib/tournament/week-period.ts';
+import { parseTournamentYear } from '../../../common-lib/tournament/year-period.ts';
 import { UPPERCASE_ULID_PATTERN } from '../ids/uppercase-ulid.ts';
 
 export const NOTIFICATION_EVENT_TYPES = Object.freeze([
@@ -31,7 +32,6 @@ export type NotificationEvent =
 
 export const NOTIFICATION_PUBLISH_EVENT_LIMIT = 50;
 
-const YEAR_PERIOD_PATTERN = /^\d{4}$/u;
 // <spec名>の形で、各部分の文字の規則はライフサイクルの処理の名前と同じにする
 const PUBLISHER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
 
@@ -39,7 +39,7 @@ const PUBLISHER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
 const ulid = z.ulid().regex(UPPERCASE_ULID_PATTERN);
 
 function isExistingYear(year: string): boolean {
-  return YEAR_PERIOD_PATTERN.test(year) && Number(year) >= 1;
+  return parseTournamentYear(year) !== undefined;
 }
 
 function isIsoWeekPeriod(period: string): boolean {

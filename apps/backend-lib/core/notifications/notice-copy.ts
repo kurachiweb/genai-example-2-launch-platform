@@ -4,6 +4,7 @@ import {
   formatWeekPeriodLabel,
   parseIsoWeek,
 } from '../../../common-lib/tournament/week-period.ts';
+import { parseTournamentYear } from '../../../common-lib/tournament/year-period.ts';
 import type { SuppressionReason } from '../email/suppression-policy.ts';
 import type {
   EntryResult,
@@ -67,7 +68,6 @@ const SUPPRESSION_REASON_NAMES: Readonly<
 const RESULT_SUBJECT_PREFIX = 'フルタイム: ';
 const KICKOFF_CHEER = 'がキックオフします⚽️応援しましょう！';
 const WEEK_PERIOD_PATTERN = /^\d{4}-W\d{2}$/u;
-const YEAR_PERIOD_PATTERN = /^\d{4}$/u;
 
 const countFormat = new Intl.NumberFormat('ja-JP');
 
@@ -196,10 +196,13 @@ export function awardPeriodLabel(award: AwardKind, period: string): string {
   if (award === 'product_of_the_week') {
     return weekPeriodLabel(period);
   }
-  if (!YEAR_PERIOD_PATTERN.test(period)) {
-    throw new RangeError(`Yearの期間は年(YYYY)で指定してください: ${period}`);
+  const year = parseTournamentYear(period);
+  if (year === undefined) {
+    throw new RangeError(
+      `Yearの期間は1年以後の年(YYYY)で指定してください: ${period}`,
+    );
   }
-  return `${String(Number(period))}年`;
+  return `${String(year)}年`;
 }
 
 export function suppressionReasonOf(

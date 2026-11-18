@@ -28,7 +28,7 @@
 
 - Yearのデータ: `year_tournaments`(年ごとの決勝実施日・期限・凍結と進行の状態・受賞)・`year_tournament_entries`(Week優勝ごとの参加の枠、参加資格の出どころ・返金の依頼と知らせの状態)(`apps/db/schema/tournament/`のYearの2ファイル。tournament-weekと同じトーナメントのドメインのディレクトリ、G8)。
 - Yearの規則(`apps/backend-lib/core/year-tournament/`): 既定の決勝日と決勝日からの期限・1回戦の日、選べる決勝日と検証、対象年の判定、参加数の上限、枠の状態と返金の理由・依頼キー。返金の知らせのメール種別`tournament-year.entry-refund`は`core/email/kinds/tournament-year.ts`に置く(email-deliveryの置き場所の規約)。
-- Yearの共有部品: 契約(`YearTournamentStore`・`YearEntryStore`・`YearCalendar`・`YearEntryRegistrar`・`YearDrawService`・`YearProgressionService`・`YearEntryFollowUp`・`YearNotificationPublisher`・`YearAwardExport`とその入出力の型)は`apps/backend-lib/core/year-tournament/ports.ts`、DIの識別子`YEAR_TOURNAMENT_TYPES`は`core/year-tournament/identifiers.ts`に置き、それらの実装と、paymentsの購入種別の口の実装`YearEntryOfferPolicy`・`YearEntryFulfillment`と購入種別の登録の定数`YEAR_TOURNAMENT_PURCHASE_KIND_REGISTRATION`と`YEAR_TOURNAMENT_PLATFORM_MODULE`は`apps/backend-lib/workers/year-tournament/`に置く。api・eventとdata-exportのapplication層が契約と識別子を読み込むため、契約を`workers`に置かない。
+- Yearの共有部品: 契約(`YearTournamentStore`・`YearEntryStore`・`YearCalendar`・`YearEntryRegistrar`・`YearDrawService`・`YearProgressionService`・`YearEntryFollowUp`・`YearNotificationPublisher`・`YearAwardExport`とその入出力の型)は`apps/backend-lib/core/year-tournament/ports.ts`、DIの識別子`YEAR_TOURNAMENT_TYPES`は`core/year-tournament/identifiers.ts`に置き、それらの実装と、paymentsの購入種別の口の実装`YearEntryOfferPolicy`・`YearEntryFulfillment`と購入種別の登録の定数`YEAR_TOURNAMENT_PURCHASE_KIND_REGISTRATION`と束縛のモジュールを作る関数`createYearTournamentPlatformModule(appName)`は`apps/backend-lib/workers/year-tournament/`に置く。api・eventとdata-exportのapplication層が契約と識別子を読み込むため、契約を`workers`に置かない。
 - 共用へ移す部品(G2〜G6。移した後の所有はトーナメント・通知・業務時刻の共用の部品で、本specは移設と既存の参照の書き換えを行う): `core/tournament/launch-ordering.ts`(シード・非シードの並び)・`core/tournament/refund-rejection.ts`(返金の依頼の拒否の写像)・`core/notifications/violation-tolerant-publish.ts`(違反を除いた通知の発行)・`core/time/business-time.ts`の`addBusinessDays`・`businessWeekdayOf`の公開・clientの`components/tournament/`(トップページの区画・決勝の演出・ブラケットのページ・参加費の導線の種類によらない部品)。
 - apiのスキーマモジュール`year-tournament`、照会(トップページ・ブラケット・参加費の導線・決勝実施日)、参加の決済の開始、決勝実施日の保存と監査ログ、判定の供給元3つ、トロフィーの供給元`tournament-year.year-trophies`、ジョブ`tournament-year.evening-bracket`(23:45、1700)・`tournament-year.entry-follow-up`(4:21、1700)とその失敗の通知のポート`YearTournamentIncidentReporter`、notificationsの夜の枠の送り出しの前提の登録`tournament-year.evening-bracket`(`EVENING_DISPATCH_PARTICIPANTS`)。
 - eventの処理: マッチイベント`tournament-year.week-champion-entry`(`decided`・`week`、1700)・`tournament-year.decided-round-progress`(`decided`・`year`、1710)、プロダクトライフサイクル`tournament-year.product-entry-loss`(`deleted`、1700)・`tournament-year.entry-unlink`(`purge_due`、1700)、ユーザーライフサイクル`tournament-year.account-entry-loss`(`withdrawn`、1700)、Ultrasの知らせ`tournament-year.ultras-entry-exemption`(1700)・`tournament-year.open-entry-checkout-expiry`(1710)、結果通知の追記`tournament-year.entry-deadline`(`week`、1700)、返金の知らせのテンプレート(`templates/tournament-year/`)。
@@ -177,7 +177,7 @@ graph TB
 - Domain/feature boundaries: Year固有のデータ(年と枠)だけを本specのテーブルに持ち、ブラケットはtournament-weekの部品越しに書く。マッチの状態はmatch-engine、決済の状態はpayments、Week優勝はtournament-weekが持ち、本specは識別子と確定値の写しだけを持つ。
 - Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`の実装と共有の束縛、`<spec名>.<名詞句>`の名前、帯の`order`、登録箇所への追記、条件付きの書き込みと`onConflictDoNothing()`による冪等性、`CASE`式による取り消し、期限を行の列に保存して正とする規則(tournament-week)、設定の版の条件付きの保存と監査ログの一体の確定(notifications・ultras-subscription)。
 - New components rationale: `YearCalendar`は行の無い年の既定の日と行の列を1つの照会にまとめ、対象年の判定を全ての部品で同じにするため。枠に対象年を保存しないのは、決勝日の変更・初年度・遅れを付け替え無しに扱うため(research.mdの「対象期間の表し方」)。WeekとYearで同じ規則・画面は、種類によらない共用の部品へ移して1か所に保つ(G2〜G6)。
-- Steering compliance: D1のストアは`@inject`の明示、`workers/year-tournament`のサービスはtournament-weekと同じく`YEAR_TOURNAMENT_PLATFORM_MODULE`の`toDynamicValue`で依存とアプリの名前(ロガー)を渡す。D1の制約(`db.batch()`・バインド変数100個以内・`transaction()`を使わない)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、新しいパッケージなし。
+- Steering compliance: D1のストアは`@inject`の明示、`workers/year-tournament`のサービスはtournament-weekと同じく`createYearTournamentPlatformModule(appName)`の`toDynamicValue`で依存とアプリの名前(ロガー)を渡す。D1の制約(`db.batch()`・バインド変数100個以内・`transaction()`を使わない)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、新しいパッケージなし。
 
 **Dependency direction**: `apps/db/schema/tournament`(Yearの2ファイル) → `backend-lib/core/year-tournament` → `backend-lib/workers/year-tournament` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`core/year-tournament`は`core/tournament`(並び・返金の拒否の写像・ブラケットの形を含む)・`core/time`・`core/payments`の型だけを読み込み、`core/week-tournament`・`workers`・`apps/db`を読み込まない。`workers/year-tournament`は`core/tournament`の契約と識別子・`core/week-tournament`の`WeekChampionDirectory`と識別子・`core/notifications`の`publishExcludingViolations`で上流の部品を受け取り、`workers/tournament`・`workers/week-tournament`の実装とtournament-weekのテーブル定義(`week-tournaments.ts`・`week-tournament-entries.ts`)を読み込まない(`tournament-brackets.ts`への外部キーだけを持つ)。共用へ移した部品(`core/tournament/launch-ordering.ts`・`refund-rejection.ts`、`core/notifications/violation-tolerant-publish.ts`、`core/time`、clientの`components/tournament/`)は種類(`week`・`year`)のどちらにも依存しない。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層とdata-exportが使う契約と識別子`YEAR_TOURNAMENT_TYPES`は`core/year-tournament`に置き、`workers/year-tournament`には実装と束縛だけを置く(identity-authの`core/identity`と同じ配置)。application層は`core`だけを読み込む。apiのpresentation層の`errors.ts`・`mappers.ts`は、決済の開始の拒否の文言`YEAR_ENTRY_OFFER_REJECTION_MESSAGES`を`workers/year-tournament/year-entry-offer-policy.ts`から読み込む(文言の唯一の出どころを購入の可否の口に置く。tournament-weekと同じ)。client・adminはGraphQLの操作と上流の部品・`components/tournament/`だけを読み込み、clientの`components/tournament/`は`components/week-tournament/`・`components/year-tournament/`を読み込まない。違反はレビューで誤りとして扱う。
 
@@ -202,8 +202,11 @@ apps/
 │   ├── year-tournament-entries.ts                            # 新規
 │   └── tournament-year-migration.unit.test.ts                # 新規。生成したマイグレーションのCHECK・一意索引・外部キーの検査(Weekの前例)
 ├── common-lib/admin/audit-actions/tournament-year.ts         # year-final-date.update(*.unit.test.ts)
+├── common-lib/tournament/year-period.ts                      # parseTournamentYear(1年以後の4桁の年の解析。clientの経路・apiのブラケットの照会・notificationsの期間の表記と通知イベントの検査が使う、*.unit.test.ts。実装の後の改修で追加)
+├── common-lib/time/business-date-label.ts                    # 変更。formatBusinessDateWithWeekdayLabel(曜日つきの業務日付「2027年5月30日(日)」。backend-lib・client・adminで共用、実装の後の改修で追加)
 ├── backend-lib/
 │   ├── core/time/business-time.ts                            # 変更。addBusinessDays・businessWeekdayOfを公開(G5、*.unit.test.tsに追記)
+│   ├── core/d1/statement-chunks.ts                           # chunk・IDS_PER_STATEMENT(90件ずつの分割。WeekとYearとブラケットの部品で共用、実装の後の改修で追加)
 │   ├── core/tournament/                                      # 種類によらないトーナメントの規則(Bunの単体テスト)
 │   │   ├── launch-ordering.ts                                # 新規(移設、G2)。LaunchOrderingKey・launchSeedOrder・launchNonSeedOrder
 │   │   └── refund-rejection.ts                               # 新規(移設、G4)。RefundRejectionCode・RefundRejectionOutcome・refundRejectionOutcome
@@ -212,7 +215,7 @@ apps/
 │   ├── core/year-tournament/                                 # Yearの純粋な規則(Bunの単体テスト)
 │   │   ├── year-schedule.ts                                  # YEAR_*の定数・defaultFinalDate・yearScheduleFor・yearFirstRoundDate
 │   │   ├── final-date-choice.ts                              # editableYears・checkFinalDateChoice・finalDateChoices・nextYearGapWarning
-│   │   ├── year-target-rules.ts                              # resolveTargetYear・isPreviousYearSet
+│   │   ├── year-target-rules.ts                              # resolveTargetYear・isPreviousYearSet・TARGET_YEAR_LOOKUP_YEARS(対象年を調べる年の数4。カレンダー・供給元・導線で共用)
 │   │   ├── year-capacity.ts                                  # selectWithinCapacity(並びはcore/tournament/launch-ordering.ts)
 │   │   ├── year-entry-rules.ts                               # YearEntryStatus・YearEntryCloseReason・YearRefundStatus・YEAR_REFUND_REASONS・refundReasonFor・yearRefundRequestKey
 │   │   ├── ports.ts                                          # YearTournamentRecord・YearTournamentStore・YearEntryRecord・NewYearEntry・YearEntryStore・YearCalendar・YearEntryRegistrar・YearDrawService・YearProgressionService・YearNotificationPublisher・YearEntryFollowUp・YearAwardExport(型だけ)
@@ -230,26 +233,35 @@ apps/
 │       ├── year-entry-follow-up.ts                           # YearEntryFollowUpの実装(返金の依頼と知らせ)
 │       ├── year-notification-publisher.ts                    # YearNotificationPublisherの実装(通知イベントの組み立て、発行はpublishExcludingViolations)
 │       ├── d1-year-award-export.ts                           # YearAwardExportのD1実装(data-export)
-│       └── year-tournament-platform-module.ts                # YEAR_TOURNAMENT_PLATFORM_MODULE
+│       ├── incident-tags.ts                                  # safeTagOf(エラートラッキングのタグを識別子の形の値だけにする)
+│       ├── testing/                                          # テストの補助(year-tournament-fixtures.ts・year-entry-registrar-fixtures.ts・year-progression-fixtures.ts・year-draw-fixtures.ts・year-entry-follow-up-fixtures.ts・year-tournament-platform-implementations.ts)
+│       ├── year-entry-columns.unit.test.ts                   # 値の一覧とDBの列の値の一致
+│       └── year-tournament-platform-module.ts                # createYearTournamentPlatformModule(appName)
 ├── api/src/
 │   ├── application/year-tournament/                          # Bunの単体テスト
 │   │   ├── year-tournament-api-types.ts                      # YEAR_TOURNAMENT_API_TYPES
 │   │   ├── ports.ts                                          # YearTournamentIncidentReporter・YearTournamentIncident・YearFinalDateWriter
 │   │   ├── year-board-reader.ts                              # トップページの区画
 │   │   ├── year-bracket-reader.ts                            # ブラケットのページ
+│   │   ├── year-bracket-path.ts                              # yearBracketPathOf(year)(トップページ・トロフィー・導線のブラケットのパス)
 │   │   ├── year-entry-panel-reader.ts                        # 参加費の導線
 │   │   ├── year-entry-checkout.ts                            # 決済の開始(CheckoutStarterの呼び出し)
 │   │   ├── year-final-date-service.ts                        # 決勝実施日の照会と保存
+│   │   ├── year-final-date-errors.ts                         # 決勝実施日の保存のエラー(validation_error・final_date_locked・version_conflict)
+│   │   ├── year-launch-standings.ts                          # 供給元と導線が共用する枠・勝ち残り・対象年の読み取り(readYearLaunchStandings・resolveTargetIn等)
 │   │   ├── year-relaunch-condition-source.ts                 # tournament-year.result-pending
 │   │   ├── year-product-lock-source.ts                       # tournament-year.bracket-lock
 │   │   ├── year-launch-summary-source.ts                     # tournament-year.launch-summary
 │   │   ├── year-trophy-source.ts                             # tournament-year.year-trophies
-│   │   └── year-tournament-jobs.ts                           # 2つのジョブ(23:45の夜の処理、4:21の再処理)
+│   │   ├── year-tournament-jobs.ts                           # 2つのジョブ(23:45の夜の処理、4:21の再処理)
+│   │   └── testing/                                          # テストの偽物(year-decision-fakes.ts・year-summary-fakes.ts・year-final-date-fakes.ts・year-entry-panel-fakes.ts・year-tournament-job-fakes.ts)
 │   ├── infrastructure/year-tournament/
 │   │   ├── d1-year-final-date-writer.ts                      # 版の条件付きの保存と監査ログ(*.worker.test.ts)
 │   │   └── sentry-year-tournament-incident-reporter.ts       # ジョブの失敗のログとエラートラッキング(*.worker.test.ts、Weekの前例)
+│   ├── presentation/graphql/modules/tournament/              # WeekとYearのスキーマモジュールが共用する処理(inputs.ts・resolver-support.ts・round-board-resolvers.ts、実装の後の改修でWeekから移した)
 │   ├── presentation/graphql/modules/year-tournament/         # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
+│   │   ├── inputs.ts
 │   │   ├── errors.ts
 │   │   ├── mappers.ts
 │   │   ├── board-resolvers.ts                                # yearTournamentBoard
@@ -257,7 +269,8 @@ apps/
 │   │   ├── entry-resolvers.ts                                # myYearEntry・startYearTournamentCheckout
 │   │   ├── final-date-resolvers.ts                           # yearFinalDateSettings・updateYearFinalDate
 │   │   └── index.ts                                          # yearTournamentSchemaModule
-│   └── composition/year-tournament-module.ts                 # YEAR_TOURNAMENT_API_MODULE
+│   └── composition/year-tournament-module.ts                 # YEAR_TOURNAMENT_API_MODULE(ローカルD1のブラケットの照会のテストyear-bracket-reader.worker.test.tsと23:45の連鎖のテストを併置)
+├── api/test/support/                                         # GraphQLと時刻の連鎖のテストの補助(year-tournament-graphql-operations.ts・year-entry-graphql-operations.ts・year-final-date-graphql-operations.ts・year-tournament-timeline.ts)
 ├── event/src/
 │   ├── application/year-tournament/                          # Bunの単体テスト
 │   │   ├── event-year-tournament-types.ts                    # EVENT_YEAR_TOURNAMENT_TYPES
@@ -272,6 +285,7 @@ apps/
 │   ├── infrastructure/email/templates/tournament-year/       # email-deliveryのテンプレートの置き場所の規約(*.worker.test.tsx)
 │   │   ├── index.ts                                          # TOURNAMENT_YEAR_EMAIL_TEMPLATES
 │   │   ├── year-entry-refund-template.ts
+│   │   ├── year-entry-refund-lead.ts
 │   │   └── year-entry-refund-email-body.tsx
 │   └── composition/year-tournament-module.ts                 # EVENT_YEAR_TOURNAMENT_MODULE
 ├── client/src/
@@ -283,6 +297,7 @@ apps/
 │   │   ├── year-final-showcase.tsx                           # showcase 10
 │   │   ├── use-year-board.ts                                 # useTournamentBoardへYearの照会を渡す
 │   │   ├── year-bracket-page.tsx                             # TournamentBracketPageへYearの見出しを渡す
+│   │   ├── year-bracket-model.ts                             # 型YearBracketView・yearBracketFinalDateOf(見出しの決勝日)
 │   │   ├── year-entry-panel.tsx                              # myYearEntryの取得とTournamentEntryPanelBodyへの受け渡し
 │   │   ├── year-entry-view.ts                                # myYearEntryの値からTournamentEntryInputへの写し(*.unit.test.ts)
 │   │   ├── year-entry-owner-action.tsx                       # PRODUCT_OWNER_ACTIONSの包み
@@ -293,18 +308,22 @@ apps/
 │   │   ├── year-tournament-fixtures.ts                       # ブラウザテストの値(トップページ・決勝・ブラケット)
 │   │   └── year-entry-fixtures.ts                            # ブラウザテストの値(参加費の導線。Weekのweek-entry-fixtures.tsの前例)
 │   ├── graphql/year-tournament.ts                            # 取得の補助(yearTournamentBoardQueryOptions・yearBracketQueryOptions・myYearEntryQueryOptions・startYearTournamentCheckoutMutationOptions、*.unit.test.ts)
-│   ├── graphql/fragments/year-tournament/year-board-round-fields.graphql # YearBoardRoundFields(共用の部品が依存するfinal・matches・byesはWeekと同じ選択)
+│   ├── graphql/fragments/year-tournament/year-board-round-fields.graphql # YearBoardRoundFields(型だけを生成する。共用の部品が依存するfinal・matches・byesはWeekと同じ選択)
 │   └── graphql/operations/year-tournament/                   # 1ファイル1操作の.graphql(操作名はClientで始める)
 │       ├── year-tournament-board.graphql                     # ClientYearTournamentBoard
-│       ├── year-bracket.graphql                              # ClientYearBracket(BracketRoundFields・BracketMatchProductFieldsを展開)
+│       ├── year-bracket.graphql                              # ClientYearBracket(項目を直接書き、名前で展開はchampionのBracketMatchProductFieldsだけ)
 │       ├── my-year-entry.graphql                             # ClientMyYearEntry
 │       └── start-year-tournament-checkout.graphql            # ClientStartYearTournamentCheckout
+├── client/test/year-tournament-board-stub.ts                   # トップページの経路のテストのYearの照会の空の偽物
 ├── admin/src/
 │   ├── components/year-tournament/                           # 1ファイル1コンポーネント(browser testを併置、G9)
 │   │   ├── final-date-section.tsx                            # ADMIN_SETTINGS_SECTIONSの区画
 │   │   ├── final-date-year-card.tsx                          # 年ごとの表示
 │   │   ├── final-date-form.tsx                               # 候補の選択・理由・確認
-│   │   └── final-date-labels.ts                              # 業務日付と拒否の理由の表記・FINAL_DATE_SECTION_TITLE(*.unit.test.ts)
+│   │   ├── final-date-labels.ts                              # 拒否の理由と区画の文言・FINAL_DATE_SECTION_TITLE(*.unit.test.ts)
+│   │   ├── final-date-schedule.ts                            # scheduleOfChoice(確認のダイアログの変更後の受付期限・組み合わせ決定)
+│   │   └── final-date-fixtures.ts                            # ブラウザテストの値
+│   ├── graphql/admin-year-final-date.ts                      # 照会の補助adminYearFinalDateSettingsQueryOptions()と型
 │   └── graphql/operations/year-tournament/                   # 1ファイル1操作の.graphql(操作名はAdminで始める、G9)
 │       ├── year-final-date-settings.graphql                  # AdminYearFinalDateSettings
 │       └── update-year-final-date.graphql                    # AdminUpdateYearFinalDate
@@ -314,7 +333,8 @@ e2e/
 ├── admin/year-final-date.e2e.test.ts                         # 決勝実施日の保存と監査ログ
 ├── admin/year-final-date-steps.ts                            # 画面の操作の手順
 ├── support/year-tournament-fixtures.ts                       # ローカルD1にWeek優勝の枠と年の行を作る補助
-└── support/year-tournament-fixture-sql.ts                    # 補助が流すSQLの組み立て(*.unit.test.ts、Weekの前例)
+├── support/year-tournament-fixture-sql.ts                    # 補助が流すSQLの組み立て(*.unit.test.ts、Weekの前例)
+└── support/year-final-date-choice.ts                         # pickFinalDateChoice(管理画面のE2Eが選ぶ候補、*.unit.test.ts)
 docs/GUIDES/tech/
 ├── backend/019-anchor-date-schedules.md                      # 新規
 └── frontend/012-business-date-calendar.md                    # 変更。「サーバーが返す候補から選ばせる日付」の節(G7)
@@ -416,7 +436,7 @@ sequenceDiagram
     S-->>UI: 新しい表示 または理由
 ```
 
-- 保存の文は`final_date_version = ? AND draw_started_at IS NULL AND change_lock_at > ?`(変更前の期限)を`CASE`式の条件にし、満たさなければNOT NULL制約の違反で行の用意・更新・監査ログをまとめて取り消す。取り消しは読み直して`locked`(変更期限・凍結)か`version_conflict`に分ける(2.7・2.10・2.11)。
+- 保存の条件(その年の`final_date_version = 読んだ版`・`draw_started_at IS NULL`・`change_lock_at > now`(変更前の期限)と、64週の間隔の検証に使った前年と翌年の版の一致)を監査ログのガードとUPDATEのWHEREで共有し、満たさなければ監査ログのガードの拒否で行の用意・監査ログ・更新をまとめて取り消す。取り消しは読み直して`locked`(変更期限・凍結)か`version_conflict`に分ける(2.7・2.10・2.11)。
 - 枠の対象年は保存しないため、保存で枠を書き換えない。以後の照会と判定が新しい列から対象期間と期限を求める(1.3・3.8・13.6)。
 
 ### 組み合わせ決定の日の23:45
@@ -453,15 +473,15 @@ sequenceDiagram
 
 1. `WeekChampionDirectory.listChampions({ awardedFrom, awardedBefore: now })`でWeek優勝を読む(`decided`・`week`の処理は直近8日、23:45のジョブは`YearCalendar.openPeriodStart`(凍結済みの最新の年の決済期限日の0:00、無ければ起点なし)から)。
 2. `YearEntryStore.findByWeekTournaments`(`WeekChampion.tournamentId`)で既存の枠を除き、残りのローンチについて`MatchDirectory.findQualifierResults(launchIds)`で予選のマッチを引き、`findMatches(matchIds, now)`の勝った側の`upvoteCount`・`lastUpvoteElapsedMs`と`matchDate`(ローンチ日)を写す(3.2)。週の識別子`week_period`は`isoWeekKey(WeekChampion.weekStart)`で求める。予選が見つからない枠は作らず`captureEvent`(次の実行で再試行)。
-3. `YearCalendar.resolveAward(Week優勝の日, now)`で対象年を求め、`open`なら`UltrasEntitlements.wasEntitledDuring(投稿者, Week優勝の日時, その年の決済期限)`が真なら`entitled`(`ultras`)、偽なら`awaiting_payment`で挿入する(5.1)。`late`なら期限切れで挿入する(3.7)。
+3. 残りのWeek優勝の日の年〜3年後の和集合を`YearCalendar.describe`で1回だけ読み、Week優勝ごとに純粋な`resolveTargetYear`を当てて対象年を求める(`resolveAward`をWeek優勝ごとに呼ぶのと同じ結果になる)。`open`なら`UltrasEntitlements.wasEntitledDuring(投稿者, Week優勝の日時, その年の決済期限)`が真なら`entitled`(`ultras`)、偽なら`awaiting_payment`で挿入する(5.1)。`late`なら期限切れで挿入する(3.7)。
 4. 挿入は1文で、凍結済みの年のうち決済期限日がWeek優勝の日より後の年があれば`expired`(`late_entry`、`classified_year`はその年)にし、`week_tournament_id`の一意索引で`onConflictDoNothing()`する。手順3の判定と挿入の間に凍結されても、文の条件で期限切れになる(3.3・3.7)。
 
 ### 組み合わせ決定(`YearDrawService.drawDue`)
 
 1. 補完: 到来した年(`draw_at ≤ now`かつ`open`・`drawing`の行)ごとに`syncChampions`を起点なしで呼ぶ。
 2. 凍結: `UPDATE year_tournaments SET draw_started_at = ?, status = 'drawing' WHERE id = ? AND draw_started_at IS NULL`。既に凍結済みなら続きから行う(7.2)。
-3. 分類(90件ずつ): `status IN ('awaiting_payment', 'entitled') AND awarded_date < deadline_date`の枠について、`ProductDirectory.findSummaries(ids, 'not-deleted')`に無ければ`forfeited`(`deleted`)、`visible`が偽なら`excluded`(`hidden_or_suspended`)。`awaiting_payment`は`entitledUsersDuring`で候補を絞ったうえで`wasEntitledDuring(投稿者, awarded_at, deadline_at)`が真なら`drawn`(出どころ`ultras`)、偽なら`expired`(`deadline`)。可視の`entitled`は`drawn`。1つの一括の書き込みで、状態・理由・`closed_at`・`classified_year`・`refund_status`(購入があれば`pending`、無ければ`not_needed`)を`status IN ('awaiting_payment', 'entitled')`の条件付きで記録する(5.5・6.4・7.11)。
-4. 上限: その年の`drawn`が64を超えれば、`selectWithinCapacity`でWeek優勝の日時の古い順の超過分を`excluded`(`over_capacity`)にする(6.5)。再実行しても同じ枠を選ぶ。
+3. 分類(90件ずつ): `listCandidates`で`status IN ('awaiting_payment', 'entitled')`かつWeek優勝の日が`[前年の行の決済期限日, その年の決済期限日)`の枠を読む(下限は前年の行があるときだけ付け、前年の行が無ければ下限なし)。Yearトーナメント規則と状態遷移図のとおり、受付中の枠をまず参加資格か期限切れに分ける。`awaiting_payment`は`entitledUsersDuring`で候補を絞ったうえで`wasEntitledDuring(投稿者, awarded_at, deadline_at)`が真なら参加資格(出どころ`ultras`)、偽なら`expired`(`deadline`)。参加資格の枠(`entitled`と、ここでUltrasにより参加資格を得た枠)だけを、`ProductDirectory.findSummaries(ids, 'not-deleted')`に無ければ`forfeited`(`deleted`)、`visible`が偽なら`excluded`(`hidden_or_suspended`)、それ以外は`drawn`にする。50件ずつの一括の書き込みで、状態・理由・`closed_at`・`classified_year`と、`forfeited`・`excluded`の`refund_status`(購入があれば`pending`、無ければ`not_needed`。`drawn`・`expired`は`none`のまま)を`status IN ('awaiting_payment', 'entitled')`の条件付きで記録する(5.5・6.4・7.11)。
+4. 上限: その年の`drawn`が64を超えれば、`selectWithinCapacity`でWeek優勝の日時の古い順の超過分を`excluded`(`over_capacity`)にする(6.5)。同時刻の決め手`tieBreaker`は枠のWeekトーナメントのID(一意で、紐付けの解除でもnullにならない)とし、再実行しても同じ枠を選ぶ。
 5. 組み合わせ: その年の`drawn`の枠を候補に`BracketDraw.create({ kind: 'year', tournamentId: <年の行のID>, candidates, order: { seed: launchSeedOrder, nonSeed: launchNonSeedOrder }, policy: dailyRoundPolicy(yearFirstRoundDate(final_date, N) ?? final_date, now), now })`(7.3〜7.10)。並びはWeekと共用の`core/tournament/launch-ordering.ts`(G2)。
 6. 記録: 年の行に`bracket_id`・`first_round_date`・`participant_count`・`drawn_at`・`status`(`in_progress`、または参加0・1なら`finished`と`outcome`・`awarded_at`)を条件付きで書く。
 7. 後処理: `YearProgressionService.applyResult`で予告と受賞(参加1)の発行(参加0・1で終えた場合も、記録の後に同じ後処理を呼ぶ。`backend/017`の「発行を記録より先にする」の参加1の扱い)、`YearEntryFollowUp.processYear`で返金の依頼と知らせ(6.6・6.9・14.1)。
@@ -944,6 +964,10 @@ export interface NewYearEntry {
   readonly awardedDate: BusinessDate;
   readonly initialStatus: 'awaiting_payment' | 'entitled'; // entitledは出どころultras
 }
+export interface YearCandidateRange {
+  readonly awardedFrom: BusinessDate | null;
+  readonly awardedBefore: BusinessDate;
+}
 export interface YearEntryStore {
   insertFromChampion(
     entry: NewYearEntry,
@@ -955,11 +979,12 @@ export interface YearEntryStore {
   ): Promise<ReadonlyMap<string, YearEntryRecord>>; // 90件ずつ
   findEntry(entryId: string): Promise<YearEntryRecord | undefined>;
   listOpenByOwner(userId: string): Promise<readonly YearEntryRecord[]>;
+  listLaunchIdsByProduct(productId: string): Promise<readonly string[]>; // 枠の状態によらず重複を除いたローンチのIDの昇順。紐付けを解除した枠は含めない
   listCandidates(
-    deadlineDate: BusinessDate,
+    range: YearCandidateRange,
     afterEntryId: string | undefined,
     limit: number,
-  ): Promise<readonly YearEntryRecord[]>; // awaiting_payment・entitledでawarded_date < deadlineDate
+  ): Promise<readonly YearEntryRecord[]>; // awaiting_payment・entitledでawarded_dateが[awardedFrom, awardedBefore)、awardedFromがnullなら下限なし
   listDrawn(year: number): Promise<readonly YearEntryRecord[]>;
   grantByUltras(
     entryIds: readonly string[],
@@ -1029,9 +1054,12 @@ export declare class D1YearEntryStore implements YearEntryStore {
 ```
 
 - 「凍結の対象外」の条件は、各文に`AND NOT EXISTS (SELECT 1 FROM year_tournaments y WHERE y.draw_started_at IS NOT NULL AND y.deadline_date > year_tournament_entries.awarded_date)`を付けて表す(4.7・5.2・6.1)。
-- `insertFromChampion`は1文の`INSERT ... SELECT`で、上の条件の否定(凍結済みの年が後)なら`status = 'expired'`・`close_reason = 'late_entry'`・`classified_year`(その年の最小)・`refund_status = 'not_needed'`、それ以外は`initialStatus`(`entitled`なら`entitlement_source = 'ultras'`)で挿入し、`week_tournament_id`の一意索引で`onConflictDoNothing()`する。結果は読み直して返す(3.3・3.7)。
+- `insertFromChampion`は1文の`INSERT ... SELECT`で、上の条件の否定(凍結済みの年が後)なら`status = 'expired'`・`close_reason = 'late_entry'`・`classified_year`(その年の最小)・`refund_status = 'not_needed'`、それ以外は`initialStatus`(`entitled`なら`entitlement_source = 'ultras'`)で挿入し、衝突先を指定しない`ON CONFLICT DO NOTHING`(`week_tournament_id`の一意索引)で重複を無視する。同じ文の`RETURNING status`で`inserted`・`late`を返し、行が返らなければ`exists`とする(3.3・3.7)。
 - `describe`は対象の年の行を1回で読み、行の無い年は`defaultFinalDate`から日程を求め、`drawAt > now`なら`planned`、それ以外は`not_held`とする。行は`draw_started_at`の有無で`open`・`frozen`。`describe`・`resolveAward`は行を作らない。`resolveAward`は`describe`(Week優勝の日の年〜3年後)と`resolveTargetYear`を使う(3.4〜3.6・3.9)。組み合わせ決定の分類が終わる前の終わっていない枠は、`resolveAward`が凍結済みのその年を`late`として返す。参加費の導線・再ローンチの供給元は、終わっていない枠の`late`を「組み合わせ決定の途中の年」として扱い、期限切れとはみなさない。
 - `openPeriodStart`は凍結済みの行の`deadline_date`の最大の日の0:00を返す。
+- `listCandidates`の範囲は、組み合わせ決定がその年の決済期限日を上限にし、前年の行があるときだけ前年の行の決済期限日を下限にする。遅れの回復で2年が同時に到来し前の年が分類の途中で失敗しても、後の年が前の年の受付中の枠を分類しないためで、前年の行が無ければ(初年度の繰り越し)下限を設けない。
+- `listLaunchIdsByProduct`は、プロダクトの削除の処理が未完了の決済を失効させるローンチを求める。`forfeitByProduct`は書き換えた枠しか返さないため、再試行で失効の対象を失わないよう枠の状態によらずに読む。
+- 契約のうち名前の無いインラインの型は、実装で`YearDrawRecord`(`markDrawn`の入力。受賞なら優勝が必須の`YearTournamentFinish`)・`YearProductAward`・`YearCalendarEntry`(`YearCalendarYear & { record }`)・`YearEntryClassification`・`YearRefundClosedStatus`・`YearAward`と名付けた。
 - 期限の列は行の作成時と決勝日の保存時に`yearScheduleFor`で求めて保存し、以後の判定はすべて列を読む(`yearScheduleFor`を呼び直さない)。E2Eの補助は列を書き換えて時刻を進められる(1.3)。
 - 年の行は`ensureUpcoming`・決勝日の保存でだけ作り、組み合わせ決定の時刻を過ぎた年には作らない(作るとその年の組み合わせ決定が遅れの回復として動くため)。
 - `unlinkOrDeleteByProduct`: `drawn`・`classified_year`があり組み合わせに入った枠は`product_id`・`launch_id`・`owner_user_id`をnullにし、それ以外の枠は削除する(15.4)。年の行の`champion_entry_id`は残り、紐付けを解除した受賞は照会とエクスポートから除く。ブラケットの参加者の紐付けはtournament-weekの`tournament-week.entry-unlink`が種類によらず解除する。
@@ -1059,7 +1087,7 @@ export interface YearEntryRegistrar {
 }
 ```
 
-- 手順はSystem Flows「Week優勝の取り込み」。1回の呼び出しの読み取りは、`listChampions` 1回・`findByWeekTournaments`・`findQualifierResults`・`findMatches`(各90件ずつ)・`YearCalendar.describe` 1回・`entitledUsersDuring`(候補を絞る)と、絞った投稿者ごとの`wasEntitledDuring`に限る。遅れは`captureEvent`(タグ`job`・`weekTournamentId`、理由`late-entry`)。
+- 手順はSystem Flows「Week優勝の取り込み」。1回の呼び出しの読み取りは、`listChampions` 1回・`findByWeekTournaments`・`findQualifierResults`・`findMatches`(各90件ずつ)・`YearCalendar.describe` 1回・`entitledUsersDuring`(候補を絞る)と、絞った投稿者ごとの`wasEntitledDuring`に限る。遅れと予選が見つからない枠は`captureEvent`(`warning`、fingerprint`['tournament-year', 'late-entry' | 'qualifier-missing']`、タグ`tournament_year_incident`・`week_tournament_id`)。呼び出し元が分からないため`job`のタグは付けない。
 
 #### YearEntryOfferPolicy・YearEntryFulfillment
 
@@ -1070,7 +1098,7 @@ export interface YearEntryRegistrar {
 
 **Contracts**: Service [x]
 
-- `describe({ userId, targetId, now })`(`targetId`はWeek優勝したローンチのID): 枠が無い・投稿者でない→`unavailable`(`year_entry_not_found`)。`entitled`・`drawn`→`year_entry_already_entitled`。`expired`・`forfeited`・`excluded`、または`resolveAward`が`late`→`year_entry_closed`。`ProductDirectory.findSummaries([productId], 'not-deleted')`が`visible`でない→`year_entry_product_unavailable`。`wasEntitledDuring(userId, awardedAt, min(now, deadlineAt))`が真→`year_entry_exempt`(知らせの処理と組み合わせ決定で付与される)。それ以外は`available`で`PurchaseOffer`を返す(4.1・4.4)。`unavailable`は`code`と`message`を持ち、`message`は同じファイルの`YEAR_ENTRY_OFFER_REJECTION_MESSAGES`(コードごとの文言規則の文言。apiのpresentation層の`errors.ts`・`mappers.ts`も読み込む唯一の出どころ)から引く。受付期限の後はpaymentsの`assertAcceptable`が`checkout_closed`で拒否する(4.2)。
+- `describe({ userId, targetId, now })`(`targetId`はWeek優勝したローンチのID): 枠が無い・投稿者でない→`unavailable`(`year_entry_not_found`)。`entitled`・`drawn`→`year_entry_already_entitled`。`expired`・`forfeited`・`excluded`、または`resolveAward`が`late`→`year_entry_closed`。`ProductDirectory.findSummaries([productId], 'not-deleted')`が`visible`でない→`year_entry_product_unavailable`。`wasEntitledDuring(userId, awardedAt, min(now, deadlineAt))`が真→`year_entry_exempt`(知らせの処理と組み合わせ決定で付与される)。それ以外は`available`で`PurchaseOffer`を返す(4.1・4.4)。`unavailable`は`code`と`message`を持ち、`message`は同じファイルの`YEAR_ENTRY_OFFER_REJECTION_MESSAGES`(コードごとの文言規則の文言。apiのpresentation層の`errors.ts`も読み込む唯一の出どころ。Yearの導線は決済の制限`checkoutBlock`を持たないため`mappers.ts`は読み込まない)から引く。受付期限の後はpaymentsの`assertAcceptable`が`checkout_closed`で拒否する(4.2)。
 - `PurchaseOffer`: `priceLookupKey: 'year_tournament_entry'`、`quantity: 1`、`relatedId: <ローンチのID>`、`exclusivityKey: 'launch:<ローンチのID>:year'`、対象年の日程(`YearCalendar`の行の列、行が無ければ既定の日から求めた日程。`describe`は行を作らない)の`deadlineAt`(23:35)・`acceptUntil`(23:00)・`fulfillableUntil`(=`drawAt`、23:45)、`requiresBotVerification: false`、`summary`: `itemName`「Yearトーナメント参加費」、`quantityLabel`「1件(<年>年のYearトーナメント)」、`serviceTiming`「決済の反映後ただちに参加資格を付与し、<決済期限日>23:45(UTC-08:00)に組み合わせを決定します。決勝は<決勝日>です」、`additionalNotes`は「組み合わせ決定前にプロダクトを削除・退会すると参加資格を失い、参加費は自動で全額返金されます」「トーナメントの不戦勝・不戦敗・両者敗北による返金はありません」「決勝実施日は変更期限(決勝の7日前)まで変わることがあり、変更後の日程で行います」(4.3)。
 - `prepare(purchase, db)`: 枠(`targetId`)・投稿者の一致・`awaiting_payment`・凍結の対象外・`ProductDirectory`で論理削除されていないこと、さらに反映の時刻が対象年の`deadlineAt`より後なら`listLaunches`で枠のローンチより新しい取消でないローンチが無いこと(仮6)を確かめ、満たさなければ`{ kind: 'reject', reason: 'ineligible' }`(4.7・4.8)。満たせば`fulfill`で1文を返す: `UPDATE year_tournament_entries SET status = CASE WHEN status = 'awaiting_payment' AND NOT EXISTS (<凍結の条件>) THEN 'entitled' ELSE NULL END, entitlement_source = 'payment', purchase_id = ?, entitled_at = ?, updated_at = ? WHERE id = ?`。同時の変更で条件を満たさなければNOT NULL制約の違反でpaymentsの一括の書き込みが取り消され、paymentsが`prepare`を呼び直して拒否(自動返金)にする(4.5〜4.7・4.9)。`afterCommit`は持たない。
 - 同じ購入の反映の重複はpaymentsの状態の前進で1回になる(4.6)。決済期限の後のUltrasの加入は`YearUltrasEntryExemptionHandler`の`activatedAt ≤ deadlineAt`の判定で参加資格を与えない(5.7)。
@@ -1125,8 +1153,8 @@ export interface YearNotificationPublisher {
 }
 ```
 
-- `drawDue`: System Flows「組み合わせ決定」の手順。年ごとに独立して行い、失敗した年は`captureEvent`(タグ`job`・`year`)で通知して次の年へ進む(15.7)。比較の型は共用の`LaunchOrderingKey`(枠の`launch_date`・`qualifier_upvote_count`・`qualifier_last_upvote_elapsed_ms`)、`BracketDrawCandidate`の`ref`は枠のID、`tieBreaker`はローンチのID、`participant`はローンチ・プロダクト・投稿者(7.3〜7.6)。1回戦の日は`yearFirstRoundDate`、マッチの時刻はmatch-engineの`matchWindow`・`MATCH_SCHEDULE`(tournament-weekの部品が使う)で0:00と23:40(1.4・1.5・7.9)。組み合わせ決定から1回戦までの日にはマッチの予定が無い(8.10)。
-- `advance`: `BracketProgression.advance(bracketId, dailyRoundPolicy(first_round_date, now), now)`を呼び、`applyResult`する。勝敗・即時の終了・開始時点の決着・不戦勝の連鎖・段階の記録・遅れの回復はtournament-weekの部品とmatch-engineが行う(8.1〜8.9)。
+- `drawDue`: System Flows「組み合わせ決定」の手順。年ごとに独立して行い、失敗した年は`captureException`(タグ`tournament_year_incident: 'draw-failed'`・`year`・`year_tournament_id`)で通知して次の年へ進む(15.7)。比較の型は共用の`LaunchOrderingKey`(枠の`launch_date`・`qualifier_upvote_count`・`qualifier_last_upvote_elapsed_ms`)、`BracketDrawCandidate`の`ref`は枠のID、`tieBreaker`はローンチのID(紐付けを解除した枠は枠のID)、`participant`はローンチ・プロダクト・投稿者(7.3〜7.6)。1回戦の日は`yearFirstRoundDate`、マッチの時刻はmatch-engineの`matchWindow`・`MATCH_SCHEDULE`(tournament-weekの部品が使う)で0:00と23:40(1.4・1.5・7.9)。組み合わせ決定から1回戦までの日にはマッチの予定が無い(8.10)。
+- `advance`: `BracketProgression.advance(bracketId, dailyRoundPolicy(yearFirstRoundDate(final_date, participant_count) ?? final_date, now), now)`を呼び、結果を返すだけで`applyResult`は呼び出し元(eventの確定のマッチイベントの処理)が呼ぶ(Weekと同じ)。`advanceAll`は進行中の年ごとに両方を行い、失敗した年は`captureException`(タグ`year`・`year_tournament_id`)で通知して次の年へ進む。日程は保存した`first_round_date`ではなく予定の日から求める(Weekも予定の日を使う。1回戦は組み合わせ決定が予定し、2回戦以後は前のラウンドの実際の日から決まるため、遅れがあっても同じ日になる)。勝敗・即時の終了・開始時点の決着・不戦勝の連鎖・段階の記録・遅れの回復はtournament-weekの部品とmatch-engineが行う(8.1〜8.9)。
 - `applyResult`(G1、[発行を記録より先にする](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md#発行を記録より先にする)・tournament-weekの`WeekProgressionService.applyResult`と同じ順): (1)`publishRound`で`decidedMatchIds`を`match_result`、終えていなければ`previewMatchIds`を`match_preview`として発行する(終えたときは予告を発行しない)(14.1〜14.3)。(2)`finished`で`championRef`(枠のID)があれば、その枠を`YearEntryStore.findEntry`で読み直し、プロダクトの紐付けがあれば`publishAward`(14.4)。(3)`finished`なら`recordFinish`(`status <> 'finished'`の条件付き、`outcome`・`champion_entry_id`・`awarded_at`)を最後に行う(9.1〜9.4)。発行の失敗では記録まで進まず、トーナメントは進行中のまま残り、イベントの再試行と23:45のジョブが発行と記録をやり直す。受賞の通知の1回性は通知の重複のキー(`award:product_of_the_year:<年>:<プロダクトID>`)で保つ。参加0・1で組み合わせ決定の時点で終えた年も、`markDrawn`で結果を記録した後に同じ後処理を呼ぶ。
 - `publishRound`・`publishAward`・`publishEvening`は、組み立てた通知イベントを共用の`publishExcludingViolations({ publisher, name: 'tournament-year', events, at, logger })`(G3)で発行する。50件ずつ発行し、違反の1件を除いて発行し直す(`match-not-previewable`は`info`、それ以外の位置のある違反は`error`のログ)。位置の無い拒否と一時的な失敗は呼び出し元へ返す。発行は重複のキーで冪等である(14.5)。`publishAward`は`{ type: 'award', award: 'product_of_the_year', period: '<対象年>', productId }`。
 - `publishEvening`([夜の発行と送り出しの準備](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md#夜の発行と送り出しの準備)、G1): `MatchDirectory.listForDate({ date, kinds: ['year'], now: at })`の結果が確定したマッチを`match_result`、`listForDate({ date: addBusinessDays(date, 1), kinds: ['year'], now: at })`の側が2つで開始前のマッチを`match_preview`、`YearTournamentStore.listAwardedBetween(dateの0:00, at)`の年(当日の0:00から発行の時刻までに受賞を記録した年。紐付けを解除した優勝の枠は除く)を`award`として発行する。`at`は呼び出し元のジョブが組み合わせ決定と進行の後に時計を読み直した時刻とする。受賞を記録の時刻で読むため、ラウンドの遅れで翌年に受賞する年と、1月初旬の決勝日で参加1の受賞が前年12月の組み合わせ決定の夜になる年も、年の範囲を数えずに含まれる。`decided`の処理と進行の中で既に発行したものは重複のキーで重ならない(14.1〜14.5)。
@@ -1170,8 +1198,10 @@ export declare const YEAR_TOURNAMENT_TYPES: {
 ```
 
 - `process`([返金の後処理](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md#返金の後処理)、G4): `refund_status = 'pending'`の枠は`PaymentRefunds.request({ purchaseId, amount: null, reason: refundReasonFor(status, closeReason), requestKey: yearRefundRequestKey(...) })`。`accepted`(重複を含む)なら`requested`と`refund_notice_status = 'pending'`。`rejected`は共用の`refundRejectionOutcome(code)`で`not_needed`(`not_paid`・`purchase_not_found`)・`already_refunded`(`amount_exceeds_refundable`)・`rejected`(`invalid_amount`・`invalid_request_key`)にして`markRefundClosed`で終え、知らせのメールを送らない。`report`が真の拒否と理由の形式違反の`RangeError`は`captureEvent`(理由`refund-rejected`・`refund-already-refunded`、タグは購入と枠のIDだけ)で運用者へ知らせ、`RangeError`の枠も`rejected`で終えて4:21の再処理の対象から外す(6.8)。`refund_notice_status = 'pending'`の枠は`UserContactDirectory.findContact(ownerUserId)`が`undefined`か紐付けを解除した枠なら`skipped`、あれば`EmailSender.send(TOURNAMENT_YEAR_ENTRY_REFUND_KIND, ...)`して`sent`(6.2・6.6・6.9)。1件の失敗で止めず全件を試し、最後に失敗を投げる(1件なら元の例外、複数なら`AggregateError`)。一時的な失敗は呼び出し元の再試行と4:21の再処理に任せる。4:21の`listPendingFollowUps`は最後の更新から10分以上経った枠だけを読み、1回の実行で試した枠のIDを覚えて同じ枠を繰り返さない。
+- `processYear(year, now)`: 年で絞るストアのメソッドを持たず、`listPendingFollowUps(now + 1ms, 50)`を読んで`classified_year`がその年の枠だけを`process`と同じ処理にかけ、読んだ枠を除いて読み直すことを新しい枠が無くなるまで繰り返す。他の年の待ちが50件以上先にあると、その年の一部は4:21の再処理に回る。`now`は分類と上限の除外に渡した時刻以上にする。
+- 実装の`YearEntryRefundFollowUp`は`{ appName, store, calendar, refunds, contacts, emails, clientSiteOrigin, readLimit? }`を受ける。凍結の前の喪失の枠は`classified_year`を持たないため、知らせの`yearLabel`の年を`YearCalendar.resolveAward(awarded_date, now)`で求める(そのため`YearCalendar`に依存する)。依頼の拒否の`not_needed`のログは`info`(Weekは`error`)、`captureEvent`はfingerprint`['tournament-year', 'refund-already-refunded' | 'refund-rejected']`・タグ`tournament_year_incident`・`entry_id`・`purchase_id`。
 - 返金の実行・決済履歴・反映の期限切れと二重決済の返金はpaymentsが行う(6.10)。
-- `YEAR_TOURNAMENT_PLATFORM_MODULE`(`workers/year-tournament/year-tournament-platform-module.ts`)は本節の全部品を処理単位で束縛し、apiとeventの両方へ入れる。DIの識別子は`core/year-tournament/identifiers.ts`の`YEAR_TOURNAMENT_TYPES`(`Symbol.for('year-tournament.<名前>')`)。識別子は`workers`の実装にしか無い`YearEntryOfferPolicy`・`YearEntryFulfillment`の分も含め、`year-tournament-registrations.ts`の登録の定数がここから読み込む。上流の`BracketDraw`・`BracketProgression`・`BracketStore`・`WeekChampionDirectory`は`core/tournament`・`core/week-tournament`の識別子で受け取る。
+- `createYearTournamentPlatformModule(appName)`(`workers/year-tournament/year-tournament-platform-module.ts`、モジュール名`year-tournament-platform`)は本節の全部品を処理単位で束縛し、apiとeventの両方の`MODULES`でWeekの共有モジュールの直後へ入れる。部品がログのカテゴリにアプリの名前を要するため、定数ではなくアプリの名前を受ける関数にする(Weekの先例と同じ)。ストア3つは`.to()`、他の8つは`toDynamicValue`で、全て`inSingletonScope`。DIの識別子は`core/year-tournament/identifiers.ts`の`YEAR_TOURNAMENT_TYPES`(`Symbol.for('year-tournament.<名前>')`)。識別子は`workers`の実装にしか無い`YearEntryOfferPolicy`・`YearEntryFulfillment`の分も含め、`year-tournament-registrations.ts`の登録の定数がここから読み込む。上流の`BracketDraw`・`BracketProgression`・`WeekChampionDirectory`は`core/tournament`・`core/week-tournament`の識別子で受け取る。`BracketStore`は本節の部品のどれも使わないため束縛に現れず、apiのapplication層の部品(ブラケットのページ・判定の供給元・トップページ)が`TOURNAMENT_PLATFORM_TYPES.BracketStore`で直接受け取る。
 
 ### api/application
 
@@ -1192,6 +1222,7 @@ export interface YearBoardRound {
   readonly finalDate: BusinessDate; // 1回戦の日 + ラウンド数 − 1(遅れがあれば実際の予定)
   readonly isFinal: boolean;
   readonly matchIds: readonly string[];
+  readonly bracketPath: string; // yearBracketPathOf(year)。GraphQLのYearTournamentRoundBoard.bracketPathに使う(Weekと同じ)
 }
 export interface YearBoardReader {
   read(date: BusinessDate, now: Date): Promise<readonly YearBoardRound[]>;
@@ -1202,18 +1233,25 @@ export interface YearBracketView {
   readonly champion: MatchProductView | null; // championNoの参加者のプロダクト。表示できなければnull
 }
 export interface YearBracketReader {
-  read(yearKey: string, now: Date): Promise<YearBracketView | undefined>; // 4桁の年でない・行が無い・未決定はundefined
+  read(input: {
+    readonly year: string;
+    readonly viewer: CurrentUser | undefined; // マッチの表示に閲覧者が要る(Weekと同じ形)
+    readonly now: Date;
+  }): Promise<YearBracketView | undefined>; // 4桁の年でない・行が無い・未決定はundefined
 }
 export interface YearEntryPanel {
+  readonly launchId: string;
   readonly entry: YearEntryRecord;
-  readonly year: YearCalendarYear;
+  readonly year: YearCalendarEntry; // 分類した年、分類の前ならWeek優勝の日から求めた対象年
   readonly exempt: boolean;
-  readonly fee: { readonly amount: number; readonly currency: 'usd' } | null; // 取得できなければnull(縮退)
+  readonly fee: CheckoutMoney | null; // 決済を始められる枠だけに読む。始められない枠と取得できない縮退ではnull
+  readonly refundable: boolean;
   readonly progress: {
     readonly alive: boolean;
     readonly eliminatedRound: number | null;
+    readonly eliminatedRoundName: string | null;
     readonly champion: boolean;
-  } | null;
+  } | null; // 組み合わせに入った枠だけ
 }
 export interface YearEntryPanelReader {
   readForOwner(
@@ -1231,8 +1269,8 @@ export interface YearEntryCheckout {
 ```
 
 - `YearBoardReader.read`: `MatchDirectory.listForDate({ date, kinds: ['year'], now })`のIDを`BracketStore.findByMatchIds`でブラケットへ分け、`kind = 'year'`の`tournamentId`(年の行のID)ごとに1行(10.1)。年の行が無いブラケットは除く。読み取りはIDと行の値だけを返し、マッチの表示はリゾルバが`matchViewLoader`(`loadMatchView`)でまとめて引き、対戦カードと不戦勝の分け方はmatch-engineの`placementOf`(`apps/api/src/domain/match/board-order.ts`)を使う(tournament-weekの`board-resolvers.ts`と同じ。15.8)。
-- `YearBracketReader.read`: `^\d{4}$`→`findByYears`→`BracketStore.findById`→記録済みのマッチの`MatchViewReader.findViews`(90件ずつ)→`buildBracketRoundsView`。優勝のプロダクトは`championNo`の参加者の`ProductDirectory.findSummaries([productId], 'visible')`から`MatchProductView`を作る(表示できなければnull、tournament-weekの`WeekBracketReader`と同じ)。シードの最初のマッチの予定が作られるまでは、その枠を「シード<n>」とし、プロダクトを出さない(組み立ての規則)。表示できないプロダクトは`MatchProductView`が`null`になり、画面は「非公開のプロダクト」とする(11.2〜11.4・11.6)。
-- `YearEntryPanelReader`: `ProductDirectory.resolveHandle`で本人のプロダクトか確かめ、`listLaunches`の直近の取消でないローンチの枠を返す。年は終わっていない枠なら`resolveAward`、終わった枠なら`classified_year`の行。`exempt`は`entitlementSource = 'ultras'`、または`awaiting_payment`で`wasEntitledDuring(投稿者, awardedAt, min(now, deadlineAt))`が真。`fee`は`PriceCatalog.getPrices(['year_tournament_entry'])`(到達できず値も無ければnull)。`progress`は`drawn`の枠だけで、優勝は年の行の`champion_entry_id`、それ以外は`BracketStore.findParticipantStandings('year', [entryId])`の敗退のラウンド(`roundStage`と`tournamentRoundName`でラウンド名にする)と状態から求め(組み合わせを書き終える前の`drawing`の年は勝ち残り)、勝ち残りの記録でも`MatchDirectory.listByLaunches([launchId], now)`の直近のYearのマッチが終了し負けていればそのラウンドで敗退とする(tournament-weekの`WeekEntryPanelReader`と同じ規則、4.10・12.1〜12.3・12.5)。`refundable`は`purchase_id`があり`refund_status`が`pending`・`requested`のとき真とする。
+- `YearBracketReader`(実装`DirectoryYearBracketReader`)の`read`: common-libの`parseTournamentYear`(`common-lib/tournament/year-period.ts`。clientの経路と同じ年の解析)→`findByYears`→`BracketStore.findById`→記録済みのマッチの`MatchViewReader.findViews`(90件ずつ)→`buildBracketRoundsView`。優勝のプロダクトは`championNo`の参加者の`ProductDirectory.findSummaries([productId], 'visible')`から`MatchProductView`を作る(表示できなければnull、tournament-weekの`WeekBracketReader`と同じ)。シードの最初のマッチの予定が作られるまでは、その枠を「シード<n>」とし、プロダクトを出さない(組み立ての規則)。表示できないプロダクトは`MatchProductView`が`null`になり、画面は「非公開のプロダクト」とする(11.2〜11.4・11.6)。
+- `YearEntryPanelReader`: `ProductDirectory.resolveHandle`で本人のプロダクトか確かめ、`listLaunches`の直近の取消でないローンチの枠を返す。対象年は`classified_year`があればその年、無ければWeek優勝の日の年〜3年後を`describe`で1回読み、`resolveTargetYear`と同じ規則(apiの`year-launch-standings.ts`の`resolveTargetIn`)で求める。WeekのUltrasの案内(`ultrasGuide`)と決済の制限(`checkoutBlock`)は持たない。GraphQLの`bracketPath`(`yearBracketPathOf(panel.year.year)`)と`serverTime`はリゾルバが足す。`exempt`は`entitlementSource = 'ultras'`、または`awaiting_payment`で`wasEntitledDuring(投稿者, awardedAt, min(now, deadlineAt))`が真。`fee`は`PriceCatalog.getPrices(['year_tournament_entry'])`(到達できず値も無ければnull)。`progress`は`drawn`の枠だけで、優勝は年の行の`champion_entry_id`、それ以外は`BracketStore.findParticipantStandings('year', [entryId])`の敗退のラウンド(`roundStage`と`tournamentRoundName`でラウンド名にする)と状態から求め(組み合わせを書き終える前の`drawing`の年は勝ち残り)、勝ち残りの記録でも`MatchDirectory.listByLaunches([launchId], now)`の直近のYearのマッチが終了し負けていればそのラウンドで敗退とする(tournament-weekの`WeekEntryPanelReader`と同じ規則、4.10・12.1〜12.3・12.5)。`refundable`は`purchase_id`があり`refund_status`が`pending`・`requested`のとき真とする。
 
 #### YearFinalDateService・D1YearFinalDateWriter
 
@@ -1270,24 +1308,26 @@ export interface YearFinalDateService {
     readonly expectedVersion: number;
     readonly reason?: string;
     readonly now: Date;
-  }): Promise<YearFinalDateView>; // 違反はAppError(bad_request, validation_error, reason)、競合はAppError(conflict, version_conflict)、期限はAppError(unprocessable, final_date_locked)
+  }): Promise<YearFinalDateView>; // エラーはyear-final-date-errors.ts。違反はvalidation_error(400、details[0]が{ field: 'year' | 'finalDate', code: <理由>, message: <文言規則> })、競合はversion_conflict(409)、変更期限と凍結はfinal_date_locked(422)
 }
 export interface YearFinalDateWriter {
   save(input: {
     readonly yearTournamentId: string; // 新しい行のときに使うID
     readonly schedule: YearSchedule; // 新しい日程
     readonly defaultSchedule: YearSchedule; // 行が無いときの用意に使う既定の日程
-    readonly expectedVersion: number;
+    readonly expectedVersion: number; // 行が無い年は0
+    readonly previousYearVersion: number; // 64週の間隔の検証に使った前年の版(行が無い年は0)
+    readonly nextYearVersion: number; // 同じく翌年の版
     readonly adminId: string;
     readonly audit: PreparedAuditEntry;
     readonly now: Date;
-  }): Promise<'saved' | 'version_conflict' | 'locked'>;
+  }): Promise<'saved' | 'version_conflict' | 'locked'>; // 入力の型はYearFinalDateSave
 }
 ```
 
 - `read`: `YearCalendar.ensureUpcoming`→`describe([Y−1, Y, Y+1, Y+2])`(Yは現在の年)→年ごとに`FinalDateContext`(前年は`isPreviousYearSet`のときだけ、翌年は`source = 'explicit'`のときだけ)を作り、`isFinalDateChangeable`・`finalDateChoices`・`nextYearGapWarning`を求める(2.1・2.4〜2.6・2.12)。変更者のニックネームはリゾルバが`AdminDirectory`で引く(削除済みはnull)。
-- `update`: (リゾルバの`requireAdmin(context, 'super_admin')`、不足は`forbidden`、2.9)→`read`と同じ文脈で`checkFinalDateChoice`(違反は`validation_error`と理由、2.4〜2.8)→`AuditLogRecorder.prepare({ operatorAdminId, action: 'year-final-date.update', targetIds: ['year-final-date:<年>'], reason, detail: { year, fromDate, toDate, fromSource }, occurredAt: now })`(2.10)→`YearFinalDateWriter.save`。`locked`は`final_date_locked`、`version_conflict`は`version_conflict`(2.7・2.11)。
-- `D1YearFinalDateWriter.save`: 1つの一括の書き込みで、(1)`INSERT ... ON CONFLICT(year) DO NOTHING`(既定の日程の行の用意)、(2)`UPDATE year_tournaments SET final_date = ?, final_date_source = 'explicit', deadline_date = ?, accept_until = ?, deadline_at = ?, draw_at = ?, change_lock_at = ?, final_date_version = CASE WHEN final_date_version = ? AND draw_started_at IS NULL AND change_lock_at > ? THEN final_date_version + 1 ELSE NULL END, final_date_updated_at = ?, final_date_updated_by_admin_id = ?, updated_at = ? WHERE year = ?`、(3)`buildAuditLogStatements(audit)`。取り消しは行を読み直して、凍結済みまたは`change_lock_at ≤ now`なら`locked`、それ以外は`version_conflict`に変換する(2.7・2.10・2.11)。
+- `update`: (リゾルバの`requireAdmin(context, 'super_admin')`、不足は`forbidden`、2.9)→`read`と同じ文脈で`checkFinalDateChoice`(違反は`validation_error`と理由、2.4〜2.8)→`AuditLogRecorder.prepare({ operatorAdminId, action: 'year-final-date.update', targetIds: ['year-final-date:<年>'], reason, detail: { year, fromDate, toDate, fromSource }, occurredAt: now })`(2.10)→`YearFinalDateWriter.save`(検証の文脈と同じ`describe`の結果から前年と翌年の版を渡す)。`locked`は`final_date_locked`、`version_conflict`は`version_conflict`(2.7・2.11)。編集できる年の外は`describe`の前に`year_not_editable`で拒否し、`update`も`read`と同じく先に`ensureUpcoming`を呼ぶ。ロールの判定はリゾルバが行う(保存は`super_admin`、照会は`viewer`)。拒否の文言の中の決勝日の表記は共用の`formatBusinessDateWithWeekdayLabel`(common-libの`time/business-date-label.ts`)を使う。
+- `D1YearFinalDateWriter.save`: `NOT NULL`制約の違反で取り消すのではなく、監査ログのガイドと先例(`D1SenderInfoWriter`・`D1PromotionSettingWriter`)に倣い、保存の条件を監査ログのガード`{ kind: 'condition' }`とUPDATEのWHEREで共有する。条件は、その年の行の`final_date_version = 読んだ版`・`draw_started_at IS NULL`・`change_lock_at > now`(変更前の期限)と、隣の年の`COALESCE((SELECT final_date_version FROM year_tournaments WHERE year = 年 − 1), 0) = 読んだ前年の版`・同じく翌年の版の一致である(隣の年が同時に保存されると64週の間隔の検証に使った日が古くなるため。版0の行が作られただけなら保存できる)。1つの一括の書き込みは、(1)`INSERT ... ON CONFLICT(year) DO NOTHING`(既定の日程の行の用意)、(2)`buildAuditLogStatements(audit)`(ガードのEXISTSが行を読むため、行の用意の後に置く。ガイドの「監査の文を先頭に」の例外)、(3)`UPDATE year_tournaments SET final_date = ?, final_date_source = 'explicit', deadline_date = ?, accept_until = ?, deadline_at = ?, draw_at = ?, change_lock_at = ?, final_date_version = final_date_version + 1, final_date_updated_at = ?, final_date_updated_by_admin_id = ?, updated_at = ? WHERE year = ? AND <保存の条件>`の順とする。ガードの拒否は`isAuditGuardRejection`で判定し、行を読み直して凍結済みまたは`change_lock_at ≤ now`なら`locked`を`version_conflict`より優先し、それ以外は`version_conflict`に変換する(2.7・2.10・2.11)。
 
 #### YearRelaunchConditionSource・YearProductLockSource・YearLaunchSummarySource・YearTrophySource
 
@@ -1300,17 +1340,17 @@ export interface YearFinalDateWriter {
 
 - `findBlocks({ subjects, at })`: `latestLaunch.outcome === 'won'`の対象について`findByLaunches`・`BracketStore.findAliveRefs('year', 枠のID)`・`YearCalendar.describe`を1回ずつ呼ぶ。枠の無いローンチについては`WeekChampionDirectory.listChampions({ awardedFrom: openPeriodStart, awardedBefore: at })`を1回引き、Week優勝したローンチを受付中の枠と同じに扱う(13.4)。受付中(`awaiting_payment`、または枠の作成前のWeek優勝)で対象年の`deadlineAt`より前なら`{ code: 'tournament-year.entry-pending', releaseAt: deadlineAt }`(13.1・13.6)。`entitled`、`drawn`で勝ち残り、または対象年が凍結済みで分類前の`entitled`(`resolveAward`が`late`を返す終わっていない枠)なら`{ code: 'tournament-year.result-pending', releaseAt: null }`(13.2)。期限切れ・喪失・除外・敗退・優勝は返さない(13.3)。`message`は文言規則の「再ローンチ不可(Year・参加前)」「同(Year・参加中)」の定型の部分で、解除の日付は呼び出し元が`releaseAt`から表示する。
 - `findLocks`: 勝ち残りの`drawn`の枠と、凍結済みで組み合わせを書き終える前の年の`entitled`・`drawn`の枠のプロダクトに`{ code: 'tournament-year.bracket-lock', message: 'Yearトーナメントに勝ち残っているため、ローンチ日・カテゴリの変更と削除はできません。' }`(13.5)。
-- `summarize`: 枠ごとに、優勝→「Product of the Year」(rank 100)、勝ち残りでその日のマッチが`live`→「Year<ラウンド名>マッチ中」(`inMatch`、90)、勝ち残りで1試合以上を終えた→「Year<次のラウンド名>進出」(80)、敗退→「Year<ラウンド名>敗退」(80)、`entitled`・まだ試合の無い`drawn`→「Yearトーナメント参加決定」(70)、受付中の`awaiting_payment`→「Yearトーナメント参加受付中」(60)。勝ち残り・敗退のラウンドは`BracketStore.findParticipantStandings('year', 枠のID)`と`MatchDirectory.listByLaunches`の直近のYearのマッチから求める(`YearEntryPanelReader`と同じ規則)。受賞は`{ productId, kind: 'year', label: '<対象年>年' }`(`ProductAwardContribution`。`label`は期間の表記だけで、プロフィールでは`launch-history-reader.ts`が名前を前に付ける、12.8)。
+- `summarize`: 枠ごとに、優勝→「Product of the Year」(rank 100)、勝ち残りでその日のマッチが`live`→「Year<ラウンド名>マッチ中」(`inMatch`、90)、勝ち残りで1試合以上を終えた→「Year<次のラウンド名>進出」(80)、敗退→「Year<ラウンド名>敗退」(80)、`entitled`・まだ試合の無い`drawn`→「Yearトーナメント参加決定」(70)、受付期限(23:00)より前の`awaiting_payment`→「Yearトーナメント参加受付中」(60。23:00〜23:35は要約を出さないが再ローンチの禁止は続く)。勝ち残り・敗退のラウンドは`BracketStore.findParticipantStandings('year', 枠のID)`と`MatchDirectory.listByLaunches`の直近のYearのマッチから求める(`YearEntryPanelReader`と同じ規則)。受賞は`{ productId, kind: 'year', label: '<対象年>年' }`(`ProductAwardContribution`。`label`は期間の表記だけで、プロフィールでは`launch-history-reader.ts`が名前を前に付ける、12.8)。
 - `YearTrophySource.listTrophies(productId)`: `listAwardsByProducts([productId])`を`{ kind: 'year', period: '<年>', periodLabel: '<年>年', awardedAt, bracketPath: '/tournaments/year/<年>' }`にする。並び(Yearを先頭)はtournament-weekの`ProductTrophyReader`が行う(12.7)。
 
 #### YearTournamentJobs
 
 **Contracts**: Batch [x]
 
-| ジョブの名前                      | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| --------------------------------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tournament-year.evening-bracket` | 23:45    | 1700    | 毎晩、次の順に行う。(1)`YearCalendar.ensureUpcoming(now)`と`YearEntryRegistrar.syncChampions({ awardedFrom: openPeriodStart, now })`(3.1)。(2)`YearDrawService.drawDue(now)`。到来した年が無ければ何もしない(遅れた年の回復は曜日によらず行う)(5.5・6.4・6.5・7.1・7.2)。(3)`YearProgressionService.advanceAll(now)`。確定のマッチイベントの処理が終わっていなくても、マッチの結果から同期で追いつく(8.2)。(4)`YearNotificationPublisher.publishEvening({ date: context.business.date, at: clock.now() })`(時計は(2)(3)の後に読み直す。14.1〜14.4)。(5)(1)〜(4)が全て成功したときだけ、`EveningDispatchGate.markReady({ participant: 'tournament-year.evening-bracket', date: context.business.date, at: clock.now() })`を最後に1回呼ぶ(14.7) |
-| `tournament-year.entry-follow-up` | 4:21     | 1700    | `listPendingFollowUps(10分前, 100)`を`YearEntryFollowUp.process`(6.8)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ジョブの名前                      | 業務時刻 | `order` | 処理                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tournament-year.evening-bracket` | 23:45    | 1700    | 毎晩、次の順に行う。(1)`YearCalendar.ensureUpcoming(now)`(段`calendar`)と、`YearEntryRegistrar.syncChampions({ awardedFrom: openPeriodStart, now })`(段`entry-sync`。年の行の用意の失敗で取り込みを止めないよう段を分け、`openPeriodStart`が失敗したら`syncChampions`を呼ばない)(3.1)。(2)`YearDrawService.drawDue(now)`。到来した年が無ければ何もしない(遅れた年の回復は曜日によらず行う)(5.5・6.4・6.5・7.1・7.2)。(3)`YearProgressionService.advanceAll(now)`。確定のマッチイベントの処理が終わっていなくても、マッチの結果から同期で追いつく(8.2)。(4)`YearNotificationPublisher.publishEvening({ date: context.business.date, at: clock.now() })`(時計は(2)(3)の後に読み直す。14.1〜14.4)。(5)(1)〜(4)が全て成功したときだけ、`EveningDispatchGate.markReady({ participant: 'tournament-year.evening-bracket', date: context.business.date, at: clock.now() })`を最後に1回呼ぶ(14.7) |
+| `tournament-year.entry-follow-up` | 4:21     | 1700    | `listPendingFollowUps(10分前, 100)`を`YearEntryFollowUp.process`(6.8)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 - Trigger: apiのCron Triggers(`45 7 * * *`・`21 12 * * *`、上流で追加済み)。23:45はmatch-engine(1100)・notifications(1300)・tournament-week(`tournament-week.evening-bracket`、1500)の後、4:21は上流の1600以下の後、content-processingの`content-processing.keyword-reextraction`(2300)の前に動く(15.2・15.3)。
 - 23:45のジョブの失敗: (1)〜(4)は年ごと・段ごとに失敗を集めて残りを続け、失敗は通知のポート`YearTournamentIncidentReporter.report`(`apps/api/src/application/year-tournament/ports.ts`。`evening-bracket-failed`(業務日付・失敗した段・失敗した年)・`entry-follow-up-failed`(年と件数)。識別と件数だけで個人情報を含めない)で知らせ、Sentryの`captureEvent`はinfrastructureの実装`SentryYearTournamentIncidentReporter`だけが呼ぶ(tournament-weekの`WeekTournamentIncidentReporter`と同じ形、C-3)。1つでも失敗した夜は`markReady`を呼ばずに例外を投げ、notificationsの23:55の期限の送り出しに任せる(14.7・15.7)。`markReady`の戻り値(`waiting`・`dispatch-requested`・`already-requested`)はログにだけ使い、処理を分けない。`EveningDispatchError`(`unknown-participant`・`invalid-date`)はそのまま例外にする。
@@ -1474,12 +1514,13 @@ type Mutation {
 
 #### ProductEntryLossHandler・AccountEntryLossHandler・EntryUnlinkHandler
 
-| 名前                                 | 登録口                             | イベント    | `order` | 処理                                                                                                                                                                                                                          |
-| ------------------------------------ | ---------------------------------- | ----------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `tournament-year.product-entry-loss` | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS` | `deleted`   | 1700    | `forfeitByProduct`→枠のローンチごとに`OpenCheckoutExpirer.expireOpen({ userId: ownerUserId, kinds: ['year_tournament_entry'], targetId: launchId, limit: 50 })`→その製品の返金待ちの枠を`YearEntryFollowUp.process`(6.1〜6.3) |
-| `tournament-year.account-entry-loss` | `USER_LIFECYCLE_ASYNC_HANDLERS`    | `withdrawn` | 1700    | `forfeitByOwner`→返金待ちの枠を`YearEntryFollowUp.process`(知らせは`findContact`が`undefined`のため送られない)(6.1・6.2・6.9)                                                                                                 |
-| `tournament-year.entry-unlink`       | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS` | `purge_due` | 1700    | `unlinkOrDeleteByProduct`(15.4)                                                                                                                                                                                               |
+| 名前                                 | 登録口                             | イベント    | `order` | 処理                                                                                                                                                                                                                                                                    |
+| ------------------------------------ | ---------------------------------- | ----------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `tournament-year.product-entry-loss` | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS` | `deleted`   | 1700    | `forfeitByProduct`→`listLaunchIdsByProduct`のローンチごとに`OpenCheckoutExpirer.expireOpen({ userId: ownerUserId, kinds: ['year_tournament_entry'], targetId: launchId, limit: 50 })`→`findByLaunches`の返金待ち・知らせ待ちの枠を`YearEntryFollowUp.process`(6.1〜6.3) |
+| `tournament-year.account-entry-loss` | `USER_LIFECYCLE_ASYNC_HANDLERS`    | `withdrawn` | 1700    | `forfeitByOwner`→喪失の結果を先に`YearEntryFollowUp.process`し、`listPendingFollowUps(now + 1ms, 50)`を繰り返して本人の枠だけを処理(他の利用者の待ちが50件以上先にあると一部は4:21に回る。知らせは`findContact`が`undefined`のため送られない)(6.1・6.2・6.9)            |
+| `tournament-year.entry-unlink`       | `PRODUCT_LIFECYCLE_ASYNC_HANDLERS` | `purge_due` | 1700    | `unlinkOrDeleteByProduct`(15.4)                                                                                                                                                                                                                                         |
 
+- 4つの処理のクラス名(`RoundProgressHandler`・`ProductEntryLossHandler`・`AccountEntryLossHandler`・`EntryUnlinkHandler`)はWeekと同名のため、eventの束縛のモジュールでは`Year`を前に付けた別名で読み込む。
 - 凍結の後に届いた`deleted`・`withdrawn`は`forfeit*`が0件になり、組み合わせ決定の分類で`forfeited`になった枠の返金待ちだけを処理する(同じ依頼キー)。`expireOpen`の`remaining`が真なら`continue`を返す。
 
 #### YearUltrasEntryExemptionHandler・YearOpenEntryCheckoutExpiryHandler
@@ -1499,7 +1540,7 @@ type Mutation {
 
 ### client
 
-- 操作はclientの`src/graphql/operations/year-tournament/`、adminの`src/graphql/operations/year-tournament/`(G9)に1ファイル1操作の`.graphql`で書き、`graphql()`を呼ばない。操作名はclientが`Client`、adminが`Admin`で始め(File Structure Plan)、`ClientYearBracket`はtournament-weekのフラグメント`BracketRoundFields`・`BracketMatchProductFields`を、`ClientYearTournamentBoard`は本specのフラグメント`YearBoardRoundFields`(`src/graphql/fragments/year-tournament/`。`WeekBoardRoundFields`と同じく`round`・`roundName`・`final`・`matches`(`Match`)・`byes`(`MatchBye`)・`bracketPath`を選び、`tournament`は`year`・`label`・`finalDate`・`firstRoundDate`・`status`・`awarded`、行の`finalDate`を加える。共用の部品は`final`・`matches`・`byes`の構造だけに依存する)を名前で展開する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない。取得と変更の補助(`queryOptions`・`mutationOptions`)は`src/graphql/year-tournament.ts`に置く(tournament-weekの`src/graphql/week-tournament.ts`と同じ形)。
+- 操作はclientの`src/graphql/operations/year-tournament/`、adminの`src/graphql/operations/year-tournament/`(G9)に1ファイル1操作の`.graphql`で書き、`graphql()`を呼ばない。操作名はclientが`Client`、adminが`Admin`で始め(File Structure Plan)。`BracketRoundFields`・`YearBoardRoundFields`を照会の中で名前で展開するとapiの照会の深さの上限(8)を超えるため、Weekと同じく照会に同じ項目を直接書き、名前で展開するのは`ClientYearBracket`の`champion`の`...BracketMatchProductFields`だけにする。tournament-weekのフラグメント`BracketRoundFields`と本specのフラグメント`YearBoardRoundFields`(`src/graphql/fragments/year-tournament/`。`WeekBoardRoundFields`と同じく`round`・`roundName`・`final`・`matches`(`Match`)・`byes`(`MatchBye`)・`bracketPath`を選び、`tournament`は`year`・`label`・`finalDate`・`firstRoundDate`・`status`・`awarded`、行の`finalDate`を加える。共用の部品は`final`・`matches`・`byes`の構造だけに依存する)は型だけを生成し、照会の結果の型との一致を`expectTypeOf`で固定する([GraphQL通信](../../../docs/GUIDES/tech/coding/004-graphql-communication.md)と[トーナメントのブラケットの表示](../../../docs/GUIDES/tech/frontend/016-tournament-bracket-view.md)の規則どおり)。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない。取得と変更の補助(`queryOptions`・`mutationOptions`)は`src/graphql/year-tournament.ts`に置く(tournament-weekの`src/graphql/week-tournament.ts`と同じ形)。
 
 #### TournamentClientParts(`components/tournament/`、G6)
 
@@ -1531,9 +1572,9 @@ export declare function useTournamentBoard<
   TData,
   R extends TournamentBoardRound,
 >(input: {
-  readonly board: TopPageSectionContext['board'];
+  readonly clientViewer: ClientViewer | null;
   readonly autoRefresh: boolean;
-  readonly queryOptions: UseSuspenseQueryOptions<TData>; // 種類の取得の補助が作る
+  readonly queryOptions: UseSuspenseQueryOptions<TData>; // 種類の取得の補助が作る。同じ閲覧者と日付の間は同じ値(メモ化)を渡す
   readonly roundsOf: (data: TData) => readonly R[];
   readonly withUpdatedMatch: (
     data: TData | undefined,
@@ -1614,38 +1655,45 @@ export interface TournamentFinalCopy {
   readonly noAward: string;
 }
 export interface TournamentBracketCopy {
-  readonly pageTitle: (periodLabel: string) => string;
+  readonly title: string; // ページと失敗の表示の見出し(ページの題名はheadを経路で組み立てるため文言に持たない)
+  readonly awardName: string; // 優勝の表示の賞の名前
   readonly counts: (participantCount: number, seedCount: number) => string;
   readonly error: string;
 }
 export interface TournamentEntryCopy {
+  readonly title: string; // 導線の見出し
   readonly entryButton: string; // 「Weekトーナメントに参加」「Yearトーナメントに参加」
   readonly exemptMessage: string;
-  readonly closedMessage: string;
-  readonly entitledMessage: (drawAt: ReactNode) => ReactNode;
+  readonly closedMessage: string; // 受付の終了と、受付期限の後の決済の開始の拒否(checkout_closed)の文言
+  readonly entitledMessage: {
+    readonly lead: string;
+    readonly before: string;
+    readonly after: string;
+  }; // 組み合わせ決定の日時の前後に分けた文言
   readonly drawnMessage: string;
   readonly championMessage: string;
   readonly eliminatedMessage: (roundName: string) => string;
   readonly expiredMessage: (late: boolean) => string;
   readonly forfeitedMessage: string;
+  readonly forfeitedRefundSuffix: string; // 返金の対象のとき資格の喪失の文に続ける文
   readonly excludedMessage: (
     reason: 'hidden_or_suspended' | 'over_capacity',
   ) => string;
-  readonly refundSuffix: string;
-  readonly checkoutRejectionMessageOf: (error: unknown) => string;
-}
+  readonly excludedRefundSuffix: string; // 返金の対象のとき除外の文に続ける文
+} // 決済の開始の拒否はcheckout_closedならclosedMessage、他はerrorMessageOf(Yearのyear_entry_*はサーバーの文言)で、文言の型に関数を持たない
 ```
 
 - 移す元と移す先はFile Structure Planの「clientの共用の部品」の表のとおりで、モデルの規則(取り直しの間隔・追いかけの上限・決勝の受賞の判定・表示の種類の判定・秒読みの境界)は変えない。Weekの`week-*`の包みは、Weekの照会の補助・`WeekBoardRoundFields`・Weekの文言・`refundable = !exempt`・`countdown: true`を渡す。
 - `TournamentEntryPanelBody`は`countdown`(受付期限まで48時間未満の秒読みを添えるか)を受ける。Weekは真(ページ配置のWeekの導線)、Yearは偽で、受付期限の日時と相対表現だけを示す(要件12.1・12.2とページ配置のYearの導線に秒読みは無い)。
 - 共用の部品は`components/week-tournament/`・`components/year-tournament/`を読み込まず、種類の値はすべて引数で受ける。1ファイル1コンポーネントの規則に従う。
+- 実装で共用の部品に足した任意の受け口(省けばWeekの表示は変わらない): `TournamentBracketPage`の`finalDate?: string`(見出しのh1と参加数の間に決勝日を`<time datetime>`で示す)、`TournamentEntryPanelBody`の`payableIntro?: ReactNode`(決済の導線の間だけ決済期限の前に描く種類の案内)。見出しは`TournamentBoardRound`へrender prop`(headingId) => ReactNode`で渡す。決済期限のラベルは種類によらない「決済期限」(`ENTRY_DEADLINE_LABEL`)。テストの値は`tournament-board-fixtures.ts`・`tournament-bracket-fixtures.ts`・`tournament-entry-fixtures.ts`(File Structure Planに無い)。
 
 #### Yearの部品(`components/year-tournament/`)
 
 - `YearTournamentSection`(`main` 10): `useYearBoard`(`useTournamentBoard`へ`yearTournamentBoardQueryOptions`・`YearBoardRoundFields`の行・差し替えの関数・本文の取り直しの判定を渡す)の`final`でない行ごとに、`TournamentBoardRound`(見出しは`TournamentSectionHeading`に、トロフィーのアイコン・「Product of the Yearトーナメント」・ラウンド名・対象年の表記・決勝日の`<time datetime>`・「ブラケットを見る」の通常のリンク`bracketPath`を渡す)、`TournamentMatchCard`(`useUpvote`、段階の印は`MatchCard`が保存した`stage`から描く、2列は1280px以上)、`ByeList`を描く。行が無ければ`null`(10.1・10.2・10.4・10.6・10.7)。取得の失敗は`PartialErrorState`で区画だけ縮退する(10.8)。`main`の10はWeek(20)・予選(30)より上になる(10.3)。定期の取り直しはページの自動更新の切り替えに従う([集計値と残り時間を表示し続ける画面](../../../docs/GUIDES/tech/frontend/013-live-scoreboard.md))。
 - `YearFinalShowcase`(`showcase` 10): 本文の区画と同じ盤面を購読し、`final`の行を`TournamentFinalRound`で全幅に描き(紙吹雪は`prefers-reduced-motion: reduce`で止める)、確定の後は`TournamentFinalCopy`のYearの文言「フルタイム！<名称>がProduct of the Yearを受賞🎉」または「フルタイム。0対0で両者敗北。今回の受賞プロダクトはありません」を`role="status"`で表示する(10.5)。
-- `YearBracketPage`(`routes/tournaments/year/$year.tsx`): tournament-weekの`/tournaments/week/$week`と同じ形で、`loader`は4桁の年でなければ`notFound()`を投げ、`queryClient.query({ ...yearBracketQueryOptions(viewer, year), staleTime: 0 })`の結果が`null`なら`notFound()`(11.6)。`head`は`head/page-heads.ts`の`buildYearBracketHead`(題名「<年>年のProduct of the Yearトーナメント」)、`errorComponent`は`TournamentBracketError`にYearの文言を渡す部品、`notFoundComponent`は`NotFoundPage`。経路の年ごとに部品を作り直す。本体は`TournamentBracketPage`に`bracketViewPropsOf(yearBracket)`(`rounds`・`champion`・`awarded`は`tournament.awarded === true`・`finished`は状態が`FINISHED`)と見出し(対象年・決勝日・参加数とシード数)を渡し、受賞したプロダクトが表示できなくなった年は「非公開のプロダクト」の受賞を表示する。開催中は自動更新がオンの間だけ取り直す(11.1〜11.5、[トーナメントのブラケットの表示](../../../docs/GUIDES/tech/frontend/016-tournament-bracket-view.md#開催中だけの定期再取得))。
-- `YearEntryPanel`(`myYearEntry`): `myYearEntryQueryOptions`で取得し、`yearEntryInputOf`(`year-entry-view.ts`。`ultrasGuide`は偽・`blockedReason`はnull・`refundable`はサーバーの値・`excludedReason`は`closeReason`から)の入力と、Yearの`TournamentEntryCopy`・`countdown: false`・`startYearTournamentCheckoutMutationOptions`を`TournamentEntryPanelBody`へ渡す。`AWAITING_PAYMENT`で受付期限より前は、対象年・決勝日・Week優勝の週の表記、「参加費の決済期限」(`<time datetime>`・`RelativeTime`、受付期限の23:00)と「Yearトーナメントに参加」ボタン(`MoneyText`の参加費、押下で`startYearTournamentCheckout`→`/checkout/<購入ID>`)。`fee`が`null`、または`payments_unavailable`のときはボタンを無効にし`UnavailableNotice`(12.1・12.2・12.4)。`exempt`は「参加費免除。Ultrasの特典によりYearトーナメントの参加資格を得ています。参加のための操作は不要です。」(12.3)。その他の状態と押下の後のエラーはYearの`TournamentEntryCopy`の文言(12.5、Supporting References)。区画の取得の失敗は区画の位置だけに失敗の文言と再試行を示す。
+- `YearBracketPage`(`routes/tournaments/year/$year.tsx`): tournament-weekの`/tournaments/week/$week`と同じ形で、`loader`はcommon-libの`parseTournamentYear`(Weekの`parseIsoWeek`と同じ置き場所の共用の解析。apiの`DirectoryYearBracketReader`も使う)が1年以後の4桁の年と認めなければ`notFound()`を投げ、`queryClient.query({ ...yearBracketQueryOptions(viewer, year), staleTime: 0 })`の結果が`null`なら`notFound()`(11.6)。`head`は`head/page-heads.ts`の`buildYearBracketHead`(題名「<年>年のProduct of the Yearトーナメント」)、`errorComponent`は`TournamentBracketError`にYearの文言を渡す部品、`notFoundComponent`は`NotFoundPage`。経路の年ごとに部品を作り直す。本体(`components/year-tournament/year-bracket-page.tsx`)は`TournamentBracketPage({ copy, periodLabel, finalDate, bracket, autoRefresh, onAutoRefreshChange })`に照会の`yearBracket`をそのまま渡し、`BracketViewProps`(`rounds`・`champion`・`awarded`は`tournament.awarded === true`・`finished`は状態が`FINISHED`)は共用のページが`bracketViewPropsOf`で自分で作る。見出しの決勝日は`year-bracket-model.ts`の`yearBracketFinalDateOf`(開催中は最後のラウンドの日、終了した年は最後のラウンドが決勝のときだけその日、それ以外は設定した決勝日)で、受賞したプロダクトが表示できなくなった年は「非公開のプロダクト」の受賞を表示する。開催中は自動更新がオンの間だけ取り直す(11.1〜11.5、[トーナメントのブラケットの表示](../../../docs/GUIDES/tech/frontend/016-tournament-bracket-view.md#開催中だけの定期再取得))。
+- `YearEntryPanel`(`myYearEntry`): `myYearEntryQueryOptions`で取得し、`yearEntryInputOf`(`year-entry-view.ts`。`ultrasGuide`は偽・`blockedReason`はnull・`refundable`はサーバーの値・`excludedReason`は`closeReason`から)の入力と、Yearの`TournamentEntryCopy`・`countdown: false`・`autoRefresh: false`・`startYearTournamentCheckoutMutationOptions`を`TournamentEntryPanelBody`へ渡す。`AWAITING_PAYMENT`で受付期限より前は、`payableIntro`で対象年・決勝日(共用の`formatBusinessDateWithWeekdayLabel`)・Week優勝の週の表記、種類によらない「決済期限」(`<time datetime>`・`RelativeTime`、受付期限の23:00)と「Yearトーナメントに参加」ボタン(`MoneyText`の参加費、押下で`startYearTournamentCheckout`→`/checkout/<購入ID>`)。`fee`が`null`、または`payments_unavailable`のときはボタンを無効にし`UnavailableNotice`(12.1・12.2・12.4)。`exempt`は「参加費免除。Ultrasの特典によりYearトーナメントの参加資格を得ています。参加のための操作は不要です。」(12.3)。その他の状態と押下の後のエラーはYearの`TournamentEntryCopy`の文言(12.5、Supporting References)。区画の取得の失敗は区画の位置だけに失敗の文言と再試行を示す。
 - `YearEntryOwnerAction`(`PRODUCT_OWNER_ACTIONS`の20)・`YearEntryMyProductSection`(`MY_PRODUCT_SECTIONS`の20): `YearEntryPanel`を描く薄い包み。
 - `YearEntryDeleteNotice`(`PRODUCT_DELETE_NOTICES`の20): `myYearEntry`が`AWAITING_PAYMENT`・`ENTITLED`のとき「このプロダクトを削除するとYearトーナメントの参加資格を失います。支払った参加費は自動で全額返金されます。」(12.6)。
 - トロフィーはtournament-weekの`TrophyShelf`が、本specの供給元の受賞をYearの先頭に大きく描く(12.7)。
@@ -1653,17 +1701,17 @@ export interface TournamentEntryCopy {
 ### admin
 
 - 部品は`apps/admin/src/components/year-tournament/`、操作は`src/graphql/operations/year-tournament/`に置く(G9)。登録: `ADMIN_SETTINGS_SECTIONS`に`{ id: 'tournament-year.final-date', order: 10, title: FINAL_DATE_SECTION_TITLE, component: FinalDateSection }`(`FINAL_DATE_SECTION_TITLE`は`final-date-labels.ts`の「Yearトーナメントの決勝実施日」。送信者情報の区画の`SENDER_INFO_TITLE`と同じ形)。設定ページが区画ごとに`RecoverableSlot`で包み、読み込み中と失敗の間は`title`の見出しを補うため、`title`は部品が描く見出しと同じ文言にする。
-- `FinalDateSection`: 見出し「Yearトーナメントの決勝実施日」と説明(「欧州サッカーのリーグ最終節に合わせて、各年の決勝実施日(日曜日)を設定します。未設定の年は5月の最終日曜日に行います。」)、`yearFinalDateSettings`の2年分を`FinalDateYearCard`で並べる(2.1)。取得の失敗は区画の中の`ErrorState`(再試行)で縮退し、`contactHref`を渡さない(管理者側は問い合わせの画面を持たない)。文言は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ。
-- `FinalDateYearCard`: 対象年、決勝実施日(業務日付の`<time datetime="YYYY-MM-DD">`と「2027年5月30日(日)」の表記)と「設定済み」「既定(5月の最終日曜日)」のバッジ、受付期限・組み合わせ決定・変更期限の`DateTime`、最後に変更した日時と管理者のニックネーム、翌年の注意(2.12)。`RoleGate({ minimum: 'super_admin' })`かつ`changeable`のときだけ`FinalDateForm`、それ以外は参照だけで「最上位管理者だけが変更できます」または「変更期限(決勝の7日前)を過ぎたため変更できません」(2.2・2.3)。
-- `FinalDateForm`: 候補(`choices`)の`<select>`(ラベル付き、既定の選択は現在の日、候補が無ければ選べる日が無い旨)と任意の理由(500書記素以内、個人情報を含めない旨の注記)、保存は`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`)で、確認の文に変更後の受付期限・組み合わせ決定と対象期間が変わる旨を出す(2.13)。成功で「決勝実施日を保存しました。」。保存の失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す。`failureMessageOf`は、`validation_error`なら理由の文言、`final_date_locked`なら期限の文言、`version_conflict`なら最新を読み直す案内(2.11、`FinalDateLabels`)を返し、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返して問い合わせを促す文を出さない。
-- `FinalDateLabels`(純粋な関数): 業務日付の表記(曜日つき)と、拒否の理由ごとの文言(Supporting References)。
+- `FinalDateSection`: 見出し「Yearトーナメントの決勝実施日」と説明(「欧州サッカーのリーグ最終節に合わせて、各年の決勝実施日(日曜日)を設定します。未設定の年は5月の最終日曜日に行います。」)、`yearFinalDateSettings`(`admin-year-final-date.ts`の`adminYearFinalDateSettingsQueryOptions()`)の2年分を`<FinalDateYearCard setting={s}><FinalDateForm setting={s} /></FinalDateYearCard>`で並べる(2.1)。最初の取得の失敗は`throwOnError`で設定ページの`RecoverableSlot`へ投げ、区画の位置に失敗の文言と再試行を示す(先例と`frontend/009`のガイドどおり。見た目は区画の中の`ErrorState`と同じで、`contactHref`は渡さない)。
+- `FinalDateYearCard`: 対象年、決勝実施日(業務日付の`<time datetime="YYYY-MM-DD">`と「2027年5月30日(日)」の表記)と「設定済み」「既定(5月の最終日曜日)」のバッジ、受付期限・組み合わせ決定・変更期限の`DateTime`、最後に変更した日時と管理者のニックネーム、翌年の注意(2.12)。カードは`FinalDateForm`を直接描かず、編集の欄を`children`の受け口として受け、`RoleGate({ minimum: 'super_admin' })`かつ`changeable`のときだけ描く。それ以外は参照だけで「最上位管理者だけが変更できます」または「変更期限(決勝の7日前)を過ぎたため変更できません」(2.2・2.3)。
+- `FinalDateForm`: 候補(`choices`)を選ぶ共用のRadixの`Select`(`role="combobox"`、ラベル付き、既定の選択は現在の日、候補が無ければ選べる日が無い旨)と任意の理由(500書記素以内、個人情報を含めない旨の注記)、保存は`ConfirmActionDialog`(`reason: 'optional'`・`audited: true`・`failureMessageOf`)で、確認の文に変更後の受付期限・組み合わせ決定と対象期間が変わる旨を出す(2.13)。確認のダイアログの題名の決勝日は業務日付の`<time>`、説明の受付期限と組み合わせ決定は`DateTime`で示す(`ConfirmActionDialog`の`title`・`description`は`ReactNode`を受ける。文言は`finalDateConfirmTitleOf(year)`の`{ before, after }`と`FINAL_DATE_CONFIRM_DESCRIPTION`で`<time>`の前後に分ける)。変更後の受付期限・組み合わせ決定は`final-date-schedule.ts`の`scheduleOfChoice`(サーバーの現在の`acceptUntil`・`drawAt`を選んだ日との暦日の差だけずらす。業務時刻が夏時間の無い固定のオフセットであることに依る)で求める。拒否の理由の文言はサーバーの`details[0].message`を優先し、空のときだけ`finalDateViolationMessageOf`を使う。`validation_error`・`final_date_locked`・`version_conflict`の照会の読み直しはダイアログを閉じたときに行う(開いたまま読み直すとフォームとダイアログが消えるため)。成功で「決勝実施日を保存しました。」。保存の失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す。`failureMessageOf`は、`validation_error`なら理由の文言、`final_date_locked`なら期限の文言、`version_conflict`なら最新を読み直す案内(2.11、`FinalDateLabels`)を返し、それ以外は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`を返して問い合わせを促す文を出さない。
+- `FinalDateLabels`(純粋な関数): 拒否の理由ごとの文言(Supporting References)と区画の文言。業務日付の曜日つきの表記は、backend-lib・client・adminで共用のcommon-libの`formatBusinessDateWithWeekdayLabel`(`time/business-date-label.ts`)を使う。翌年の注意は照会の項目`nextYearGapWarningDate`(サービスの値は`nextYearGapWarning`)から`nextYearGapWarningOf`で文にする。
 
 ### docs
 
 #### YearTechDocs・YearServiceSpecs
 
 - `backend/019-anchor-date-schedules.md`(16.5): 起点の日付(設定値と既定値)から期限・締め切り・日程を純粋な関数で導く規約、導いた期限を行の列に保存して正とし変更時に同じ書き込みで書き直す、変更の締め切りと版と凍結を1つの条件付きの更新で検査する、期間の所属を保存せず日付と凍結の状態で判定する(付け替えを持たない)、凍結した期間に遅れて届いた記録の扱い、業務時刻での曜日と月末の計算、本プロジェクト固有の値を含めない。
-- `frontend/012-business-date-calendar.md`への追記(16.5、G7): 「サーバーが返す候補から選ばせる日付」の節を加える。曜日などで選べる日が少なく限られる日付の入力は、サーバーが返す候補の業務日付の一覧を`<select>`(ラベル付き、既定の選択は現在の値)で選ばせ、候補と検証の規則をサーバーの1か所に保つ(保存の時もサーバーが同じ規則で検証し直す)。候補が無いときと変更できないとき(締め切り・権限)の表示、業務日付を`<time datetime>`の日付と曜日つきの表記で示すこと、確認のダイアログで変更によって変わる期限と対象を明示すること、版の競合の案内を扱う。カレンダーで選ばせる場合(既存の節)との使い分けを冒頭の前提に書く。`frontend/README.md`の`012`の行と、`CLAUDE.md`の「業務日付をカレンダーで選ばせる画面…」の参照先の文言に、候補から選ばせる日付を含める。
+- `frontend/012-business-date-calendar.md`への追記(16.5、G7): 「サーバーが返す候補から選ばせる日付」の節を加える。曜日などで選べる日が少なく限られる日付の入力は、サーバーが返す候補の業務日付の一覧を共通部品の`Select`(`Label`を結ぶ。既定の選択は現在の値)で選ばせ、候補と検証の規則をサーバーの1か所に保つ(保存の時もサーバーが同じ規則で検証し直す)。候補が無いときと変更できないとき(締め切り・権限)の表示、業務日付を`<time datetime>`の日付と曜日つきの表記で示すこと、確認のダイアログで変更によって変わる期限と対象を明示すること、版の競合の案内を扱う。カレンダーで選ばせる場合(既存の節)との使い分けを冒頭の前提に書く。`frontend/README.md`の`012`の行と、`CLAUDE.md`の「業務日付をカレンダーで選ばせる画面…」の参照先の文言に、候補から選ばせる日付を含める。
 - サービス仕様(16.6): Modified Filesのとおり。
 
 ## Data Models
@@ -1727,7 +1775,13 @@ erDiagram
 
 ### Monitoring
 
-- ログは`getAppLogger`で、対象年・枠・ブラケット・マッチ・購入・管理者の識別と件数だけを記録し、名称・メールアドレス・ハンドルを含めない(15.6)。`captureEvent`(文言は`logentry`、`fingerprint`は理由)は`workers/year-tournament`とapiのinfrastructureの`SentryYearTournamentIncidentReporter`だけが呼び、api・eventの`application`は呼ばない。タグは`job`・`year`・`bracketId`・理由(`round-late`・`draw-failed`・`late-entry`・`refund-rejected`・`refund-already-refunded`・`qualifier-missing`・`evening-bracket-failed`・`entry-follow-up-failed`)。
+- ログは`getAppLogger`で、対象年・枠・ブラケット・マッチ・購入・管理者の識別と件数だけを記録し、名称・メールアドレス・ハンドルを含めない(15.6)。`captureEvent`(文言は`logentry`、`fingerprint`は`['tournament-year', 理由]`)・`captureException`(タグだけ)は`workers/year-tournament`とapiのinfrastructureの`SentryYearTournamentIncidentReporter`だけが呼び、api・eventの`application`は呼ばない。タグは除去処理の対象外のため識別子の形の値だけを送り(`workers/year-tournament/incident-tags.ts`の`safeTagOf`)、`bracketId`は付けない。実際のタグは次のとおり。
+  - Week優勝の取り込み(`warning`): `tournament_year_incident`(`late-entry`・`qualifier-missing`)・`week_tournament_id`。
+  - 返金の後処理: `tournament_year_incident`(`refund-already-refunded`は`warning`・`refund-rejected`は`error`)・`entry_id`・`purchase_id`。
+  - 組み合わせ決定の失敗(`captureException`): `tournament_year_incident: 'draw-failed'`・`year`・`year_tournament_id`。
+  - 進行の失敗(`captureException`): `year`・`year_tournament_id`。
+  - ジョブの失敗(`SentryYearTournamentIncidentReporter`、`error`): `tournament_year_incident`(`evening-bracket-failed`・`entry-follow-up-failed`)・`job`・`year`(失敗した年が1つのときだけ。安全な整数でなければ`unknown`)。
+  - ラウンドの遅れ(`round-late`)はtournament-weekの`D1BracketProgression`が種類によらず`tournament_incident`のタグで知らせ、本specは送らない。
 
 ## Testing Strategy
 
@@ -1751,7 +1805,7 @@ erDiagram
   - Ultrasの知らせ: 期限の前後の加入、重複の知らせ、未完了の決済の失効(5.2〜5.4・5.7)。
   - 決勝実施日: 保存と期限の列の書き直しと監査ログの一体の確定、版の競合、変更期限・凍結の`locked`、行の無い年の保存、保存の後に対象期間が移ること(1.3・2.7・2.10・2.11・3.8)。
   - GraphQL: `yearTournamentBoard`の分類、`yearBracket`の非公開のプロダクト・優勝のプロダクト・受賞したプロダクトが表示できない年の`champion`がnullで`tournament.awarded`が真・受賞なしの年の`awarded`が偽・終了前のnull・最初のマッチの前のシードの「シード<n>」と404、`myYearEntry`の本人の判定、`startYearTournamentCheckout`のエラーコード、`yearFinalDateSettings`・`updateYearFinalDate`のロールとエラー(2.1〜2.13・10.1〜10.8・11.1〜11.6・12.1〜12.8)。
-- ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): 共用の`components/tournament/`の部品(移したWeekのテストに、Yearの文言と`countdown: false`・`ultrasGuide`偽・除外の理由`over_capacity`の例を加える)、`YearTournamentSection`(区画の有無・不戦勝の一覧・縮退)、`YearFinalShowcase`(受賞・受賞なし・視差効果の軽減)、`YearBracketPage`(見出しと、`TournamentBracketPage`への`BracketViewProps`(`rounds`・`champion`・`awarded`・`finished`)の受け渡し、受賞したプロダクトが表示できない年の`champion`がnullで`awarded`が真、404)、`YearEntryPanel`の全状態・縮退・免除・秒読みを添えないこと、`YearEntryDeleteNotice`、`FinalDateSection`・`FinalDateYearCard`・`FinalDateForm`(ロールと期限による参照だけ・候補の選択・確認の文・理由の上限・競合の案内・翌年の注意)。Weekの包み(`week-tournament-section`・`week-final-showcase`・`week-bracket-page`・`week-entry-panel`など)の既存のブラウザテストは、期待値を変えずに通ること(G6でWeekの表示が変わらないことの確認)。
+- ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): 共用の`components/tournament/`の部品(移したWeekのテストに、Yearの文言と`countdown: false`・`ultrasGuide`偽・除外の理由`over_capacity`の例を加える)、`YearTournamentSection`(区画の有無・不戦勝の一覧・縮退)、`YearFinalShowcase`(受賞・受賞なし・視差効果の軽減)、`YearBracketPage`(見出しと、照会の値から共用の`TournamentBracketPage`が作る`BracketViewProps`(`rounds`・`champion`・`awarded`・`finished`)、受賞したプロダクトが表示できない年の`champion`がnullで`awarded`が真、404)、`YearEntryPanel`の全状態・縮退・免除・秒読みを添えないこと、`YearEntryDeleteNotice`、`FinalDateSection`・`FinalDateYearCard`・`FinalDateForm`(ロールと期限による参照だけ・候補の選択・確認の文・理由の上限・競合の案内・翌年の注意)。Weekの包み(`week-tournament-section`・`week-final-showcase`・`week-bracket-page`・`week-entry-panel`など)の既存のブラウザテストは、期待値を変えずに通ること(G6でWeekの表示が変わらないことの確認)。
 - 単体テスト(client・admin): `tournament-entry-model`(移したWeekの例に、`refundable`がサーバーの値の例と`over_capacity`の除外を加える)、`year-entry-view`、`src/graphql/year-tournament.ts`、`final-date-labels`。
 - マイグレーション: `tournament-year-migration.unit.test.ts`が生成したマイグレーションのCHECK(状態・理由・返金の状態の値と組み合わせの制約)・一意索引・`tournament_brackets`への外部キーを確かめる(tournament-weekの`tournament-week-migration.unit.test.ts`の前例)。
 - E2E:
@@ -1768,7 +1822,7 @@ erDiagram
 ## Performance & Scalability
 
 - 1つの年の参加は高々64(上限)で、分類の対象は初年度でも数百件に収まる。組み合わせ決定は分類の一括の書き込み数回・参加者とマッチの書き込み(tournament-weekの部品が50件ずつ)で、CPU時間とバインド変数の上限に収まる。
-- トップページの区画は30秒ごとの取り直しで、`listForDate`1回・`findByMatchIds`1回・年の行の読み取り1回・`matchViewLoader`のまとめた読み取りに限る(15.8)。ブラケットのページはマッチの数(最大63)の読み取りを90件ずつまとめる。
+- トップページの区画は30秒ごとの取り直しで、`listForDate`1回・`findByMatchIds`1回・年の行の読み取り(年ごとに`findById`。遅れの回復で2つの年が同じ日にマッチを持つと2回になる)・`matchViewLoader`のまとめた読み取りに限る(15.8)。ブラケットのページはマッチの数(最大63)の読み取りを90件ずつまとめる。
 - 再ローンチの判定の供給元は、枠・勝ち残り・年・Week優勝(枠の無いローンチがあるとき)の読み取りを各1回に限る。
 
 ## Migration Strategy

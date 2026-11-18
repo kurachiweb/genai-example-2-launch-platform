@@ -44,6 +44,7 @@
 - 波及処理・ジョブ・イベントの処理の`order`: 本specの1700番台(roadmapの帯の割り当て)。23:45のジョブはmatch-engine(1100)・notifications(1300)・tournament-weekの`tournament-week.evening-bracket`(1500)の後に動き、上流の値より前に動く必要のある処理は無い。Ultrasの知らせの処理の`order`は100以上の規則のもとで帯と同じ1700・1710とし、tournament-week(1500・1510)と重ならない。
 - 新しいパッケージ: 無い。日付の選択は`<select>`とshadcn/uiの部品、ブラケットはtournament-weekの部品、日付の計算は`BusinessTime`の関数で足りる。
 - steering: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替する(tournament-weekと同じ)。
+- 実装では、日付の選択は`<select>`ではなく共通部品の`Select`(shadcn/uiの部品)で書いた。新しいパッケージは加えていない。
 
 ## Research Log
 
@@ -115,12 +116,14 @@
 - **Rationale**: 前年の組み合わせ決定が前年の対象をすべて終えるため、残った枠は常に開催前の年の対象であり、初年度の起点なしと決勝日の変更がそのまま成り立つ。
 - **Trade-offs**: 年の行の作成の規則(組み合わせ決定の時刻が未来の年だけ作る)を守る必要がある。行を過去の年に作ると、その年の組み合わせ決定が遅れの回復として動いてしまう。
 - **Follow-up**: 決済期限日の前日と当日のWeek優勝、開催しなかった前年、変更で移る枠の判定を単体テストとWorkers統合テストで確かめる。
+- 実装では、分類の対象を`status IN ('awaiting_payment', 'entitled')`かつWeek優勝の日が`[前年の行の決済期限日, その年の決済期限日)`の枠にした(下限は前年の行があるときだけ付け、`YearEntryStore.listCandidates`は範囲`YearCandidateRange`を受ける)。遅れの回復で2年が同時に到来し前の年が分類の途中で失敗しても、後の年が前の年の受付中の枠を分類しないためである。複数の枠をまとめて扱う部品(Week優勝の取り込み・再ローンチの判定)は、`resolveAward`を枠ごとに呼ばず、`YearCalendar.describe`を1回読んで純粋な`resolveTargetYear`を当てる(結果は同じ)。
 
 ### Decision: 期限は年の行の列を正とし、決勝日の保存と同じ一括の書き込みで書き直す
 
 - **Context**: 決勝日の変更、E2Eで時刻を進める必要(tournament-weekと同じ)、変更期限の判定。
 - **Selected Approach**: `year_tournaments`に`final_date`・`final_date_source`・`deadline_date`・`accept_until`・`deadline_at`・`draw_at`・`change_lock_at`を持つ。行の作成時と決勝日の保存時に`yearScheduleFor`で求めて書き、以後の判定(決済の可否・反映・Ultrasの付与・再ローンチ・組み合わせ決定の到来・追記・画面)は列を読む。保存の文は`final_date_version = ? AND draw_started_at IS NULL AND change_lock_at > ?`を`CASE`式の条件にし、満たさなければNOT NULL制約の違反で監査ログごと取り消す。
 - **Rationale**: 変更期限と版と凍結の検査を1つの文で行え、監査ログと保存が一体で確定する(notificationsの送信者情報・ultras-subscriptionの機能フラグと同じ形)。
+- 実装では、保存の取り消しを`CASE`式のNOT NULL制約の違反ではなく、監査ログのガード(`{ kind: 'condition' }`)の拒否で行った。条件(年・版・`draw_started_at IS NULL`・`change_lock_at > now`)を監査ログのガードとUPDATEのWHEREで共有し、`isAuditGuardRejection`で判定する(監査ログのガイドと先例の`D1SenderInfoWriter`・`D1PromotionSettingWriter`に倣う)。一括の書き込みは行の用意→監査ログ→UPDATEの順とした(ガードが行を読むため)。機能全体の検証で、隣の年を同時に保存すると64週の間隔の検証を通り抜け得ることが分かり、条件に前年と翌年の版の一致(行が無い年は0)を加えた。
 
 ### Decision: 参加数の上限はWeek優勝の日時が新しい順に64件(仮2)
 
@@ -133,6 +136,7 @@
 - **Context**: FR-ADMCF-001〜003・006・007、仮8、アクセシビリティ。
 - **Selected Approach**: サーバーが現在の年と翌年について、実効の決勝日・出どころ・期限・変更の可否と理由・候補の日付(最大53件)・前年と翌年の日付・注意を返し、画面は候補の`<select>`と理由の入力欄を`ConfirmActionDialog`で確定する。サーバーは同じ純粋な規則で再検証する。
 - **Rationale**: カレンダーの部品で選べない日を灰色にするより、候補だけを並べる方がキーボードと読み上げで扱いやすく、検証の規則を1か所に保てる。新しいパッケージが要らない。
+- 実装では、候補の選択を`<select>`ではなく共通部品の`Select`(`role="combobox"`、`Label`を結ぶ)で書いた。確認のダイアログの決勝日は業務日付の`<time>`、変更後の受付期限と組み合わせ決定は`DateTime`で示し(`ConfirmActionDialog`の題名と説明が要素を受ける)。
 
 ### Decision: ブラケットのページはtournament-weekの共用の部品を再利用する(表示の組み立ての汎用化はtournament-weekの仮7で提供済み)
 
@@ -479,6 +483,8 @@
 | G7  | 日付の候補の選択の技術ドキュメント(D-5) | `frontend/018-server-provided-date-choices.md`を新設せず、`frontend/012-business-date-calendar.md`に「候補が少なく曜日などで限られる日付は、サーバーが返す候補の`<select>`で選ばせる」節(候補が無いとき・変更できないときの表示、確認のダイアログでの影響の明示、版の競合の案内を含む)を加える                                                                                                                                                                                                 | `frontend/018`を新設する / 決勝実施日も共通部品の`Calendar`で選ばせる             | 要件16.5(本決定を加えた)、設計のYearTechDocs・File Structure Plan・Modified Files(`frontend/README.md`の行は不要になる)、`CLAUDE.md`の参照先の文言                                                                                  |
 | G8  | テーブル定義の置き場所(C-4)             | `apps/db/schema/tournament/`に`year-tournaments.ts`・`year-tournament-entries.ts`を置き、Weekと同じくマイグレーションの内容の単体テスト(`tournament-year-migration.unit.test.ts`)を持つ                                                                                                                                                                                                                                                                                                        | 設計どおり`apps/db/schema/year-tournament/`                                       | 設計のThis Spec Owns・File Structure Plan・Modified Files・Dependency direction                                                                                                                                                     |
 | G9  | adminのディレクトリ名(C-7)              | adminも`components/year-tournament/`・`src/graphql/operations/year-tournament/`にし、clientとbackend-libのドメイン名にそろえる                                                                                                                                                                                                                                                                                                                                                                 | 設計どおり`tournament-year`                                                       | 設計のFile Structure Plan・adminの節                                                                                                                                                                                                |
+
+実装では次の点が変わった(確定した案の記録は変えない)。G7の`frontend/012`の節は、候補を`<select>`ではなく共通部品の`Select`で選ばせる形で書いた。G6の共用の部品の契約は、`useTournamentBoard`が盤面ではなく閲覧者を受ける、文言の型に`title`・`awardName`を足し`TournamentBracketCopy.pageTitle`を除く、返金の文を喪失と除外に分ける、共用のページと導線に任意の受け口(決勝日・決済の導線の案内)を足す形になった(design.mdの「TournamentClientParts」が実装の形)。曜日つきの業務日付の表記は、backend-lib・client・adminで共用のcommon-libの`formatBusinessDateWithWeekdayLabel`に寄せ、ブラケットのページの年の形式はcommon-libの`parseTournamentYear`でclientとapiが共用する。
 
 ### 既存のコードと規約に合わせて決めた事項
 

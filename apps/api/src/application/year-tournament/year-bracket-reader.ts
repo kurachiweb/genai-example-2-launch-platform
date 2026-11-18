@@ -4,6 +4,7 @@ import {
   chunk,
   IDS_PER_STATEMENT,
 } from '../../../lib/core/d1/statement-chunks.ts';
+import { parseTournamentYear } from '../../../common-lib/tournament/year-period.ts';
 import type { CurrentUser } from '../../../lib/core/identity/account-guard.ts';
 import { PRODUCT_PLATFORM_TYPES } from '../../../lib/core/product/identifiers.ts';
 import type { ProductDirectory } from '../../../lib/core/product/ports.ts';
@@ -45,8 +46,6 @@ export interface YearBracketReader {
   }): Promise<YearBracketView | undefined>;
 }
 
-const YEAR_KEY_PATTERN = /^\d{4}$/;
-
 @injectable()
 export class DirectoryYearBracketReader implements YearBracketReader {
   constructor(
@@ -65,10 +64,10 @@ export class DirectoryYearBracketReader implements YearBracketReader {
     readonly viewer: CurrentUser | undefined;
     readonly now: Date;
   }): Promise<YearBracketView | undefined> {
-    if (!YEAR_KEY_PATTERN.test(input.year)) {
+    const year = parseTournamentYear(input.year);
+    if (year === undefined) {
       return undefined;
     }
-    const year = Number(input.year);
     const tournament = (await this.store.findByYears([year])).get(year);
     // 組み合わせの決定はブラケットのIDを年の行へ記録して確定する
     if (tournament === undefined || tournament.bracketId === null) {

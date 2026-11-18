@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { createFileRoute, notFound } from '@tanstack/react-router';
 
 import { LIVE_REFRESH_QUERY_OPTIONS } from '../../../../lib/utilities/query/live-refresh.ts';
+import { parseTournamentYear } from '../../../../common-lib/tournament/year-period.ts';
 import { NotFoundPage } from '../../../components/pages/not-found-page.tsx';
 import { TournamentBracketError } from '../../../components/tournament/tournament-bracket-error.tsx';
 import {
@@ -18,15 +19,13 @@ import {
   type YearBracketHeadInput,
 } from '../../../head/page-heads.ts';
 
-const YEAR_PATTERN = /^\d{4}$/u;
-
 export const Route = createFileRoute('/tournaments/year/$year')({
-  // 4桁でない年は存在し得ないため照会しない。開催中は表示中に取り直すため、loaderは毎回新しく取得し、部品は表示した時点では取り直さない
+  // 1年以後の4桁でない年は存在し得ないため照会しない。開催中は表示中に取り直すため、loaderは毎回新しく取得し、部品は表示した時点では取り直さない
   loader: async ({
     context: { queryClient, viewer },
     params: { year },
   }): Promise<YearBracketHeadInput> => {
-    if (!YEAR_PATTERN.test(year)) {
+    if (parseTournamentYear(year) === undefined) {
       throw notFound();
     }
     const { yearBracket } = await queryClient.query({
