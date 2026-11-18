@@ -15,6 +15,7 @@ import {
 import {
   MY_PRODUCTS_LINK_HREF,
   MY_PRODUCTS_LINK_LABEL,
+  MY_SPONSORSHIP_ITEM_LABELS,
   MY_SPONSORSHIPS_EMPTY_MESSAGE,
   MY_SPONSORSHIPS_HREF,
   MY_SPONSORSHIPS_LOAD_ERROR_MESSAGE,
@@ -298,6 +299,12 @@ describe('自分の広告一覧の文言', () => {
     );
     expect(sponsorshipDaysLabel(30)).toBe('30日間');
     expect(copy).toContain(`(未決済は「${SPONSORSHIP_UNPAID_AMOUNT_TEXT}」)`);
+  });
+
+  test('項目名は文言規則と一致する', () => {
+    expect(screenCopyOf('自分の広告一覧の項目')).toContain(
+      `項目名は「${MY_SPONSORSHIP_ITEM_LABELS.period}」「${MY_SPONSORSHIP_ITEM_LABELS.amountPaid}」「${MY_SPONSORSHIP_ITEM_LABELS.status}」`,
+    );
   });
 
   test('掲載状況の表示名は共用部品の表示名と一致する', () => {

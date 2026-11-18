@@ -38,6 +38,7 @@ import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes
 import { Route as AuthenticatedSettingsPlanRouteImport } from './routes/_authenticated/settings/plan'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings/profile'
 import { Route as AuthenticatedSettingsSecurityRouteImport } from './routes/_authenticated/settings/security'
+import { Route as AuthenticatedSettingsSponsorshipsRouteImport } from './routes/_authenticated/settings/sponsorships'
 import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
 import { Route as AuthPasswordChangeConfirmRouteImport } from './routes/auth/password-change/confirm'
 import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
@@ -207,6 +208,12 @@ const AuthenticatedSettingsSecurityRoute =
     path: '/security',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedSettingsSponsorshipsRoute =
+  AuthenticatedSettingsSponsorshipsRouteImport.update({
+    id: '/sponsorships',
+    path: '/sponsorships',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
 const AuthEmailChangeConfirmRoute = AuthEmailChangeConfirmRouteImport.update({
   id: '/auth/email-change/confirm',
   path: '/auth/email-change/confirm',
@@ -304,6 +311,7 @@ export interface FileRoutesByFullPath {
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
+  '/settings/sponsorships': typeof AuthenticatedSettingsSponsorshipsRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
@@ -345,6 +353,7 @@ export interface FileRoutesByTo {
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
+  '/settings/sponsorships': typeof AuthenticatedSettingsSponsorshipsRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
@@ -389,6 +398,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/_authenticated/settings/security': typeof AuthenticatedSettingsSecurityRoute
+  '/_authenticated/settings/sponsorships': typeof AuthenticatedSettingsSponsorshipsRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
@@ -433,6 +443,7 @@ export interface FileRouteTypes {
     | '/settings/plan'
     | '/settings/profile'
     | '/settings/security'
+    | '/settings/sponsorships'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
     | '/auth/password-reset/confirm'
@@ -474,6 +485,7 @@ export interface FileRouteTypes {
     | '/settings/plan'
     | '/settings/profile'
     | '/settings/security'
+    | '/settings/sponsorships'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
     | '/auth/password-reset/confirm'
@@ -517,6 +529,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/plan'
     | '/_authenticated/settings/profile'
     | '/_authenticated/settings/security'
+    | '/_authenticated/settings/sponsorships'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
     | '/auth/password-reset/confirm'
@@ -766,6 +779,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsSecurityRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/settings/sponsorships': {
+      id: '/_authenticated/settings/sponsorships'
+      path: '/sponsorships'
+      fullPath: '/settings/sponsorships'
+      preLoaderRoute: typeof AuthenticatedSettingsSponsorshipsRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
     '/auth/email-change/confirm': {
       id: '/auth/email-change/confirm'
       path: '/auth/email-change/confirm'
@@ -861,6 +881,7 @@ interface AuthenticatedSettingsRouteRouteChildren {
   AuthenticatedSettingsPlanRoute: typeof AuthenticatedSettingsPlanRoute
   AuthenticatedSettingsProfileRoute: typeof AuthenticatedSettingsProfileRoute
   AuthenticatedSettingsSecurityRoute: typeof AuthenticatedSettingsSecurityRoute
+  AuthenticatedSettingsSponsorshipsRoute: typeof AuthenticatedSettingsSponsorshipsRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
 
@@ -874,6 +895,8 @@ const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteCh
     AuthenticatedSettingsPlanRoute: AuthenticatedSettingsPlanRoute,
     AuthenticatedSettingsProfileRoute: AuthenticatedSettingsProfileRoute,
     AuthenticatedSettingsSecurityRoute: AuthenticatedSettingsSecurityRoute,
+    AuthenticatedSettingsSponsorshipsRoute:
+      AuthenticatedSettingsSponsorshipsRoute,
     AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   }
 

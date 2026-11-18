@@ -128,6 +128,13 @@ export const MY_SPONSORSHIPS_HREF = '/settings/sponsorships';
 
 export const SPONSORSHIP_PERIOD_SEPARATOR = '〜';
 
+// 自分の広告一覧の項目名
+export const MY_SPONSORSHIP_ITEM_LABELS = Object.freeze({
+  period: '掲載期間',
+  amountPaid: '支払った金額',
+  status: '掲載状況',
+});
+
 export const SPONSORSHIP_UNPAID_AMOUNT_TEXT = '—';
 
 export const SPONSORSHIP_PAUSED_NOTICE =

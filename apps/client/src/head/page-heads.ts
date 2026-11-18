@@ -30,6 +30,7 @@ import {
   weekBracketHref,
   yearBracketHref,
 } from '../components/layout/site-links.ts';
+import { MY_SPONSORSHIPS_PAGE_TITLE } from '../components/sponsorship/sponsorship-messages.ts';
 import {
   PRICING_PAGE_DESCRIPTION,
   PRICING_PAGE_TITLE,
@@ -157,6 +158,10 @@ export const buildInquiryChatHead = () =>
 // 本人だけが開く購入ごとのページのため、検索の索引の対象外にする
 export const buildCheckoutHead = () =>
   buildSitePageHead({ title: CHECKOUT_PAGE_TITLE, noIndex: true });
+
+// 本人の申込だけを示すページのため、検索の索引の対象外にする
+export const buildMySponsorshipsHead = () =>
+  buildSitePageHead({ title: MY_SPONSORSHIPS_PAGE_TITLE, noIndex: true });
 
 // 決済セッションのIDを含むURLで本人だけが開くページのため、検索の索引の対象外にする
 export const buildCheckoutReturnHead = () =>

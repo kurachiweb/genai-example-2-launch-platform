@@ -35,7 +35,7 @@ describe('設定の項目の順序', () => {
     expect(() => firstSettingsPath([])).toThrow(TypeError);
   });
 
-  test('登録はプロフィール(10)・アカウント(20)・セキュリティ(30)・通知(40)・フォロー(50)・プラン(60)・決済履歴(70)', () => {
+  test('登録はプロフィール(10)・アカウント(20)・セキュリティ(30)・通知(40)・フォロー(50)・プラン(60)・決済履歴(70)・スポンサー広告(80)', () => {
     expect(SETTINGS_NAV_ITEMS).toStrictEqual([
       { to: '/settings/profile', label: 'プロフィール', order: 10 },
       { to: '/settings/account', label: 'アカウント', order: 20 },
@@ -44,6 +44,7 @@ describe('設定の項目の順序', () => {
       { to: '/settings/follows', label: 'フォロー', order: 50 },
       { to: '/settings/plan', label: 'プラン', order: 60 },
       { to: '/settings/billing', label: '決済履歴', order: 70 },
+      { to: '/settings/sponsorships', label: 'スポンサー広告', order: 80 },
     ]);
   });
 });
