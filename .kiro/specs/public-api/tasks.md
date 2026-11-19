@@ -59,7 +59,7 @@
   - _Boundary: ApiKeyToken、ApiKeyScopes_
   - _Requirements: 2.2, 2.3, 7.2, 7.3_
 
-- [ ] 2.2 (P) データエクスポートが使うAPIキーの照会を作り、apiとeventの両方に束縛する(backend-lib・api・eventにまたがる統合のタスク)
+- [x] 2.2 (P) データエクスポートが使うAPIキーの照会を作り、apiとeventの両方に束縛する(backend-lib・api・eventにまたがる統合のタスク)
   - data-exportのeventのapplication層が受け取るため、照会の契約と結果の型を`apps/backend-lib/core/public-api/ports.ts`に、DIの識別子を`core/public-api/identifiers.ts`(`Symbol.for('public-api.<名前>')`の凍結したオブジェクト)に作る。D1の実装(`workers/public-api/d1-api-key-export.ts`)と束縛のモジュールだけを`workers/public-api`に置く
   - 先に、単体テスト(`core/public-api/identifiers.unit.test.ts`)で、識別子の値と凍結を確かめる
   - 先に、ローカルD1のWorkers統合テストで、利用者のキーだけを発行の古い順に返すこと、名前・権限スコープ(camelCaseのキーと`none`・`read`・`read_write`)・発行日時だけを返し平文とハッシュを持たないことを確かめる
@@ -303,3 +303,4 @@
 - 1.5: 空文字の`PUBLIC_API_ORIGIN`は未設定扱いにせず不正とした(`STRIPE_PUBLISHABLE_KEY`の前例)。`project-values.md`にはプレースホルダー`<公開APIのオリジンの変数>`の行とCSPの許可先の`connect-src`の行だけを加え、3環境の値の表は8.2に残した。7.1・7.3のビューアーは公開設定の`publicApiOrigin`(未定義なら読み込みの失敗と同じ表示)を読む
 - 1.6: `pagination.ts`はカーソルの2関数を`opaque-cursor.ts`から再公開する(既存の3つのWorkers統合テストが`pagination.ts`から読み、変更なしの条件のため。design.mdの「残りの補助だけを持つ」との相違)。公開RESTの表現層は`backend-lib/core/pagination/opaque-cursor.ts`を直に読む。`SupporterListPage.supporters`の行の型は`SupporterListRow`。同じbase64url+JSONのコーデックの写しがapi・backend-libに約11か所残る(範囲外)
 - 2.1: `parseBearerAuthorization`はトークンを`\S+`で取り、文字種と長さは`isWellFormedApiKey`(`/^lsk_[A-Za-z0-9_-]{43}$/`)で判定する。`allowsAccess`は機能の種類を見ず型に頼るため、D1の行を`ApiKeyScopes`へ変換する3.1で読み取りの5機能に`read_write`が入らないことを保つ(CHECKでも拒否される)
+- 2.2: テストの補助`backend-lib/workers/public-api/testing/api-key-fixtures.ts`(`insertApiKey`・`clearApiKeyTables`など。外部キーのため`api_keys`を先に消す)を後続のWorkers統合テストで使える。`ApiKeyExport.listByUser`は`created_at`・`id`の昇順で`users`と結合しない。backend-libのWorkers統合テストはapiでだけ流れる(eventのvitestは`lib/**`を除く)
