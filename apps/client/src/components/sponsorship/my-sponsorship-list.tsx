@@ -31,7 +31,7 @@ export interface MySponsorshipListProps {
   readonly viewerId: string;
   // 一覧の名前にするページの見出し
   readonly labelledBy: string;
-  // 再試行で消える再試行のボタンからフォーカスを<body>へ落とさないための移り先
+  // 再試行で消える再試行のボタンと、取り直しで消えた項目から、フォーカスを<body>へ落とさないための移り先
   readonly retryFocusRef: RefObject<HTMLElement | null>;
 }
 
@@ -153,7 +153,14 @@ export function MySponsorshipList({
             key={sponsorship.id}
             sponsorship={sponsorship}
             onStale={() => {
-              void query.refetch();
+              void query.refetch().then(({ data }) => {
+                if (
+                  data !== undefined &&
+                  !data.sponsorships.some(({ id }) => id === sponsorship.id)
+                ) {
+                  retryFocusRef.current?.focus();
+                }
+              });
             }}
           />
         ))}

@@ -192,7 +192,7 @@ const items = () => sponsorshipList().getByRole('listitem');
 const itemOf = (name: string) =>
   items().filter({ has: page.getByRole('heading', { name }) });
 const loadMoreButton = () => main().getByRole('button', { name: 'さらに表示' });
-const resumeButton = () => main().getByRole('button', { name: '決済へ進む' });
+const resumeButton = () => main().getByRole('button', { name: /決済へ進む$/ });
 const settingsNavigation = () => page.getByRole('navigation', { name: '設定' });
 
 type PageHead = ReturnType<typeof buildSitePageHead>;
@@ -496,6 +496,42 @@ describe('自分の広告一覧の経路', () => {
     await expect.poll(() => resumeButton().elements()).toHaveLength(0);
     await expect.element(itemOf('Pitch Notes')).toHaveFocus();
     expect(router.state.location.pathname).toBe(SPONSORSHIPS_PATH);
+  });
+
+  test('日次の処理で消えた申込なら、見つからない旨を通知し、取り直した一覧から項目が消えると見出しへフォーカスを移す', async () => {
+    const other = mySponsorshipOf(2, {
+      status: 'SCHEDULED',
+      product: {
+        handle: 'other_product',
+        name: 'Other Product',
+        listed: true,
+        logo: null,
+      },
+    });
+    let purged = false;
+    respond(
+      () => mySponsorshipsResult(purged ? [other] : [PENDING, other]),
+      () => {
+        purged = true;
+        return Promise.resolve({
+          ok: false,
+          error: new GraphQLClientError({
+            code: 'sponsorship_not_found',
+            message: '見つかりません。',
+            status: 404,
+          }),
+        });
+      },
+    );
+
+    await renderSponsorships();
+    await userEvent.click(resumeButton());
+
+    await expect
+      .element(page.getByText('この申込は見つかりませんでした。'))
+      .toBeVisible();
+    await expect.poll(() => items().elements()).toHaveLength(1);
+    await expect.element(pageTitle()).toHaveFocus();
   });
 
   test('決済サービスの障害では、ボタンを無効にして縮退の注記を示す', async () => {
