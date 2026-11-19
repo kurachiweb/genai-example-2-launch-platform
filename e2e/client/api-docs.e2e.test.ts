@@ -5,16 +5,19 @@ import {
   API_DOCS_PAGE_TITLE,
 } from '../../apps/client/src/components/public-api/api-docs-messages.ts';
 import { API_DOCS_HREF } from '../../apps/client/src/components/public-api/api-key-list-messages.ts';
-import { resolveLocalWorkerOrigin } from '../support/local-worker-origins.ts';
+import {
+  PUBLIC_API_BASE_PATH,
+  publicApiOrigin,
+  publicApiUrl,
+} from '../support/public-api.ts';
 import {
   installCspViolationRecorder,
   readCspViolations,
 } from '../support/security-assertions.ts';
 
-const PUBLIC_API_ORIGIN = new URL(resolveLocalWorkerOrigin('api', process.env))
-  .origin;
+const PUBLIC_API_ORIGIN = publicApiOrigin();
 
-const DOCUMENT_URL = `${PUBLIC_API_ORIGIN}/v1/openapi.json`;
+const DOCUMENT_URL = publicApiUrl('/openapi.json').href;
 
 // 公開APIの読み取りと更新の代表の経路。経路の一覧が仕様書から描かれたことを、方式とパスの組で確かめる
 const LISTED_OPERATIONS = [
@@ -72,7 +75,9 @@ test.describe('APIドキュメントのページ', () => {
       ).toBeVisible();
     }
     await expect(
-      page.getByRole('combobox').filter({ hasText: `${PUBLIC_API_ORIGIN}/v1` }),
+      page
+        .getByRole('combobox')
+        .filter({ hasText: `${PUBLIC_API_ORIGIN}${PUBLIC_API_BASE_PATH}` }),
     ).toBeVisible();
     expect(await readCspViolations(page)).toEqual([]);
     expect(foreignRequests).toEqual([]);

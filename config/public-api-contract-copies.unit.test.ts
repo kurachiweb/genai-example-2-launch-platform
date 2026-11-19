@@ -8,6 +8,8 @@ const REPO_ROOT = join(import.meta.dir, '..');
 
 const COMMON_API_KEY_RULES = 'apps/common-lib/public-api/api-key-rules.ts';
 const DB_API_KEYS = 'apps/db/schema/public-api/api-keys.ts';
+const API_PUBLIC_API_APP = 'apps/api/src/presentation/rest/public-api-app.ts';
+const E2E_PUBLIC_API = 'e2e/support/public-api.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
   ts.createSourceFile(
@@ -66,6 +68,16 @@ const readInitializer = (path: string, name: string): ts.Expression => {
   return unwrapExpression(declaration.initializer);
 };
 
+const readString = (path: string, name: string): string => {
+  const initializer = readInitializer(path, name);
+  if (!ts.isStringLiteral(initializer)) {
+    throw new Error(
+      `${path}の${name}の初期化子が文字列リテラルではありません: ${initializer.getText()}`,
+    );
+  }
+  return initializer.text;
+};
+
 const readStringArray = (path: string, name: string): readonly string[] => {
   const initializer = readInitializer(path, name);
   if (!ts.isArrayLiteralExpression(initializer)) {
@@ -96,5 +108,14 @@ describe('権限スコープの値の写し(apps/db/schema/public-api/api-keys.t
 
     expect(shared).toEqual(['none', 'read', 'read_write']);
     expect(readStringArray(DB_API_KEYS, 'WRITE_LEVELS')).toEqual(shared);
+  });
+});
+
+describe('公開REST APIの基準パスの写し(e2e/support/public-api.ts)', () => {
+  test('E2Eの補助が要求を送る基準パスがapiのPUBLIC_API_BASE_PATHと一致する', () => {
+    const shared = readString(API_PUBLIC_API_APP, 'PUBLIC_API_BASE_PATH');
+
+    expect(shared).toBe('/v1');
+    expect(readString(E2E_PUBLIC_API, 'PUBLIC_API_BASE_PATH')).toBe(shared);
   });
 });
