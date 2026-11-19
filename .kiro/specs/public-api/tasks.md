@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共有の規則・テーブル・設定・文言
-- [ ] 1.1 APIキーの名前と権限スコープの規則を、apiとclientが読み込める共有の定義として作る
+- [x] 1.1 APIキーの名前と権限スコープの規則を、apiとclientが読み込める共有の定義として作る
   - 前提: dev-tooling〜sponsorshipの23specの全タスクが完了していること(api-gatewayの公開RESTの骨格とGraphQLの基盤、backend-platformの`RateLimitCounter`・`bindingRateLimit`・`KeyedHasher`、identity-authの`AccountGuard`・`USER_LIFECYCLE_SYNC_HANDLERS`・設定ページのシェル・`e2e/support/mailpit.ts`、directory-discoveryの`DirectoryReader`・`DirectoryCategoryReader`・`ProductPageReader`・`e2e/support/directory-fixtures.ts`、match-engineの`MatchDirectory`・`SupporterDirectory`・`UpvoteHistoryReader`、engagementの`CommentReader`・`RatingService`、user-profile-socialの`MyProfileReader`・`ProfileEditor`・`PublicProfileReader`・`UserProfileDirectory`、product-launchの`ProductDirectory`・`MyProductsReader`・`ProductDescriptionEditor`、media-pipelineの`MediaFiles`・`common-lib/media`、上流の改訂のapi-gatewayの`createRestModule`の`options.info`・相対の`servers`、backend-platformの`REDACTION_PATTERNS`の`lsk_`と改訂3のSentryの伏せ字の範囲、product-launchの仮12の`ProductDescriptionEditor`の`product_hidden`、infra-deliveryの改訂1の「ホスト名から導かれる変数の値」の表のapiの`IMAGES_ORIGIN`・clientの`PUBLIC_API_ORIGIN`の行)。無ければ該当するタスクを保留して開発者へ報告する。2026-11-19の実装前のギャップ分析(research.md)で、これらがすべて実装済みであることと、設計の前提との食い違いを確かめ、design.mdとtasks.mdへ反映済みである
   - 先に、単体テストで、名前の空・空白だけ・前後の空白の除去・50書記素と51書記素(結合文字を含む絵文字)、7機能の許される値(読み取りの5機能の`read_write`の拒否・未知の値の拒否)、発行の初期値(読み取りの5機能は`read`、2機能は`none`)、機能と値の表示名の網羅を確かめる
   - 他の層を読み込まない(書記素の数え方はcommon-libの既存の関数を使う)
@@ -293,3 +293,7 @@
   - 仮1〜仮4が2026-10-24に開発者が確定済みで確認待ちの論点が無いこと(仮1・仮2は推奨と異なる案B)、2026-11-19の実装前のギャップ分析の決定(research.md)と1.6で変えた上流のファイル、保留中のタスクが無いこと、本specが依存する上流の改訂(api-gatewayの改訂1の`servers`・`info`、backend-platformの改訂1・改訂3の伏せ字、product-launchの仮12)、要件定義書の改訂が必要な箇所(FR-PAPI-003・006・009、research.md)、roadmapの帯の本specの「使用中の値」が「—」である旨を作業の報告に記録する
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に確定した決定と上流の改訂の一覧が載っている
   - _Requirements: 16.2, 17.1, 17.2_
+
+## Implementation Notes
+
+- 1.1: 規則は`apps/common-lib/public-api/api-key-rules.ts`(design.mdのApiKeyRulesの契約どおり`checkApiKeyName`は`{ ok: true, name } | { ok: false, reason: 'required' | 'too_long' }`)。`coding/005`の例示(`<項目>-input-rules.ts`・文字列の戻り値)とは異なるが設計に従った。禁止文字の判定は要件1.3と設計に無く入れていない
