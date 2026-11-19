@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "common-lib/*.config.ts",
+    "common-lib/**/*.test.ts",
+    "common-lib/config/**",
+    "common-lib/markdown/fixtures/**",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}

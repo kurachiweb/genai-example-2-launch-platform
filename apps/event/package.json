@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "lint": "bun --bun eslint .",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.typecheck.main.json && tsc -p tsconfig.typecheck.unit.json && tsc -p tsconfig.typecheck.worker.json",
     "test:unit": "bun test --config=bunfig.unit.toml --pass-with-no-tests --path-ignore-patterns='db/**' --path-ignore-patterns='lib/**' --path-ignore-patterns='common-lib/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test",
     "test:worker": "vitest run --config vitest.worker.config.ts",
     "dev": "wrangler dev --port 48043 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --inspector-port 9230",
