@@ -108,7 +108,7 @@
   - _Requirements: 1.1, 1.6, 1.7, 1.9, 3.7, 3.8, 4.2_
 
 - [ ] 4. 公開APIの認証と回数の制限
-- [ ] 4.1 キーの照合・利用者の状態・権限スコープ・利用者単位の回数の制限を判定するユースケースを作る
+- [x] 4.1 キーの照合・利用者の状態・権限スコープ・利用者単位の回数の制限を判定するユースケースを作る
   - 先に、模擬のポートの単体テストで、判定の順序(形式→照合→利用者の状態→権限→回数)、形式違反と不在のキーの区別の無い無効、経路の対象による利用者の状態の判定(停止中の持ち主のキーは公開データの経路で通り、自分のデータの経路で403)と利用者が見つからない場合の無効への変換、権限の不足の403、読み取りと書き込みで別の規則を使い利用者のハッシュ化した識別をキーにすること、失敗が回数を消費しないこと、上限・残り・リセットの時刻を返すこと、429に再試行の秒数と回数の値を持たせることを確かめる
   - ユースケースの束縛をapiの束縛のモジュールへ追記する。回数の制限は2.3の`PublicApiRateLimits`のポートで受け取り(単体テストは偽のポート)、実装は3.1の`CounterPublicApiRateLimits`を使う。利用者の状態の判定は`IDENTITY_PLATFORM_TYPES.AccountGuard`(`core/identity/identifiers.ts`)で受け取る
   - 完了状態: 単体テストが成功し、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
@@ -309,3 +309,4 @@
 - 3.2: エラーと文言は設計に無い`application/public-api/api-key-errors.ts`(`API_KEY_ERRORS`・項目ごとの`validation_error`の組み立て)。項目ごとの誤りの`field`は`name`・`scopes.<機能>`、詳細のコードは`required`・`too_long`・`not_allowed`で、3.4のGraphQLの引数の検証(`input.name`の形)と揃えること。ログの属性名はキーのIDを`recordId`(再発行の元は`sourceRecordId`)・`userId`とする(名前に`key`を含む属性は伏せ字になるため。4.2の拒否のログも揃える)。編集は応答の発行日時のため先に`findForOwner`で読む。一覧の`first`が1〜50の外は`RangeError`のため3.4の境界で`validation_error`にする。カーソルは`{ c: 発行日時ms, id }`。保存の時点の`account-unavailable`は回数を消費する(設計の手順どおり)
 - 3.3: 8.2で`project-values.md`の「同期の波及処理の登録」の行(937行目付近)の件数(10→11)・登録の一覧(`public-api.api-key-erasure`、退会だけ)・処理のファイル(`apps/api/src/infrastructure/public-api/api-key-erasure-sync-handler.ts`)を直すこと
 - 3.4: GraphQLのモジュールは`presentation/graphql/modules/public-api/`(設計の5ファイルに加え`api-key-views.ts`・`resolver-support.ts`)。ユースケースの誤りは`withInputPath('input', …)`で`input.name`・`input.scopes.<機能>`にする(6.2は`serverFieldPrefix="input"`で読める)。`first`は境界で1〜50(範囲外は`validation_error`の`first`)。読み取りの機能への`READ_WRITE`はGraphQLの列挙型で`graphql_request_invalid`(400)になり、文言規則の「選べない値」の文言はユースケース経由でだけ届く。ULIDでないIDは`validation_error`(`id`、文言は見つからない旨。設計の表に無い)。8.2で`project-values.md`に「GraphQLの操作」の行(モジュール名・5操作・テストの補助`apps/api/test/support/public-api-graphql-operations.ts`)を加えること。レビューの1回目の差し戻し(停止中のガードとclient限定のテストの不足)をテストの追加で解消した
+- 4.1: `invalid_api_key`(401、「APIキーが無効です。」)・`insufficient_scope`(403、「このAPIキーにはこの操作の権限がありません。」)はapplication層の`api-key-errors.ts`の`API_KEY_ERRORS`に置き(application層はpresentationを読めないため)、文言規則にも追記した。4.2の`public-api-errors.ts`はこの2つと`account_unavailable`を読み込み、再定義しない(設計の「4.2で全て作る」との相違)。`ApiKeyAuthorizer`はログを出さず、拒否のログは4.2の中間処理が`recordId`・`userId`で出す。`public`の経路では停止中の持ち主でも`caller.user`が入るため、上流の呼び出しは必ず`ANONYMOUS_SESSION_VIEW`を使う

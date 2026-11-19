@@ -22,6 +22,14 @@ export const API_KEY_ERRORS = Object.freeze({
     kind: 'not_found',
     message: 'APIキーが見つかりません。',
   },
+  invalid_api_key: {
+    kind: 'unauthenticated',
+    message: 'APIキーが無効です。',
+  },
+  insufficient_scope: {
+    kind: 'forbidden',
+    message: 'このAPIキーにはこの操作の権限がありません。',
+  },
 } satisfies Readonly<Record<string, ApiKeyErrorDefinition>>);
 
 export type ApiKeyErrorCode = keyof typeof API_KEY_ERRORS;

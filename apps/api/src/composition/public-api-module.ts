@@ -4,6 +4,10 @@ import { ContainerModule } from 'inversify';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
+  type ApiKeyAuthorizer,
+  StoreApiKeyAuthorizer,
+} from '../application/public-api/api-key-authorizer.ts';
+import {
   type ApiKeyManagement,
   StoreApiKeyManagement,
 } from '../application/public-api/api-key-management.ts';
@@ -19,7 +23,7 @@ import { CounterPublicApiRateLimits } from '../infrastructure/public-api/counter
 import { CryptoApiKeySecretGenerator } from '../infrastructure/public-api/crypto-api-key-secret-generator.ts';
 import { D1ApiKeyStore } from '../infrastructure/public-api/d1-api-key-store.ts';
 
-// データエクスポートのAPIキーの照会はPUBLIC_API_PLATFORM_MODULE、ハッシュ化の部品と厳密カウンタのクライアントは共通の束縛を使う
+// データエクスポートのAPIキーの照会はPUBLIC_API_PLATFORM_MODULE、ハッシュ化の部品と厳密カウンタのクライアントは共通の束縛、利用者の状態の判定はidentityの束縛を使う
 export const PUBLIC_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'public-api',
   bindings: new ContainerModule(({ bind }) => {
@@ -32,6 +36,9 @@ export const PUBLIC_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<ApiKeyManagement>(PUBLIC_API_TYPES.ApiKeyManagement).to(
       StoreApiKeyManagement,
+    );
+    bind<ApiKeyAuthorizer>(PUBLIC_API_TYPES.ApiKeyAuthorizer).to(
+      StoreApiKeyAuthorizer,
     );
     bind<UserLifecycleSyncHandler>(
       PUBLIC_API_TYPES.ApiKeyErasureSyncHandler,

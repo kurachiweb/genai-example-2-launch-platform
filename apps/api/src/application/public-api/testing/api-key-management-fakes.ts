@@ -100,8 +100,9 @@ export function createFakeApiKeyStore(
   return {
     rows,
     inserted,
-    findByHash: () => {
-      throw new Error('テストでは使わない');
+    findByHash: (keyHash) => {
+      const row = rows.find((candidate) => candidate.keyHash === keyHash);
+      return Promise.resolve(row === undefined ? undefined : toRecord(row));
     },
     findForOwner: (userId, keyId) => {
       const row = rows[indexOf(userId, keyId)];
