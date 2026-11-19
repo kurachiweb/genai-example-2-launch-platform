@@ -33,8 +33,8 @@ const DEFAULT_MAILPIT_ORIGIN = 'http://localhost:48041';
 
 const MAILPIT_ORIGIN_ENV_KEY = 'E2E_MAILPIT_URL';
 
-// 送信の要求はQueueを経てイベントサーバーが送るため、開発サーバーの初回の変換の遅れを含めても届く長さにする
-const DEFAULT_TIMEOUT_MS = 20_000;
+// 送信の要求はQueueを経てイベントサーバーが送る。ローカルではAPIサーバーとイベントサーバーが同じD1のファイルを取り合い、送信の処理が一時的に失敗してQueuesの再試行(30秒後、まとめて受け取るまで最大5秒)に回ることがあるため、再試行の後に届くまで待つ
+const DEFAULT_TIMEOUT_MS = 45_000;
 
 const DEFAULT_INTERVAL_MS = 250;
 

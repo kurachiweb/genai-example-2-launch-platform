@@ -2,10 +2,13 @@ import { expect, test } from './auth-test.ts';
 
 import {
   createTestAccount,
+  MAIL_FLOW_TIMEOUT_MS,
   registerAccount,
   verifyEmailBanner,
   verifyEmailFromMail,
 } from './account-steps.ts';
+
+test.describe.configure({ timeout: MAIL_FLOW_TIMEOUT_MS });
 
 test.describe('利用者の登録とメールアドレスの確認', () => {
   test('登録すると未確認の帯が出て、メールのリンクで確認すると帯が消える', async ({
