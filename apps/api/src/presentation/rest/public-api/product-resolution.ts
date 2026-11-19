@@ -6,6 +6,7 @@ import type {
   ProductSummaryRecord,
 } from '../../../../lib/core/product/ports.ts';
 import { resolveProductPage } from '../../../application/directory/product-page-resolution.ts';
+import { currentHandleLocation } from './current-handle-location.ts';
 
 export type PublicProductResolution =
   | { readonly kind: 'current'; readonly product: ProductSummaryRecord }
@@ -15,8 +16,6 @@ export type PublicProductResolution =
 const NOT_FOUND: PublicProductResolution = Object.freeze({
   kind: 'not-found',
 });
-
-const HANDLE_SEGMENT = ':handle';
 
 const FOUND_STATUS = 302;
 
@@ -37,29 +36,6 @@ export async function resolvePublicProduct(
       return NOT_FOUND;
     }
   }
-}
-
-// 経路のパターンでハンドルの変数の位置を決め、同じ文字列の他の区画を置き換えないようにする
-export function currentHandleLocation(input: {
-  readonly requestUrl: string;
-  readonly routePath: string;
-  readonly handle: string;
-}): string {
-  const url = new URL(input.requestUrl);
-  const patternSegments = input.routePath.split('/');
-  const pathSegments = url.pathname.split('/');
-  const index = patternSegments.indexOf(HANDLE_SEGMENT);
-  if (index === -1 || patternSegments.length !== pathSegments.length) {
-    throw new TypeError(
-      `経路${input.routePath}から要求のパスのハンドルの位置を決められません。`,
-    );
-  }
-  url.pathname = pathSegments
-    .map((segment, position) =>
-      position === index ? encodeURIComponent(input.handle) : segment,
-    )
-    .join('/');
-  return url.href;
 }
 
 // 保有者が次にハンドルを変えると転送先が変わるため、永続的な転送にしない

@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test';
 
-import { INPUT_MESSAGES as GRAPHQL_PROFILE_MESSAGES } from '../../../graphql/modules/profile/errors.ts';
 import {
   MY_PROFILE_PATCH_MESSAGES,
   MyProfilePatchSchema,
@@ -192,15 +191,5 @@ describe('MyProfilePatchSchema', () => {
     expect(issuesOf(body)).toEqual([
       { field: '', message: MY_PROFILE_PATCH_MESSAGES.invalidType },
     ]);
-  });
-});
-
-describe('PROFILE_FIELD_MESSAGES', () => {
-  test.each(
-    Object.keys(
-      PROFILE_FIELD_MESSAGES,
-    ) as (keyof typeof PROFILE_FIELD_MESSAGES)[],
-  )('%sはGraphQLのプロフィールの保存と同じ文言を使う', (key) => {
-    expect(PROFILE_FIELD_MESSAGES[key]).toBe(GRAPHQL_PROFILE_MESSAGES[key]);
   });
 });

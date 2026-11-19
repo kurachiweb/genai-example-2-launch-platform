@@ -30,7 +30,7 @@ import { ApiImageSchema, PUBLIC_API_INVALID_TYPE_MESSAGE } from './common.ts';
 
 const countFormat = new Intl.NumberFormat('ja-JP');
 
-// GraphQLの表現層の文言は読み込めないため、プロフィールの設定画面とGraphQLの保存と同じ文言をここにも持つ(単体テストで一致を確かめる)
+// GraphQLの表現層の文言は読み込めないため、プロフィールの設定画面とGraphQLの保存と同じ文言をここにも持つ(Workers統合テストで一致を確かめる)
 export const PROFILE_FIELD_MESSAGES = Object.freeze({
   nicknameRequired: 'ニックネームを入力してください。',
   nicknameTooLong: `ニックネームは${String(NICKNAME_MAX_GRAPHEMES)}文字以内で入力してください。`,

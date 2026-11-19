@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 
 import { PUBLIC_API_INVALID_TYPE_MESSAGE } from './common.ts';
 import { MyProductDescriptionBodySchema } from './my-products.ts';

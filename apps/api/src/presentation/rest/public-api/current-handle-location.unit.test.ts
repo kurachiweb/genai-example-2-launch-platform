@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { currentHandleLocation } from './product-resolution.ts';
+import { currentHandleLocation } from './current-handle-location.ts';
 
 const ORIGIN = 'https://api.launch.example';
 
