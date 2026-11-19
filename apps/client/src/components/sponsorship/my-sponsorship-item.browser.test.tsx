@@ -52,7 +52,7 @@ const renderItem = (sponsorship: MySponsorshipNode) =>
 
 const item = () => page.getByRole('listitem');
 
-const resumeButton = () => item().getByRole('button', { name: '決済へ進む' });
+const resumeButton = () => item().getByRole('button', { name: /決済へ進む$/ });
 
 beforeEach(async () => {
   vi.useFakeTimers({ now: MY_SPONSORSHIPS_NOW, toFake: ['Date'] });
@@ -275,6 +275,44 @@ describe('MySponsorshipItem', () => {
 
     await expect.element(item()).toHaveTextContent('支払った金額—');
     await expect.element(resumeButton()).toBeVisible();
+  });
+
+  test('「決済へ進む」の名前は、未決済の申込が並んでも区別できるよう、プロダクトの名称・ティア・掲載期間を前に付ける', async () => {
+    await renderItem(
+      mySponsorshipOf(1, {
+        status: 'PENDING_PAYMENT',
+        amountPaid: null,
+        startsOn: '2026-11-20',
+        endsOn: '2026-11-26',
+        canResume: true,
+      }),
+    );
+
+    await expect
+      .element(resumeButton())
+      .toHaveAccessibleName(
+        'Pitch NotesのGold(11月20日〜11月26日)の決済へ進む',
+      );
+    await expect.element(resumeButton()).toHaveTextContent('決済へ進む');
+  });
+
+  test('削除したプロダクトの「決済へ進む」の名前は、名称の代わりに「削除したプロダクト」を前に付ける', async () => {
+    await renderItem(
+      mySponsorshipOf(1, {
+        status: 'PENDING_PAYMENT',
+        amountPaid: null,
+        startsOn: '2027-01-05',
+        endsOn: '2027-01-06',
+        canResume: true,
+        product: null,
+      }),
+    );
+
+    await expect
+      .element(resumeButton())
+      .toHaveAccessibleName(
+        '削除したプロダクトのGold(2027年1月5日〜2027年1月6日)の決済へ進む',
+      );
   });
 
   test.each<[string, Partial<MySponsorshipNode>]>([

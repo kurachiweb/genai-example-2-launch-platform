@@ -25,6 +25,8 @@ import {
 
 export interface ResumeCheckoutButtonProps {
   readonly sponsorshipId: string;
+  // 見えている文言を末尾に含む、申込を区別できる名前
+  readonly accessibleLabel: string;
   // 申込の状態が一覧の表示から変わっていた時に、通知の後で呼ぶ。一覧を取り直してボタンを消す
   readonly onStale: () => void;
 }
@@ -45,6 +47,7 @@ const messageOf = (error: unknown): string =>
 // 未決済の申込の新しい決済を始めて決済画面へ移る。送信中はフォーカスの位置を失わないようaria-disabledにし、決済サービスの障害の後は再読み込みまで無効にする
 export function ResumeCheckoutButton({
   sponsorshipId,
+  accessibleLabel,
   onStale,
 }: ResumeCheckoutButtonProps) {
   const turnstile = useTurnstileToken();
@@ -104,6 +107,7 @@ export function ResumeCheckoutButton({
         size="sm"
         className="w-fit"
         disabled={paymentsUnavailable}
+        aria-label={pending ? undefined : accessibleLabel}
         aria-disabled={pending || undefined}
         aria-busy={pending || undefined}
         aria-describedby={

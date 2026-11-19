@@ -28,6 +28,7 @@ import {
   SPONSORSHIP_TERMINATION_REASON_LABEL,
   SPONSORSHIP_UNPAID_AMOUNT_TEXT,
   type SponsorshipRefundKind,
+  resumeSponsorshipCheckoutLabelOf,
   sponsorshipRefundedMessage,
   sponsorshipRefundRequestedParts,
 } from './sponsorship-messages.ts';
@@ -231,6 +232,18 @@ export function MySponsorshipItem({
         {sponsorship.canResume ? (
           <ResumeCheckoutButton
             sponsorshipId={sponsorship.id}
+            accessibleLabel={resumeSponsorshipCheckoutLabelOf({
+              productName: product?.name ?? SPONSORED_PRODUCT_DELETED_NAME,
+              tierLabel: SPONSORSHIP_TIER_LABELS[tier],
+              startsOnLabel: formatBusinessDateLabel(
+                sponsorship.startsOn,
+                currentYear,
+              ),
+              endsOnLabel: formatBusinessDateLabel(
+                sponsorship.endsOn,
+                currentYear,
+              ),
+            })}
             onStale={() => {
               itemRef.current?.focus();
               onStale();

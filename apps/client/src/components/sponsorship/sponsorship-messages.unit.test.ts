@@ -24,6 +24,7 @@ import {
   MY_SPONSORSHIPS_PAGE_TITLE,
   PRODUCT_SPONSORSHIP_DELETE_NOTICE,
   RESUME_SPONSORSHIP_CHECKOUT_LABEL,
+  resumeSponsorshipCheckoutLabelOf,
   SPONSORED_PRODUCT_DELETED_NAME,
   sponsoredAdLinkLabel,
   SPONSORSHIP_ACCOUNT_SUSPENDED_REASON,
@@ -372,6 +373,19 @@ describe('自分の広告一覧の文言', () => {
     expect(
       `${RESUME_SPONSORSHIP_CHECKOUT_LABEL}(送信中は「${SPONSORSHIP_SUBMIT_PENDING_LABEL}」)`,
     ).toBe(screenCopyOf('未決済の申込の決済の再開のボタン'));
+  });
+
+  test('決済へ進むのボタンの名前は文言規則と一致する', () => {
+    const copy = screenCopyOf('未決済の申込の決済の再開のボタンの名前');
+
+    expect(
+      resumeSponsorshipCheckoutLabelOf({
+        productName: '<プロダクトの名称>',
+        tierLabel: '<ティア>',
+        startsOnLabel: '<開始日>',
+        endsOnLabel: '<終了日>',
+      }),
+    ).toBe(copy.slice(0, copy.indexOf('(読み上げの名前。')));
   });
 
   test('0件・取得エラー・続きの読み込みは文言規則と一致する', () => {

@@ -188,6 +188,20 @@ export const SPONSORED_PRODUCT_DELETED_NAME = '削除したプロダクト';
 
 export const RESUME_SPONSORSHIP_CHECKOUT_LABEL = '決済へ進む';
 
+// 未決済の申込が並んでもボタンを名前で区別できるよう、見えている文言の前に申込を示す語を付ける
+export const resumeSponsorshipCheckoutLabelOf = ({
+  productName,
+  tierLabel,
+  startsOnLabel,
+  endsOnLabel,
+}: {
+  readonly productName: string;
+  readonly tierLabel: string;
+  readonly startsOnLabel: string;
+  readonly endsOnLabel: string;
+}): string =>
+  `${productName}の${tierLabel}(${startsOnLabel}${SPONSORSHIP_PERIOD_SEPARATOR}${endsOnLabel})の${RESUME_SPONSORSHIP_CHECKOUT_LABEL}`;
+
 export const MY_SPONSORSHIPS_EMPTY_MESSAGE =
   'まだスポンサー広告の申込はありません。';
 
