@@ -14,6 +14,11 @@ import {
 import { ApiDocsPage } from './api-docs-page.tsx';
 import type { SwaggerUiLoader } from './swagger-ui-loader.ts';
 
+// TanStack StartのViteのプラグインが無いテストでは、パッケージの入口がサーバーの部品まで読み込んで失敗する。ブラウザのビルドの変換と同じく関数をそのまま返す
+vi.mock('@tanstack/react-start', () => ({
+  createClientOnlyFn: <T,>(fn: T): T => fn,
+}));
+
 // ルーターの文脈が読み込む同型の関数は、Startのビルドを経ないブラウザテストではサーバーの実装が残り読み込めないため差し替える
 vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
   executeGraphQL: vi.fn(),

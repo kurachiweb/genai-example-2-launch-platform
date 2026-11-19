@@ -94,8 +94,12 @@ export function SwaggerUiViewer({
           }
         />
       ) : null}
-      {/* 描画先はSwagger UIが中身を作るため、読み込み中と失敗の間も要素を残して隠す */}
-      <div ref={domNodeRef} hidden={shownStatus !== 'ready'} />
+      {/* 描画先はSwagger UIが中身を作るため、読み込み中と失敗の間も要素を残して隠す。Swagger UIは暗い配色を持たないため、ページの配色に関わらず明るい配色にする */}
+      <div
+        ref={domNodeRef}
+        hidden={shownStatus !== 'ready'}
+        className="rounded-lg border bg-white text-neutral-900 scheme-light"
+      />
     </section>
   );
 }

@@ -15,6 +15,7 @@ import { runAxe } from '../../../lib/test/a11y.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
+  computedColorOf,
 } from '../../../lib/test/computed-style.ts';
 import {
   createPageRouterContext,
@@ -22,6 +23,11 @@ import {
 } from '../../../test/page-router.tsx';
 import type { RenderSwaggerUi, SwaggerUiLoader } from './swagger-ui-loader.ts';
 import { SwaggerUiViewer } from './swagger-ui-viewer.tsx';
+
+// TanStack StartのViteのプラグインが無いテストでは、パッケージの入口がサーバーの部品まで読み込んで失敗する。ブラウザのビルドの変換と同じく関数をそのまま返す
+vi.mock('@tanstack/react-start', () => ({
+  createClientOnlyFn: <T,>(fn: T): T => fn,
+}));
 
 // ルーターの文脈が読み込む同型の関数は、Startのビルドを経ないブラウザテストではサーバーの実装が残り読み込めないため差し替える
 vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
@@ -218,6 +224,20 @@ describe('SwaggerUiViewer', () => {
   describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {
     beforeEach(() => {
       applyColorScheme(scheme);
+    });
+
+    // Swagger UIは暗い配色を持たないため、ページの配色に関わらず描画先を明るい配色にする
+    test('描画したAPIリファレンスの外側を明るい配色に固定する', async () => {
+      stubDocumentFetch(() => Promise.resolve(Response.json(OPENAPI_DOCUMENT)));
+      await renderViewer(loaderOf());
+      await expect.element(reference().getByText(RENDERED_TEXT)).toBeVisible();
+
+      const surface = reference().getByText(RENDERED_TEXT).element()
+        .parentElement as HTMLElement;
+      const { backgroundColor, color, colorScheme } = getComputedStyle(surface);
+      expect(colorScheme).toBe('light');
+      expect(backgroundColor).toBe(computedColorOf('#ffffff'));
+      expect(color).not.toBe(computedColorOf('#ffffff'));
     });
 
     test('読み込み中で、アクセシビリティの検査の違反が0件', async () => {

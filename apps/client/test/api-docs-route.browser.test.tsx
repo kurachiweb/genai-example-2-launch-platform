@@ -11,6 +11,11 @@ import {
   renderPageRouter,
 } from './page-router.tsx';
 
+// TanStack StartのViteのプラグインが無いテストでは、パッケージの入口がサーバーの部品まで読み込んで失敗する。ブラウザのビルドの変換と同じく関数をそのまま返す
+vi.mock('@tanstack/react-start', () => ({
+  createClientOnlyFn: <T,>(fn: T): T => fn,
+}));
+
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 
 vi.mock('../lib/start/graphql/execute-graphql.ts', () => ({ executeGraphQL }));
