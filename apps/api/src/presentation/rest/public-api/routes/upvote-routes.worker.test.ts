@@ -55,12 +55,7 @@ import {
 import { insertApiKey } from '../../../../../lib/workers/public-api/testing/api-key-fixtures.ts';
 import { D1UserProfileDirectory } from '../../../../../lib/workers/profile/d1-user-profile-directory.ts';
 import { createPublicApiRestHarness } from '../../../../../test/support/public-api-rest-harness.ts';
-import {
-  DirectoryPublicSupporterReader,
-  type PublicSupporterReader,
-} from '../../../../application/public-api/public-supporter-reader.ts';
 import { StoreUpvoteHistoryReader } from '../../../../application/match/upvote-history-reader.ts';
-import { PUBLIC_API_TYPES } from '../../../../application/public-api/public-api-types.ts';
 import { API_KEY_HASH_PURPOSE } from '../../../../domain/public-api/api-key-token.ts';
 import {
   OTHER_VOTER,
@@ -75,16 +70,13 @@ import {
 } from '../../../../infrastructure/match/testing/upvote-store-fixtures.ts';
 import { publicApiUpvoteRoutes } from './upvote-routes.ts';
 
-// マッチの状態がテストの実行の時刻で変わらないよう時計を固定し、5.7でapiの束縛のモジュールへ加えるサポーターの読み取りをここで束縛する
+// マッチの状態がテストの実行の時刻で変わらないよう時計を固定する
 const testClock: Clock = { now: () => DURING_MATCH };
 
 const testModule: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'public-api-upvote-routes-test',
-  bindings: new ContainerModule(({ bind, rebind }) => {
+  bindings: new ContainerModule(({ rebind }) => {
     rebind<Clock>(PLATFORM_TYPES.Clock).toConstantValue(testClock);
-    bind<PublicSupporterReader>(PUBLIC_API_TYPES.PublicSupporterReader).to(
-      DirectoryPublicSupporterReader,
-    );
   }),
 };
 

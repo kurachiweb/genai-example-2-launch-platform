@@ -38,7 +38,7 @@ export interface PublicApiRestHarness {
   ) => Promise<Response>;
 }
 
-// 公開RESTの経路を、apiの全ての束縛と環境の検証を載せたアプリで、基準パスの下に登録して呼ぶ。束縛の差し替え(時計の固定など)と、apiの束縛のモジュールにまだ無い束縛はoverridesで加える
+// 公開RESTの経路を、apiの全ての束縛と環境の検証を載せたアプリで、基準パスの下に登録して呼ぶ。束縛の差し替え(時計の固定など)はoverridesで加える
 export function createPublicApiRestHarness(
   routes: readonly PublicRestRoutes<Env>[],
   overrides: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [],

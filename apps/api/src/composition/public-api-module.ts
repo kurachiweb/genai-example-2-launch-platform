@@ -11,12 +11,24 @@ import {
   type ApiKeyManagement,
   StoreApiKeyManagement,
 } from '../application/public-api/api-key-management.ts';
+import {
+  EditorOwnProductDescriptionService,
+  type OwnProductDescriptionService,
+} from '../application/public-api/own-product-description-service.ts';
 import type {
   ApiKeySecretGenerator,
   ApiKeyStore,
   PublicApiRateLimits,
 } from '../application/public-api/ports.ts';
 import { PUBLIC_API_TYPES } from '../application/public-api/public-api-types.ts';
+import {
+  EditorPublicProfileUpdater,
+  type PublicProfileUpdater,
+} from '../application/public-api/public-profile-updater.ts';
+import {
+  DirectoryPublicSupporterReader,
+  type PublicSupporterReader,
+} from '../application/public-api/public-supporter-reader.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { ApiKeyErasureSyncHandler } from '../infrastructure/public-api/api-key-erasure-sync-handler.ts';
 import { CounterPublicApiRateLimits } from '../infrastructure/public-api/counter-public-api-rate-limits.ts';
@@ -27,7 +39,7 @@ import {
   PlatformMediaLookup,
 } from '../presentation/rest/public-api/media-lookup.ts';
 
-// データエクスポートのAPIキーの照会はPUBLIC_API_PLATFORM_MODULE、ハッシュ化の部品と厳密カウンタのクライアントは共通の束縛、利用者の状態の判定はidentityの束縛、画像と利用者の一括の照会はmediaとprofileの束縛を使う
+// データエクスポートのAPIキーの照会はPUBLIC_API_PLATFORM_MODULE、ハッシュ化の部品と厳密カウンタのクライアントは共通の束縛、利用者の状態の判定はidentityの束縛、画像と利用者の一括の照会はmediaとprofileの束縛、サポーターの読み取り・プロフィールの部分更新・説明文の更新はdirectory・match・product・profileの束縛を使う
 export const PUBLIC_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'public-api',
   bindings: new ContainerModule(({ bind }) => {
@@ -44,6 +56,15 @@ export const PUBLIC_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ApiKeyAuthorizer>(PUBLIC_API_TYPES.ApiKeyAuthorizer).to(
       StoreApiKeyAuthorizer,
     );
+    bind<PublicSupporterReader>(PUBLIC_API_TYPES.PublicSupporterReader).to(
+      DirectoryPublicSupporterReader,
+    );
+    bind<PublicProfileUpdater>(PUBLIC_API_TYPES.PublicProfileUpdater).to(
+      EditorPublicProfileUpdater,
+    );
+    bind<OwnProductDescriptionService>(
+      PUBLIC_API_TYPES.OwnProductDescriptionService,
+    ).to(EditorOwnProductDescriptionService);
     bind<MediaLookup>(PUBLIC_API_TYPES.MediaLookup).to(PlatformMediaLookup);
     bind<UserLifecycleSyncHandler>(
       PUBLIC_API_TYPES.ApiKeyErasureSyncHandler,

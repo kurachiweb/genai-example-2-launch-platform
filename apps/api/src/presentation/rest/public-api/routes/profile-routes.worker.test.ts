@@ -1,7 +1,5 @@
 import { env } from 'cloudflare:workers';
 import { eq } from 'drizzle-orm';
-import type { Hono } from 'hono';
-import { ContainerModule } from 'inversify';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { USER_AVATAR_PURPOSE } from '../../../../../common-lib/profile/profile-input-rules.ts';
@@ -13,9 +11,7 @@ import { userProfiles } from '../../../../../db/schema/profile/user-profiles.ts'
 import { apiKeys } from '../../../../../db/schema/public-api/api-keys.ts';
 import { ultrasSubscriptions } from '../../../../../db/schema/ultras/ultras-subscriptions.ts';
 import { createKeyedHasher } from '../../../../../lib/core/crypto/keyed-hasher.ts';
-import type { AppModule } from '../../../../../lib/core/di/app-module.ts';
 import { insertPreviousHandle } from '../../../../../lib/workers/handles/testing/handle-fixtures.ts';
-import type { PlatformHonoEnv } from '../../../../../lib/workers/http/hono-env.ts';
 import {
   after,
   db,
@@ -46,11 +42,6 @@ import {
   updateMyProfile,
 } from '../../../../../test/support/profile-graphql-operations.ts';
 import { createPublicApiRestHarness } from '../../../../../test/support/public-api-rest-harness.ts';
-import {
-  EditorPublicProfileUpdater,
-  type PublicProfileUpdater,
-} from '../../../../application/public-api/public-profile-updater.ts';
-import { PUBLIC_API_TYPES } from '../../../../application/public-api/public-api-types.ts';
 import { API_KEY_HASH_PURPOSE } from '../../../../domain/public-api/api-key-token.ts';
 import { OPENAPI_DOCUMENT_PATH } from '../../public-api-app.ts';
 import {
@@ -59,20 +50,7 @@ import {
 } from '../schemas/profiles.ts';
 import { publicApiProfileRoutes } from './profile-routes.ts';
 
-// 5.7でapiの束縛のモジュールへ加える部分更新のユースケースを、ここで束縛する
-const testModule: AppModule<Hono<PlatformHonoEnv<Env>>> = {
-  name: 'public-api-profile-routes-test',
-  bindings: new ContainerModule(({ bind }) => {
-    bind<PublicProfileUpdater>(PUBLIC_API_TYPES.PublicProfileUpdater).to(
-      EditorPublicProfileUpdater,
-    );
-  }),
-};
-
-const harness = createPublicApiRestHarness(
-  [publicApiProfileRoutes],
-  [testModule],
-);
+const harness = createPublicApiRestHarness([publicApiProfileRoutes]);
 
 const hasher = createKeyedHasher(env.HASH_PEPPER);
 

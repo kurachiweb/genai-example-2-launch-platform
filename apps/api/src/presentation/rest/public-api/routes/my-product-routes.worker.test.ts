@@ -1,7 +1,5 @@
 import { env } from 'cloudflare:workers';
 import { eq } from 'drizzle-orm';
-import type { Hono } from 'hono';
-import { ContainerModule } from 'inversify';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { productSearchDocuments } from '../../../../../db/schema/directory/product-search-documents.ts';
@@ -9,7 +7,6 @@ import { users } from '../../../../../db/schema/identity/users.ts';
 import { products } from '../../../../../db/schema/product/products.ts';
 import { apiKeys } from '../../../../../db/schema/public-api/api-keys.ts';
 import { createKeyedHasher } from '../../../../../lib/core/crypto/keyed-hasher.ts';
-import type { AppModule } from '../../../../../lib/core/di/app-module.ts';
 import { createUlidGenerator } from '../../../../../lib/core/ids/id-generator.ts';
 import {
   SEARCH_INDEX_REFRESH_MESSAGE,
@@ -24,7 +21,6 @@ import {
   qualifierDecidedAt,
   winOf,
 } from '../../../../../lib/workers/directory/testing/directory-listing-fixtures.ts';
-import type { PlatformHonoEnv } from '../../../../../lib/workers/http/hono-env.ts';
 import {
   after,
   clearProductTables,
@@ -42,29 +38,11 @@ import { createPublicApiRestHarness } from '../../../../../test/support/public-a
 import { StoreMyProductsReader } from '../../../../application/product/my-products-reader.ts';
 import { StoreProductDescriptionEditor } from '../../../../application/product/product-description-editor.ts';
 import { PRODUCT_ERRORS } from '../../../../application/product/product-errors.ts';
-import {
-  EditorOwnProductDescriptionService,
-  type OwnProductDescriptionService,
-} from '../../../../application/public-api/own-product-description-service.ts';
-import { PUBLIC_API_TYPES } from '../../../../application/public-api/public-api-types.ts';
 import { API_KEY_HASH_PURPOSE } from '../../../../domain/public-api/api-key-token.ts';
 import { publicApiError } from '../public-api-errors.ts';
 import { publicApiMyProductRoutes } from './my-product-routes.ts';
 
-// 5.7でapiの束縛のモジュールへ加える説明文のユースケースを、ここで束縛する
-const testModule: AppModule<Hono<PlatformHonoEnv<Env>>> = {
-  name: 'public-api-my-product-routes-test',
-  bindings: new ContainerModule(({ bind }) => {
-    bind<OwnProductDescriptionService>(
-      PUBLIC_API_TYPES.OwnProductDescriptionService,
-    ).to(EditorOwnProductDescriptionService);
-  }),
-};
-
-const harness = createPublicApiRestHarness(
-  [publicApiMyProductRoutes],
-  [testModule],
-);
+const harness = createPublicApiRestHarness([publicApiMyProductRoutes]);
 
 const hasher = createKeyedHasher(env.HASH_PEPPER);
 

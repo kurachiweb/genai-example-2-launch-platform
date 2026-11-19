@@ -191,7 +191,7 @@
   - _Boundary: OwnProductDescriptionService、`routes/my-product-routes.ts`・`schemas/my-products.ts`・`mappers/my-product-mappers.ts`_
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 14.2_
 
-- [ ] 5.7 全ての経路を公開APIの経路の集約に加え、仕様書とCORSを確かめる
+- [x] 5.7 全ての経路を公開APIの経路の集約に加え、仕様書とCORSを確かめる
   - 5.2〜5.6の経路をIP単位の制限の後に加え、5.3・5.5・5.6のユースケースの束縛をapiの束縛のモジュールへ追記する
   - 先に、apiのWorkerの組み立てを使うWorkers統合テストで、仕様書が認証なしで全13経路と必要な権限・エラーの状態コード(カーソルの経路の400`invalid_cursor`を含む)・マッチの種別と段階の列挙を載せること、全経路の権限不足の403、プリフライトと各経路の`Access-Control-Allow-Origin: *`・メソッド・`Authorization`と更新の経路の`Content-Type`・`Access-Control-Expose-Headers`が無いこと、停止中の持ち主のキーで公開データの9経路が処理され`/v1/me`の下の4経路が403`account_unavailable`になること、公開データの1要求で上流の照会が項目の数に比例しないことを確かめる
   - 完了状態: Workers統合テストが成功する
@@ -318,3 +318,4 @@
 - 5.4: 経路は`routes/engagement-routes.ts`の`publicApiEngagementRoutes`(新しい束縛は無い)。**親の決定による設計の改訂**: `CommentNode`に`parent_id: string | null`(最上位は`null`、置き換え表示でも返す)を加え、design.mdの型と注記も直した(深さ2の返信が複数あると深さ3の返信の親を判別できないため。上流の`CommentView.parentId`・GraphQLの`parentId`と同じ意味)。`launch_id`はULIDの検証をせず404`launch_not_found`。読み取りの後に投稿者が表示できなくなったコメントは本文を残し`author: null`(GraphQLと同じ)。`average`は丸めない。上流の未ログインの呼び出しはスパイで確かめている
 - 5.5: 経路は`routes/profile-routes.ts`の`publicApiProfileRoutes`、ユースケースは`application/public-api/public-profile-updater.ts`の`EditorPublicProfileUpdater`(束縛は5.7)。`UserHandleParamsSchema`を`schemas/common.ts`へ移し5.3と共有した。項目の文言`PROFILE_FIELD_MESSAGES`はGraphQLの`INPUT_MESSAGES`の写し(単体テストで照合)。RESTだけの文言3つ(項目無し・未知の項目・型違い)を文言規則に追記した。PATCHは設計の表に無い415も記載する(`backend/005`の規則)。他人の保持中の旧ハンドルの取得は上流の保存が許す(GraphQLと同じ、`backend/011`の既定の規約どおり)
 - 5.6: 経路は`routes/my-product-routes.ts`の`publicApiMyProductRoutes`、ユースケースは`application/public-api/own-product-description-service.ts`の`EditorOwnProductDescriptionService`(束縛は5.7)。application層は`product-errors.ts`の`productError`(`PUBLIC_API_ERRORS`と同じ`PRODUCT_ERRORS`のオブジェクト)を投げる。PUTの本文の未知の項目は無視する(PATCH /me/profileは拒否。7.2の仕様書の説明か8.xの文書に書くこと)。「値の形式が正しくありません。」を`schemas/common.ts`の`PUBLIC_API_INVALID_TYPE_MESSAGE`へ移した。保存の後の読み直しで見つからなければ404`product_not_found`(設計に無い)。PUTも415を記載
+- 5.7: 集約は先頭のIP単位の制限の後にプロダクト・Upvote・コメントと評価・プロフィール・自分のプロダクトの順。3つのユースケースの束縛を`composition/public-api-module.ts`へ加え、経路のテストの仮の束縛を外した。apiのWorkerの組み立ての統合テストは800行の制限のため`src/index.public-api.worker.test.ts`(仕様書・403・CORS)・`src/index.public-api.suspension.worker.test.ts`(停止中の9経路200・4経路403と、解除後の13経路200)・`src/index.public-api.query-count.worker.test.ts`(D1の文の数が項目の数に比例しない)と共通の`test/support/public-api-route-cases.ts`に分け、回数の制限が持ち越されるためファイルごとに利用者の番号の範囲とIPv6の範囲を分けた。照会の回数は設計の「`MediaLookup`が1回」より広くD1の文の数で測る(`exports.default`でなく同じ`publicEntrypoint`を環境の上書きで呼ぶ)。`MyProductsReader`はローンチの無いプロダクトで例外を投げるが、プロダクトは必ずローンチと同じ一括の書き込みで作られるため実際には起きない(テストのデータにはローンチを入れる)
