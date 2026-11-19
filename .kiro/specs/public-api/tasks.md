@@ -21,7 +21,7 @@
   - _Boundary: `docs/GUIDES/service/design/002-page-layouts.md`・`003-text-and-copy-rules.md`_
   - _Requirements: 17.5_
 
-- [ ] 1.4 (P) APIサーバーにIP単位の制限のバインディングと画像配信のオリジンの変数を加える
+- [x] 1.4 (P) APIサーバーにIP単位の制限のバインディングと画像配信のオリジンの変数を加える
   - Wrangler設定の3環境に`PUBLIC_API_RATE_LIMITER`(`limit: 60`・`period: 60`、`namespace_id`はローカル1005・staging 2005・prod 3005)と`IMAGES_ORIGIN`の値(infra-deliveryの改訂1の表のapiの行)を加え、環境の検証のスキーマと型の宣言に足す
   - 先に、Wrangler設定の検査のテスト(`apps/api/test/config/wrangler-config.unit.test.ts`)で、3環境のバインディング名・上限・期間・`namespace_id`が他のWorkerと重ならないこと・変数の値の形を確かめる
   - 2つ目のバインディングで失敗する既存の期待を直す: apiの検査の272行目(api・eventの`ratelimits`の名前が`['IP_RATE_LIMITER']`と完全一致)はapiを`['IP_RATE_LIMITER', 'PUBLIC_API_RATE_LIMITER']`・eventを`['IP_RATE_LIMITER']`に、adminの検査(`apps/admin/test/config/wrangler-config.unit.test.ts`の313〜323行目、`namespace_id`の数が環境の数×アプリの数の12)は総数15と重複の無いことの検査に直す
@@ -299,3 +299,4 @@
 - 1.1: 規則は`apps/common-lib/public-api/api-key-rules.ts`(design.mdのApiKeyRulesの契約どおり`checkApiKeyName`は`{ ok: true, name } | { ok: false, reason: 'required' | 'too_long' }`)。`coding/005`の例示(`<項目>-input-rules.ts`・文字列の戻り値)とは異なるが設計に従った。禁止文字の判定は要件1.3と設計に無く入れていない
 - 1.2: `apps/db`はcommon-libを読まない前例に従い、権限の値を`apps/db/schema/public-api/api-keys.ts`に写し、`config/public-api-contract-copies.unit.test.ts`(`check:contract-copies`)で`api-key-rules.ts`と照合する。8.2で`project-values.md`の「手で同期する値」の行にこの写しを加えること。キーが残る利用者は外部キーで物理削除できない(退会で3.3が先に消す)
 - 1.3: 設計に無い文言(題名「新しいAPIキー」、確認のダイアログの失敗はダイアログを閉じてトースト、`/api-docs`の回数の説明はclientの静的な文言で「制限を変えた時は合わせて直す」と注記)を文言規則に決めた。公開REST APIのエラーコードの文言は4.2で決め、必要なら文言規則に追記する
+- 1.4: clientの設定の検査(`apps/client/test/config/wrangler-config.unit.test.ts`)にもadminと同じ名前空間の総数の検査があったため、総数15に直した。apiの設定の検査は`PUBLIC_API_RATE_LIMITER`の60・60を直書きしているため、2.3(または4.3)で`PUBLIC_API_IP_RATE_LIMIT`の定数との照合に差し替える。環境の検証のテストは既存に倣いWorkers統合テスト(`public-api-env.worker.test.ts`)。8.2で`project-values.md`の`namespace_id`の表(1005・2005・3005)・「4アプリ12個」の記述・apiの`IMAGES_ORIGIN`を直す

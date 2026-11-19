@@ -61,6 +61,11 @@
       "namespace_id": "1001",
       "simple": { "limit": 500, "period": 10 },
     },
+    {
+      "name": "PUBLIC_API_RATE_LIMITER",
+      "namespace_id": "1005",
+      "simple": { "limit": 60, "period": 60 },
+    },
   ],
   "vars": {
     "LOG_LEVEL": "debug",
@@ -70,6 +75,7 @@
     "APP_ENVIRONMENT": "local",
     "CLIENT_SITE_ORIGIN": "http://localhost:48044",
     "ADMIN_SITE_ORIGIN": "http://localhost:48045",
+    "IMAGES_ORIGIN": "http://localhost:48043",
     "PAYMENTS_SMOKE_ENABLED": "true",
   },
   "secrets": {
@@ -123,6 +129,11 @@
           "namespace_id": "2001",
           "simple": { "limit": 500, "period": 10 },
         },
+        {
+          "name": "PUBLIC_API_RATE_LIMITER",
+          "namespace_id": "2005",
+          "simple": { "limit": 60, "period": 60 },
+        },
       ],
       "vars": {
         "LOG_LEVEL": "info",
@@ -132,6 +143,7 @@
         "APP_ENVIRONMENT": "staging",
         "CLIENT_SITE_ORIGIN": "https://genai-example-2-client-staging.lab.kurachiweb.com",
         "ADMIN_SITE_ORIGIN": "https://genai-example-2-admin-staging.lab.kurachiweb.com",
+        "IMAGES_ORIGIN": "https://genai-example-2-images-staging.lab.kurachiweb.com",
         "PAYMENTS_SMOKE_ENABLED": "true",
       },
       "secrets": {
@@ -192,6 +204,11 @@
           "namespace_id": "3001",
           "simple": { "limit": 500, "period": 10 },
         },
+        {
+          "name": "PUBLIC_API_RATE_LIMITER",
+          "namespace_id": "3005",
+          "simple": { "limit": 60, "period": 60 },
+        },
       ],
       "vars": {
         "LOG_LEVEL": "info",
@@ -201,6 +218,7 @@
         "APP_ENVIRONMENT": "prod",
         "CLIENT_SITE_ORIGIN": "https://genai-example-2-client.lab.kurachiweb.com",
         "ADMIN_SITE_ORIGIN": "https://genai-example-2-admin.lab.kurachiweb.com",
+        "IMAGES_ORIGIN": "https://genai-example-2-images.lab.kurachiweb.com",
         "PAYMENTS_SMOKE_ENABLED": "false",
       },
       "secrets": {

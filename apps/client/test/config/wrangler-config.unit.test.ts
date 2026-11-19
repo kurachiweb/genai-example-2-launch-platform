@@ -348,7 +348,7 @@ describe('Wrangler設定の環境をまたぐ整合', () => {
     },
   );
 
-  test('IP制限の名前空間が、利用者側・管理者側・api・eventの環境・Workerごとにすべて異なる', () => {
+  test('レート制限の名前空間が、利用者側・管理者側・api・eventの環境・Workerごとの全バインディング(各Workerの制限とapiの公開APIの制限)ですべて異なる', () => {
     const namespaceIds = EXPECTED_ENVIRONMENTS.flatMap(({ wranglerEnv }) =>
       RATE_LIMITED_APPS.flatMap((app) =>
         rateLimitNamespaceIdsOf(app, wranglerEnv),
@@ -356,7 +356,8 @@ describe('Wrangler設定の環境をまたぐ整合', () => {
     );
 
     expect(namespaceIds).toHaveLength(
-      EXPECTED_ENVIRONMENTS.length * RATE_LIMITED_APPS.length,
+      EXPECTED_ENVIRONMENTS.length * RATE_LIMITED_APPS.length +
+        EXPECTED_ENVIRONMENTS.length,
     );
     expect(new Set(namespaceIds).size).toBe(namespaceIds.length);
   });
