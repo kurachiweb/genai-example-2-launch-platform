@@ -121,7 +121,7 @@
   - 完了状態: Workers統合テストが成功する
   - _Requirements: 2.5, 5.2, 5.3, 7.1, 7.2, 7.3, 13.5, 13.7, 16.2, 17.2_
 
-- [ ] 4.3 公開APIのIP単位の回数の制限を作り、経路の登録箇所の先頭に置く
+- [x] 4.3 公開APIのIP単位の回数の制限を作り、経路の登録箇所の先頭に置く
   - 公開APIの経路の集約(初版はIP単位の制限だけ)を作り、経路の登録箇所に先頭が必要である旨の注記とともに追記する
   - 期間は2.3のIP単位の制限の定数から取り、Wrangler設定の検査のテストに、3環境の`PUBLIC_API_RATE_LIMITER`の`limit`・`period`がその定数と一致することを加える
   - 先に、Workers統合テストで、仕様書の配信を含む60回目と61回目の429と`Retry-After: 60`、プリフライトを数えないこと、送信元IPアドレスごとに別に数えることを確かめる
@@ -311,3 +311,4 @@
 - 3.4: GraphQLのモジュールは`presentation/graphql/modules/public-api/`(設計の5ファイルに加え`api-key-views.ts`・`resolver-support.ts`)。ユースケースの誤りは`withInputPath('input', …)`で`input.name`・`input.scopes.<機能>`にする(6.2は`serverFieldPrefix="input"`で読める)。`first`は境界で1〜50(範囲外は`validation_error`の`first`)。読み取りの機能への`READ_WRITE`はGraphQLの列挙型で`graphql_request_invalid`(400)になり、文言規則の「選べない値」の文言はユースケース経由でだけ届く。ULIDでないIDは`validation_error`(`id`、文言は見つからない旨。設計の表に無い)。8.2で`project-values.md`に「GraphQLの操作」の行(モジュール名・5操作・テストの補助`apps/api/test/support/public-api-graphql-operations.ts`)を加えること。レビューの1回目の差し戻し(停止中のガードとclient限定のテストの不足)をテストの追加で解消した
 - 4.1: `invalid_api_key`(401、「APIキーが無効です。」)・`insufficient_scope`(403、「このAPIキーにはこの操作の権限がありません。」)はapplication層の`api-key-errors.ts`の`API_KEY_ERRORS`に置き(application層はpresentationを読めないため)、文言規則にも追記した。4.2の`public-api-errors.ts`はこの2つと`account_unavailable`を読み込み、再定義しない(設計の「4.2で全て作る」との相違)。`ApiKeyAuthorizer`はログを出さず、拒否のログは4.2の中間処理が`recordId`・`userId`で出す。`public`の経路では停止中の持ち主でも`caller.user`が入るため、上流の呼び出しは必ず`ANONYMOUS_SESSION_VIEW`を使う
 - 4.2: 経路は`presentation/rest/public-api/route-definition.ts`の`definePublicApiRoute`(`createRoute`の結果を返し、`feature`・`access`・`target`は仕様書に出さない)で定義し、経路の処理は`c.get('publicApiCaller')`で認証の結果を読む。テストの組み立ては`apps/api/test/support/public-api-rest-harness.ts`(5.xで再利用する)。`ApiKeyAuthorizer`に任意の`onIdentified({keyId, userId})`を加えた(拒否のログのため)。`X-RateLimit-*`は認証の後の失敗(経路の404など)にも付く。`X-RateLimit-Reset`はエポック秒の切り上げ。拒否のログはカテゴリ`['api', 'public-api']`・`info`・属性`reason`・`recordId`・`userId`・`route`・`status`で、8.2で`project-values.md`に記録すること。新しい文言(`unauthenticated`・`user_not_found`・`launch_not_found`・`match_not_found`)を文言規則に追記した
+- 4.3: 公開APIの経路の集約は`presentation/rest/public-api/index.ts`の`PUBLIC_API_REST_ROUTES`(先頭が`publicApiIpRateLimitRoutes`)で、`composition/rest-routes.ts`の`REST_ROUTES`に展開する。5.7は先頭の後に経路を加える。IP単位の制限のキーは設計の`'public-api:' + (ip ?? 'unknown')`をそのまま渡さず、`security/002`の規則に従い`hashRateLimitKey`でハッシュ化した(設計との相違。backend-libの非公開の補助`reuseHasherWhilePepperUnchanged`の約10行の写し)。8.xで`project-values.md`に接頭辞`public-api:`と集約の場所を記録すること
