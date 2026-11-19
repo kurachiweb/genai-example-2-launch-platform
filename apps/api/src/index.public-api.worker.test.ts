@@ -17,6 +17,7 @@ import {
   TOOL_ORIGIN,
   WRITE_ROUTES,
 } from '../test/support/public-api-route-cases.ts';
+import { PUBLIC_API_DOCUMENT_INFO } from './composition/public-api-document-info.ts';
 import { describeRequiredScope } from './presentation/rest/public-api/route-definition.ts';
 
 const { createKeyHolder, nextIp, routeRequest, preflightRequest } =
@@ -38,6 +39,8 @@ interface OpenApiOperation {
 }
 
 interface OpenApiDocument {
+  readonly info: Readonly<Record<string, unknown>>;
+  readonly servers: readonly unknown[];
   readonly paths: Readonly<
     Record<string, Readonly<Record<string, OpenApiOperation>>>
   >;
@@ -75,6 +78,13 @@ function operationOf(
 }
 
 describe('公開APIの仕様書(既定のエクスポート)', () => {
+  test('infoに本specの題名・版・説明を載せ、serversを基準パスの相対のURLにする', async () => {
+    const document = await fetchDocument();
+
+    expect(document.info).toStrictEqual({ ...PUBLIC_API_DOCUMENT_INFO });
+    expect(document.servers).toStrictEqual([{ url: '/v1' }]);
+  });
+
   test('認証なしで、design.mdの表の13経路を過不足なく載せる', async () => {
     const document = await fetchDocument();
 

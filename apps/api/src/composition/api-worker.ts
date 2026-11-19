@@ -13,6 +13,7 @@ import { createPublicApiCorsPolicy } from '../presentation/rest/cors-policy.ts';
 import { createRestModule } from '../presentation/rest/rest-module.ts';
 import { apiEnvSchema } from './env-schema.ts';
 import { MODULES } from './modules.ts';
+import { PUBLIC_API_DOCUMENT_INFO } from './public-api-document-info.ts';
 import { RATE_LIMIT_EXCLUSIONS } from './rate-limit-exclusions.ts';
 import { REST_ROUTES } from './rest-routes.ts';
 import { SCHEDULED_JOBS, SCHEDULED_RUN_BUDGETS } from './scheduled-jobs.ts';
@@ -22,7 +23,9 @@ const APP_NAME = 'api';
 const sentry = (env: Env) => buildSentryOptions(readSentryRuntimeOptions(env));
 
 // 外部経路のCORSの方針は登録した経路の表から作るため、アプリに載せるモジュールと同じインスタンスを1度だけ組み立てる
-const rest = createRestModule<Env>(REST_ROUTES);
+const rest = createRestModule<Env>(REST_ROUTES, {
+  info: PUBLIC_API_DOCUMENT_INFO,
+});
 
 const app = createWorkerApp<Env>({
   appName: APP_NAME,

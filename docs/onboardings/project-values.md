@@ -713,11 +713,11 @@ Infisicalの機械の主体とOIDCの縛りは次のとおりである。audienc
 
 ## 公開REST APIの仕様書
 
-| 項目                 | 値                                                                                                          | 定義場所                                                                                   |
-| -------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `info`の既定値       | `title`が`Launch Stadium Public API`、`version`が`1.0.0`                                                    | `apps/api/src/presentation/rest/rest-module.ts`の`DEFAULT_DOCUMENT_INFO`                   |
-| `servers`            | `[{ "url": "/v1" }]`(相対)                                                                                  | `apps/api/src/presentation/rest/rest-module.ts`                                            |
-| `info`を指定する箇所 | `apps/api/src/composition/api-worker.ts`の`createRestModule`の第2引数`{ info }`。現在は指定せず既定値を使う | 「[仕様書の情報の指定](../GUIDES/tech/backend/005-public-rest-api.md#仕様書の情報の指定)」 |
+| 項目                 | 値                                                                                                                                                                                                                                                                                                                    | 定義場所                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `info`の既定値       | `title`が`Launch Stadium Public API`、`version`が`1.0.0`                                                                                                                                                                                                                                                              | `apps/api/src/presentation/rest/rest-module.ts`の`DEFAULT_DOCUMENT_INFO`                   |
+| `servers`            | `[{ "url": "/v1" }]`(相対)                                                                                                                                                                                                                                                                                            | `apps/api/src/presentation/rest/rest-module.ts`                                            |
+| `info`を指定する箇所 | `apps/api/src/composition/api-worker.ts`の`createRestModule`の第2引数`{ info }`。`apps/api/src/composition/public-api-document-info.ts`の`PUBLIC_API_DOCUMENT_INFO`(題名と版は既定値と同じ、説明は認証・権限スコープ・レート制限・ページ分け・更新の本文。権限の表示名と回数の上限は定義元の定数から組み立てる)を渡す | 「[仕様書の情報の指定](../GUIDES/tech/backend/005-public-rest-api.md#仕様書の情報の指定)」 |
 
 ## 業務時刻
 
