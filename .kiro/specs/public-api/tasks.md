@@ -78,7 +78,7 @@
   - _Requirements: 4.1, 4.3, 5.2, 8.8, 13.1, 13.3, 13.8_
 
 - [ ] 3. APIキーの管理
-- [ ] 3.1 APIキーのストアと乱数・ハッシュの生成を作る
+- [x] 3.1 APIキーのストアと乱数・ハッシュの生成を作る
   - 先に、ローカルD1のWorkers統合テストで、ハッシュでの照合、発行の`CASE`式(停止中・退会済みの利用者では保存しない)、編集の本人の確認、同じ名前と権限スコープのキーを重ねて保存でき元のキーと新しいキーの両方で照合できること、他人のキーを本人のキーとして引くと見つからないこと、削除、一覧の発行の新しい順と続きのカーソル、キーの数に上限が無いこと、生成した平文の形式とハッシュの用途を確かめる
   - 厳密カウンタを使う回数の制限の実装`CounterPublicApiRateLimits`もinfrastructure層に作る(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。`CounterDecision`は上限を持たないため上限は規則の`limit`から取り、`resetAt`はエポックミリ秒のまま返し、発行の超過は`RateLimitCounterClient`のメソッド`assertWithinLimit(decision, now.getTime())`で投げる。先に、偽の厳密カウンタのWorkers統合テストで、発行の規則の4回目の429、読み取りと書き込みの規則の選択、利用者のIDのハッシュのキー、許可の上限・残り・リセットの時刻と、拒否の例外が同じ値と再試行の秒数を持つことを確かめる
   - ストア・生成・回数の制限の束縛をapiの束縛のモジュールへ追記する
@@ -305,3 +305,4 @@
 - 2.1: `parseBearerAuthorization`はトークンを`\S+`で取り、文字種と長さは`isWellFormedApiKey`(`/^lsk_[A-Za-z0-9_-]{43}$/`)で判定する。`allowsAccess`は機能の種類を見ず型に頼るため、D1の行を`ApiKeyScopes`へ変換する3.1で読み取りの5機能に`read_write`が入らないことを保つ(CHECKでも拒否される)
 - 2.2: テストの補助`backend-lib/workers/public-api/testing/api-key-fixtures.ts`(`insertApiKey`・`clearApiKeyTables`など。外部キーのため`api_keys`を先に消す)を後続のWorkers統合テストで使える。`ApiKeyExport.listByUser`は`created_at`・`id`の昇順で`users`と結合しない。backend-libのWorkers統合テストはapiでだけ流れる(eventのvitestは`lib/**`を除く)
 - 2.3: `PUBLIC_API_TYPES`(`application/public-api/public-api-types.ts`)は10個(ApiKeyStore・ApiKeySecretGenerator・PublicApiRateLimits・ApiKeyManagement・ApiKeyAuthorizer・PublicSupporterReader・PublicProfileUpdater・OwnProductDescriptionService・MediaLookup・ApiKeyErasureSyncHandler)。設計のファイル構成に無い`application/public-api/public-api-rate-limit-error.ts`の`PublicApiRateLimitError`(`AppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)`の派生、凍結した`rateLimit{limit, remaining, resetAt(エポックミリ秒)}`)を加え、3.1が投げ4.2が捕まえる。超過の文言は`workers`の2か所の写し(application層は`workers`を読めない)。Wrangler設定の検査は`PUBLIC_API_IP_RATE_LIMIT`との照合に差し替え済み(4.3の該当の作業は不要)。`composition/public-api-module.ts`のコメントは束縛を加えるタスクで見直す
+- 3.1: ハッシュの用途`API_KEY_HASH_PURPOSE`(`public-api-key`)は`domain/public-api/api-key-token.ts`に置き、生成器と4.1の`ApiKeyAuthorizer`が共有する(8.2で`project-values.md`に用途の名前も加える)。`ApiKeyStore.insert`は`visibleUsers()`の`CASE`式で不在の利用者も`account-unavailable`にし、`update`は利用者の状態を見ない(停止中は3.4の`requireWritableUser`が拒否)。`CounterPublicApiRateLimits`の再試行の秒数は`assertWithinLimit`の式の写し

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  API_KEY_HASH_PURPOSE,
   API_KEY_TOKEN_PATTERN,
   API_KEY_TOKEN_PREFIX,
   isWellFormedApiKey,
@@ -18,6 +19,12 @@ describe('API_KEY_TOKEN_PREFIX・API_KEY_TOKEN_PATTERN', () => {
   test('平文の形式はlsk_と43文字のbase64urlの連結である', () => {
     expect(API_KEY_TOKEN_PATTERN.source).toBe('^lsk_[A-Za-z0-9_-]{43}$');
     expect(API_KEY_TOKEN_PATTERN.flags).toBe('');
+  });
+});
+
+describe('API_KEY_HASH_PURPOSE', () => {
+  test('平文のハッシュの用途はpublic-api-keyである', () => {
+    expect<string>(API_KEY_HASH_PURPOSE).toBe('public-api-key');
   });
 });
 

@@ -1,6 +1,14 @@
+import {
+  type HashPurpose,
+  hashPurpose,
+} from '../../../lib/core/crypto/keyed-hasher.ts';
+
 export const API_KEY_TOKEN_PREFIX = 'lsk_';
 
 export const API_KEY_TOKEN_PATTERN = /^lsk_[A-Za-z0-9_-]{43}$/;
+
+// 保存を始めた用途の名前を変えると保存済みのハッシュ値と一致しなくなるため、名前は変えない
+export const API_KEY_HASH_PURPOSE: HashPurpose = hashPurpose('public-api-key');
 
 export type BearerParseResult =
   | { readonly kind: 'token'; readonly token: string }

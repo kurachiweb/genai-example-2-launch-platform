@@ -5,6 +5,10 @@ import { describe, expect, test } from 'vitest';
 import { PUBLIC_API_PLATFORM_TYPES } from '../../lib/core/public-api/identifiers.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { D1ApiKeyExport } from '../../lib/workers/public-api/d1-api-key-export.ts';
+import { PUBLIC_API_TYPES } from '../application/public-api/public-api-types.ts';
+import { CounterPublicApiRateLimits } from '../infrastructure/public-api/counter-public-api-rate-limits.ts';
+import { CryptoApiKeySecretGenerator } from '../infrastructure/public-api/crypto-api-key-secret-generator.ts';
+import { D1ApiKeyStore } from '../infrastructure/public-api/d1-api-key-store.ts';
 import { MODULES } from './modules.ts';
 import { PUBLIC_API_MODULE } from './public-api-module.ts';
 
@@ -20,7 +24,7 @@ describe('APIサーバーの公開APIの束縛', () => {
     expect(PUBLIC_API_MODULE.bindings).toBeDefined();
   });
 
-  test('公開APIの束縛を加えた一覧からfetchの処理単位のコンテナを作り、既存の束縛を解決できる', () => {
+  test('公開APIの束縛を加えた一覧からfetchの処理単位のコンテナを作り、データエクスポートの照会とキーのストア・乱数とハッシュの生成・回数の制限を解決できる', () => {
     const container = createInvocationContainer(
       {
         env,
@@ -37,5 +41,14 @@ describe('APIサーバーの公開APIの束縛', () => {
     expect(
       container.get(PUBLIC_API_PLATFORM_TYPES.ApiKeyExport),
     ).toBeInstanceOf(D1ApiKeyExport);
+    expect(container.get(PUBLIC_API_TYPES.ApiKeyStore)).toBeInstanceOf(
+      D1ApiKeyStore,
+    );
+    expect(
+      container.get(PUBLIC_API_TYPES.ApiKeySecretGenerator),
+    ).toBeInstanceOf(CryptoApiKeySecretGenerator);
+    expect(container.get(PUBLIC_API_TYPES.PublicApiRateLimits)).toBeInstanceOf(
+      CounterPublicApiRateLimits,
+    );
   });
 });
