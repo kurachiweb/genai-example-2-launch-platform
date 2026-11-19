@@ -57,6 +57,7 @@ import {
 } from './payments-module.ts';
 import { PRODUCT_MODULE } from './product-module.ts';
 import { PROFILE_MODULE } from './profile-module.ts';
+import { PUBLIC_API_MODULE } from './public-api-module.ts';
 import {
   API_SEARCH_MODULE,
   API_SEARCH_PLATFORM_MODULE,
@@ -163,4 +164,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   DIRECTORY_MODULE,
   NOTIFICATIONS_MODULE,
   ENGAGEMENT_MODULE,
+  PUBLIC_API_MODULE,
 ];

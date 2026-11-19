@@ -5,6 +5,7 @@ import {
   DEFAULT_RETRY_POLICY,
   QUEUE_MAX_RETRIES,
 } from '../../lib/core/messaging/retry-policy.ts';
+import { PUBLIC_API_IP_RATE_LIMIT } from '../../src/application/public-api/rate-limit-rules.ts';
 import {
   appPath,
   EMAIL_CONFIG_KEY_PATTERN,
@@ -499,11 +500,14 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     }
   });
 
-  test('公開APIのIP制限は60秒あたり60回で、apiの環境ごとの名前空間を使う', () => {
+  test('公開APIのIP制限は仕様書と超過の応答が使う定数の上限と期間で、apiの環境ごとの名前空間を使う', () => {
     expect(findPublicApiRateLimiter(api)).toEqual({
       name: 'PUBLIC_API_RATE_LIMITER',
       namespace_id: env.publicApiRateLimitNamespaceId,
-      simple: { limit: 60, period: 60 },
+      simple: {
+        limit: PUBLIC_API_IP_RATE_LIMIT.limit,
+        period: PUBLIC_API_IP_RATE_LIMIT.periodSeconds,
+      },
     });
     expect(findPublicApiRateLimiter(event)).toBeUndefined();
   });

@@ -69,7 +69,7 @@
   - _Boundary: ApiKeyExport、PublicApiPlatformModule、`apps/api/src/composition/modules.ts`・`apps/event/src/composition/modules.ts`_
   - _Requirements: 16.1, 1.9_
 
-- [ ] 2.3 回数の規則・未ログインとキーの持ち主のセッション・ポートとDIの識別子を作る
+- [x] 2.3 回数の規則・未ログインとキーの持ち主のセッション・ポートとDIの識別子を作る
   - 3つの回数の規則(発行は1時間3回、読み取りは1分30回、書き込みは1分15回)と操作による選択、IP単位の制限の値の定数(1分60回。Wrangler設定の値と照合し、仕様書の説明と、4.3が`bindingRateLimit`へ渡す期間(429の`Retry-After`の元)に使う)、常に未ログインを返すセッションと、キーのIDを入れた疑似のセッションIDで利用者を返すセッションを作る
   - キーのストア・乱数とハッシュの生成・回数の制限(`PublicApiRateLimits`)のポートと型、本specのapiの全部品のDIの識別子をここで一括で作る(3〜5のタスクは識別子を作らない)。application層は厳密カウンタの型(共通ライブラリの`workers`)を読み込めないため、回数の制限はポートで受け取る
   - apiの束縛のモジュールを空で作り、apiの束縛の一覧へ加える。以後の3.1〜3.4・4.1・5.1は自分の部品の束縛をこのモジュールへ追記し、5.3・5.5・5.6の部品の束縛は5.7でまとめて追記する(並行のタスクが同じファイルを書かない)
@@ -304,3 +304,4 @@
 - 1.6: `pagination.ts`はカーソルの2関数を`opaque-cursor.ts`から再公開する(既存の3つのWorkers統合テストが`pagination.ts`から読み、変更なしの条件のため。design.mdの「残りの補助だけを持つ」との相違)。公開RESTの表現層は`backend-lib/core/pagination/opaque-cursor.ts`を直に読む。`SupporterListPage.supporters`の行の型は`SupporterListRow`。同じbase64url+JSONのコーデックの写しがapi・backend-libに約11か所残る(範囲外)
 - 2.1: `parseBearerAuthorization`はトークンを`\S+`で取り、文字種と長さは`isWellFormedApiKey`(`/^lsk_[A-Za-z0-9_-]{43}$/`)で判定する。`allowsAccess`は機能の種類を見ず型に頼るため、D1の行を`ApiKeyScopes`へ変換する3.1で読み取りの5機能に`read_write`が入らないことを保つ(CHECKでも拒否される)
 - 2.2: テストの補助`backend-lib/workers/public-api/testing/api-key-fixtures.ts`(`insertApiKey`・`clearApiKeyTables`など。外部キーのため`api_keys`を先に消す)を後続のWorkers統合テストで使える。`ApiKeyExport.listByUser`は`created_at`・`id`の昇順で`users`と結合しない。backend-libのWorkers統合テストはapiでだけ流れる(eventのvitestは`lib/**`を除く)
+- 2.3: `PUBLIC_API_TYPES`(`application/public-api/public-api-types.ts`)は10個(ApiKeyStore・ApiKeySecretGenerator・PublicApiRateLimits・ApiKeyManagement・ApiKeyAuthorizer・PublicSupporterReader・PublicProfileUpdater・OwnProductDescriptionService・MediaLookup・ApiKeyErasureSyncHandler)。設計のファイル構成に無い`application/public-api/public-api-rate-limit-error.ts`の`PublicApiRateLimitError`(`AppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)`の派生、凍結した`rateLimit{limit, remaining, resetAt(エポックミリ秒)}`)を加え、3.1が投げ4.2が捕まえる。超過の文言は`workers`の2か所の写し(application層は`workers`を読めない)。Wrangler設定の検査は`PUBLIC_API_IP_RATE_LIMIT`との照合に差し替え済み(4.3の該当の作業は不要)。`composition/public-api-module.ts`のコメントは束縛を加えるタスクで見直す
