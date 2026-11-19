@@ -1888,7 +1888,7 @@ erDiagram
   - アプリケーション層: `WeekTournamentJobs`の失敗が`WeekTournamentIncidentReporter`へ渡り`markReady`を呼ばないこと(偽物のポート、C-3)、`WeekRelaunchConditionSource`(期限の前後、各状態、勝利の確定から枠の作成までの間)、`WeekLaunchSummarySource`の文言とrankと受賞の`productId`、`ProductTrophyReader`の並びと供給元の失敗、`WeekEntrySupplementProvider`の3つの場合と日曜日の強調。
 - Workers統合テスト(`*.worker.test.ts`):
   - 時刻の境界: 受付期限22:59と23:00の決済の開始、決済期限23:34と23:35(反映の期限内と仮5の新しいローンチ)、組み合わせ決定の23:44と23:45(15.3)。
-  - 反映: 同じ購入の重複の反映が1回の付与、凍結の後の反映がNOT NULL制約の違反で拒否、資格を得た枠への2件目の決済の拒否、削除済みのプロダクトの拒否(2.5〜2.8)。paymentsの反映の経路(`apps/api/src/composition/week-tournament-platform.payments.worker.test.ts`、実物のガード付きの一括・自動返金・3経路)で、23:35:00と23:35:01の反映の境界により`paidAt`が反映の時刻である前提を固定する。
+  - 反映: 同じ購入の重複の反映が1回の付与、凍結の後の反映がNOT NULL制約の違反で拒否、資格を得た枠への2件目の決済の二重決済としての拒否、削除済みのプロダクトの拒否(2.5〜2.8)。paymentsの反映の経路(`apps/api/src/composition/week-tournament-platform.payments.worker.test.ts`、実物のガード付きの一括・自動返金・3経路)で、23:35:00と23:35:01の反映の境界により`paidAt`が反映の時刻である前提を固定する。
   - 組み合わせ決定: 凍結→分類(可視・非公開化・停止・論理削除・Ultrasの期間内・期限切れ)→ブラケット→マッチの予定(match-engineのテーブルで確認)、凍結の後にだけ分類すること、再実行で重複しない、参加200で分割の書き込み、凍結と削除・Ultrasの加入の同時の発生、参加1で受賞が発行されること(3.5・4.4・5.1〜5.10・13.5)。組み合わせ決定で枠が期限切れ・喪失になっても予選の勝利の記録・ディレクトリの掲載・授与した賞が変わらないこと(`week-draw-service.listing.worker.test.ts`、7.6)。
   - 時刻の連鎖: `apps/api/src/composition/week-tournament-module.night.worker.test.ts`・`week-tournament-module.progression.worker.test.ts`(補助`apps/api/test/support/week-tournament-timeline.ts`)が、定期実行のディスパッチャとCronの登録で23:40・23:45と翌日の0時台を順に動かす。eventの確定の処理の代わりに`RoundProgressHandler`と同じ手順をテストで書く。
   - 夜の処理(notificationsの実際の`EveningDispatchGate`): その夜の結果・翌日の予告・受賞が全て発行された後で本specの`markReady`が記録され、本specの準備の完了の前にはnotificationsが送り出しを依頼しないこと、2回の実行で発行が重複しないこと(12.3・12.7)。呼び出しの順・処理の無い夜・失敗時に呼ばないことはアプリケーション層の単体テスト(部品と入口は偽物)で確かめる(12.7・12.8)。
