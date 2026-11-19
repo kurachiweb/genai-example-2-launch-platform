@@ -5,7 +5,10 @@ import {
   type MediaType,
 } from '../../../../../common-lib/media/media-types.ts';
 import { downloadPathOf } from '../../../../../common-lib/media/upload-protocol.ts';
-import type { MediaFileView } from '../../../../../lib/core/media/media-file.ts';
+import {
+  isServableImageFile,
+  type MediaFileView,
+} from '../../../../../lib/core/media/media-file.ts';
 
 export type MediaImageFallbackFormat = 'JPG' | 'PNG' | 'SVG';
 
@@ -31,11 +34,6 @@ const FALLBACK_FORMATS = Object.freeze({
   svg: 'SVG',
 } as const satisfies Record<FallbackFormat, MediaImageFallbackFormat>);
 
-// 論理削除済みの画像は物理削除まで配信を止めないため、キーを返す
-function isDeliverable(file: MediaFileView): boolean {
-  return file.stored && !file.eraseRequested && !file.quarantined;
-}
-
 export function toMediaImage(file: MediaFileView): MediaImageModel {
   const { contentType } = file;
   if (file.storage !== 'images' || !isImageMediaType(contentType)) {
@@ -45,7 +43,7 @@ export function toMediaImage(file: MediaFileView): MediaImageModel {
   }
   return {
     id: file.id,
-    objectKey: isDeliverable(file) ? file.objectKey : null,
+    objectKey: isServableImageFile(file) ? file.objectKey : null,
     fallbackFormat: FALLBACK_FORMATS[fallbackFormatOf(contentType)],
     width: file.width,
     height: file.height,

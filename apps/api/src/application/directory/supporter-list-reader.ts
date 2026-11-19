@@ -29,9 +29,16 @@ export interface SupporterListInput {
   readonly now: Date;
 }
 
+export interface SupporterListRow {
+  readonly userId: string;
+  readonly upvotedAt: Date;
+}
+
 export interface SupporterListPage {
   // Upvoteの日時の早い順で、退会・停止の利用者を除く
   readonly userIds: readonly string[];
+  // userIdsと同じ順
+  readonly supporters: readonly SupporterListRow[];
   readonly endCursor: SupporterListPosition | null;
   readonly hasNextPage: boolean;
 }
@@ -75,6 +82,7 @@ export class DirectorySupporterListReader implements SupporterListReader {
     const last = rows.at(-1);
     return {
       userIds: rows.map(({ userId }) => userId),
+      supporters: rows.map(({ userId, upvotedAt }) => ({ userId, upvotedAt })),
       endCursor: last === undefined ? null : positionOf(last),
       hasNextPage:
         last !== undefined &&

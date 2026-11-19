@@ -1,3 +1,4 @@
+import { encodeCursor } from '../../../../../lib/core/pagination/opaque-cursor.ts';
 import type { FollowListReader } from '../../../../application/profile/follow-list-reader.ts';
 import type { FollowService } from '../../../../application/profile/follow-service.ts';
 import type {
@@ -7,7 +8,7 @@ import type {
 import { PROFILE_TYPES } from '../../../../application/profile/profile-types.ts';
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
-import { encodeCursor, toConnection } from '../../pagination.ts';
+import { toConnection } from '../../pagination.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
 import { FOLLOW_LIST_ARGS, followListPositionOf } from './follow-inputs.ts';
 import {

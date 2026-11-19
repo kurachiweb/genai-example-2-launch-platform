@@ -2,7 +2,7 @@ import { PAYMENT_CURRENCY } from '../../../../../common-lib/payments/money.ts';
 import type { SponsorshipDateWindow as SponsorshipDateWindowRecord } from '../../../../../common-lib/sponsorship/sponsorship-period.ts';
 import type { SponsorshipStatus as SponsorshipStatusRecord } from '../../../../../common-lib/sponsorship/sponsorship-status.ts';
 import type { SponsorshipTier as SponsorshipTierRecord } from '../../../../../common-lib/sponsorship/sponsorship-tiers.ts';
-import { checkExternalUrl } from '../../../../../common-lib/url/external-url.ts';
+import { verifiedExternalUrl } from '../../../../../common-lib/url/external-url.ts';
 import type {
   EligibleProduct,
   PlacedAd,
@@ -109,17 +109,13 @@ export const toSponsorableProduct = (
   logoFileId: product.logoFileId,
 });
 
-// 保存の後に検証の規則が変わっても危険なリンクを出さないよう、表示の時点で検証の済まないURLを空にする
-const verifiedWebsiteUrl = (value: string): string | null =>
-  checkExternalUrl(value) === 'ok' ? value : null;
-
 export const toSponsoredAd = (ad: PlacedAd): SponsoredAdModel => ({
   id: ad.sponsorshipId,
   tier: TIER_VALUES[ad.tier],
   productName: ad.product.name,
   tagline: ad.tier === 'silver' ? null : ad.product.tagline,
   logoFileId: ad.product.logoFileId,
-  websiteUrl: verifiedWebsiteUrl(ad.product.websiteUrl),
+  websiteUrl: verifiedExternalUrl(ad.product.websiteUrl),
 });
 
 const toRefund = (

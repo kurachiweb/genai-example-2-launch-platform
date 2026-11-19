@@ -6,27 +6,28 @@ HonoとGraphQL YogaでCloudflare Workersに載せるGraphQLサーバーの受付
 
 層構成・処理単位のコンテナ・共通エラーは「[Cloudflare Workersでの層構成と依存性の組み立て](002-layered-architecture-on-workers.md)」に、bot判定は「[レート制限とbot判定の検証](003-rate-limiting-and-bot-verification.md#bot判定の検証)」に従う。内部経路の認証・元のクライアントIPアドレス・セッションの受け渡し・セキュリティヘッダーは「[内部経路とセキュリティヘッダー](006-internal-gateway.md)」に、フロントエンドサーバーとの間の要求の形式・各ヘッダーを誰が付けるか・操作の一覧と許可リストの受け渡しは「[GraphQL通信](../coding/004-graphql-communication.md)」に記載する。
 
-GraphQLのサーバーはGraphQL Yoga、クエリの上限はGraphQL Armor、リゾルバの型の生成はGraphQL Code Generator、一括読み込みはDataLoader、引数の検証はZodを使う。部品の置き場所は、アプリの`src/presentation/graphql/`からのパスで示す。
+GraphQLのサーバーはGraphQL Yoga、クエリの上限はGraphQL Armor、リゾルバの型の生成はGraphQL Code Generator、一括読み込みはDataLoader、引数の検証はZodを使う。部品の置き場所は、アプリの`src/presentation/graphql/`からのパスで示す。カーソルの符号化と復号は、GraphQL以外の経路(公開RESTなど)と同じ形式にするため共通ライブラリの`core/pagination/opaque-cursor.ts`に置き、`pagination.ts`はそれを再公開する。
 
-| 部品                                                                                                   | 置き場所                     | 役割                                                     |
-| ------------------------------------------------------------------------------------------------------ | ---------------------------- | -------------------------------------------------------- |
-| `createGraphQLModule`・`GRAPHQL_MAX_BODY_BYTES`                                                        | `graphql-module.ts`          | 受付経路の判定・本文の上限・応答の後処理を行うモジュール |
-| `getGatewayServer`・`isGraphiqlRequest`                                                                | `gateway-server.ts`          | Yogaの組み立てとisolate内での使い回し                    |
-| `QUERY_LIMITS`・`createQueryLimitPlugins`                                                              | `query-limits.ts`            | クエリの上限                                             |
-| `createOperationAllowlist`・`createPersistedOperationsPlugin`                                          | `operation-allowlist.ts`     | 呼び出し元別の許可リストの照会                           |
-| `GATEWAY_ERROR_CODES`・`classifyDocumentErrors`                                                        | `error-codes.ts`             | 実行前の拒否のエラーコードと分類                         |
-| `createErrorPolicy`                                                                                    | `error-policy.ts`            | エラーコードの付与・内部の詳細の伏せ字・状態コード       |
-| `createGraphQLContext`・`GraphQLContext`                                                               | `graphql-context.ts`         | リゾルバへ渡す文脈                                       |
-| `defineLoader`・`DEFAULT_LOADER_MAX_BATCH_SIZE`                                                        | `loaders.ts`                 | 処理単位ごとの一括読み込み                               |
-| `withValidatedArgs`                                                                                    | `validated-args.ts`          | リゾルバの引数の検証                                     |
-| `CURSOR_PAGE_ARGS`・`OFFSET_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`toOffsetPage` | `pagination.ts`              | ページングの引数と結果の組み立て                         |
-| `dateTimeScalar`                                                                                       | `date-time-scalar.ts`        | 日時のスカラー                                           |
-| `PLATFORM_TYPE_DEFS`                                                                                   | `platform-type-defs.ts`      | 基盤の型定義(日時のスカラーとページングの型)             |
-| `defineSchemaModule`・`GraphQLSchemaModule`                                                            | `schema-module.ts`           | スキーマモジュールの契約                                 |
-| `composeGatewaySchema`・`printGatewaySchema`・`SchemaCompositionError`                                 | `schema-composer.ts`         | スキーマの合成と、正規化した印字                         |
-| `createOperationObservabilityPlugin`・`logOperation`                                                   | `operation-observability.ts` | 操作ログとトレースの付与                                 |
-| スキーマモジュール                                                                                     | `modules/<モジュール名>/`    | 機能ごとの型定義とリゾルバ                               |
-| 生成物                                                                                                 | `generated/`                 | スキーマファイル・リゾルバの型・許可リスト(コミットする) |
+| 部品                                                                   | 置き場所                                           | 役割                                                     |
+| ---------------------------------------------------------------------- | -------------------------------------------------- | -------------------------------------------------------- |
+| `createGraphQLModule`・`GRAPHQL_MAX_BODY_BYTES`                        | `graphql-module.ts`                                | 受付経路の判定・本文の上限・応答の後処理を行うモジュール |
+| `getGatewayServer`・`isGraphiqlRequest`                                | `gateway-server.ts`                                | Yogaの組み立てとisolate内での使い回し                    |
+| `QUERY_LIMITS`・`createQueryLimitPlugins`                              | `query-limits.ts`                                  | クエリの上限                                             |
+| `createOperationAllowlist`・`createPersistedOperationsPlugin`          | `operation-allowlist.ts`                           | 呼び出し元別の許可リストの照会                           |
+| `GATEWAY_ERROR_CODES`・`classifyDocumentErrors`                        | `error-codes.ts`                                   | 実行前の拒否のエラーコードと分類                         |
+| `createErrorPolicy`                                                    | `error-policy.ts`                                  | エラーコードの付与・内部の詳細の伏せ字・状態コード       |
+| `createGraphQLContext`・`GraphQLContext`                               | `graphql-context.ts`                               | リゾルバへ渡す文脈                                       |
+| `defineLoader`・`DEFAULT_LOADER_MAX_BATCH_SIZE`                        | `loaders.ts`                                       | 処理単位ごとの一括読み込み                               |
+| `withValidatedArgs`                                                    | `validated-args.ts`                                | リゾルバの引数の検証                                     |
+| `CURSOR_PAGE_ARGS`・`OFFSET_PAGE_ARGS`・`toConnection`・`toOffsetPage` | `pagination.ts`                                    | ページングの引数と結果の組み立て                         |
+| `encodeCursor`・`decodeCursor`                                         | 共通ライブラリの`core/pagination/opaque-cursor.ts` | 不透明なカーソルの符号化と復号                           |
+| `dateTimeScalar`                                                       | `date-time-scalar.ts`                              | 日時のスカラー                                           |
+| `PLATFORM_TYPE_DEFS`                                                   | `platform-type-defs.ts`                            | 基盤の型定義(日時のスカラーとページングの型)             |
+| `defineSchemaModule`・`GraphQLSchemaModule`                            | `schema-module.ts`                                 | スキーマモジュールの契約                                 |
+| `composeGatewaySchema`・`printGatewaySchema`・`SchemaCompositionError` | `schema-composer.ts`                               | スキーマの合成と、正規化した印字                         |
+| `createOperationObservabilityPlugin`・`logOperation`                   | `operation-observability.ts`                       | 操作ログとトレースの付与                                 |
+| スキーマモジュール                                                     | `modules/<モジュール名>/`                          | 機能ごとの型定義とリゾルバ                               |
+| 生成物                                                                 | `generated/`                                       | スキーマファイル・リゾルバの型・許可リスト(コミットする) |
 
 | 用語                           | 意味                                                                                                                                                |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -334,8 +335,9 @@ type ArticleConnection {
 
 - 1ページの件数の上限は`MAX_PAGE_SIZE`(100)である。件数の既定値は基盤では持たず、各機能が決める。
 - カーソル型では、`first`より1件多く読み込んで`toConnection`へ渡す。1件多く読み込めたかで`hasNextPage`を決め、最後の要素のカーソルを`endCursor`にする。
-- カーソルは`encodeCursor`で位置(並び順のキーの値)をJSONにしてbase64url(パディング無し)に符号化する。`decodeCursor(<Zodのスキーマ>, <カーソル>)`は、同じ表記に再符号化できない値・JSONでない値・スキーマに合わない値を`AppError`(コード`invalid_cursor`、文言「ページの位置の指定が正しくありません。」)にする。
-- 独自の形式のカーソルを読む共通ライブラリの部品(D1の実装など)も、不正なカーソルを同じコードと文言にする。共通ライブラリはアプリの`presentation`を読み込めないため、この例外は共通ライブラリの`core/errors/invalid-cursor.ts`の`invalidCursorError()`で作り、`decodeCursor`も同じものを使う。件数の範囲外は引数の検証の失敗(`validation_error`)のままにする。
+- カーソルは共通ライブラリの`core/pagination/opaque-cursor.ts`の`encodeCursor`で位置(並び順のキーの値)をJSONにしてbase64url(パディング無し)に符号化する。`decodeCursor(<Zodのスキーマ>, <カーソル>)`は、同じ表記に再符号化できない値・JSONでない値・スキーマに合わない値を`AppError`(コード`invalid_cursor`、文言「ページの位置の指定が正しくありません。」)にする。
+- `encodeCursor`・`decodeCursor`は共通ライブラリの`core`に置くため、GraphQLと同じ一覧を返す他の経路(公開RESTなど)の表現層も同じものを使い、GraphQLの`pagination.ts`を読み込まない。両方の経路のカーソルは同じ形式になり、互いに読める。リゾルバは`opaque-cursor.ts`から直接読み込む。
+- 独自の形式のカーソルを読む共通ライブラリの部品(D1の実装など)も、不正なカーソルを同じコードと文言にする。この例外は共通ライブラリの`core/errors/invalid-cursor.ts`の`invalidCursorError()`で作り、`decodeCursor`も同じものを使う。件数の範囲外は引数の検証の失敗(`validation_error`)のままにする。
 - オフセット型の`totalPages`は、`totalCount`を`perPage`で割って切り上げた値である。
 
 ### 日時のスカラー

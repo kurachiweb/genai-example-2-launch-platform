@@ -40,7 +40,7 @@
   - _Depends: 1.4_(adminの設定の検査のファイルを1.4も変えるため、1.4の後に行う)
   - _Requirements: 15.2, 15.7_
 
-- [ ] 1.6 (P) 画面と公開APIで同じでなければならない判定を共通の層へ移し、サポーターの一覧にUpvoteの日時を加える(2026-11-19の開発者の決定)
+- [x] 1.6 (P) 画面と公開APIで同じでなければならない判定を共通の層へ移し、サポーターの一覧にUpvoteの日時を加える(2026-11-19の開発者の決定)
   - カーソル: apiの`presentation/graphql/pagination.ts`の`encodeCursor`・`decodeCursor`を、`apps/backend-lib/core/pagination/opaque-cursor.ts`へ形式と`invalidCursorError()`を変えずに移し、GraphQLの読み込み元(`modules/directory/inputs.ts`・`modules/directory/supporter-resolvers.ts`・`modules/profile/follow-inputs.ts`・`modules/profile/follow-resolvers.ts`)と`pagination.ts`を書き換える
   - 画像: GraphQLの`modules/media/mappers.ts`の非公開の判定(保存済み・削除待ちでない・隔離中でない)を、`apps/backend-lib/core/media/media-file.ts`の`isServableImageFile`として公開し、`toMediaImage`から使う(`common-lib/media`の`isDeliverable`とは別の判定のため名前を分ける)
   - URL: directory-discoveryのGraphQLの`verifiedWebsiteUrl`(空文字列)とsponsorshipの同じ判定(`null`)を、`apps/common-lib/url/external-url.ts`の`verifiedExternalUrl(value): string | null`にまとめ、directory-discoveryの2か所(`mappers.ts`・`product-page-mappers.ts`)は`?? ''`、sponsorshipは`null`のまま使う(水平展開)
@@ -301,3 +301,4 @@
 - 1.3: 設計に無い文言(題名「新しいAPIキー」、確認のダイアログの失敗はダイアログを閉じてトースト、`/api-docs`の回数の説明はclientの静的な文言で「制限を変えた時は合わせて直す」と注記)を文言規則に決めた。公開REST APIのエラーコードの文言は4.2で決め、必要なら文言規則に追記する
 - 1.4: clientの設定の検査(`apps/client/test/config/wrangler-config.unit.test.ts`)にもadminと同じ名前空間の総数の検査があったため、総数15に直した。apiの設定の検査は`PUBLIC_API_RATE_LIMITER`の60・60を直書きしているため、2.3(または4.3)で`PUBLIC_API_IP_RATE_LIMIT`の定数との照合に差し替える。環境の検証のテストは既存に倣いWorkers統合テスト(`public-api-env.worker.test.ts`)。8.2で`project-values.md`の`namespace_id`の表(1005・2005・3005)・「4アプリ12個」の記述・apiの`IMAGES_ORIGIN`を直す
 - 1.5: 空文字の`PUBLIC_API_ORIGIN`は未設定扱いにせず不正とした(`STRIPE_PUBLISHABLE_KEY`の前例)。`project-values.md`にはプレースホルダー`<公開APIのオリジンの変数>`の行とCSPの許可先の`connect-src`の行だけを加え、3環境の値の表は8.2に残した。7.1・7.3のビューアーは公開設定の`publicApiOrigin`(未定義なら読み込みの失敗と同じ表示)を読む
+- 1.6: `pagination.ts`はカーソルの2関数を`opaque-cursor.ts`から再公開する(既存の3つのWorkers統合テストが`pagination.ts`から読み、変更なしの条件のため。design.mdの「残りの補助だけを持つ」との相違)。公開RESTの表現層は`backend-lib/core/pagination/opaque-cursor.ts`を直に読む。`SupporterListPage.supporters`の行の型は`SupporterListRow`。同じbase64url+JSONのコーデックの写しがapi・backend-libに約11か所残る(範囲外)

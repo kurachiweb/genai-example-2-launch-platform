@@ -179,6 +179,7 @@ describe('SupporterListReader.list: 一覧とカーソル', () => {
 
     expect(await list(reader, { viewerId: OWNER_ID })).toEqual({
       userIds: ['user-1'],
+      supporters: [{ userId: 'user-1', upvotedAt: supporterOf(1).upvotedAt }],
       endCursor: {
         upvotedAt: supporterOf(1).upvotedAt.getTime(),
         upvoteId: supporterOf(1).upvoteId,
@@ -224,12 +225,38 @@ describe('SupporterListReader.list: 一覧とカーソル', () => {
     });
     expect(page).toEqual({
       userIds: ['user-21'],
+      supporters: [{ userId: 'user-21', upvotedAt: supporterOf(21).upvotedAt }],
       endCursor: {
         upvotedAt: supporterOf(21).upvotedAt.getTime(),
         upvoteId: supporterOf(21).upvoteId,
       },
       hasNextPage: false,
     });
+  });
+
+  test('Upvoteの日時を持つ行を利用者のIDと同じ順に返す', async () => {
+    const { reader } = setup({ supporters: supporters(3) });
+
+    const page = await list(reader, { first: 5 });
+
+    expect(page?.supporters).toEqual([
+      { userId: 'user-1', upvotedAt: new Date(Date.UTC(2026, 10, 5, 0, 1)) },
+      { userId: 'user-2', upvotedAt: new Date(Date.UTC(2026, 10, 5, 0, 2)) },
+      { userId: 'user-3', upvotedAt: new Date(Date.UTC(2026, 10, 5, 0, 3)) },
+    ]);
+    expect(page?.supporters.map(({ userId }) => userId)).toEqual([
+      ...(page?.userIds ?? []),
+    ]);
+  });
+
+  test('続きがあるときもUpvoteの日時を持つ行は指定の件数だけで、続きの確認の行を含めない', async () => {
+    const { reader } = setup({ supporters: supporters(21) });
+
+    const page = await list(reader, { first: 20 });
+
+    expect(page?.supporters).toEqual(
+      supporters(20).map(({ userId, upvotedAt }) => ({ userId, upvotedAt })),
+    );
   });
 
   test('ちょうど指定の件数で終わるなら続きが無い', async () => {
@@ -264,6 +291,7 @@ describe('SupporterListReader.list: 一覧とカーソル', () => {
 
     expect(await list(reader)).toEqual({
       userIds: [],
+      supporters: [],
       endCursor: null,
       hasNextPage: false,
     });

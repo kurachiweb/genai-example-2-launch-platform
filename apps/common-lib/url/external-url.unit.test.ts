@@ -3,7 +3,9 @@ import { describe, expect, test } from 'bun:test';
 import {
   checkExternalUrl,
   EXTERNAL_URL_MAX_LENGTH,
+  type ExternalUrlCheck,
   externalUrlHost,
+  verifiedExternalUrl,
 } from './external-url.ts';
 
 const urlOfLength = (length: number): string => {
@@ -116,5 +118,32 @@ describe('externalUrlHost', () => {
     ['URLとして解析できない値', 'https://'],
   ])('%sは空文字列を返す', (_, value) => {
     expect(externalUrlHost(value)).toBe('');
+  });
+});
+
+describe('verifiedExternalUrl', () => {
+  const CASES = {
+    ok: ['https://a.example/p?q=1', 'https://a.example/p?q=1'],
+    empty: [' 　', null],
+    'too-long': [urlOfLength(2049), null],
+    'not-absolute': ['https:a.example', null],
+    'disallowed-scheme': ['javascript:alert(1)', null],
+  } as const satisfies Record<
+    ExternalUrlCheck,
+    readonly [string, string | null]
+  >;
+
+  test.each(Object.entries(CASES))(
+    '検証の結果が%sなら、okのときだけ値を返し、それ以外はnullを返す',
+    (check, [value, expected]) => {
+      expect(checkExternalUrl(value)).toBe(check as ExternalUrlCheck);
+      expect(verifiedExternalUrl(value)).toBe(expected);
+    },
+  );
+
+  test('検証に通る値は前後の空白を含めて元の値のまま返す', () => {
+    expect(verifiedExternalUrl('  https://a.example/  ')).toBe(
+      '  https://a.example/  ',
+    );
   });
 });

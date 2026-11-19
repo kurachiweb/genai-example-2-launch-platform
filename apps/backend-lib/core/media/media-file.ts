@@ -83,3 +83,8 @@ export function desiredLocation(
   }
   return reasons.length > 0 ? 'quarantine' : 'images';
 }
+
+// 論理削除済みの画像は物理削除まで配信を止めない
+export function isServableImageFile(file: MediaFileView): boolean {
+  return file.stored && !file.eraseRequested && !file.quarantined;
+}

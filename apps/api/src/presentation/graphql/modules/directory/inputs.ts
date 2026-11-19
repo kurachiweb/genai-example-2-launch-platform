@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 import { invalidCursorError } from '../../../../../lib/core/errors/invalid-cursor.ts';
 import { UPPERCASE_ULID_PATTERN } from '../../../../../lib/core/ids/uppercase-ulid.ts';
+import { decodeCursor } from '../../../../../lib/core/pagination/opaque-cursor.ts';
 import type { SupporterListPosition } from '../../../../application/directory/supporter-list-reader.ts';
-import { decodeCursor } from '../../pagination.ts';
 import { matchResourceId } from '../match/inputs.ts';
 
 export const SUPPORTER_LIST_MAX_PAGE_SIZE = 20;

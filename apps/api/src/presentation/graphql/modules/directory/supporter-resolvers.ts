@@ -1,7 +1,7 @@
+import { encodeCursor } from '../../../../../lib/core/pagination/opaque-cursor.ts';
 import { DIRECTORY_TYPES } from '../../../../application/directory/directory-types.ts';
 import type { SupporterListReader } from '../../../../application/directory/supporter-list-reader.ts';
 import type { Resolvers } from '../../generated/resolvers-types.ts';
-import { encodeCursor } from '../../pagination.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
 import { userSummaryLoader } from '../profile/user-summary.ts';
 import { MATCH_SUPPORTERS_ARGS, supporterListPositionOf } from './inputs.ts';
