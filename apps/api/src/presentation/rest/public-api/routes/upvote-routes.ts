@@ -27,12 +27,15 @@ import type { MediaLookup } from '../media-lookup.ts';
 import { redirectToCurrentHandle } from '../product-resolution.ts';
 import { publicApiError } from '../public-api-errors.ts';
 import { definePublicApiRoute } from '../route-definition.ts';
-import { CursorQuerySchema, publicApiCursorOf } from '../schemas/common.ts';
+import {
+  CursorQuerySchema,
+  publicApiCursorOf,
+  UserHandleParamsSchema,
+} from '../schemas/common.ts';
 import {
   SupporterListSchema,
   SupporterParamsSchema,
   UpvoteHistoryListSchema,
-  UserHandleParamsSchema,
 } from '../schemas/upvotes.ts';
 
 // 画面のUpvote履歴の1ページと同じ件数

@@ -24,6 +24,14 @@ export const UserSummarySchema = z
   })
   .openapi('UserSummary');
 
+// 旧ハンドルの扱いは経路ごとに異なるため、各経路の説明に書く
+export const UserHandleParamsSchema = z.object({
+  handle: z.string().openapi({
+    description: '利用者のハンドル(大文字小文字を区別しない)。',
+    example: 'alice',
+  }),
+});
+
 // 問い合わせの検証で拒否するとvalidation_errorになるため、空・長すぎる値も他の形式違反と同じinvalid_cursorにするよう、判定はpublicApiCursorOfに任せる
 export const CursorQuerySchema = z.object({
   cursor: z

@@ -18,14 +18,6 @@ export const SupporterParamsSchema = z.object({
   }),
 });
 
-export const UserHandleParamsSchema = z.object({
-  handle: z.string().openapi({
-    description:
-      '利用者のハンドル(大文字小文字を区別しない)。保持中の旧ハンドルも転送せずにその利用者として扱う。',
-    example: 'alice',
-  }),
-});
-
 export const SupporterSchema = z
   .object({
     user: UserSummarySchema,
