@@ -21,12 +21,7 @@ import {
   LENGTH_WITHIN_LIMIT_ANNOUNCEMENT,
   lengthOverLimitAnnouncement,
 } from '../../../lib/utilities/messages/length-limit-messages.ts';
-import {
-  errorMessageOf,
-  GraphQLClientError,
-} from '../../../lib/utilities/graphql/graphql-result.ts';
 import { API_KEY_NAME_MAX_GRAPHEMES } from '../../../common-lib/public-api/api-key-rules.ts';
-import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import type {
   ApiKeyFieldsFragment,
   ClientIssueApiKeyMutationVariables,
@@ -40,6 +35,7 @@ import {
   API_KEY_FORM_MESSAGES,
   apiKeyNameCounterOf,
 } from './api-key-form-messages.ts';
+import { apiKeyFailureMessageOf } from './api-key-failure-message.ts';
 import {
   apiKeyFormSchema,
   type ApiKeyFormValues,
@@ -77,15 +73,8 @@ export interface ApiKeyFormDialogProps {
   readonly onSubmit: (request: ApiKeyFormRequest) => Promise<void>;
 }
 
-const TOO_MANY_REQUESTS = 429;
-
 // 名前の文字数は、上限に近づくまで示さない
 const NAME_COUNTER_FROM = 40;
-
-const submitErrorMessageOf = (error: unknown): string =>
-  error instanceof GraphQLClientError && error.status === TOO_MANY_REQUESTS
-    ? API_KEY_FORM_MESSAGES.rateLimited
-    : errorMessageOf(error, CLIENT_PROFILE.contactAvailable);
 
 const defaultValuesOf = (target: ApiKeyFormTarget): ApiKeyFormValues =>
   target.mode === 'issue'
@@ -199,7 +188,7 @@ function ApiKeyForm({ target, title, onSubmit, onSubmitted }: ApiKeyFormProps) {
         onSubmitted();
       }}
       onSubmitError={(error) => {
-        setSubmitError(submitErrorMessageOf(error));
+        setSubmitError(apiKeyFailureMessageOf(error));
       }}
       className="flex flex-col gap-5"
     >
