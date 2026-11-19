@@ -2516,7 +2516,7 @@ graph LR
 
 ## 決定事項
 
-要件・技術文書と実装の食い違いについて、開発者が決めた契約である。第1回(判断1〜13)は最終検証の前、第2回(判断14〜36、24〜36は追加の判断)は最終検証のGOの後に2026-10-28に、第3回(判断37)と第4回(判断38〜48、最終報告の確認事項への回答)は2026-10-29に、第5回(判断49〜51、最終検証の指摘への回答)は2026-10-30に決めた。本文の該当箇所はこの契約で書いてあり、実装と文書への反映は、第1回はtasks.mdの10.1〜10.6、第2回は11.1〜11.10(判断29の`run-all.ts`の変更はdev-toolingの9.1)、第3回は11.11、第4回は12.1〜12.14(判断46のapiのテストはapi-gatewayの12.1、判断47のルートのコマンドはdev-toolingの10.1、判断44の申し送りはlegal-pagesの7.6・sponsorshipの10.5)、第5回は13.1〜13.3(判断51のルートのE2Eの設定はdev-toolingの11.1、判断50のstagingの確認はlaunch-readinessの7.9。判断49はビルドの出力から除く形に置き換えたため、ルートのコマンドを変えるdev-toolingの12.1は取り消した)で行う。
+要件・技術文書と実装の食い違いについて、開発者が決めた契約である。第1回(判断1〜13)は最終検証の前、第2回(判断14〜36、24〜36は追加の判断)は最終検証のGOの後に2026-10-28に、第3回(判断37)と第4回(判断38〜48、最終報告の確認事項への回答)は2026-10-29に、第5回(判断49〜51、最終検証の指摘への回答)は2026-10-30に決めた。本文の該当箇所はこの契約で書いてあり、実装と文書への反映は、第1回はtasks.mdの10.1〜10.6、第2回は11.1〜11.10(判断29の`run-all.ts`の変更はdev-toolingの9.1)、第3回は11.11、第4回は12.1〜12.14(判断46のapiのテストはapi-gatewayの12.1、判断47のルートのコマンドはdev-toolingの10.1、判断44の申し送りはlegal-pagesの7.6・sponsorshipの11.4)、第5回は13.1〜13.3(判断51のルートのE2Eの設定はdev-toolingの11.1、判断50のstagingの確認はlaunch-readinessの7.9。判断49はビルドの出力から除く形に置き換えたため、ルートのコマンドを変えるdev-toolingの12.1は取り消した)で行う。
 
 ### 中継が上流のJSONでない5xxを503にすること(要件2.10)
 
@@ -2777,7 +2777,7 @@ graph LR
 ### 未検証の要件の下流specへの申し送り(要件6.5・11.6・14.3・14.4、第4回の判断44)
 
 - 契約: 本specの疎通確認の画面は`loader`で`executeGraphQL`を直接呼び、TanStack Queryの`ensureQueryData`から`useSuspenseQuery`の流れ・取得の遅い区画のストリーミング・取得の失敗の500を使わないため、本specでは確認用の経路を置かずに、最初にこれらを使うページを作る下流specのE2Eに申し送る。R6.5のうち疎通確認の画面で確かめられる部分(ハイドレーションの後・再確認の前に中継への要求が0件、最初の見出しがSSRのまま)は本specのE2Eに足す(SmokeE2E)。
-- 申し送り先: ロードマップの順で最初に`loader`でTanStack Queryの取得を始めるページを作るのはlegal-pagesの公開ページ(`/terms`・`/privacy`・`/legal`と過去版。`legal-route-options.ts`の`legalDocumentLoader`が`context.queryClient`で取得し、部品は`frontend/006`の規約どおり同じ設定の`useSuspenseQuery`で読む)で、R6.5(初回表示の後に中継へ取得し直さない)・R14.4(サーバー側でページの描画より前に取得を始め、スクリプトを無効にしても本文がHTMLにある)・R11.6(取得の失敗の表示)をlegal-pagesの7.6に足した。取得の遅い区画を`Suspense`の中の`useSuspenseQuery`でストリーミングするのはsponsorshipの広告の区画(`useSponsoredPlacements`)が最初で、R14.3(区画の取得を待たずにページの主要な内容が先に届く)をsponsorshipの10.5に足した。match-engineのトップページ(`ensureQueryData`)とuser-profile-socialの公開プロフィール(`ensureQueryData`・タブのパネルの`Suspense`)はlegal-pagesより後のため、申し送り先にしない。
+- 申し送り先: ロードマップの順で最初に`loader`でTanStack Queryの取得を始めるページを作るのはlegal-pagesの公開ページ(`/terms`・`/privacy`・`/legal`と過去版。`legal-route-options.ts`の`legalDocumentLoader`が`context.queryClient`で取得し、部品は`frontend/006`の規約どおり同じ設定の`useSuspenseQuery`で読む)で、R6.5(初回表示の後に中継へ取得し直さない)・R14.4(サーバー側でページの描画より前に取得を始め、スクリプトを無効にしても本文がHTMLにある)・R11.6(取得の失敗の表示)をlegal-pagesの7.6に足した。取得の遅い区画を`Suspense`の中の`useSuspenseQuery`でストリーミングするのはsponsorshipの広告の区画(`useSponsoredPlacements`)が最初で、R14.3(区画の取得を待たずにページの主要な内容が先に届く)をsponsorshipの11.4に足した。match-engineのトップページ(`ensureQueryData`)とuser-profile-socialの公開プロフィール(`ensureQueryData`・タブのパネルの`Suspense`)はlegal-pagesより後のため、申し送り先にしない。
 - R11.6の注意: ブラウザ内の画面遷移での取得の失敗は、Playwrightの`page.route`で中継の経路への応答を想定外の失敗にして、レイアウトの中の想定外のエラーの表示を確かめられる。サーバー側の描画での取得の失敗の500は、APIサーバーを起動したままでは決定的に起こせない。また、部品の描画中の例外(`loader`の外の例外)がサーバー側の描画で状態コード500にならず、200のままエラーの表示を返す可能性がある(ストリーミングの描画では、応答を送り始めた後の例外で状態コードを変えられないため)。legal-pagesの7.6は、決定的に起こせない確認を飛ばした理由と、500にならない可能性の確認の結果を報告に書き、確かめられなかった部分をlaunch-readinessへ申し送る。
 - 影響の表: 「実装で確定した契約による発火と影響を受ける下流spec」の表に行を加える。
 
