@@ -13,6 +13,14 @@ export type RefundKind = 'termination' | 'display_stop';
 // requested以外はcore/paymentsのrefundRejectionOutcomeの返金の状態と同じ値
 export type RefundStatus = 'requested' | RefundRejectionOutcome['refundStatus'];
 
+export const SPONSORSHIP_REFUND_STATUSES = Object.freeze([
+  'none',
+  'requested',
+  'not_needed',
+  'already_refunded',
+  'rejected',
+] as const satisfies readonly ('none' | RefundStatus)[]);
+
 export interface SponsorshipRefundRecord {
   // noneは未精算
   readonly status: 'none' | RefundStatus;

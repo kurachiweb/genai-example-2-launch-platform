@@ -1,6 +1,12 @@
 import type { BusinessDateString } from './sponsorship-period.ts';
 
-export type SponsorshipState = 'pending_payment' | 'paid' | 'terminated';
+export const SPONSORSHIP_STATES = Object.freeze([
+  'pending_payment',
+  'paid',
+  'terminated',
+] as const);
+
+export type SponsorshipState = (typeof SPONSORSHIP_STATES)[number];
 
 export const SPONSORSHIP_STATUSES = Object.freeze([
   'pending_payment',
