@@ -199,7 +199,7 @@
   - _Requirements: 2.5, 5.2, 14.1, 14.2, 14.4, 14.5, 14.6, 16.3_
 
 - [ ] 6. 利用者側の画面: APIキーの管理
-- [ ] 6.1 APIキーの管理の操作と設定ページのナビゲーションを加える
+- [x] 6.1 APIキーの管理の操作と設定ページのナビゲーションを加える
   - 一覧・発行・編集・再発行・削除の操作を、clientの`src/graphql/operations/public-api/`に1ファイル1操作の`.graphql`(操作名は`ClientMyApiKeys`・`ClientIssueApiKey`・`ClientUpdateApiKey`・`ClientReissueApiKey`・`ClientDeleteApiKey`)で書き、`graphql()`を呼ばない。clientで`bun run graphql:generate`を実行して`src/graphql/generated/`を更新し、apiで`bun run graphql:allowlist`を実行して許可リストを再生成する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読む
   - 設定ページのナビゲーションの登録箇所に「APIキー」(`order` 90)を追記する
   - 完了状態: `graphql:check`と許可リストの食い違いの検査とclientの`codegen.unit.test.ts`(操作名の接頭辞)が成功し、設定ページのナビゲーションの単体テストで「APIキー」が書き出しの順に並ぶ
@@ -319,3 +319,4 @@
 - 5.5: 経路は`routes/profile-routes.ts`の`publicApiProfileRoutes`、ユースケースは`application/public-api/public-profile-updater.ts`の`EditorPublicProfileUpdater`(束縛は5.7)。`UserHandleParamsSchema`を`schemas/common.ts`へ移し5.3と共有した。項目の文言`PROFILE_FIELD_MESSAGES`はGraphQLの`INPUT_MESSAGES`の写し(単体テストで照合)。RESTだけの文言3つ(項目無し・未知の項目・型違い)を文言規則に追記した。PATCHは設計の表に無い415も記載する(`backend/005`の規則)。他人の保持中の旧ハンドルの取得は上流の保存が許す(GraphQLと同じ、`backend/011`の既定の規約どおり)
 - 5.6: 経路は`routes/my-product-routes.ts`の`publicApiMyProductRoutes`、ユースケースは`application/public-api/own-product-description-service.ts`の`EditorOwnProductDescriptionService`(束縛は5.7)。application層は`product-errors.ts`の`productError`(`PUBLIC_API_ERRORS`と同じ`PRODUCT_ERRORS`のオブジェクト)を投げる。PUTの本文の未知の項目は無視する(PATCH /me/profileは拒否。7.2の仕様書の説明か8.xの文書に書くこと)。「値の形式が正しくありません。」を`schemas/common.ts`の`PUBLIC_API_INVALID_TYPE_MESSAGE`へ移した。保存の後の読み直しで見つからなければ404`product_not_found`(設計に無い)。PUTも415を記載
 - 5.7: 集約は先頭のIP単位の制限の後にプロダクト・Upvote・コメントと評価・プロフィール・自分のプロダクトの順。3つのユースケースの束縛を`composition/public-api-module.ts`へ加え、経路のテストの仮の束縛を外した。apiのWorkerの組み立ての統合テストは800行の制限のため`src/index.public-api.worker.test.ts`(仕様書・403・CORS)・`src/index.public-api.suspension.worker.test.ts`(停止中の9経路200・4経路403と、解除後の13経路200)・`src/index.public-api.query-count.worker.test.ts`(D1の文の数が項目の数に比例しない)と共通の`test/support/public-api-route-cases.ts`に分け、回数の制限が持ち越されるためファイルごとに利用者の番号の範囲とIPv6の範囲を分けた。照会の回数は設計の「`MediaLookup`が1回」より広くD1の文の数で測る(`exports.default`でなく同じ`publicEntrypoint`を環境の上書きで呼ぶ)。`MyProductsReader`はローンチの無いプロダクトで例外を投げるが、プロダクトは必ずローンチと同じ一括の書き込みで作られるため実際には起きない(テストのデータにはローンチを入れる)
+- 6.1: 設計に無いフラグメント`ApiKeyFields`(`src/graphql/fragments/public-api/api-key-fields.graphql`、型`ApiKeyFieldsFragment`)を一覧・発行・編集・再発行の4操作で展開する。一覧の`$first`は必須のため6.5は`first: 50`を明示する。停止中の判定は既存の`identity/viewer.graphql`の`status`を読む。ナビゲーションの「APIキー」(`order` 90)は先に登録したため、6.5でルートができるまでリンク先が無い(`002-page-layouts.md`の「未実装のページの項目は出さない」と一時的に逆。6.5より前にmainへ単独でマージしない)。8.2で`project-values.md`の設定のナビゲーションの行と「GraphQLの操作」の行にclientの5操作を加える

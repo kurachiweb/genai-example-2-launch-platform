@@ -1,0 +1,8 @@
+mutation ClientReissueApiKey($id: ID!) {
+  reissueApiKey(id: $id) {
+    apiKey {
+      ...ApiKeyFields
+    }
+    plainKey
+  }
+}

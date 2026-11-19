@@ -1,0 +1,5 @@
+mutation ClientUpdateApiKey($id: ID!, $input: ApiKeyInput!) {
+  updateApiKey(id: $id, input: $input) {
+    ...ApiKeyFields
+  }
+}

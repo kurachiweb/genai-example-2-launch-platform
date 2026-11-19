@@ -15,4 +15,5 @@ export const SETTINGS_NAV_ITEMS: readonly SettingsNavItem[] = Object.freeze([
   { to: '/settings/plan', label: 'プラン', order: 60 },
   { to: '/settings/billing', label: '決済履歴', order: 70 },
   { to: '/settings/sponsorships', label: 'スポンサー広告', order: 80 },
+  { to: '/settings/api-keys', label: 'APIキー', order: 90 },
 ]);

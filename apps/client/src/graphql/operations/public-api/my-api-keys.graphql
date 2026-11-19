@@ -1,0 +1,11 @@
+query ClientMyApiKeys($first: Int!, $after: String) {
+  myApiKeys(first: $first, after: $after) {
+    nodes {
+      ...ApiKeyFields
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

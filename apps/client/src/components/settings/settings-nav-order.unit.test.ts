@@ -35,7 +35,7 @@ describe('設定の項目の順序', () => {
     expect(() => firstSettingsPath([])).toThrow(TypeError);
   });
 
-  test('登録はプロフィール(10)・アカウント(20)・セキュリティ(30)・通知(40)・フォロー(50)・プラン(60)・決済履歴(70)・スポンサー広告(80)', () => {
+  test('登録はプロフィール(10)・アカウント(20)・セキュリティ(30)・通知(40)・フォロー(50)・プラン(60)・決済履歴(70)・スポンサー広告(80)・APIキー(90)', () => {
     expect(SETTINGS_NAV_ITEMS).toStrictEqual([
       { to: '/settings/profile', label: 'プロフィール', order: 10 },
       { to: '/settings/account', label: 'アカウント', order: 20 },
@@ -45,6 +45,15 @@ describe('設定の項目の順序', () => {
       { to: '/settings/plan', label: 'プラン', order: 60 },
       { to: '/settings/billing', label: '決済履歴', order: 70 },
       { to: '/settings/sponsorships', label: 'スポンサー広告', order: 80 },
+      { to: '/settings/api-keys', label: 'APIキー', order: 90 },
     ]);
+  });
+
+  test('登録した項目を書き出すと、APIキーはスポンサー広告の次の最後に並ぶ', () => {
+    expect(
+      orderSettingsNavItems(SETTINGS_NAV_ITEMS)
+        .map(({ label }) => label)
+        .slice(-2),
+    ).toStrictEqual(['スポンサー広告', 'APIキー']);
   });
 });

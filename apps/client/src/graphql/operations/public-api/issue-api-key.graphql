@@ -1,0 +1,8 @@
+mutation ClientIssueApiKey($input: ApiKeyInput!) {
+  issueApiKey(input: $input) {
+    apiKey {
+      ...ApiKeyFields
+    }
+    plainKey
+  }
+}

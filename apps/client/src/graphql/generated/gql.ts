@@ -22,6 +22,7 @@ type Documents = {
     "fragment Match on Match {\n  id\n  kind\n  round\n  stage\n  phase\n  decision\n  endedEarly\n  viewerRestriction\n  viewerUpvotedEntryId\n  entries {\n    id\n    colorIndex\n    isViewerOwn\n    upvoteCount\n    result\n    product {\n      handle\n      name\n      tagline\n      websiteUrl\n      listed\n      category {\n        id\n        name\n        handle\n      }\n      logo {\n        id\n        objectKey\n        fallbackFormat\n        width\n        height\n      }\n    }\n  }\n}": typeof types.MatchFragmentDoc,
     "fragment NotificationSettings on NotificationSettings {\n  preferences {\n    topic\n    enabled\n  }\n  suppression {\n    reason\n    until\n  }\n  deliveryStatusAvailable\n  emailVerified\n  editable\n}": typeof types.NotificationSettingsFragmentDoc,
     "fragment NotificationUnsubscribeLink on NotificationUnsubscribeLink {\n  topic\n  enabled\n}": typeof types.NotificationUnsubscribeLinkFragmentDoc,
+    "fragment ApiKeyFields on ApiKey {\n  id\n  name\n  scopes {\n    products\n    launches\n    upvotes\n    comments\n    ratings\n    profile\n    productDescriptions\n  }\n  createdAt\n}": typeof types.ApiKeyFieldsFragmentDoc,
     "fragment SponsoredAdFields on SponsoredAd {\n  id\n  tier\n  productName\n  tagline\n  logo {\n    id\n    objectKey\n    fallbackFormat\n    width\n    height\n  }\n  websiteUrl\n}": typeof types.SponsoredAdFieldsFragmentDoc,
     "fragment WeekBoardRoundFields on WeekTournamentRoundBoard {\n  tournament {\n    week\n    label\n    firstRoundDate\n    finalDate\n    status\n    awarded\n  }\n  round\n  roundName\n  final\n  matches {\n    ...Match\n  }\n  byes {\n    ...MatchBye\n  }\n  bracketPath\n}": typeof types.WeekBoardRoundFieldsFragmentDoc,
     "fragment YearBoardRoundFields on YearTournamentRoundBoard {\n  tournament {\n    year\n    label\n    firstRoundDate\n    finalDate\n    status\n    awarded\n  }\n  round\n  roundName\n  final\n  finalDate\n  matches {\n    ...Match\n  }\n  byes {\n    ...MatchBye\n  }\n  bracketPath\n}": typeof types.YearBoardRoundFieldsFragmentDoc,
@@ -105,6 +106,11 @@ type Documents = {
     "query ClientPublicProfile($handle: String!) {\n  publicProfile(handle: $handle) {\n    __typename\n    ... on PublicProfile {\n      handle\n      nickname\n      headline\n      bio\n      avatar {\n        id\n        objectKey\n        fallbackFormat\n        width\n        height\n      }\n      websites {\n        name\n        url\n      }\n      followerCount\n      ultras\n      suspended\n      viewerRelation\n    }\n    ... on PublicProfileRedirect {\n      handle\n    }\n  }\n}": typeof types.ClientPublicProfileDocument,
     "mutation ClientUnfollowUser($handle: String!) {\n  unfollowUser(handle: $handle) {\n    handle\n    following\n    followerCount\n  }\n}": typeof types.ClientUnfollowUserDocument,
     "mutation ClientUpdateMyProfile($input: UpdateMyProfileInput!) {\n  updateMyProfile(input: $input) {\n    nickname\n    handle\n    previousHandle\n    headline\n    bio\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    websites {\n      name\n      url\n    }\n    suspended\n  }\n}": typeof types.ClientUpdateMyProfileDocument,
+    "mutation ClientDeleteApiKey($id: ID!) {\n  deleteApiKey(id: $id)\n}": typeof types.ClientDeleteApiKeyDocument,
+    "mutation ClientIssueApiKey($input: ApiKeyInput!) {\n  issueApiKey(input: $input) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}": typeof types.ClientIssueApiKeyDocument,
+    "query ClientMyApiKeys($first: Int!, $after: String) {\n  myApiKeys(first: $first, after: $after) {\n    nodes {\n      ...ApiKeyFields\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.ClientMyApiKeysDocument,
+    "mutation ClientReissueApiKey($id: ID!) {\n  reissueApiKey(id: $id) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}": typeof types.ClientReissueApiKeyDocument,
+    "mutation ClientUpdateApiKey($id: ID!, $input: ApiKeyInput!) {\n  updateApiKey(id: $id, input: $input) {\n    ...ApiKeyFields\n  }\n}": typeof types.ClientUpdateApiKeyDocument,
     "query ClientActiveSponsorshipCount($productHandle: String!) {\n  activeSponsorshipCount(productHandle: $productHandle)\n}": typeof types.ClientActiveSponsorshipCountDocument,
     "mutation ClientApplySponsorship($input: ApplySponsorshipInput!) {\n  applySponsorship(input: $input) {\n    purchaseId\n  }\n}": typeof types.ClientApplySponsorshipDocument,
     "query ClientMySponsorships($first: Int!, $after: String) {\n  mySponsorships(first: $first, after: $after) {\n    nodes {\n      id\n      product {\n        handle\n        name\n        logo {\n          id\n          objectKey\n          fallbackFormat\n          width\n          height\n        }\n        listed\n      }\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminatedOn\n      terminationReason\n      terminationRefund {\n        days\n        amount {\n          amount\n          currency\n        }\n        status\n      }\n      displayStopRefund {\n        days\n        amount {\n          amount\n          currency\n        }\n        status\n      }\n      canResume\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n    nextDayStartsAt\n  }\n}": typeof types.ClientMySponsorshipsDocument,
@@ -136,6 +142,7 @@ const documents: Documents = {
     "fragment Match on Match {\n  id\n  kind\n  round\n  stage\n  phase\n  decision\n  endedEarly\n  viewerRestriction\n  viewerUpvotedEntryId\n  entries {\n    id\n    colorIndex\n    isViewerOwn\n    upvoteCount\n    result\n    product {\n      handle\n      name\n      tagline\n      websiteUrl\n      listed\n      category {\n        id\n        name\n        handle\n      }\n      logo {\n        id\n        objectKey\n        fallbackFormat\n        width\n        height\n      }\n    }\n  }\n}": types.MatchFragmentDoc,
     "fragment NotificationSettings on NotificationSettings {\n  preferences {\n    topic\n    enabled\n  }\n  suppression {\n    reason\n    until\n  }\n  deliveryStatusAvailable\n  emailVerified\n  editable\n}": types.NotificationSettingsFragmentDoc,
     "fragment NotificationUnsubscribeLink on NotificationUnsubscribeLink {\n  topic\n  enabled\n}": types.NotificationUnsubscribeLinkFragmentDoc,
+    "fragment ApiKeyFields on ApiKey {\n  id\n  name\n  scopes {\n    products\n    launches\n    upvotes\n    comments\n    ratings\n    profile\n    productDescriptions\n  }\n  createdAt\n}": types.ApiKeyFieldsFragmentDoc,
     "fragment SponsoredAdFields on SponsoredAd {\n  id\n  tier\n  productName\n  tagline\n  logo {\n    id\n    objectKey\n    fallbackFormat\n    width\n    height\n  }\n  websiteUrl\n}": types.SponsoredAdFieldsFragmentDoc,
     "fragment WeekBoardRoundFields on WeekTournamentRoundBoard {\n  tournament {\n    week\n    label\n    firstRoundDate\n    finalDate\n    status\n    awarded\n  }\n  round\n  roundName\n  final\n  matches {\n    ...Match\n  }\n  byes {\n    ...MatchBye\n  }\n  bracketPath\n}": types.WeekBoardRoundFieldsFragmentDoc,
     "fragment YearBoardRoundFields on YearTournamentRoundBoard {\n  tournament {\n    year\n    label\n    firstRoundDate\n    finalDate\n    status\n    awarded\n  }\n  round\n  roundName\n  final\n  finalDate\n  matches {\n    ...Match\n  }\n  byes {\n    ...MatchBye\n  }\n  bracketPath\n}": types.YearBoardRoundFieldsFragmentDoc,
@@ -219,6 +226,11 @@ const documents: Documents = {
     "query ClientPublicProfile($handle: String!) {\n  publicProfile(handle: $handle) {\n    __typename\n    ... on PublicProfile {\n      handle\n      nickname\n      headline\n      bio\n      avatar {\n        id\n        objectKey\n        fallbackFormat\n        width\n        height\n      }\n      websites {\n        name\n        url\n      }\n      followerCount\n      ultras\n      suspended\n      viewerRelation\n    }\n    ... on PublicProfileRedirect {\n      handle\n    }\n  }\n}": types.ClientPublicProfileDocument,
     "mutation ClientUnfollowUser($handle: String!) {\n  unfollowUser(handle: $handle) {\n    handle\n    following\n    followerCount\n  }\n}": types.ClientUnfollowUserDocument,
     "mutation ClientUpdateMyProfile($input: UpdateMyProfileInput!) {\n  updateMyProfile(input: $input) {\n    nickname\n    handle\n    previousHandle\n    headline\n    bio\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    websites {\n      name\n      url\n    }\n    suspended\n  }\n}": types.ClientUpdateMyProfileDocument,
+    "mutation ClientDeleteApiKey($id: ID!) {\n  deleteApiKey(id: $id)\n}": types.ClientDeleteApiKeyDocument,
+    "mutation ClientIssueApiKey($input: ApiKeyInput!) {\n  issueApiKey(input: $input) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}": types.ClientIssueApiKeyDocument,
+    "query ClientMyApiKeys($first: Int!, $after: String) {\n  myApiKeys(first: $first, after: $after) {\n    nodes {\n      ...ApiKeyFields\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.ClientMyApiKeysDocument,
+    "mutation ClientReissueApiKey($id: ID!) {\n  reissueApiKey(id: $id) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}": types.ClientReissueApiKeyDocument,
+    "mutation ClientUpdateApiKey($id: ID!, $input: ApiKeyInput!) {\n  updateApiKey(id: $id, input: $input) {\n    ...ApiKeyFields\n  }\n}": types.ClientUpdateApiKeyDocument,
     "query ClientActiveSponsorshipCount($productHandle: String!) {\n  activeSponsorshipCount(productHandle: $productHandle)\n}": types.ClientActiveSponsorshipCountDocument,
     "mutation ClientApplySponsorship($input: ApplySponsorshipInput!) {\n  applySponsorship(input: $input) {\n    purchaseId\n  }\n}": types.ClientApplySponsorshipDocument,
     "query ClientMySponsorships($first: Int!, $after: String) {\n  mySponsorships(first: $first, after: $after) {\n    nodes {\n      id\n      product {\n        handle\n        name\n        logo {\n          id\n          objectKey\n          fallbackFormat\n          width\n          height\n        }\n        listed\n      }\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminatedOn\n      terminationReason\n      terminationRefund {\n        days\n        amount {\n          amount\n          currency\n        }\n        status\n      }\n      displayStopRefund {\n        days\n        amount {\n          amount\n          currency\n        }\n        status\n      }\n      canResume\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n    nextDayStartsAt\n  }\n}": types.ClientMySponsorshipsDocument,
@@ -288,6 +300,10 @@ export function graphql(source: "fragment NotificationSettings on NotificationSe
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "fragment NotificationUnsubscribeLink on NotificationUnsubscribeLink {\n  topic\n  enabled\n}"): (typeof documents)["fragment NotificationUnsubscribeLink on NotificationUnsubscribeLink {\n  topic\n  enabled\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment ApiKeyFields on ApiKey {\n  id\n  name\n  scopes {\n    products\n    launches\n    upvotes\n    comments\n    ratings\n    profile\n    productDescriptions\n  }\n  createdAt\n}"): (typeof documents)["fragment ApiKeyFields on ApiKey {\n  id\n  name\n  scopes {\n    products\n    launches\n    upvotes\n    comments\n    ratings\n    profile\n    productDescriptions\n  }\n  createdAt\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -620,6 +636,26 @@ export function graphql(source: "mutation ClientUnfollowUser($handle: String!) {
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation ClientUpdateMyProfile($input: UpdateMyProfileInput!) {\n  updateMyProfile(input: $input) {\n    nickname\n    handle\n    previousHandle\n    headline\n    bio\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    websites {\n      name\n      url\n    }\n    suspended\n  }\n}"): (typeof documents)["mutation ClientUpdateMyProfile($input: UpdateMyProfileInput!) {\n  updateMyProfile(input: $input) {\n    nickname\n    handle\n    previousHandle\n    headline\n    bio\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    websites {\n      name\n      url\n    }\n    suspended\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation ClientDeleteApiKey($id: ID!) {\n  deleteApiKey(id: $id)\n}"): (typeof documents)["mutation ClientDeleteApiKey($id: ID!) {\n  deleteApiKey(id: $id)\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation ClientIssueApiKey($input: ApiKeyInput!) {\n  issueApiKey(input: $input) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}"): (typeof documents)["mutation ClientIssueApiKey($input: ApiKeyInput!) {\n  issueApiKey(input: $input) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query ClientMyApiKeys($first: Int!, $after: String) {\n  myApiKeys(first: $first, after: $after) {\n    nodes {\n      ...ApiKeyFields\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"): (typeof documents)["query ClientMyApiKeys($first: Int!, $after: String) {\n  myApiKeys(first: $first, after: $after) {\n    nodes {\n      ...ApiKeyFields\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation ClientReissueApiKey($id: ID!) {\n  reissueApiKey(id: $id) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}"): (typeof documents)["mutation ClientReissueApiKey($id: ID!) {\n  reissueApiKey(id: $id) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation ClientUpdateApiKey($id: ID!, $input: ApiKeyInput!) {\n  updateApiKey(id: $id, input: $input) {\n    ...ApiKeyFields\n  }\n}"): (typeof documents)["mutation ClientUpdateApiKey($id: ID!, $input: ApiKeyInput!) {\n  updateApiKey(id: $id, input: $input) {\n    ...ApiKeyFields\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

@@ -9,6 +9,33 @@ export type AccountStatus =
   | 'ACTIVE'
   | 'SUSPENDED';
 
+export type ApiKeyInput = {
+  /** 前後の空白を除いて1〜50文字 */
+  name: string;
+  scopes: ApiKeyScopesInput;
+};
+
+/** 読み取りだけの機能の権限 */
+export type ApiKeyReadLevel =
+  | 'NONE'
+  | 'READ';
+
+export type ApiKeyScopesInput = {
+  comments: ApiKeyReadLevel;
+  launches: ApiKeyReadLevel;
+  productDescriptions: ApiKeyWriteLevel;
+  products: ApiKeyReadLevel;
+  profile: ApiKeyWriteLevel;
+  ratings: ApiKeyReadLevel;
+  upvotes: ApiKeyReadLevel;
+};
+
+/** 書き込みもできる機能の権限 */
+export type ApiKeyWriteLevel =
+  | 'NONE'
+  | 'READ'
+  | 'READ_WRITE';
+
 /** スポンサー広告の申込 */
 export type ApplySponsorshipInput = {
   /** 掲載終了日(業務日付のYYYY-MM-DD) */
@@ -510,6 +537,8 @@ export type MatchFragment = { id: string, kind: MatchKind, round: number | null,
 export type NotificationSettingsFragment = { deliveryStatusAvailable: boolean, emailVerified: boolean, editable: boolean, preferences: Array<{ topic: NotificationTopic, enabled: boolean }>, suppression: { reason: DeliverySuppressionReason, until: string | null } | null };
 
 export type NotificationUnsubscribeLinkFragment = { topic: NotificationTopic, enabled: boolean };
+
+export type ApiKeyFieldsFragment = { id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } };
 
 export type SponsoredAdFieldsFragment = { id: string, tier: SponsorshipTier, productName: string, tagline: string | null, websiteUrl: string | null, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null };
 
@@ -1082,6 +1111,43 @@ export type ClientUpdateMyProfileMutationVariables = Exact<{
 
 export type ClientUpdateMyProfileMutation = { updateMyProfile: { nickname: string, handle: string, previousHandle: string | null, headline: string | null, bio: string | null, suspended: boolean, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, websites: Array<{ name: string | null, url: string }> } };
 
+export type ClientDeleteApiKeyMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type ClientDeleteApiKeyMutation = { deleteApiKey: string };
+
+export type ClientIssueApiKeyMutationVariables = Exact<{
+  input: ApiKeyInput;
+}>;
+
+
+export type ClientIssueApiKeyMutation = { issueApiKey: { plainKey: string, apiKey: { id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } } } };
+
+export type ClientMyApiKeysQueryVariables = Exact<{
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientMyApiKeysQuery = { myApiKeys: { nodes: Array<{ id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type ClientReissueApiKeyMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type ClientReissueApiKeyMutation = { reissueApiKey: { plainKey: string, apiKey: { id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } } } };
+
+export type ClientUpdateApiKeyMutationVariables = Exact<{
+  id: string | number;
+  input: ApiKeyInput;
+}>;
+
+
+export type ClientUpdateApiKeyMutation = { updateApiKey: { id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } } };
+
 export type ClientActiveSponsorshipCountQueryVariables = Exact<{
   productHandle: string;
 }>;
@@ -1224,6 +1290,7 @@ export const LaunchCommentFragmentDoc = {"kind":"Document","definitions":[{"kind
 export const ProductRatingFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProductRating"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ProductRating"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productId"}},{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"viewerScore"}}]}}]} as unknown as DocumentNode<ProductRatingFragment, unknown>;
 export const NotificationSettingsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationSettings"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"preferences"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"topic"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}},{"kind":"Field","name":{"kind":"Name","value":"suppression"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"until"}}]}},{"kind":"Field","name":{"kind":"Name","value":"deliveryStatusAvailable"}},{"kind":"Field","name":{"kind":"Name","value":"emailVerified"}},{"kind":"Field","name":{"kind":"Name","value":"editable"}}]}}]} as unknown as DocumentNode<NotificationSettingsFragment, unknown>;
 export const NotificationUnsubscribeLinkFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationUnsubscribeLink"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationUnsubscribeLink"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"topic"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}}]} as unknown as DocumentNode<NotificationUnsubscribeLinkFragment, unknown>;
+export const ApiKeyFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ApiKeyFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ApiKey"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"scopes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"products"}},{"kind":"Field","name":{"kind":"Name","value":"launches"}},{"kind":"Field","name":{"kind":"Name","value":"upvotes"}},{"kind":"Field","name":{"kind":"Name","value":"comments"}},{"kind":"Field","name":{"kind":"Name","value":"ratings"}},{"kind":"Field","name":{"kind":"Name","value":"profile"}},{"kind":"Field","name":{"kind":"Name","value":"productDescriptions"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]} as unknown as DocumentNode<ApiKeyFieldsFragment, unknown>;
 export const SponsoredAdFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SponsoredAdFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SponsoredAd"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"tier"}},{"kind":"Field","name":{"kind":"Name","value":"productName"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}}]}}]} as unknown as DocumentNode<SponsoredAdFieldsFragment, unknown>;
 export const MatchFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Match"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Match"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}},{"kind":"Field","name":{"kind":"Name","value":"viewerRestriction"}},{"kind":"Field","name":{"kind":"Name","value":"viewerUpvotedEntryId"}},{"kind":"Field","name":{"kind":"Name","value":"entries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchFragment, unknown>;
 export const MatchByeFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MatchBye"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchBye"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}}]}},{"kind":"Field","name":{"kind":"Name","value":"entry"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchByeFragment, unknown>;
@@ -1309,6 +1376,11 @@ export const ClientMyProfileDocument = {"__meta__":{"hash":"sha256:2d8dcc4cbd827
 export const ClientPublicProfileDocument = {"__meta__":{"hash":"sha256:9e0a702a4409301cdc80cf6c15909853192438e5c412885781b39ca96fd1accb"}} as unknown as DocumentNode<ClientPublicProfileQuery, ClientPublicProfileQueryVariables>;
 export const ClientUnfollowUserDocument = {"__meta__":{"hash":"sha256:aa4354a0a4ef140b06a8ea4cae4d21d7494c10aed37765d81671355d708c922a"}} as unknown as DocumentNode<ClientUnfollowUserMutation, ClientUnfollowUserMutationVariables>;
 export const ClientUpdateMyProfileDocument = {"__meta__":{"hash":"sha256:b33ca7211146ea6c901810ca374cd5e6c8aaee313997e027dfe31e606d359d18"}} as unknown as DocumentNode<ClientUpdateMyProfileMutation, ClientUpdateMyProfileMutationVariables>;
+export const ClientDeleteApiKeyDocument = {"__meta__":{"hash":"sha256:fc7f97d2389a5744c2b45398cc379e5fc349693140915942088ab4706fba3bbc"}} as unknown as DocumentNode<ClientDeleteApiKeyMutation, ClientDeleteApiKeyMutationVariables>;
+export const ClientIssueApiKeyDocument = {"__meta__":{"hash":"sha256:187d7266e9f516044aaf3ab4cf1c1823fdaa99b58d8e9a969539198a7c7dbd37"}} as unknown as DocumentNode<ClientIssueApiKeyMutation, ClientIssueApiKeyMutationVariables>;
+export const ClientMyApiKeysDocument = {"__meta__":{"hash":"sha256:b324ab84bd16119c6bfa3d08db667345b687f9fc2130dd4b92ecbbc9f9ea3df3"}} as unknown as DocumentNode<ClientMyApiKeysQuery, ClientMyApiKeysQueryVariables>;
+export const ClientReissueApiKeyDocument = {"__meta__":{"hash":"sha256:98d44a501ad311be8df1936649810d2c8a57b4b832f529d4b44ac352d67450a2"}} as unknown as DocumentNode<ClientReissueApiKeyMutation, ClientReissueApiKeyMutationVariables>;
+export const ClientUpdateApiKeyDocument = {"__meta__":{"hash":"sha256:a1a7a272b6c10d36c321dd8b86ee3f56b827354699904686920bf0544a36d368"}} as unknown as DocumentNode<ClientUpdateApiKeyMutation, ClientUpdateApiKeyMutationVariables>;
 export const ClientActiveSponsorshipCountDocument = {"__meta__":{"hash":"sha256:0a2516737da8b90a8984914cd732dcae721492d0e95b31d024b507287e0b1f63"}} as unknown as DocumentNode<ClientActiveSponsorshipCountQuery, ClientActiveSponsorshipCountQueryVariables>;
 export const ClientApplySponsorshipDocument = {"__meta__":{"hash":"sha256:e24146897bb5af5be36bca1bb2d882b2d7c2975d7dad5abe5a6b332e2038c834"}} as unknown as DocumentNode<ClientApplySponsorshipMutation, ClientApplySponsorshipMutationVariables>;
 export const ClientMySponsorshipsDocument = {"__meta__":{"hash":"sha256:610d892aebd7cbf7524557c19588d9ad66d573f36c61c310280fca1973ad9492"}} as unknown as DocumentNode<ClientMySponsorshipsQuery, ClientMySponsorshipsQueryVariables>;
