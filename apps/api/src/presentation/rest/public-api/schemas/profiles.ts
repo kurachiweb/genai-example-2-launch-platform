@@ -26,7 +26,7 @@ import {
   type ExternalUrlCheck,
 } from '../../../../../common-lib/url/external-url.ts';
 import { markdownTextSchema } from '../../../../../common-lib/validation/markdown-text-schema.ts';
-import { ApiImageSchema } from './common.ts';
+import { ApiImageSchema, PUBLIC_API_INVALID_TYPE_MESSAGE } from './common.ts';
 
 const countFormat = new Intl.NumberFormat('ja-JP');
 
@@ -55,7 +55,7 @@ export const PROFILE_FIELD_MESSAGES = Object.freeze({
 export const MY_PROFILE_PATCH_MESSAGES = Object.freeze({
   noFields: '更新する項目を1つ以上指定してください。',
   unknownFields: '更新できない項目が含まれています。',
-  invalidType: '値の形式が正しくありません。',
+  invalidType: PUBLIC_API_INVALID_TYPE_MESSAGE,
 });
 
 const NICKNAME_MESSAGES = Object.freeze({

@@ -4,6 +4,9 @@ import { invalidCursorError } from '../../../../../lib/core/errors/invalid-curso
 
 export const PUBLIC_API_CURSOR_MAX = 256;
 
+// 要求の本文の項目が決まった型でない場合と本文がオブジェクトでない場合の文言。画面は型をフォームが決めるため起きない
+export const PUBLIC_API_INVALID_TYPE_MESSAGE = '値の形式が正しくありません。';
+
 export const ApiImageSchema = z
   .object({
     url: z.url(),
