@@ -16,6 +16,7 @@ export * from './media/media-files.ts';
 export * from './notifications/index.ts';
 export * from './payments/index.ts';
 export * from './product/index.ts';
+export * from './public-api/index.ts';
 export * from './profile/index.ts';
 export * from './sponsorship/index.ts';
 export * from './tournament/index.ts';

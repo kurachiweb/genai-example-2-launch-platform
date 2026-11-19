@@ -90,6 +90,7 @@ describe('スキーマの集約点', () => {
     'year_tournament_entries',
     'sponsorships',
     'sponsorship_display_stops',
+    'api_keys',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

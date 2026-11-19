@@ -8,7 +8,7 @@
   - 完了状態: 単体テストが成功し、apiとclientの型検査で規則を読み込める
   - _Requirements: 1.3, 1.4, 2.1, 6.3, 6.4_
 
-- [ ] 1.2 APIキーのテーブルとマイグレーションを作る
+- [x] 1.2 APIキーのテーブルとマイグレーションを作る
   - 先に、テーブルの定義の単体テストで、列名(snake_case)・NOT NULL・ハッシュの一意索引・`(user_id, created_at, id)`の索引・権限スコープの列のCHECKの値・利用者への外部キーに`ON DELETE`の指定が無いことを確かめる
   - スキーマの集約点に再エクスポートを加え、mainの最新を取り込んでからマイグレーションを生成する
   - 完了状態: 単体テストが成功し、マイグレーションをローカルに適用でき、CHECKに違反する値の挿入が失敗する
@@ -297,3 +297,4 @@
 ## Implementation Notes
 
 - 1.1: 規則は`apps/common-lib/public-api/api-key-rules.ts`(design.mdのApiKeyRulesの契約どおり`checkApiKeyName`は`{ ok: true, name } | { ok: false, reason: 'required' | 'too_long' }`)。`coding/005`の例示(`<項目>-input-rules.ts`・文字列の戻り値)とは異なるが設計に従った。禁止文字の判定は要件1.3と設計に無く入れていない
+- 1.2: `apps/db`はcommon-libを読まない前例に従い、権限の値を`apps/db/schema/public-api/api-keys.ts`に写し、`config/public-api-contract-copies.unit.test.ts`(`check:contract-copies`)で`api-key-rules.ts`と照合する。8.2で`project-values.md`の「手で同期する値」の行にこの写しを加えること。キーが残る利用者は外部キーで物理削除できない(退会で3.3が先に消す)
