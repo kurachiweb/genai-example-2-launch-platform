@@ -42,12 +42,19 @@ export interface ApiKeyAuthorization {
   readonly rateLimit: PublicApiRateLimitStatus;
 }
 
+export interface ApiKeySubject {
+  readonly keyId: string;
+  readonly userId: string;
+}
+
 export interface ApiKeyAuthorizationRequest {
   readonly token: string;
   readonly feature: ApiKeyFeature;
   readonly access: ApiAccess;
   readonly target: ApiTarget;
   readonly now: Date;
+  // 照合の後の拒否は例外で返るため、拒否を記録する呼び出し元がキーと持ち主のIDを受け取れるよう照合の直後に知らせる
+  readonly onIdentified?: (subject: ApiKeySubject) => void;
 }
 
 // 形式→照合→利用者の状態→権限→回数の順に判定し、回数より前の失敗では利用者単位の回数を消費しない。回数の超過はPublicApiRateLimitErrorを投げる
@@ -74,6 +81,7 @@ export class StoreApiKeyAuthorizer implements ApiKeyAuthorizer {
     request: ApiKeyAuthorizationRequest,
   ): Promise<ApiKeyAuthorization> {
     const key = await this.#findKey(request.token);
+    request.onIdentified?.({ keyId: key.id, userId: key.userId });
     const user = await this.#requireOwner(key, request.target);
     if (!allowsAccess(key.scopes, request.feature, request.access)) {
       throw apiKeyError('insufficient_scope');

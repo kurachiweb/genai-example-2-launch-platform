@@ -646,3 +646,58 @@ describe('StoreApiKeyAuthorizer.authorize の想定外の失敗', () => {
     expect(caught).toBe(failure);
   });
 });
+
+describe('StoreApiKeyAuthorizer.authorize の照合できたキーの通知', () => {
+  test('照合できたキーのIDと持ち主のIDを、利用者の状態を判定する前に1度だけ知らせる', async () => {
+    const { authorizer, calls } = createHarness();
+    const identified: unknown[] = [];
+
+    await authorizer.authorize({
+      ...requestOf(),
+      onIdentified: (subject) => {
+        calls.push('onIdentified');
+        identified.push(subject);
+      },
+    });
+
+    expect(identified).toStrictEqual([{ keyId: KEY_ID, userId: USER_ID }]);
+    expect(calls).toStrictEqual([
+      'hash',
+      'findByHash',
+      'onIdentified',
+      'requireUser',
+      'consumeRequest:read',
+    ]);
+  });
+
+  test('照合の後の拒否でも、拒否の前にキーのIDと持ち主のIDを知らせる', async () => {
+    const { authorizer } = createHarness({ userState: 'suspended' });
+    const identified: unknown[] = [];
+
+    const error = await captureError(() =>
+      authorizer.authorize({
+        ...requestOf({ feature: 'profile', target: 'own' }),
+        onIdentified: (subject) => identified.push(subject),
+      }),
+    );
+
+    expect(summaryOf(error)).toStrictEqual(ACCOUNT_UNAVAILABLE);
+    expect(identified).toStrictEqual([{ keyId: KEY_ID, userId: USER_ID }]);
+  });
+
+  test('形式違反と不在のキーでは知らせない', async () => {
+    const { authorizer } = createHarness();
+    const identified: unknown[] = [];
+
+    for (const token of ['lsk_short', MISSING_PLAIN_KEY]) {
+      await captureError(() =>
+        authorizer.authorize({
+          ...requestOf({ token }),
+          onIdentified: (subject) => identified.push(subject),
+        }),
+      );
+    }
+
+    expect(identified).toStrictEqual([]);
+  });
+});
