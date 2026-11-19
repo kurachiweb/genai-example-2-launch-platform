@@ -52,7 +52,7 @@
   - _Requirements: 8.9, 9.3, 14.2_
 
 - [ ] 2. ドメインの規則と共有部品
-- [ ] 2.1 (P) 平文の形式・Bearerの解析・権限スコープの判定の純粋な規則を作る
+- [x] 2.1 (P) 平文の形式・Bearerの解析・権限スコープの判定の純粋な規則を作る
   - 先に、単体テストで、ヘッダーの欠落・空・方式名の大文字小文字・別の方式・接頭辞と長さの違反、全7機能×全値×読み取りと書き込みの判定の表(読み取りの5機能に書き込みを問うと常に偽)を確かめる。経路の対象の型(公開データ・自分のデータ)も同じファイルに置く
   - 完了状態: 単体テストが成功し、規則がD1・Honoを読み込まない
   - _Depends: 1.1_
@@ -302,3 +302,4 @@
 - 1.4: clientの設定の検査(`apps/client/test/config/wrangler-config.unit.test.ts`)にもadminと同じ名前空間の総数の検査があったため、総数15に直した。apiの設定の検査は`PUBLIC_API_RATE_LIMITER`の60・60を直書きしているため、2.3(または4.3)で`PUBLIC_API_IP_RATE_LIMIT`の定数との照合に差し替える。環境の検証のテストは既存に倣いWorkers統合テスト(`public-api-env.worker.test.ts`)。8.2で`project-values.md`の`namespace_id`の表(1005・2005・3005)・「4アプリ12個」の記述・apiの`IMAGES_ORIGIN`を直す
 - 1.5: 空文字の`PUBLIC_API_ORIGIN`は未設定扱いにせず不正とした(`STRIPE_PUBLISHABLE_KEY`の前例)。`project-values.md`にはプレースホルダー`<公開APIのオリジンの変数>`の行とCSPの許可先の`connect-src`の行だけを加え、3環境の値の表は8.2に残した。7.1・7.3のビューアーは公開設定の`publicApiOrigin`(未定義なら読み込みの失敗と同じ表示)を読む
 - 1.6: `pagination.ts`はカーソルの2関数を`opaque-cursor.ts`から再公開する(既存の3つのWorkers統合テストが`pagination.ts`から読み、変更なしの条件のため。design.mdの「残りの補助だけを持つ」との相違)。公開RESTの表現層は`backend-lib/core/pagination/opaque-cursor.ts`を直に読む。`SupporterListPage.supporters`の行の型は`SupporterListRow`。同じbase64url+JSONのコーデックの写しがapi・backend-libに約11か所残る(範囲外)
+- 2.1: `parseBearerAuthorization`はトークンを`\S+`で取り、文字種と長さは`isWellFormedApiKey`(`/^lsk_[A-Za-z0-9_-]{43}$/`)で判定する。`allowsAccess`は機能の種類を見ず型に頼るため、D1の行を`ApiKeyScopes`へ変換する3.1で読み取りの5機能に`read_write`が入らないことを保つ(CHECKでも拒否される)
