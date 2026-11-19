@@ -194,6 +194,60 @@ describe('決済セッションの反映の拒否と全額返金', () => {
     expect(queue.sent).toHaveLength(1);
   });
 
+  test('権利を付与済みの購入と同じ二重決済の判定の鍵の決済は、口が付与できないと答えても二重決済として拒否する', async () => {
+    await insertPurchase(1, {
+      kind: 'sponsorship',
+      exclusivityKey: EXCLUSIVITY_KEY,
+    });
+    await insertPurchase(2, {
+      kind: 'sponsorship',
+      exclusivityKey: EXCLUSIVITY_KEY,
+    });
+    const fulfillment = createFakeFulfillment({
+      plan: (purchase) =>
+        purchase.purchaseId === purchaseIdOf(2)
+          ? { kind: 'reject', reason: 'ineligible' }
+          : { kind: 'fulfill', statements: [] },
+    });
+    const { reflection, queue } = harnessWith({ fulfillment });
+    await reflection.reflectSnapshot(snapshotOf(1), OCCURRED_AT);
+
+    const outcome = await reflection.reflectSnapshot(
+      snapshotOf(2),
+      OCCURRED_AT,
+    );
+
+    expect(outcome).toEqual({ kind: 'applied', purchaseStatus: 'rejected' });
+    expect(await readPurchaseRow(purchaseIdOf(2))).toMatchObject({
+      status: 'rejected',
+      rejectionReason: 'duplicate',
+    });
+    expect(await readRefundRows()).toMatchObject([
+      { purchaseId: purchaseIdOf(2), reason: 'duplicate' },
+    ]);
+    expect(queue.sent).toHaveLength(1);
+  });
+
+  test('二重決済の判定の鍵を持つ購入でも、同じ鍵の付与済みの購入が無ければ口の拒否の理由のまま拒否する', async () => {
+    await insertPurchase(1, {
+      kind: 'sponsorship',
+      exclusivityKey: EXCLUSIVITY_KEY,
+    });
+    const fulfillment = createFakeFulfillment({
+      plan: () => ({ kind: 'reject', reason: 'ineligible' }),
+    });
+
+    await harnessWith({ fulfillment }).reflection.reflectSnapshot(
+      snapshotOf(1),
+      OCCURRED_AT,
+    );
+
+    expect(await readPurchaseRow(purchaseIdOf(1))).toMatchObject({
+      status: 'rejected',
+      rejectionReason: 'ineligible',
+    });
+  });
+
   test('同じ二重決済の判定の鍵の2つの購入を同時に反映すると、部分一意索引で1つだけが権利を付与し、もう1つは二重決済として拒否し全額返金を依頼する', async () => {
     await insertPurchase(1, {
       kind: 'sponsorship',

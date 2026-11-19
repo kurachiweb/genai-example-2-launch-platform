@@ -473,7 +473,7 @@ describe('paymentsの反映を通したYearトーナメント参加費の参加�
     ]);
   });
 
-  test('参加資格を得た枠への2件目の決済は、参加資格を書き換えずに拒否し自動の全額返金を依頼する', async () => {
+  test('参加資格を得た枠への2件目の決済は、参加資格を書き換えずに二重決済として拒否し自動の全額返金を依頼する', async () => {
     await insertYearPurchase(1);
     await insertYearPurchase(2);
     await reflectByLanding(createHarness({ now: BEFORE_DEADLINE }), 1);
@@ -488,7 +488,7 @@ describe('paymentsの反映を通したYearトーナメント参加費の参加�
 
     expect(await readPurchase(2)).toEqual({
       status: 'rejected',
-      rejectionReason: 'ineligible',
+      rejectionReason: 'duplicate',
     });
     expect(await readEntry()).toEqual({
       status: 'entitled',
@@ -500,7 +500,7 @@ describe('paymentsの反映を通したYearトーナメント参加費の参加�
     expect(refunds).toEqual([
       expect.objectContaining({
         purchaseId: purchaseIdOf(2),
-        reason: 'ineligible',
+        reason: 'duplicate',
       }),
     ]);
     expect(refundMessagesOf(second)).toHaveLength(1);

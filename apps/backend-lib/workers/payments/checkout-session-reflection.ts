@@ -387,7 +387,11 @@ export class StripeCheckoutSessionReflection implements CheckoutSessionReflectio
     for (let attempt = 1; attempt <= MAX_FULFILLMENT_ATTEMPTS; attempt += 1) {
       const plan = await fulfillment.prepare(fulfillable, this.db);
       if (plan.kind === 'reject') {
-        return this.reject(reflection, plan.reason);
+        // 購入種別の口は既に権利を付与した対象を付与できないと答えるため、二重決済を先に見分ける
+        return this.reject(
+          reflection,
+          (await this.isDuplicate(purchase)) ? 'duplicate' : plan.reason,
+        );
       }
       const result = await this.commit(reflection, 'fulfilled', {
         patch: { confirmationEmailStatus: 'pending' },
