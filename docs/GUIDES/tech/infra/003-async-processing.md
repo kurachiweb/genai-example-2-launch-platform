@@ -19,6 +19,7 @@ Cloudflare Workersのアプリで、決まった時刻に処理を起こす定�
 | `MessagePublisher`・`MessagePublishError`・`MAX_DELAY_SECONDS`                                                   | `workers/messaging/queue-publisher.ts`         | 契約で本文を検証し、封筒を付けて送る                                         |
 | `RawQueueRegistration`・`RawMessageHandler`・`RawQueueRegistrationError`                                         | `core/messaging/raw-queue.ts`                  | 封筒を持たないQueueの登録の型と検査                                          |
 | `createQueueDispatcher`                                                                                          | `workers/messaging/queue-consumer.ts`          | 本体Queue・デッドレター・封筒を持たないQueueのconsumer                       |
+| `retryTransientD1`・`isTransientD1Error`・`TRANSIENT_D1_RETRY_DELAYS_MS`                                         | `workers/messaging/transient-d1-retry.ts`      | D1の一時的な失敗の判定と、同じ配信の中での短い間隔のやり直し                 |
 | `triggerScheduled`・`buildScheduledTriggerURL`・`businessDateOf`・`addBusinessDays`・`isNearBusinessDayBoundary` | リポジトリの`e2e/support/scheduled-trigger.ts` | ローカルの定期実行を、業務日付と業務時刻を指定してE2Eから起こす              |
 
 | 用語                                             | 意味                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -399,6 +400,9 @@ stateDiagram-v2
 ### 再試行
 
 処理が例外を投げると、`decideOnFailure(<規則>, <試行回数>)`の結果に従って、間隔を空けて再試行(`message.retry({ delaySeconds })`)するか、デッドレターへ移す。
+
+- 例外がD1の一時的な失敗(原因の連鎖のどこかにロックの競合`SQLITE_BUSY`か、D1の内部エラー`D1_ERROR: … internal error; reference = …`がある失敗)なら、規則で判定する前に、同じ配信の中で0.1秒・0.4秒・1秒の間隔で最大3回、処理を最初からやり直す(`workers/messaging/transient-d1-retry.ts`の`retryTransientD1`)。どちらの失敗も文は実行されておらず、処理は重複配信に備えて冪等に書くため([重複配信と冪等性](#重複配信と冪等性))、やり直しても安全である。やり直すたびに`info`ログ(属性`error`・`delayMs`)を出す。ローカルで複数のWorkerが同じD1のファイルを使うとロックの競合が起き、規則の再試行(数十秒以上の間隔)では利用者の操作から処理までが大きく遅れるためである。
+- やり直しても失敗した場合と、他の例外は、下の規則で判定する。封筒の無いメッセージも同じくやり直す。
 
 - 規則(`RetryPolicy`)は`maxAttempts`・`baseDelaySeconds`・`maxDelaySeconds`の3つで、既定値(`DEFAULT_RETRY_POLICY`)は5回・30秒・3,600秒である。
 - 試行回数が`maxAttempts`未満なら、`min(baseDelaySeconds × 2^(試行回数-1), maxDelaySeconds)`秒の後に再試行する。既定値では30秒・60秒・120秒・240秒の後に再試行し、5回目の失敗でデッドレターへ移す。
