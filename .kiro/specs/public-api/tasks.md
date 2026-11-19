@@ -94,7 +94,7 @@
   - _Depends: 1.6_
   - _Requirements: 1.1, 1.3, 1.4, 1.8, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1, 4.2, 4.3, 4.4_
 
-- [ ] 3.3 退会でAPIキーを全て消す同期の波及処理を作り、登録する
+- [x] 3.3 退会でAPIキーを全て消す同期の波及処理を作り、登録する
   - 読み取りをせず、利用者の全てのキーを消す1文だけを返す処理を作り、その束縛をapiの束縛のモジュールへ追記するのと同じタスクで、退会の同期の波及処理の登録箇所に`public-api.api-key-erasure`(退会だけ)として追記する(束縛の無い登録で退会の経路全体が失敗しないようにするため)
   - 先に、Workers統合テストで、identity-authの退会の確定で利用者のキーが全て消え他の利用者のキーが残ること、停止では消えないことを確かめる
   - 完了状態: Workers統合テストが成功し、4:21のジョブと非同期の波及処理を登録していない
@@ -307,3 +307,4 @@
 - 2.3: `PUBLIC_API_TYPES`(`application/public-api/public-api-types.ts`)は10個(ApiKeyStore・ApiKeySecretGenerator・PublicApiRateLimits・ApiKeyManagement・ApiKeyAuthorizer・PublicSupporterReader・PublicProfileUpdater・OwnProductDescriptionService・MediaLookup・ApiKeyErasureSyncHandler)。設計のファイル構成に無い`application/public-api/public-api-rate-limit-error.ts`の`PublicApiRateLimitError`(`AppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)`の派生、凍結した`rateLimit{limit, remaining, resetAt(エポックミリ秒)}`)を加え、3.1が投げ4.2が捕まえる。超過の文言は`workers`の2か所の写し(application層は`workers`を読めない)。Wrangler設定の検査は`PUBLIC_API_IP_RATE_LIMIT`との照合に差し替え済み(4.3の該当の作業は不要)。`composition/public-api-module.ts`のコメントは束縛を加えるタスクで見直す
 - 3.1: ハッシュの用途`API_KEY_HASH_PURPOSE`(`public-api-key`)は`domain/public-api/api-key-token.ts`に置き、生成器と4.1の`ApiKeyAuthorizer`が共有する(8.2で`project-values.md`に用途の名前も加える)。`ApiKeyStore.insert`は`visibleUsers()`の`CASE`式で不在の利用者も`account-unavailable`にし、`update`は利用者の状態を見ない(停止中は3.4の`requireWritableUser`が拒否)。`CounterPublicApiRateLimits`の再試行の秒数は`assertWithinLimit`の式の写し
 - 3.2: エラーと文言は設計に無い`application/public-api/api-key-errors.ts`(`API_KEY_ERRORS`・項目ごとの`validation_error`の組み立て)。項目ごとの誤りの`field`は`name`・`scopes.<機能>`、詳細のコードは`required`・`too_long`・`not_allowed`で、3.4のGraphQLの引数の検証(`input.name`の形)と揃えること。ログの属性名はキーのIDを`recordId`(再発行の元は`sourceRecordId`)・`userId`とする(名前に`key`を含む属性は伏せ字になるため。4.2の拒否のログも揃える)。編集は応答の発行日時のため先に`findForOwner`で読む。一覧の`first`が1〜50の外は`RangeError`のため3.4の境界で`validation_error`にする。カーソルは`{ c: 発行日時ms, id }`。保存の時点の`account-unavailable`は回数を消費する(設計の手順どおり)
+- 3.3: 8.2で`project-values.md`の「同期の波及処理の登録」の行(937行目付近)の件数(10→11)・登録の一覧(`public-api.api-key-erasure`、退会だけ)・処理のファイル(`apps/api/src/infrastructure/public-api/api-key-erasure-sync-handler.ts`)を直すこと

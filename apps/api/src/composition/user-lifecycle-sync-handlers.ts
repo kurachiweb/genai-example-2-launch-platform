@@ -5,6 +5,7 @@ import { MATCH_TYPES } from '../application/match/match-types.ts';
 import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
 import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
+import { PUBLIC_API_TYPES } from '../application/public-api/public-api-types.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import type { UserLifecycleSyncRegistration } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 
@@ -60,5 +61,10 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       name: 'sponsorship.account-display-stop',
       events: ['suspended', 'unsuspended'],
       handler: SPONSORSHIP_TYPES.AccountDisplayStopSyncHandler,
+    },
+    {
+      name: 'public-api.api-key-erasure',
+      events: ['withdrawn'],
+      handler: PUBLIC_API_TYPES.ApiKeyErasureSyncHandler,
     },
   ];

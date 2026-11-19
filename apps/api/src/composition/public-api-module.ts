@@ -13,6 +13,8 @@ import type {
   PublicApiRateLimits,
 } from '../application/public-api/ports.ts';
 import { PUBLIC_API_TYPES } from '../application/public-api/public-api-types.ts';
+import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
+import { ApiKeyErasureSyncHandler } from '../infrastructure/public-api/api-key-erasure-sync-handler.ts';
 import { CounterPublicApiRateLimits } from '../infrastructure/public-api/counter-public-api-rate-limits.ts';
 import { CryptoApiKeySecretGenerator } from '../infrastructure/public-api/crypto-api-key-secret-generator.ts';
 import { D1ApiKeyStore } from '../infrastructure/public-api/d1-api-key-store.ts';
@@ -31,5 +33,8 @@ export const PUBLIC_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ApiKeyManagement>(PUBLIC_API_TYPES.ApiKeyManagement).to(
       StoreApiKeyManagement,
     );
+    bind<UserLifecycleSyncHandler>(
+      PUBLIC_API_TYPES.ApiKeyErasureSyncHandler,
+    ).to(ApiKeyErasureSyncHandler);
   }),
 };
