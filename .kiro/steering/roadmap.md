@@ -80,33 +80,33 @@
   - 再ローンチ可否ポリシー: product-launchが所有し、tournament-week・tournament-yearが「トーナメント結果確定待ち」の条件を供給する
   - 決済フルフィルメント: paymentsが購入種別とフルフィルメントのポートを所有し、ultras-subscription・tournament-week・tournament-year・sponsorshipが実装する。返金の共通部品(`PaymentRefunds`)・未完了の決済セッションの失効(`OpenCheckoutExpirer`)・23:40の決済の突合のジョブ(`payments.checkout-reconciliation`、`order` 10)もpaymentsが所有し、後続specは突合の結果をフルフィルメントで受け取る(同じ時刻に突合のジョブを重ねて作らない)。23:40に他のジョブを登録するspec(match-engineなど)は`order`を10より大きくする
   - 通知イベント契約: notificationsが所有し、tournament-week・tournament-yearが発行する(予選のマッチはnotificationsがmatch-engineの`MatchDirectory.listForDate`で自ら集める)
-  - Cron・Queuesのディスパッチ: backend-platformが所有し、各specがジョブとメッセージ種別を登録する(時刻は日次タイムラインに従う)。ジョブと波及処理の名前は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`とする。4:21のジョブの名前と順序は日次タイムラインの表に載せ、表が無ければ最初にジョブを足すspecが作る。4:21のジョブの`order`とユーザーライフサイクルの波及処理の`order`は、下の表でspecごとに割り当てた同じ百の位の帯を使う(2026-10-23に開発者が決定)。波及処理の`order`は0〜9999が各ドメインspec、10000以上がidentity-auth専用である。backend-platformの`createCronRegistry`とidentity-authの`createAsyncLifecycleRegistry`は`order`の範囲を検査せず、同じ時刻・同じ種類での重複だけを拒否するため、1000以上の帯もそのまま使える。帯の数値は同じ時刻・同じ種類の中の実行順でもあり、後続specの帯(1000番台以降)は上流のmedia-pipeline・email-deliveryのジョブの後に動く。content-processingの検索のキーワードの再抽出は、削除済みのデータの再抽出を要求しないよう全specの削除のジョブより後に動かすため、2300番台を使う(2026-10-31に開発者が決定)。上流の値より前に動く必要があるジョブ・波及処理を持つspecは、帯の外の値を使わずに設計時に開発者へ確認する。表に無いspec(基盤spec・legal-pages)は4:21のジョブも波及処理も持たず、必要になったら2400番台以降の未使用の帯を表に足して使う
+  - Cron・Queuesのディスパッチ: backend-platformが所有し、各specがジョブとメッセージ種別を登録する(時刻は日次タイムラインに従う)。ジョブと波及処理の名前は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`とする。4:21のジョブの名前と順序は日次タイムラインの表に載せ、表が無ければ最初にジョブを足すspecが作る。4:21のジョブの`order`とユーザーライフサイクルの波及処理の`order`は、下の表でspecごとに割り当てた同じ百の位の帯を使う(2026-10-23に開発者が決定)。他のspecのジョブが無い時刻に帯の値を使うジョブ(sponsorshipの0:07など)も、使用中の値に時刻とともに載せる。波及処理の`order`は0〜9999が各ドメインspec、10000以上がidentity-auth専用である。backend-platformの`createCronRegistry`とidentity-authの`createAsyncLifecycleRegistry`は`order`の範囲を検査せず、同じ時刻・同じ種類での重複だけを拒否するため、1000以上の帯もそのまま使える。帯の数値は同じ時刻・同じ種類の中の実行順でもあり、後続specの帯(1000番台以降)は上流のmedia-pipeline・email-deliveryのジョブの後に動く。content-processingの検索のキーワードの再抽出は、削除済みのデータの再抽出を要求しないよう全specの削除のジョブより後に動かすため、2300番台を使う(2026-10-31に開発者が決定)。上流の値より前に動く必要があるジョブ・波及処理を持つspecは、帯の外の値を使わずに設計時に開発者へ確認する。表に無いspec(基盤spec・legal-pages)は4:21のジョブも波及処理も持たず、必要になったら2400番台以降の未使用の帯を表に足して使う
 
-    | spec                | 帯                                              | 使用中の値                           |
-    | ------------------- | ----------------------------------------------- | ------------------------------------ |
-    | identity-auth       | 100番台(波及処理はidentity-auth専用の10000以上) | 4:21は100・110・120、波及処理は10000 |
-    | admin-foundation    | 200番台                                         | 4:21は200・210                       |
-    | inquiry-chat        | 300番台                                         | 4:21は300、波及処理は300             |
-    | payments            | 400番台                                         | 4:21は400・410、波及処理は400・410   |
-    | ultras-subscription | 500番台                                         | 4:21は500、波及処理は500             |
-    | user-profile-social | 600番台                                         | 4:21は600、波及処理は600・610        |
-    | help-center         | 700番台                                         | —                                    |
-    | media-pipeline      | 800番台                                         | 4:21は810・820・830                  |
-    | email-delivery      | 900〜949                                        | 4:21は900                            |
-    | content-processing  | 950〜999・2300番台                              | 4:21は2300                           |
-    | product-launch      | 1000番台                                        | 4:21は1000・1010、波及処理は1000     |
-    | match-engine        | 1100番台                                        | 4:21は1100・1110、波及処理は1100     |
-    | directory-discovery | 1200番台                                        | 波及処理は1200                       |
-    | notifications       | 1300番台                                        | 4:21は1300、波及処理は1300           |
-    | engagement          | 1400番台                                        | 4:21は1400、波及処理は1400           |
-    | tournament-week     | 1500番台                                        | 4:21は1500、波及処理は1500           |
-    | sponsorship         | 1600番台                                        | 4:21は1600、波及処理は1600           |
-    | tournament-year     | 1700番台                                        | 4:21は1700、波及処理は1700           |
-    | public-api          | 1800番台                                        | —                                    |
-    | ugc-moderation      | 1900番台                                        | 4:21は1900・1910、波及処理は1900     |
-    | content-reporting   | 2000番台                                        | 4:21は2000・2010、波及処理は2000     |
-    | data-export         | 2100番台                                        | 4:21は2100・2110、波及処理は2100     |
-    | launch-readiness    | 2200番台                                        | —                                    |
+    | spec                | 帯                                              | 使用中の値                             |
+    | ------------------- | ----------------------------------------------- | -------------------------------------- |
+    | identity-auth       | 100番台(波及処理はidentity-auth専用の10000以上) | 4:21は100・110・120、波及処理は10000   |
+    | admin-foundation    | 200番台                                         | 4:21は200・210                         |
+    | inquiry-chat        | 300番台                                         | 4:21は300、波及処理は300               |
+    | payments            | 400番台                                         | 4:21は400・410、波及処理は400・410     |
+    | ultras-subscription | 500番台                                         | 4:21は500、波及処理は500               |
+    | user-profile-social | 600番台                                         | 4:21は600、波及処理は600・610          |
+    | help-center         | 700番台                                         | —                                      |
+    | media-pipeline      | 800番台                                         | 4:21は810・820・830                    |
+    | email-delivery      | 900〜949                                        | 4:21は900                              |
+    | content-processing  | 950〜999・2300番台                              | 4:21は2300                             |
+    | product-launch      | 1000番台                                        | 4:21は1000・1010、波及処理は1000       |
+    | match-engine        | 1100番台                                        | 4:21は1100・1110、波及処理は1100       |
+    | directory-discovery | 1200番台                                        | 波及処理は1200                         |
+    | notifications       | 1300番台                                        | 4:21は1300、波及処理は1300             |
+    | engagement          | 1400番台                                        | 4:21は1400、波及処理は1400             |
+    | tournament-week     | 1500番台                                        | 4:21は1500、波及処理は1500             |
+    | sponsorship         | 1600番台                                        | 4:21は1600、0:07は1600、波及処理は1600 |
+    | tournament-year     | 1700番台                                        | 4:21は1700、波及処理は1700             |
+    | public-api          | 1800番台                                        | —                                      |
+    | ugc-moderation      | 1900番台                                        | 4:21は1900・1910、波及処理は1900       |
+    | content-reporting   | 2000番台                                        | 4:21は2000・2010、波及処理は2000       |
+    | data-export         | 2100番台                                        | 4:21は2100・2110、波及処理は2100       |
+    | launch-readiness    | 2200番台                                        | —                                      |
 
   - GraphQLスキーマとpersisted operations: api-gatewayがサーバー側規約を、frontend-platformがクライアント側規約を所有し、各ドメインspecがスキーマモジュールを追加する
   - 画面シェル: 利用者側レイアウトとフッターはfrontend-platform、設定ページのシェルはidentity-auth、管理画面のシェルとメニューはadmin-foundation、トップページはmatch-engine、プロダクト詳細ページはdirectory-discovery、公開プロフィールはuser-profile-socialが所有し、他specはそこへ区画を追加する。管理画面のメニューのURLと`order`はadmin-foundationの仮6(ページ配置)に従う。管理画面のダッシュボードのカード(`DASHBOARD_CARDS`)はadmin-foundation(ugc-moderationの統計10・inquiry-chatの未対応の問い合わせ20・content-reportingの未対応の通報30)、管理画面のカテゴリのページ(`CATEGORY_SECTIONS`)はinquiry-chat(product-launch 10・help-center 20・inquiry-chat 30・content-reporting 40)、管理画面の設定ページ(`ADMIN_SETTINGS_SECTIONS`)と料金ページ(`PRICING_SECTIONS`)はultras-subscription(設定はtournament-yearの決勝日10・ultras-subscriptionの機能フラグ20・notificationsの送信者情報30、料金はultras-subscription 10・sponsorship 20)が所有する。管理画面の問い合わせの詳細の操作(`INQUIRY_DETAIL_ACTIONS`)はinquiry-chatが所有する(運営者による代理の退会はugc-moderationのユーザー一覧から行い、この登録口は使わない。2026-10-24に開発者が決定)
