@@ -39,6 +39,11 @@ const META_LOGGER_CATEGORY = ['logtape', 'meta'];
 const META_LOGGER_LOWEST_LEVEL = 'warning';
 
 let applied: AppliedLogging | undefined;
+
+// 基盤の部品がアプリ名を受け取らずにアプリ名のカテゴリでログを出せるよう、設定済みのアプリ名を返す
+export function configuredAppName(): string | undefined {
+  return applied?.appName;
+}
 // 設定し直しても進行中の処理単位の文脈を失わないよう、isolateで1つのストアを使い続ける
 let contextLocalStorage: AsyncLocalStorage<Record<string, unknown>> | undefined;
 

@@ -1,3 +1,4 @@
+import { resetSync } from '@logtape/logtape';
 import { createExecutionContext } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import { sql } from 'drizzle-orm';
@@ -7,6 +8,7 @@ import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
 
 import type { Database } from '../../../db/client.ts';
+import { TRANSIENT_D1_RETRY_DELAYS_MS } from '../../../db/transient-retry.ts';
 import {
   createKeyedHasher,
   hashPurpose,
@@ -21,6 +23,7 @@ import type { IdGenerator } from '../../core/ids/id-generator.ts';
 import { defineMessageContract } from '../../core/messaging/message-contract.ts';
 import { type Clock, systemClock } from '../../core/time/clock.ts';
 import type { PlatformEnv } from '../env/platform-env.ts';
+import { ensureLoggingConfigured } from '../logging/configure-logging.ts';
 import {
   type MessagePublisher,
   MessagePublishError,
@@ -186,5 +189,53 @@ describe('createInvocationContainer', () => {
     expect(first.clock).toBe(systemClock);
     expect(first.scope).toBe(scope);
     expect(second).not.toBe(first);
+  });
+
+  test('データベースはD1のロックの競合をやり直し、やり直しをアプリ名のカテゴリのinfoログで知らせる', async () => {
+    const logs: Record<string, unknown>[] = [];
+    const recorder = {
+      info: (object: Record<string, unknown>) => logs.push(object),
+    } as unknown as Console;
+    ensureLoggingConfigured({
+      appName: 'event',
+      level: 'info',
+      console: recorder,
+    });
+    let failed = false;
+    const statement = {
+      bind: () => statement,
+      first: () => {
+        if (!failed) {
+          failed = true;
+          return Promise.reject(
+            new Error('D1_ERROR: database is locked: SQLITE_BUSY'),
+          );
+        }
+        return Promise.resolve({ answer: 42 });
+      },
+    };
+    const lockedOnce = { prepare: () => statement } as unknown as D1Database;
+    const container = createInvocationContainer(
+      {
+        ...createScope('queue', 'correlation-locked'),
+        env: { ...env, DB: lockedOnce },
+      },
+      [],
+    );
+
+    const database = container.get<Database>(PLATFORM_TYPES.Database);
+    const row = await database.get<{ answer: number }>(
+      sql`select 42 as answer`,
+    );
+    resetSync();
+
+    expect(row).toEqual({ answer: 42 });
+    expect(logs).toMatchObject([
+      {
+        level: 'info',
+        category: 'event.platform.database',
+        delayMs: TRANSIENT_D1_RETRY_DELAYS_MS[0],
+      },
+    ]);
   });
 });

@@ -30,7 +30,6 @@ import { createInvocationContainer } from '../di/invocation-container.ts';
 import type { PlatformEnv } from '../env/platform-env.ts';
 import { handleDeadLetterBatch } from './dead-letter-consumer.ts';
 import { invalidDelayMessage, isValidDelaySeconds } from './queue-publisher.ts';
-import { retryTransientD1 } from './transient-d1-retry.ts';
 
 export interface QueueDispatcher<E extends PlatformEnv> {
   dispatch(batch: MessageBatch, env: E, ctx: ExecutionContext): Promise<void>;
@@ -202,14 +201,12 @@ async function handleEnvelope<E extends QueueConsumerEnv>(
     const handler = container.get<MessageHandler<unknown>>(
       registration.handler,
     );
-    const result = await retryTransientD1(() =>
-      handler.handle(parsed.data, {
-        id: envelope.id,
-        type: envelope.type,
-        attempts: message.attempts,
-        sentAt: new Date(envelope.sentAt),
-      }),
-    );
+    const result = await handler.handle(parsed.data, {
+      id: envelope.id,
+      type: envelope.type,
+      attempts: message.attempts,
+      sentAt: new Date(envelope.sentAt),
+    });
     return await completeHandling(message, envelope, context.env, result);
   } catch (error) {
     return handleFailure(message, context.env, policy, error, {
@@ -349,13 +346,11 @@ async function handleRawMessage<E extends QueueConsumerEnv>(
     const handler = container.get<RawMessageHandler>(
       rawQueue.registration.handler,
     );
-    await retryTransientD1(() =>
-      handler.handle(message.body, {
-        id: message.id,
-        attempts: message.attempts,
-        timestamp: message.timestamp,
-      }),
-    );
+    await handler.handle(message.body, {
+      id: message.id,
+      attempts: message.attempts,
+      timestamp: message.timestamp,
+    });
     message.ack();
     return { result: 'done' };
   } catch (error) {
