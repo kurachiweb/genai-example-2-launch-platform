@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AtChar123handleChar125RouteImport } from './routes/@{$handle}'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as ApiDocsRouteImport } from './routes/api-docs'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
@@ -65,6 +66,11 @@ const AtChar123handleChar125Route = AtChar123handleChar125RouteImport.update({
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocsRoute = ApiDocsRouteImport.update({
+  id: '/api-docs',
+  path: '/api-docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -293,6 +299,7 @@ const AuthenticatedMyProductsHandleEditRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/@{$handle}': typeof AtChar123handleChar125Route
+  '/api-docs': typeof ApiDocsRoute
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
   '/unsubscribe': typeof UnsubscribeRoute
@@ -337,6 +344,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/@{$handle}': typeof AtChar123handleChar125Route
+  '/api-docs': typeof ApiDocsRoute
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
   '/unsubscribe': typeof UnsubscribeRoute
@@ -382,6 +390,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/@{$handle}': typeof AtChar123handleChar125Route
+  '/api-docs': typeof ApiDocsRoute
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
   '/unsubscribe': typeof UnsubscribeRoute
@@ -428,6 +437,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/@{$handle}'
+    | '/api-docs'
     | '/contact'
     | '/pricing'
     | '/unsubscribe'
@@ -472,6 +482,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/@{$handle}'
+    | '/api-docs'
     | '/contact'
     | '/pricing'
     | '/unsubscribe'
@@ -516,6 +527,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/@{$handle}'
+    | '/api-docs'
     | '/contact'
     | '/pricing'
     | '/unsubscribe'
@@ -562,6 +574,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AtChar123handleChar125Route: typeof AtChar123handleChar125Route
+  ApiDocsRoute: typeof ApiDocsRoute
   ContactRoute: typeof ContactRoute
   PricingRoute: typeof PricingRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
@@ -608,6 +621,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api-docs': {
+      id: '/api-docs'
+      path: '/api-docs'
+      fullPath: '/api-docs'
+      preLoaderRoute: typeof ApiDocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -955,6 +975,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AtChar123handleChar125Route: AtChar123handleChar125Route,
+  ApiDocsRoute: ApiDocsRoute,
   ContactRoute: ContactRoute,
   PricingRoute: PricingRoute,
   UnsubscribeRoute: UnsubscribeRoute,
