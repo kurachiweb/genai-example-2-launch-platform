@@ -65,7 +65,7 @@
 - `ApiKeyExport`・`ApiKeyExportRecord`と`PUBLIC_API_PLATFORM_TYPES`の置き場所(`core/public-api`)。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(data-exportのeventのapplication層が読み込むため)。上流の部品の契約の置き場所(各specの`core/<ドメイン>`)が変わったら、application層の読み込みを確かめ直す。
 - 公開RESTの経路・応答の項目・エラーコード・回数の上限(外部の利用者、launch-readiness)。項目の削除・名前の変更は`/v2`を要する破壊的変更として扱う。
 - 上流のビューの形(`DirectoryPageView`・`ProductPageView`・`MyProfileView`・`PublicProfileView`・`MyProductView`・`CommentReader`・`UpvoteHistoryReader`・`SupporterListPage`・`ProductRatingView`)の変更。写像の単体テストが壊れる。
-- 共通の層へ移した判定(`opaque-cursor.ts`の符号化と復号、`isServableImageFile`、`verifiedExternalUrl`)の変更。画面と公開APIの両方の応答が変わるため、公開APIの応答の互換を確かめ直す。
+- 共通の層へ移した判定(`opaque-cursor.ts`の符号化と復号、`isServableImageFile`、`verifiedExternalUrl`、application層の`SupporterListPositionSchema`)の変更。画面と公開APIの両方の応答が変わるため、公開APIの応答の互換を確かめ直す。
 - マッチの種別・段階の値の追加(match-engine・tournament系のspec)。仕様書の列挙を更新する。
 - `AccountGuard`が`AuthenticatedPrincipal.sessionId`でセッションのレコードを照合する実装に変わること(本specはAPIキーのIDを入れた疑似のセッションIDを渡す。2026-11-19の時点の`StoreAccountGuard`は`sessionId`を読まない)。
 - api-gatewayの`createRestModule`の登録の順序(先頭の登録の`use`が仕様の経路とプリフライトの前に動くこと)、改訂1の`servers`・`info`(渡した`info`が既定を丸ごと置き換えること)の変更。
@@ -85,10 +85,17 @@
 
 本specの実装の前のギャップ分析(2026-11-19、research.md)を受けて、開発者が次の上流のファイルの変更を本specのタスク(tasks.mdの1.6)で行うと決めた。いずれも既存の振る舞いを変えない移動か、項目の追加である。
 
-- api-gateway: 汎用のカーソルの符号化と復号`encodeCursor`・`decodeCursor`を、apiの`presentation/graphql/pagination.ts`から`apps/backend-lib/core/pagination/opaque-cursor.ts`へ移す。形式(位置のJSONのbase64url、パディング無し、再符号化して同じ表記のものだけを受け付ける)と、復号の失敗の`invalidCursorError()`(`invalid_cursor`)は変えない。GraphQLの読み込み元(`directory/inputs.ts`・`directory/supporter-resolvers.ts`・`profile/follow-inputs.ts`・`profile/follow-resolvers.ts`)を書き換え、`pagination.ts`は残りのページングの補助だけを持つ。`docs/GUIDES/tech/backend/004-graphql-server.md`の部品の表とカーソルの節を直す。
+- api-gateway: 汎用のカーソルの符号化と復号`encodeCursor`・`decodeCursor`を、apiの`presentation/graphql/pagination.ts`から`apps/backend-lib/core/pagination/opaque-cursor.ts`へ移す。形式(位置のJSONのbase64url、パディング無し、再符号化して同じ表記のものだけを受け付ける)と、復号の失敗の`invalidCursorError()`(`invalid_cursor`)は変えない。GraphQLの読み込み元(`directory/inputs.ts`・`directory/supporter-resolvers.ts`・`profile/follow-inputs.ts`・`profile/follow-resolvers.ts`)を書き換える。`pagination.ts`は残りのページングの補助を持ち、既存の3つのWorkers統合テストを変えないよう2関数を`opaque-cursor.ts`から再公開する(実装時の決定、tasks.mdの1.6)。`docs/GUIDES/tech/backend/004-graphql-server.md`の部品の表とカーソルの節を直す。
 - media-pipeline: GraphQLの`toMediaImage`(`presentation/graphql/modules/media/mappers.ts`)の非公開の判定`isDeliverable`(保存済み・削除待ちでない・隔離中でない)を、`apps/backend-lib/core/media/media-file.ts`の`isServableImageFile(file: MediaFileView): boolean`として公開し、`toMediaImage`と公開APIの`toApiImage`の両方が使う。`common-lib/media`の`isDeliverable`(バリアントと形式の組み合わせ)とは別の判定のため、名前を分ける。
 - directory-discovery: GraphQLの`verifiedWebsiteUrl`(`presentation/graphql/modules/directory/mappers.ts`、検証に通らないURLを空文字列にする)と、sponsorshipの`sponsorship-views.ts`にある同じ判定の関数(通らないURLを`null`にする)を、`common-lib/url/external-url.ts`の`verifiedExternalUrl(value: string): string | null`(`checkExternalUrl`が`ok`なら値、それ以外は`null`)にまとめ、GraphQLの2か所と公開APIのプロダクトの写像が使う(水平展開)。directory-discoveryのGraphQLと公開APIは`?? ''`で空文字列にし、sponsorshipは`null`のまま返すため、どちらの応答も変わらない。
 - directory-discovery: `SupporterListPage`(`application/directory/supporter-list-reader.ts`)に、Upvoteの日時を持つ行`supporters: readonly { readonly userId: string; readonly upvotedAt: Date }[]`(`userIds`と同じ順)を加える。既存の`userIds`・`endCursor`・`hasNextPage`とGraphQLの応答は変えない。
+
+実装の中で、次の上流のファイルの変更と設計の改訂を加えた(tasks.mdのImplementation Notes)。いずれも既存の振る舞いを変えない。
+
+- directory-discovery: サポーターの一覧の位置のスキーマ`SupporterListPositionSchema`を、GraphQLの`directory/inputs.ts`から`application/directory/supporter-list-reader.ts`へ移し、GraphQLと公開APIのサポーターの経路が共有する(画面と公開APIのカーソルを互いに読めるようにするため。tasks.mdの5.3)。これに合わせ、`docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md`の層の表のapplication層の行に、実行環境に依存しないパッケージ(zod等)を許す記述を加えた(8.1)。
+- 公開APIのIP単位の制限のキーは`'public-api:' + (ip ?? 'unknown')`をそのまま渡さず、`security/002`の規則に従い`hashRateLimitKey`でハッシュ化する(4.3)。
+- `ApiKeyAuthorizer.authorize`の入力に任意の`onIdentified({ keyId, userId })`を加え、照合の直後に1回呼ぶ(中間処理が拒否のログにキーと利用者のIDを載せるため。4.2)。
+- `CommentNode`に`parent_id`を加えた(5.4。Data Contractsの型に反映済み)。
 
 ## Architecture
 

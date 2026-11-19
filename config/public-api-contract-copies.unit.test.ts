@@ -119,3 +119,73 @@ describe('公開REST APIの基準パスの写し(e2e/support/public-api.ts)', ()
     expect(readString(E2E_PUBLIC_API, 'PUBLIC_API_BASE_PATH')).toBe(shared);
   });
 });
+
+const API_KEY_TOKEN = 'apps/api/src/domain/public-api/api-key-token.ts';
+const LOG_REDACTION = 'apps/backend-lib/core/logging/redaction.ts';
+const CLIENT_OPENAPI_DOCUMENT =
+  'apps/client/src/components/public-api/openapi-document.ts';
+
+const asRegex = (expression: ts.Expression, description: string): RegExp => {
+  if (expression.kind !== ts.SyntaxKind.RegularExpressionLiteral) {
+    throw new Error(
+      `${description}が正規表現リテラルではありません: ${expression.getText()}`,
+    );
+  }
+  const text = expression.getText();
+  const lastSlash = text.lastIndexOf('/');
+  return new RegExp(text.slice(1, lastSlash), text.slice(lastSlash + 1));
+};
+
+const readRegex = (path: string, name: string): RegExp =>
+  asRegex(readInitializer(path, name), `${path}の${name}`);
+
+const readRegexProperty = (
+  path: string,
+  name: string,
+  property: string,
+): RegExp => {
+  const initializer = readInitializer(path, name);
+  if (!ts.isObjectLiteralExpression(initializer)) {
+    throw new Error(
+      `${path}の${name}の初期化子がオブジェクトリテラルではありません`,
+    );
+  }
+  const assignment = onlyOne(
+    initializer.properties.filter(
+      (node): node is ts.PropertyAssignment =>
+        ts.isPropertyAssignment(node) &&
+        ts.isIdentifier(node.name) &&
+        node.name.text === property,
+    ),
+    `${path}の${name}の${property}`,
+  );
+  return asRegex(assignment.initializer, `${path}の${name}の${property}`);
+};
+
+describe('APIキーの平文の形式の写し(apps/backend-lib/core/logging/redaction.ts)', () => {
+  test('ログとエラーレポートの伏せ字の形がapiのAPI_KEY_TOKEN_PATTERNの両端の錨を外した形と一致し、全ての出現を伏せる', () => {
+    const token = readRegex(API_KEY_TOKEN, 'API_KEY_TOKEN_PATTERN');
+    const redaction = readRegexProperty(
+      LOG_REDACTION,
+      'API_KEY_PATTERN',
+      'pattern',
+    );
+
+    expect(token.source.startsWith('^') && token.source.endsWith('$')).toBe(
+      true,
+    );
+    expect(redaction.source).toBe(token.source.slice(1, -1));
+    expect(redaction.flags).toBe('g');
+  });
+});
+
+describe('公開REST APIの仕様書の位置の写し(apps/client/src/components/public-api/openapi-document.ts)', () => {
+  test('APIドキュメントの画面が仕様書を取る基準パスと仕様書のパスがapiの値と一致する', () => {
+    expect(readString(CLIENT_OPENAPI_DOCUMENT, 'PUBLIC_API_BASE_PATH')).toBe(
+      readString(API_PUBLIC_API_APP, 'PUBLIC_API_BASE_PATH'),
+    );
+    expect(readString(CLIENT_OPENAPI_DOCUMENT, 'OPENAPI_DOCUMENT_PATH')).toBe(
+      readString(API_PUBLIC_API_APP, 'OPENAPI_DOCUMENT_PATH'),
+    );
+  });
+});

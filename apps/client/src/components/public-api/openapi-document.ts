@@ -1,6 +1,7 @@
 export type OpenApiDocument = Readonly<Record<string, unknown>>;
 
 const PUBLIC_API_BASE_PATH = '/v1';
+const OPENAPI_DOCUMENT_PATH = '/openapi.json';
 
 const ABSOLUTE_URL_PATTERN = /^(?:[a-z][a-z\d+.-]*:)?\/\//i;
 
@@ -8,7 +9,7 @@ const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export const openApiDocumentUrl = (publicApiOrigin: string): string =>
-  `${publicApiOrigin}${PUBLIC_API_BASE_PATH}/openapi.json`;
+  `${publicApiOrigin}${PUBLIC_API_BASE_PATH}${OPENAPI_DOCUMENT_PATH}`;
 
 // 仕様書のサーバーのURLは仕様書の位置からの相対で書かれるが、Swagger UIへは仕様書をURLでなく値で渡すため、ページのオリジンではなく公開APIのオリジンへ要求を送れるよう絶対URLにする
 const toAbsoluteServer = (server: unknown, documentUrl: string): unknown => {
