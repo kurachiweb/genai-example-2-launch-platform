@@ -22,8 +22,12 @@ import { ApiKeyErasureSyncHandler } from '../infrastructure/public-api/api-key-e
 import { CounterPublicApiRateLimits } from '../infrastructure/public-api/counter-public-api-rate-limits.ts';
 import { CryptoApiKeySecretGenerator } from '../infrastructure/public-api/crypto-api-key-secret-generator.ts';
 import { D1ApiKeyStore } from '../infrastructure/public-api/d1-api-key-store.ts';
+import {
+  type MediaLookup,
+  PlatformMediaLookup,
+} from '../presentation/rest/public-api/media-lookup.ts';
 
-// データエクスポートのAPIキーの照会はPUBLIC_API_PLATFORM_MODULE、ハッシュ化の部品と厳密カウンタのクライアントは共通の束縛、利用者の状態の判定はidentityの束縛を使う
+// データエクスポートのAPIキーの照会はPUBLIC_API_PLATFORM_MODULE、ハッシュ化の部品と厳密カウンタのクライアントは共通の束縛、利用者の状態の判定はidentityの束縛、画像と利用者の一括の照会はmediaとprofileの束縛を使う
 export const PUBLIC_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'public-api',
   bindings: new ContainerModule(({ bind }) => {
@@ -40,6 +44,7 @@ export const PUBLIC_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ApiKeyAuthorizer>(PUBLIC_API_TYPES.ApiKeyAuthorizer).to(
       StoreApiKeyAuthorizer,
     );
+    bind<MediaLookup>(PUBLIC_API_TYPES.MediaLookup).to(PlatformMediaLookup);
     bind<UserLifecycleSyncHandler>(
       PUBLIC_API_TYPES.ApiKeyErasureSyncHandler,
     ).to(ApiKeyErasureSyncHandler);

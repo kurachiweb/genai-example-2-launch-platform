@@ -11,6 +11,7 @@ import { PUBLIC_API_TYPES } from '../application/public-api/public-api-types.ts'
 import { CounterPublicApiRateLimits } from '../infrastructure/public-api/counter-public-api-rate-limits.ts';
 import { CryptoApiKeySecretGenerator } from '../infrastructure/public-api/crypto-api-key-secret-generator.ts';
 import { D1ApiKeyStore } from '../infrastructure/public-api/d1-api-key-store.ts';
+import { PlatformMediaLookup } from '../presentation/rest/public-api/media-lookup.ts';
 import { MODULES } from './modules.ts';
 import { PUBLIC_API_MODULE } from './public-api-module.ts';
 
@@ -26,7 +27,7 @@ describe('APIサーバーの公開APIの束縛', () => {
     expect(PUBLIC_API_MODULE.bindings).toBeDefined();
   });
 
-  test('公開APIの束縛を加えた一覧からfetchの処理単位のコンテナを作り、データエクスポートの照会とキーのストア・乱数とハッシュの生成・回数の制限・キーの管理と認可のユースケースを解決できる', () => {
+  test('公開APIの束縛を加えた一覧からfetchの処理単位のコンテナを作り、データエクスポートの照会とキーのストア・乱数とハッシュの生成・回数の制限・キーの管理と認可のユースケース・画像と利用者の一括の照会を解決できる', () => {
     const container = createInvocationContainer(
       {
         env,
@@ -57,6 +58,9 @@ describe('APIサーバーの公開APIの束縛', () => {
     );
     expect(container.get(PUBLIC_API_TYPES.ApiKeyAuthorizer)).toBeInstanceOf(
       StoreApiKeyAuthorizer,
+    );
+    expect(container.get(PUBLIC_API_TYPES.MediaLookup)).toBeInstanceOf(
+      PlatformMediaLookup,
     );
   });
 });

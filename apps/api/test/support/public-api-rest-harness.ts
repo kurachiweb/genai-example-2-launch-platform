@@ -4,7 +4,9 @@ import {
 } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import type { Hono } from 'hono';
+import type { Container } from 'inversify';
 
+import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { createWorkerApp } from '../../lib/workers/http/create-worker-app.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { apiEnvSchema } from '../../src/composition/env-schema.ts';
@@ -65,4 +67,20 @@ export function createPublicApiRestHarness(
       return response;
     },
   };
+}
+
+// 経路の外で公開APIの部品を確かめるため、apiの全ての束縛からfetchの処理単位のコンテナを作る
+export function createPublicApiTestContainer(): Container {
+  return createInvocationContainer(
+    {
+      env,
+      executionCtx: createExecutionContext(),
+      info: {
+        kind: 'fetch',
+        correlationId: crypto.randomUUID(),
+        clientIp: undefined,
+      },
+    },
+    MODULES,
+  );
 }
