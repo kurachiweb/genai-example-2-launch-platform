@@ -1,6 +1,8 @@
 import { inject, injectable } from 'inversify';
+import { z } from 'zod';
 
 import type { CurrentUser } from '../../../lib/core/identity/account-guard.ts';
+import { UPPERCASE_ULID_PATTERN } from '../../../lib/core/ids/uppercase-ulid.ts';
 import { MATCH_PLATFORM_TYPES } from '../../../lib/core/match/identifiers.ts';
 import type {
   MatchDirectory,
@@ -17,6 +19,16 @@ export interface SupporterListPosition {
   readonly upvotedAt: number;
   readonly upvoteId: string;
 }
+
+// Dateが表せる最大のミリ秒。これを超える時刻は位置として意味を持たない
+const MAX_DATE_MILLISECONDS = 8_640_000_000_000_000;
+
+// 画面(GraphQL)と公開APIのカーソルが互いに読めるよう、どちらの表現層もこの形で位置を復号する
+export const SupporterListPositionSchema: z.ZodType<SupporterListPosition> =
+  z.object({
+    upvotedAt: z.int().min(0).max(MAX_DATE_MILLISECONDS),
+    upvoteId: z.ulid().regex(UPPERCASE_ULID_PATTERN),
+  });
 
 export interface SupporterListInput {
   readonly productHandle: string;

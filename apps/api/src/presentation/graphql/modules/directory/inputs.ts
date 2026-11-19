@@ -1,9 +1,11 @@
 import { z } from 'zod';
 
 import { invalidCursorError } from '../../../../../lib/core/errors/invalid-cursor.ts';
-import { UPPERCASE_ULID_PATTERN } from '../../../../../lib/core/ids/uppercase-ulid.ts';
 import { decodeCursor } from '../../../../../lib/core/pagination/opaque-cursor.ts';
-import type { SupporterListPosition } from '../../../../application/directory/supporter-list-reader.ts';
+import {
+  type SupporterListPosition,
+  SupporterListPositionSchema,
+} from '../../../../application/directory/supporter-list-reader.ts';
 import { matchResourceId } from '../match/inputs.ts';
 
 export const SUPPORTER_LIST_MAX_PAGE_SIZE = 20;
@@ -13,14 +15,6 @@ const SUPPORTER_LIST_CURSOR_MAX = 256;
 
 // 画面の操作では起きない違反のため、文言規則どおりフォロー一覧の件数の文言とマッチが見つからない文言を使う
 const FIRST_OUT_OF_RANGE_MESSAGE = `表示する件数は1〜${String(SUPPORTER_LIST_MAX_PAGE_SIZE)}件の整数で指定してください。`;
-
-// Dateが表せる最大のミリ秒。これを超える時刻は位置として意味を持たない
-const MAX_DATE_MILLISECONDS = 8_640_000_000_000_000;
-
-const SupporterListPositionSchema: z.ZodType<SupporterListPosition> = z.object({
-  upvotedAt: z.int().min(0).max(MAX_DATE_MILLISECONDS),
-  upvoteId: z.ulid().regex(UPPERCASE_ULID_PATTERN),
-});
 
 // プロダクトのハンドルの形式の違反は表示できないプロダクトとしてユースケースがnullにする。GraphQLの省略可能な引数は明示したnullでも届くため、未指定と同じ扱いにそろえる
 export const MATCH_SUPPORTERS_ARGS = z.object({
