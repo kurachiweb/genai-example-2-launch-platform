@@ -85,7 +85,7 @@
   - 完了状態: Workers統合テストが成功し、利用者の物理削除の検知(外部キー)がキーの行の無い利用者で妨げられない
   - _Requirements: 1.1, 1.2, 1.5, 1.8, 3.1, 3.3, 3.4, 3.5, 5.5, 7.4_
 
-- [ ] 3.2 APIキーの一覧・発行・編集・再発行・削除のユースケースを作る
+- [x] 3.2 APIキーの一覧・発行・編集・再発行・削除のユースケースを作る
   - 先に、模擬のポートの単体テストで、名前と権限スコープの項目ごとの検証の誤り、発行と再発行で回数の制限を先に掛けて4回目を429にすること、編集と削除が回数に数えないこと、再発行が最初に元のキーを読み(無ければ回数を消費せずに見つからない旨)、元の名前と権限スコープを複写した新しいキーを発行と同じ処理(回数の制限→乱数とハッシュ→保存)で加え、元のキーを変えないこと、他人・不在のキーを区別しない見つからない旨、停止中・退会済みの保存の拒否の変換、平文を応答でだけ返すこと、発行・再発行・削除のログがキーのIDと利用者のIDだけで平文を含まないことを確かめる
   - 発行・再発行・削除をカテゴリ`['api', 'public-api', 'key']`の`info`で記録し、ユースケースの束縛をapiの束縛のモジュールへ追記する
   - 回数の制限は2.3の`PublicApiRateLimits`のポートで受け取る(単体テストは偽のポート)
@@ -306,3 +306,4 @@
 - 2.2: テストの補助`backend-lib/workers/public-api/testing/api-key-fixtures.ts`(`insertApiKey`・`clearApiKeyTables`など。外部キーのため`api_keys`を先に消す)を後続のWorkers統合テストで使える。`ApiKeyExport.listByUser`は`created_at`・`id`の昇順で`users`と結合しない。backend-libのWorkers統合テストはapiでだけ流れる(eventのvitestは`lib/**`を除く)
 - 2.3: `PUBLIC_API_TYPES`(`application/public-api/public-api-types.ts`)は10個(ApiKeyStore・ApiKeySecretGenerator・PublicApiRateLimits・ApiKeyManagement・ApiKeyAuthorizer・PublicSupporterReader・PublicProfileUpdater・OwnProductDescriptionService・MediaLookup・ApiKeyErasureSyncHandler)。設計のファイル構成に無い`application/public-api/public-api-rate-limit-error.ts`の`PublicApiRateLimitError`(`AppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)`の派生、凍結した`rateLimit{limit, remaining, resetAt(エポックミリ秒)}`)を加え、3.1が投げ4.2が捕まえる。超過の文言は`workers`の2か所の写し(application層は`workers`を読めない)。Wrangler設定の検査は`PUBLIC_API_IP_RATE_LIMIT`との照合に差し替え済み(4.3の該当の作業は不要)。`composition/public-api-module.ts`のコメントは束縛を加えるタスクで見直す
 - 3.1: ハッシュの用途`API_KEY_HASH_PURPOSE`(`public-api-key`)は`domain/public-api/api-key-token.ts`に置き、生成器と4.1の`ApiKeyAuthorizer`が共有する(8.2で`project-values.md`に用途の名前も加える)。`ApiKeyStore.insert`は`visibleUsers()`の`CASE`式で不在の利用者も`account-unavailable`にし、`update`は利用者の状態を見ない(停止中は3.4の`requireWritableUser`が拒否)。`CounterPublicApiRateLimits`の再試行の秒数は`assertWithinLimit`の式の写し
+- 3.2: エラーと文言は設計に無い`application/public-api/api-key-errors.ts`(`API_KEY_ERRORS`・項目ごとの`validation_error`の組み立て)。項目ごとの誤りの`field`は`name`・`scopes.<機能>`、詳細のコードは`required`・`too_long`・`not_allowed`で、3.4のGraphQLの引数の検証(`input.name`の形)と揃えること。ログの属性名はキーのIDを`recordId`(再発行の元は`sourceRecordId`)・`userId`とする(名前に`key`を含む属性は伏せ字になるため。4.2の拒否のログも揃える)。編集は応答の発行日時のため先に`findForOwner`で読む。一覧の`first`が1〜50の外は`RangeError`のため3.4の境界で`validation_error`にする。カーソルは`{ c: 発行日時ms, id }`。保存の時点の`account-unavailable`は回数を消費する(設計の手順どおり)

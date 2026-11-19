@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest';
 import { PUBLIC_API_PLATFORM_TYPES } from '../../lib/core/public-api/identifiers.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { D1ApiKeyExport } from '../../lib/workers/public-api/d1-api-key-export.ts';
+import { StoreApiKeyManagement } from '../application/public-api/api-key-management.ts';
 import { PUBLIC_API_TYPES } from '../application/public-api/public-api-types.ts';
 import { CounterPublicApiRateLimits } from '../infrastructure/public-api/counter-public-api-rate-limits.ts';
 import { CryptoApiKeySecretGenerator } from '../infrastructure/public-api/crypto-api-key-secret-generator.ts';
@@ -24,7 +25,7 @@ describe('APIサーバーの公開APIの束縛', () => {
     expect(PUBLIC_API_MODULE.bindings).toBeDefined();
   });
 
-  test('公開APIの束縛を加えた一覧からfetchの処理単位のコンテナを作り、データエクスポートの照会とキーのストア・乱数とハッシュの生成・回数の制限を解決できる', () => {
+  test('公開APIの束縛を加えた一覧からfetchの処理単位のコンテナを作り、データエクスポートの照会とキーのストア・乱数とハッシュの生成・回数の制限・キーの管理のユースケースを解決できる', () => {
     const container = createInvocationContainer(
       {
         env,
@@ -49,6 +50,9 @@ describe('APIサーバーの公開APIの束縛', () => {
     ).toBeInstanceOf(CryptoApiKeySecretGenerator);
     expect(container.get(PUBLIC_API_TYPES.PublicApiRateLimits)).toBeInstanceOf(
       CounterPublicApiRateLimits,
+    );
+    expect(container.get(PUBLIC_API_TYPES.ApiKeyManagement)).toBeInstanceOf(
+      StoreApiKeyManagement,
     );
   });
 });

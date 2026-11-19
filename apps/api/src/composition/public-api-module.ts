@@ -3,6 +3,10 @@ import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
+import {
+  type ApiKeyManagement,
+  StoreApiKeyManagement,
+} from '../application/public-api/api-key-management.ts';
 import type {
   ApiKeySecretGenerator,
   ApiKeyStore,
@@ -23,6 +27,9 @@ export const PUBLIC_API_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<PublicApiRateLimits>(PUBLIC_API_TYPES.PublicApiRateLimits).to(
       CounterPublicApiRateLimits,
+    );
+    bind<ApiKeyManagement>(PUBLIC_API_TYPES.ApiKeyManagement).to(
+      StoreApiKeyManagement,
     );
   }),
 };
