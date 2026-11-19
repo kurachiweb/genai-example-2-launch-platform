@@ -24,6 +24,11 @@ import {
   ApiKeyListItem,
 } from './api-key-list-item.tsx';
 
+// 権限の写しと同じファイルの取得の補助が読み込む同型の関数は、Startのビルドを経ないブラウザテストではサーバーの実装が残り読み込めないため差し替える
+vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
+  executeGraphQL: vi.fn(),
+}));
+
 const TOKYO_JA: DisplayPreferences = {
   timeZone: 'Asia/Tokyo',
   locale: 'ja-JP',

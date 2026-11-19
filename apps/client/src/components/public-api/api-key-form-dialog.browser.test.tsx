@@ -17,6 +17,11 @@ import {
   type ApiKeyFormTarget,
 } from './api-key-form-dialog.tsx';
 
+// 権限の写しと同じファイルの取得の補助が読み込む同型の関数は、Startのビルドを経ないブラウザテストではサーバーの実装が残り読み込めないため差し替える
+vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
+  executeGraphQL: vi.fn(),
+}));
+
 const NAME_REQUIRED = '名前を入力してください。';
 const NAME_TOO_LONG = '名前は50文字以内で入力してください。';
 const NAME_DESCRIPTION = '50文字以内で入力してください。';
