@@ -1,6 +1,6 @@
 # レート制限とbot判定の検証
 
-Cloudflare Workersのサーバーで回数を制限する2つの方式(Rate Limitingバインディングによる制限と、Durable Objectsによる厳密なカウンタ)、全HTTPリクエストに掛けるWorker単位のIP制限の規約、制限の除外規則とクライアントIPの解決の差し替え、及びCloudflare Turnstileによるbot判定の検証の方法を定める。
+Cloudflare Workersのサーバーで回数を制限する2つの方式(Rate Limitingバインディングによる制限と、Durable Objectsによる厳密なカウンタ)、全HTTPリクエストに掛けるWorker単位のIP制限の規約、同じWorkerで用途の異なる送信元IPアドレス単位の制限を足す時の名前空間とキーの規約、制限の除外規則とクライアントIPの解決の差し替え、及びCloudflare Turnstileによるbot判定の検証の方法を定める。
 
 ## 前提と用語
 
@@ -30,6 +30,8 @@ Cloudflare Workersのサーバーで回数を制限する2つの方式(Rate Limi
 | `<ペッパーのシークレットのキー>`        | 「[秘密情報のハッシュ化](../security/002-keyed-hashing.md#前提と用語)」と同じ                                 |
 | `<bot判定の秘密鍵のシークレットのキー>` | Turnstileの秘密鍵(シークレットキー)を保持するシークレットの名前                                               |
 | `<期待するホスト名の変数のキー>`        | bot判定の結果のホスト名と照合するホスト名を、カンマ区切りで持つ変数の名前                                     |
+| `<用途>`                                | 用途の異なる送信元IPアドレス単位の制限のキーに付ける、用途の名前(例:`search`)                                 |
+| `<用途別の制限の名前空間>`              | 用途の異なる送信元IPアドレス単位の制限のバインディングの`namespace_id`。`<IP制限の名前空間>`と別の値にする    |
 
 ## 制限の方式の選び方
 
@@ -161,6 +163,37 @@ app.use(
 - 超過時は、状態コード429・`Retry-After: <periodSeconds>`・`Cache-Control: no-store`と、コード`rate_limit_exceeded`の共通のエラー形式で応答する。
 - 上限(`simple.limit`)と期間(`simple.period`)はWrangler設定で決まる。ルールごとに別のバインディングと`namespace_id`を用意する。
 - 除外規則に当たる要求は数えずに通す。
+
+### 用途の異なる2つ目の名前空間
+
+同じWorkerで、Worker単位のIP制限とは別の用途の送信元IPアドレス単位の制限(公開APIの全経路を1分あたりで制限するなど)を掛けるときは、次の規約に従う。
+
+- Worker単位のIP制限のバインディング(`<IP制限のバインディング名>`)を使い回さず、用途ごとに別のバインディング名と別の`namespace_id`を用意する。上限と期間はバインディングごとにWrangler設定で決まり、同じ`namespace_id`のバインディングは同じロケーションの同じキーの回数を共有するためである。
+- `namespace_id`はアカウント内で一意にし、用途・Worker・環境の組ごとに別の値にする。全アプリのWrangler設定の`namespace_id`が重ならないことと総数を、設定の単体テストで確かめる。バインディングを足したら、総数を確かめるテストも直す。
+- キーは、用途の接頭辞(`<用途>:`)と送信元IPアドレス(不明なら`unknown`)をつないだ文字列を、`hashRateLimitKey`でハッシュ化した値にする(「[キーのハッシュ化](#キーのハッシュ化)」と同じ計算)。名前空間が分かれていても接頭辞を付け、Worker単位のIP制限の`ip:`と同じ文字列にしない。元のIPアドレスをバインディングへ渡さない。
+- その用途の全要求に掛けるため、`ipRateLimit`と同じく、最後に使ったペッパーの値と`KeyedHasher`の組を保持して要求をまたいで使い回す。「[バインディングによる制限](#バインディングによる制限)」の例のように要求ごとに`createKeyedHasher`を呼ばない。
+- プリフライト(`OPTIONS`)など数えない要求は`exclusions`で除く。
+- `periodSeconds`はWrangler設定の`simple.period`と同じ値にする。上限と期間をコード(超過の`Retry-After`・利用者向けの説明など)でも使う場合は、Wrangler設定の写しの定数を1つ持ち、Wrangler設定の値との一致を設定の単体テストで確かめる。
+- `ratelimits`はルートと`env.<環境種別>`のそれぞれに書く。
+
+```jsonc
+{
+  "ratelimits": [
+    {
+      "name": "<IP制限のバインディング名>",
+      "namespace_id": "<IP制限の名前空間>",
+      "simple": { "limit": 500, "period": 10 },
+    },
+    {
+      "name": "SEARCH_RATE_LIMITER",
+      "namespace_id": "<用途別の制限の名前空間>",
+      "simple": { "limit": 60, "period": 60 },
+    },
+  ],
+}
+```
+
+- 送信元IPアドレス単位の近似の制限は、認証の前に掛けて大量の要求と総当たりを抑える。利用者やAPIキーの持ち主など、認証の後に分かる単位の回数を正確に守る必要があれば、厳密カウンタを認証の後に組み合わせる(「[APIキーによる認証と回数の制限](020-api-key-authentication.md#認証と回数の制限の順序)」)。
 
 ## 厳密カウンタ
 
