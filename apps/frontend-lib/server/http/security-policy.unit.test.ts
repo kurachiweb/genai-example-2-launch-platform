@@ -15,6 +15,7 @@ const TURNSTILE_ORIGIN = 'https://challenges.cloudflare.com';
 const IMAGES_ORIGIN = 'https://images.example';
 const SENTRY_DSN = 'https://public-key@o1.ingest.sentry.example/42';
 const SENTRY_ORIGIN = 'https://o1.ingest.sentry.example';
+const PUBLIC_API_ORIGIN = 'https://api.example';
 
 // api-gatewayのSECURITY_HEADERSのPermissions-Policyと同じ値
 const API_GATEWAY_PERMISSIONS_POLICY =
@@ -135,7 +136,11 @@ describe('buildPageContentSecurityPolicy', () => {
   test("既定と環境ごとの許可先を合わせても'strict-dynamic'・'unsafe-eval'・*を含まない", () => {
     const sources = mergeSecurityPolicySources(
       BASE_SECURITY_POLICY_SOURCES,
-      runtimeSecurityPolicySources({ IMAGES_ORIGIN, SENTRY_DSN }),
+      runtimeSecurityPolicySources({
+        IMAGES_ORIGIN,
+        SENTRY_DSN,
+        PUBLIC_API_ORIGIN,
+      }),
       {
         scriptSrc: ['https://static.cloudflareinsights.com'],
         connectSrc: ['https://cloudflareinsights.com'],
@@ -194,27 +199,79 @@ describe('BASE_SECURITY_POLICY_SOURCES', () => {
 
 describe('runtimeSecurityPolicySources', () => {
   test('画像配信のオリジンをimg-srcへ、SentryのDSNのオリジンだけをconnect-srcへ入れる', () => {
-    expect(runtimeSecurityPolicySources({ IMAGES_ORIGIN, SENTRY_DSN })).toEqual(
-      { imgSrc: [IMAGES_ORIGIN], connectSrc: [SENTRY_ORIGIN] },
-    );
+    expect(
+      runtimeSecurityPolicySources({
+        IMAGES_ORIGIN,
+        SENTRY_DSN,
+        PUBLIC_API_ORIGIN: undefined,
+      }),
+    ).toEqual({ imgSrc: [IMAGES_ORIGIN], connectSrc: [SENTRY_ORIGIN] });
   });
 
   test('DSNが無ければconnect-srcへ何も入れない', () => {
     expect(
-      runtimeSecurityPolicySources({ IMAGES_ORIGIN, SENTRY_DSN: undefined }),
+      runtimeSecurityPolicySources({
+        IMAGES_ORIGIN,
+        SENTRY_DSN: undefined,
+        PUBLIC_API_ORIGIN: undefined,
+      }),
     ).toEqual({ imgSrc: [IMAGES_ORIGIN] });
   });
 
   test('URLとして解釈できないDSNはSentryが送信しないためconnect-srcへ何も入れない', () => {
     expect(
-      runtimeSecurityPolicySources({ IMAGES_ORIGIN, SENTRY_DSN: 'not a url' }),
+      runtimeSecurityPolicySources({
+        IMAGES_ORIGIN,
+        SENTRY_DSN: 'not a url',
+        PUBLIC_API_ORIGIN: undefined,
+      }),
     ).toEqual({ imgSrc: [IMAGES_ORIGIN] });
+  });
+
+  test('公開APIのオリジンがあれば、DSNのオリジンに続けてconnect-srcへ入れる', () => {
+    expect(
+      runtimeSecurityPolicySources({
+        IMAGES_ORIGIN,
+        SENTRY_DSN,
+        PUBLIC_API_ORIGIN,
+      }),
+    ).toEqual({
+      imgSrc: [IMAGES_ORIGIN],
+      connectSrc: [SENTRY_ORIGIN, PUBLIC_API_ORIGIN],
+    });
+  });
+
+  test('DSNが無くても、公開APIのオリジンがあればconnect-srcへ入れる', () => {
+    expect(
+      runtimeSecurityPolicySources({
+        IMAGES_ORIGIN,
+        SENTRY_DSN: undefined,
+        PUBLIC_API_ORIGIN: 'http://localhost:48042',
+      }),
+    ).toEqual({
+      imgSrc: [IMAGES_ORIGIN],
+      connectSrc: ['http://localhost:48042'],
+    });
+  });
+
+  test('公開APIのオリジンを入れた許可先からページのCSPのconnect-srcを作れる', () => {
+    const sources = runtimeSecurityPolicySources({
+      IMAGES_ORIGIN,
+      SENTRY_DSN: undefined,
+      PUBLIC_API_ORIGIN,
+    });
+
+    expect(directivesOf(pagePolicy(sources)).get('connect-src')).toEqual([
+      "'self'",
+      PUBLIC_API_ORIGIN,
+    ]);
   });
 
   test('ローカルの画像配信のオリジンも合成で受け付けられる', () => {
     const sources = runtimeSecurityPolicySources({
       IMAGES_ORIGIN: 'http://localhost:48043',
       SENTRY_DSN: undefined,
+      PUBLIC_API_ORIGIN: undefined,
     });
 
     expect(mergeSecurityPolicySources(sources).imgSrc).toEqual([
@@ -223,7 +280,11 @@ describe('runtimeSecurityPolicySources', () => {
   });
 
   test('凍結されている', () => {
-    const sources = runtimeSecurityPolicySources({ IMAGES_ORIGIN, SENTRY_DSN });
+    const sources = runtimeSecurityPolicySources({
+      IMAGES_ORIGIN,
+      SENTRY_DSN,
+      PUBLIC_API_ORIGIN,
+    });
 
     expect(Object.isFrozen(sources)).toBe(true);
     expect(Object.isFrozen(sources.imgSrc)).toBe(true);

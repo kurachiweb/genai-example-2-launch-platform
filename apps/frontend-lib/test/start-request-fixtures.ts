@@ -110,6 +110,7 @@ export const renderContextOf = (
     sentry: { dsn: undefined, environment: 'staging', tracesSampleRate: 0.1 },
     webAnalyticsToken: undefined,
     stripePublishableKey: undefined,
+    publicApiOrigin: undefined,
   },
   relay: {
     clientIp: CLIENT_IP,

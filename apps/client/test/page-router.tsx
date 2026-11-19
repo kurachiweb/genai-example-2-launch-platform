@@ -78,6 +78,7 @@ export const createPageRouterContext = (
       sentry: { dsn: undefined, environment, tracesSampleRate: 0 },
       webAnalyticsToken: undefined,
       stripePublishableKey: undefined,
+      publicApiOrigin: undefined,
       ...publicConfig,
     },
     display: PAGE_ROUTER_DISPLAY,

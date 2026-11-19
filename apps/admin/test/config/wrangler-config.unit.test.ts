@@ -8,6 +8,7 @@ import {
   type ServiceFetcher,
   validateFrontendEnv,
 } from '../../lib/server/env/frontend-env.ts';
+import { runtimeSecurityPolicySources } from '../../lib/server/http/security-policy.ts';
 import { z } from '../../lib/utilities/validation/zod.ts';
 
 const APP_DIR = join(import.meta.dirname, '..', '..');
@@ -271,6 +272,26 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
 
     expect(validation.ok).toBe(true);
     expect(validation.ok && validation.env.WEB_ANALYTICS_TOKEN).toBe(undefined);
+  });
+
+  // CSPの接続先は環境の値の有無だけで決まるため、管理者側に値が無いことで公開APIへの接続を許さない
+  test('公開APIのオリジンを持たず、値が無くても環境の検証が通り、CSPの接続先に公開APIが加わらない', () => {
+    const validation = validateFrontendEnv({
+      ...config.vars,
+      ...bindingsOf(config),
+      ...secretsOf(config),
+    });
+
+    expect(Object.keys(config.vars)).not.toContain('PUBLIC_API_ORIGIN');
+    expect(validation.ok).toBe(true);
+    expect(validation.ok && validation.env.PUBLIC_API_ORIGIN).toBe(undefined);
+    expect(
+      validation.ok &&
+        runtimeSecurityPolicySources({
+          ...validation.env,
+          SENTRY_DSN: undefined,
+        }).connectSrc,
+    ).toBeUndefined();
   });
 
   test('必須のシークレットは、全環境のペッパーとstaging・prodのSentryのDSNである', () => {

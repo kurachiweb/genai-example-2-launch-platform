@@ -23,6 +23,8 @@ import { ADMIN_SECURITY_POLICY } from '../../src/composition/security-policy.ts'
 
 const STRIPE_PUBLISHABLE_KEY = `pk_test_${'0'.repeat(32)}`;
 
+const PUBLIC_API_ORIGIN = 'https://public-api.example';
+
 afterEach(() => {
   resetSync();
 });
@@ -75,6 +77,42 @@ describe('ADMIN_PROFILE', () => {
     const publicConfig = harness.startCalls[0]?.context.publicConfig;
     expect(publicConfig?.stripePublishableKey).toBeUndefined();
     expect(JSON.stringify(publicConfig)).not.toContain(STRIPE_PUBLISHABLE_KEY);
+  });
+
+  test('公開APIの仕様書を持たず、公開APIのオリジンが設定されていても描画とブラウザへの公開設定に渡さない', async () => {
+    expect(ADMIN_PROFILE.publicApiDocs).toBe(false);
+    expect(CLIENT_PROFILE.publicApiDocs).toBe(true);
+    const harness = createHarness({
+      profile: ADMIN_PROFILE,
+      env: { PUBLIC_API_ORIGIN },
+      entryOptions: {
+        relayRoutes: RELAY_ROUTES,
+        securityPolicy: ADMIN_SECURITY_POLICY,
+      },
+    });
+
+    const response = await harness.fetch(pageRequest());
+
+    expect(response.status).toBe(200);
+    const publicConfig = harness.startCalls[0]?.context.publicConfig;
+    expect(publicConfig?.publicApiOrigin).toBeUndefined();
+    expect(JSON.stringify(publicConfig)).not.toContain(PUBLIC_API_ORIGIN);
+  });
+
+  test('公開APIのオリジンが無ければ、ページのCSPに公開APIのオリジンを加えない', async () => {
+    const harness = createHarness({
+      profile: ADMIN_PROFILE,
+      entryOptions: {
+        relayRoutes: RELAY_ROUTES,
+        securityPolicy: ADMIN_SECURITY_POLICY,
+      },
+    });
+
+    const response = await harness.fetch(pageRequest());
+
+    expect(response.headers.get('Content-Security-Policy')).not.toContain(
+      PUBLIC_API_ORIGIN,
+    );
   });
 
   test('凍結されていて書き換えられない', () => {

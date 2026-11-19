@@ -38,6 +38,7 @@ export const CLIENT_TEST_PROFILE: FrontendAppProfile =
     webAnalytics: true,
     contactAvailable: true,
     payments: true,
+    publicApiDocs: true,
   });
 
 export const ADMIN_TEST_PROFILE: FrontendAppProfile =
@@ -48,6 +49,7 @@ export const ADMIN_TEST_PROFILE: FrontendAppProfile =
     webAnalytics: false,
     contactAvailable: false,
     payments: false,
+    publicApiDocs: false,
   });
 
 export const APP_SECURITY_POLICY = Object.freeze({

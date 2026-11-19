@@ -3,6 +3,7 @@ import type {
   AppEnvironment,
   FrontendAppProfile,
 } from '../entry/app-profile.ts';
+import { ORIGIN_PATTERN } from '../http/security-policy.ts';
 
 export interface ServiceFetcher {
   fetch(input: Request | string, init?: RequestInit): Promise<Response>;
@@ -29,6 +30,7 @@ export interface ValidatedFrontendEnv {
   readonly CLIENT_SITE_ORIGIN: string;
   readonly WEB_ANALYTICS_TOKEN: string | undefined;
   readonly STRIPE_PUBLISHABLE_KEY: string | undefined;
+  readonly PUBLIC_API_ORIGIN: string | undefined;
   readonly HASH_PEPPER: string;
 }
 
@@ -48,6 +50,7 @@ export interface PublicRuntimeConfig {
   };
   readonly webAnalyticsToken: string | undefined;
   readonly stripePublishableKey: string | undefined;
+  readonly publicApiOrigin: string | undefined;
 }
 
 const APP_ENVIRONMENT_VALUES = {
@@ -113,6 +116,12 @@ const frontendEnvSchema = z.object({
     .regex(STRIPE_PUBLISHABLE_KEY_PATTERN)
     .optional()
     .transform((value) => value),
+  // 値はそのままCSPのconnect-srcに加わるため、緩いisOriginではなく許可先の形の規則で確かめ、不備を環境の検証の失敗としてキー名で報告する
+  PUBLIC_API_ORIGIN: z
+    .string()
+    .regex(ORIGIN_PATTERN)
+    .optional()
+    .transform((value) => value),
   HASH_PEPPER: z.string().min(1),
 });
 
@@ -158,4 +167,5 @@ export const toPublicRuntimeConfig = (
   stripePublishableKey: profile.payments
     ? env.STRIPE_PUBLISHABLE_KEY
     : undefined,
+  publicApiOrigin: profile.publicApiDocs ? env.PUBLIC_API_ORIGIN : undefined,
 });

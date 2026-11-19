@@ -42,6 +42,8 @@ const LINK_STATICS_ORIGIN = 'https://statics.link.com';
 
 const STRIPE_PUBLISHABLE_KEY = `pk_test_${'0'.repeat(32)}`;
 
+const PUBLIC_API_ORIGIN = 'https://public-api.example';
+
 afterEach(() => {
   resetSync();
 });
@@ -99,6 +101,43 @@ describe('CLIENT_PROFILE', () => {
 
     expect(onlyRenderContextOf(harness).publicConfig.stripePublishableKey).toBe(
       STRIPE_PUBLISHABLE_KEY,
+    );
+  });
+
+  test('公開APIの仕様書を持ち、公開APIのオリジンを公開設定に渡してページのCSPの接続先に加える', async () => {
+    expect(CLIENT_PROFILE.publicApiDocs).toBe(true);
+    const harness = createHarness({
+      profile: CLIENT_PROFILE,
+      env: { PUBLIC_API_ORIGIN },
+      entryOptions: {
+        relayRoutes: RELAY_ROUTES,
+        securityPolicy: CLIENT_SECURITY_POLICY,
+      },
+    });
+
+    const response = await harness.fetch(pageRequest());
+
+    expect(onlyRenderContextOf(harness).publicConfig.publicApiOrigin).toBe(
+      PUBLIC_API_ORIGIN,
+    );
+    expect(
+      directiveSourcesOf(
+        response.headers.get('Content-Security-Policy'),
+        'connect-src',
+      ),
+    ).toContain(PUBLIC_API_ORIGIN);
+  });
+
+  test('公開APIのオリジンが無ければ、公開設定に渡さずページのCSPの接続先にも加えない', async () => {
+    const harness = clientHarness();
+
+    const response = await harness.fetch(pageRequest());
+
+    expect(
+      onlyRenderContextOf(harness).publicConfig.publicApiOrigin,
+    ).toBeUndefined();
+    expect(response.headers.get('Content-Security-Policy')).not.toContain(
+      PUBLIC_API_ORIGIN,
     );
   });
 

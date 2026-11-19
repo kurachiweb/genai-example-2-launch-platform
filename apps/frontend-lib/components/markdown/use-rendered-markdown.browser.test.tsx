@@ -29,6 +29,7 @@ const RUNTIME: AppRuntime = {
     sentry: { dsn: undefined, environment: 'staging', tracesSampleRate: 0.1 },
     webAnalyticsToken: undefined,
     stripePublishableKey: undefined,
+    publicApiOrigin: undefined,
   },
   display: { timeZone: 'Asia/Tokyo', locale: 'ja-JP' },
 };

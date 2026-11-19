@@ -10,4 +10,5 @@ export const CLIENT_PROFILE: FrontendAppProfile = Object.freeze({
   webAnalytics: true,
   contactAvailable: true,
   payments: true,
+  publicApiDocs: true,
 });

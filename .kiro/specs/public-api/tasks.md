@@ -29,7 +29,7 @@
   - _Boundary: `apps/api/wrangler.jsonc`・`apps/api/src/composition/env-schema.ts`・`apps/api/test/config/wrangler-config.unit.test.ts`・`apps/admin/test/config/wrangler-config.unit.test.ts`_
   - _Requirements: 13.4, 8.9_
 
-- [ ] 1.5 (P) clientの環境に公開APIのオリジンを加え、CSPの接続先に入れる
+- [x] 1.5 (P) clientの環境に公開APIのオリジンを加え、CSPの接続先に入れる
   - 公開設定への受け渡しは、frontend-platformの`WEB_ANALYTICS_TOKEN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順にする。共有の環境のスキーマでは`PUBLIC_API_ORIGIN`を任意(値があればCSPの許可先の形`https://<小文字のホスト>`(ポート無し)・`http://localhost:<ポート>`まで検証する)にし、`FrontendAppProfile`に公開APIの仕様書の有無の欄`publicApiDocs`(clientは真、adminは偽)を加え、公開設定の`publicApiOrigin`(adminは未定義)へ渡す。共有のスキーマで必須にすると`worker-env-contract.ts`の型の検査と管理者側の起動の検証が失敗するため、任意にする(2026-11-05の開発者の決定)
   - CSPは、`runtimeSecurityPolicySources(env)`の引数の環境のキーに`PUBLIC_API_ORIGIN`を加え、値があるときだけ`connect-src`に加える。プロファイルは受け取らず、エントリの呼び出しは変えない(2026-11-19の開発者の決定。前例の2つの変数はCSPの許可先を`CLIENT_SECURITY_POLICY`に固定で書いており、この関数を通らない)。許可先の形の検証には`security-policy.ts`の`ORIGIN_PATTERN`を公開して使い、環境のスキーマの緩い`isOrigin`は使わない
   - `frontend-env.unit.test.ts`の完全一致の期待と、`PublicRuntimeConfig`を直に書いた全てのファイル(`stripePublishableKey`を検索して洗い出す。2026-11-19の時点で19ファイル)を直す。エントリの許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない
@@ -300,3 +300,4 @@
 - 1.2: `apps/db`はcommon-libを読まない前例に従い、権限の値を`apps/db/schema/public-api/api-keys.ts`に写し、`config/public-api-contract-copies.unit.test.ts`(`check:contract-copies`)で`api-key-rules.ts`と照合する。8.2で`project-values.md`の「手で同期する値」の行にこの写しを加えること。キーが残る利用者は外部キーで物理削除できない(退会で3.3が先に消す)
 - 1.3: 設計に無い文言(題名「新しいAPIキー」、確認のダイアログの失敗はダイアログを閉じてトースト、`/api-docs`の回数の説明はclientの静的な文言で「制限を変えた時は合わせて直す」と注記)を文言規則に決めた。公開REST APIのエラーコードの文言は4.2で決め、必要なら文言規則に追記する
 - 1.4: clientの設定の検査(`apps/client/test/config/wrangler-config.unit.test.ts`)にもadminと同じ名前空間の総数の検査があったため、総数15に直した。apiの設定の検査は`PUBLIC_API_RATE_LIMITER`の60・60を直書きしているため、2.3(または4.3)で`PUBLIC_API_IP_RATE_LIMIT`の定数との照合に差し替える。環境の検証のテストは既存に倣いWorkers統合テスト(`public-api-env.worker.test.ts`)。8.2で`project-values.md`の`namespace_id`の表(1005・2005・3005)・「4アプリ12個」の記述・apiの`IMAGES_ORIGIN`を直す
+- 1.5: 空文字の`PUBLIC_API_ORIGIN`は未設定扱いにせず不正とした(`STRIPE_PUBLISHABLE_KEY`の前例)。`project-values.md`にはプレースホルダー`<公開APIのオリジンの変数>`の行とCSPの許可先の`connect-src`の行だけを加え、3環境の値の表は8.2に残した。7.1・7.3のビューアーは公開設定の`publicApiOrigin`(未定義なら読み込みの失敗と同じ表示)を読む

@@ -36,6 +36,7 @@
     "WEB_ANALYTICS_TOKEN": "",
     // dev用のsandboxの公開キー
     "STRIPE_PUBLISHABLE_KEY": "pk_test_51UOHzqKXCISXXudNX8UpBAkp1XmfEcVCyVPPdevbTwOXxmUXJRNmVMxV5g8zcWHzJfCYeqb47zzMLi446kABE39700y7SxUFn5",
+    "PUBLIC_API_ORIGIN": "http://localhost:48042",
   },
   "secrets": { "required": ["HASH_PEPPER"] },
   "env": {
@@ -64,6 +65,7 @@
         "CLIENT_SITE_ORIGIN": "https://genai-example-2-client-staging.lab.kurachiweb.com",
         "WEB_ANALYTICS_TOKEN": "0840a654f801413f8e1d68833e937275",
         "STRIPE_PUBLISHABLE_KEY": "pk_test_51UOHzqKXCISXXudNX8UpBAkp1XmfEcVCyVPPdevbTwOXxmUXJRNmVMxV5g8zcWHzJfCYeqb47zzMLi446kABE39700y7SxUFn5",
+        "PUBLIC_API_ORIGIN": "https://genai-example-2-api-staging.lab.kurachiweb.com",
       },
       "secrets": { "required": ["HASH_PEPPER", "SENTRY_DSN"] },
     },
@@ -94,6 +96,7 @@
         "WEB_ANALYTICS_TOKEN": "00000000000000000000000000000000",
         // 仮の値。ライブモードの公開キーに置き換える
         "STRIPE_PUBLISHABLE_KEY": "pk_live_00000000000000000000000000000000",
+        "PUBLIC_API_ORIGIN": "https://genai-example-2-api.lab.kurachiweb.com",
       },
       "secrets": { "required": ["HASH_PEPPER", "SENTRY_DSN"] },
     },

@@ -54,7 +54,7 @@ const SELF_SOURCE = "'self'";
 const NONE_SOURCE = "'none'";
 const TURNSTILE_ORIGIN = 'https://challenges.cloudflare.com';
 
-const ORIGIN_PATTERN =
+export const ORIGIN_PATTERN =
   /^(?:https:\/\/[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*|http:\/\/localhost:\d{1,5})$/u;
 
 // CSPのnonce-sourceのbase64-valueの文法。ヘッダーへの区切りや引用符の混入を防ぐ
@@ -148,14 +148,21 @@ const originOf = (url: string | undefined): readonly string[] => {
   return parsed === null ? [] : [parsed.origin];
 };
 
+// 公開APIのオリジンは環境の検証が許可先の形まで確かめるため、connect-srcの許可先の不備はSentryのDSNに由来するものに限られる
 export const runtimeSecurityPolicySources = (
-  env: Pick<ValidatedFrontendEnv, 'IMAGES_ORIGIN' | 'SENTRY_DSN'>,
+  env: Pick<
+    ValidatedFrontendEnv,
+    'IMAGES_ORIGIN' | 'SENTRY_DSN' | 'PUBLIC_API_ORIGIN'
+  >,
 ): SecurityPolicySources => {
-  const sentryOrigins = originOf(env.SENTRY_DSN);
+  const connectOrigins = [
+    ...originOf(env.SENTRY_DSN),
+    ...(env.PUBLIC_API_ORIGIN === undefined ? [] : [env.PUBLIC_API_ORIGIN]),
+  ];
   return Object.freeze({
     imgSrc: Object.freeze([env.IMAGES_ORIGIN]),
-    ...(sentryOrigins.length > 0
-      ? { connectSrc: Object.freeze(sentryOrigins) }
+    ...(connectOrigins.length > 0
+      ? { connectSrc: Object.freeze(connectOrigins) }
       : {}),
   });
 };

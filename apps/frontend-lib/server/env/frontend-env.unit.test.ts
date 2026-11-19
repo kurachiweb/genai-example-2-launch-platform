@@ -15,6 +15,7 @@ const HASH_PEPPER = 'test-pepper-must-not-reach-browser';
 const CLIENT_SITE_ORIGIN = 'https://client.example';
 const IMAGES_ORIGIN = 'https://images.example';
 const STRIPE_PUBLISHABLE_KEY = `pk_test_${'Ab1'.repeat(8)}`;
+const PUBLIC_API_ORIGIN = 'https://api.example';
 
 const fakeApi = {
   fetch: (): Promise<Response> => Promise.resolve(new Response(null)),
@@ -37,6 +38,7 @@ const validRawEnv = (): Record<string, unknown> => ({
   CLIENT_SITE_ORIGIN,
   WEB_ANALYTICS_TOKEN: 'analytics-token',
   STRIPE_PUBLISHABLE_KEY,
+  PUBLIC_API_ORIGIN,
   HASH_PEPPER,
 });
 
@@ -47,6 +49,7 @@ const CLIENT_LIKE_PROFILE: FrontendAppProfile = {
   webAnalytics: true,
   contactAvailable: true,
   payments: true,
+  publicApiDocs: true,
 };
 
 const ADMIN_LIKE_PROFILE: FrontendAppProfile = {
@@ -56,6 +59,7 @@ const ADMIN_LIKE_PROFILE: FrontendAppProfile = {
   webAnalytics: false,
   contactAvailable: false,
   payments: false,
+  publicApiDocs: false,
 };
 
 const envOf = (validation: EnvValidation): ValidatedFrontendEnv => {
@@ -100,6 +104,7 @@ describe('validateFrontendEnv', () => {
         CLIENT_SITE_ORIGIN,
         WEB_ANALYTICS_TOKEN: 'analytics-token',
         STRIPE_PUBLISHABLE_KEY,
+        PUBLIC_API_ORIGIN,
         HASH_PEPPER,
       });
     });
@@ -245,6 +250,43 @@ describe('validateFrontendEnv', () => {
     ])('公開キーの形式でない%pを不正なキーとして返す', (key) => {
       expect(invalidKeysOf(validate({ STRIPE_PUBLISHABLE_KEY: key }))).toEqual([
         'STRIPE_PUBLISHABLE_KEY',
+      ]);
+    });
+  });
+
+  describe('公開APIのオリジン', () => {
+    test('オリジンが無ければ未設定として扱い、検証は失敗しない', () => {
+      const raw = rawEnvWithout('PUBLIC_API_ORIGIN');
+
+      const env = envOf(validateFrontendEnv(raw));
+
+      expect(env.PUBLIC_API_ORIGIN).toBeUndefined();
+    });
+
+    test.each(['https://api.example', 'http://localhost:48042'])(
+      'CSPの許可先の形のオリジン%sを受け付ける',
+      (origin) => {
+        const env = envOf(validate({ PUBLIC_API_ORIGIN: origin }));
+
+        expect(env.PUBLIC_API_ORIGIN).toBe(origin);
+      },
+    );
+
+    test.each([
+      '',
+      'api.example',
+      'https://api.example/',
+      'https://api.example/v1',
+      'https://api.example:8443',
+      'https://API.example',
+      'http://api.example',
+      'ftp://api.example',
+      'https://user@api.example',
+      'javascript:alert(1)',
+      42,
+    ])('CSPの許可先の形でない%pを不正なキーとして返す', (origin) => {
+      expect(invalidKeysOf(validate({ PUBLIC_API_ORIGIN: origin }))).toEqual([
+        'PUBLIC_API_ORIGIN',
       ]);
     });
   });
@@ -459,6 +501,7 @@ describe('toPublicRuntimeConfig', () => {
       },
       webAnalyticsToken: 'analytics-token',
       stripePublishableKey: STRIPE_PUBLISHABLE_KEY,
+      publicApiOrigin: PUBLIC_API_ORIGIN,
     });
   });
 
@@ -483,6 +526,7 @@ describe('toPublicRuntimeConfig', () => {
       'clientSiteOrigin',
       'environment',
       'imagesOrigin',
+      'publicApiOrigin',
       'sentry',
       'stripePublishableKey',
       'turnstileSiteKey',
@@ -557,6 +601,31 @@ describe('toPublicRuntimeConfig', () => {
 
     expect(
       toPublicRuntimeConfig(env, CLIENT_LIKE_PROFILE).stripePublishableKey,
+    ).toBeUndefined();
+  });
+
+  test('公開APIの仕様書を持たないプロファイルでは公開APIのオリジンを渡さない', () => {
+    const env = envOf(validateFrontendEnv(validRawEnv()));
+
+    const config = toPublicRuntimeConfig(env, ADMIN_LIKE_PROFILE);
+
+    expect(config.publicApiOrigin).toBeUndefined();
+    expect(JSON.stringify(config)).not.toContain(PUBLIC_API_ORIGIN);
+  });
+
+  test('公開APIの仕様書を持たないプロファイルでは、オリジンが無くても検証が通り渡さない', () => {
+    const env = envOf(validateFrontendEnv(rawEnvWithout('PUBLIC_API_ORIGIN')));
+
+    expect(
+      toPublicRuntimeConfig(env, ADMIN_LIKE_PROFILE).publicApiOrigin,
+    ).toBeUndefined();
+  });
+
+  test('公開APIの仕様書を持つプロファイルでも、オリジンが未設定なら渡さない', () => {
+    const env = envOf(validateFrontendEnv(rawEnvWithout('PUBLIC_API_ORIGIN')));
+
+    expect(
+      toPublicRuntimeConfig(env, CLIENT_LIKE_PROFILE).publicApiOrigin,
     ).toBeUndefined();
   });
 
