@@ -6,7 +6,7 @@
 
 **Users**: 開発者である利用者は`/settings/api-keys`でキーを発行・編集・再発行・削除し、自分のツールから公開APIを呼び、`/api-docs`で仕様を読んで試す。後続spec(data-export)はAPIキーの出力用の照会を、launch-readinessは回数の制限と仕様書を検証に使う。
 
-**Impact**: api-gatewayの`composition/rest-routes.ts`(初版は空)に経路を、`graphql-modules.ts`にAPIキーの管理のスキーマモジュールを加える。D1に`api_keys`を新設する。apiにRate Limitingバインディング`PUBLIC_API_RATE_LIMITER`と変数`IMAGES_ORIGIN`を、clientに変数`PUBLIC_API_ORIGIN`とCSPの`connect-src`の許可先を加える。
+**Impact**: api-gatewayの`composition/rest-routes.ts`(初版は空)に経路を、`graphql-modules.ts`にAPIキーの管理のスキーマモジュールを加える。D1に`api_keys`を新設する。apiにRate Limitingバインディング`PUBLIC_API_RATE_LIMITER`と変数`IMAGES_ORIGIN`を、clientに変数`PUBLIC_API_ORIGIN`とCSPの`connect-src`の許可先を加える。画面とAPIで同じでなければならない判定(カーソルの符号化と復号・配信できる画像の判定・外部URLの検証済みの値)をapiのGraphQLの表現層から共通の層へ移し、directory-discoveryの`SupporterListPage`にUpvoteの日時を加える(2026-11-19の開発者の決定、「上流への影響」)。
 
 ### Goals
 
@@ -44,19 +44,19 @@
 
 ### Allowed Dependencies
 
-- api-gateway: `PUBLIC_API_BASE_PATH`・`API_KEY_SECURITY`・`PublicApiApp`・`PublicRestRoutes`・`dataEnvelope`・`offsetListEnvelope`・`cursorListEnvelope`・`errorResponses`・`ErrorEnvelopeSchema`・`createRestModule`(改訂1の`options.info`)・`GraphQLSchemaModule`・`defineSchemaModule`・`withValidatedArgs`・ページングの補助・`SessionAccess`。
-- backend-platform: `RateLimitCounterClient`・`CounterRule`・`CounterDecision`・`hashRateLimitKey`・`bindingRateLimit`・`RateLimitExclusion`・`KeyedHasher`・`hashPurpose`・`AppError`・`toErrorResponse`・`PLATFORM_TYPES`・`AppModule`・`ulidPrimaryKey`・`timestamps`・`Database`・ログのカテゴリ規約・伏せ字の`REDACTION_PATTERNS`(改訂1で`lsk_`のキーを含む)。apiのapplication層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`RateLimitCounterClient`・`CounterDecision`・`assertWithinLimit`は、infrastructure層の`CounterPublicApiRateLimits`だけが使い、application層はポート`PublicApiRateLimits`だけを受け取る(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。`bindingRateLimit`は表現層(`ip-rate-limit.ts`)だけが使う。
-- identity-auth: `AccountGuard`(`requireUser`・`requireWritableUser`)・`CurrentUser`・`SessionView`・`IDENTITY_TYPES`・`visibleUsers()`・`users`(外部キーと`visibleUsers()`の結合)・`UserLifecycleSyncHandler`・`USER_LIFECYCLE_SYNC_HANDLERS`・`SETTINGS_NAV_ITEMS`・`AuthenticatedContext`。
-- directory-discovery: `DIRECTORY_TYPES`の`DirectoryReader`・`DirectoryCategoryReader`・`ProductPageReader`、`decideProductPageAccess`、`common-lib/directory`の`DIRECTORY_PAGE_SIZE`・`DIRECTORY_SORTS`・`DIRECTORY_SEARCH_MAX_GRAPHEMES`。
-- product-launch: `PRODUCT_PLATFORM_TYPES.ProductDirectory`(`resolveHandle`)、`PRODUCT_TYPES`の`MyProductsReader`(`list`・`find`)・`ProductDescriptionEditor`(仮12で`product_hidden`・`product_not_found`・`account_unavailable`を投げる)、`PRODUCT_HANDLE_RULE`、説明文の上限の定数。
-- match-engine: `MATCH_PLATFORM_TYPES`の`MatchDirectory`(`findMatches`)・`SupporterDirectory`、`MATCH_TYPES.UpvoteHistoryReader`。
+- api-gateway: `PUBLIC_API_BASE_PATH`・`API_KEY_SECURITY`・`PublicApiApp`・`PublicRestRoutes`・`dataEnvelope`・`offsetListEnvelope`・`cursorListEnvelope`・`errorResponses`・`ErrorEnvelopeSchema`・`createRestModule`(改訂1の`options.info`)・`GraphQLSchemaModule`・`defineSchemaModule`・`withValidatedArgs`・ページングの補助・`SessionAccess`。カーソルの符号化と復号(`encodeCursor`・`decodeCursor`)は、本specが`presentation/graphql/pagination.ts`から`apps/backend-lib/core/pagination/opaque-cursor.ts`へ移したものを使う(「上流への影響」)。
+- backend-platform: `CounterRule`・`CounterDecision`(`{ allowed, count, remaining, resetAt }`、`resetAt`はエポックミリ秒、上限を持たない)・`hashRateLimitKey`(以上は`core/rate-limit`)、`RateLimitCounterClient`(`hit`・`reset`・メソッドの`assertWithinLimit(decision, now: number)`、`workers/rate-limit`)・`bindingRateLimit`・`RateLimitExclusion`・`KeyedHasher`・`hashPurpose`・`AppError`・`toErrorResponse`・`invalidCursorError`(`core/errors/invalid-cursor.ts`)・`PLATFORM_TYPES`・`AppModule`・`ulidPrimaryKey`・`timestamps`・`Database`・ログのカテゴリ規約・伏せ字の`REDACTION_PATTERNS`(改訂1で`lsk_`のキーを含む)。apiのapplication層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`RateLimitCounterClient`は、infrastructure層の`CounterPublicApiRateLimits`だけが使い、application層はポート`PublicApiRateLimits`だけを受け取る(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。`bindingRateLimit`は表現層(`ip-rate-limit.ts`)だけが使う。
+- identity-auth: `AccountGuard`(`requireUser`・`requireWritableUser`、識別子は`core/identity/identifiers.ts`の`IDENTITY_PLATFORM_TYPES.AccountGuard`)・`CurrentUser`・`SessionView`・`visibleUsers()`・`users`(外部キーと`visibleUsers()`の結合)・`UserLifecycleSyncHandler`(apiの`infrastructure/identity`)・`USER_LIFECYCLE_SYNC_HANDLERS`・`SETTINGS_NAV_ITEMS`・`AuthenticatedContext`。
+- directory-discovery: `DIRECTORY_TYPES`の`DirectoryReader`・`DirectoryCategoryReader`・`ProductPageReader`・`SupporterListReader`(本specがUpvoteの日時の行を加える、「上流への影響」)、`decideProductPageAccess`・`resolveProductPage`(`application/directory/product-page-resolution.ts`)、`common-lib/directory/directory-query-rules.ts`の`DIRECTORY_PAGE_SIZE`・`DIRECTORY_SORTS`・`DIRECTORY_SEARCH_MAX_GRAPHEMES`と`directory-period.ts`の`isBusinessDateString`。
+- product-launch: `PRODUCT_PLATFORM_TYPES.ProductDirectory`(`resolveHandle`)、`PRODUCT_TYPES`の`MyProductsReader`(`list(user, { first, after })`の`first`は1〜20の必須・`find`)・`ProductDescriptionEditor`(仮12で`product_hidden`・`product_not_found`・`account_unavailable`を投げる)、`PRODUCT_HANDLE_RULE`、説明文の規則`PRODUCT_DESCRIPTION_RULE`(`common-lib/product/product-input-rules.ts`)。
+- match-engine: `MATCH_PLATFORM_TYPES`の`MatchDirectory`(`findMatches`)、`MATCH_TYPES.UpvoteHistoryReader`。マッチの種別`MATCH_KINDS`(`qualifier`・`week`・`year`)と段階`MATCH_STAGES`(`quarterfinal`・`semifinal`・`final`)(`core/match/match-model.ts`)。
 - engagement: `ENGAGEMENT_TYPES`の`CommentReader`・`RatingService`。
-- user-profile-social: `PROFILE_TYPES`の`MyProfileReader`・`ProfileEditor`・`PublicProfileReader`、`PROFILE_PLATFORM_TYPES.UserProfileDirectory`、`common-lib/profile`・`common-lib/url`の規則、`USER_HANDLE_RULE`。
-- media-pipeline: `MEDIA_TYPES.MediaFiles`(`findMany`)、`common-lib/media`の`buildImagePath`・`fallbackFormatOf`。
+- user-profile-social: `PROFILE_TYPES`の`MyProfileReader`・`ProfileEditor`・`PublicProfileReader`、`PROFILE_PLATFORM_TYPES.UserProfileDirectory`、`common-lib/profile`(`checkHeadline`・`checkWebsiteName`・上限の定数)・`common-lib/url`(`checkExternalUrl`)の規則、`USER_HANDLE_RULE`。ニックネームの規則はidentity-authの`common-lib/identity/account-input-rules.ts`(`checkNickname`)、ハンドルの形式は`common-lib/handles/handle-rules.ts`(`checkHandleFormat`)。
+- media-pipeline: `MEDIA_TYPES.MediaFiles`(`findMany`)、`common-lib/media`の`buildImagePath`・`fallbackFormatOf`(`ImageMediaType`だけを受け取るため`isImageMediaType`で絞り込む)。配信できる画像の判定は、本specがapiのGraphQLの`toMediaImage`から`core/media`へ移した`isServableImageFile`を使う(「上流への影響」)。
 - content-processing: `markdownTextSchema`(説明文・自己紹介の検証)、`countGraphemes`。
-- frontend-platform: `buildPageHead`・`ErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`useAppForm<TInput, TOutput>(schema, { defaultValues })`・`AppForm`(必須の`onSubmitError`・任意の`serverFieldPrefix`)・`FormField`・`SubmitButton`・`errorMessageOf`・shadcn/uiの部品・`graphqlQueryOptions`・`graphqlMutationOptions`・`DateTime`・`PublicRuntimeConfig`、Zodの値の読み込み元(`utilities/validation/zod.ts`の`z`)、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)。
-- 上流の`*_PLATFORM_TYPES`の部品(`ProductDirectory`・`MatchDirectory`・`SupporterDirectory`・`UserProfileDirectory`・`MediaFiles`)は、契約と識別子を所有する各specの`apps/backend-lib/core/<ドメイン>`(product-launchは`core/product`、match-engineは`core/match`、user-profile-socialは`core/profile`、media-pipelineは`core/media`)から読み込み、`workers/<ドメイン>`を読み込まない。
-- 上流のファイルへの変更は、登録箇所への追記と、clientの環境の拡張(先例のある手順)に限る。上流のテーブルへは書き込まず、`users`は外部キーと`visibleUsers()`の条件の結合だけに使う。
+- frontend-platform: `buildPageHead`(clientの各ページはそれを包む`buildSitePageHead`(`apps/client/src/head/page-heads.ts`)を使う)・`ErrorState`・`EmptyState`・`LoadingSkeleton`・`notify`・`useAppForm<TInput, TOutput>(schema, { defaultValues })`・`AppForm`(必須の`onSubmitError`・任意の`serverFieldPrefix`)・`FormField`・`SubmitButton`・`errorMessageOf`・shadcn/uiの部品・`graphqlQueryOptions`・`graphqlMutationOptions`・`DateTime`(必須の`format`)・`PublicRuntimeConfig`(部品は`appRuntimeOf(router.options.context).publicConfig`で読む)、Zodの値の読み込み元(`utilities/validation/zod.ts`の`z`)、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`と生成物`src/graphql/generated/graphql.ts`)。
+- 上流の`*_PLATFORM_TYPES`の部品(`ProductDirectory`・`MatchDirectory`・`UserProfileDirectory`・`MediaFiles`)は、契約と識別子を所有する各specの`apps/backend-lib/core/<ドメイン>`(product-launchは`core/product`、match-engineは`core/match`、user-profile-socialは`core/profile`、media-pipelineは`core/media`)から読み込み、`workers/<ドメイン>`を読み込まない。
+- 上流のファイルへの変更は、登録箇所への追記と、clientの環境の拡張(先例のある手順)に限る。例外として、2026-11-19に開発者が決めた4件(カーソルの符号化と復号・配信できる画像の判定・外部URLの検証済みの値の共通の層への移動と、`SupporterListPage`へのUpvoteの日時の追加)だけは上流のファイルを変える。いずれも振る舞いを変えない移動か項目の追加で、上流の既存のテストを保つ。上流のテーブルへは書き込まず、`users`は外部キーと`visibleUsers()`の条件の結合だけに使う。
 - 依存の方向は「Dependency Direction」に従う。
 
 ### Revalidation Triggers
@@ -64,8 +64,10 @@
 - `ApiKeyExport`の形・並び(data-export)。データエクスポート仕様の`apiKeys`の項目が変わったら確かめ直す。
 - `ApiKeyExport`・`ApiKeyExportRecord`と`PUBLIC_API_PLATFORM_TYPES`の置き場所(`core/public-api`)。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(data-exportのeventのapplication層が読み込むため)。上流の部品の契約の置き場所(各specの`core/<ドメイン>`)が変わったら、application層の読み込みを確かめ直す。
 - 公開RESTの経路・応答の項目・エラーコード・回数の上限(外部の利用者、launch-readiness)。項目の削除・名前の変更は`/v2`を要する破壊的変更として扱う。
-- 上流のビューの形(`DirectoryPageView`・`ProductPageView`・`MyProfileView`・`PublicProfileView`・`MyProductView`・`CommentReader`・`UpvoteHistoryReader`・`SupporterRecord`・`ProductRatingView`)の変更。写像の単体テストが壊れる。
-- `AccountGuard`が`AuthenticatedPrincipal.sessionId`でセッションのレコードを照合する実装に変わること(本specはAPIキーのIDを入れた疑似のセッションIDを渡す)。
+- 上流のビューの形(`DirectoryPageView`・`ProductPageView`・`MyProfileView`・`PublicProfileView`・`MyProductView`・`CommentReader`・`UpvoteHistoryReader`・`SupporterListPage`・`ProductRatingView`)の変更。写像の単体テストが壊れる。
+- 共通の層へ移した判定(`opaque-cursor.ts`の符号化と復号、`isServableImageFile`、`verifiedExternalUrl`)の変更。画面と公開APIの両方の応答が変わるため、公開APIの応答の互換を確かめ直す。
+- マッチの種別・段階の値の追加(match-engine・tournament系のspec)。仕様書の列挙を更新する。
+- `AccountGuard`が`AuthenticatedPrincipal.sessionId`でセッションのレコードを照合する実装に変わること(本specはAPIキーのIDを入れた疑似のセッションIDを渡す。2026-11-19の時点の`StoreAccountGuard`は`sessionId`を読まない)。
 - api-gatewayの`createRestModule`の登録の順序(先頭の登録の`use`が仕様の経路とプリフライトの前に動くこと)、改訂1の`servers`・`info`(渡した`info`が既定を丸ごと置き換えること)の変更。
 - product-launchの仮12の`ProductDescriptionEditor`のエラーコードと文言、backend-platformの改訂1の`REDACTION_PATTERNS`と改訂3のSentryの伏せ字の範囲の変更。
 - infra-deliveryの改訂1の「ホスト名から導かれる変数の値」の表のapiの`IMAGES_ORIGIN`・clientの`PUBLIC_API_ORIGIN`の値の変更。
@@ -76,16 +78,24 @@
 本specが依頼した上流の変更は、次のとおり上流specの改訂として反映され、2026-10-24に開発者が確定した。本specはそれらを契約どおりに使い、上流のファイルを変えない。
 
 - api-gateway(改訂1、タスク承認済み): `createRestModule<E extends PlatformEnv>(routes: readonly PublicRestRoutes<E>[], options?: { readonly info?: { readonly title: string; readonly version: string; readonly description?: string } })`。`doc31`の設定に`servers: [{ url: PUBLIC_API_BASE_PATH }]`(`/v1`)が入る。既定の`info`は`Launch Stadium Public API`・`1.0.0`で、渡した`info`は項目ごとに合わせず既定を丸ごと置き換える。本specは`PUBLIC_API_DOCUMENT_INFO`(`title`・`version`・`description`の全て)を`api-worker.ts`の呼び出しで渡す。
-- backend-platform(改訂1): `REDACTION_PATTERNS`の先頭に`lsk_[A-Za-z0-9_-]{43}`(`g`フラグ、`[REDACTED]`へ置き換え)が入る。backend-platformの改訂3(開発者が決定)で、Sentryの除去は`REDACTION_PATTERNS`を例外のメッセージと型・イベントのメッセージ(`logentry`を含む)・パンくずのメッセージとデータ・要求のURL・トランザクションとスパンの名前・説明・データに適用し、全て`[REDACTED]`に置き換える(backend-platformの要件9.2)。本specはそれに頼らず、平文のキーを例外・`AppError`のメッセージ・ログの本文に入れない。
+- backend-platform(改訂1): `REDACTION_PATTERNS`に`lsk_[A-Za-z0-9_-]{43}`(`g`フラグ、`[REDACTED]`へ置き換え)が入る(実装では問い合わせの値の型に続く2番目)。backend-platformの改訂3(開発者が決定)で、Sentryの除去は`REDACTION_PATTERNS`を例外のメッセージと型・イベントのメッセージ(`logentry`を含む)・パンくずのメッセージとデータ・要求のURL・トランザクションとスパンの名前・説明・データに適用し、全て`[REDACTED]`に置き換える(backend-platformの要件9.2)。本specはそれに頼らず、平文のキーを例外・`AppError`のメッセージ・ログの本文に入れない。
 - product-launch(仮12、タスク承認済み): `ProductStore.updateDescription`は`'saved' | 'not-found' | 'account-unavailable' | 'hidden'`を返し、`ProductDescriptionEditor.update`は`AppError({ kind: 'conflict', code: 'product_hidden', message: 'このプロダクトは公開が停止されているため、説明文を更新できません。' })`・`product_not_found`・`account_unavailable`を投げる。`OwnProductDescriptionService.update`はこれらを変えずにそのまま返し、自分の事前の判定の`product_hidden`にも同じ文言を使う。
-- infra-delivery(改訂1): 「ホスト名から導かれる変数の値」の表に、apiの`IMAGES_ORIGIN`とclientの`PUBLIC_API_ORIGIN`の行(3環境の値)が入る。本specはその値をapi・clientのWrangler設定に書き(tasks.mdの1.4・1.5)、表を編集しない。
+- infra-delivery(改訂1): 「ホスト名から導かれる変数の値」の表(infra-deliveryのdesign.md)に、apiの`IMAGES_ORIGIN`とclientの`PUBLIC_API_ORIGIN`の行(3環境の値)が入る。本specはその値をapi・clientのWrangler設定に書き(tasks.mdの1.4・1.5)、表を編集しない。
+- api-gateway(改訂1で採用されなかった依頼): 公開APIのCORSに`Access-Control-Expose-Headers`を付ける依頼は、2026-10-24に開発者が採用しないと決め、2026-11-19に確かめ直して維持した。他のオリジンのブラウザのスクリプトは`Retry-After`・`WWW-Authenticate`・`X-RateLimit-*`を読めず、状態コードで判断する。サーバー間の利用は影響を受けない。
+
+本specの実装の前のギャップ分析(2026-11-19、research.md)を受けて、開発者が次の上流のファイルの変更を本specのタスク(tasks.mdの1.6)で行うと決めた。いずれも既存の振る舞いを変えない移動か、項目の追加である。
+
+- api-gateway: 汎用のカーソルの符号化と復号`encodeCursor`・`decodeCursor`を、apiの`presentation/graphql/pagination.ts`から`apps/backend-lib/core/pagination/opaque-cursor.ts`へ移す。形式(位置のJSONのbase64url、パディング無し、再符号化して同じ表記のものだけを受け付ける)と、復号の失敗の`invalidCursorError()`(`invalid_cursor`)は変えない。GraphQLの読み込み元(`directory/inputs.ts`・`directory/supporter-resolvers.ts`・`profile/follow-inputs.ts`・`profile/follow-resolvers.ts`)を書き換え、`pagination.ts`は残りのページングの補助だけを持つ。`docs/GUIDES/tech/backend/004-graphql-server.md`の部品の表とカーソルの節を直す。
+- media-pipeline: GraphQLの`toMediaImage`(`presentation/graphql/modules/media/mappers.ts`)の非公開の判定`isDeliverable`(保存済み・削除待ちでない・隔離中でない)を、`apps/backend-lib/core/media/media-file.ts`の`isServableImageFile(file: MediaFileView): boolean`として公開し、`toMediaImage`と公開APIの`toApiImage`の両方が使う。`common-lib/media`の`isDeliverable`(バリアントと形式の組み合わせ)とは別の判定のため、名前を分ける。
+- directory-discovery: GraphQLの`verifiedWebsiteUrl`(`presentation/graphql/modules/directory/mappers.ts`、検証に通らないURLを空文字列にする)と、sponsorshipの`sponsorship-views.ts`にある同じ判定の関数(通らないURLを`null`にする)を、`common-lib/url/external-url.ts`の`verifiedExternalUrl(value: string): string | null`(`checkExternalUrl`が`ok`なら値、それ以外は`null`)にまとめ、GraphQLの2か所と公開APIのプロダクトの写像が使う(水平展開)。directory-discoveryのGraphQLと公開APIは`?? ''`で空文字列にし、sponsorshipは`null`のまま返すため、どちらの応答も変わらない。
+- directory-discovery: `SupporterListPage`(`application/directory/supporter-list-reader.ts`)に、Upvoteの日時を持つ行`supporters: readonly { readonly userId: string; readonly upvotedAt: Date }[]`(`userIds`と同じ順)を加える。既存の`userIds`・`endCursor`・`hasNextPage`とGraphQLの応答は変えない。
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- `apps/api`・`apps/client`などは上流specの実装前で、本specのタスクは上流(特にapi-gateway・identity-auth・directory-discovery・engagement)の実装の完了を前提にする。
-- api-gatewayの公開REST: `createRestModule`が`PUBLIC_REST_ROUTES`の各関数に`OpenAPIHono`の子のアプリを渡し、`ApiKeyAuth`(Bearer)を登録し、`doc31`で`/openapi.json`、`OPTIONS /*`(204)を加えて`/v1`へマウントする。検証の失敗は`defaultHook`が`AppError(bad_request, validation_error)`にし、backend-platformの`onError`が400にする。外部経路の後処理がCORS(`*`・経路表のメソッド・`Authorization`、更新系は`Content-Type`)とセキュリティヘッダーを付ける。
+- 2026-11-19の時点で、本specが依存する上流spec(api-gateway・backend-platform・identity-auth・directory-discovery・product-launch・match-engine・engagement・user-profile-social・media-pipeline・tournament-week・tournament-year)は実装済みで、本specの部品は1つも無い。設計の前提と実装の食い違いはresearch.mdの「実装前のギャップ分析」で洗い出し、本書に反映した。
+- api-gatewayの公開REST: `createRestModule`が登録箇所`REST_ROUTES`(`apps/api/src/composition/rest-routes.ts`、2026-11-19の時点で空)の各関数に`OpenAPIHono`の子のアプリを渡し、`ApiKeyAuth`(Bearer)を登録し、`doc31`で`/openapi.json`、`OPTIONS /*`(204)を加えて`/v1`へマウントする。検証の失敗は`defaultHook`が`AppError(bad_request, validation_error)`にし、backend-platformの`onError`が400にする。外部経路の後処理がCORS(`*`・経路表のメソッド・`Authorization`、更新系は`Content-Type`)とセキュリティヘッダーを付ける。
 - apiのWorkerは全要求にWorker単位のIP制限(10秒500回)を掛ける。公開APIのIP単位の制限(1分60回)はその内側に本specが掛ける。
 - 層の配置とテストの分担(`domain`・`application`はBunの単体テスト、`infrastructure`・`presentation`・`composition`はWorkers統合テスト)、`@inject`の明示はbackend-platformに従う。
 
@@ -262,7 +272,7 @@ apps/
 e2e/
 ├── client/public-api.e2e.test.ts                     # 発行・読み取り・403・説明文の更新・削除で401
 ├── client/api-docs.e2e.test.ts                       # Swagger UIの表示とCSP違反なし・外部オリジンへの要求なし
-└── support/public-api.ts                             # 公開APIのオリジンの解決と要求の補助(テストではないファイル)
+└── support/public-api.ts                             # APIキーを付けた要求の補助(テストではないファイル)。オリジンは既存のlocal-worker-origins.tsのresolveLocalWorkerOrigin('api', env)で解決する
 docs/GUIDES/tech/
 ├── backend/020-api-key-authentication.md             # APIキーの発行・保存・Bearer認証・権限スコープ・キーの持ち主単位とIP単位の回数の制限
 └── frontend/019-self-hosted-api-reference.md         # Swagger UIの同一オリジンの配信とCSP
@@ -280,15 +290,17 @@ docs/GUIDES/tech/
 - `apps/api/src/composition/env-schema.ts`・`apps/api/wrangler.jsonc`・型の宣言 — `PUBLIC_API_RATE_LIMITER`(`ratelimits`、3環境の`namespace_id`)と`IMAGES_ORIGIN`(`vars`)を加える。
 - `apps/api/src/composition/api-worker.ts` — `createRestModule`へ`{ info: PUBLIC_API_DOCUMENT_INFO }`を渡す(api-gatewayの改訂1、tasks.mdの7.2)。
 - `apps/event/src/composition/modules.ts` — `PUBLIC_API_PLATFORM_MODULE`を追記する(data-exportが使う)。
-- `apps/frontend-lib/server/env/frontend-env.ts`・`apps/frontend-lib/server/http/security-policy.ts`と各単体テスト — clientの`PUBLIC_API_ORIGIN`(共有のスキーマで任意。値があれば許可先の形まで検証する)と`server/entry/app-profile.ts`の`FrontendAppProfile`の欄`publicApiDocs`を加え、`PublicRuntimeConfig.publicApiOrigin`(`string | undefined`。adminは`undefined`)へ渡し、欄が真で値があれば`runtimeSecurityPolicySources`の`connectSrc`に加える(frontend-platformの`WEB_ANALYTICS_TOKEN`・paymentsの`STRIPE_PUBLISHABLE_KEY`と同じ手順)。`frontend-env.unit.test.ts`の返り値とキーの一覧の完全一致の期待と、`PublicRuntimeConfig`を直に書いた各ファイル(client・adminの`test/page-router.tsx`・`.storybook/preview.tsx`・`test/start-request-fixtures.ts`・ブラウザテストなど)を直す。エントリ(`create-frontend-server-entry.ts`)の許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない(ClientEnvExtension)。
+- `apps/frontend-lib/server/env/frontend-env.ts`・`apps/frontend-lib/server/http/security-policy.ts`と各単体テスト — clientの`PUBLIC_API_ORIGIN`(共有のスキーマで任意。値があれば許可先の形まで検証する)と`server/entry/app-profile.ts`の`FrontendAppProfile`の欄`publicApiDocs`を加え、`toPublicRuntimeConfig`で`PublicRuntimeConfig.publicApiOrigin`(`string | undefined`。adminは`undefined`)へ渡す(公開設定への受け渡しは`WEB_ANALYTICS_TOKEN`・`STRIPE_PUBLISHABLE_KEY`と同じ手順)。CSPは`runtimeSecurityPolicySources(env)`の引数(`Pick`する環境のキー)に`PUBLIC_API_ORIGIN`を加え、値があるときだけ`connectSrc`に加える。プロファイルは受け取らず、呼び出し元(`create-frontend-server-entry.ts`)も変えない(2026-11-19の開発者の決定、ClientEnvExtension)。許可先の形の規則`ORIGIN_PATTERN`を`security-policy.ts`から公開し、環境の検証で使う。`frontend-env.unit.test.ts`の返り値とキーの一覧の完全一致の期待と、`PublicRuntimeConfig`を直に書いた全てのファイル(2026-11-19の時点で19ファイル。client・adminの`test/page-router.tsx`・`.storybook/preview.tsx`・`test/start-request-fixtures.ts`、frontend-libのブラウザテスト6件・`start/router-context.unit.test.ts`、clientの`routes/_authenticated/checkout/$purchaseId.tsx`・`test/checkout-route.browser.test.tsx`・`test/config/composition.unit.test.ts`、adminの`test/config/composition.unit.test.ts`・`src/components/audit/load-audit-logs-page.unit.test.ts`・`src/graphql/admin-inquiries.unit.test.ts`など。`stripePublishableKey`を検索して洗い出す)を直す。エントリの許可先の欄と環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)は変えない(ClientEnvExtension)。
 - `apps/client/wrangler.jsonc`・`apps/client/test/config/wrangler-config.unit.test.ts` — `PUBLIC_API_ORIGIN`の3環境の値。
-- `apps/api/test/config/wrangler-config.unit.test.ts` — `PUBLIC_API_RATE_LIMITER`の3環境の`namespace_id`・`limit`・`period`(`PUBLIC_API_IP_RATE_LIMIT`と一致)と`IMAGES_ORIGIN`の検査(1.4・4.3)。
+- `apps/admin/test/config/wrangler-config.unit.test.ts` — `PUBLIC_API_ORIGIN`がadminのWranglerに無いことの検査を加える(CSPの許可先が値の有無だけで決まるため)。313〜323行目の「`namespace_id`の数=環境の数×アプリの数(12)」の期待を、Rate Limitingの名前空間の総数(既存の12に`PUBLIC_API_RATE_LIMITER`の3環境を加えた15)と全ての値が重ならないことの検査に直す。
+- `apps/api/test/config/wrangler-config.unit.test.ts` — `PUBLIC_API_RATE_LIMITER`の3環境の`namespace_id`・`limit`・`period`(`PUBLIC_API_IP_RATE_LIMIT`と一致)と`IMAGES_ORIGIN`の検査(1.4・4.3)。272行目のapi・eventの`ratelimits`の名前を`['IP_RATE_LIMITER']`と完全一致で確かめる期待を、apiは`['IP_RATE_LIMITER', 'PUBLIC_API_RATE_LIMITER']`・eventは`['IP_RATE_LIMITER']`に直す。
+- 共通の層への移動(「上流への影響」、tasks.mdの1.6) — 新規の`apps/backend-lib/core/pagination/opaque-cursor.ts`(`encodeCursor`・`decodeCursor`、`*.unit.test.ts`)と、apiの`presentation/graphql/pagination.ts`・その読み込み元4ファイル。`apps/backend-lib/core/media/media-file.ts`(`isServableImageFile`)とapiの`presentation/graphql/modules/media/mappers.ts`。`apps/common-lib/url/external-url.ts`(`verifiedExternalUrl`)とapiの`presentation/graphql/modules/directory/mappers.ts`・`product-page-mappers.ts`・`sponsorship/sponsorship-views.ts`。directory-discoveryの`application/directory/supporter-list-reader.ts`(`SupporterListPage.supporters`)と単体テスト。`docs/GUIDES/tech/backend/004-graphql-server.md`の部品の表(22行目)とカーソルの節(337〜338行目)。
 - `apps/client/src/composition/settings-navigation.ts` — `{ to: '/settings/api-keys', label: 'APIキー', order: 90 }`を追記する。
 - `apps/client/package.json`・`bun.lock` — `swagger-ui-dist`(5.33.xを`--exact`で完全に固定)。導入先がclientだけのため、`docs/GUIDES/tech/coding/002-dependency-versions.md`の主要パッケージの一覧(アプリ間で版をそろえる対象)には加えない。
 - `docs/GUIDES/tech/backend/003-rate-limiting-and-bot-verification.md` — 同じWorkerで用途の異なる2つ目のRate Limitingの名前空間を使う規約と、キーの持ち主単位の厳密な制限との組み合わせを追記する。
 - `docs/GUIDES/tech/backend/005-public-rest-api.md` — 認証の中間処理を経路ごとに掛ける規約、公開データの読み取りで閲覧者を未ログインとして扱う規約、画像の絶対URLの返し方を追記する。
 - `docs/GUIDES/tech/backend/README.md`・`frontend/README.md` — 文書一覧へ追記する。
-- `docs/GUIDES/service/design/002-page-layouts.md` — 「APIキー(`/settings/api-keys`)」と「APIドキュメント(`/api-docs`)」の節を加える。
+- `docs/GUIDES/service/design/002-page-layouts.md` — 「APIキー(`/settings/api-keys`)」と「APIドキュメント(`/api-docs`)」の節を加える。ページの一覧の`/settings/api-keys`の行(691行目)の「引き継ぎ再発行」を、仮2に合わせて「再発行(元のキーを残す)」に直す。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 本機能のエラー・状態・確認の文言を加える。
 - `docs/onboardings/project-values.md` — `PUBLIC_API_RATE_LIMITER`の`namespace_id`、`PUBLIC_API_ORIGIN`(client)・`IMAGES_ORIGIN`(api)の値、APIキーの接頭辞`lsk_`を記載する。
 - `docs/onboardings/tech-stack.md` — `swagger-ui-dist`の記載はコントローラーが反映済みで、本specは変えない。
@@ -397,11 +409,11 @@ sequenceDiagram
 | 8.4, 8.5, 8.6                      | プロダクトの詳細と旧ハンドル       | ProductRoutes、ProductMappers                                                                              | `GET /v1/products/{handle}`・`ProductPageReader`                                   | 公開APIの要求 |
 | 8.7                                | カテゴリの一覧                     | ProductRoutes                                                                                              | `GET /v1/product-categories`                                                       | —             |
 | 8.8                                | 未ログインとして扱う               | SessionViews、ProductRoutes、UpvoteRoutes、EngagementRoutes、ProfileRoutes                                 | `viewer: undefined`・`ANONYMOUS_SESSION_VIEW`                                      | 公開APIの要求 |
-| 8.9                                | 隔離中の画像は空                   | CommonMappers                                                                                              | `toApiImage`                                                                       | —             |
+| 8.9                                | 隔離中の画像は空                   | CommonMappers                                                                                              | `toApiImage`・`isServableImageFile`                                                | —             |
 | 9.1, 9.2                           | ローンチ履歴とマッチ               | ProductRoutes、ProductMappers                                                                              | `GET /v1/products/{handle}/launches`                                               | —             |
-| 9.3, 9.6                           | サポーター                         | UpvoteRoutes、PublicSupporterReader、UpvoteMappers                                                         | `GET .../matches/{match_id}/supporters`                                            | —             |
+| 9.3, 9.6                           | サポーター                         | UpvoteRoutes、PublicSupporterReader、UpvoteMappers                                                         | `GET .../matches/{match_id}/supporters`・`SupporterListReader`                     | —             |
 | 9.4, 9.7                           | Upvote履歴                         | UpvoteRoutes、UpvoteMappers                                                                                | `GET /v1/users/{handle}/upvotes`・`UpvoteHistoryReader`                            | —             |
-| 9.5                                | 除外                               | PublicSupporterReader、UpvoteRoutes                                                                        | `SupporterDirectory`・`UpvoteHistoryReader`                                        | —             |
+| 9.5                                | 除外                               | PublicSupporterReader、UpvoteRoutes                                                                        | `SupporterListReader`・`UpvoteHistoryReader`                                       | —             |
 | 10.1, 10.2, 10.5                   | コメント                           | EngagementRoutes、EngagementMappers                                                                        | `GET .../launches/{launch_id}/comments`・`CommentReader`                           | —             |
 | 10.3, 10.4                         | 評価の集計                         | EngagementRoutes、EngagementMappers                                                                        | `GET .../rating-summary`・`RatingService.read`                                     | —             |
 | 11.1                               | 自分のプロフィール                 | ProfileRoutes、ProfileMappers                                                                              | `GET /v1/me/profile`                                                               | —             |
@@ -427,31 +439,31 @@ sequenceDiagram
 
 ## Components and Interfaces
 
-| Component                                                  | Domain/Layer                                            | Intent                                             | Req Coverage                                            | Key Dependencies (P0/P1)                                                                     | Contracts      |
-| ---------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------- |
-| ApiKeyRules                                                | common-lib                                              | 名前と権限スコープの規則・表示名                   | 1.3, 1.4, 2.1, 6.3, 6.4                                 | —                                                                                            | Service        |
-| ApiKeysSchema                                              | db                                                      | `api_keys`                                         | 1.2, 1.5, 2.1, 5.5                                      | identity-authの`users` (P0)                                                                  | State          |
-| ApiKeyExport・PublicApiPlatformModule                      | backend-lib/core(契約・識別子)・workers(D1の実装と束縛) | データエクスポートの照会                           | 16.1, 1.9                                               | D1 (P0)                                                                                      | Service        |
-| ApiKeyToken・ApiKeyScopes                                  | api/domain                                              | 平文の形式とBearerの解析、権限の判定               | 2.2, 2.3, 7.2, 7.3                                      | ApiKeyRules (P0)                                                                             | Service        |
-| RateLimitRules・SessionViews                               | api/application                                         | 回数の規則、未ログインとキーの持ち主のセッション   | 4.1, 5.2, 8.8, 13.1                                     | backend-platform (P0)、identity-auth (P0)                                                    | Service        |
-| ApiKeyManagement                                           | api/application                                         | キーの一覧・発行・編集・再発行・削除               | 1.1〜1.4, 3.1〜3.6, 4.1〜4.4                            | ApiKeyStore (P0)、PublicApiRateLimits (P0)                                                   | Service        |
-| ApiKeyAuthorizer                                           | api/application                                         | 照合・状態・権限・利用者単位の回数                 | 2.2〜2.4, 5.2, 5.3, 7.3〜7.5, 13.1〜13.3, 13.6, 13.8    | ApiKeyStore (P0)、AccountGuard (P0)、PublicApiRateLimits (P0)                                | Service        |
-| PublicSupporterReader                                      | api/application                                         | サポーターの一覧                                   | 9.3, 9.5, 9.6                                           | `core/product`のProductDirectory (P0)、`core/match`のMatchDirectory・SupporterDirectory (P0) | Service        |
-| PublicProfileUpdater                                       | api/application                                         | 部分更新の合成                                     | 11.2, 11.3, 11.4, 11.7                                  | MyProfileReader (P0)、ProfileEditor (P0)                                                     | Service        |
-| OwnProductDescriptionService                               | api/application                                         | 自分のプロダクトの一覧と説明文の更新               | 12.1〜12.6                                              | MyProductsReader (P0)、ProductDescriptionEditor (P0)                                         | Service        |
-| D1ApiKeyStore・CryptoApiKeySecretGenerator                 | api/infrastructure                                      | 読み書きと乱数・ハッシュ                           | 1.1, 1.2, 1.5, 1.8, 3.1〜3.5, 5.5, 7.4                  | D1 (P0)、KeyedHasher (P0)                                                                    | Service, State |
-| CounterPublicApiRateLimits                                 | api/infrastructure                                      | 発行と利用者単位の回数の制限の実装                 | 4.1〜4.3, 13.1〜13.3, 13.8                              | RateLimitCounterClient (P0)、KeyedHasher (P0)                                                | Service        |
-| ApiKeyErasureSyncHandler                                   | api/infrastructure                                      | 退会の同期の波及処理                               | 5.1, 5.4, 16.4                                          | identity-auth (P0)                                                                           | Event          |
-| PublicApiSchemaModule                                      | api/presentation                                        | キーの管理のGraphQL                                | 1.1, 1.6, 1.7, 3.1〜3.8                                 | ApiKeyManagement (P0)、AccountGuard (P0)                                                     | API            |
-| PublicApiRouteDefinition・ApiKeyAuth                       | api/presentation/rest                                   | 経路の宣言と認証の中間処理                         | 2.2, 2.5, 5.2, 7.1〜7.3, 13.5, 13.7, 14.4, 16.2         | ApiKeyAuthorizer (P0)、api-gateway (P0)                                                      | API            |
-| PublicApiIpRateLimit                                       | api/presentation/rest                                   | IP単位の回数の制限                                 | 13.4, 13.5                                              | `bindingRateLimit` (P0)                                                                      | API            |
-| PublicApiRoutes(5ファイル)・RestSchemas                    | api/presentation/rest                                   | 公開する経路と応答の形                             | 8.\*, 9.\*, 10.\*, 11.\*, 12.\*, 14.1〜14.3, 14.5, 14.6 | 上流のユースケース (P0)                                                                      | API            |
-| RestMappers・CommonMappers・MediaLookup・ProductResolution | api/presentation/rest                                   | ビューから応答への写像・一括の照会・ハンドルの解決 | 8.2, 8.5, 8.6, 8.9, 14.1, 14.3, 14.6, 16.3              | MediaFiles (P1)、UserProfileDirectory (P1)                                                   | Service        |
-| PublicApiModule・PublicApiDocumentInfo                     | api/composition                                         | 束縛と仕様書の説明                                 | 14.4                                                    | api-gatewayの改訂1 (P0)                                                                      | State          |
-| ClientEnvExtension                                         | frontend-lib                                            | `PUBLIC_API_ORIGIN`と`connect-src`                 | 15.2, 15.7                                              | frontend-platform (P0)                                                                       | State          |
-| ApiKey画面の部品                                           | client                                                  | 管理画面                                           | 6.1〜6.11                                               | PublicApiSchemaModule (P0)、identity-authの設定ページ (P0)                                   | State          |
-| ApiDocsPage・SwaggerUiViewer・OpenApiDocument              | client                                                  | Swagger UIのページ                                 | 15.1〜15.7                                              | `swagger-ui-dist` (P0)                                                                       | State          |
-| PublicApiDocs                                              | docs                                                    | 技術ドキュメントとサービス仕様                     | 17.4, 17.5                                              | —                                                                                            | —              |
+| Component                                                  | Domain/Layer                                            | Intent                                             | Req Coverage                                            | Key Dependencies (P0/P1)                                                                           | Contracts      |
+| ---------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------- |
+| ApiKeyRules                                                | common-lib                                              | 名前と権限スコープの規則・表示名                   | 1.3, 1.4, 2.1, 6.3, 6.4                                 | —                                                                                                  | Service        |
+| ApiKeysSchema                                              | db                                                      | `api_keys`                                         | 1.2, 1.5, 2.1, 5.5                                      | identity-authの`users` (P0)                                                                        | State          |
+| ApiKeyExport・PublicApiPlatformModule                      | backend-lib/core(契約・識別子)・workers(D1の実装と束縛) | データエクスポートの照会                           | 16.1, 1.9                                               | D1 (P0)                                                                                            | Service        |
+| ApiKeyToken・ApiKeyScopes                                  | api/domain                                              | 平文の形式とBearerの解析、権限の判定               | 2.2, 2.3, 7.2, 7.3                                      | ApiKeyRules (P0)                                                                                   | Service        |
+| RateLimitRules・SessionViews                               | api/application                                         | 回数の規則、未ログインとキーの持ち主のセッション   | 4.1, 5.2, 8.8, 13.1                                     | backend-platform (P0)、identity-auth (P0)                                                          | Service        |
+| ApiKeyManagement                                           | api/application                                         | キーの一覧・発行・編集・再発行・削除               | 1.1〜1.4, 3.1〜3.6, 4.1〜4.4                            | ApiKeyStore (P0)、PublicApiRateLimits (P0)                                                         | Service        |
+| ApiKeyAuthorizer                                           | api/application                                         | 照合・状態・権限・利用者単位の回数                 | 2.2〜2.4, 5.2, 5.3, 7.3〜7.5, 13.1〜13.3, 13.6, 13.8    | ApiKeyStore (P0)、AccountGuard (P0)、PublicApiRateLimits (P0)                                      | Service        |
+| PublicSupporterReader                                      | api/application                                         | サポーターの一覧                                   | 9.3, 9.5, 9.6                                           | `core/product`のProductDirectory (P0)、`core/match`のMatchDirectory (P0)、SupporterListReader (P0) | Service        |
+| PublicProfileUpdater                                       | api/application                                         | 部分更新の合成                                     | 11.2, 11.3, 11.4, 11.7                                  | MyProfileReader (P0)、ProfileEditor (P0)                                                           | Service        |
+| OwnProductDescriptionService                               | api/application                                         | 自分のプロダクトの一覧と説明文の更新               | 12.1〜12.6                                              | MyProductsReader (P0)、ProductDescriptionEditor (P0)                                               | Service        |
+| D1ApiKeyStore・CryptoApiKeySecretGenerator                 | api/infrastructure                                      | 読み書きと乱数・ハッシュ                           | 1.1, 1.2, 1.5, 1.8, 3.1〜3.5, 5.5, 7.4                  | D1 (P0)、KeyedHasher (P0)                                                                          | Service, State |
+| CounterPublicApiRateLimits                                 | api/infrastructure                                      | 発行と利用者単位の回数の制限の実装                 | 4.1〜4.3, 13.1〜13.3, 13.8                              | RateLimitCounterClient (P0)、KeyedHasher (P0)                                                      | Service        |
+| ApiKeyErasureSyncHandler                                   | api/infrastructure                                      | 退会の同期の波及処理                               | 5.1, 5.4, 16.4                                          | identity-auth (P0)                                                                                 | Event          |
+| PublicApiSchemaModule                                      | api/presentation                                        | キーの管理のGraphQL                                | 1.1, 1.6, 1.7, 3.1〜3.8                                 | ApiKeyManagement (P0)、AccountGuard (P0)                                                           | API            |
+| PublicApiRouteDefinition・ApiKeyAuth                       | api/presentation/rest                                   | 経路の宣言と認証の中間処理                         | 2.2, 2.5, 5.2, 7.1〜7.3, 13.5, 13.7, 14.4, 16.2         | ApiKeyAuthorizer (P0)、api-gateway (P0)                                                            | API            |
+| PublicApiIpRateLimit                                       | api/presentation/rest                                   | IP単位の回数の制限                                 | 13.4, 13.5                                              | `bindingRateLimit` (P0)                                                                            | API            |
+| PublicApiRoutes(5ファイル)・RestSchemas                    | api/presentation/rest                                   | 公開する経路と応答の形                             | 8.\*, 9.\*, 10.\*, 11.\*, 12.\*, 14.1〜14.3, 14.5, 14.6 | 上流のユースケース (P0)                                                                            | API            |
+| RestMappers・CommonMappers・MediaLookup・ProductResolution | api/presentation/rest                                   | ビューから応答への写像・一括の照会・ハンドルの解決 | 8.2, 8.5, 8.6, 8.9, 14.1, 14.3, 14.6, 16.3              | MediaFiles (P1)、UserProfileDirectory (P1)、`isServableImageFile`・`verifiedExternalUrl` (P0)      | Service        |
+| PublicApiModule・PublicApiDocumentInfo                     | api/composition                                         | 束縛と仕様書の説明                                 | 14.4                                                    | api-gatewayの改訂1 (P0)                                                                            | State          |
+| ClientEnvExtension                                         | frontend-lib                                            | `PUBLIC_API_ORIGIN`と`connect-src`                 | 15.2, 15.7                                              | frontend-platform (P0)                                                                             | State          |
+| ApiKey画面の部品                                           | client                                                  | 管理画面                                           | 6.1〜6.11                                               | PublicApiSchemaModule (P0)、identity-authの設定ページ (P0)                                         | State          |
+| ApiDocsPage・SwaggerUiViewer・OpenApiDocument              | client                                                  | Swagger UIのページ                                 | 15.1〜15.7                                              | `swagger-ui-dist` (P0)                                                                             | State          |
+| PublicApiDocs                                              | docs                                                    | 技術ドキュメントとサービス仕様                     | 17.4, 17.5                                              | —                                                                                                  | —              |
 
 ### common-lib・db
 
@@ -543,7 +555,7 @@ export declare class D1ApiKeyExport implements ApiKeyExport {
   constructor(db: Database); // @inject(PLATFORM_TYPES.Database)
 }
 // workers/public-api/public-api-platform-module.ts
-export declare const PUBLIC_API_PLATFORM_MODULE: AppModule; // ApiKeyExportを処理単位で束縛
+export declare const PUBLIC_API_PLATFORM_MODULE: Omit<AppModule, 'routes'>; // ApiKeyExportを処理単位で束縛(name: 'public-api-platform')
 ```
 
 - 置き場所: data-exportのeventのapplication層(`AccountSourceReader`)が受け取るため、契約(`ApiKeyExport`・`ApiKeyExportRecord`)は`apps/backend-lib/core/public-api/ports.ts`、識別子は`core/public-api/identifiers.ts`に置き、D1の実装と束縛だけを`apps/backend-lib/workers/public-api`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。`core/public-api`は`common-lib/public-api`の`ApiKeyScopes`だけを読み込み、`workers`・`apps/db`を読み込まない。識別子は`core/public-api/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。apiの`PUBLIC_API_TYPES`とは別の識別子にし、同じ`public-api.`の接頭辞を使うため、メンバーの名前を重ねない。
@@ -636,8 +648,8 @@ export declare class CounterPublicApiRateLimits implements PublicApiRateLimits {
 }
 ```
 
-- 置き場所: ポート`PublicApiRateLimits`はapplication層、実装`CounterPublicApiRateLimits`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`・`CounterDecision`の型と`assertWithinLimit`が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。`PUBLIC_API_TYPES.PublicApiRateLimits`を`CounterPublicApiRateLimits`へ束縛し、`ApiKeyManagement`・`ApiKeyAuthorizer`はポートだけを受け取る。規則の定数(`rate-limit-rules.ts`)はapplication層に置いたまま、実装が読み込む。
-- `consumeRequest`: `hashRateLimitKey(hasher, userId)`のキーで`ruleForAccess(access)`の`hit`を行い、許可なら`CounterDecision`から`limit`・`remaining`・`resetAt`を返し、拒否なら同じ値を添えた`PublicApiRateLimitError`(`AppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)`の派生)を投げる。`consumeIssue`は`API_KEY_ISSUE_RULE`の`hit`と`assertWithinLimit`。
+- 置き場所: ポート`PublicApiRateLimits`はapplication層、実装`CounterPublicApiRateLimits`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`(メソッドの`assertWithinLimit`を含む)が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。`CounterRule`・`CounterDecision`・`hashRateLimitKey`は`core/rate-limit`にあり、application層の規則の定数も`CounterRule`の型を読み込める。先例の`Counter*Limits`(identity-auth・payments・inquiry・ultras)は規則の定数を実装のファイルに置くが、本specは仕様書の説明(7.2)と照合するためapplication層に置く。`PUBLIC_API_TYPES.PublicApiRateLimits`を`CounterPublicApiRateLimits`へ束縛し、`ApiKeyManagement`・`ApiKeyAuthorizer`はポートだけを受け取る。規則の定数(`rate-limit-rules.ts`)はapplication層に置いたまま、実装が読み込む。
+- `consumeRequest`: `hashRateLimitKey(hasher, userId)`のキーで`ruleForAccess(access)`の`hit`を行い、許可なら`limit`(規則の`limit`。`CounterDecision`は上限を持たない)・`remaining`・`resetAt`(`CounterDecision.resetAt`のエポックミリ秒)を返し、拒否なら同じ値を添えた`PublicApiRateLimitError`(`AppError(rate_limited, rate_limit_exceeded, retryAfterSeconds)`の派生。秒数は`assertWithinLimit`と同じ`ceil((resetAt - now) / 1000)`)を投げる。`consumeIssue`は`API_KEY_ISSUE_RULE`の`hit`と`counter.assertWithinLimit(decision, now.getTime())`。
 - ユースケースの単体テストは偽のポートで、実装の数え方は偽の厳密カウンタのWorkers統合テストで確かめる。
 
 #### ApiKeyManagement
@@ -729,7 +741,7 @@ export interface ApiKeyAuthorizer {
 }
 ```
 
-- 手順: (1)`isWellFormedApiKey`が偽なら`AppError(unauthenticated, invalid_api_key)`。(2)`KeyedHasher.hash(hashPurpose('public-api-key'), token)`→`ApiKeyStore.findByHash`。無ければ`invalid_api_key`(7.3・7.4)。(3)`target`が`own`なら`AccountGuard.requireWritableUser(apiKeySessionView(...))`、`public`なら`AccountGuard.requireUser(...)`。停止中は`own`でだけ`account_unavailable`(403)のまま投げ、`public`では処理を続ける(5.2・仮1)。利用者が見つからない`unauthenticated`は`invalid_api_key`へ変換する。(4)`allowsAccess`が偽なら`AppError(forbidden, insufficient_scope)`(2.3)。(5)`PublicApiRateLimits.consumeRequest(userId, access, now)`。戻り値を`rateLimit`にし、拒否は実装が投げる`rateLimit`の値を添えた`PublicApiRateLimitError`をそのまま返す(13.1)。
+- 手順: (1)`isWellFormedApiKey`が偽なら`AppError(unauthenticated, invalid_api_key)`。(2)`KeyedHasher.hash(hashPurpose('public-api-key'), token)`→`ApiKeyStore.findByHash`。無ければ`invalid_api_key`(7.3・7.4)。(3)`AccountGuard`(`IDENTITY_PLATFORM_TYPES.AccountGuard`で受け取る)で、`target`が`own`なら`requireWritableUser(apiKeySessionView(...))`、`public`なら`requireUser(...)`。停止中は`own`でだけ`account_unavailable`(403)のまま投げ、`public`では処理を続ける(5.2・仮1)。利用者が見つからない`unauthenticated`は`invalid_api_key`へ変換する。(4)`allowsAccess`が偽なら`AppError(forbidden, insufficient_scope)`(2.3)。(5)`PublicApiRateLimits.consumeRequest(userId, access, now)`。戻り値を`rateLimit`にし、拒否は実装が投げる`rateLimit`の値を添えた`PublicApiRateLimitError`をそのまま返す(13.1)。
 - (1)〜(4)の失敗は(5)より前で返るため、回数を消費しない(13.6)。毎回キーの行を読むため、権限の編集と削除は次の要求から効く(2.4・7.5)。停止の解除の後は`own`の経路でも(3)が通る(5.3)。停止中の持ち主の公開データの読み取りでは、閲覧者を未ログインとして上流を呼ぶため、停止中の持ち主自身のデータは結果に含まれない(FR-PAPI-009)。
 - 失敗の`AppError`には、ApiKeyAuthがヘッダーに使う`rateLimit`(429のときだけ)を`PublicApiRateLimitError`(`AppError`の派生)として持たせる。
 
@@ -742,17 +754,21 @@ export interface PublicSupporterReader {
   list(input: {
     readonly productHandle: string;
     readonly matchId: string;
-    readonly after: string | undefined;
+    readonly after: SupporterListPosition | undefined; // directory-discoveryの位置の型。カーソルの文字列の復号は表現層で行う
     readonly now: Date;
   }): Promise<
     | {
         readonly kind: 'page';
-        readonly supporters: readonly SupporterRecord[];
+        readonly supporters: readonly {
+          readonly userId: string;
+          readonly upvotedAt: Date;
+        }[];
         readonly hasNextPage: boolean;
-        readonly endCursor: string | null;
+        readonly endCursor: SupporterListPosition | null;
       }
     | { readonly kind: 'redirect'; readonly handle: string }
-    | { readonly kind: 'not-found' }
+    | { readonly kind: 'product-not-found' }
+    | { readonly kind: 'match-not-found' }
   >;
 }
 export interface PublicProfilePatch {
@@ -773,7 +789,7 @@ export interface OwnProductDescriptionService {
     readonly nodes: readonly MyProductView[];
     readonly hasNextPage: boolean;
     readonly endCursor: string | null;
-  }>; // 20件(12.1)
+  }>; // MyProductsReader.list(user, { first: 20, after })。不正なカーソルは上流のinvalid_cursorのまま(12.1)
   update(
     user: CurrentUser,
     input: {
@@ -784,10 +800,12 @@ export interface OwnProductDescriptionService {
 }
 ```
 
-- 依存: 3つのユースケースは上流の部品を各specの`core/<ドメイン>`の型と識別子(`ProductDirectory`は`core/product`の`PRODUCT_PLATFORM_TYPES`、`MatchDirectory`・`SupporterDirectory`は`core/match`の`MATCH_PLATFORM_TYPES`)で受け取り、`**/lib/workers/**`を読み込まない。
-- `PublicSupporterReader.list`: (1)`checkHandleFormat(PRODUCT_HANDLE_RULE)`の違反は`not-found`。(2)`ProductDirectory.resolveHandle`→`decideProductPageAccess({ resolution, viewerUserId: undefined })`(`redirect`・`not-found`はそのまま)。(3)`MatchDirectory.findMatches([matchId], now)`で、そのプロダクトの側があり、`phase`が`finished`であることを確かめ、違えば`not-found`(9.6)。(4)`SupporterDirectory.listSupporters({ entryId, after: decodeCursor(after), limit: 20 })`(上限が20のため1件多く読めない)。20件なら`hasNextPage`を真にし、最後の行から`endCursor`を作る(続きが0件のときは次の要求が空の`data`と`has_next: false`を返す)。カーソルはdirectory-discoveryの`SupporterListReader`と同じ`encodeCursor({ upvotedAt, upvoteId })`とし、復号できない値は`AppError(bad_request, validation_error)`(`cursor`)にする(9.3・9.5)。
-- `PublicProfileUpdater.update`: (1)`MyProfileReader.read(user)`。(2)指定の項目だけを上書きし、`expectedHandle`と`avatarFileId`は現在の値にする(11.2・11.3)。(3)`ProfileEditor.update`。上流の`AppError`(`handle_unavailable`・`profile_update_conflict`・`account_unavailable`など)はそのまま返す(11.4・11.7)。
-- `OwnProductDescriptionService.update`: (1)`MyProductsReader.find(user, handle)`。`not-found`は`AppError(not_found, product_not_found)`(12.4)。`redirect`は現在のハンドルで読み直す(本人のプロダクトのため公開の問題が無い)。(2)`hidden`なら`AppError({ kind: 'conflict', code: 'product_hidden', message: 'このプロダクトは公開が停止されているため、説明文を更新できません。' })`(product-launchの仮12と同じ文言、12.5)。(3)`ProductDescriptionEditor.update(user, { productHandle: 現在のハンドル, descriptionMarkdown })`(保存の登録口が動く、12.3)。判定と書き込みの間の非公開化・削除・停止は、エディターが投げる`product_hidden`・`product_not_found`・`account_unavailable`を変えずにそのまま返す。(4)`find`で読み直して返す(12.2)。
+- 依存: 3つのユースケースは上流の部品を各specの`core/<ドメイン>`の型と識別子(`ProductDirectory`は`core/product`の`PRODUCT_PLATFORM_TYPES`、`MatchDirectory`は`core/match`の`MATCH_PLATFORM_TYPES`)と、apiのapplication層の`DIRECTORY_TYPES.SupporterListReader`・`PROFILE_TYPES`・`PRODUCT_TYPES`で受け取り、`**/lib/workers/**`を読み込まない。
+- `PublicSupporterReader.list`(2026-11-19の開発者の決定で、判定と続きの有無はdirectory-discoveryの`SupporterListReader`に任せる): (1)`resolveProductPage(products, productHandle, undefined)`(ハンドルの形式・`resolveHandle`・`decideProductPageAccess`)。`redirect`はそのまま、`not-found`は`product-not-found`。(2)`MatchDirectory.findMatches([matchId], now)`で、`productId`がそのプロダクトの側の`entryId`を求める。マッチが無い・そのプロダクトの側が無い・`phase`が`finished`でなければ`match-not-found`(9.6)。(3)`SupporterListReader.list({ productHandle: 現在のハンドル, matchId, entryId, viewer: undefined, first: 20, after, now })`。`null`(判定と読み取りの間の非公開化など)は`match-not-found`、ページは`supporters`(Upvoteの日時の行、本specが加える)・`hasNextPage`(1件の追加の読み取り)・`endCursor`をそのまま返す(9.3・9.5)。
+- サポーターのカーソルは、表現層が`opaque-cursor.ts`の`encodeCursor(position)`で`SupporterListPosition`(`{ upvotedAt: エポックミリ秒, upvoteId }`)を符号化し、`decodeCursor(<位置のZodのスキーマ>, cursor)`で復号する。復号できない値は`invalid_cursor`(400)のまま返す(2026-11-19の開発者の決定、14.2)。GraphQLの`supporterList`と同じ形式のため、画面と公開APIのカーソルは互いに読める。
+- `PublicProfileUpdater.update`: (1)`MyProfileReader.read(user)`。(2)指定の項目だけを上書きし、`expectedHandle`と`avatarFileId`は現在の値にする(11.2・11.3)。`ProfileUpdateInput`は全項目が必須(`websites`の各要素は`{ name: string | null; url }`)のため、未指定の項目は`MyProfileView`の値で埋める。(3)`ProfileEditor.update`。上流の`AppError`(`handle_unavailable`・`profile_update_conflict`・`account_unavailable`・`invalid_upload`など)はそのまま返す(11.4・11.7)。bot判定はGraphQLのリゾルバ側にあり`ProfileEditor`は求めないため、公開APIはbot判定なしで呼べる(11.7)。
+- `OwnProductDescriptionService.update`: (1)`MyProductsReader.find(user, handle)`。`not-found`は`AppError(not_found, product_not_found)`(12.4)。`redirect`は現在のハンドルで読み直す(本人のプロダクトのため公開の問題が無い)。(2)`hidden`なら`AppError({ kind: 'conflict', code: 'product_hidden', message: 'このプロダクトは公開が停止されているため、説明文を更新できません。' })`(product-launchの仮12と同じ文言、12.5)。(3)`ProductDescriptionEditor.update(user, { productHandle: 現在のハンドル, descriptionMarkdown })`(保存の登録口が動く、12.3)。判定と書き込みの間の非公開化・削除・停止は、エディターが投げる`product_hidden`・`product_not_found`・`account_unavailable`を変えずにそのまま返す。エディターは現在のハンドルだけで引くため、(1)の旧ハンドルの読み直しの後の現在のハンドルを渡す。(4)`find`で読み直して返す(12.2)。
+- `OwnProductDescriptionService.list`: `MyProductsReader.list(user, { first: 20, after })`(`first`は必須で1〜20)。並びは上流の「取り消しを含む最新のローンチ日の降順、同じならIDの降順」のままで、`MyProductView`は最新のローンチ日の項目を持たないため応答にも載せない(12.1)。
 
 ### api/infrastructure
 
@@ -843,7 +861,7 @@ export interface ApiKeySecretGenerator {
 
 - `insert`: `INSERT INTO api_keys (...) VALUES (?, CASE WHEN EXISTS (SELECT 1 FROM users WHERE users.id = ? AND <visibleUsers()>) THEN ? ELSE NULL END, ...)`。NOT NULL制約の違反を`account-unavailable`に変換する(1.8・5.5)。
 - `update`: `UPDATE ... WHERE id = ? AND user_id = ?`の変更件数が0なら`not-found`。
-- 一覧のカーソルは`encodeCursor({ c: created_at, id })`。`first + 1`件を読む。
+- 一覧のカーソルは`ApiKeyManagement.list`が`core/pagination/opaque-cursor.ts`の`encodeCursor({ c: created_at, id })`・`decodeCursor`で作って読み(不正な値は`invalid_cursor`)、ストアには位置(`before`)を渡す。`first + 1`件を読む。
 - `CryptoApiKeySecretGenerator`は`crypto.getRandomValues`の32バイトをbase64url(パディングなし)にし、`KeyedHasher.hash`でハッシュを作る。
 
 #### ApiKeyErasureSyncHandler
@@ -918,7 +936,7 @@ type Mutation {
 
 | 操作            | 呼び出し元 | 利用者の判定          | bot判定 | エラーコード                                                                         |
 | --------------- | ---------- | --------------------- | ------- | ------------------------------------------------------------------------------------ |
-| `myApiKeys`     | client     | `requireUser`         | なし    | `unauthenticated`・`validation_error`                                                |
+| `myApiKeys`     | client     | `requireUser`         | なし    | `unauthenticated`・`validation_error`・`invalid_cursor`                              |
 | `issueApiKey`   | client     | `requireWritableUser` | なし    | `unauthenticated`・`account_unavailable`・`validation_error`・`rate_limit_exceeded`  |
 | `updateApiKey`  | client     | `requireWritableUser` | なし    | `unauthenticated`・`account_unavailable`・`validation_error`・`api_key_not_found`    |
 | `reissueApiKey` | client     | `requireWritableUser` | なし    | `unauthenticated`・`account_unavailable`・`api_key_not_found`・`rate_limit_exceeded` |
@@ -965,7 +983,8 @@ export declare function apiKeyAuth(
 ```
 
 - `apiKeyAuth`: (1)`parseBearerAuthorization(c.req.header('Authorization'))`。`missing`・`malformed`は`AppError(unauthenticated, unauthenticated)`(7.2)。(2)`ApiKeyAuthorizer.authorize`。(3)成功なら`X-RateLimit-Limit`・`X-RateLimit-Remaining`・`X-RateLimit-Reset`(エポック秒)を応答に付けて次へ進む(13.7)。
-- 401の応答は`toErrorResponse`の本文に`WWW-Authenticate: Bearer realm="public-api"`(無効なキーは`error="invalid_token"`を加える)を付けて中間処理が返す(7.2・7.3)。429は`Retry-After`(`toErrorResponse`)と`X-RateLimit-*`を付ける(13.5・13.7)。403・その他は`AppError`を投げ、backend-platformの`onError`に任せる。
+- 401の応答は`toErrorResponse`の本文に`WWW-Authenticate: Bearer realm="public-api"`(無効なキーは`error="invalid_token"`を加える)を付けて中間処理が返す(7.2・7.3)。429は、`PublicApiRateLimitError`を中間処理が捕まえ、`toErrorResponse`の状態・本文・ヘッダー(`Cache-Control: no-store`・`Retry-After`)に`X-RateLimit-*`を加えた応答を直接返す。共通のエラー処理(`toErrorResponse`と`onError`)は`X-RateLimit-*`を付けないため、投げ直さない(13.5・13.7)。403・その他は`AppError`を投げ、backend-platformの`onError`に任せる。
+- `X-RateLimit-*`・`Retry-After`・`WWW-Authenticate`はCORSで公開しない(api-gatewayの方針、`Access-Control-Expose-Headers`なし)。他のオリジンのブラウザ(`/api-docs`のSwagger UIを含む)からは読めず、状態コードで判断する。仕様書の説明(7.2)にその旨を書く。
 - ログ(カテゴリ`['api', 'public-api']`): 拒否の種類・キーのID・利用者のID・経路のパターン・状態コードだけを`info`で記録する。`Authorization`・平文・本文を記録しない(16.2)。
 
 #### PublicApiIpRateLimit
@@ -1006,11 +1025,12 @@ export declare const publicApiIpRateLimitRoutes: PublicRestRoutes<Env>;
 
 - `GET /v1/products`の検証(8.3): `q`は前後の空白を除いて1〜50書記素、`category`はプロダクトカテゴリのハンドルの形式、`from`・`to`は実在する`YYYY-MM-DD`で`from <= to`、`sort`は`DIRECTORY_SORTS`(`relevance`は`q`があるときだけ)、`page`は1以上の整数。検証を通った値を`DirectoryReader.read({ raw, viewer: undefined, now })`へ渡し、`applied.category`が無ければ(存在しないカテゴリ)`validation_error`(`category`)にする。範囲外の`page`は空の`data`と正しい`meta`を返す(8.1)。
 - プロダクトのパスの経路は`ProductPageReader.read({ handle, viewer: undefined, now })`(詳細・ローンチ履歴)、`ProductDirectory.resolveHandle`と`decideProductPageAccess`(コメント・評価)で解決し、`redirect`は現在のハンドルに置き換えた同じパス(クエリを保つ)への302、`not-found`は404`product_not_found`にする(8.5・8.6)。
-- コメントは`CommentReader.page({ productId, launchId, viewer: undefined, after, now })`、nullは404`launch_not_found`(10.5)。評価は`RatingService.read({ productId, viewer: undefined, now })`(10.3・10.4)。
-- Upvote履歴は`UpvoteHistoryReader.read({ userHandle, viewer: undefined, first: 20, after, now })`、nullは404`user_not_found`(9.4・9.7)。公開プロフィールは`PublicProfileReader.find(ANONYMOUS_SESSION_VIEW, handle)`(11.5・11.6)。
-- `PATCH /v1/me/profile`の本文(`MyProfilePatch`): `nickname`・`handle`・`headline`(null可)・`bio_markdown`(null可)・`websites`(`{ name, url }[]`)の任意の組で、未知の項目は400。検証はuser-profile-socialの`common-lib/profile`・`common-lib/url`の規則と`markdownTextSchema`(5,000書記素)で行う(11.2・11.4)。`avatar`を含めると400(11.3)。
-- `PUT /v1/me/products/{handle}/description`の本文は`description_markdown`(必須・20,000書記素、`markdownTextSchema`)だけ(12.2・12.6)。
-- カーソルは上流の`endCursor`(不透明な文字列)をそのまま`next_cursor`に入れ、形式違反の`cursor`は400`validation_error`(`cursor`)にする(14.2)。
+- コメントは`CommentReader.page({ productId, launchId, viewer: undefined, after, now })`、nullは404`launch_not_found`(10.5)。評価は`RatingService.read({ productId, viewer: undefined, now })`(10.3・10.4)。両者のnullはローンチの不在に加えて、プロダクトを未ログインで表示できない場合(未掲載・非公開化・投稿者の停止)も表すため、経路はプロダクトのハンドルを先に`ProductResolution`で解決し(公開範囲外は404`product_not_found`)、その後のnullだけを`launch_not_found`(コメント)または`product_not_found`(評価、解決と読み取りの間の変化)にする。コメントの`CommentThreadView`は`{ comment, replies }`で、置き換え表示(`kind: 'removed'`)は投稿者・本文・日時を持たないため、`author`・`body_markdown`・`created_at`をnull、`edited`を偽にする(10.2)。投稿者の表示情報は`authorUserId`で`MediaLookup`から引く。
+- Upvote履歴は`UpvoteHistoryReader.read({ userHandle, viewer: undefined, first: 20, after, now })`、nullは404`user_not_found`(9.4・9.7)。上流は旧ハンドルを転送せずに現在の利用者として読むため、Upvote履歴の経路は302を返さない。上流は表示できない項目を読んだ後に除くため、1ページが20件未満でも`has_next`が真になり得る(仕様書に記載する)。各項目の`product`は上流どおり常に値を持ち、未掲載のプロダクト(`listed: false`)もハンドルを含めて返す(2026-11-19の開発者の決定。画面は未掲載の名称をリンクなしで示すが、公開APIは`listed`で利用者に判断させる)。公開プロフィールは`PublicProfileReader.find(ANONYMOUS_SESSION_VIEW, handle)`(11.5・11.6)。
+- `PATCH /v1/me/profile`の本文(`MyProfilePatch`): `nickname`・`handle`・`headline`(null可)・`bio_markdown`(null可)・`websites`(`{ name, url }[]`)の任意の組で、未知の項目は400。検証はニックネームがidentity-authの`checkNickname`(`common-lib/identity/account-input-rules.ts`)、ハンドルが`checkHandleFormat`(`common-lib/handles/handle-rules.ts`)と`USER_HANDLE_RULE`、ヘッドライン・Webサイトの名前と数がuser-profile-socialの`common-lib/profile`、URLが`common-lib/url`の`checkExternalUrl`、自己紹介が`markdownTextSchema`(5,000書記素)で行う(11.2・11.4)。正規化はGraphQLの`UPDATE_MY_PROFILE_ARGS`(表現層にあり読み込めない)と同じ規則をRESTのスキーマに持つ: ニックネームは前後の空白を除き、空のヘッドライン・Webサイトの名前・自己紹介は`null`にし、ハンドルは前後の空白を除かない。同じ入力でGraphQLとRESTの保存の結果が同じになることを統合テストで確かめる。`avatar`を含めると400(11.3)。
+- `PUT /v1/me/products/{handle}/description`の本文は`description_markdown`(`markdownTextSchema(PRODUCT_DESCRIPTION_RULE)`、必須・20,000書記素)だけ(12.2・12.6)。
+- カーソルは上流の`endCursor`(不透明な文字列)をそのまま`next_cursor`に入れる。形式違反の`cursor`は、上流(自分のプロダクト・Upvote履歴・コメント)と`decodeCursor`(サポーター)が投げる400`invalid_cursor`(文言「ページの位置の指定が正しくありません。」)をそのまま返す(2026-11-19の開発者の決定、14.2)。`cursor`の空文字列と長さの上限は経路の問い合わせのスキーマで`validation_error`にする。
+- マッチの`kind`は`qualifier`・`week`・`year`、`stage`は`quarterfinal`・`semifinal`・`final`か`null`を仕様書に列挙する(tournament-week・tournament-yearの実装により3値ずつ実際に取る)。
 
 ```typescript
 // 応答の主な型(snake_case、schemas/*.ts のzodスキーマから導く)
@@ -1094,7 +1114,8 @@ interface UpvoteHistoryEntry {
     readonly handle: string;
     readonly name: string;
     readonly logo: ApiImage | null;
-  } | null;
+    readonly listed: boolean; // 未掲載でもhandleを返す(2026-11-19の開発者の決定)
+  };
 }
 interface CommentNode {
   readonly id: string;
@@ -1152,7 +1173,7 @@ export declare function toApiImage(
   file: MediaFileView | undefined,
   variant: ImageVariantName,
   origin: string,
-): ApiImage | null; // objectKeyがnullならnull(8.9)。URLはorigin + buildImagePath(objectKey, variant, fallbackFormatOf(contentType))
+): ApiImage | null; // 記録が無い、isServableImageFile(file)が偽(保存未完了・削除待ち・隔離中)、またはisImageMediaType(contentType)が偽ならnull(8.9)。URLはorigin + buildImagePath(objectKey, variant, fallbackFormatOf(contentType))
 export interface MediaLookup {
   load(input: {
     readonly fileIds: readonly string[];
@@ -1165,15 +1186,18 @@ export interface MediaLookup {
 ```
 
 - `ProductResolution`: `resolvePublicProduct(handle)`(ハンドルの形式・`ProductDirectory.resolveHandle`・`decideProductPageAccess({ viewerUserId: undefined })`で`current`・`redirect`・`not-found`)と`redirectToCurrentHandle(c, handle)`(パスのハンドルを置き換えクエリを保った302)を、プロダクトのパスを持つ経路が共用する(8.5・8.6)。
-- 画像のバリアント: ロゴ・プロフィール画像は`square-lg`、スクリーンショットは`screenshot-full`。オリジンはapiの変数`IMAGES_ORIGIN`、プロフィールとプロダクトのページのURLは`CLIENT_SITE_ORIGIN`(identity-authが加えた変数)から作る。
+- 画像のバリアント: ロゴ・プロフィール画像は`square-lg`、スクリーンショットは`screenshot-full`。オリジンはapiの変数`IMAGES_ORIGIN`(本specがapiに加える。2026-11-19の時点でapiには無い)、プロフィールとプロダクトのページのURLは`CLIENT_SITE_ORIGIN`(identity-authが加えた変数)から作る。`MediaFileView.objectKey`は常に文字列で、配信できるかは`isServableImageFile`(GraphQLの`toMediaImage`と同じ判定、論理削除済みの画像は物理削除まで配信する)で決める。
+- 上流のビューの識別子と表示情報: 一覧の項目(`DirectoryItemView.product`)と詳細(`ProductPageView.product`)はプロダクトの識別子を`productId`、投稿者を`ownerUserId`だけで持つため、`id`は`productId`から写し、`owner`は`MediaLookup`の`users`(`UserProfileDirectory.findSummaries(ids, 'visible')`、GraphQLの`directory-views.ts`と同じ)から引く。`MyProduct.id`も`MyProductView.productId`から写す。
+- `website_url`: プロダクトの`websiteUrl`は`verifiedExternalUrl(value) ?? ''`(現在の検証に通らない値を空文字列にする。GraphQLと同じ、2026-11-19の開発者の決定)。型は`string`のまま。公開プロフィールの`websites`はGraphQLと同じく出力の時点で検証し直さない。
+- ローンチの`summary`は上流の`summary.label`(表示用の日本語の文言)を写す。マッチは`ProductPageLaunchView.rows`(結果の確定したマッチだけ)から作り、対戦相手は`OpponentView`(`none`・`private`・`unlisted`・`listed`)と`ProductPageView.opponents`(`productId`から`ProductSummaryRecord`)を組み合わせ、`unlisted`ではハンドルを出さない(9.2)。
 - 写像は純粋な関数とし、上流のビューの各種類(勝利・不戦勝・早期の不戦勝、対戦相手の4種類、置き換え表示のコメント)を単体テストで確かめる。
 
 ### api/composition
 
 #### PublicApiModule・PublicApiDocumentInfo
 
-- `PUBLIC_API_MODULE`: `ApiKeyStore`(D1)・`ApiKeySecretGenerator`・`PublicApiRateLimits`(`CounterPublicApiRateLimits`)・`ApiKeyManagement`・`ApiKeyAuthorizer`・`PublicSupporterReader`・`PublicProfileUpdater`・`OwnProductDescriptionService`・`MediaLookup`・`ApiKeyErasureSyncHandler`を処理単位で束縛する。DIの識別子は`PUBLIC_API_TYPES`(`Symbol.for('public-api.<名前>')`)。`RateLimitCounterClient`は`RATE_LIMIT_COUNTER`から作り、`CounterPublicApiRateLimits`だけが受け取る。
-- `PUBLIC_API_DOCUMENT_INFO`: `{ title: 'Launch Stadium Public API', version: '1.0.0', description }`。`description`は認証(Bearer、`/settings/api-keys`で発行)・権限スコープの一覧・回数の制限(利用者単位の読み取り30回/分・書き込み15回/分、IP単位60回/分)・ページ分けの方式を説明する(14.4)。api-gatewayの改訂1の`createRestModule(routes, { info: PUBLIC_API_DOCUMENT_INFO })`として`api-worker.ts`で渡す。渡した`info`は既定を丸ごと置き換えるため、`title`・`version`・`description`の全てを持つ。
+- `PUBLIC_API_MODULE`: `ApiKeyStore`(D1)・`ApiKeySecretGenerator`・`PublicApiRateLimits`(`CounterPublicApiRateLimits`)・`ApiKeyManagement`・`ApiKeyAuthorizer`・`PublicSupporterReader`・`PublicProfileUpdater`・`OwnProductDescriptionService`・`MediaLookup`・`ApiKeyErasureSyncHandler`を処理単位で束縛する。`PUBLIC_API_PLATFORM_MODULE`は既存の`*-platform`の束縛と同じく`Omit<AppModule, 'routes'>`で`name: 'public-api-platform'`・`inSingletonScope()`(コンテナは処理単位のため、処理単位で1つ)にする。DIの識別子は`PUBLIC_API_TYPES`(`Symbol.for('public-api.<名前>')`)。`RateLimitCounterClient`は`RATE_LIMIT_COUNTER`から作り、`CounterPublicApiRateLimits`だけが受け取る。
+- `PUBLIC_API_DOCUMENT_INFO`: `{ title: 'Launch Stadium Public API', version: '1.0.0', description }`。`description`は認証(Bearer、`/settings/api-keys`で発行)・権限スコープの一覧・回数の制限(利用者単位の読み取り30回/分・書き込み15回/分、IP単位60回/分)・ページ分けの方式(不正なカーソルは`invalid_cursor`)・ブラウザから回数の制限のヘッダーを読めないこと(CORSで公開しない)を説明する(14.4)。api-gatewayの改訂1の`createRestModule(routes, { info: PUBLIC_API_DOCUMENT_INFO })`として`api-worker.ts`で渡す。渡した`info`は既定を丸ごと置き換えるため、`title`・`version`・`description`の全てを持つ。
 
 ### frontend-lib
 
@@ -1181,8 +1205,9 @@ export interface MediaLookup {
 
 **Contracts**: State [x]
 
-- client専用の任意の変数の前例(frontend-platformの`WEB_ANALYTICS_TOKEN`・paymentsの`STRIPE_PUBLISHABLE_KEY`)と同じ形にする。共有の環境のスキーマ(`ValidatedFrontendEnv`)に`PUBLIC_API_ORIGIN: string | undefined`を任意として加え、`FrontendAppProfile`に公開APIの仕様書の有無の欄`publicApiDocs`(clientは真、adminは偽)を加え、`toPublicRuntimeConfig`で`publicApiOrigin`(`profile.publicApiDocs ? env.PUBLIC_API_ORIGIN : undefined`)へ渡す。`runtimeSecurityPolicySources(env)`は欄が真で値があるときだけ`connectSrc`に加える(15.2・15.7)。共有のスキーマで必須にすると、`apps/{client,admin}/test/config/worker-env-contract.ts`の型の検査と管理者側の起動の検証が失敗するため、任意にする(2026-11-05の開発者の決定)。clientのWranglerには3環境とも値を置き、値があることはclientの設定の単体テストで保証する。adminのWranglerには置かない。
-- 環境のキーの対応: エントリは`runtimeSecurityPolicySources`の欄を許可先の形の規則で確かめ、1つの欄に1つの環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)で不正な値のキー名をログへ出す。`PUBLIC_API_ORIGIN`はこの対応に加えず、`validateFrontendEnv`で`mergeSecurityPolicySources`と同じ許可先の形(`https://<小文字のホスト>`(ポート無し)・`http://localhost:<ポート>`)まで検証する。形に合わない値は環境の検証の失敗となり、`invalidEnvNames`に`PUBLIC_API_ORIGIN`が載る。このため`connectSrc`の検査で不正になる値は`SENTRY_DSN`に由来するものに限られ、対応は1欄1キーのまま正しいキー名を指す。
+- 公開設定への受け渡しは、client専用の任意の変数の前例(frontend-platformの`WEB_ANALYTICS_TOKEN`・paymentsの`STRIPE_PUBLISHABLE_KEY`)と同じ形にする。共有の環境のスキーマ(`ValidatedFrontendEnv`)に`PUBLIC_API_ORIGIN: string | undefined`を任意として加え、`FrontendAppProfile`に公開APIの仕様書の有無の欄`publicApiDocs`(clientは真、adminは偽)を加え、`toPublicRuntimeConfig`で`publicApiOrigin`(`profile.publicApiDocs ? env.PUBLIC_API_ORIGIN : undefined`)へ渡す。共有のスキーマで必須にすると、`apps/{client,admin}/test/config/worker-env-contract.ts`の型の検査と管理者側の起動の検証が失敗するため、任意にする(2026-11-05の開発者の決定)。clientのWranglerには3環境とも値を置き、値があることはclientの設定の単体テストで保証する。adminのWranglerには置かず、無いことをadminの設定の単体テストで保証する。
+- CSPの許可先(2026-11-19の開発者の決定): 前例の2つの変数はCSPの許可先を`CLIENT_SECURITY_POLICY`(`apps/client/src/composition/security-policy.ts`)に固定で書いており、環境から許可先を作る手順の前例ではない。`runtimeSecurityPolicySources(env)`(`apps/frontend-lib/server/http/security-policy.ts`)は環境だけを受け取り、アプリのプロファイルを受け取らない。そこで、引数の`Pick`する環境のキーに`PUBLIC_API_ORIGIN`を加え、値があるときだけ`connectSrc`に加える。プロファイルの欄は使わず、エントリの呼び出し(`create-frontend-server-entry.ts`の`runtimeSecurityPolicySources(env)`)は変えない。adminは値を置かないため加わらない(15.2・15.7)。
+- 環境のキーの対応: エントリは`runtimeSecurityPolicySources`の欄を許可先の形の規則で確かめ、1つの欄に1つの環境のキーの対応(`imgSrc`→`IMAGES_ORIGIN`・`connectSrc`→`SENTRY_DSN`)で不正な値のキー名をログへ出す。`PUBLIC_API_ORIGIN`はこの対応に加えず、`validateFrontendEnv`で許可先の形(`https://<小文字のホスト>`(ポート無し)・`http://localhost:<ポート>`)まで検証する。検証には`security-policy.ts`の`ORIGIN_PATTERN`(2026-11-19の時点で非公開)を公開して使う。環境のスキーマの既存の`isOrigin`はポート付きの`https`や大文字のホストを通すため使わない。形に合わない値は環境の検証の失敗となり、`invalidEnvNames`に`PUBLIC_API_ORIGIN`が載る。このため`connectSrc`の検査で不正になる値は`SENTRY_DSN`に由来するものに限られ、対応は1欄1キーのまま正しいキー名を指す。
 - 値: ローカル`http://localhost:48042`、staging`https://genai-example-2-api-staging.lab.kurachiweb.com`、prod`https://genai-example-2-api.lab.kurachiweb.com`(`project-values.md`)。
 
 ### client
@@ -1204,10 +1229,10 @@ export declare const apiKeyFormSchema: z.ZodType<
 >; // checkApiKeyName・isAllowedScopeLevel(6.3)
 ```
 
-- `ApiKeySettingsRoute`(`routes/_authenticated/settings/api-keys.tsx`): identity-authの設定ページのシェルの下に置き、`myApiKeys`をローダーで先読みする。タイトルは「APIキー」(6.1)。
+- `ApiKeySettingsRoute`(`routes/_authenticated/settings/api-keys.tsx`): identity-authの設定ページのシェルの下に置き、`myApiKeys`をローダーで先読みする。headは他の設定ページと同じく`buildSitePageHead({ title: 'APIキー', noIndex: true })`(`apps/client/src/head/page-heads.ts`)で作る(6.1)。
 - `ApiKeySettingsPage`: 見出し`h1`「APIキー」と説明(「APIキーを使うと、公開APIからプロダクトなどの公開データを読み取ったり、自分のプロフィールとプロダクトの説明文を更新したりできます。」と`/api-docs`への「APIドキュメント」)、「APIキーを発行」、`ApiKeyList`。停止中(`viewer.status`が`SUSPENDED`)は「このアカウントは停止されているため、APIキーの発行・編集・再発行はできません。発行済みのキーは削除できます。」を示し、発行・編集・再発行を無効にする(6.10)。
 - `ApiKeyList`: 発行の新しい順、50件を超えれば「さらに表示」。0件は`EmptyState`(「APIキーはまだありません。」と説明・`/api-docs`、6.9)。失敗は`ErrorState`(6.8)。
-- `ApiKeyListItem`: 名前・権限の要約(「読み取り: プロダクト、ローンチ履歴」「読み書き: プロフィール」のように値ごとに機能の表示名を並べ、全て無効なら「権限なし」)・発行日時(`DateTime`、6.11)・「編集」「再発行」「削除」。
+- `ApiKeyListItem`: 名前・権限の要約(「読み取り: プロダクト、ローンチ履歴」「読み書き: プロフィール」のように値ごとに機能の表示名を並べ、全て無効なら「権限なし」)・発行日時(`DateTime`。必須の`format`には既存の`DateTimeFormatName`のうち日付と時刻を示すものを選ぶ、6.11)・「編集」「再発行」「削除」。
 - `ApiKeyFormDialog`: 発行と編集で共用する。名前の入力(50文字、40文字を超えたらカウンター)と`ApiKeyScopeFields`(機能ごとのラジオグループ。読み取りの5機能は2択、2機能は3択)。発行の初期値は`DEFAULT_ISSUE_SCOPES`(6.4)。フォームは`useAppForm<ApiKeyFormValues, ApiKeyFormValues>(apiKeyFormSchema, { defaultValues })`(`defaultValues`は名前と7機能の全欄。発行は空の名前と`DEFAULT_ISSUE_SCOPES`、編集は現在の値)と`AppForm`(`serverFieldPrefix="input"`。発行・編集の操作は`input`で引数を受けるため)で作る。フォームの値は`ApiKeyInput`と同じ形で、編集するキーの`id`はスキーマの入力に含めず、`onSubmit`で`updateApiKey`の引数に足す。`onSubmitError`は欄に対応しない詳細と想定外の失敗を受け、429は文言規則のレート制限の文言(6.7)、それ以外は`errorMessageOf(error, CLIENT_PROFILE.contactAvailable)`の文言をフォームの`FormMessage`に示す。
 - `IssuedApiKeyDialog`: 平文を読み取り専用の等幅の欄に示し、「コピー」(`navigator.clipboard.writeText`、成功で「APIキーをコピーしました。」、失敗で「APIキーをコピーできませんでした。」)と「このキーは今しか表示されません。安全な場所に保管してください。」を添える。閉じると平文の状態を破棄し、問い合わせのキャッシュにも残さない(6.5)。
 - `ApiKeyConfirmDialog`: 削除は「APIキー『{名前}』を削除しますか?」・「このキーを使った要求はすぐに使えなくなります。」・「削除」、再発行は「APIキー『{名前}』を再発行しますか?」・「同じ名前と権限の新しいキーを追加で発行します。今のキーはそのまま使えます。不要になったら削除してください。」・「再発行」(6.6・仮2)。
@@ -1225,16 +1250,16 @@ export declare function withAbsoluteServers(
 ): Record<string, unknown>; // 相対のserversのURLを公開APIのオリジンで絶対URLにする。serversが無ければ<origin>/v1を入れる
 ```
 
-- `ApiDocsRoute`(`routes/api-docs.tsx`): ログイン不要。`buildPageHead`でタイトル「APIドキュメント」と正規のURL(15.1)。
+- `ApiDocsRoute`(`routes/api-docs.tsx`): ログイン不要。clientの他のページと同じく`buildSitePageHead`でタイトル「APIドキュメント」と正規のURL(15.1)。
 - `ApiDocsPage`: `h1`「APIドキュメント」、APIキーの発行場所(`/settings/api-keys`へのリンク)・認証(`Authorization: Bearer <APIキー>`)・回数の制限の概要の説明、その下に`SwaggerUiViewer`(15.6)。
-- `SwaggerUiViewer`: ブラウザでだけ動く。`PublicRuntimeConfig.publicApiOrigin`が`undefined`(値を置いていない環境)なら、仕様書を取得せず`ErrorState`(要件15.5の文言)を表示する。(1)`fetch(openApiDocumentUrl(publicApiOrigin))`。読み込み中は`LoadingSkeleton`(15.4)、失敗は`ErrorState`(文言は要件15.5、再試行・問い合わせ)。(2)`import('swagger-ui-dist/swagger-ui-bundle.js')`と`import('swagger-ui-dist/swagger-ui.css')`を動的に読み込み、`SwaggerUIBundle({ domNode, spec: withAbsoluteServers(document, origin), presets: [SwaggerUIBundle.presets.apis], validatorUrl: null, persistAuthorization: false, deepLinking: false })`(15.2・15.3)。(3)外側の要素を明るい配色に固定する(Swagger UIはダークモードを持たない)。
-- 動的な読み込みのチャンクは同一オリジンから配信され、CSPの`script-src 'self'`・`style-src 'self' 'unsafe-inline'`・`img-src data:`で動く。追加する許可先は`connect-src`の公開APIのオリジンだけ(15.7)。
+- `SwaggerUiViewer`: ブラウザでだけ動く。公開設定は他の部品と同じく`appRuntimeOf(router.options.context).publicConfig`から読む。`PublicRuntimeConfig.publicApiOrigin`が`undefined`(値を置いていない環境)なら、仕様書を取得せず`ErrorState`(要件15.5の文言)を表示する。(1)`fetch(openApiDocumentUrl(publicApiOrigin))`。読み込み中は`LoadingSkeleton`(15.4)、失敗は`ErrorState`(文言は要件15.5、再試行・問い合わせ)。(2)`import('swagger-ui-dist/swagger-ui-bundle.js')`と`import('swagger-ui-dist/swagger-ui.css')`を動的に読み込み、`SwaggerUIBundle({ domNode, spec: withAbsoluteServers(document, origin), presets: [SwaggerUIBundle.presets.apis], validatorUrl: null, persistAuthorization: false, deepLinking: false })`(15.2・15.3)。(3)外側の要素を明るい配色に固定する(Swagger UIはダークモードを持たない)。
+- 動的な読み込みのチャンクは同一オリジンから配信され、CSPの`script-src 'self' 'nonce-…'`(`unsafe-eval`なし)・`style-src 'self' 'unsafe-inline'`・`img-src 'self' data: blob:`で動く想定である。追加する許可先は`connect-src`の公開APIのオリジンだけ(15.7)。Swagger UIの束が`eval`・`new Function`・ワーカー・インラインのスクリプトを使うかは導入時(tasks.mdの7.3)にE2EのCSPの違反の検査で確かめ、違反が出たらCSPを緩めずに開発者へ報告する(research.mdのResearch Needed)。動的な読み込みの前例は、マークダウンの入力欄の`load-crepe-editor.ts`(`lazy`と動的な`import()`)である。
 
 ### docs
 
 #### PublicApiDocs
 
-- `backend/020-api-key-authentication.md`: APIキーの形式(接頭辞と乱数)・ハッシュによる保存と照合・平文の1度だけの表示・Bearerの解析と`WWW-Authenticate`・機能と操作による権限スコープ・認証と回数の制限の順序・キーの持ち主単位の厳密な制限とIP単位のバインディングの制限・`X-RateLimit-*`・退会での削除。本プロジェクト固有の値(接頭辞・上限・機能名)を書かない(17.4)。
+- `backend/020-api-key-authentication.md`: APIキーの形式(接頭辞と乱数)・ハッシュによる保存と照合・平文の1度だけの表示・Bearerの解析と`WWW-Authenticate`・機能と操作による権限スコープ・認証と回数の制限の順序・キーの持ち主単位の厳密な制限とIP単位のバインディングの制限・`X-RateLimit-*`(429の応答にも中間処理が付けること、CORSで公開しないためブラウザからは読めないこと)・退会での削除。本プロジェクト固有の値(接頭辞・上限・機能名)を書かない(17.4)。
 - `frontend/019-self-hosted-api-reference.md`: Swagger UIを外部の配信網なしに同一オリジンで配信する手順(配布物の束の直接の読み込み、動的な読み込み、`validatorUrl`、認証の保存の無効化、相対の`servers`の絶対URL化、CSPの許可先は`connect-src`だけ)(17.4)。
 - ページ配置・文言規則の更新は「Modified Files」のとおり(17.5)。
 
@@ -1266,6 +1291,7 @@ export declare function withAbsoluteServers(
 | `match_not_found`     | 404  | マッチが見つからない・そのプロダクトのものでない・未確定                                                                                       |
 | `product_hidden`      | 409  | 非公開化中のプロダクトの説明文の更新(文言は「このプロダクトは公開が停止されているため、説明文を更新できません。」、product-launchの仮12と同じ) |
 | `validation_error`    | 400  | 検証の失敗(api-gateway)                                                                                                                        |
+| `invalid_cursor`      | 400  | 形式に合わない`cursor`(上流と`decodeCursor`の`invalidCursorError()`、文言「ページの位置の指定が正しくありません。」)                           |
 | `rate_limit_exceeded` | 429  | 回数の制限(backend-platform)                                                                                                                   |
 | 上流のコード          | —    | `handle_unavailable`・`profile_update_conflict`などはそのまま                                                                                  |
 
@@ -1297,19 +1323,21 @@ export declare function withAbsoluteServers(
   - `ApiKeyRules`: 名前の空・空白だけ・50書記素・51書記素(絵文字を含む)、7機能の許される値と`read_write`の拒否(1.3・1.4・2.1)。
   - `ApiKeyToken`・`ApiKeyScopes`: Bearerの大文字小文字・空・別の方式・接頭辞と長さの違反、全機能×全値×2操作の`allowsAccess`の表(2.2・7.2・7.3)。
   - `ApiKeyManagement`・`ApiKeyAuthorizer`(模擬のポート。回数の制限は偽の`PublicApiRateLimits`): 判定の順序(形式→照合→状態→権限→回数)と、失敗が回数を消費しないこと、停止中・利用者不在の変換、再発行で元の名前と権限を引き継ぎ元のキーを残すこと、再発行が発行の回数に数えられること、対象`public`の経路で停止中の持ち主のキーが通り`own`の経路で403になること、編集・削除が回数に数えないこと(2.3・3.4・4.4・5.2・13.6)。
-  - `PublicProfileUpdater`・`OwnProductDescriptionService`・`PublicSupporterReader`: 部分更新で画像と未指定の項目が保たれること、旧ハンドルの読み直し、非公開化の409、他人・未確定のマッチの404(9.6・11.2・11.3・12.4・12.5)。
-  - 写像(`toApiImage`・各Mapper): 隔離中の画像、基準勝利の3種類、対戦相手の4種類、置き換え表示のコメント、日時と日付の形式(8.9・9.2・10.2・14.3)。
+  - `PublicProfileUpdater`・`OwnProductDescriptionService`・`PublicSupporterReader`: 部分更新で画像と未指定の項目が保たれること、旧ハンドルの読み直し、`MyProductsReader.list`へ`first: 20`を渡すこと、非公開化の409、他人のマッチ・そのプロダクトの側の無いマッチ・未確定のマッチの`match-not-found`、`SupporterListReader`の`null`の`match-not-found`への変換(9.6・11.2・11.3・12.1・12.4・12.5)。
+  - 写像(`toApiImage`・各Mapper): 保存未完了・削除待ち・隔離中の画像と論理削除済みの画像、基準勝利の3種類、対戦相手の4種類(`unlisted`でハンドルを出さない)、マッチの種別の3値と段階、置き換え表示のコメント、未掲載のプロダクトのUpvote履歴(`listed: false`でハンドルを含む)、検証に通らない`website_url`の空文字列、`productId`から`id`への写し、日時と日付の形式(8.9・9.2・9.4・10.2・14.3)。
+  - 共通の層へ移した関数(tasks.mdの1.6): `encodeCursor`・`decodeCursor`の往復と不正な値(空白・パディング・JSONでない値・スキーマ違反)の`invalid_cursor`、`isServableImageFile`の全組み合わせ、`verifiedExternalUrl`の`checkExternalUrl`の各結果。移す前のGraphQLの既存のテストがそのまま成功すること。directory-discoveryの`SupporterListReader`の単体テストで、`supporters`が`userIds`と同じ順でUpvoteの日時を持つこと。
 - **Integration Tests(Workers)**:
   - `D1ApiKeyStore`: 発行の`CASE`式(停止中・退会済みで保存しない)、他人のキーを`findForOwner`で引くと`undefined`になること、再発行の後に元のキーと新しいキーの両方で照合できること、一覧のカーソル、`ApiKeyExport`の並びと平文・ハッシュの不在(1.8・3.4・16.1)。
   - 退会の同期の波及処理: identity-authの退会の確定でキーが全て消え、停止では消えないこと(5.1・5.4)。
   - `CounterPublicApiRateLimits`: 偽の厳密カウンタで、発行の3回までと4回目の`rate_limit_exceeded`、読み取りと書き込みの規則の選択、許可の`limit`・`remaining`・`resetAt`と拒否の`PublicApiRateLimitError`の値、キーが利用者のIDのハッシュであること(4.1〜4.3・13.1〜13.3・13.8)。
-  - 公開APIの経路(`api-worker.ts`の組み立てを使う): ヘッダーの欠落・形式違反・不在・削除済みのキーの401と`WWW-Authenticate`、全経路の権限不足の403、停止中の持ち主のキーで公開データの経路が200・自分のデータの4経路が403で、解除後は全て200、読み取り30回目と31回目・書き込み15回目と16回目の429と`Retry-After`・`X-RateLimit-*`、1分後のリセット、IP単位の60回目と61回目(仕様書の配信を含み、`OPTIONS`を数えない)、CORSのヘッダー(更新の経路の`Content-Type`)(7.\*・13.\*・14.5・17.2)。
-  - 読み取りの経路: 掲載中・未掲載・非公開化・停止中の投稿者・論理削除のプロダクトの200と404、旧ハンドルの302、一覧の検証の400、存在しないカテゴリの400、コメントの置き換え、無効化した評価の除外、停止中の利用者の公開プロフィールとUpvote履歴の404(8.\*・9.\*・10.\*・11.5・11.6)。
-  - 更新の経路: プロフィールの部分更新と予約語のハンドルの拒否、`avatar`の400、説明文の更新で保存の登録口(directory-discoveryの索引の更新待ち)が動くこと、非公開化の409、他人のプロダクトの404(11.\*・12.\*)。
+  - 公開APIの経路(`api-worker.ts`の組み立てを使う): ヘッダーの欠落・形式違反・不在・削除済みのキーの401と`WWW-Authenticate`、全経路の権限不足の403、停止中の持ち主のキーで公開データの経路が200・自分のデータの4経路が403で、解除後は全て200、読み取り30回目と31回目・書き込み15回目と16回目の429と`Retry-After`・`X-RateLimit-*`(429の応答にも付くこと)、1分後のリセット、IP単位の60回目と61回目(仕様書の配信を含み、`OPTIONS`を数えない)、CORSのヘッダー(更新の経路の`Content-Type`、`Access-Control-Expose-Headers`が無いこと)(7.\*・13.\*・14.5・17.2)。
+  - 読み取りの経路: 掲載中・未掲載・非公開化・停止中の投稿者・論理削除のプロダクトの200と404、旧ハンドルの302、一覧の検証の400、存在しないカテゴリの400、4つのカーソルの経路の不正な`cursor`の400`invalid_cursor`、コメントの置き換え、無効化した評価の除外、停止中の利用者の公開プロフィールとUpvote履歴の404、GraphQLのサポーターの一覧と同じ並びと続き(8.\*・9.\*・10.\*・11.5・11.6・14.2)。
+  - 更新の経路: プロフィールの部分更新と予約語のハンドルの拒否、GraphQLと同じ正規化(ニックネームの前後の空白・空の値の`null`)、`avatar`の400、説明文の更新で保存の登録口(directory-discoveryの索引の更新待ち)が動くこと、非公開化の409、他人のプロダクトの404(11.\*・12.\*)。
+  - 設定の検査: apiの`ratelimits`の名前(`IP_RATE_LIMITER`・`PUBLIC_API_RATE_LIMITER`)とeventの`IP_RATE_LIMITER`だけ、全アプリの`namespace_id`が15個で重ならないこと、adminのWranglerに`PUBLIC_API_ORIGIN`が無いこと(1.4・1.5)。
   - GraphQL: 5つの操作のエラーコード、発行の3回目と4回目、停止中の削除の許可(3.\*・4.\*)。
 - **Browser Tests**: `ApiKeyFormDialog`(検証の表示・初期値・カウンター)・`IssuedApiKeyDialog`(コピーの成功と失敗の通知、閉じた後の非表示)・`ApiKeyConfirmDialog`・`ApiKeyList`(0件・失敗・さらに表示)・`ApiKeySettingsPage`(停止中の無効化)・`SwaggerUiViewer`(読み込み中・失敗の表示。Swagger UIの束は模擬の読み込み関数に差し替える)と、各部品のaxe-coreの検査(6.\*・15.4・15.5)。
 - **E2E Tests**:
-  - `e2e/client/public-api.e2e.test.ts`: identity-authの`e2e/support/mailpit.ts`で確認済みの利用者を登録し、product-launchの画面でプロダクトを登録し、directory-discoveryの`e2e/support/directory-fixtures.ts`で掲載中にする。`/settings/api-keys`で「プロダクト」読み取り・「プロダクトの説明文」読み書きのキーを発行して平文を控え、`e2e/support/public-api.ts`で`GET /v1/products/{handle}`が200、`GET /v1/me/profile`が403、`PUT /v1/me/products/{handle}/description`が200で説明文が変わること、キーを再発行すると元のキーと新しいキーの両方で200になり、元のキーを削除すると元のキーは401・新しいキーは200になることを確かめる(17.3・3.4)。
+  - `e2e/client/public-api.e2e.test.ts`: identity-authの`e2e/support/mailpit.ts`で確認済みの利用者を登録し、product-launchの画面でプロダクトを登録し、directory-discoveryの`e2e/support/directory-fixtures.ts`で掲載中にする。`/settings/api-keys`で「プロダクト」読み取り・「プロダクトの説明文」読み書きのキーを発行して平文を控え、`e2e/support/public-api.ts`(オリジンは`e2e/support/local-worker-origins.ts`の`resolveLocalWorkerOrigin('api', env)`)で`GET /v1/products/{handle}`が200、`GET /v1/me/profile`が403、`PUT /v1/me/products/{handle}/description`が200で説明文が変わること、キーを再発行すると元のキーと新しいキーの両方で200になり、元のキーを削除すると元のキーは401・新しいキーは200になることを確かめる(17.3・3.4)。
   - `e2e/client/api-docs.e2e.test.ts`: `/api-docs`でSwagger UIに経路の一覧が表示され、frontend-platformの`e2e/support/security-assertions.ts`でCSPの違反が無く、外部のオリジンへの要求が無いことを確かめる(15.7・17.3)。
 - **Performance**: 公開データの経路で、1要求あたりの上流の照会が項目の数に比例しないこと(写像の前の一括の照会、`MediaLookup`の呼び出しが1回)をWorkers統合テストで確かめる(16.3)。
 
@@ -1318,7 +1346,8 @@ export declare function withAbsoluteServers(
 - APIキーは平文を保存せず、HMAC-SHA512(用途`public-api-key`)のハッシュの一致で引く。ハッシュは攻撃者が制御できないため、索引の比較の時間からキーを推測できない(7.4・NFR-SECUR-006)。
 - 総当たりはIP単位の制限(1分60回)とWorker単位の制限が抑える。キーは256ビットの乱数で、推測は現実的でない。
 - 公開データの経路は閲覧者を未ログインとして扱い、キーの持ち主の権限で非公開のデータを返さない。自分のデータの経路だけがキーの持ち主の`CurrentUser`を使う。
-- CORSは`*`だがCookieを使わず(`Access-Control-Allow-Credentials`なし)、ブラウザの資格情報が漏れない(NFR-SECUR-045)。
+- CORSは`*`だがCookieを使わず(`Access-Control-Allow-Credentials`なし)、ブラウザの資格情報が漏れない(NFR-SECUR-045)。`Access-Control-Expose-Headers`は付けない(api-gatewayの方針、2026-10-24に決め2026-11-19に維持)。
+- 配信できる画像の判定(`isServableImageFile`)と外部URLの検証済みの値(`verifiedExternalUrl`)は画面と同じ共通の関数を使い、隔離中の画像や現在の検証に通らないURLが公開APIからだけ漏れることを防ぐ。
 - 平文は発行の応答のダイアログでだけ示し、問い合わせのキャッシュ・ログ・エクスポートに残さない。Swagger UIで入力したキーは保存しない(15.3)。
 - 停止中の利用者のキーは、自分のデータの経路(読み取りと書き込み)で拒否し、公開データの読み取りだけを許す(仮1)。公開データは未ログインの閲覧者と同じ範囲であり、停止中の持ち主自身のデータは含まれない。退会でキーは全て消える(FR-PAPI-008)。
 - ログの本文はbackend-platformの改訂1の`REDACTION_PATTERNS`でキーの形の文字列を伏せ、Sentryは改訂3で同じ`REDACTION_PATTERNS`を例外のメッセージと型・イベントのメッセージ(`logentry`を含む)・パンくずのメッセージとデータ・要求のURL・トランザクションとスパンの名前・説明・データにも掛ける(backend-platformの要件9.2)。本specはこれらに頼らず、平文のキーをメッセージ・`AppError`の`message`・`details`に入れない。
