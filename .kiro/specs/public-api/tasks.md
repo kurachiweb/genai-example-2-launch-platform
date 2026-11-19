@@ -101,7 +101,7 @@
   - _Boundary: ApiKeyErasureSyncHandler、`apps/api/src/composition/user-lifecycle-sync-handlers.ts`_
   - _Requirements: 5.1, 5.4, 16.4_
 
-- [ ] 3.4 APIキーの管理のGraphQLのスキーマモジュールを作り、登録箇所に組み込む
+- [x] 3.4 APIキーの管理のGraphQLのスキーマモジュールを作り、登録箇所に組み込む
   - 一覧・発行・編集・再発行・削除の5つの操作を、ルート型は`extend`を使わず`type Query`・`type Mutation`のまま書き、呼び出し元をclientに限り、一覧と削除は`requireUser`、発行・編集・再発行は`requireWritableUser`で受け付ける。スキーマモジュールの登録箇所へ加え、生成コマンドでスキーマファイルと型を更新する
   - 先に、Workers統合テストで、各操作のエラーコード(未ログイン・停止中・入力の誤り・見つからない・429)、停止中の一覧と削除の許可、未確認の利用者の発行の許可、発行の3回目と4回目、平文が発行と再発行の応答にだけ含まれることを確かめる
   - 完了状態: Workers統合テストとスキーマの食い違いの検査が成功する
@@ -308,3 +308,4 @@
 - 3.1: ハッシュの用途`API_KEY_HASH_PURPOSE`(`public-api-key`)は`domain/public-api/api-key-token.ts`に置き、生成器と4.1の`ApiKeyAuthorizer`が共有する(8.2で`project-values.md`に用途の名前も加える)。`ApiKeyStore.insert`は`visibleUsers()`の`CASE`式で不在の利用者も`account-unavailable`にし、`update`は利用者の状態を見ない(停止中は3.4の`requireWritableUser`が拒否)。`CounterPublicApiRateLimits`の再試行の秒数は`assertWithinLimit`の式の写し
 - 3.2: エラーと文言は設計に無い`application/public-api/api-key-errors.ts`(`API_KEY_ERRORS`・項目ごとの`validation_error`の組み立て)。項目ごとの誤りの`field`は`name`・`scopes.<機能>`、詳細のコードは`required`・`too_long`・`not_allowed`で、3.4のGraphQLの引数の検証(`input.name`の形)と揃えること。ログの属性名はキーのIDを`recordId`(再発行の元は`sourceRecordId`)・`userId`とする(名前に`key`を含む属性は伏せ字になるため。4.2の拒否のログも揃える)。編集は応答の発行日時のため先に`findForOwner`で読む。一覧の`first`が1〜50の外は`RangeError`のため3.4の境界で`validation_error`にする。カーソルは`{ c: 発行日時ms, id }`。保存の時点の`account-unavailable`は回数を消費する(設計の手順どおり)
 - 3.3: 8.2で`project-values.md`の「同期の波及処理の登録」の行(937行目付近)の件数(10→11)・登録の一覧(`public-api.api-key-erasure`、退会だけ)・処理のファイル(`apps/api/src/infrastructure/public-api/api-key-erasure-sync-handler.ts`)を直すこと
+- 3.4: GraphQLのモジュールは`presentation/graphql/modules/public-api/`(設計の5ファイルに加え`api-key-views.ts`・`resolver-support.ts`)。ユースケースの誤りは`withInputPath('input', …)`で`input.name`・`input.scopes.<機能>`にする(6.2は`serverFieldPrefix="input"`で読める)。`first`は境界で1〜50(範囲外は`validation_error`の`first`)。読み取りの機能への`READ_WRITE`はGraphQLの列挙型で`graphql_request_invalid`(400)になり、文言規則の「選べない値」の文言はユースケース経由でだけ届く。ULIDでないIDは`validation_error`(`id`、文言は見つからない旨。設計の表に無い)。8.2で`project-values.md`に「GraphQLの操作」の行(モジュール名・5操作・テストの補助`apps/api/test/support/public-api-graphql-operations.ts`)を加えること。レビューの1回目の差し戻し(停止中のガードとclient限定のテストの不足)をテストの追加で解消した

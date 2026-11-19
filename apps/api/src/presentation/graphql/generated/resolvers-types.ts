@@ -334,6 +334,60 @@ export type AdminViewer = {
   title?: Maybe<Scalars['String']['output']>;
 };
 
+/** APIキー。平文とハッシュは持たない */
+export type ApiKey = {
+  __typename?: 'ApiKey';
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  scopes: ApiKeyScopes;
+};
+
+export type ApiKeyConnection = {
+  __typename?: 'ApiKeyConnection';
+  nodes: Array<ApiKey>;
+  pageInfo: PageInfo;
+};
+
+export type ApiKeyInput = {
+  /** 前後の空白を除いて1〜50文字 */
+  name: Scalars['String']['input'];
+  scopes: ApiKeyScopesInput;
+};
+
+/** 読み取りだけの機能の権限 */
+export type ApiKeyReadLevel =
+  | 'NONE'
+  | 'READ';
+
+/** 機能ごとの権限スコープ */
+export type ApiKeyScopes = {
+  __typename?: 'ApiKeyScopes';
+  comments: ApiKeyReadLevel;
+  launches: ApiKeyReadLevel;
+  productDescriptions: ApiKeyWriteLevel;
+  products: ApiKeyReadLevel;
+  profile: ApiKeyWriteLevel;
+  ratings: ApiKeyReadLevel;
+  upvotes: ApiKeyReadLevel;
+};
+
+export type ApiKeyScopesInput = {
+  comments: ApiKeyReadLevel;
+  launches: ApiKeyReadLevel;
+  productDescriptions: ApiKeyWriteLevel;
+  products: ApiKeyReadLevel;
+  profile: ApiKeyWriteLevel;
+  ratings: ApiKeyReadLevel;
+  upvotes: ApiKeyReadLevel;
+};
+
+/** 書き込みもできる機能の権限 */
+export type ApiKeyWriteLevel =
+  | 'NONE'
+  | 'READ'
+  | 'READ_WRITE';
+
 /** スポンサー広告の申込 */
 export type ApplySponsorshipInput = {
   /** 掲載終了日(業務日付のYYYY-MM-DD) */
@@ -862,6 +916,14 @@ export type InquiryStatus =
   | 'REJECTED'
   | 'RESOLVED';
 
+/** 発行・再発行の結果 */
+export type IssuedApiKey = {
+  __typename?: 'IssuedApiKey';
+  apiKey: ApiKey;
+  /** 平文のAPIキー。この応答でだけ返し、再び読めない */
+  plainKey: Scalars['String']['output'];
+};
+
 export type LaunchComment = {
   __typename?: 'LaunchComment';
   /** REMOVEDと、投稿者を表示できなくなった競合はnull */
@@ -1262,6 +1324,8 @@ export type Mutation = {
   createUltrasPortalSession: UltrasPortalSession;
   /** 管理者の削除 */
   deleteAdmin: Scalars['Boolean']['output'];
+  /** 自分のAPIキーを削除し、削除したキーのIDを返す。停止中の利用者も削除できる */
+  deleteApiKey: Scalars['ID']['output'];
   /** 自分の表示できるコメントを置き換え表示にし、返信は残す */
   deleteComment: LaunchComment;
   deleteHelpArticle: DeleteHelpArticlePayload;
@@ -1282,6 +1346,8 @@ export type Mutation = {
   followUser: FollowState;
   /** 閲覧のみのロールで招待し、招待のメールを送る */
   inviteAdmin: AdminAccount;
+  /** 新しいAPIキーを発行する。発行は再発行と合わせて利用者ごとに1時間3回まで */
+  issueApiKey: IssuedApiKey;
   /** メールアドレスとパスワードによるログイン */
   login: LoginResult;
   /** この端末のログアウト */
@@ -1304,6 +1370,8 @@ export type Mutation = {
   registerProduct: MyProduct;
   /** 利用者の登録 */
   registerUser: Viewer;
+  /** 自分のAPIキーと同じ名前と権限スコープの新しいキーを追加で発行する。元のキーは残す */
+  reissueApiKey: IssuedApiKey;
   renameHelpCategory: HelpCategory;
   /** カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上 */
   renameInquiryCategory: InquiryCategory;
@@ -1363,6 +1431,8 @@ export type Mutation = {
   unfollowUser: FollowState;
   /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
   updateAdminProfile: AdminAccount;
+  /** 自分のAPIキーの名前と権限スコープを変える。キーの文字列は変えない */
+  updateApiKey: ApiKey;
   /** 本文と、それに添えた評価を1回の書き込みで保存する */
   updateComment: CommentMutationResult;
   updateHelpArticle: AdminHelpArticle;
@@ -1505,6 +1575,11 @@ export type MutationDeleteAdminArgs = {
 };
 
 
+export type MutationDeleteApiKeyArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationDeleteCommentArgs = {
   commentId: Scalars['ID']['input'];
 };
@@ -1565,6 +1640,11 @@ export type MutationInviteAdminArgs = {
 };
 
 
+export type MutationIssueApiKeyArgs = {
+  input: ApiKeyInput;
+};
+
+
 export type MutationLoginArgs = {
   input: LoginInput;
 };
@@ -1614,6 +1694,11 @@ export type MutationRegisterProductArgs = {
 
 export type MutationRegisterUserArgs = {
   input: RegisterUserInput;
+};
+
+
+export type MutationReissueApiKeyArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -1759,6 +1844,12 @@ export type MutationUpdateAdminProfileArgs = {
   id: Scalars['ID']['input'];
   nickname: Scalars['String']['input'];
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationUpdateApiKeyArgs = {
+  id: Scalars['ID']['input'];
+  input: ApiKeyInput;
 };
 
 
@@ -2439,6 +2530,8 @@ export type Query = {
   matchSupporters?: Maybe<SupporterConnection>;
   /** 本人の問い合わせのチャット。本人の問い合わせでなければnull */
   memberInquiry?: Maybe<MemberInquiry>;
+  /** 自分のAPIキーの発行の新しい順の一覧。停止中の利用者も読める */
+  myApiKeys: ApiKeyConnection;
   /** ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20 */
   myFollowers: FollowEntryConnection;
   /** ログイン中の利用者(停止中を含む)がフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20 */
@@ -2641,6 +2734,12 @@ export type QueryMatchSupportersArgs = {
 
 export type QueryMemberInquiryArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type QueryMyApiKeysArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -3735,6 +3834,13 @@ export type ResolversTypes = {
   AdminSponsorshipStatusFilter: AdminSponsorshipStatusFilter;
   AdminTotpSetup: ResolverTypeWrapper<AdminTotpSetup>;
   AdminViewer: ResolverTypeWrapper<AdminViewerSource>;
+  ApiKey: ResolverTypeWrapper<ApiKey>;
+  ApiKeyConnection: ResolverTypeWrapper<ApiKeyConnection>;
+  ApiKeyInput: ApiKeyInput;
+  ApiKeyReadLevel: ApiKeyReadLevel;
+  ApiKeyScopes: ResolverTypeWrapper<ApiKeyScopes>;
+  ApiKeyScopesInput: ApiKeyScopesInput;
+  ApiKeyWriteLevel: ApiKeyWriteLevel;
   ApplySponsorshipInput: ApplySponsorshipInput;
   AuditDetail: ResolverTypeWrapper<AuditDetail>;
   AuditLogEntry: ResolverTypeWrapper<AuditLogEntry>;
@@ -3799,6 +3905,7 @@ export type ResolversTypes = {
   InquirySender: InquirySender;
   InquiryStatus: InquiryStatus;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  IssuedApiKey: ResolverTypeWrapper<IssuedApiKey>;
   LaunchComment: ResolverTypeWrapper<LaunchCommentModel>;
   LaunchCommentConnection: ResolverTypeWrapper<Omit<LaunchCommentConnection, 'nodes'> & { nodes: Array<ResolversTypes['LaunchCommentThread']> }>;
   LaunchCommentCount: ResolverTypeWrapper<LaunchCommentCount>;
@@ -4000,6 +4107,11 @@ export type ResolversParentTypes = {
   AdminSponsorshipFilter: AdminSponsorshipFilter;
   AdminTotpSetup: AdminTotpSetup;
   AdminViewer: AdminViewerSource;
+  ApiKey: ApiKey;
+  ApiKeyConnection: ApiKeyConnection;
+  ApiKeyInput: ApiKeyInput;
+  ApiKeyScopes: ApiKeyScopes;
+  ApiKeyScopesInput: ApiKeyScopesInput;
   ApplySponsorshipInput: ApplySponsorshipInput;
   AuditDetail: AuditDetail;
   AuditLogEntry: AuditLogEntry;
@@ -4052,6 +4164,7 @@ export type ResolversParentTypes = {
   InquiryReplyAuthor: InquiryReplyAuthorModel;
   InquiryReplyResult: Omit<InquiryReplyResult, 'message'> & { message: ResolversParentTypes['InquiryMessage'] };
   Int: Scalars['Int']['output'];
+  IssuedApiKey: IssuedApiKey;
   LaunchComment: LaunchCommentModel;
   LaunchCommentConnection: Omit<LaunchCommentConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['LaunchCommentThread']> };
   LaunchCommentCount: LaunchCommentCount;
@@ -4373,6 +4486,28 @@ export type AdminViewerResolvers<ContextType = GraphQLContext, ParentType extend
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
+export type ApiKeyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ApiKey'] = ResolversParentTypes['ApiKey']> = {
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  scopes?: Resolver<ResolversTypes['ApiKeyScopes'], ParentType, ContextType>;
+};
+
+export type ApiKeyConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ApiKeyConnection'] = ResolversParentTypes['ApiKeyConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['ApiKey']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type ApiKeyScopesResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ApiKeyScopes'] = ResolversParentTypes['ApiKeyScopes']> = {
+  comments?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
+  launches?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
+  productDescriptions?: Resolver<ResolversTypes['ApiKeyWriteLevel'], ParentType, ContextType>;
+  products?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
+  profile?: Resolver<ResolversTypes['ApiKeyWriteLevel'], ParentType, ContextType>;
+  ratings?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
+  upvotes?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
+};
+
 export type AuditDetailResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AuditDetail'] = ResolversParentTypes['AuditDetail']> = {
   key?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   value?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -4631,6 +4766,11 @@ export type InquiryReplyResultResolvers<ContextType = GraphQLContext, ParentType
   notificationQueued?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
+export type IssuedApiKeyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['IssuedApiKey'] = ResolversParentTypes['IssuedApiKey']> = {
+  apiKey?: Resolver<ResolversTypes['ApiKey'], ParentType, ContextType>;
+  plainKey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type LaunchCommentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchComment'] = ResolversParentTypes['LaunchComment']> = {
   author?: Resolver<Maybe<ResolversTypes['UserSummary']>, ParentType, ContextType>;
   body?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -4845,6 +4985,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   createProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationCreateProductCategoryArgs, 'input'>>;
   createUltrasPortalSession?: Resolver<ResolversTypes['UltrasPortalSession'], ParentType, ContextType>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
+  deleteApiKey?: Resolver<ResolversTypes['ID'], ParentType, ContextType, RequireFields<MutationDeleteApiKeyArgs, 'id'>>;
   deleteComment?: Resolver<ResolversTypes['LaunchComment'], ParentType, ContextType, RequireFields<MutationDeleteCommentArgs, 'commentId'>>;
   deleteHelpArticle?: Resolver<ResolversTypes['DeleteHelpArticlePayload'], ParentType, ContextType, RequireFields<MutationDeleteHelpArticleArgs, 'id'>>;
   deleteHelpCategory?: Resolver<ResolversTypes['DeleteHelpCategoryPayload'], ParentType, ContextType, RequireFields<MutationDeleteHelpCategoryArgs, 'id'>>;
@@ -4856,6 +4997,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
   followUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationFollowUserArgs, 'handle'>>;
   inviteAdmin?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationInviteAdminArgs, 'email'>>;
+  issueApiKey?: Resolver<ResolversTypes['IssuedApiKey'], ParentType, ContextType, RequireFields<MutationIssueApiKeyArgs, 'input'>>;
   login?: Resolver<ResolversTypes['LoginResult'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'input'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   postComment?: Resolver<ResolversTypes['CommentMutationResult'], ParentType, ContextType, RequireFields<MutationPostCommentArgs, 'input'>>;
@@ -4867,6 +5009,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
   registerProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationRegisterProductArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
+  reissueApiKey?: Resolver<ResolversTypes['IssuedApiKey'], ParentType, ContextType, RequireFields<MutationReissueApiKeyArgs, 'id'>>;
   renameHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationRenameHelpCategoryArgs, 'id' | 'name'>>;
   renameInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationRenameInquiryCategoryArgs, 'id' | 'name'>>;
   reorderHelpArticles?: Resolver<Array<ResolversTypes['AdminHelpArticleRow']>, ParentType, ContextType, RequireFields<MutationReorderHelpArticlesArgs, 'categoryId' | 'orderedIds'>>;
@@ -4897,6 +5040,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   terminateSponsorship?: Resolver<ResolversTypes['SponsorshipTerminationResult'], ParentType, ContextType, RequireFields<MutationTerminateSponsorshipArgs, 'id' | 'reason'>>;
   unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
+  updateApiKey?: Resolver<ResolversTypes['ApiKey'], ParentType, ContextType, RequireFields<MutationUpdateApiKeyArgs, 'id' | 'input'>>;
   updateComment?: Resolver<ResolversTypes['CommentMutationResult'], ParentType, ContextType, RequireFields<MutationUpdateCommentArgs, 'input'>>;
   updateHelpArticle?: Resolver<ResolversTypes['AdminHelpArticle'], ParentType, ContextType, RequireFields<MutationUpdateHelpArticleArgs, 'input'>>;
   updateMyProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType, RequireFields<MutationUpdateMyProfileArgs, 'input'>>;
@@ -5247,6 +5391,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   legalDocumentVersion?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   matchSupporters?: Resolver<Maybe<ResolversTypes['SupporterConnection']>, ParentType, ContextType, RequireFields<QueryMatchSupportersArgs, 'entryId' | 'first' | 'matchId' | 'productHandle'>>;
   memberInquiry?: Resolver<Maybe<ResolversTypes['MemberInquiry']>, ParentType, ContextType, RequireFields<QueryMemberInquiryArgs, 'id'>>;
+  myApiKeys?: Resolver<ResolversTypes['ApiKeyConnection'], ParentType, ContextType, RequireFields<QueryMyApiKeysArgs, 'first'>>;
   myFollowers?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowersArgs, 'first'>>;
   myFollowing?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowingArgs, 'first'>>;
   myInquiries?: Resolver<ResolversTypes['MemberInquiryPage'], ParentType, ContextType, Partial<QueryMyInquiriesArgs>>;
@@ -5672,6 +5817,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   AdminSponsorshipConnection?: AdminSponsorshipConnectionResolvers<ContextType>;
   AdminTotpSetup?: AdminTotpSetupResolvers<ContextType>;
   AdminViewer?: AdminViewerResolvers<ContextType>;
+  ApiKey?: ApiKeyResolvers<ContextType>;
+  ApiKeyConnection?: ApiKeyConnectionResolvers<ContextType>;
+  ApiKeyScopes?: ApiKeyScopesResolvers<ContextType>;
   AuditDetail?: AuditDetailResolvers<ContextType>;
   AuditLogEntry?: AuditLogEntryResolvers<ContextType>;
   AuditLogPage?: AuditLogPageResolvers<ContextType>;
@@ -5711,6 +5859,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   InquiryMessage?: InquiryMessageResolvers<ContextType>;
   InquiryReplyAuthor?: InquiryReplyAuthorResolvers<ContextType>;
   InquiryReplyResult?: InquiryReplyResultResolvers<ContextType>;
+  IssuedApiKey?: IssuedApiKeyResolvers<ContextType>;
   LaunchComment?: LaunchCommentResolvers<ContextType>;
   LaunchCommentConnection?: LaunchCommentConnectionResolvers<ContextType>;
   LaunchCommentCount?: LaunchCommentCountResolvers<ContextType>;

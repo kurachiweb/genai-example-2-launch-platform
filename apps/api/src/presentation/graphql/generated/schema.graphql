@@ -309,6 +309,59 @@ type AdminViewer {
   title: String
 }
 
+"""APIキー。平文とハッシュは持たない"""
+type ApiKey {
+  createdAt: DateTime!
+  id: ID!
+  name: String!
+  scopes: ApiKeyScopes!
+}
+
+type ApiKeyConnection {
+  nodes: [ApiKey!]!
+  pageInfo: PageInfo!
+}
+
+input ApiKeyInput {
+  """前後の空白を除いて1〜50文字"""
+  name: String!
+  scopes: ApiKeyScopesInput!
+}
+
+"""読み取りだけの機能の権限"""
+enum ApiKeyReadLevel {
+  NONE
+  READ
+}
+
+"""機能ごとの権限スコープ"""
+type ApiKeyScopes {
+  comments: ApiKeyReadLevel!
+  launches: ApiKeyReadLevel!
+  productDescriptions: ApiKeyWriteLevel!
+  products: ApiKeyReadLevel!
+  profile: ApiKeyWriteLevel!
+  ratings: ApiKeyReadLevel!
+  upvotes: ApiKeyReadLevel!
+}
+
+input ApiKeyScopesInput {
+  comments: ApiKeyReadLevel!
+  launches: ApiKeyReadLevel!
+  productDescriptions: ApiKeyWriteLevel!
+  products: ApiKeyReadLevel!
+  profile: ApiKeyWriteLevel!
+  ratings: ApiKeyReadLevel!
+  upvotes: ApiKeyReadLevel!
+}
+
+"""書き込みもできる機能の権限"""
+enum ApiKeyWriteLevel {
+  NONE
+  READ
+  READ_WRITE
+}
+
 """スポンサー広告の申込"""
 input ApplySponsorshipInput {
   """掲載終了日(業務日付のYYYY-MM-DD)"""
@@ -871,6 +924,14 @@ enum InquiryStatus {
   RESOLVED
 }
 
+"""発行・再発行の結果"""
+type IssuedApiKey {
+  apiKey: ApiKey!
+
+  """平文のAPIキー。この応答でだけ返し、再び読めない"""
+  plainKey: String!
+}
+
 type LaunchComment {
   """REMOVEDと、投稿者を表示できなくなった競合はnull"""
   author: UserSummary
@@ -1327,6 +1388,9 @@ type Mutation {
   """管理者の削除"""
   deleteAdmin(id: ID!, reason: String): Boolean!
 
+  """自分のAPIキーを削除し、削除したキーのIDを返す。停止中の利用者も削除できる"""
+  deleteApiKey(id: ID!): ID!
+
   """自分の表示できるコメントを置き換え表示にし、返信は残す"""
   deleteComment(commentId: ID!): LaunchComment!
   deleteHelpArticle(id: ID!, reason: String): DeleteHelpArticlePayload!
@@ -1355,6 +1419,9 @@ type Mutation {
 
   """閲覧のみのロールで招待し、招待のメールを送る"""
   inviteAdmin(email: String!, reason: String): AdminAccount!
+
+  """新しいAPIキーを発行する。発行は再発行と合わせて利用者ごとに1時間3回まで"""
+  issueApiKey(input: ApiKeyInput!): IssuedApiKey!
 
   """メールアドレスとパスワードによるログイン"""
   login(input: LoginInput!): LoginResult!
@@ -1388,6 +1455,9 @@ type Mutation {
 
   """利用者の登録"""
   registerUser(input: RegisterUserInput!): Viewer!
+
+  """自分のAPIキーと同じ名前と権限スコープの新しいキーを追加で発行する。元のキーは残す"""
+  reissueApiKey(id: ID!): IssuedApiKey!
   renameHelpCategory(id: ID!, name: String!): HelpCategory!
 
   """カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上"""
@@ -1490,6 +1560,9 @@ type Mutation {
 
   """プロフィールの更新。avatarFileIdの省略は画像を取り除く"""
   updateAdminProfile(avatarFileId: ID, id: ID!, nickname: String!, title: String): AdminAccount!
+
+  """自分のAPIキーの名前と権限スコープを変える。キーの文字列は変えない"""
+  updateApiKey(id: ID!, input: ApiKeyInput!): ApiKey!
 
   """本文と、それに添えた評価を1回の書き込みで保存する"""
   updateComment(input: UpdateCommentInput!): CommentMutationResult!
@@ -2238,6 +2311,9 @@ type Query {
 
   """本人の問い合わせのチャット。本人の問い合わせでなければnull"""
   memberInquiry(id: ID!): MemberInquiry
+
+  """自分のAPIキーの発行の新しい順の一覧。停止中の利用者も読める"""
+  myApiKeys(after: String, first: Int = 50): ApiKeyConnection!
 
   """ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20"""
   myFollowers(after: String, first: Int!): FollowEntryConnection!

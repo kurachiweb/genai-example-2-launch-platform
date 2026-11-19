@@ -231,3 +231,18 @@ describe('GRAPHQL_SCHEMA_MODULES(スポンサー広告)', () => {
     );
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(APIキー)', () => {
+  test('利用者側のAPIキーの一覧の照会と、発行・編集・再発行・削除の操作がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['myApiKeys']?.type)).toBe('ApiKeyConnection!');
+    expect(String(mutation?.['issueApiKey']?.type)).toBe('IssuedApiKey!');
+    expect(String(mutation?.['updateApiKey']?.type)).toBe('ApiKey!');
+    expect(String(mutation?.['reissueApiKey']?.type)).toBe('IssuedApiKey!');
+    expect(String(mutation?.['deleteApiKey']?.type)).toBe('ID!');
+  });
+});
