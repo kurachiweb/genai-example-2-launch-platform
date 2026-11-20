@@ -1,5 +1,6 @@
 import { inject, injectable } from 'inversify';
 
+import { STATISTICS_WEEKS_SHOWN } from '../../../../common-lib/moderation/moderation-actions.ts';
 import { IDENTITY_PLATFORM_TYPES } from '../../../../lib/core/identity/identifiers.ts';
 import type { AdminUserDirectory } from '../../../../lib/core/identity/ports.ts';
 import { getAppLogger } from '../../../../lib/core/logging/app-logger.ts';
@@ -74,29 +75,12 @@ export class WeeklyStatisticsJob implements ScheduledJobHandler {
 
   // 確定した週はストアが書き換えず、未確定の週は上書きするため、2回実行しても週の行は増えない
   async run({ scheduledTime }: ScheduledJobContext): Promise<void> {
-    const { current, previous } = weeksToCompute(scheduledTime);
-    const currentTarget: WeekToCompute = {
-      week: current,
-      asOf: scheduledTime,
-      finalized: false,
-    };
-    const targets: readonly WeekToCompute[] = (await this.store.findFinalized(
-      previous.weekStart,
-    ))
-      ? [currentTarget]
-      : [
-          {
-            week: previous,
-            asOf: previous.to,
-            finalized: isWeekFinished(previous, scheduledTime),
-          },
-          currentTarget,
-        ];
+    const targets = await this.#targetsAt(scheduledTime);
     let rows: readonly WeeklyStatisticsRow[];
     try {
       rows = await this.#compute(targets, scheduledTime);
     } catch (error: unknown) {
-      // 何も保存しないため前週は未確定のまま残り、次の実行が週の終わりの時点で集計し直す。投げ直すと同じ失敗を二重に通知するため、ジョブは成功で終える
+      // 何も保存しないため終わった週は未確定のまま残り、次の実行が週の終わりの時点で集計し直す。投げ直すと同じ失敗を二重に通知するため、ジョブは成功で終える
       logger.warning('週ごとの統計を集計できませんでした', { error });
       this.reporter.report('statistics-failed', {
         job: WEEKLY_STATISTICS_JOB_DEFINITION.name,
@@ -110,7 +94,29 @@ export class WeeklyStatisticsJob implements ScheduledJobHandler {
     });
   }
 
-  // 週の数によらず照会の回数を一定に保つため、収益と日ごとの集計は全ての週を1回の照会でまとめて引く
+  // 表示の範囲の終わった週のうち確定していない週(行の無い週を含む)と今週を、古い順に集計の対象にする。ジョブが7日を超えて止まっても、範囲の中の週は全て確定する
+  async #targetsAt(scheduledTime: Date): Promise<readonly WeekToCompute[]> {
+    const { current, finished } = weeksToCompute(
+      scheduledTime,
+      STATISTICS_WEEKS_SHOWN,
+    );
+    const earliest = finished[0]?.weekStart ?? current.weekStart;
+    const finalized = new Set<BusinessDate>(
+      await this.store.findFinalizedWeekStarts(earliest),
+    );
+    return [
+      ...finished
+        .filter(({ weekStart }) => !finalized.has(weekStart))
+        .map((week) => ({
+          week,
+          asOf: week.to,
+          finalized: isWeekFinished(week, scheduledTime),
+        })),
+      { week: current, asOf: scheduledTime, finalized: false },
+    ];
+  }
+
+  // 収益と日ごとの集計は週の数によらず1回の照会でまとめて引き、時点の総数は週ごとに並べて引く。対象は最大27週・189日のため、収益の期間の上限(60)と日ごとの集計の日数の上限(366)に収まる
   async #compute(
     targets: readonly WeekToCompute[],
     now: Date,

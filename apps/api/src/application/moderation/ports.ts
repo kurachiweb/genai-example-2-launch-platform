@@ -105,9 +105,9 @@ export interface WeeklyStatisticsRow {
   readonly computedAt: Date;
 }
 
-// 確定した週の値は変えない。listRecentは確定した週と、最も新しい週(未確定なら集計中の今週)を週の古い順に返し、ジョブが止まって確定できないまま後の週に追い越された週は値が週の途中のものであるため返さない
+// 確定した週の値は変えない。findFinalizedWeekStartsは開始日がfrom以降の確定した週の開始日を古い順に返す。listRecentは確定した週と、最も新しい週(未確定なら集計中の今週)を週の古い順に返し、ジョブが止まって確定できないまま後の週に追い越された週は、次に成功した集計が確定させるまで値が週の途中のものであるため返さない
 export interface WeeklyStatisticsStore {
   upsert(rows: readonly WeeklyStatisticsRow[]): Promise<void>;
-  findFinalized(weekStart: BusinessDate): Promise<boolean>;
+  findFinalizedWeekStarts(from: BusinessDate): Promise<readonly BusinessDate[]>;
   listRecent(limit: number): Promise<readonly WeeklyStatisticsRow[]>;
 }

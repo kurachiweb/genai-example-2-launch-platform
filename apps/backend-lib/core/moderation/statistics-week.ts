@@ -15,7 +15,8 @@ export interface StatisticsWeekRange {
 
 export interface StatisticsWeeksToCompute {
   readonly current: StatisticsWeekRange;
-  readonly previous: StatisticsWeekRange;
+  // 週の古い順
+  readonly finished: readonly StatisticsWeekRange[];
 }
 
 const START_OF_DAY: BusinessTimeOfDay = Object.freeze({ hour: 0, minute: 0 });
@@ -40,9 +41,25 @@ export function previousWeek(week: StatisticsWeekRange): StatisticsWeekRange {
   return rangeStartingAt(addBusinessDays(week.weekStart, -DAYS_PER_WEEK));
 }
 
-export function weeksToCompute(now: Date): StatisticsWeeksToCompute {
+export function weeksToCompute(
+  now: Date,
+  finishedWeeks: number,
+): StatisticsWeeksToCompute {
+  if (!Number.isInteger(finishedWeeks) || finishedWeeks < 0) {
+    throw new RangeError(
+      `終わった週の数は0以上の整数で指定してください: ${String(finishedWeeks)}`,
+    );
+  }
   const current = weekOf(now);
-  return Object.freeze({ current, previous: previousWeek(current) });
+  const finished = Array.from({ length: finishedWeeks }, (_, index) =>
+    rangeStartingAt(
+      addBusinessDays(
+        current.weekStart,
+        (index - finishedWeeks) * DAYS_PER_WEEK,
+      ),
+    ),
+  );
+  return Object.freeze({ current, finished: Object.freeze(finished) });
 }
 
 export function isWeekFinished(week: StatisticsWeekRange, now: Date): boolean {

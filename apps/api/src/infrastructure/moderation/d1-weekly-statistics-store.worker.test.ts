@@ -6,6 +6,7 @@ import { createDatabase } from '../../../db/client.ts';
 import { moderationWeeklyStatistics } from '../../../db/schema/moderation/moderation-weekly-statistics.ts';
 import { isUppercaseUlid } from '../../../lib/core/ids/uppercase-ulid.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
   parseBusinessDate,
 } from '../../../lib/core/time/business-time.ts';
@@ -24,6 +25,12 @@ const RECOMPUTED_AT = new Date('2026-11-19T12:21:00.000Z');
 
 function weekOf(value: string): BusinessDate {
   return parseBusinessDate(value);
+}
+
+function weekStartsFrom(first: string, count: number): string[] {
+  return Array.from({ length: count }, (_, index) =>
+    addBusinessDays(weekOf(first), index * 7),
+  );
 }
 
 function rowOf(
@@ -167,6 +174,44 @@ describe('D1WeeklyStatisticsStore.upsert', () => {
     ]);
   });
 
+  test('行の無い状態から27週を1回で保存すると、1文のバインド変数の上限を超えずに全ての週を保存する', async () => {
+    const rows = weekStartsFrom('2026-05-18', 27).map((weekStart, index) =>
+      rowOf(weekStart, { upvotes: index, finalized: index < 26 }),
+    );
+
+    await store.upsert(rows);
+
+    await expect(store.listRecent(27)).resolves.toStrictEqual(rows);
+  });
+
+  test('27週を1回で保存し直すと、確定した週を書き換えず、未確定の週だけを上書きする', async () => {
+    const finalizedRows = weekStartsFrom('2026-05-18', 20).map((weekStart) =>
+      rowOf(weekStart, { upvotes: 1, finalized: true }),
+    );
+    const unfinalizedRows = weekStartsFrom('2026-10-05', 7).map((weekStart) =>
+      rowOf(weekStart, { upvotes: 2 }),
+    );
+    await store.upsert([...finalizedRows, ...unfinalizedRows]);
+    const before = await readRows();
+
+    const recomputed = weekStartsFrom('2026-05-18', 27).map(
+      (weekStart, index) =>
+        rowOf(weekStart, {
+          upvotes: 900 + index,
+          finalized: index < 26,
+          computedAt: RECOMPUTED_AT,
+        }),
+    );
+    await store.upsert(recomputed);
+
+    const after = await readRows();
+    expect(after.map(({ id }) => id)).toStrictEqual(before.map(({ id }) => id));
+    await expect(store.listRecent(27)).resolves.toStrictEqual([
+      ...finalizedRows,
+      ...recomputed.slice(20),
+    ]);
+  });
+
   test('空の配列では何も書かない', async () => {
     await store.upsert([]);
 
@@ -174,20 +219,38 @@ describe('D1WeeklyStatisticsStore.upsert', () => {
   });
 });
 
-describe('D1WeeklyStatisticsStore.findFinalized', () => {
-  test('確定した週だけ真を返し、未確定の週と行の無い週は偽を返す', async () => {
+describe('D1WeeklyStatisticsStore.findFinalizedWeekStarts', () => {
+  test('指定の開始日以降の確定した週の開始日だけを古い順に返し、未確定の週と前の週を含めない', async () => {
     await store.upsert([
+      rowOf('2026-10-19', { finalized: true }),
+      rowOf('2026-10-26', { finalized: true }),
+      rowOf('2026-11-02'),
       rowOf('2026-11-09', { finalized: true }),
       rowOf('2026-11-16'),
     ]);
 
-    await expect(store.findFinalized(weekOf('2026-11-09'))).resolves.toBe(true);
-    await expect(store.findFinalized(weekOf('2026-11-16'))).resolves.toBe(
-      false,
-    );
-    await expect(store.findFinalized(weekOf('2026-11-02'))).resolves.toBe(
-      false,
-    );
+    await expect(
+      store.findFinalizedWeekStarts(weekOf('2026-10-26')),
+    ).resolves.toStrictEqual(['2026-10-26', '2026-11-09']);
+  });
+
+  test('年をまたぐ週も週の開始日の順に返す', async () => {
+    await store.upsert([
+      rowOf('2027-01-04', { finalized: true }),
+      rowOf('2026-12-28', { finalized: true }),
+    ]);
+
+    await expect(
+      store.findFinalizedWeekStarts(weekOf('2026-12-21')),
+    ).resolves.toStrictEqual(['2026-12-28', '2027-01-04']);
+  });
+
+  test('確定した週が無ければ空の配列を返す', async () => {
+    await store.upsert([rowOf('2026-11-16')]);
+
+    await expect(
+      store.findFinalizedWeekStarts(weekOf('2026-05-18')),
+    ).resolves.toStrictEqual([]);
   });
 });
 

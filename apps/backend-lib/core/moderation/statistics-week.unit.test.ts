@@ -105,33 +105,63 @@ describe('previousWeek', () => {
 });
 
 describe('weeksToCompute', () => {
-  test('実行時刻の週を今週、その前の週を前週として返す', () => {
-    expect(weeksToCompute(at('2026-11-17', '04:21'))).toEqual({
+  test('実行時刻の週を今週、その前の指定の数の終わった週を古い順に返す', () => {
+    expect(weeksToCompute(at('2026-11-17', '04:21'), 3)).toEqual({
       current: rangeOf('2026-11-16', '2026-11-23'),
-      previous: rangeOf('2026-11-09', '2026-11-16'),
+      finished: [
+        rangeOf('2026-10-26', '2026-11-02'),
+        rangeOf('2026-11-02', '2026-11-09'),
+        rangeOf('2026-11-09', '2026-11-16'),
+      ],
     });
   });
 
-  test('月曜日の4:21の実行では、終わったばかりの週が前週になる', () => {
-    const { current, previous } = weeksToCompute(at('2026-11-23', '04:21'));
+  test('26週を指定すると、今週の26週前の月曜日から前週までの26週を返す', () => {
+    const { current, finished } = weeksToCompute(at('2026-11-20', '04:21'), 26);
 
-    expect([current.weekStart, previous.weekStart]).toEqual([
-      date('2026-11-23'),
-      date('2026-11-16'),
-    ]);
+    expect(current.weekStart).toBe(date('2026-11-16'));
+    expect(finished).toHaveLength(26);
+    expect(finished.at(0)).toEqual(rangeOf('2026-05-18', '2026-05-25'));
+    expect(finished.at(-1)).toEqual(rangeOf('2026-11-09', '2026-11-16'));
   });
 
-  test('年の初めの週の実行では前の年の最後の週が前週になる', () => {
-    expect(weeksToCompute(at('2027-01-04', '04:21'))).toEqual({
+  test('月曜日の4:21の実行では、終わったばかりの週が最も新しい終わった週になる', () => {
+    const { current, finished } = weeksToCompute(at('2026-11-23', '04:21'), 2);
+
+    expect([
+      current.weekStart,
+      ...finished.map((week) => week.weekStart),
+    ]).toEqual([date('2026-11-23'), date('2026-11-09'), date('2026-11-16')]);
+  });
+
+  test('年の初めの週の実行では前の年の週を終わった週に含める', () => {
+    expect(weeksToCompute(at('2027-01-04', '04:21'), 2)).toEqual({
       current: rangeOf('2027-01-04', '2027-01-11'),
-      previous: rangeOf('2026-12-28', '2027-01-04'),
+      finished: [
+        rangeOf('2026-12-21', '2026-12-28'),
+        rangeOf('2026-12-28', '2027-01-04'),
+      ],
     });
   });
 
-  test('返す組は実行時に書き換えられない', () => {
-    expect(Object.isFrozen(weeksToCompute(at('2026-11-17', '04:21')))).toBe(
-      true,
-    );
+  test('0週を指定すると、終わった週を含めず今週だけを返す', () => {
+    expect(weeksToCompute(at('2026-11-17', '04:21'), 0).finished).toEqual([]);
+  });
+
+  test.each([-1, 1.5, Number.NaN])(
+    '終わった週の数に0以上の整数でない%pを渡すと週を求められない',
+    (count) => {
+      expect(() => weeksToCompute(at('2026-11-17', '04:21'), count)).toThrow(
+        RangeError,
+      );
+    },
+  );
+
+  test('返す組と終わった週の配列は実行時に書き換えられない', () => {
+    const weeks = weeksToCompute(at('2026-11-17', '04:21'), 2);
+
+    expect(Object.isFrozen(weeks)).toBe(true);
+    expect(Object.isFrozen(weeks.finished)).toBe(true);
   });
 });
 

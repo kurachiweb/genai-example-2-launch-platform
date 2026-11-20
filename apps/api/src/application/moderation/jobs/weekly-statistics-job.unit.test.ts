@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
 
+import { STATISTICS_WEEKS_SHOWN } from '../../../../common-lib/moderation/moderation-actions.ts';
 import type { MinorUnitAmount } from '../../../../common-lib/payments/money.ts';
 import type { AdminUserDirectory } from '../../../../lib/core/identity/ports.ts';
 import type {
@@ -38,6 +39,8 @@ const JOB_NAME = 'ugc-moderation.weekly-statistics';
 const FRIDAY = new Date('2026-11-20T12:21:00.000Z');
 const CURRENT_WEEK_FROM = new Date('2026-11-16T08:00:00.000Z');
 const PREVIOUS_WEEK_FROM = new Date('2026-11-09T08:00:00.000Z');
+const NOVEMBER_2_FROM = new Date('2026-11-02T08:00:00.000Z');
+const OCTOBER_26_FROM = new Date('2026-10-26T08:00:00.000Z');
 
 // 業務日付2026-11-23(月曜日)の業務時刻4:21。今週は11/23(月)〜、前週は11/16(月)〜
 const MONDAY = new Date('2026-11-23T12:21:00.000Z');
@@ -76,12 +79,20 @@ function dailySummariesOf(
   return days;
 }
 
+function weekStartsFrom(from: BusinessDate, count: number): BusinessDate[] {
+  return Array.from({ length: count }, (_, index) =>
+    addBusinessDays(from, index * 7),
+  );
+}
+
 function sumOf(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }
 
 interface FakeOptions {
-  readonly previousFinalized?: boolean;
+  // 指定しなければ、照会の開始日から26週のうちunfinalizedWeeksを除く週を確定済みとする
+  readonly finalizedWeeks?: readonly string[];
+  readonly unfinalizedWeeks?: readonly string[];
   readonly revenue?: (
     periods: readonly RevenuePeriod[],
   ) => Promise<readonly MinorUnitAmount[]>;
@@ -91,12 +102,12 @@ interface FakeOptions {
     readonly from: BusinessDate;
     readonly to: BusinessDate;
   }) => Promise<readonly DailyMatchSummary[]>;
-  readonly findFinalizedError?: Error;
+  readonly findFinalizedWeekStartsError?: Error;
   readonly upsertError?: Error;
 }
 
 function createJob(options: FakeOptions = {}) {
-  const findFinalizedCalls: BusinessDate[] = [];
+  const findFinalizedWeekStartsCalls: BusinessDate[] = [];
   const upserts: (readonly WeeklyStatisticsRow[])[] = [];
   const revenueCalls: (readonly RevenuePeriod[])[] = [];
   const userCalls: Date[] = [];
@@ -109,13 +120,24 @@ function createJob(options: FakeOptions = {}) {
     readonly incident: ModerationIncident;
     readonly context: ModerationIncidentContext;
   }[] = [];
-  const store: Pick<WeeklyStatisticsStore, 'findFinalized' | 'upsert'> = {
-    findFinalized: (weekStart) => {
-      findFinalizedCalls.push(weekStart);
-      if (options.findFinalizedError !== undefined) {
-        return Promise.reject(options.findFinalizedError);
+  const store: Pick<
+    WeeklyStatisticsStore,
+    'findFinalizedWeekStarts' | 'upsert'
+  > = {
+    findFinalizedWeekStarts: (from) => {
+      findFinalizedWeekStartsCalls.push(from);
+      if (options.findFinalizedWeekStartsError !== undefined) {
+        return Promise.reject(options.findFinalizedWeekStartsError);
       }
-      return Promise.resolve(options.previousFinalized ?? false);
+      const finalized =
+        options.finalizedWeeks?.map(date) ??
+        weekStartsFrom(from, STATISTICS_WEEKS_SHOWN).filter(
+          (weekStart) =>
+            !(options.unfinalizedWeeks ?? ['2026-11-09']).includes(weekStart),
+        );
+      return Promise.resolve(
+        finalized.filter((weekStart) => weekStart >= from),
+      );
     },
     upsert: (rows) => {
       upserts.push(rows);
@@ -176,7 +198,7 @@ function createJob(options: FakeOptions = {}) {
   );
   return {
     job,
-    findFinalizedCalls,
+    findFinalizedWeekStartsCalls,
     upserts,
     revenueCalls,
     userCalls,
@@ -234,12 +256,12 @@ describe('週ごとの統計の集計のジョブの定義', () => {
 });
 
 describe('WeeklyStatisticsJob', () => {
-  test('前週が未確定なら、前週を週の終わりの時点で集計して確定し、今週を実行時刻の時点で集計する', async () => {
-    const fake = createJob({ previousFinalized: false });
+  test('表示の範囲の終わった週のうち前週だけが未確定なら、前週を週の終わりの時点で集計して確定し、今週を実行時刻の時点で集計する', async () => {
+    const fake = createJob();
 
     await fake.job.run(contextAt(FRIDAY));
 
-    expect(fake.findFinalizedCalls).toEqual([date('2026-11-09')]);
+    expect(fake.findFinalizedWeekStartsCalls).toEqual([date('2026-05-18')]);
     expect(fake.revenueCalls).toEqual([
       [
         { from: PREVIOUS_WEEK_FROM, to: CURRENT_WEEK_FROM },
@@ -278,8 +300,8 @@ describe('WeeklyStatisticsJob', () => {
     expect(fake.reports).toEqual([]);
   });
 
-  test('前週が確定済みなら、今週だけを実行時刻の時点で集計する', async () => {
-    const fake = createJob({ previousFinalized: true });
+  test('表示の範囲の終わった週が全て確定済みなら、今週だけを実行時刻の時点で集計する', async () => {
+    const fake = createJob({ unfinalizedWeeks: [] });
 
     await fake.job.run(contextAt(FRIDAY));
 
@@ -309,7 +331,7 @@ describe('WeeklyStatisticsJob', () => {
 
   test('月曜日の実行では、終わった前週の日曜日までを前週に、実行日を今週に数える', async () => {
     const fake = createJob({
-      previousFinalized: false,
+      unfinalizedWeeks: ['2026-11-16'],
       usersAt: (at) => Promise.resolve(sameInstant(at, MONDAY) ? 130 : 125),
       productsAt: (at) => Promise.resolve(sameInstant(at, MONDAY) ? 50 : 48),
       revenue: () => Promise.resolve([-500, 0]),
@@ -317,7 +339,7 @@ describe('WeeklyStatisticsJob', () => {
 
     await fake.job.run(contextAt(MONDAY));
 
-    expect(fake.findFinalizedCalls).toEqual([date('2026-11-16')]);
+    expect(fake.findFinalizedWeekStartsCalls).toEqual([date('2026-05-25')]);
     expect(fake.revenueCalls).toEqual([
       [
         { from: CURRENT_WEEK_FROM, to: NEXT_WEEK_FROM },
@@ -357,11 +379,11 @@ describe('WeeklyStatisticsJob', () => {
   test('年をまたぐ週は、月曜日に始まる週の範囲で集計する', async () => {
     // 業務日付2027-01-01(金曜日)。今週は2026-12-28(月)〜、前週は2026-12-21(月)〜
     const newYear = new Date('2027-01-01T12:21:00.000Z');
-    const fake = createJob({ previousFinalized: false });
+    const fake = createJob({ unfinalizedWeeks: ['2026-12-21'] });
 
     await fake.job.run(contextAt(newYear));
 
-    expect(fake.findFinalizedCalls).toEqual([date('2026-12-21')]);
+    expect(fake.findFinalizedWeekStartsCalls).toEqual([date('2026-06-29')]);
     expect(fake.summarizeCalls).toEqual([
       { from: date('2026-12-21'), to: date('2027-01-01') },
     ]);
@@ -374,8 +396,140 @@ describe('WeeklyStatisticsJob', () => {
     );
   });
 
+  test('ジョブが7日を超えて止まっていたら、表示の範囲の未確定や行の無い終わった週を全て週の終わりの時点で集計して確定する', async () => {
+    const fake = createJob({
+      unfinalizedWeeks: ['2026-10-26', '2026-11-02', '2026-11-09'],
+    });
+
+    await fake.job.run(contextAt(FRIDAY));
+
+    expect(fake.revenueCalls).toEqual([
+      [
+        { from: OCTOBER_26_FROM, to: NOVEMBER_2_FROM },
+        { from: NOVEMBER_2_FROM, to: PREVIOUS_WEEK_FROM },
+        { from: PREVIOUS_WEEK_FROM, to: CURRENT_WEEK_FROM },
+        { from: CURRENT_WEEK_FROM, to: FRIDAY },
+      ],
+    ]);
+    expect(fake.userCalls).toEqual([
+      NOVEMBER_2_FROM,
+      PREVIOUS_WEEK_FROM,
+      CURRENT_WEEK_FROM,
+      FRIDAY,
+    ]);
+    expect(fake.productCalls).toEqual([
+      NOVEMBER_2_FROM,
+      PREVIOUS_WEEK_FROM,
+      CURRENT_WEEK_FROM,
+      FRIDAY,
+    ]);
+    expect(fake.summarizeCalls).toEqual([
+      { from: date('2026-10-26'), to: date('2026-11-20') },
+    ]);
+    expect(
+      fake.upserts[0]?.map(
+        ({ weekStart, netRevenue, qualifierMatches, finalized }) => ({
+          weekStart,
+          netRevenue,
+          qualifierMatches,
+          finalized,
+        }),
+      ),
+    ).toEqual([
+      {
+        weekStart: date('2026-10-26'),
+        netRevenue: 1000,
+        qualifierMatches: sumOf([26, 27, 28, 29, 30, 31, 1]),
+        finalized: true,
+      },
+      {
+        weekStart: date('2026-11-02'),
+        netRevenue: 2000,
+        qualifierMatches: sumOf([2, 3, 4, 5, 6, 7, 8]),
+        finalized: true,
+      },
+      {
+        weekStart: date('2026-11-09'),
+        netRevenue: 3000,
+        qualifierMatches: sumOf([9, 10, 11, 12, 13, 14, 15]),
+        finalized: true,
+      },
+      {
+        weekStart: date('2026-11-16'),
+        netRevenue: 4000,
+        qualifierMatches: sumOf([16, 17, 18, 19, 20]),
+        finalized: false,
+      },
+    ]);
+    expect(fake.upserts).toHaveLength(1);
+  });
+
+  test('未確定の週の間にある確定済みの週は照会せず、保存もしない', async () => {
+    const fake = createJob({ unfinalizedWeeks: ['2026-10-26', '2026-11-09'] });
+
+    await fake.job.run(contextAt(FRIDAY));
+
+    expect(fake.revenueCalls).toEqual([
+      [
+        { from: OCTOBER_26_FROM, to: NOVEMBER_2_FROM },
+        { from: PREVIOUS_WEEK_FROM, to: CURRENT_WEEK_FROM },
+        { from: CURRENT_WEEK_FROM, to: FRIDAY },
+      ],
+    ]);
+    expect(fake.userCalls).toEqual([
+      NOVEMBER_2_FROM,
+      CURRENT_WEEK_FROM,
+      FRIDAY,
+    ]);
+    expect(fake.summarizeCalls).toEqual([
+      { from: date('2026-10-26'), to: date('2026-11-20') },
+    ]);
+    expect(fake.upserts[0]?.map(({ weekStart }) => weekStart)).toEqual([
+      date('2026-10-26'),
+      date('2026-11-09'),
+      date('2026-11-16'),
+    ]);
+  });
+
+  test('確定した週が無ければ、表示の範囲の26週と今週だけを、収益と日ごとの集計は1回ずつ、時点の総数は週ごとに照会して集計する', async () => {
+    const fake = createJob({ finalizedWeeks: [] });
+
+    await fake.job.run(contextAt(FRIDAY));
+
+    const finished = weekStartsFrom(date('2026-05-18'), STATISTICS_WEEKS_SHOWN);
+    expect(fake.findFinalizedWeekStartsCalls).toEqual([date('2026-05-18')]);
+    expect(fake.revenueCalls).toHaveLength(1);
+    expect(fake.revenueCalls[0]).toHaveLength(27);
+    expect(fake.revenueCalls[0]?.[0]).toEqual({
+      from: new Date('2026-05-18T08:00:00.000Z'),
+      to: new Date('2026-05-25T08:00:00.000Z'),
+    });
+    expect(fake.userCalls).toHaveLength(27);
+    expect(fake.productCalls).toHaveLength(27);
+    expect(fake.summarizeCalls).toEqual([
+      { from: date('2026-05-18'), to: date('2026-11-20') },
+    ]);
+    expect(fake.upserts).toHaveLength(1);
+    expect(
+      fake.upserts[0]?.map(({ weekStart, finalized }) => [
+        weekStart,
+        finalized,
+      ]),
+    ).toEqual([
+      ...finished.map((weekStart) => [weekStart, true]),
+      [date('2026-11-16'), false],
+    ]);
+    expect(moderationLogs()).toEqual([
+      {
+        level: 'info',
+        message: '週ごとの統計を集計しました',
+        properties: { computed: 27, finalized: 26 },
+      },
+    ]);
+  });
+
   test('集計を終えたら、集計した週と確定した週の件数だけをログに残す', async () => {
-    const fake = createJob({ previousFinalized: false });
+    const fake = createJob();
 
     await fake.job.run(contextAt(FRIDAY));
 
@@ -397,7 +551,7 @@ describe('WeeklyStatisticsJob', () => {
   ])(
     '%sの照会に失敗したら、どの週も保存せず、定型の通知のポートへstatistics-failedを送ってジョブは成功で終える',
     async (_, options) => {
-      const fake = createJob({ previousFinalized: false, ...options });
+      const fake = createJob(options);
 
       await fake.job.run(contextAt(FRIDAY));
 
@@ -418,7 +572,6 @@ describe('WeeklyStatisticsJob', () => {
   test('照会に失敗した次の実行で、未確定のままの前週を週の終わりの時点で集計し直して確定する', async () => {
     let attempts = 0;
     const fake = createJob({
-      previousFinalized: false,
       revenue: (periods) => {
         attempts += 1;
         return attempts === 1
@@ -432,9 +585,9 @@ describe('WeeklyStatisticsJob', () => {
     await fake.job.run(contextAt(nextDay));
 
     expect(fake.reports).toHaveLength(1);
-    expect(fake.findFinalizedCalls).toEqual([
-      date('2026-11-09'),
-      date('2026-11-09'),
+    expect(fake.findFinalizedWeekStartsCalls).toEqual([
+      date('2026-05-18'),
+      date('2026-05-18'),
     ]);
     expect(fake.revenueCalls[1]).toEqual([
       { from: PREVIOUS_WEEK_FROM, to: CURRENT_WEEK_FROM },
@@ -460,7 +613,7 @@ describe('WeeklyStatisticsJob', () => {
 
   test('確定の有無を引けないときは、何も照会せずに例外を投げる', async () => {
     const storeFailure = new Error('D1の読み取りに失敗しました');
-    const fake = createJob({ findFinalizedError: storeFailure });
+    const fake = createJob({ findFinalizedWeekStartsError: storeFailure });
 
     const error: unknown = await fake.job
       .run(contextAt(FRIDAY))
