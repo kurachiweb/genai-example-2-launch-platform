@@ -126,7 +126,7 @@
   - _Depends: 2.2_
   - _Requirements: 11.6, 11.7, 11.9, 11.11, 11.12, 11.13, 11.14, 11.15_
 
-- [ ] 3.6 運営者による代理の退会を作る
+- [x] 3.6 運営者による代理の退会を作る
   - 対象の確かめにはidentity-authの仮7の利用者の管理の照会を使う。問い合わせは読まない
   - 先に、単体テストで、理由の必須と上限、退会済み・不在の`user_not_found`、停止中の利用者の受け付け、監査ログの対象が仮名化IDで詳細を持たないこと、記録の通知の状態が送らないであること、メールを送らないこと、競合の返却を確かめる
   - 先に、Workers統合テストで、本物の退会の確定と記録・監査ログの一体の確定、メールの送信の依頼が無いことを確かめる(ユースケースはテストの中で組み立て、2.3の束縛を使う)
@@ -454,3 +454,4 @@
 - 3.3: `DefaultCommentModerationService`(`application/moderation/comment-moderation-service.ts`)。対象は設計どおり`CommentStore.findByIds`で、`hiddenAt`で同じ状態を判定する。投稿者が削除・匿名化したコメントも非公開化・復元できる(上流の`CommentModerationControl`に合わせた。匿名化済みは記録の`subjectUserId`をnullにし、通知は「送らなかった」になる)。書き込みの単位が記録と状態を一体で確定するため、保留中の措置と`ModerationIncidentReporter`は注入しない。上流の`comment_not_found`はそのまま返す(同じエラー)
 - 3.4: `DefaultRatingModerationService`(`application/moderation/rating-moderation-service.ts`)。対象は`AdminRatingDirectory.findByIds`(論理削除されていない行だけを返すため、取消済みは`rating_not_found`)、`invalidatedAt`で同じ状態を判定。注入は`AdminRatingDirectory`・`EngagementModerationWriter`・`AuditLogRecorder`・`IdGenerator`の4つだけ(保留中の措置・通知・定型の通知は持たない)。記録の`noticeStatus`は`'none'`固定、監査ログの対象は評価のID
 - 3.5: `DefaultImageModerationService`(`application/moderation/image-moderation-service.ts`)。対象は`MediaFiles.findMany`、画像用でない用途は`file.storage !== 'images'`で`image_not_found`(そのため書き込みの単位の`quarantine_not_applicable`はこの経路では通常起きない)。論理削除済み(`deletedAt`あり)のファイルは拒否しない(media-pipelineでは物理削除まで配信され、隔離画像の一覧にも出るため。要件11.14の「削除済み」は記録が無い・削除待ちと解釈)。記録の`subjectUserId`は保有者が`user`のときだけ、`productId`はnull、監査ログの対象は`[fileId]`。参加の値の検査を理由の検証より前に行う。`storage_unavailable`はログを足さずにそのまま投げる(上流の操作口が警告を出す)
+- 3.6: `DefaultAdministrativeWithdrawalService`(`application/moderation/administrative-withdrawal-service.ts`、3.1の形)。通知のポートを持たない(メールを送らない)。設計に無い`ModerationIncidentReporter`を注入し、記録が取り出されないときは3.1と同じく`{ changed: true, actionId: null }`。退会済みは照会で除かれるため変化なしの結果は無い。上流の`forbidden`(管理者でない呼び出し)はそのまま投げる。Workers統合テストは`apps/api/src/composition/moderation-module.administrative-withdrawal.worker.test.ts`(`PLATFORM_TYPES.MessagePublisher`を記録する実装に差し替え`email.send`が無いことを確かめる)。競合は単体テストだけで確かめる
