@@ -417,7 +417,7 @@
   - _Depends: 6.3, 6.4, 6.5, 6.9, 8.3_
   - _Requirements: 16.4_
 
-- [ ] 8.5 コメント・評価と画像の措置のE2Eシナリオを作る
+- [x] 8.5 コメント・評価と画像の措置のE2Eシナリオを作る
   - 補助で作ったコメントを非公開化して利用者側で削除の置き換えの表示、評価の無効化で平均が変わることを確かめる
   - 利用者が99×99のプロフィール画像を登録し(代替の判定で隔離)、画像モデレーションの自動判定のタブで画像が読み込まれて表示され、公開承認で一覧から消えることを確かめる
   - 完了状態: ローカルでE2Eが成功する
@@ -489,3 +489,4 @@
 - 7.10: `e2e/admin/weekly-statistics.e2e.test.ts`(手順`weekly-statistics-steps.ts`)。`triggerScheduled({ worker: 'api', businessDate, businessTime: '04:21' })`→モデレーターの`signInAsNewAdmin`→ダッシュボードの統計のカードの表に今週の行がちょうど1つ・`time[datetime=weekStart]`・「集計中」を確かめる。文言は`statistics-messages.ts`から読む。ローカルでapi(`--test-scheduled`)・event・adminを起動して成功した。既知の制約: ローカルD1に今週より後の週の未確定の行(将来の業務日付で4:21を動かした場合)があると`listRecent`が今週の行を返さず落ちる
 - 6.9: `apps/admin/src/composition/admin-navigation.ts`の`ADMIN_NAV_ITEMS`にユーザー(20)・プロダクト(30)・コメント(40)・評価(50)・画像モデレーション(60)を加えた(全ロールが参照できるため必要なロールは持たせない)。全件一致で確かめる上流のテスト2つに加え、`apps/admin/test/admin-shell.browser.test.tsx`の`MENU_ITEMS`も更新した。`project-values.md`の「メニューの登録箇所」の行を15件に直した。admin全体の`test:browser`(82ファイル1121件)が成功し、ローカルで閲覧のみの管理者が5ページへメニューから移動できることを確かめた
 - 8.6: `e2e/admin/administrative-withdrawal.e2e.test.ts`(手順`administrative-withdrawal-steps.ts`)。最上位管理者が画面から登録した利用者をメールアドレスで検索して代理の退会→別の文脈でログインできない→監査ログに1行→退会の確定から20秒間その利用者にメールが1通も届かない(退会の完了のメール種別は存在しないため「何も届かない」で確かめる。登録の確認メールの到着を先に待つ)。モデレーターには「停止」はあるが「代理の退会」が無い。8.4の`user-moderation-steps.ts`と似た補助(行の取り方・監査ログの行)を自分のファイルに持つ(まとめる余地あり)
+- 8.5: `e2e/admin/engagement-moderation.e2e.test.ts`(手順`engagement-moderation-steps.ts`): 補助のコメントの非公開化で利用者側に「このコメントは削除されました。」、評価(5と1)の1の無効化で平均が3.0(2件)→5.0(1件)。`e2e/admin/media-moderation.e2e.test.ts`(手順`media-moderation-steps.ts`): 利用者が画面から99×99のプロフィール画像を登録→代替の判定で隔離→自動判定のタブで原本が読み込まれる(幅99)→公開承認で一覧から消える。8.3の空の`describe('UGC管理の補助')`は場面が同じ確認を含むため削除した。管理画面はメニューでなく`page.goto`(検索パラメータ付き)で開く。ハイドレーション前の押下をダイアログが開くまで押し直す処理が手順のファイルに重複している(まとめる余地あり)
