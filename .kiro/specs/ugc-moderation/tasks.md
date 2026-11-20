@@ -16,7 +16,7 @@
   - 完了状態: 単体テスト・Workers統合テスト・写しの照合のテストが成功し、マイグレーションをローカルのD1に適用できる
   - _Requirements: 13.5_
 
-- [ ] 1.3 (P) 措置の監査ログの操作種別を加える
+- [x] 1.3 (P) 措置の監査ログの操作種別を加える
   - 先に、単体テストで、13種の名前(1.1の措置の種類と同じ)・表示名・対象の種類・理由の要否・詳細の鍵(すべて空)・対象の上限1と、全操作種別の集約の重複の検査を確かめる
   - 本specの操作種別のファイルを作り、監査ログの操作種別の集約へ加える。集約の単体テスト(`audit-actions/index.unit.test.ts`)が全種別の名前を完全一致で列挙しているため、その期待値に13種を加える
   - 完了状態: 単体テストが成功し、集約の検査を通る
@@ -441,3 +441,4 @@
 
 - 1.1: 規則は`apps/common-lib/moderation/moderation-actions.ts`(`MODERATION_ACTION_DEFINITIONS`・`checkModerationReason`・`MODERATION_REASON_MESSAGES`・`MODERATION_TARGET_KINDS`・`MODERATION_NOTICE_STATUSES`・ライフサイクルの種類の写し)、表示名は`moderation-labels.ts`(上流の値の写し`QUARANTINE_REASONS`・`DISPOSABLE_EMAIL_JUDGEMENTS`・`ADMIN_LAUNCH_STATES`・`ADMIN_COMMENT_STATES`と`mediaPurposeLabel`)。`MODERATION_REASON_MAX`は`AUDIT_REASON_MAX`を参照する。使い捨て判定の写しは上流の型`DisposableEmailStatus`に本specの`unverified`(確認前)を加えた一覧として照合する。`check:contract-copies`への追加に伴い`scripts/tooling/run-all.unit.test.ts`の期待値も直した。13種の措置の表示名(「ユーザーの停止」など)は実装者が決めたため、1.5で文言規則に同じ語を載せる。利用者の状態・公開状態・評価の状態の表示名は未作成で、画面のタスクで必要なら加える
 - 1.2: `moderation_actions`(`apps/db/schema/moderation/moderation-actions.ts`、マイグレーション`20261120025459_ugc_moderation`)。`notice_status`は既定値を持たず、書き込む側が措置ごとに決める。索引・CHECKの名前は`api_keys`の前例(`<テーブル>_<列>_idx`・`_check`)。マイグレーションの照合のテストは`_ugc_moderation`で終わるディレクトリを探すため、7.2の統計のマイグレーションは`_ugc_moderation_statistics`のように別の接尾辞にする。D1の統合テストはapiのvitestで走る(`apps/api/db/ugc-moderation-schema.worker.test.ts`のバインド先)
+- 1.3: 操作種別は`apps/common-lib/admin/audit-actions/ugc-moderation.ts`の`MODERATION_AUDIT_ACTION_DEFINITIONS`(措置の種類をキーにしたRecord。ユースケースが措置の種類から監査ログの定義を引くため)と`MODERATION_AUDIT_ACTIONS`(一覧)。1.1の定義と表示名から組み立てて写しを持たない。上流の`apps/admin/src/components/pages/audit-logs-page.browser.test.tsx`が表示名を全件一致で比べるため13件を加えた(以後の操作種別の追加でも同様)。`project-values.md`の監査ログの操作種別の一覧への追加は8.2
