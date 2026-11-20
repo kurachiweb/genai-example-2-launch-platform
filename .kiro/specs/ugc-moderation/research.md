@@ -532,3 +532,45 @@
   - 区画の登録口の項目に、失敗の表示の見出しに使う`title`を加えた(後続のcontent-reportingが使う登録口のため、Revalidation Triggersの`AdminProductDetailContext`の形の変化に当たる。content-reportingのdesign.mdの登録の行に`title`を加えた)。
 - **変えた箇所**: design.mdのAllowed Dependencies(backend-platform・api-gateway・identity-auth・product-launch・media-pipeline・match-engine)・Dependency direction・File Structure Plan(ディレクトリ構成の全体と後の注記)・Modified Files(U1〜U3・U5〜U8、DBのテーブル名の一覧、メールの対の追加)・コンポーネントの表(定型の通知の行)・ModerationActions・ModerationLabels(写しの照合)・ModerationEmailKinds(`contactUrl`と冪等のキー)・識別子の文字列・`ModerationIncidentReporter`と`PendingModerationRecord`のスコープ・`PreparedAuditEntry`の置き場所・`UserModerationService`の不在の変換・ジョブの表・ModerationSchemaModule(接続の組み立て・`adminOnly`・`satisfies Resolvers`・IDの検証・エラーの置き場所・隔離画像の写像・生成のコマンド)・画面の部品の表(週の開始日・loader・`AdminMediaImage`・区画の登録口)と後の規約(変換のファイル・ページの配置)・Error Categories・Monitoring・Testing Strategy。tasks.mdの1.1〜1.5・2.2〜2.4・3.1・4.2〜4.8・5・6.1〜6.5・6.9・7.2・7.3・7.5〜7.8・7.10・8.2・8.3。research.mdのRisks & Mitigations。content-reportingのdesign.mdの`ADMIN_PRODUCT_DETAIL_SECTIONS`の登録の行。
 - **残り**: Research Neededの3件(Rechartsの版と`react-is`の要否、4:21の300秒の予算への影響、停止で動く決済中のセッションの失効を停止の通知で伝えるか)は実装のタスクの中で確かめる。spec.jsonは、反映の後に開発者の指示で`ready_for_implementation`を`true`にした(2026-11-20)。
+
+## 実装の記録(2026-11-20)
+
+タスク8.7(要件16.1)の全体の検査と作業の報告である。本specの開始の直前のコミットは`e5f3dd15`、検査の時点のHEADは`09f8da0d`(53コミット)。
+
+### 検査の結果
+
+| 検査                                                                             | 結果                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 一括の検査(`bun run check`、整形・静的解析・型生成・GraphQL・型検査・写しの照合) | 成功(25件成功・5件は対象外のため飛ばした)                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 単体テスト(`bun run test:all:unit --coverage`)                                   | 直した後に全て成功(ルート2,042件・common-lib 3,157件・api 11,177件・event 2,217件・frontend-lib 1,885件・client 1,353件・admin 666件)。直す前はapiが閾値で失敗した(下の1)                                                                                                                                                                                                                                                                                                                           |
+| ブラウザテスト(`bun run test:all:browser --coverage`)                            | frontend-lib(93ファイル1,229件)とadmin(82ファイル1,121件)は成功。clientは本specと無関係のファイルが実行ごとに異なって落ちた(1回目は`public-api/api-key-list-item`・`sponsorship/sponsorship-apply-link`、2回目は「Browser connection was closed」で168ファイルが未実行、3回目は`test/billing-route`・`upvote-history/upvote-history-panel`と同じ切断の`inquiry/member-inquiry-form`)。落ちたファイルは全て単独の再実行で成功した(既知のCDPの切断による不安定な失敗。本specはclientを変更していない) |
+| Workers統合テスト(`bun run test:all:worker --coverage`)                          | 直した後に全て成功(api 547ファイル8,155件・event 120ファイル1,422件)。直す前はapiが閾値で失敗した(下の2)                                                                                                                                                                                                                                                                                                                                                                                            |
+| E2E(措置と統計の6ファイル、`--project=admin`)                                    | 7件全て成功(apiを`--test-scheduled`、event・client・adminをローカルで起動し、`db:migrate:local`の後に実行。終了後に全て停止した)                                                                                                                                                                                                                                                                                                                                                                    |
+
+### カバレッジ
+
+- `git diff --name-only e5f3dd15..HEAD`のうち、テスト・テストの補助・文書・GraphQLの操作・マイグレーションを除くファイル(生成物と設定を含む169件)を、各アプリの単体・ブラウザ・Workers統合テストのlcovと突き合わせた。計測されたファイルは全て行と関数が80%以上である。
+- 計測の対象に入らないファイルは、型だけのファイル(`apps/api/src/application/moderation/ports.ts`・`apps/backend-lib/core/moderation/ports.ts`・`apps/backend-lib/workers/moderation/moderation-record-statements.ts`)、生成物、adminのルート(`src/routes/**`)と`src/composition/dashboard-cards.ts`・`admin-product-detail-sections.ts`(ブラウザテストの`coverage.include`が`src/components/**`だけのため。上流の前例と同じ)、E2Eの補助`e2e/support/moderation-fixtures.ts`(ローカルD1を操作する補助のため。前例の`sponsorship-fixtures.ts`と同じ)である。
+
+### 検査で直したもの
+
+1. apiの単体テストのカバレッジが`src/presentation/graphql/admin-guard.ts`(行52.27%)で閾値を下回った。本specの`resolver-support.unit.test.ts`が`resolver-support.ts`を通じて`admin-guard.ts`を読み込み、その一部の関数だけを使ったためである。`admin-guard.ts`の前例(`admin-guard.worker.test.ts`)に合わせ、テストを`resolver-support.worker.test.ts`へ移した(内容は同じ6件)。
+2. apiのWorkers統合テストのカバレッジが`src/presentation/graphql/modules/moderation/errors.ts`(行78.57%)で閾値を下回った。単体テストで全ての分岐を確かめている写像(上流の`quarantine_not_applicable`・上流の文言の`account_state_conflict`・`AppError`でない例外)は、ユースケースが先に変換するためGraphQLの経路では通らない。技術文書(`testing/001`の「計測対象の指定」)のとおり、apiの`vitest.worker.config.ts`の`coverage.exclude`に`listUnitTestedSources(import.meta.dirname, 'src/presentation')`を加え、同名の単体テストを持つ`src/presentation`のソースを単体テストのカバレッジで数えるようにした(該当は21ファイルで、本specの`errors.ts`・`inputs.ts`・`type-defs.ts`と他の機能の18ファイル。いずれも単体テストで閾値を満たしている)。
+
+### 前提にした上流の改訂
+
+- identity-authの仮7(`AdminUserDirectory`、`D1AdminUserDirectory`)、product-launchの仮13(`AdminProductDirectory`、`D1AdminProductDirectory`)、engagementの仮6(`AdminCommentDirectory`・`AdminRatingDirectory`と`statements`を受け取る操作口)、paymentsの仮7(`PaymentRevenueReport`、`D1PaymentRevenueReport`)、backend-platformの改訂2(`--test-scheduled`による定期実行のローカルの起動、`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)を前提にした。いずれも実装・束縛済みで、本specはそのまま使った。
+
+### 仮決定の確定
+
+- 仮1〜仮9は2026-10-24に開発者が全て確定した。仮4(代理の退会は最上位管理者だけがユーザー一覧から行い、本人の意思の確認欄を置かず理由を必須にする)・仮5(代理の退会はメールを送らない)・仮9(停止解除・復元・無効化の取り消しは全て理由を必須にする)は推奨と異なる選択肢である。
+
+### roadmapの帯
+
+- 帯の割り当ての表の本specの「使用中の値」は「4:21は1900・1910、波及処理は1900」である(統計の集計`ugc-moderation.weekly-statistics`が1900、保守`ugc-moderation.maintenance`が1910、`purge_due`の`ugc-moderation.account-record-erasure`・`ugc-moderation.product-record-erasure`が1900)。`.kiro/steering/roadmap.md`の表に同じ値が記載済みのため、更新は不要だった。
+
+### Research Neededの結果
+
+- Rechartsは3.10.1とpeerの`react-is` 19.3.1を管理者側に完全固定で加え、グラフの部品を動的な`import()`で別のチャンクにした(タスク7.9)。
+- 4:21の本specの2つのジョブは、ローカルの少量のデータで統計の集計が11ミリ秒、保守が3ミリ秒だった。300秒の予算を他の機能のジョブと共有することは単体テストで確かめた。本番の量での所要時間は計測していない。
+- 停止で動く決済中のセッションの失効を停止の通知メールで伝えるかは、決めないまま書いていない(タスク1.4)。

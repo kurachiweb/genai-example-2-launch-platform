@@ -386,7 +386,7 @@
   - _Depends: 7.6_
   - _Requirements: 16.5_
 
-- [ ] 8. 措置の群の統合・ドキュメント・E2Eと全体の検査
+- [x] 8. 措置の群の統合・ドキュメント・E2Eと全体の検査
 - [x] 8.1 措置の連鎖の統合テストを作る
   - apiのWorkers統合テストの環境で行い、eventの非同期の処理の代わりに、上流が登録した処理の部品を直接呼ぶ(`apps/event`を読み込まない)
   - 先に、Workers統合テストで、停止で未開始のローンチが取り消され停止解除で戻らないこと、非公開化で未開始のローンチが取り消され画像の隔離理由が付き復元で外れること、隔離理由が2つある画像は片方の解除で戻らないこと、措置の記録と監査ログが残ることを確かめる
@@ -430,7 +430,7 @@
   - _Depends: 6.8, 8.3_
   - _Requirements: 16.4_
 
-- [ ] 8.7 全体の検査とカバレッジを確かめ、作業を報告する
+- [x] 8.7 全体の検査とカバレッジを確かめ、作業を報告する
   - 整形・静的解析・型検査・4種のテストを全アプリで実行し、本specが変更したファイルのカバレッジが80%以上であることを確かめる
   - 前提にした上流の改訂(identity-authの仮7・product-launchの仮13・engagementの仮6・paymentsの仮7・backend-platformの改訂2)、仮1〜仮9が2026-10-24に開発者により全て確定した旨(仮4・仮5・仮9は推奨と異なる選択肢)、roadmapの帯の「使用中の値」(4:21は1900・1910、波及処理は1900)を作業の報告に記録する
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
@@ -491,3 +491,4 @@
 - 8.6: `e2e/admin/administrative-withdrawal.e2e.test.ts`(手順`administrative-withdrawal-steps.ts`)。最上位管理者が画面から登録した利用者をメールアドレスで検索して代理の退会→別の文脈でログインできない→監査ログに1行→退会の確定から20秒間その利用者にメールが1通も届かない(退会の完了のメール種別は存在しないため「何も届かない」で確かめる。登録の確認メールの到着を先に待つ)。モデレーターには「停止」はあるが「代理の退会」が無い。8.4の`user-moderation-steps.ts`と似た補助(行の取り方・監査ログの行)を自分のファイルに持つ(まとめる余地あり)
 - 8.5: `e2e/admin/engagement-moderation.e2e.test.ts`(手順`engagement-moderation-steps.ts`): 補助のコメントの非公開化で利用者側に「このコメントは削除されました。」、評価(5と1)の1の無効化で平均が3.0(2件)→5.0(1件)。`e2e/admin/media-moderation.e2e.test.ts`(手順`media-moderation-steps.ts`): 利用者が画面から99×99のプロフィール画像を登録→代替の判定で隔離→自動判定のタブで原本が読み込まれる(幅99)→公開承認で一覧から消える。8.3の空の`describe('UGC管理の補助')`は場面が同じ確認を含むため削除した。管理画面はメニューでなく`page.goto`(検索パラメータ付き)で開く。ハイドレーション前の押下をダイアログが開くまで押し直す処理が手順のファイルに重複している(まとめる余地あり)
 - 8.4: `e2e/admin/user-moderation.e2e.test.ts`・`product-moderation.e2e.test.ts`(手順`user-moderation-steps.ts`・`product-moderation-steps.ts`)。停止(ハンドルで検索)→ディレクトリから消え利用者側の詳細が404→停止のメール→監査ログ「ユーザーの停止」→停止解除で戻る、プロダクトの非公開化→他者に404→メール→復元で戻る。E2Eで見つかった2つの問題を親の決定で根本から直した: (1)E2Eの補助`directory-fixture-sql.ts`の`planListedProducts`と`moderation-fixture-sql.ts`の`fixtureUserOf`が仮名化IDをULIDの形で作り、監査ログ(UUIDを要求)が利用者の措置を拒否していたため、本番と同じUUIDで作るようにした(`ModerationProduct`に所有者の仮名化ID・ニックネーム・ローンチの日付も加えた。週・年のトーナメントの補助はULIDのまま)。(2)措置の後に監査ログの照会が無効化されず`staleTime`の30秒は古い一覧が出たため、`use-moderation-mutation.ts`が状態を変えた(`changed`)ときだけ`invalidateAuditLogQueries`(`apps/admin/src/graphql/admin-audit-logs.ts`)も呼ぶようにし、`frontend/020`に書き足した(監査ログを残す他の管理操作は今も無効化しない)。レビューの指摘でルートの型検査の誤りを親が直した(乱数の仮名化IDを印に置き換えて比べる)
+- 8.7: `bun run check`・全アプリのunit・browser・worker(カバレッジ付き)・措置と統計のE2E 7件が成功した(clientのブラウザテストは既知のCDPの切断で毎回別のファイルが落ち、単独では全て成功。本specはclientを変えていない)。本specが変えた実装の169ファイルは行・関数とも80%以上。カバレッジの閾値のための修正: (1)`resolver-support.unit.test.ts`が`admin-guard.ts`を一部だけ読みapiの単体の閾値を落としたため、Workers統合テスト`resolver-support.worker.test.ts`へ移した(前例`admin-guard.worker.test.ts`)。(2)`errors.ts`のGraphQLの経路から到達しない分岐でWorkersの閾値を下回ったため、`testing/001`の「計測対象の指定」の仕組みを`apps/api/vitest.worker.config.ts`の`src/presentation`へ適用した(兄弟の単体テストのあるファイル21件をWorkersのカバレッジから外す。他の機能の18件も単体の閾値を満たす)。実装の記録をresearch.mdの末尾に書いた。roadmapの帯の使用中の値は既に一致。4:21の所要時間はローカルの小さなデータで統計11ミリ秒・保守3ミリ秒(本番の規模は未計測)

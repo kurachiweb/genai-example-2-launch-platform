@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'bun:test';
 import type { GraphQLResolveInfo } from 'graphql';
+import { describe, expect, test } from 'vitest';
 
 import type { CurrentAdmin } from '../../../../../lib/core/admin/current-admin.ts';
 import { AppError } from '../../../../../lib/core/errors/app-error.ts';

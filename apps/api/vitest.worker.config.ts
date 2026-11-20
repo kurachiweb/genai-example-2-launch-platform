@@ -53,6 +53,7 @@ export default defineConfig({
       exclude: [
         ...workerTestPreset.coverage.exclude,
         ...listUnitTestedSources(import.meta.dirname, 'src/infrastructure'),
+        ...listUnitTestedSources(import.meta.dirname, 'src/presentation'),
         ...listUnitTestedSources(import.meta.dirname, 'lib/workers'),
       ],
     },
