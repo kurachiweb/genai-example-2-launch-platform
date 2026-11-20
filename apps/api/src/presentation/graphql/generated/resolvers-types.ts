@@ -74,6 +74,8 @@ export type AdminComment = {
   /** 非公開化中で、非公開化の措置の記録が残っているコメントだけが持つ */
   latestHide?: Maybe<ModerationNote>;
   launchId: Scalars['ID']['output'];
+  /** ローンチの回。取消は0、論理削除済みのプロダクトなどでローンチを読めなければnull */
+  launchNumber?: Maybe<Scalars['Int']['output']>;
   productId: Scalars['ID']['output'];
   /** 論理削除済みのプロダクトはnull */
   productName?: Maybe<Scalars['String']['output']>;
@@ -4847,6 +4849,7 @@ export type AdminCommentResolvers<ContextType = GraphQLContext, ParentType exten
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   latestHide?: Resolver<Maybe<ResolversTypes['ModerationNote']>, ParentType, ContextType>;
   launchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  launchNumber?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   productId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   productName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   state?: Resolver<ResolversTypes['AdminCommentState'], ParentType, ContextType>;

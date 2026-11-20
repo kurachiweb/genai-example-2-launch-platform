@@ -13,6 +13,7 @@ import type {
   ModerationRecordStore,
 } from '../../../../lib/core/moderation/ports.ts';
 import type {
+  LaunchRecord,
   ProductDirectory,
   ProductHandleResolution,
   ProductLookupScope,
@@ -37,6 +38,7 @@ export const OTHER_COMMENT_ID = '01JQ0CMT000000000000000002';
 export const THIRD_COMMENT_ID = '01JQ0CMT000000000000000003';
 export const RATING_ID = '01JQ0RTG000000000000000001';
 export const OTHER_RATING_ID = '01JQ0RTG000000000000000002';
+export const OTHER_LAUNCH_ID = '01JQ0LCH000000000000000002';
 export const NEXT_CURSOR =
   'MTc2MzYwNjgwMDAwMDowMUpRMFBSRDAwMDAwMDAwMDAwMDAwMDAwMg';
 
@@ -83,6 +85,19 @@ export const commentOf = (
   ...overrides,
 });
 
+export const launchOf = (
+  overrides: Partial<LaunchRecord> = {},
+): LaunchRecord => ({
+  launchId: LAUNCH_ID,
+  productId: PRODUCT_ID,
+  number: 2,
+  launchDate: '2026-11-19' as LaunchRecord['launchDate'],
+  status: 'finished',
+  outcome: 'won',
+  decidedAt: new Date('2026-11-19T15:00:00.000Z'),
+  ...overrides,
+});
+
 export const ratingOf = (
   overrides: Partial<AdminRatingRecord> = {},
 ): AdminRatingRecord => ({
@@ -113,6 +128,7 @@ export interface EngagementReaderFakeOptions {
   readonly productHandles?: ReadonlyMap<string, ProductHandleResolution>;
   readonly users?: readonly UserSummaryRecord[];
   readonly products?: readonly ProductSummaryRecord[];
+  readonly launches?: readonly LaunchRecord[];
   readonly latest?: ReadonlyMap<string, LatestModeration>;
 }
 
@@ -135,6 +151,7 @@ export const createEngagementReaderFakes = (
       ids: readonly string[];
       scope: ProductLookupScope;
     }[],
+    launches: [] as { ids: readonly string[]; now: Date }[],
     latestFor: [] as {
       targetIds: readonly string[];
       actions: readonly ModerationAction[];
@@ -201,7 +218,17 @@ export const createEngagementReaderFakes = (
       );
     },
     findDetail: unexpected('ProductDirectory.findDetail'),
-    listLaunches: unexpected('ProductDirectory.listLaunches'),
+    listLaunches: (ids, now) => {
+      calls.launches.push({ ids, now });
+      return Promise.resolve(
+        Map.groupBy(
+          (options.launches ?? [launchOf()]).filter(({ productId }) =>
+            ids.includes(productId),
+          ),
+          ({ productId }) => productId,
+        ),
+      );
+    },
   };
   const records: ModerationRecordStore = {
     find: unexpected('find'),

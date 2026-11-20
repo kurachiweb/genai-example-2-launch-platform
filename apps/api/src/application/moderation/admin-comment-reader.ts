@@ -14,6 +14,7 @@ import type {
 } from '../../../lib/core/moderation/ports.ts';
 import { PRODUCT_PLATFORM_TYPES } from '../../../lib/core/product/identifiers.ts';
 import type {
+  LaunchRecord,
   ProductDirectory,
   ProductSummaryRecord,
 } from '../../../lib/core/product/ports.ts';
@@ -51,6 +52,8 @@ export interface AdminCommentItem {
   readonly commentId: string;
   readonly productId: string;
   readonly launchId: string;
+  // 取消は0。論理削除済みのプロダクトなどでローンチを読めなければnull
+  readonly launchNumber: number | null;
   // 論理削除済みのプロダクトはnull
   readonly productName: string | null;
   // 匿名化・退会済み・物理削除済みの投稿者はnull
@@ -76,6 +79,7 @@ export interface AdminCommentReader {
     readonly filter: AdminCommentListFilter;
     readonly first: number;
     readonly after?: string;
+    readonly now: Date;
   }): Promise<AdminCommentPage>;
 }
 
@@ -99,6 +103,7 @@ const authorOf = (
 interface PageDetails {
   readonly authors: ReadonlyMap<string, UserSummaryRecord>;
   readonly products: ReadonlyMap<string, ProductSummaryRecord>;
+  readonly launches: ReadonlyMap<string, readonly LaunchRecord[]>;
   readonly hides: ReadonlyMap<string, LatestModeration>;
 }
 
@@ -119,6 +124,7 @@ export class DefaultAdminCommentReader implements AdminCommentReader {
     filter,
     first,
     after,
+    now,
   }: Parameters<AdminCommentReader['list']>[0]): Promise<AdminCommentPage> {
     const searchFilter = await this.#searchFilterOf(filter);
     if (searchFilter === null) {
@@ -131,7 +137,7 @@ export class DefaultAdminCommentReader implements AdminCommentReader {
     if (comments.length === 0) {
       return { comments: [], nextCursor };
     }
-    const details = await this.#detailsOf(comments);
+    const details = await this.#detailsOf(comments, now);
     return {
       comments: comments.map((record) => this.#itemOf(record, details)),
       nextCursor,
@@ -164,10 +170,12 @@ export class DefaultAdminCommentReader implements AdminCommentReader {
     };
   }
 
-  // コメントの数に比例した問い合わせをしないため、ページの投稿者・プロダクト・非公開化の記録をそれぞれ1回の照会で読む
+  // コメントの数に比例した問い合わせをしないため、ページの投稿者・プロダクト・ローンチ・非公開化の記録をそれぞれ1回の照会で読む
   async #detailsOf(
     comments: readonly AdminCommentRecord[],
+    now: Date,
   ): Promise<PageDetails> {
+    const productIds = [...new Set(comments.map(({ productId }) => productId))];
     const authorIds = [
       ...new Set(
         comments.flatMap(({ authorUserId }) =>
@@ -178,14 +186,12 @@ export class DefaultAdminCommentReader implements AdminCommentReader {
     const hiddenIds = comments
       .filter(({ state }) => state === 'hidden')
       .map(({ commentId }) => commentId);
-    const [authors, products, hides] = await Promise.all([
+    const [authors, products, launches, hides] = await Promise.all([
       authorIds.length === 0
         ? new Map<string, UserSummaryRecord>()
         : this.profiles.findSummaries(authorIds, 'not-withdrawn'),
-      this.products.findSummaries(
-        [...new Set(comments.map(({ productId }) => productId))],
-        'not-deleted',
-      ),
+      this.products.findSummaries(productIds, 'not-deleted'),
+      this.products.listLaunches(productIds, now),
       hiddenIds.length === 0
         ? new Map<string, LatestModeration>()
         : this.records.latestFor({
@@ -193,12 +199,12 @@ export class DefaultAdminCommentReader implements AdminCommentReader {
             actions: ['comment.hide'],
           }),
     ]);
-    return { authors, products, hides };
+    return { authors, products, launches, hides };
   }
 
   #itemOf(
     record: AdminCommentRecord,
-    { authors, products, hides }: PageDetails,
+    { authors, products, launches, hides }: PageDetails,
   ): AdminCommentItem {
     const hide =
       record.state === 'hidden' ? hides.get(record.commentId) : undefined;
@@ -206,6 +212,11 @@ export class DefaultAdminCommentReader implements AdminCommentReader {
       commentId: record.commentId,
       productId: record.productId,
       launchId: record.launchId,
+      launchNumber:
+        launches
+          .get(record.productId)
+          ?.find(({ launchId }) => launchId === record.launchId)?.number ??
+        null,
       productName: products.get(record.productId)?.name ?? null,
       author:
         record.authorUserId === null

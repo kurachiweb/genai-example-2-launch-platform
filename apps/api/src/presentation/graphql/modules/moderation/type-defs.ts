@@ -177,6 +177,8 @@ export const MODERATION_TYPE_DEFS = /* GraphQL */ `
     productName: String
     productId: ID!
     launchId: ID!
+    "ローンチの回。取消は0、論理削除済みのプロダクトなどでローンチを読めなければnull"
+    launchNumber: Int
     createdAt: DateTime!
     state: AdminCommentState!
     "非公開化中で、非公開化の措置の記録が残っているコメントだけが持つ"

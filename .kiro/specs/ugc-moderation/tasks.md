@@ -141,7 +141,7 @@
   - 完了状態: 単体テストとWorkers統合テストが成功する
   - _Requirements: 11.3, 11.4_
 
-- [ ] 4. 措置の群の照会・保守のジョブ・束縛・GraphQL
+- [x] 4. 措置の群の照会・保守のジョブ・束縛・GraphQL
 - [x] 4.1 (P) ユーザー一覧の照会を作る
   - 一覧はidentity-authの仮7の利用者の管理の照会を使う
   - 先に、単体テストで、プロフィール画像と隔離理由と停止の最新の理由のまとめた照会、メールアドレスの絞り込みで結果の仮名化ID(0件は対象なし)を検索文字列なしで記録してから返すこと、記録の失敗で結果を返さないこと、メールアドレスを返さないことを確かめる
@@ -203,7 +203,7 @@
   - 完了状態: Workers統合テストが成功する
   - _Requirements: 3.4, 3.10, 4.10, 5.5, 5.10, 14.2, 14.3, 14.4_
 
-- [ ] 4.8 プロダクト・コメント・評価・画像のリゾルバを作る
+- [x] 4.8 プロダクト・コメント・評価・画像のリゾルバを作る
   - 各リゾルバを`adminOnly`で包む。画像以外への個別の隔離で上流が投げる`quarantine_not_applicable`は`image_not_found`へ変える
   - 先に、Workers統合テストで、`adminProducts`・`adminProduct`・`adminModerationCategoryOptions`・`adminProductRatings`・`adminComments`・`adminRatings`・`adminQuarantinedImages`の形と不在、一覧の不正な`after`の`invalid_cursor`、非公開化・復元・コメント・評価・4つの画像の操作の認可・結果・エラーコード(復元・コメントの復元・評価の取り消しの理由が無いときの拒否を含む)、画像の`path`が同一オリジンの配信経路であること、画像の操作の確定の後の失敗の`storage_unavailable`を確かめる
   - 完了状態: Workers統合テストが成功する
@@ -470,3 +470,4 @@
 - 4.6: `MODERATION_MODULE`に措置の群の13の識別子を束縛し、保守のジョブ(4:21・1910)を`SCHEDULED_JOBS`とsearchの2つのテストのジョブの一覧に加え、上流の`year-tournament-scheduled-jobs.unit.test.ts`の前後のジョブの期待値を1910へ直した。スキーマモジュール`apps/api/src/presentation/graphql/modules/moderation/`(`type-defs.ts`・`inputs.ts`・`errors.ts`・`resolver-support.ts`・空のリゾルバの表`user-`・`product-`・`engagement-`・`image-resolvers.ts`)を`graphql-modules.ts`の末尾に登録した。8つの照会と13の操作のルートのフィールドは`type-defs.ts`に宣言済みで、4.7・4.8はリゾルバの表だけを埋める(それまでは非nullのエラー。管理者側の許可リストにまだ載らないため利用者には届かない)。`resolver-support.ts`は`adminOnly`・`toModerationConnection`(`null`と`undefined`を続き無しとする)・`moderationOperatorOf(context, minimum)`・`clockOf`。`inputs.ts`はGraphQLの列挙と上流の値の写像の表(`ADMIN_USER_STATUSES`・`QUARANTINE_REASONS`など)を公開する。入力の検証の規則は実装者が決めた: 検索語は前後の空白を除いて100書記素、メールは254文字、空白だけは未指定、期間は`postedFrom < postedBefore`(`postedBefore`は排他的な境界のため、画面は終了日の翌日を渡す)、理由は上限だけを検証して生の入力を渡す、カーソルは検証せず上流の`invalid_cursor`に任せる、カテゴリIDの形式違反はproduct-launchの`category_not_found`の文言。`errors.ts`は`quarantine_not_applicable`→`image_not_found`、上流の文言のままの`account_state_conflict`を本specの文言へ写す。4.5・3.6のWorkersテストはコンテナから解決する形へ直した。設計のSDLの`AdminComment`にはローンチの回の番号が無く、管理画面の「ローンチ(第◯回)」の表示は4.8か6.6で決める
 - 8.3: SQLの組み立て`e2e/support/moderation-fixture-sql.ts`(bun:sqliteに実際のマイグレーションを適用する単体テストつき)、実行`moderation-fixtures.ts`の`createModerationTargets`(`createListedProducts({ count: 1 })`の掲載中のプロダクトと確認済みの投稿者、他の利用者のトップレベルのコメント1件、評価(既定は5と1の2件))と`readModerationTargetsState`(投稿者の状態・プロダクトとコメントの非公開の有無・有効な評価の件数と平均)。補助を順に呼ぶ空のE2Eは`e2e/admin/engagement-moderation.e2e.test.ts`の`describe('UGC管理の補助')`に残した(8.5が同じファイルに場面を足し、この区画を残すか決める)。対象の投稿者はパスワードが使えずログインできないため、8.6のログインの確認は`mailpit.ts`で画面から登録した利用者を使う。レビューの指摘でコメントの投稿者のニックネームを25書記素以内(「E2Eモデレーションの投稿者<接尾辞>」)に直した
 - 4.7: `user-resolvers.ts`(`adminUsers`は閲覧のみ以上、`suspendUser`・`unsuspendUser`はモデレーター以上、`withdrawUserByAdministrator`は最上位管理者だけ。`adminOnly`→`withValidatedArgs`→`requireAdmin`の順で、管理者側の呼び出しでは入力の検証がロールの確認より先)。上流の値→GraphQLの列挙の逆写像と`AdminMediaFile`(`path`は`downloadPathOf(fileId)`)の写像を`user-resolvers.ts`の中に持つ(4.8と重複すれば後で共有へ移す)。`toModerationConnection`の`nodes`が読み取り専用で生成型と合わないため`[...nodes]`で写した。`{ changed: true, actionId: null }`は`{ changed: true }`になる。代理の退会の理由の欠けは`withInputPath('input', …)`で`input.reason`。テストの補助`apps/api/test/support/moderation-user-graphql-operations.ts`(競合は上流の実装を包んで起こす`conflictAccountTransitions()`)
+- 4.8: `product-resolvers.ts`・`engagement-resolvers.ts`・`image-resolvers.ts`(7つの照会は閲覧のみ以上、10の操作はモデレーター以上)と共有の写像`content-views.ts`(`toAdminMediaFile`・`AdminUserSummary`・`ModerationNote`・列挙の逆写像・`toConnectionResult`)。設計との相違: 要件9.1とページ配置の「ローンチ(第◯回)」のため、SDLの`AdminComment`に`launchNumber: Int`(取り消したローンチは0、読めなければnull)を加え、4.3の`AdminCommentReader.list`が`now`を取り`ProductDirectory.listLaunches`をページで1回呼ぶようにした(design.mdのSDLと照会の表に無い)。`AdminLaunch.status`・`AdminMatchResult.kind`・`stage`・`result`の文字列のフィールドは上流の生の値(`won`・`qualifier`など)、`latestLaunchState`などの列挙は列挙名(`WON`)を返すため、6.5の画面は両方の形を扱う。4.7の`user-resolvers.ts`の写像と`content-views.ts`は重複しており、まとめる余地がある(`toModerationConnection`の`nodes`が読み取り専用で生成型と合わない件も共有の部品で直す余地がある)。テストの補助`apps/api/test/support/moderation-content-graphql-operations.ts`(時計は2026-11-25に固定、メッセージの発行を記録し指定の種類で失敗させられる)

@@ -45,6 +45,9 @@ type AdminComment {
   """非公開化中で、非公開化の措置の記録が残っているコメントだけが持つ"""
   latestHide: ModerationNote
   launchId: ID!
+
+  """ローンチの回。取消は0、論理削除済みのプロダクトなどでローンチを読めなければnull"""
+  launchNumber: Int
   productId: ID!
 
   """論理削除済みのプロダクトはnull"""

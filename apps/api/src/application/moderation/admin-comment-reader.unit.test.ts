@@ -9,8 +9,10 @@ import {
   COMMENT_ID,
   DELETED_PRODUCT_ID,
   LAUNCH_ID,
+  launchOf,
   NEXT_CURSOR,
   OTHER_COMMENT_ID,
+  OTHER_LAUNCH_ID,
   OTHER_PRODUCT_ID,
   OTHER_USER_ID,
   PRODUCT_ID,
@@ -37,8 +39,10 @@ const createHarness = (options: EngagementReaderFakeOptions = {}) => {
 
 const HIDDEN_AT = new Date('2026-11-19T12:00:00.000Z');
 
+const NOW = new Date('2026-11-20T04:00:00.000Z');
+
 describe('DefaultAdminCommentReader.list', () => {
-  test('一覧の投稿者とプロダクトの表示名と非公開化の最新の理由をそれぞれ1回の照会でまとめて組み立てる', async () => {
+  test('一覧の投稿者とプロダクトの表示名とローンチの回と非公開化の最新の理由をそれぞれ1回の照会でまとめて組み立てる', async () => {
     const { reader, calls } = createHarness({
       comments: {
         comments: [
@@ -73,6 +77,11 @@ describe('DefaultAdminCommentReader.list', () => {
         productOf(),
         productOf({ productId: OTHER_PRODUCT_ID, name: '別の道具' }),
       ],
+      launches: [
+        launchOf(),
+        launchOf({ launchId: OTHER_LAUNCH_ID, number: 1 }),
+        launchOf({ productId: OTHER_PRODUCT_ID }),
+      ],
       latest: new Map([
         [
           OTHER_COMMENT_ID,
@@ -85,7 +94,7 @@ describe('DefaultAdminCommentReader.list', () => {
       ]),
     });
 
-    const page = await reader.list({ filter: {}, first: 50 });
+    const page = await reader.list({ filter: {}, first: 50, now: NOW });
 
     expect(calls.commentSearch).toEqual([{ filter: {}, page: { limit: 50 } }]);
     expect(calls.userSummaries).toEqual([
@@ -97,12 +106,16 @@ describe('DefaultAdminCommentReader.list', () => {
     expect(calls.latestFor).toEqual([
       { targetIds: [OTHER_COMMENT_ID], actions: ['comment.hide'] },
     ]);
+    expect(calls.launches).toEqual([
+      { ids: [PRODUCT_ID, OTHER_PRODUCT_ID], now: NOW },
+    ]);
     expect(page).toEqual({
       comments: [
         {
           commentId: COMMENT_ID,
           productId: PRODUCT_ID,
           launchId: LAUNCH_ID,
+          launchNumber: 2,
           productName: '試合を見守る道具',
           author: {
             userId: USER_ID,
@@ -120,6 +133,7 @@ describe('DefaultAdminCommentReader.list', () => {
           commentId: OTHER_COMMENT_ID,
           productId: OTHER_PRODUCT_ID,
           launchId: LAUNCH_ID,
+          launchNumber: 2,
           productName: '別の道具',
           author: {
             userId: OTHER_USER_ID,
@@ -137,6 +151,7 @@ describe('DefaultAdminCommentReader.list', () => {
           commentId: THIRD_COMMENT_ID,
           productId: PRODUCT_ID,
           launchId: LAUNCH_ID,
+          launchNumber: 2,
           productName: '試合を見守る道具',
           author: {
             userId: USER_ID,
@@ -172,7 +187,7 @@ describe('DefaultAdminCommentReader.list', () => {
       latest: new Map(),
     });
 
-    const page = await reader.list({ filter: {}, first: 50 });
+    const page = await reader.list({ filter: {}, first: 50, now: NOW });
 
     expect(calls.userSummaries).toEqual([
       { ids: [WITHDRAWN_USER_ID], scope: 'not-withdrawn' },
@@ -188,6 +203,34 @@ describe('DefaultAdminCommentReader.list', () => {
     ]);
   });
 
+  test('ローンチを読めないコメントの回はnullにし、取消のローンチは0のまま返す', async () => {
+    const { reader } = createHarness({
+      comments: {
+        comments: [
+          commentOf(),
+          commentOf({ commentId: OTHER_COMMENT_ID, launchId: OTHER_LAUNCH_ID }),
+          commentOf({
+            commentId: THIRD_COMMENT_ID,
+            productId: DELETED_PRODUCT_ID,
+          }),
+        ],
+        nextCursor: null,
+      },
+      launches: [
+        launchOf({ status: 'canceled', number: 0, outcome: null }),
+        launchOf({ productId: DELETED_PRODUCT_ID, launchId: OTHER_LAUNCH_ID }),
+      ],
+    });
+
+    const page = await reader.list({ filter: {}, first: 50, now: NOW });
+
+    expect(page.comments.map(({ launchNumber }) => launchNumber)).toEqual([
+      0,
+      null,
+      null,
+    ]);
+  });
+
   test('投稿者がすべて匿名化で非公開化のコメントが無ければ、利用者と措置の記録を照会しない', async () => {
     const { reader, calls } = createHarness({
       comments: {
@@ -196,7 +239,7 @@ describe('DefaultAdminCommentReader.list', () => {
       },
     });
 
-    await reader.list({ filter: {}, first: 50 });
+    await reader.list({ filter: {}, first: 50, now: NOW });
 
     expect(calls.userSummaries).toEqual([]);
     expect(calls.latestFor).toEqual([]);
@@ -224,6 +267,7 @@ describe('DefaultAdminCommentReader.list', () => {
         state: 'hidden',
       },
       first: 20,
+      now: NOW,
       after: NEXT_CURSOR,
     });
 
@@ -246,7 +290,7 @@ describe('DefaultAdminCommentReader.list', () => {
   test('ハンドルの指定が無ければ解決しない', async () => {
     const { reader, calls } = createHarness();
 
-    await reader.list({ filter: { state: 'shown' }, first: 50 });
+    await reader.list({ filter: { state: 'shown' }, first: 50, now: NOW });
 
     expect(calls.userHandles).toEqual([]);
     expect(calls.productHandles).toEqual([]);
@@ -268,7 +312,7 @@ describe('DefaultAdminCommentReader.list', () => {
         ]),
       });
 
-      const page = await reader.list({ filter, first: 50 });
+      const page = await reader.list({ filter, first: 50, now: NOW });
 
       expect(page).toEqual({ comments: [], nextCursor: null });
       expect(calls.commentSearch).toEqual([]);
@@ -280,11 +324,12 @@ describe('DefaultAdminCommentReader.list', () => {
       comments: { comments: [], nextCursor: null },
     });
 
-    const page = await reader.list({ filter: {}, first: 50 });
+    const page = await reader.list({ filter: {}, first: 50, now: NOW });
 
     expect(page).toEqual({ comments: [], nextCursor: null });
     expect(calls.userSummaries).toEqual([]);
     expect(calls.productSummaries).toEqual([]);
+    expect(calls.launches).toEqual([]);
     expect(calls.latestFor).toEqual([]);
   });
 
@@ -293,7 +338,7 @@ describe('DefaultAdminCommentReader.list', () => {
     const { reader, calls } = createHarness({ searchError: error });
 
     const rejection = await reader
-      .list({ filter: {}, first: 50, after: 'broken' })
+      .list({ filter: {}, first: 50, now: NOW, after: 'broken' })
       .then(
         () => undefined,
         (failure: unknown) => failure,
