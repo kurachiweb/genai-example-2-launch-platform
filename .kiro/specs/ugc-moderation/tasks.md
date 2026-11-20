@@ -169,7 +169,7 @@
   - _Depends: 2.1, 2.2_
   - _Requirements: 9.1, 9.2, 9.3, 10.1, 10.2_
 
-- [ ] 4.4 (P) 隔離画像の照会を作る
+- [x] 4.4 (P) 隔離画像の照会を作る
   - 先に、単体テストで、隔離理由ごとの一覧と保有者(利用者・管理者)の表示名、保有者が`system`(IDなし)の画像で保有者が無いこと、用途と検出内容(`labels`・`svg`・`unprocessable`の3種の文字列化)、続きのカーソルを確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: QuarantinedImageReader_
@@ -457,3 +457,4 @@
 - 3.6: `DefaultAdministrativeWithdrawalService`(`application/moderation/administrative-withdrawal-service.ts`、3.1の形)。通知のポートを持たない(メールを送らない)。設計に無い`ModerationIncidentReporter`を注入し、記録が取り出されないときは3.1と同じく`{ changed: true, actionId: null }`。退会済みは照会で除かれるため変化なしの結果は無い。上流の`forbidden`(管理者でない呼び出し)はそのまま投げる。Workers統合テストは`apps/api/src/composition/moderation-module.administrative-withdrawal.worker.test.ts`(`PLATFORM_TYPES.MessagePublisher`を記録する実装に差し替え`email.send`が無いことを確かめる)。競合は単体テストだけで確かめる
 - 5: eventに`AccountRecordErasureHandler`・`ProductRecordErasureHandler`(`apps/event/src/application/moderation/`、500件ずつ)、識別子`EVENT_MODERATION_TYPES`(`event-moderation-types.ts`)、`EVENT_MODERATION_MODULE`(名前`event-moderation`、`MODULES`の`MODERATION_PLATFORM_MODULE`の直後)。登録口に`ugc-moderation.account-record-erasure`・`ugc-moderation.product-record-erasure`(`purge_due`、1900)。`purge_due`の一覧を全件一致で比べる上流のWorkers統合テスト9件の期待値に本specの行を加え、sponsorshipの「`purge_due`の最後に並ぶ」単体テストを「措置の記録の削除を除く…の後に並ぶ」(`slice(-2)`)に変えた(記録に外部キーが無いため最後でも物理削除を妨げない)。8.2で`project-values.md`の非同期の処理の一覧に2件を加える
 - 3.7: `AdminRoleMediaReviewPolicy`(`apps/api/src/application/moderation/admin-role-media-review-policy.ts`、管理者の主体・`storage === 'images'`・`AdminDirectory.findProfiles`に居る(ロール不問)ときだけ許す)を`composition/media-review-policy.ts`で`FILE_ACCESS_TYPES.AdminMediaReviewPolicy`へ束縛し、全拒否のクラスと単体テストを削除した。削除済み・招待中の管理者はHTTPでは`AdminSessionVerifier`が先に401を返すため、判定そのものはコンテナから解決して確かめた(`apps/api/src/composition/media-review-policy.worker.test.ts`)。design.mdの上流への影響の表は全拒否の置き場所を`application/media/file-access-policies.ts`と書くが、実際は`infrastructure/media/deny-all-admin-media-review-policy.ts`だった。media-pipelineのdesign.mdの4か所に注記(注記1)を加え、`docs/GUIDES/tech/security/005`の管理者側の画像の1文を「有効な管理者のアカウントのときだけ返す」に直した
+- 4.4: `DefaultQuarantinedImageReader`(`application/moderation/quarantined-image-reader.ts`)。`MediaQuarantine.listByReason`(`ADMIN_LIST_PAGE_SIZE`の50件)の順を保ち、保有者の表示名は利用者(`UserProfileDirectory.findSummaries(ids, 'including-withdrawn')`)と管理者(`AdminDirectory.findProfiles`)を重複を除いて1回ずつ、`system`は`owner: null`、物理削除済みの利用者・削除済みの管理者は名前null。用途は生の用途名を返し、画面(6.7)が`mediaPurposeLabel`で表示名にする。検出内容の文字列は文言規則の書式で、信頼度は切り捨て(`Math.floor`、実装者の決定。8.2で文言規則に注記してよい)。返すファイルは`{ id, quarantined, quarantineReasons }`だけで、`path`は4.8が`downloadPathOf(id)`で作る
