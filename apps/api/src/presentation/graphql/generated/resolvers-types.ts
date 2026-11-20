@@ -55,6 +55,54 @@ export type AdminAccountStatus =
   | 'INVITATION_EXPIRED'
   | 'INVITED';
 
+/** 管理画面のプロダクトのカテゴリ */
+export type AdminCategoryRef = {
+  __typename?: 'AdminCategoryRef';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
+
+/** 管理画面のコメント */
+export type AdminComment = {
+  __typename?: 'AdminComment';
+  /** 匿名化・退会済みの投稿者はnull */
+  author?: Maybe<AdminUserSummary>;
+  createdAt: Scalars['DateTime']['output'];
+  /** マークダウンとして描画しない本文の先頭 */
+  excerpt: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 非公開化中で、非公開化の措置の記録が残っているコメントだけが持つ */
+  latestHide?: Maybe<ModerationNote>;
+  launchId: Scalars['ID']['output'];
+  productId: Scalars['ID']['output'];
+  /** 論理削除済みのプロダクトはnull */
+  productName?: Maybe<Scalars['String']['output']>;
+  state: AdminCommentState;
+};
+
+export type AdminCommentConnection = {
+  __typename?: 'AdminCommentConnection';
+  nodes: Array<AdminComment>;
+  pageInfo: PageInfo;
+};
+
+/** コメントの一覧の絞り込み。投稿日時はpostedFromを含みpostedBeforeを含まない */
+export type AdminCommentFilter = {
+  authorHandle?: InputMaybe<Scalars['String']['input']>;
+  postedBefore?: InputMaybe<Scalars['DateTime']['input']>;
+  postedFrom?: InputMaybe<Scalars['DateTime']['input']>;
+  productHandle?: InputMaybe<Scalars['String']['input']>;
+  state?: InputMaybe<AdminCommentState>;
+};
+
+/** 管理画面のコメントの状態 */
+export type AdminCommentState =
+  | 'ANONYMIZED'
+  | 'AUTHOR_UNAVAILABLE'
+  | 'DELETED'
+  | 'HIDDEN'
+  | 'SHOWN';
+
 /** メールのリンクによる確定の結果 */
 export type AdminConfirmationResult = {
   __typename?: 'AdminConfirmationResult';
@@ -96,6 +144,16 @@ export type AdminHelpArticleRow = {
   status: HelpArticleStatus;
   title: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+};
+
+/** 隔離画像の保有者。kindはuserかadmin */
+export type AdminImageOwner = {
+  __typename?: 'AdminImageOwner';
+  handle?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  kind: Scalars['String']['output'];
+  /** 表示名を引けない保有者はnull */
+  nickname?: Maybe<Scalars['String']['output']>;
 };
 
 /** 管理画面の問い合わせの詳細 */
@@ -176,6 +234,17 @@ export type AdminInquirySummary = {
   withdrawn: Scalars['Boolean']['output'];
 };
 
+/** プロダクトのローンチ */
+export type AdminLaunch = {
+  __typename?: 'AdminLaunch';
+  id: Scalars['ID']['output'];
+  /** 業務日付 */
+  launchDate: Scalars['String']['output'];
+  matches: Array<AdminMatchResult>;
+  number: Scalars['Int']['output'];
+  status: Scalars['String']['output'];
+};
+
 /** 管理画面の編集の対象の法務文書 */
 export type AdminLegalDocument = {
   __typename?: 'AdminLegalDocument';
@@ -228,6 +297,156 @@ export type AdminLegalRevision = {
   publishedAt: Scalars['DateTime']['output'];
   publishedBy: LegalDocumentEditor;
   versionNumber: Scalars['Int']['output'];
+};
+
+/** ローンチのマッチ結果 */
+export type AdminMatchResult = {
+  __typename?: 'AdminMatchResult';
+  id: Scalars['ID']['output'];
+  kind: Scalars['String']['output'];
+  /** 業務日付 */
+  matchDate: Scalars['String']['output'];
+  /** 不戦勝・表示できない相手はnull */
+  opponentName?: Maybe<Scalars['String']['output']>;
+  /** 未確定はnull */
+  result?: Maybe<Scalars['String']['output']>;
+  round?: Maybe<Scalars['Int']['output']>;
+  stage?: Maybe<Scalars['String']['output']>;
+  upvoteCount: Scalars['Int']['output'];
+};
+
+/** 管理画面で表示する画像のファイル */
+export type AdminMediaFile = {
+  __typename?: 'AdminMediaFile';
+  id: Scalars['ID']['output'];
+  /** 管理者側のサイトと同じオリジンの中継の経路 */
+  path: Scalars['String']['output'];
+  quarantineReasons: Array<QuarantineReason>;
+  quarantined: Scalars['Boolean']['output'];
+};
+
+/** 管理画面のプロダクト */
+export type AdminProduct = {
+  __typename?: 'AdminProduct';
+  category: AdminCategoryRef;
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 業務日付。ローンチが無ければnull */
+  latestLaunchDate?: Maybe<Scalars['String']['output']>;
+  latestLaunchState?: Maybe<AdminProductLaunchState>;
+  logo?: Maybe<AdminMediaFile>;
+  name: Scalars['String']['output'];
+  /** 退会済みの投稿者はnull */
+  owner?: Maybe<AdminUserSummary>;
+  visibility: AdminProductVisibility;
+};
+
+export type AdminProductConnection = {
+  __typename?: 'AdminProductConnection';
+  nodes: Array<AdminProduct>;
+  pageInfo: PageInfo;
+};
+
+/** 管理画面のプロダクトの詳細 */
+export type AdminProductDetail = {
+  __typename?: 'AdminProductDetail';
+  descriptionMarkdown: Scalars['String']['output'];
+  hiddenAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 非公開化中で、非公開化の措置の記録が残っているプロダクトだけが持つ */
+  latestHide?: Maybe<ModerationNote>;
+  /** ローンチ日の新しい順 */
+  launches: Array<AdminLaunch>;
+  product: AdminProduct;
+  ratingSummary: AdminRatingSummary;
+  screenshots: Array<AdminMediaFile>;
+  tagline: Scalars['String']['output'];
+  websiteUrl: Scalars['String']['output'];
+};
+
+/** プロダクトの一覧の絞り込み。指定した条件を全て満たすプロダクトを返す */
+export type AdminProductFilter = {
+  categoryId?: InputMaybe<Scalars['ID']['input']>;
+  handle?: InputMaybe<Scalars['String']['input']>;
+  launchState?: InputMaybe<AdminProductLaunchState>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  ownerHandle?: InputMaybe<Scalars['String']['input']>;
+  visibility?: InputMaybe<AdminProductVisibility>;
+};
+
+/** プロダクトの最新のローンチの状態 */
+export type AdminProductLaunchState =
+  | 'CANCELED'
+  | 'IN_PROGRESS'
+  | 'LOST'
+  | 'SCHEDULED'
+  | 'WON';
+
+/** プロダクトの公開状態 */
+export type AdminProductVisibility =
+  | 'HIDDEN'
+  | 'OWNER_SUSPENDED'
+  | 'VISIBLE';
+
+/** 隔離画像 */
+export type AdminQuarantinedImage = {
+  __typename?: 'AdminQuarantinedImage';
+  file: AdminMediaFile;
+  /** 自動判定の検出内容 */
+  findings: Array<Scalars['String']['output']>;
+  /** システムが保有する画像はnull */
+  owner?: Maybe<AdminImageOwner>;
+  /** 画像の用途 */
+  purpose: Scalars['String']['output'];
+  quarantinedAt: Scalars['DateTime']['output'];
+};
+
+/** 隔離画像の一覧の1ページ。続きが無ければnextCursorはnull */
+export type AdminQuarantinedImagePage = {
+  __typename?: 'AdminQuarantinedImagePage';
+  items: Array<AdminQuarantinedImage>;
+  nextCursor?: Maybe<Scalars['String']['output']>;
+};
+
+/** 管理画面の評価 */
+export type AdminRating = {
+  __typename?: 'AdminRating';
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  /** 無効化中で、無効化の措置の記録が残っている評価だけが持つ */
+  latestInvalidation?: Maybe<ModerationNote>;
+  productId: Scalars['ID']['output'];
+  /** 論理削除済みのプロダクトはnull */
+  productName?: Maybe<Scalars['String']['output']>;
+  /** 退会済みの評価者はnull */
+  rater?: Maybe<AdminUserSummary>;
+  score: Scalars['Int']['output'];
+  state: AdminRatingState;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type AdminRatingConnection = {
+  __typename?: 'AdminRatingConnection';
+  nodes: Array<AdminRating>;
+  pageInfo: PageInfo;
+};
+
+/** 評価の一覧の絞り込み */
+export type AdminRatingFilter = {
+  productHandle?: InputMaybe<Scalars['String']['input']>;
+  raterHandle?: InputMaybe<Scalars['String']['input']>;
+  state?: InputMaybe<AdminRatingState>;
+};
+
+/** 管理画面の評価の状態 */
+export type AdminRatingState =
+  | 'INVALIDATED'
+  | 'VALID';
+
+/** 有効な評価の平均と件数 */
+export type AdminRatingSummary = {
+  __typename?: 'AdminRatingSummary';
+  average?: Maybe<Scalars['Float']['output']>;
+  count: Scalars['Int']['output'];
 };
 
 /** 重要な操作の本人確認 */
@@ -320,6 +539,52 @@ export type AdminTotpSetup = {
   secret: Scalars['String']['output'];
 };
 
+/** 管理画面の利用者。メールアドレスは返さない */
+export type AdminUser = {
+  __typename?: 'AdminUser';
+  avatar?: Maybe<AdminMediaFile>;
+  disposableEmail: DisposableEmailCheck;
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 停止中で、停止の措置の記録が残っている利用者だけが持つ */
+  latestSuspension?: Maybe<ModerationNote>;
+  nickname: Scalars['String']['output'];
+  registeredAt: Scalars['DateTime']['output'];
+  status: AdminUserStatus;
+  suspendedAt?: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type AdminUserConnection = {
+  __typename?: 'AdminUserConnection';
+  nodes: Array<AdminUser>;
+  pageInfo: PageInfo;
+};
+
+/** ユーザーの一覧の絞り込み。指定した条件を全て満たす利用者を返す */
+export type AdminUserFilter = {
+  /** 大文字小文字を区別しない完全一致 */
+  email?: InputMaybe<Scalars['String']['input']>;
+  /** 大文字小文字を区別しない部分一致 */
+  handle?: InputMaybe<Scalars['String']['input']>;
+  /** 大文字小文字を区別しない部分一致 */
+  nickname?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<AdminUserStatus>;
+};
+
+/** 管理画面の利用者の停止状態 */
+export type AdminUserStatus =
+  | 'ACTIVE'
+  | 'SUSPENDED';
+
+/** 管理画面の一覧に添える利用者の表示 */
+export type AdminUserSummary = {
+  __typename?: 'AdminUserSummary';
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  nickname: Scalars['String']['output'];
+  suspended: Scalars['Boolean']['output'];
+};
+
 /** ログイン中の管理者 */
 export type AdminViewer = {
   __typename?: 'AdminViewer';
@@ -332,6 +597,12 @@ export type AdminViewer = {
   remainingRecoveryCodes: Scalars['Int']['output'];
   role: AdminRole;
   title?: Maybe<Scalars['String']['output']>;
+};
+
+/** 代理の退会の入力 */
+export type AdministrativeWithdrawalInput = {
+  reason: Scalars['String']['input'];
+  userId: Scalars['ID']['input'];
 };
 
 /** APIキー。平文とハッシュは持たない */
@@ -716,6 +987,13 @@ export type DiscardLegalDocumentDraftInput = {
   expectedStateVersion: Scalars['Int']['input'];
   kind: LegalDocumentKind;
 };
+
+/** 使い捨てメールアドレスの判定結果。UNVERIFIEDはメールアドレスの確認を済ませていない利用者 */
+export type DisposableEmailCheck =
+  | 'DISPOSABLE'
+  | 'REGULAR'
+  | 'UNDETERMINED'
+  | 'UNVERIFIED';
 
 /** フォロー一覧の1行。followedAtはフォローした日時 */
 export type FollowEntry = {
@@ -1269,6 +1547,19 @@ export type MemberInquirySummary = {
   status: InquiryStatus;
 };
 
+/** 最新の措置の理由と日時。理由は措置の記録から読み、任意の操作で理由が無ければnull */
+export type ModerationNote = {
+  __typename?: 'ModerationNote';
+  occurredAt: Scalars['DateTime']['output'];
+  reason?: Maybe<Scalars['String']['output']>;
+};
+
+/** 措置の結果。既に同じ状態ならchangedは偽 */
+export type ModerationOutcome = {
+  __typename?: 'ModerationOutcome';
+  changed: Scalars['Boolean']['output'];
+};
+
 /** 金額 */
 export type Money = {
   __typename?: 'Money';
@@ -1286,6 +1577,8 @@ export type Mutation = {
   adminLogout: Scalars['Boolean']['output'];
   /** 申込を未決済で記録し、決済を始めて決済画面の経路に使う購入のIDを返す */
   applySponsorship: CheckoutStart;
+  /** 自動判定の隔離理由を外す公開承認 */
+  approveQuarantinedImage: ModerationOutcome;
   /** 閲覧者のプロダクトへの評価を物理削除する。評価が無くても成功する */
   cancelProductRating: ProductRating;
   /** メールアドレスが確認済みの利用者がマッチ中のマッチのUpvoteを取り消す。Upvoteしていなくても成功する。更新後のマッチを返す */
@@ -1336,6 +1629,8 @@ export type Mutation = {
   deleteProduct: Scalars['Boolean']['output'];
   /** モデレーター以上の管理者がプロダクトの紐付かないプロダクトカテゴリを削除する。標準カテゴリは削除できない */
   deleteProductCategory: Scalars['Boolean']['output'];
+  /** 隔離画像の削除 */
+  deleteQuarantinedImage: ModerationOutcome;
   /** 多要素認証の無効化 */
   disableTotp: Scalars['Boolean']['output'];
   /** 下書きの破棄。最上位管理者 */
@@ -1344,6 +1639,12 @@ export type Mutation = {
   enableTotp: RecoveryCodeSet;
   /** メールアドレスが確認済みの利用者がフォローする。すでにフォロー済みでも成功する */
   followUser: FollowState;
+  /** コメントの非公開化 */
+  hideComment: ModerationOutcome;
+  /** プロダクトの非公開化 */
+  hideProduct: ModerationOutcome;
+  /** 評価の無効化 */
+  invalidateRating: ModerationOutcome;
   /** 閲覧のみのロールで招待し、招待のメールを送る */
   inviteAdmin: AdminAccount;
   /** 新しいAPIキーを発行する。発行は再発行と合わせて利用者ごとに1時間3回まで */
@@ -1358,6 +1659,8 @@ export type Mutation = {
   postInquiryMessage: InquiryMessage;
   /** 下書きの公開。最上位管理者 */
   publishLegalDocument: AdminLegalDocument;
+  /** 画像の個別の隔離 */
+  quarantineImage: ModerationOutcome;
   /** 閲覧者のプロダクトへの評価を保存し、評価済みなら上書きする */
   rateProduct: ProductRating;
   /** 支払いの確定の前の同意の記録。支払える状態の本人の購入だけに記録し、同じ購入の再記録は最新の日時で上書きする */
@@ -1372,6 +1675,8 @@ export type Mutation = {
   registerUser: Viewer;
   /** 自分のAPIキーと同じ名前と権限スコープの新しいキーを追加で発行する。元のキーは残す */
   reissueApiKey: IssuedApiKey;
+  /** 管理者操作の隔離理由を外す隔離の解除 */
+  releaseQuarantinedImage: ModerationOutcome;
   renameHelpCategory: HelpCategory;
   /** カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上 */
   renameInquiryCategory: InquiryCategory;
@@ -1401,6 +1706,8 @@ export type Mutation = {
   resetPassword: Scalars['Boolean']['output'];
   /** 本人の開始日前の未決済の申込の決済を始め直す */
   resumeSponsorshipCheckout: CheckoutStart;
+  /** 評価の無効化の取り消し */
+  revalidateRating: ModerationOutcome;
   /** 操作している端末以外のセッションの一括の失効。失効させた件数を返す */
   revokeOtherSessions: Scalars['Int']['output'];
   /** セッションの個別の失効 */
@@ -1425,10 +1732,18 @@ export type Mutation = {
   submitGuestInquiry: Scalars['Boolean']['output'];
   /** 停止していないログイン中の利用者の問い合わせの送信 */
   submitMemberInquiry: MemberInquiry;
+  /** 利用者の停止 */
+  suspendUser: ModerationOutcome;
   /** 理由(500文字以内)を付けて広告を強制終了し、未掲載日数分と表示停止日数分の返金を依頼する。モデレーター以上の管理者 */
   terminateSponsorship: SponsorshipTerminationResult;
   /** 停止中でない利用者がフォローを解除する。フォローしていなくても成功する */
   unfollowUser: FollowState;
+  /** コメントの復元 */
+  unhideComment: ModerationOutcome;
+  /** プロダクトの復元 */
+  unhideProduct: ModerationOutcome;
+  /** 利用者の停止解除 */
+  unsuspendUser: ModerationOutcome;
   /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
   updateAdminProfile: AdminAccount;
   /** 自分のAPIキーの名前と権限スコープを変える。キーの文字列は変えない */
@@ -1456,6 +1771,8 @@ export type Mutation = {
   verifyEmail: Scalars['Boolean']['output'];
   /** 退会 */
   withdraw: Scalars['Boolean']['output'];
+  /** 最上位管理者による代理の退会 */
+  withdrawUserByAdministrator: ModerationOutcome;
 };
 
 
@@ -1467,6 +1784,12 @@ export type MutationAdminLoginArgs = {
 
 export type MutationApplySponsorshipArgs = {
   input: ApplySponsorshipInput;
+};
+
+
+export type MutationApproveQuarantinedImageArgs = {
+  fileId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1614,6 +1937,12 @@ export type MutationDeleteProductCategoryArgs = {
 };
 
 
+export type MutationDeleteQuarantinedImageArgs = {
+  fileId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDisableTotpArgs = {
   input: ReAuthenticationInput;
 };
@@ -1631,6 +1960,24 @@ export type MutationEnableTotpArgs = {
 
 export type MutationFollowUserArgs = {
   handle: Scalars['String']['input'];
+};
+
+
+export type MutationHideCommentArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationHideProductArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationInvalidateRatingArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
 };
 
 
@@ -1663,6 +2010,12 @@ export type MutationPostInquiryMessageArgs = {
 
 export type MutationPublishLegalDocumentArgs = {
   input: PublishLegalDocumentInput;
+};
+
+
+export type MutationQuarantineImageArgs = {
+  fileId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1699,6 +2052,12 @@ export type MutationRegisterUserArgs = {
 
 export type MutationReissueApiKeyArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationReleaseQuarantinedImageArgs = {
+  fileId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1781,6 +2140,12 @@ export type MutationResumeSponsorshipCheckoutArgs = {
 };
 
 
+export type MutationRevalidateRatingArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
 export type MutationRevokeSessionArgs = {
   id: Scalars['ID']['input'];
 };
@@ -1828,6 +2193,12 @@ export type MutationSubmitMemberInquiryArgs = {
 };
 
 
+export type MutationSuspendUserArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
 export type MutationTerminateSponsorshipArgs = {
   id: Scalars['ID']['input'];
   reason: Scalars['String']['input'];
@@ -1836,6 +2207,24 @@ export type MutationTerminateSponsorshipArgs = {
 
 export type MutationUnfollowUserArgs = {
   handle: Scalars['String']['input'];
+};
+
+
+export type MutationUnhideCommentArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationUnhideProductArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationUnsuspendUserArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
 };
 
 
@@ -1912,6 +2301,11 @@ export type MutationVerifyEmailArgs = {
 
 export type MutationWithdrawArgs = {
   input: ReAuthenticationInput;
+};
+
+
+export type MutationWithdrawUserByAdministratorArgs = {
+  input: AdministrativeWithdrawalInput;
 };
 
 /** 自分のプロダクトの編集用の情報 */
@@ -2462,12 +2856,21 @@ export type QualifierOutcome =
   | 'LOST'
   | 'WON';
 
+/** 画像の隔離理由 */
+export type QuarantineReason =
+  | 'ADMIN_ACTION'
+  | 'AUTO'
+  | 'PRODUCT_HIDDEN'
+  | 'USER_SUSPENDED';
+
 export type Query = {
   __typename?: 'Query';
   /** 本人のプロダクトの掲載中・掲載予定の広告の件数。本人のプロダクトでなければ0 */
   activeSponsorshipCount: Scalars['Int']['output'];
   /** 招待中を含む全管理者を登録の新しい順に返す */
   adminAccounts: Array<AdminAccount>;
+  /** コメントの一覧(投稿日時の新しい順)。firstは1〜50 */
+  adminComments: AdminCommentConnection;
   /** 見つからなければnull */
   adminHelpArticle?: Maybe<AdminHelpArticle>;
   /** 下書きを含む全件を更新日時の新しい順で返す */
@@ -2486,12 +2889,26 @@ export type Query = {
   adminLegalDocumentVersion?: Maybe<AdminLegalDocumentVersion>;
   /** 管理画面の法務文書の一覧。閲覧のみ以上の管理者 */
   adminLegalDocuments: Array<AdminLegalDocumentSummary>;
+  /** プロダクトの一覧の絞り込みのカテゴリの選択肢 */
+  adminModerationCategoryOptions: Array<AdminCategoryRef>;
+  /** プロダクトの詳細。存在しない・論理削除済みはnull */
+  adminProduct?: Maybe<AdminProductDetail>;
   /** 管理者向けのプロダクトカテゴリの一覧。productCategoriesと同じ順 */
   adminProductCategories: Array<ProductCategory>;
+  /** プロダクトの評価の一覧(更新日時の新しい順)。firstは1〜50 */
+  adminProductRatings: AdminRatingConnection;
+  /** 論理削除されていないプロダクトの一覧(登録日時の新しい順)。firstは1〜50 */
+  adminProducts: AdminProductConnection;
+  /** 隔離理由ごとの隔離画像の一覧(隔離された日時の新しい順に50件ずつ) */
+  adminQuarantinedImages: AdminQuarantinedImagePage;
+  /** 評価の一覧(更新日時の新しい順)。firstは1〜50 */
+  adminRatings: AdminRatingConnection;
   /** 退会者を除く申込の新しい順(1〜50件)。閲覧のみ以上の管理者 */
   adminSponsorships: AdminSponsorshipConnection;
   /** 退会済みを除く「未対応」のログインと未ログインの問い合わせの合計件数。閲覧のみ以上 */
   adminUnhandledInquiryCount: Scalars['Int']['output'];
+  /** 退会していない利用者の一覧(登録日時の新しい順)。firstは1〜50 */
+  adminUsers: AdminUserConnection;
   /** ログイン中の管理者。未ログイン・無効なセッションではnull */
   adminViewer?: Maybe<AdminViewer>;
   /** 監査ログの検索。変更・削除の操作は無い */
@@ -2622,6 +3039,13 @@ export type QueryActiveSponsorshipCountArgs = {
 };
 
 
+export type QueryAdminCommentsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminCommentFilter>;
+  first: Scalars['Int']['input'];
+};
+
+
 export type QueryAdminHelpArticleArgs = {
   id: Scalars['ID']['input'];
 };
@@ -2649,9 +3073,48 @@ export type QueryAdminLegalDocumentVersionArgs = {
 };
 
 
+export type QueryAdminProductArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryAdminProductRatingsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first: Scalars['Int']['input'];
+  productId: Scalars['ID']['input'];
+};
+
+
+export type QueryAdminProductsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminProductFilter>;
+  first: Scalars['Int']['input'];
+};
+
+
+export type QueryAdminQuarantinedImagesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  reason: QuarantineReason;
+};
+
+
+export type QueryAdminRatingsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminRatingFilter>;
+  first: Scalars['Int']['input'];
+};
+
+
 export type QueryAdminSponsorshipsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<AdminSponsorshipFilter>;
+  first: Scalars['Int']['input'];
+};
+
+
+export type QueryAdminUsersArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminUserFilter>;
   first: Scalars['Int']['input'];
 };
 
@@ -3808,9 +4271,15 @@ export type ResolversTypes = {
   AccountStatus: AccountStatus;
   AdminAccount: ResolverTypeWrapper<AdminAccountSource>;
   AdminAccountStatus: AdminAccountStatus;
+  AdminCategoryRef: ResolverTypeWrapper<AdminCategoryRef>;
+  AdminComment: ResolverTypeWrapper<AdminComment>;
+  AdminCommentConnection: ResolverTypeWrapper<AdminCommentConnection>;
+  AdminCommentFilter: AdminCommentFilter;
+  AdminCommentState: AdminCommentState;
   AdminConfirmationResult: ResolverTypeWrapper<Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['AdminViewer']> }>;
   AdminHelpArticle: ResolverTypeWrapper<Omit<AdminHelpArticle, 'creator'> & { creator?: Maybe<ResolversTypes['HelpArticleAuthor']> }>;
   AdminHelpArticleRow: ResolverTypeWrapper<Omit<AdminHelpArticleRow, 'creator'> & { creator?: Maybe<ResolversTypes['HelpArticleAuthor']> }>;
+  AdminImageOwner: ResolverTypeWrapper<AdminImageOwner>;
   AdminInquiry: ResolverTypeWrapper<AdminInquiryModel>;
   AdminInquiryCategory: ResolverTypeWrapper<AdminInquiryCategory>;
   AdminInquiryFilterInput: AdminInquiryFilterInput;
@@ -3818,11 +4287,27 @@ export type ResolversTypes = {
   AdminInquiryMember: ResolverTypeWrapper<AdminInquiryMemberModel>;
   AdminInquiryPage: ResolverTypeWrapper<Omit<AdminInquiryPage, 'entries'> & { entries: Array<ResolversTypes['AdminInquirySummary']> }>;
   AdminInquirySummary: ResolverTypeWrapper<AdminInquirySummaryModel>;
+  AdminLaunch: ResolverTypeWrapper<AdminLaunch>;
   AdminLegalDocument: ResolverTypeWrapper<AdminLegalDocument>;
   AdminLegalDocumentSummary: ResolverTypeWrapper<AdminLegalDocumentSummary>;
   AdminLegalDocumentVersion: ResolverTypeWrapper<AdminLegalDocumentVersion>;
   AdminLegalDraft: ResolverTypeWrapper<AdminLegalDraft>;
   AdminLegalRevision: ResolverTypeWrapper<AdminLegalRevision>;
+  AdminMatchResult: ResolverTypeWrapper<AdminMatchResult>;
+  AdminMediaFile: ResolverTypeWrapper<AdminMediaFile>;
+  AdminProduct: ResolverTypeWrapper<AdminProduct>;
+  AdminProductConnection: ResolverTypeWrapper<AdminProductConnection>;
+  AdminProductDetail: ResolverTypeWrapper<AdminProductDetail>;
+  AdminProductFilter: AdminProductFilter;
+  AdminProductLaunchState: AdminProductLaunchState;
+  AdminProductVisibility: AdminProductVisibility;
+  AdminQuarantinedImage: ResolverTypeWrapper<AdminQuarantinedImage>;
+  AdminQuarantinedImagePage: ResolverTypeWrapper<AdminQuarantinedImagePage>;
+  AdminRating: ResolverTypeWrapper<AdminRating>;
+  AdminRatingConnection: ResolverTypeWrapper<AdminRatingConnection>;
+  AdminRatingFilter: AdminRatingFilter;
+  AdminRatingState: AdminRatingState;
+  AdminRatingSummary: ResolverTypeWrapper<AdminRatingSummary>;
   AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: ResolverTypeWrapper<AdminRecoveryCodeSet>;
   AdminRole: AdminRole;
@@ -3833,7 +4318,13 @@ export type ResolversTypes = {
   AdminSponsorshipFilter: AdminSponsorshipFilter;
   AdminSponsorshipStatusFilter: AdminSponsorshipStatusFilter;
   AdminTotpSetup: ResolverTypeWrapper<AdminTotpSetup>;
+  AdminUser: ResolverTypeWrapper<AdminUser>;
+  AdminUserConnection: ResolverTypeWrapper<AdminUserConnection>;
+  AdminUserFilter: AdminUserFilter;
+  AdminUserStatus: AdminUserStatus;
+  AdminUserSummary: ResolverTypeWrapper<AdminUserSummary>;
   AdminViewer: ResolverTypeWrapper<AdminViewerSource>;
+  AdministrativeWithdrawalInput: AdministrativeWithdrawalInput;
   ApiKey: ResolverTypeWrapper<ApiKey>;
   ApiKeyConnection: ResolverTypeWrapper<ApiKeyConnection>;
   ApiKeyInput: ApiKeyInput;
@@ -3876,6 +4367,7 @@ export type ResolversTypes = {
   DirectoryWin: ResolverTypeWrapper<DirectoryWin>;
   DirectoryWinKind: DirectoryWinKind;
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
+  DisposableEmailCheck: DisposableEmailCheck;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   FollowEntry: ResolverTypeWrapper<Omit<FollowEntry, 'user'> & { user: ResolversTypes['UserSummary'] }>;
   FollowEntryConnection: ResolverTypeWrapper<Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversTypes['FollowEntry']> }>;
@@ -3944,6 +4436,8 @@ export type ResolversTypes = {
   MemberInquiryInput: MemberInquiryInput;
   MemberInquiryPage: ResolverTypeWrapper<Omit<MemberInquiryPage, 'items'> & { items: Array<ResolversTypes['MemberInquirySummary']> }>;
   MemberInquirySummary: ResolverTypeWrapper<MemberInquirySummaryModel>;
+  ModerationNote: ResolverTypeWrapper<ModerationNote>;
+  ModerationOutcome: ResolverTypeWrapper<ModerationOutcome>;
   Money: ResolverTypeWrapper<Money>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   MyProduct: ResolverTypeWrapper<MyProductModel>;
@@ -3998,6 +4492,7 @@ export type ResolversTypes = {
   QualifierBoard: ResolverTypeWrapper<Omit<QualifierBoard, 'byes' | 'matches'> & { byes: Array<ResolversTypes['MatchBye']>, matches: Array<ResolversTypes['Match']> }>;
   QualifierBoardPhase: QualifierBoardPhase;
   QualifierOutcome: QualifierOutcome;
+  QuarantineReason: QuarantineReason;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: ResolverTypeWrapper<RecoveryCodeSet>;
@@ -4083,9 +4578,14 @@ export type ResolversTypes = {
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
   AdminAccount: AdminAccountSource;
+  AdminCategoryRef: AdminCategoryRef;
+  AdminComment: AdminComment;
+  AdminCommentConnection: AdminCommentConnection;
+  AdminCommentFilter: AdminCommentFilter;
   AdminConfirmationResult: Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['AdminViewer']> };
   AdminHelpArticle: Omit<AdminHelpArticle, 'creator'> & { creator?: Maybe<ResolversParentTypes['HelpArticleAuthor']> };
   AdminHelpArticleRow: Omit<AdminHelpArticleRow, 'creator'> & { creator?: Maybe<ResolversParentTypes['HelpArticleAuthor']> };
+  AdminImageOwner: AdminImageOwner;
   AdminInquiry: AdminInquiryModel;
   AdminInquiryCategory: AdminInquiryCategory;
   AdminInquiryFilterInput: AdminInquiryFilterInput;
@@ -4093,11 +4593,24 @@ export type ResolversParentTypes = {
   AdminInquiryMember: AdminInquiryMemberModel;
   AdminInquiryPage: Omit<AdminInquiryPage, 'entries'> & { entries: Array<ResolversParentTypes['AdminInquirySummary']> };
   AdminInquirySummary: AdminInquirySummaryModel;
+  AdminLaunch: AdminLaunch;
   AdminLegalDocument: AdminLegalDocument;
   AdminLegalDocumentSummary: AdminLegalDocumentSummary;
   AdminLegalDocumentVersion: AdminLegalDocumentVersion;
   AdminLegalDraft: AdminLegalDraft;
   AdminLegalRevision: AdminLegalRevision;
+  AdminMatchResult: AdminMatchResult;
+  AdminMediaFile: AdminMediaFile;
+  AdminProduct: AdminProduct;
+  AdminProductConnection: AdminProductConnection;
+  AdminProductDetail: AdminProductDetail;
+  AdminProductFilter: AdminProductFilter;
+  AdminQuarantinedImage: AdminQuarantinedImage;
+  AdminQuarantinedImagePage: AdminQuarantinedImagePage;
+  AdminRating: AdminRating;
+  AdminRatingConnection: AdminRatingConnection;
+  AdminRatingFilter: AdminRatingFilter;
+  AdminRatingSummary: AdminRatingSummary;
   AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: AdminRecoveryCodeSet;
   AdminSecondFactorInput: AdminSecondFactorInput;
@@ -4106,7 +4619,12 @@ export type ResolversParentTypes = {
   AdminSponsorshipConnection: AdminSponsorshipConnection;
   AdminSponsorshipFilter: AdminSponsorshipFilter;
   AdminTotpSetup: AdminTotpSetup;
+  AdminUser: AdminUser;
+  AdminUserConnection: AdminUserConnection;
+  AdminUserFilter: AdminUserFilter;
+  AdminUserSummary: AdminUserSummary;
   AdminViewer: AdminViewerSource;
+  AdministrativeWithdrawalInput: AdministrativeWithdrawalInput;
   ApiKey: ApiKey;
   ApiKeyConnection: ApiKeyConnection;
   ApiKeyInput: ApiKeyInput;
@@ -4192,6 +4710,8 @@ export type ResolversParentTypes = {
   MemberInquiryInput: MemberInquiryInput;
   MemberInquiryPage: Omit<MemberInquiryPage, 'items'> & { items: Array<ResolversParentTypes['MemberInquirySummary']> };
   MemberInquirySummary: MemberInquirySummaryModel;
+  ModerationNote: ModerationNote;
+  ModerationOutcome: ModerationOutcome;
   Money: Money;
   Mutation: Record<PropertyKey, never>;
   MyProduct: MyProductModel;
@@ -4315,6 +4835,28 @@ export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType exten
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
+export type AdminCategoryRefResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminCategoryRef'] = ResolversParentTypes['AdminCategoryRef']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminCommentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminComment'] = ResolversParentTypes['AdminComment']> = {
+  author?: Resolver<Maybe<ResolversTypes['AdminUserSummary']>, ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  excerpt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  latestHide?: Resolver<Maybe<ResolversTypes['ModerationNote']>, ParentType, ContextType>;
+  launchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  productId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  productName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  state?: Resolver<ResolversTypes['AdminCommentState'], ParentType, ContextType>;
+};
+
+export type AdminCommentConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminCommentConnection'] = ResolversParentTypes['AdminCommentConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminComment']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
 export type AdminConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminConfirmationResult'] = ResolversParentTypes['AdminConfirmationResult']> = {
   viewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
 };
@@ -4349,6 +4891,13 @@ export type AdminHelpArticleRowResolvers<ContextType = GraphQLContext, ParentTyp
   status?: Resolver<ResolversTypes['HelpArticleStatus'], ParentType, ContextType>;
   title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminImageOwnerResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminImageOwner'] = ResolversParentTypes['AdminImageOwner']> = {
+  handle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type AdminInquiryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminInquiry'] = ResolversParentTypes['AdminInquiry']> = {
@@ -4401,6 +4950,14 @@ export type AdminInquirySummaryResolvers<ContextType = GraphQLContext, ParentTyp
   withdrawn?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
+export type AdminLaunchResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLaunch'] = ResolversParentTypes['AdminLaunch']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  launchDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  matches?: Resolver<Array<ResolversTypes['AdminMatchResult']>, ParentType, ContextType>;
+  number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type AdminLegalDocumentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLegalDocument'] = ResolversParentTypes['AdminLegalDocument']> = {
   draft?: Resolver<Maybe<ResolversTypes['AdminLegalDraft']>, ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['LegalDocumentKind'], ParentType, ContextType>;
@@ -4439,6 +4996,88 @@ export type AdminLegalRevisionResolvers<ContextType = GraphQLContext, ParentType
   versionNumber?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
+export type AdminMatchResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminMatchResult'] = ResolversParentTypes['AdminMatchResult']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  matchDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  opponentName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  result?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  stage?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  upvoteCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type AdminMediaFileResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminMediaFile'] = ResolversParentTypes['AdminMediaFile']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  quarantineReasons?: Resolver<Array<ResolversTypes['QuarantineReason']>, ParentType, ContextType>;
+  quarantined?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type AdminProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminProduct'] = ResolversParentTypes['AdminProduct']> = {
+  category?: Resolver<ResolversTypes['AdminCategoryRef'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  latestLaunchDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  latestLaunchState?: Resolver<Maybe<ResolversTypes['AdminProductLaunchState']>, ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['AdminMediaFile']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<Maybe<ResolversTypes['AdminUserSummary']>, ParentType, ContextType>;
+  visibility?: Resolver<ResolversTypes['AdminProductVisibility'], ParentType, ContextType>;
+};
+
+export type AdminProductConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminProductConnection'] = ResolversParentTypes['AdminProductConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminProduct']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type AdminProductDetailResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminProductDetail'] = ResolversParentTypes['AdminProductDetail']> = {
+  descriptionMarkdown?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  hiddenAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  latestHide?: Resolver<Maybe<ResolversTypes['ModerationNote']>, ParentType, ContextType>;
+  launches?: Resolver<Array<ResolversTypes['AdminLaunch']>, ParentType, ContextType>;
+  product?: Resolver<ResolversTypes['AdminProduct'], ParentType, ContextType>;
+  ratingSummary?: Resolver<ResolversTypes['AdminRatingSummary'], ParentType, ContextType>;
+  screenshots?: Resolver<Array<ResolversTypes['AdminMediaFile']>, ParentType, ContextType>;
+  tagline?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  websiteUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminQuarantinedImageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminQuarantinedImage'] = ResolversParentTypes['AdminQuarantinedImage']> = {
+  file?: Resolver<ResolversTypes['AdminMediaFile'], ParentType, ContextType>;
+  findings?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  owner?: Resolver<Maybe<ResolversTypes['AdminImageOwner']>, ParentType, ContextType>;
+  purpose?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  quarantinedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminQuarantinedImagePageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminQuarantinedImagePage'] = ResolversParentTypes['AdminQuarantinedImagePage']> = {
+  items?: Resolver<Array<ResolversTypes['AdminQuarantinedImage']>, ParentType, ContextType>;
+  nextCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminRatingResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRating'] = ResolversParentTypes['AdminRating']> = {
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  latestInvalidation?: Resolver<Maybe<ResolversTypes['ModerationNote']>, ParentType, ContextType>;
+  productId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  productName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  rater?: Resolver<Maybe<ResolversTypes['AdminUserSummary']>, ParentType, ContextType>;
+  score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  state?: Resolver<ResolversTypes['AdminRatingState'], ParentType, ContextType>;
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminRatingConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRatingConnection'] = ResolversParentTypes['AdminRatingConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminRating']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type AdminRatingSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRatingSummary'] = ResolversParentTypes['AdminRatingSummary']> = {
+  average?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type AdminRecoveryCodeSetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRecoveryCodeSet'] = ResolversParentTypes['AdminRecoveryCodeSet']> = {
   codes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
 };
@@ -4474,6 +5113,30 @@ export type AdminTotpSetupResolvers<ContextType = GraphQLContext, ParentType ext
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   otpauthUri?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   secret?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminUserResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminUser'] = ResolversParentTypes['AdminUser']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['AdminMediaFile']>, ParentType, ContextType>;
+  disposableEmail?: Resolver<ResolversTypes['DisposableEmailCheck'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  latestSuspension?: Resolver<Maybe<ResolversTypes['ModerationNote']>, ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  registeredAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['AdminUserStatus'], ParentType, ContextType>;
+  suspendedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+};
+
+export type AdminUserConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminUserConnection'] = ResolversParentTypes['AdminUserConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminUser']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type AdminUserSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminUserSummary'] = ResolversParentTypes['AdminUserSummary']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  suspended?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type AdminViewerResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminViewer'] = ResolversParentTypes['AdminViewer']> = {
@@ -4956,6 +5619,15 @@ export type MemberInquirySummaryResolvers<ContextType = GraphQLContext, ParentTy
   status?: Resolver<ResolversTypes['InquiryStatus'], ParentType, ContextType>;
 };
 
+export type ModerationNoteResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ModerationNote'] = ResolversParentTypes['ModerationNote']> = {
+  occurredAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type ModerationOutcomeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ModerationOutcome'] = ResolversParentTypes['ModerationOutcome']> = {
+  changed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
 export type MoneyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Money'] = ResolversParentTypes['Money']> = {
   amount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   currency?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -4965,6 +5637,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   adminLogin?: Resolver<ResolversTypes['AdminSecondFactorRequired'], ParentType, ContextType, RequireFields<MutationAdminLoginArgs, 'email' | 'password'>>;
   adminLogout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   applySponsorship?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationApplySponsorshipArgs, 'input'>>;
+  approveQuarantinedImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationApproveQuarantinedImageArgs, 'fileId'>>;
   cancelProductRating?: Resolver<ResolversTypes['ProductRating'], ParentType, ContextType, RequireFields<MutationCancelProductRatingArgs, 'productId'>>;
   cancelUpvote?: Resolver<ResolversTypes['Match'], ParentType, ContextType, RequireFields<MutationCancelUpvoteArgs, 'matchId'>>;
   changeAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationChangeAdminPasswordArgs, 'newPassword' | 'reAuthentication'>>;
@@ -4992,10 +5665,14 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   deleteInquiryCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteInquiryCategoryArgs, 'id'>>;
   deleteProduct?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductArgs, 'expectedVersion' | 'productHandle'>>;
   deleteProductCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductCategoryArgs, 'id'>>;
+  deleteQuarantinedImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationDeleteQuarantinedImageArgs, 'fileId'>>;
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
   discardLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationDiscardLegalDocumentDraftArgs, 'input'>>;
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
   followUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationFollowUserArgs, 'handle'>>;
+  hideComment?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationHideCommentArgs, 'id' | 'reason'>>;
+  hideProduct?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationHideProductArgs, 'id' | 'reason'>>;
+  invalidateRating?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationInvalidateRatingArgs, 'id' | 'reason'>>;
   inviteAdmin?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationInviteAdminArgs, 'email'>>;
   issueApiKey?: Resolver<ResolversTypes['IssuedApiKey'], ParentType, ContextType, RequireFields<MutationIssueApiKeyArgs, 'input'>>;
   login?: Resolver<ResolversTypes['LoginResult'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'input'>>;
@@ -5003,6 +5680,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   postComment?: Resolver<ResolversTypes['CommentMutationResult'], ParentType, ContextType, RequireFields<MutationPostCommentArgs, 'input'>>;
   postInquiryMessage?: Resolver<ResolversTypes['InquiryMessage'], ParentType, ContextType, RequireFields<MutationPostInquiryMessageArgs, 'input' | 'inquiryId'>>;
   publishLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationPublishLegalDocumentArgs, 'input'>>;
+  quarantineImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationQuarantineImageArgs, 'fileId'>>;
   rateProduct?: Resolver<ResolversTypes['ProductRating'], ParentType, ContextType, RequireFields<MutationRateProductArgs, 'productId' | 'score'>>;
   recordCheckoutConsent?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<MutationRecordCheckoutConsentArgs, 'purchaseId'>>;
   regenerateAdminRecoveryCodes?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateAdminRecoveryCodesArgs, 'reAuthentication'>>;
@@ -5010,6 +5688,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   registerProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationRegisterProductArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
   reissueApiKey?: Resolver<ResolversTypes['IssuedApiKey'], ParentType, ContextType, RequireFields<MutationReissueApiKeyArgs, 'id'>>;
+  releaseQuarantinedImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationReleaseQuarantinedImageArgs, 'fileId'>>;
   renameHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationRenameHelpCategoryArgs, 'id' | 'name'>>;
   renameInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationRenameInquiryCategoryArgs, 'id' | 'name'>>;
   reorderHelpArticles?: Resolver<Array<ResolversTypes['AdminHelpArticleRow']>, ParentType, ContextType, RequireFields<MutationReorderHelpArticlesArgs, 'categoryId' | 'orderedIds'>>;
@@ -5025,6 +5704,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   resetAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetAdminPasswordArgs, 'newPassword' | 'token'>>;
   resetPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetPasswordArgs, 'input'>>;
   resumeSponsorshipCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationResumeSponsorshipCheckoutArgs, 'id'>>;
+  revalidateRating?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationRevalidateRatingArgs, 'id' | 'reason'>>;
   revokeOtherSessions?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   revokeSession?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokeSessionArgs, 'id'>>;
   saveLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationSaveLegalDocumentDraftArgs, 'input'>>;
@@ -5037,8 +5717,12 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   startYearTournamentCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationStartYearTournamentCheckoutArgs, 'launchId'>>;
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
+  suspendUser?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationSuspendUserArgs, 'id' | 'reason'>>;
   terminateSponsorship?: Resolver<ResolversTypes['SponsorshipTerminationResult'], ParentType, ContextType, RequireFields<MutationTerminateSponsorshipArgs, 'id' | 'reason'>>;
   unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
+  unhideComment?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationUnhideCommentArgs, 'id' | 'reason'>>;
+  unhideProduct?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationUnhideProductArgs, 'id' | 'reason'>>;
+  unsuspendUser?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationUnsuspendUserArgs, 'id' | 'reason'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
   updateApiKey?: Resolver<ResolversTypes['ApiKey'], ParentType, ContextType, RequireFields<MutationUpdateApiKeyArgs, 'id' | 'input'>>;
   updateComment?: Resolver<ResolversTypes['CommentMutationResult'], ParentType, ContextType, RequireFields<MutationUpdateCommentArgs, 'input'>>;
@@ -5053,6 +5737,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   upvote?: Resolver<ResolversTypes['Match'], ParentType, ContextType, RequireFields<MutationUpvoteArgs, 'input'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
+  withdrawUserByAdministrator?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationWithdrawUserByAdministratorArgs, 'input'>>;
 };
 
 export type MyProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MyProduct'] = ResolversParentTypes['MyProduct']> = {
@@ -5360,6 +6045,7 @@ export type QualifierBoardResolvers<ContextType = GraphQLContext, ParentType ext
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
   activeSponsorshipCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType, RequireFields<QueryActiveSponsorshipCountArgs, 'productHandle'>>;
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
+  adminComments?: Resolver<ResolversTypes['AdminCommentConnection'], ParentType, ContextType, RequireFields<QueryAdminCommentsArgs, 'first'>>;
   adminHelpArticle?: Resolver<Maybe<ResolversTypes['AdminHelpArticle']>, ParentType, ContextType, RequireFields<QueryAdminHelpArticleArgs, 'id'>>;
   adminHelpArticles?: Resolver<Array<ResolversTypes['AdminHelpArticleRow']>, ParentType, ContextType>;
   adminHelpCategories?: Resolver<Array<ResolversTypes['HelpCategory']>, ParentType, ContextType>;
@@ -5369,9 +6055,16 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<QueryAdminLegalDocumentArgs, 'kind'>>;
   adminLegalDocumentVersion?: Resolver<Maybe<ResolversTypes['AdminLegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryAdminLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   adminLegalDocuments?: Resolver<Array<ResolversTypes['AdminLegalDocumentSummary']>, ParentType, ContextType>;
+  adminModerationCategoryOptions?: Resolver<Array<ResolversTypes['AdminCategoryRef']>, ParentType, ContextType>;
+  adminProduct?: Resolver<Maybe<ResolversTypes['AdminProductDetail']>, ParentType, ContextType, RequireFields<QueryAdminProductArgs, 'id'>>;
   adminProductCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
+  adminProductRatings?: Resolver<ResolversTypes['AdminRatingConnection'], ParentType, ContextType, RequireFields<QueryAdminProductRatingsArgs, 'first' | 'productId'>>;
+  adminProducts?: Resolver<ResolversTypes['AdminProductConnection'], ParentType, ContextType, RequireFields<QueryAdminProductsArgs, 'first'>>;
+  adminQuarantinedImages?: Resolver<ResolversTypes['AdminQuarantinedImagePage'], ParentType, ContextType, RequireFields<QueryAdminQuarantinedImagesArgs, 'reason'>>;
+  adminRatings?: Resolver<ResolversTypes['AdminRatingConnection'], ParentType, ContextType, RequireFields<QueryAdminRatingsArgs, 'first'>>;
   adminSponsorships?: Resolver<ResolversTypes['AdminSponsorshipConnection'], ParentType, ContextType, RequireFields<QueryAdminSponsorshipsArgs, 'first'>>;
   adminUnhandledInquiryCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  adminUsers?: Resolver<ResolversTypes['AdminUserConnection'], ParentType, ContextType, RequireFields<QueryAdminUsersArgs, 'first'>>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
   checkout?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<QueryCheckoutArgs, 'purchaseId'>>;
@@ -5797,25 +6490,43 @@ export type YearTournamentSummaryResolvers<ContextType = GraphQLContext, ParentT
 
 export type Resolvers<ContextType = GraphQLContext> = {
   AdminAccount?: AdminAccountResolvers<ContextType>;
+  AdminCategoryRef?: AdminCategoryRefResolvers<ContextType>;
+  AdminComment?: AdminCommentResolvers<ContextType>;
+  AdminCommentConnection?: AdminCommentConnectionResolvers<ContextType>;
   AdminConfirmationResult?: AdminConfirmationResultResolvers<ContextType>;
   AdminHelpArticle?: AdminHelpArticleResolvers<ContextType>;
   AdminHelpArticleRow?: AdminHelpArticleRowResolvers<ContextType>;
+  AdminImageOwner?: AdminImageOwnerResolvers<ContextType>;
   AdminInquiry?: AdminInquiryResolvers<ContextType>;
   AdminInquiryCategory?: AdminInquiryCategoryResolvers<ContextType>;
   AdminInquiryGuest?: AdminInquiryGuestResolvers<ContextType>;
   AdminInquiryMember?: AdminInquiryMemberResolvers<ContextType>;
   AdminInquiryPage?: AdminInquiryPageResolvers<ContextType>;
   AdminInquirySummary?: AdminInquirySummaryResolvers<ContextType>;
+  AdminLaunch?: AdminLaunchResolvers<ContextType>;
   AdminLegalDocument?: AdminLegalDocumentResolvers<ContextType>;
   AdminLegalDocumentSummary?: AdminLegalDocumentSummaryResolvers<ContextType>;
   AdminLegalDocumentVersion?: AdminLegalDocumentVersionResolvers<ContextType>;
   AdminLegalDraft?: AdminLegalDraftResolvers<ContextType>;
   AdminLegalRevision?: AdminLegalRevisionResolvers<ContextType>;
+  AdminMatchResult?: AdminMatchResultResolvers<ContextType>;
+  AdminMediaFile?: AdminMediaFileResolvers<ContextType>;
+  AdminProduct?: AdminProductResolvers<ContextType>;
+  AdminProductConnection?: AdminProductConnectionResolvers<ContextType>;
+  AdminProductDetail?: AdminProductDetailResolvers<ContextType>;
+  AdminQuarantinedImage?: AdminQuarantinedImageResolvers<ContextType>;
+  AdminQuarantinedImagePage?: AdminQuarantinedImagePageResolvers<ContextType>;
+  AdminRating?: AdminRatingResolvers<ContextType>;
+  AdminRatingConnection?: AdminRatingConnectionResolvers<ContextType>;
+  AdminRatingSummary?: AdminRatingSummaryResolvers<ContextType>;
   AdminRecoveryCodeSet?: AdminRecoveryCodeSetResolvers<ContextType>;
   AdminSecondFactorRequired?: AdminSecondFactorRequiredResolvers<ContextType>;
   AdminSponsorship?: AdminSponsorshipResolvers<ContextType>;
   AdminSponsorshipConnection?: AdminSponsorshipConnectionResolvers<ContextType>;
   AdminTotpSetup?: AdminTotpSetupResolvers<ContextType>;
+  AdminUser?: AdminUserResolvers<ContextType>;
+  AdminUserConnection?: AdminUserConnectionResolvers<ContextType>;
+  AdminUserSummary?: AdminUserSummaryResolvers<ContextType>;
   AdminViewer?: AdminViewerResolvers<ContextType>;
   ApiKey?: ApiKeyResolvers<ContextType>;
   ApiKeyConnection?: ApiKeyConnectionResolvers<ContextType>;
@@ -5885,6 +6596,8 @@ export type Resolvers<ContextType = GraphQLContext> = {
   MemberInquiry?: MemberInquiryResolvers<ContextType>;
   MemberInquiryPage?: MemberInquiryPageResolvers<ContextType>;
   MemberInquirySummary?: MemberInquirySummaryResolvers<ContextType>;
+  ModerationNote?: ModerationNoteResolvers<ContextType>;
+  ModerationOutcome?: ModerationOutcomeResolvers<ContextType>;
   Money?: MoneyResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   MyProduct?: MyProductResolvers<ContextType>;

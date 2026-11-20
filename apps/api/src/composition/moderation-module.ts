@@ -2,7 +2,41 @@ import type { Hono } from 'hono';
 import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
+import type { ScheduledJobHandler } from '../../lib/core/scheduling/cron-registry.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
+import {
+  type AdminCommentReader,
+  DefaultAdminCommentReader,
+} from '../application/moderation/admin-comment-reader.ts';
+import {
+  type AdminProductReader,
+  DefaultAdminProductReader,
+} from '../application/moderation/admin-product-reader.ts';
+import {
+  type AdminRatingReader,
+  DefaultAdminRatingReader,
+} from '../application/moderation/admin-rating-reader.ts';
+import {
+  type AdminUserReader,
+  DefaultAdminUserReader,
+} from '../application/moderation/admin-user-reader.ts';
+import {
+  type AdministrativeWithdrawalService,
+  DefaultAdministrativeWithdrawalService,
+} from '../application/moderation/administrative-withdrawal-service.ts';
+import {
+  type CommentModerationService,
+  DefaultCommentModerationService,
+} from '../application/moderation/comment-moderation-service.ts';
+import {
+  DefaultImageModerationService,
+  type ImageModerationService,
+} from '../application/moderation/image-moderation-service.ts';
+import { ModerationMaintenanceJob } from '../application/moderation/jobs/moderation-maintenance-job.ts';
+import {
+  EmailModerationNotifier,
+  type ModerationNotifier,
+} from '../application/moderation/moderation-notifier.ts';
 import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
 import {
   InMemoryPendingModerationRecord,
@@ -13,6 +47,22 @@ import type {
   ImageModerationWriter,
   ModerationIncidentReporter,
 } from '../application/moderation/ports.ts';
+import {
+  DefaultProductModerationService,
+  type ProductModerationService,
+} from '../application/moderation/product-moderation-service.ts';
+import {
+  DefaultQuarantinedImageReader,
+  type QuarantinedImageReader,
+} from '../application/moderation/quarantined-image-reader.ts';
+import {
+  DefaultRatingModerationService,
+  type RatingModerationService,
+} from '../application/moderation/rating-moderation-service.ts';
+import {
+  DefaultUserModerationService,
+  type UserModerationService,
+} from '../application/moderation/user-moderation-service.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { ControlEngagementModerationWriter } from '../infrastructure/moderation/control-engagement-moderation-writer.ts';
 import { ControlImageModerationWriter } from '../infrastructure/moderation/control-image-moderation-writer.ts';
@@ -64,5 +114,44 @@ export const MODERATION_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     bind<ProductLifecycleSyncHandler>(
       MODERATION_TYPES.ProductModerationRecordSyncHandler,
     ).to(ProductModerationRecordSyncHandler);
+    bind<UserModerationService>(MODERATION_TYPES.UserModerationService).to(
+      DefaultUserModerationService,
+    );
+    bind<AdministrativeWithdrawalService>(
+      MODERATION_TYPES.AdministrativeWithdrawalService,
+    ).to(DefaultAdministrativeWithdrawalService);
+    bind<ProductModerationService>(
+      MODERATION_TYPES.ProductModerationService,
+    ).to(DefaultProductModerationService);
+    bind<CommentModerationService>(
+      MODERATION_TYPES.CommentModerationService,
+    ).to(DefaultCommentModerationService);
+    bind<RatingModerationService>(MODERATION_TYPES.RatingModerationService).to(
+      DefaultRatingModerationService,
+    );
+    bind<ImageModerationService>(MODERATION_TYPES.ImageModerationService).to(
+      DefaultImageModerationService,
+    );
+    bind<ModerationNotifier>(MODERATION_TYPES.ModerationNotifier).to(
+      EmailModerationNotifier,
+    );
+    bind<AdminUserReader>(MODERATION_TYPES.AdminUserReader).to(
+      DefaultAdminUserReader,
+    );
+    bind<AdminProductReader>(MODERATION_TYPES.AdminProductReader).to(
+      DefaultAdminProductReader,
+    );
+    bind<AdminCommentReader>(MODERATION_TYPES.AdminCommentReader).to(
+      DefaultAdminCommentReader,
+    );
+    bind<AdminRatingReader>(MODERATION_TYPES.AdminRatingReader).to(
+      DefaultAdminRatingReader,
+    );
+    bind<QuarantinedImageReader>(MODERATION_TYPES.QuarantinedImageReader).to(
+      DefaultQuarantinedImageReader,
+    );
+    bind<ScheduledJobHandler>(MODERATION_TYPES.ModerationMaintenanceJob).to(
+      ModerationMaintenanceJob,
+    );
   }),
 };

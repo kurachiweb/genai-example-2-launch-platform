@@ -6,13 +6,8 @@ import { beforeEach, describe, expect, test } from 'vitest';
 
 import { userLifecycleEvents } from '../../db/schema/identity/user-lifecycle-events.ts';
 import { users } from '../../db/schema/identity/users.ts';
-import type { AuditLogRecorder } from '../../lib/core/admin/audit-log.ts';
-import { ADMIN_PLATFORM_TYPES } from '../../lib/core/admin/identifiers.ts';
 import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
 import { EMAIL_SEND_MESSAGE } from '../../lib/core/email/send-message.ts';
-import type { IdGenerator } from '../../lib/core/ids/id-generator.ts';
-import { IDENTITY_PLATFORM_TYPES } from '../../lib/core/identity/identifiers.ts';
-import type { AdminUserDirectory } from '../../lib/core/identity/ports.ts';
 import { RUN_USER_LIFECYCLE_MESSAGE } from '../../lib/core/messaging/contracts/identity.ts';
 import type { Principal } from '../../lib/core/session/session-view.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
@@ -29,15 +24,12 @@ import {
   OPERATOR_ADMIN_ID,
   readModerationRows,
 } from '../../lib/workers/moderation/testing/moderation-record-fixtures.ts';
-import type { AdministrativeWithdrawal } from '../application/identity/administrative-withdrawal.ts';
-import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
-import {
-  type AdministrativeWithdrawalCommandInput,
-  DefaultAdministrativeWithdrawalService,
+import type {
+  AdministrativeWithdrawalCommandInput,
+  AdministrativeWithdrawalService,
 } from '../application/moderation/administrative-withdrawal-service.ts';
 import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
 import type { PendingModerationRecord } from '../application/moderation/pending-moderation-record.ts';
-import type { ModerationIncidentReporter } from '../application/moderation/ports.ts';
 import {
   clearModerationWrites,
   PSEUDONYMOUS_ID,
@@ -88,23 +80,9 @@ function createHarness(): Harness {
   return { container, published };
 }
 
-// 代理の退会のユースケースの束縛は管理画面のスキーマモジュールのタスクが加えるため、ここでは2.3の束縛から組み立てる
-function serviceOf(container: Container) {
-  return new DefaultAdministrativeWithdrawalService(
-    container.get<AdminUserDirectory>(
-      IDENTITY_PLATFORM_TYPES.AdminUserDirectory,
-    ),
-    container.get<AdministrativeWithdrawal>(
-      IDENTITY_TYPES.AdministrativeWithdrawal,
-    ),
-    container.get<AuditLogRecorder>(ADMIN_PLATFORM_TYPES.AuditLogRecorder),
-    container.get<IdGenerator>(PLATFORM_TYPES.IdGenerator),
-    container.get<PendingModerationRecord>(
-      MODERATION_TYPES.PendingModerationRecord,
-    ),
-    container.get<ModerationIncidentReporter>(
-      MODERATION_TYPES.ModerationIncidentReporter,
-    ),
+function serviceOf(container: Container): AdministrativeWithdrawalService {
+  return container.get<AdministrativeWithdrawalService>(
+    MODERATION_TYPES.AdministrativeWithdrawalService,
   );
 }
 

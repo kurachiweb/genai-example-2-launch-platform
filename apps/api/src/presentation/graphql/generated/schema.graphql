@@ -26,6 +26,55 @@ enum AdminAccountStatus {
   INVITED
 }
 
+"""管理画面のプロダクトのカテゴリ"""
+type AdminCategoryRef {
+  id: ID!
+  name: String!
+}
+
+"""管理画面のコメント"""
+type AdminComment {
+  """匿名化・退会済みの投稿者はnull"""
+  author: AdminUserSummary
+  createdAt: DateTime!
+
+  """マークダウンとして描画しない本文の先頭"""
+  excerpt: String!
+  id: ID!
+
+  """非公開化中で、非公開化の措置の記録が残っているコメントだけが持つ"""
+  latestHide: ModerationNote
+  launchId: ID!
+  productId: ID!
+
+  """論理削除済みのプロダクトはnull"""
+  productName: String
+  state: AdminCommentState!
+}
+
+type AdminCommentConnection {
+  nodes: [AdminComment!]!
+  pageInfo: PageInfo!
+}
+
+"""コメントの一覧の絞り込み。投稿日時はpostedFromを含みpostedBeforeを含まない"""
+input AdminCommentFilter {
+  authorHandle: String
+  postedBefore: DateTime
+  postedFrom: DateTime
+  productHandle: String
+  state: AdminCommentState
+}
+
+"""管理画面のコメントの状態"""
+enum AdminCommentState {
+  ANONYMIZED
+  AUTHOR_UNAVAILABLE
+  DELETED
+  HIDDEN
+  SHOWN
+}
+
 """メールのリンクによる確定の結果"""
 type AdminConfirmationResult {
   """確定の操作をした端末が同じ管理者としてログイン中なら、入れ替えた後の管理者"""
@@ -66,6 +115,16 @@ type AdminHelpArticleRow {
   status: HelpArticleStatus!
   title: String!
   updatedAt: DateTime!
+}
+
+"""隔離画像の保有者。kindはuserかadmin"""
+type AdminImageOwner {
+  handle: String
+  id: ID!
+  kind: String!
+
+  """表示名を引けない保有者はnull"""
+  nickname: String
 }
 
 """管理画面の問い合わせの詳細"""
@@ -146,6 +205,17 @@ type AdminInquirySummary {
   withdrawn: Boolean!
 }
 
+"""プロダクトのローンチ"""
+type AdminLaunch {
+  id: ID!
+
+  """業務日付"""
+  launchDate: String!
+  matches: [AdminMatchResult!]!
+  number: Int!
+  status: String!
+}
+
 """管理画面の編集の対象の法務文書"""
 type AdminLegalDocument {
   """下書きが無ければnull"""
@@ -198,6 +268,163 @@ type AdminLegalRevision {
   publishedAt: DateTime!
   publishedBy: LegalDocumentEditor!
   versionNumber: Int!
+}
+
+"""ローンチのマッチ結果"""
+type AdminMatchResult {
+  id: ID!
+  kind: String!
+
+  """業務日付"""
+  matchDate: String!
+
+  """不戦勝・表示できない相手はnull"""
+  opponentName: String
+
+  """未確定はnull"""
+  result: String
+  round: Int
+  stage: String
+  upvoteCount: Int!
+}
+
+"""管理画面で表示する画像のファイル"""
+type AdminMediaFile {
+  id: ID!
+
+  """管理者側のサイトと同じオリジンの中継の経路"""
+  path: String!
+  quarantineReasons: [QuarantineReason!]!
+  quarantined: Boolean!
+}
+
+"""管理画面のプロダクト"""
+type AdminProduct {
+  category: AdminCategoryRef!
+  handle: String!
+  id: ID!
+
+  """業務日付。ローンチが無ければnull"""
+  latestLaunchDate: String
+  latestLaunchState: AdminProductLaunchState
+  logo: AdminMediaFile
+  name: String!
+
+  """退会済みの投稿者はnull"""
+  owner: AdminUserSummary
+  visibility: AdminProductVisibility!
+}
+
+type AdminProductConnection {
+  nodes: [AdminProduct!]!
+  pageInfo: PageInfo!
+}
+
+"""管理画面のプロダクトの詳細"""
+type AdminProductDetail {
+  descriptionMarkdown: String!
+  hiddenAt: DateTime
+
+  """非公開化中で、非公開化の措置の記録が残っているプロダクトだけが持つ"""
+  latestHide: ModerationNote
+
+  """ローンチ日の新しい順"""
+  launches: [AdminLaunch!]!
+  product: AdminProduct!
+  ratingSummary: AdminRatingSummary!
+  screenshots: [AdminMediaFile!]!
+  tagline: String!
+  websiteUrl: String!
+}
+
+"""プロダクトの一覧の絞り込み。指定した条件を全て満たすプロダクトを返す"""
+input AdminProductFilter {
+  categoryId: ID
+  handle: String
+  launchState: AdminProductLaunchState
+  name: String
+  ownerHandle: String
+  visibility: AdminProductVisibility
+}
+
+"""プロダクトの最新のローンチの状態"""
+enum AdminProductLaunchState {
+  CANCELED
+  IN_PROGRESS
+  LOST
+  SCHEDULED
+  WON
+}
+
+"""プロダクトの公開状態"""
+enum AdminProductVisibility {
+  HIDDEN
+  OWNER_SUSPENDED
+  VISIBLE
+}
+
+"""隔離画像"""
+type AdminQuarantinedImage {
+  file: AdminMediaFile!
+
+  """自動判定の検出内容"""
+  findings: [String!]!
+
+  """システムが保有する画像はnull"""
+  owner: AdminImageOwner
+
+  """画像の用途"""
+  purpose: String!
+  quarantinedAt: DateTime!
+}
+
+"""隔離画像の一覧の1ページ。続きが無ければnextCursorはnull"""
+type AdminQuarantinedImagePage {
+  items: [AdminQuarantinedImage!]!
+  nextCursor: String
+}
+
+"""管理画面の評価"""
+type AdminRating {
+  createdAt: DateTime!
+  id: ID!
+
+  """無効化中で、無効化の措置の記録が残っている評価だけが持つ"""
+  latestInvalidation: ModerationNote
+  productId: ID!
+
+  """論理削除済みのプロダクトはnull"""
+  productName: String
+
+  """退会済みの評価者はnull"""
+  rater: AdminUserSummary
+  score: Int!
+  state: AdminRatingState!
+  updatedAt: DateTime!
+}
+
+type AdminRatingConnection {
+  nodes: [AdminRating!]!
+  pageInfo: PageInfo!
+}
+
+"""評価の一覧の絞り込み"""
+input AdminRatingFilter {
+  productHandle: String
+  raterHandle: String
+  state: AdminRatingState
+}
+
+"""管理画面の評価の状態"""
+enum AdminRatingState {
+  INVALIDATED
+  VALID
+}
+
+"""有効な評価の平均と件数"""
+type AdminRatingSummary {
+  average: Float
+  count: Int!
 }
 
 """重要な操作の本人確認"""
@@ -295,6 +522,53 @@ type AdminTotpSetup {
   secret: String!
 }
 
+"""管理画面の利用者。メールアドレスは返さない"""
+type AdminUser {
+  avatar: AdminMediaFile
+  disposableEmail: DisposableEmailCheck!
+  handle: String!
+  id: ID!
+
+  """停止中で、停止の措置の記録が残っている利用者だけが持つ"""
+  latestSuspension: ModerationNote
+  nickname: String!
+  registeredAt: DateTime!
+  status: AdminUserStatus!
+  suspendedAt: DateTime
+}
+
+type AdminUserConnection {
+  nodes: [AdminUser!]!
+  pageInfo: PageInfo!
+}
+
+"""ユーザーの一覧の絞り込み。指定した条件を全て満たす利用者を返す"""
+input AdminUserFilter {
+  """大文字小文字を区別しない完全一致"""
+  email: String
+
+  """大文字小文字を区別しない部分一致"""
+  handle: String
+
+  """大文字小文字を区別しない部分一致"""
+  nickname: String
+  status: AdminUserStatus
+}
+
+"""管理画面の利用者の停止状態"""
+enum AdminUserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+"""管理画面の一覧に添える利用者の表示"""
+type AdminUserSummary {
+  handle: String!
+  id: ID!
+  nickname: String!
+  suspended: Boolean!
+}
+
 """ログイン中の管理者"""
 type AdminViewer {
   """未登録・表示できない画像ではnull"""
@@ -307,6 +581,12 @@ type AdminViewer {
   remainingRecoveryCodes: Int!
   role: AdminRole!
   title: String
+}
+
+"""代理の退会の入力"""
+input AdministrativeWithdrawalInput {
+  reason: String!
+  userId: ID!
 }
 
 """APIキー。平文とハッシュは持たない"""
@@ -724,6 +1004,14 @@ enum DirectoryWinKind {
 input DiscardLegalDocumentDraftInput {
   expectedStateVersion: Int!
   kind: LegalDocumentKind!
+}
+
+"""使い捨てメールアドレスの判定結果。UNVERIFIEDはメールアドレスの確認を済ませていない利用者"""
+enum DisposableEmailCheck {
+  DISPOSABLE
+  REGULAR
+  UNDETERMINED
+  UNVERIFIED
 }
 
 """フォロー一覧の1行。followedAtはフォローした日時"""
@@ -1302,6 +1590,17 @@ type MemberInquirySummary {
   status: InquiryStatus!
 }
 
+"""最新の措置の理由と日時。理由は措置の記録から読み、任意の操作で理由が無ければnull"""
+type ModerationNote {
+  occurredAt: DateTime!
+  reason: String
+}
+
+"""措置の結果。既に同じ状態ならchangedは偽"""
+type ModerationOutcome {
+  changed: Boolean!
+}
+
 """金額"""
 type Money {
   """最小通貨単位の整数"""
@@ -1325,6 +1624,9 @@ type Mutation {
 
   """申込を未決済で記録し、決済を始めて決済画面の経路に使う購入のIDを返す"""
   applySponsorship(input: ApplySponsorshipInput!): CheckoutStart!
+
+  """自動判定の隔離理由を外す公開承認"""
+  approveQuarantinedImage(fileId: ID!, reason: String): ModerationOutcome!
 
   """閲覧者のプロダクトへの評価を物理削除する。評価が無くても成功する"""
   cancelProductRating(productId: ID!): ProductRating!
@@ -1405,6 +1707,9 @@ type Mutation {
   """モデレーター以上の管理者がプロダクトの紐付かないプロダクトカテゴリを削除する。標準カテゴリは削除できない"""
   deleteProductCategory(id: ID!, reason: String): Boolean!
 
+  """隔離画像の削除"""
+  deleteQuarantinedImage(fileId: ID!, reason: String): ModerationOutcome!
+
   """多要素認証の無効化"""
   disableTotp(input: ReAuthenticationInput!): Boolean!
 
@@ -1416,6 +1721,15 @@ type Mutation {
 
   """メールアドレスが確認済みの利用者がフォローする。すでにフォロー済みでも成功する"""
   followUser(handle: String!): FollowState!
+
+  """コメントの非公開化"""
+  hideComment(id: ID!, reason: String!): ModerationOutcome!
+
+  """プロダクトの非公開化"""
+  hideProduct(id: ID!, reason: String!): ModerationOutcome!
+
+  """評価の無効化"""
+  invalidateRating(id: ID!, reason: String!): ModerationOutcome!
 
   """閲覧のみのロールで招待し、招待のメールを送る"""
   inviteAdmin(email: String!, reason: String): AdminAccount!
@@ -1438,6 +1752,9 @@ type Mutation {
   """下書きの公開。最上位管理者"""
   publishLegalDocument(input: PublishLegalDocumentInput!): AdminLegalDocument!
 
+  """画像の個別の隔離"""
+  quarantineImage(fileId: ID!, reason: String): ModerationOutcome!
+
   """閲覧者のプロダクトへの評価を保存し、評価済みなら上書きする"""
   rateProduct(productId: ID!, score: Int!): ProductRating!
 
@@ -1458,6 +1775,9 @@ type Mutation {
 
   """自分のAPIキーと同じ名前と権限スコープの新しいキーを追加で発行する。元のキーは残す"""
   reissueApiKey(id: ID!): IssuedApiKey!
+
+  """管理者操作の隔離理由を外す隔離の解除"""
+  releaseQuarantinedImage(fileId: ID!, reason: String): ModerationOutcome!
   renameHelpCategory(id: ID!, name: String!): HelpCategory!
 
   """カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上"""
@@ -1506,6 +1826,9 @@ type Mutation {
   """本人の開始日前の未決済の申込の決済を始め直す"""
   resumeSponsorshipCheckout(id: ID!): CheckoutStart!
 
+  """評価の無効化の取り消し"""
+  revalidateRating(id: ID!, reason: String!): ModerationOutcome!
+
   """操作している端末以外のセッションの一括の失効。失効させた件数を返す"""
   revokeOtherSessions: Int!
 
@@ -1552,11 +1875,23 @@ type Mutation {
   """停止していないログイン中の利用者の問い合わせの送信"""
   submitMemberInquiry(input: MemberInquiryInput!): MemberInquiry!
 
+  """利用者の停止"""
+  suspendUser(id: ID!, reason: String!): ModerationOutcome!
+
   """理由(500文字以内)を付けて広告を強制終了し、未掲載日数分と表示停止日数分の返金を依頼する。モデレーター以上の管理者"""
   terminateSponsorship(id: ID!, reason: String!): SponsorshipTerminationResult!
 
   """停止中でない利用者がフォローを解除する。フォローしていなくても成功する"""
   unfollowUser(handle: String!): FollowState!
+
+  """コメントの復元"""
+  unhideComment(id: ID!, reason: String!): ModerationOutcome!
+
+  """プロダクトの復元"""
+  unhideProduct(id: ID!, reason: String!): ModerationOutcome!
+
+  """利用者の停止解除"""
+  unsuspendUser(id: ID!, reason: String!): ModerationOutcome!
 
   """プロフィールの更新。avatarFileIdの省略は画像を取り除く"""
   updateAdminProfile(avatarFileId: ID, id: ID!, nickname: String!, title: String): AdminAccount!
@@ -1601,6 +1936,9 @@ type Mutation {
 
   """退会"""
   withdraw(input: ReAuthenticationInput!): Boolean!
+
+  """最上位管理者による代理の退会"""
+  withdrawUserByAdministrator(input: AdministrativeWithdrawalInput!): ModerationOutcome!
 }
 
 """自分のプロダクトの編集用の情報"""
@@ -2208,12 +2546,23 @@ enum QualifierOutcome {
   WON
 }
 
+"""画像の隔離理由"""
+enum QuarantineReason {
+  ADMIN_ACTION
+  AUTO
+  PRODUCT_HIDDEN
+  USER_SUSPENDED
+}
+
 type Query {
   """本人のプロダクトの掲載中・掲載予定の広告の件数。本人のプロダクトでなければ0"""
   activeSponsorshipCount(productHandle: String!): Int!
 
   """招待中を含む全管理者を登録の新しい順に返す"""
   adminAccounts: [AdminAccount!]!
+
+  """コメントの一覧(投稿日時の新しい順)。firstは1〜50"""
+  adminComments(after: String, filter: AdminCommentFilter, first: Int!): AdminCommentConnection!
 
   """見つからなければnull"""
   adminHelpArticle(id: ID!): AdminHelpArticle
@@ -2242,14 +2591,35 @@ type Query {
   """管理画面の法務文書の一覧。閲覧のみ以上の管理者"""
   adminLegalDocuments: [AdminLegalDocumentSummary!]!
 
+  """プロダクトの一覧の絞り込みのカテゴリの選択肢"""
+  adminModerationCategoryOptions: [AdminCategoryRef!]!
+
+  """プロダクトの詳細。存在しない・論理削除済みはnull"""
+  adminProduct(id: ID!): AdminProductDetail
+
   """管理者向けのプロダクトカテゴリの一覧。productCategoriesと同じ順"""
   adminProductCategories: [ProductCategory!]!
+
+  """プロダクトの評価の一覧(更新日時の新しい順)。firstは1〜50"""
+  adminProductRatings(after: String, first: Int!, productId: ID!): AdminRatingConnection!
+
+  """論理削除されていないプロダクトの一覧(登録日時の新しい順)。firstは1〜50"""
+  adminProducts(after: String, filter: AdminProductFilter, first: Int!): AdminProductConnection!
+
+  """隔離理由ごとの隔離画像の一覧(隔離された日時の新しい順に50件ずつ)"""
+  adminQuarantinedImages(after: String, reason: QuarantineReason!): AdminQuarantinedImagePage!
+
+  """評価の一覧(更新日時の新しい順)。firstは1〜50"""
+  adminRatings(after: String, filter: AdminRatingFilter, first: Int!): AdminRatingConnection!
 
   """退会者を除く申込の新しい順(1〜50件)。閲覧のみ以上の管理者"""
   adminSponsorships(after: String, filter: AdminSponsorshipFilter, first: Int!): AdminSponsorshipConnection!
 
   """退会済みを除く「未対応」のログインと未ログインの問い合わせの合計件数。閲覧のみ以上"""
   adminUnhandledInquiryCount: Int!
+
+  """退会していない利用者の一覧(登録日時の新しい順)。firstは1〜50"""
+  adminUsers(after: String, filter: AdminUserFilter, first: Int!): AdminUserConnection!
 
   """ログイン中の管理者。未ログイン・無効なセッションではnull"""
   adminViewer: AdminViewer

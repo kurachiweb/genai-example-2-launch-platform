@@ -50,7 +50,7 @@ describe('Yearトーナメントのジョブの定期実行の一覧への登録
     ]);
   });
 
-  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、スポンサー広告の日次の処理(1600)の後・検索のキーワードの再抽出(2300)の前に再処理が動く', () => {
+  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、スポンサー広告の日次の処理(1600)の後・UGC管理の保守(1910)の前に再処理が動く', () => {
     const jobs = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(MAINTENANCE_CRON)
       .map(({ name, order }) => ({ name, order }));
@@ -63,7 +63,7 @@ describe('Yearトーナメントのジョブの定期実行の一覧への登録
     expect(jobs.slice(index - 1, index + 2)).toEqual([
       { name: 'sponsorship.maintenance', order: 1600 },
       { name: 'tournament-year.entry-follow-up', order: 1700 },
-      { name: 'content-processing.keyword-reextraction', order: 2300 },
+      { name: 'ugc-moderation.maintenance', order: 1910 },
     ]);
   });
 

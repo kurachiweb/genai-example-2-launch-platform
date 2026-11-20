@@ -4,6 +4,8 @@ import type { Container } from 'inversify';
 import { describe, expect, test } from 'vitest';
 
 import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
+import { createCronRegistry } from '../../lib/core/scheduling/cron-registry.ts';
+import { toUtcCronExpression } from '../../lib/core/time/business-time.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
   db,
@@ -12,12 +14,28 @@ import {
   OPERATOR_ADMIN_ID,
   T0,
 } from '../../lib/workers/moderation/testing/moderation-record-fixtures.ts';
+import { DefaultAdminCommentReader } from '../application/moderation/admin-comment-reader.ts';
+import { DefaultAdminProductReader } from '../application/moderation/admin-product-reader.ts';
+import { DefaultAdminRatingReader } from '../application/moderation/admin-rating-reader.ts';
+import { DefaultAdminUserReader } from '../application/moderation/admin-user-reader.ts';
+import { DefaultAdministrativeWithdrawalService } from '../application/moderation/administrative-withdrawal-service.ts';
+import { DefaultCommentModerationService } from '../application/moderation/comment-moderation-service.ts';
+import { DefaultImageModerationService } from '../application/moderation/image-moderation-service.ts';
+import {
+  MODERATION_MAINTENANCE_JOB_DEFINITION,
+  ModerationMaintenanceJob,
+} from '../application/moderation/jobs/moderation-maintenance-job.ts';
+import { EmailModerationNotifier } from '../application/moderation/moderation-notifier.ts';
 import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
 import {
   InMemoryPendingModerationRecord,
   type PendingModeration,
   type PendingModerationRecord,
 } from '../application/moderation/pending-moderation-record.ts';
+import { DefaultProductModerationService } from '../application/moderation/product-moderation-service.ts';
+import { DefaultQuarantinedImageReader } from '../application/moderation/quarantined-image-reader.ts';
+import { DefaultRatingModerationService } from '../application/moderation/rating-moderation-service.ts';
+import { DefaultUserModerationService } from '../application/moderation/user-moderation-service.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { ControlEngagementModerationWriter } from '../infrastructure/moderation/control-engagement-moderation-writer.ts';
 import { ControlImageModerationWriter } from '../infrastructure/moderation/control-image-moderation-writer.ts';
@@ -34,11 +52,35 @@ import { ENGAGEMENT_MODULE } from './engagement-module.ts';
 import { MODERATION_MODULE } from './moderation-module.ts';
 import { MODULES } from './modules.ts';
 import { PRODUCT_LIFECYCLE_SYNC_HANDLERS } from './product-lifecycle-sync-handlers.ts';
+import { SCHEDULED_JOBS } from './scheduled-jobs.ts';
 import { USER_LIFECYCLE_SYNC_HANDLERS } from './user-lifecycle-sync-handlers.ts';
 
 const INVOCATION_KINDS = ['fetch', 'scheduled'] as const;
 
+const DAILY_CRON = toUtcCronExpression({ hour: 4, minute: 21 });
+
+// 参加者の解決の部品はクラスでなく登録から組み立てた値のため、解決を別のテストで確かめる。週ごとの統計の群は統計の群のタスクが束縛する
+const IDENTIFIERS_OUTSIDE_IMPLEMENTATIONS: readonly string[] = [
+  'ModerationWriteParticipants',
+  'WeeklyStatisticsStore',
+  'WeeklyStatisticsJob',
+  'WeeklyStatisticsReader',
+];
+
 const IMPLEMENTATIONS = [
+  ['UserModerationService', DefaultUserModerationService],
+  ['AdministrativeWithdrawalService', DefaultAdministrativeWithdrawalService],
+  ['ProductModerationService', DefaultProductModerationService],
+  ['CommentModerationService', DefaultCommentModerationService],
+  ['RatingModerationService', DefaultRatingModerationService],
+  ['ImageModerationService', DefaultImageModerationService],
+  ['ModerationNotifier', EmailModerationNotifier],
+  ['AdminUserReader', DefaultAdminUserReader],
+  ['AdminProductReader', DefaultAdminProductReader],
+  ['AdminCommentReader', DefaultAdminCommentReader],
+  ['AdminRatingReader', DefaultAdminRatingReader],
+  ['QuarantinedImageReader', DefaultQuarantinedImageReader],
+  ['ModerationMaintenanceJob', ModerationMaintenanceJob],
   ['PendingModerationRecord', InMemoryPendingModerationRecord],
   ['ModerationIncidentReporter', SentryModerationIncidentReporter],
   ['ModerationStatements', D1ModerationStatements],
@@ -108,6 +150,28 @@ describe('APIサーバーのモジュールの一覧への措置の束縛の登�
     expect(MODULES.indexOf(MODERATION_MODULE)).toBeGreaterThan(
       MODULES.indexOf(ENGAGEMENT_MODULE),
     );
+  });
+
+  test('解決を確かめる識別子は、参加者の解決の部品と統計の群を除くMODERATION_TYPESの全てである', () => {
+    expect(IMPLEMENTATIONS.map(([name]) => name).toSorted()).toEqual(
+      Object.keys(MODERATION_TYPES)
+        .filter((name) => !IDENTIFIERS_OUTSIDE_IMPLEMENTATIONS.includes(name))
+        .toSorted(),
+    );
+  });
+
+  test('保守のジョブを4:21の起動に順序1910で1つだけ登録し、同じ起動の他のジョブと順序が重ならない', () => {
+    const jobs = createCronRegistry(SCHEDULED_JOBS).jobsFor(DAILY_CRON);
+
+    expect(
+      SCHEDULED_JOBS.filter(
+        ({ handler }) => handler === MODERATION_TYPES.ModerationMaintenanceJob,
+      ),
+    ).toStrictEqual([MODERATION_MAINTENANCE_JOB_DEFINITION]);
+    expect(
+      jobs.filter(({ order }) => order === 1910).map(({ name }) => name),
+    ).toEqual(['ugc-moderation.maintenance']);
+    expect(new Set(jobs.map(({ order }) => order)).size).toBe(jobs.length);
   });
 
   test('利用者の停止・停止解除・退会を対象に、措置の記録の同期の処理をユーザーの同期の処理の登録口に1つ登録する', () => {

@@ -15,6 +15,7 @@ import {
   QUALIFIER_PAIRING_JOB_DEFINITION,
 } from '../application/match/match-jobs.ts';
 import { MEDIA_JOB_TYPES } from '../application/media/media-daily-jobs.ts';
+import { MODERATION_MAINTENANCE_JOB_DEFINITION } from '../application/moderation/jobs/moderation-maintenance-job.ts';
 import {
   EVENING_DISPATCH_JOB_DEFINITION,
   MORNING_DISPATCH_JOB_DEFINITION,
@@ -107,6 +108,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   ENTRY_FOLLOW_UP_JOB_DEFINITION,
   SPONSORSHIP_MAINTENANCE_JOB_DEFINITION,
   YEAR_ENTRY_FOLLOW_UP_JOB_DEFINITION,
+  MODERATION_MAINTENANCE_JOB_DEFINITION,
   {
     name: 'content-processing.keyword-reextraction',
     at: { hour: 4, minute: 21 },

@@ -1,24 +1,24 @@
 import { createExecutionContext } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
-import type { Container } from 'inversify';
+import { type Container, ContainerModule } from 'inversify';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { users } from '../../db/schema/identity/users.ts';
+import { PLATFORM_TYPES } from '../../lib/core/di/identifiers.ts';
+import { EMAIL_TYPES } from '../../lib/core/email/identifiers.ts';
 import { MODERATION_USER_SUSPENDED_EMAIL } from '../../lib/core/email/kinds/ugc-moderation.ts';
 import type {
   EmailSendRequest,
   EmailSender,
 } from '../../lib/core/email/ports.ts';
-import { ENGAGEMENT_PLATFORM_TYPES } from '../../lib/core/engagement/identifiers.ts';
-import type { CommentStore } from '../../lib/core/engagement/ports.ts';
-import { IDENTITY_PLATFORM_TYPES } from '../../lib/core/identity/identifiers.ts';
-import type { UserContactDirectory } from '../../lib/core/identity/ports.ts';
 import { MODERATION_PLATFORM_TYPES } from '../../lib/core/moderation/identifiers.ts';
 import type { ModerationRecordStore } from '../../lib/core/moderation/ports.ts';
-import { PRODUCT_PLATFORM_TYPES } from '../../lib/core/product/identifiers.ts';
-import type { ProductDirectory } from '../../lib/core/product/ports.ts';
-import type { ScheduledJobContext } from '../../lib/core/scheduling/cron-registry.ts';
+import type {
+  ScheduledJobContext,
+  ScheduledJobHandler,
+} from '../../lib/core/scheduling/cron-registry.ts';
 import { parseBusinessDate } from '../../lib/core/time/business-time.ts';
+import type { Clock } from '../../lib/core/time/clock.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import {
   emailOf,
@@ -33,8 +33,7 @@ import {
   newRecordOf,
   readModerationRows,
 } from '../../lib/workers/moderation/testing/moderation-record-fixtures.ts';
-import { ModerationMaintenanceJob } from '../application/moderation/jobs/moderation-maintenance-job.ts';
-import { EmailModerationNotifier } from '../application/moderation/moderation-notifier.ts';
+import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
 import type {
   ModerationIncident,
   ModerationIncidentContext,
@@ -49,7 +48,6 @@ const SCHEDULED_TIME = new Date('2026-11-20T12:21:00.000Z');
 const NEXT_DAY = new Date(SCHEDULED_TIME.getTime() + 24 * HOUR_MS);
 const ONE_HOUR_BEFORE = new Date(SCHEDULED_TIME.getTime() - HOUR_MS);
 const THREE_YEARS_BEFORE = new Date('2023-11-20T12:21:00.000Z');
-const CLIENT_ORIGIN = 'https://client.example';
 const JOB_NAME = 'ugc-moderation.maintenance';
 
 const STALE = 1;
@@ -72,7 +70,9 @@ function contextOf(scheduledTime: Date, date: string): ScheduledJobContext {
   };
 }
 
-function createContainer(): Container {
+function createContainer(
+  overrides: readonly { readonly bindings: ContainerModule }[] = [],
+): Container {
   return createInvocationContainer(
     {
       env,
@@ -83,7 +83,7 @@ function createContainer(): Container {
         clientIp: undefined,
       },
     },
-    MODULES,
+    [...MODULES, ...overrides],
   );
 }
 
@@ -114,24 +114,22 @@ class RecordingIncidentReporter implements ModerationIncidentReporter {
   }
 }
 
-// 束縛と定期実行の登録は後続のタスクが行うため、処理単位のコンテナの上流の部品からジョブと通知を組み立てる
-function createJob(emails: EmailSender, reporter: ModerationIncidentReporter) {
-  const container = createContainer();
-  const records = container.get<ModerationRecordStore>(
-    MODERATION_PLATFORM_TYPES.ModerationRecordStore,
+// メールの依頼と定型の通知を記録し、通知の依頼済みの日時を固定するため、共通の束縛のうち3つだけを差し替えて定期実行の経路の束縛からジョブを解決する
+function createJob(
+  emails: EmailSender,
+  reporter: ModerationIncidentReporter,
+): ScheduledJobHandler {
+  const clock: Clock = { now: () => SCHEDULED_TIME };
+  const overrides = new ContainerModule(({ rebind }) => {
+    rebind<EmailSender>(EMAIL_TYPES.EmailSender).toConstantValue(emails);
+    rebind<ModerationIncidentReporter>(
+      MODERATION_TYPES.ModerationIncidentReporter,
+    ).toConstantValue(reporter);
+    rebind<Clock>(PLATFORM_TYPES.Clock).toConstantValue(clock);
+  });
+  return createContainer([{ bindings: overrides }]).get<ScheduledJobHandler>(
+    MODERATION_TYPES.ModerationMaintenanceJob,
   );
-  const notifier = new EmailModerationNotifier(
-    records,
-    container.get<UserContactDirectory>(
-      IDENTITY_PLATFORM_TYPES.UserContactDirectory,
-    ),
-    container.get<ProductDirectory>(PRODUCT_PLATFORM_TYPES.ProductDirectory),
-    container.get<CommentStore>(ENGAGEMENT_PLATFORM_TYPES.CommentStore),
-    emails,
-    { CLIENT_SITE_ORIGIN: CLIENT_ORIGIN },
-    { now: () => SCHEDULED_TIME },
-  );
-  return new ModerationMaintenanceJob(records, notifier, reporter);
 }
 
 async function insertRecords(): Promise<void> {

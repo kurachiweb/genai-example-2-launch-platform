@@ -246,3 +246,54 @@ describe('GRAPHQL_SCHEMA_MODULES(APIキー)', () => {
     expect(String(mutation?.['deleteApiKey']?.type)).toBe('ID!');
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(UGC管理の措置の群)', () => {
+  test('管理者側の一覧・詳細の照会と13種の措置の操作と、措置の群の列挙型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['adminUsers']?.type)).toBe('AdminUserConnection!');
+    expect(String(query?.['adminProducts']?.type)).toBe(
+      'AdminProductConnection!',
+    );
+    expect(String(query?.['adminProduct']?.type)).toBe('AdminProductDetail');
+    expect(String(query?.['adminModerationCategoryOptions']?.type)).toBe(
+      '[AdminCategoryRef!]!',
+    );
+    expect(String(query?.['adminProductRatings']?.type)).toBe(
+      'AdminRatingConnection!',
+    );
+    expect(String(query?.['adminComments']?.type)).toBe(
+      'AdminCommentConnection!',
+    );
+    expect(String(query?.['adminRatings']?.type)).toBe(
+      'AdminRatingConnection!',
+    );
+    expect(String(query?.['adminQuarantinedImages']?.type)).toBe(
+      'AdminQuarantinedImagePage!',
+    );
+    expect(
+      [
+        'suspendUser',
+        'unsuspendUser',
+        'withdrawUserByAdministrator',
+        'hideProduct',
+        'unhideProduct',
+        'hideComment',
+        'unhideComment',
+        'invalidateRating',
+        'revalidateRating',
+        'approveQuarantinedImage',
+        'quarantineImage',
+        'releaseQuarantinedImage',
+        'deleteQuarantinedImage',
+      ].map((name) => String(mutation?.[name]?.type)),
+    ).toEqual(Array.from({ length: 13 }, () => 'ModerationOutcome!'));
+    expect(String(schema.getType('QuarantineReason'))).toBe('QuarantineReason');
+    expect(String(schema.getType('AdminCommentState'))).toBe(
+      'AdminCommentState',
+    );
+  });
+});
