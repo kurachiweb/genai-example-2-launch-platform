@@ -1,0 +1,5 @@
+mutation AdminHideProduct($id: ID!, $reason: String!) {
+  hideProduct(id: $id, reason: $reason) {
+    changed
+  }
+}

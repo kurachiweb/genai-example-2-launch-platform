@@ -1,0 +1,11 @@
+query AdminProducts($filter: AdminProductFilter, $first: Int!, $after: String) {
+  adminProducts(filter: $filter, first: $first, after: $after) {
+    nodes {
+      ...AdminModerationProduct
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

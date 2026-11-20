@@ -1,0 +1,6 @@
+fragment AdminModerationMediaFile on AdminMediaFile {
+  id
+  path
+  quarantined
+  quarantineReasons
+}

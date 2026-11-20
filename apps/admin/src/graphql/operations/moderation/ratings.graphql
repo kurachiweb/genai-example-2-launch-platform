@@ -1,0 +1,11 @@
+query AdminRatings($filter: AdminRatingFilter, $first: Int!, $after: String) {
+  adminRatings(filter: $filter, first: $first, after: $after) {
+    nodes {
+      ...AdminModerationRating
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

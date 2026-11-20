@@ -1,0 +1,5 @@
+mutation AdminRevalidateRating($id: ID!, $reason: String!) {
+  revalidateRating(id: $id, reason: $reason) {
+    changed
+  }
+}

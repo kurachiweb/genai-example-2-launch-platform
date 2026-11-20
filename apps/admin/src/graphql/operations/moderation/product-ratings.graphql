@@ -1,0 +1,11 @@
+query AdminProductRatings($productId: ID!, $first: Int!, $after: String) {
+  adminProductRatings(productId: $productId, first: $first, after: $after) {
+    nodes {
+      ...AdminModerationRating
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

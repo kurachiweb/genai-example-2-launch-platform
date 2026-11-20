@@ -1,0 +1,18 @@
+fragment AdminModerationProduct on AdminProduct {
+  id
+  handle
+  name
+  logo {
+    ...AdminModerationMediaFile
+  }
+  owner {
+    ...AdminModerationUserSummary
+  }
+  category {
+    id
+    name
+  }
+  latestLaunchDate
+  latestLaunchState
+  visibility
+}

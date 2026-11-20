@@ -1,0 +1,5 @@
+mutation AdminUnhideComment($id: ID!, $reason: String!) {
+  unhideComment(id: $id, reason: $reason) {
+    changed
+  }
+}

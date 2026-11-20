@@ -1,0 +1,15 @@
+fragment AdminModerationRating on AdminRating {
+  id
+  rater {
+    ...AdminModerationUserSummary
+  }
+  productName
+  productId
+  score
+  createdAt
+  updatedAt
+  state
+  latestInvalidation {
+    ...AdminModerationNote
+  }
+}

@@ -1,0 +1,24 @@
+query AdminComments($filter: AdminCommentFilter, $first: Int!, $after: String) {
+  adminComments(filter: $filter, first: $first, after: $after) {
+    nodes {
+      id
+      excerpt
+      author {
+        ...AdminModerationUserSummary
+      }
+      productName
+      productId
+      launchId
+      launchNumber
+      createdAt
+      state
+      latestHide {
+        ...AdminModerationNote
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

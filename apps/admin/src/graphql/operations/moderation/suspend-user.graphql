@@ -1,0 +1,5 @@
+mutation AdminSuspendUser($id: ID!, $reason: String!) {
+  suspendUser(id: $id, reason: $reason) {
+    changed
+  }
+}

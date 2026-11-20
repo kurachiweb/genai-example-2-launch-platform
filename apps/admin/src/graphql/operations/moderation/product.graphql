@@ -1,0 +1,37 @@
+query AdminProduct($id: ID!) {
+  adminProduct(id: $id) {
+    product {
+      ...AdminModerationProduct
+    }
+    tagline
+    descriptionMarkdown
+    websiteUrl
+    screenshots {
+      ...AdminModerationMediaFile
+    }
+    hiddenAt
+    latestHide {
+      ...AdminModerationNote
+    }
+    ratingSummary {
+      average
+      count
+    }
+    launches {
+      id
+      number
+      launchDate
+      status
+      matches {
+        id
+        kind
+        round
+        stage
+        matchDate
+        upvoteCount
+        result
+        opponentName
+      }
+    }
+  }
+}

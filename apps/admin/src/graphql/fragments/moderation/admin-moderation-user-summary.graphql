@@ -1,0 +1,6 @@
+fragment AdminModerationUserSummary on AdminUserSummary {
+  id
+  handle
+  nickname
+  suspended
+}
