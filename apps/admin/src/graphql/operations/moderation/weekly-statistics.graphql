@@ -1,0 +1,17 @@
+query AdminWeeklyStatistics {
+  adminWeeklyStatistics {
+    weeks {
+      weekStart
+      finalized
+      netRevenue {
+        amount
+        currency
+      }
+      users
+      products
+      qualifierMatches
+      upvotes
+    }
+    lastComputedAt
+  }
+}

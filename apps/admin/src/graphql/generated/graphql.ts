@@ -832,6 +832,11 @@ export type AdminUsersQueryVariables = Exact<{
 
 export type AdminUsersQuery = { adminUsers: { nodes: Array<{ id: string, handle: string, nickname: string, registeredAt: string, disposableEmail: DisposableEmailCheck, status: AdminUserStatus, suspendedAt: string | null, avatar: { id: string, path: string, quarantined: boolean, quarantineReasons: Array<QuarantineReason> } | null, latestSuspension: { reason: string | null, occurredAt: string } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
 
+export type AdminWeeklyStatisticsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminWeeklyStatisticsQuery = { adminWeeklyStatistics: { lastComputedAt: string | null, weeks: Array<{ weekStart: string, finalized: boolean, users: number, products: number, qualifierMatches: number, upvotes: number, netRevenue: { amount: number, currency: string } }> } };
+
 export type AdminWithdrawUserByAdministratorMutationVariables = Exact<{
   input: AdministrativeWithdrawalInput;
 }>;
@@ -1008,6 +1013,7 @@ export const AdminUnhideCommentDocument = {"__meta__":{"hash":"sha256:fa23902576
 export const AdminUnhideProductDocument = {"__meta__":{"hash":"sha256:6b77403ab598196eaf89a2b868c2a91f5bb873cd0409273df5bb6fef67c9a5d9"}} as unknown as DocumentNode<AdminUnhideProductMutation, AdminUnhideProductMutationVariables>;
 export const AdminUnsuspendUserDocument = {"__meta__":{"hash":"sha256:0c44a6aa3d0c8e8b535890953ddbb700b0195f78d0fd190c2e8153e1e59b12e7"}} as unknown as DocumentNode<AdminUnsuspendUserMutation, AdminUnsuspendUserMutationVariables>;
 export const AdminUsersDocument = {"__meta__":{"hash":"sha256:675528b3264a275cfbff442c9f6be4f09d483f2414fd6c1842993016251e47af"}} as unknown as DocumentNode<AdminUsersQuery, AdminUsersQueryVariables>;
+export const AdminWeeklyStatisticsDocument = {"__meta__":{"hash":"sha256:ec9c4ea0ca9170aafa933c74c306080a3faec16e5cb54029661bd3fa33888938"}} as unknown as DocumentNode<AdminWeeklyStatisticsQuery, AdminWeeklyStatisticsQueryVariables>;
 export const AdminWithdrawUserByAdministratorDocument = {"__meta__":{"hash":"sha256:d7446c7d501e4b294c6d206eec375b3dcdff717b0e4285f482c9340c31426846"}} as unknown as DocumentNode<AdminWithdrawUserByAdministratorMutation, AdminWithdrawUserByAdministratorMutationVariables>;
 export const AdminNotificationSenderInfoDocument = {"__meta__":{"hash":"sha256:d055b6e60c8152dac9299688ec506b92302c4be2ba07230a977ecd362787299f"}} as unknown as DocumentNode<AdminNotificationSenderInfoQuery, AdminNotificationSenderInfoQueryVariables>;
 export const AdminUpdateNotificationSenderInfoDocument = {"__meta__":{"hash":"sha256:897840cedcc642bf6bead9772339ff5763a1ce65bcbe9f78d1abf85e73e28fac"}} as unknown as DocumentNode<AdminUpdateNotificationSenderInfoMutation, AdminUpdateNotificationSenderInfoMutationVariables>;
