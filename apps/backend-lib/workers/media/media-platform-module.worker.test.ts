@@ -20,6 +20,10 @@ import type { PlatformHonoEnv } from '../http/hono-env.ts';
 import { D1MediaFileStore } from './d1-media-file-store.ts';
 import { MediaFileEraser } from './media-eraser.ts';
 import { MediaFilesService } from './media-files-service.ts';
+import {
+  D1MediaModerationControl,
+  type MediaModerationControl,
+} from './media-moderation-control.ts';
 import { createMediaPlatformModule } from './media-platform-module.ts';
 import { MediaQuarantineService } from './media-quarantine-service.ts';
 import { R2MediaObjectStore } from './r2-media-object-store.ts';
@@ -75,7 +79,7 @@ describe('createMediaPlatformModule', () => {
     expect('routes' in MEDIA_PLATFORM_MODULE).toBe(false);
   });
 
-  test('処理単位のコンテナから3つの操作・受付処理・物理削除・リポジトリ・オブジェクトストアを解決する', () => {
+  test('処理単位のコンテナから3つの操作・管理者の措置の操作口・受付処理・物理削除・リポジトリ・オブジェクトストアを解決する', () => {
     const container = createContainer(createHookedQueue().queue);
 
     expect(container.get<MediaFiles>(MEDIA_TYPES.MediaFiles)).toBeInstanceOf(
@@ -84,6 +88,9 @@ describe('createMediaPlatformModule', () => {
     expect(
       container.get<MediaQuarantine>(MEDIA_TYPES.MediaQuarantine),
     ).toBeInstanceOf(MediaQuarantineService);
+    expect(
+      container.get<MediaModerationControl>(MEDIA_TYPES.MediaModerationControl),
+    ).toBeInstanceOf(D1MediaModerationControl);
     expect(container.get<MediaEraser>(MEDIA_TYPES.MediaEraser)).toBeInstanceOf(
       MediaFileEraser,
     );
@@ -107,6 +114,9 @@ describe('createMediaPlatformModule', () => {
     );
     expect(first.get(MEDIA_TYPES.MediaFileStore)).toBe(
       first.get(MEDIA_TYPES.MediaFileStore),
+    );
+    expect(first.get(MEDIA_TYPES.MediaModerationControl)).toBe(
+      first.get(MEDIA_TYPES.MediaModerationControl),
     );
     expect(first.get(MEDIA_TYPES.MediaFiles)).not.toBe(
       second.get(MEDIA_TYPES.MediaFiles),

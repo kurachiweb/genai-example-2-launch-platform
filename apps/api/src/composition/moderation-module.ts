@@ -10,10 +10,12 @@ import {
 } from '../application/moderation/pending-moderation-record.ts';
 import type {
   EngagementModerationWriter,
+  ImageModerationWriter,
   ModerationIncidentReporter,
 } from '../application/moderation/ports.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { ControlEngagementModerationWriter } from '../infrastructure/moderation/control-engagement-moderation-writer.ts';
+import { ControlImageModerationWriter } from '../infrastructure/moderation/control-image-moderation-writer.ts';
 import { D1ModerationStatements } from '../infrastructure/moderation/d1-moderation-statements.ts';
 import {
   createModerationWriteParticipants,
@@ -26,7 +28,7 @@ import type { ProductLifecycleSyncHandler } from '../infrastructure/product/prod
 import { resolverOf } from './container-resolver.ts';
 import { MODERATION_WRITE_PARTICIPANTS } from './moderation-write-participants.ts';
 
-// 措置の記録のストア(MODERATION_PLATFORM_MODULE)と、利用者・プロダクト・コメント・評価の操作口と監査ログの準備は他のモジュールの束縛を使う
+// 措置の記録のストア(MODERATION_PLATFORM_MODULE)と、利用者・プロダクト・コメント・評価・画像の操作口と監査ログの準備は他のモジュールの束縛を使う
 export const MODERATION_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'moderation',
   bindings: new ContainerModule(({ bind }) => {
@@ -50,6 +52,9 @@ export const MODERATION_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
         ),
       )
       .inSingletonScope();
+    bind<ImageModerationWriter>(MODERATION_TYPES.ImageModerationWriter).to(
+      ControlImageModerationWriter,
+    );
     bind<EngagementModerationWriter>(
       MODERATION_TYPES.EngagementModerationWriter,
     ).to(ControlEngagementModerationWriter);

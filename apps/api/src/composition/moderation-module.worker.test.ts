@@ -20,6 +20,7 @@ import {
 } from '../application/moderation/pending-moderation-record.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { ControlEngagementModerationWriter } from '../infrastructure/moderation/control-engagement-moderation-writer.ts';
+import { ControlImageModerationWriter } from '../infrastructure/moderation/control-image-moderation-writer.ts';
 import { D1ModerationStatements } from '../infrastructure/moderation/d1-moderation-statements.ts';
 import type { ModerationWriteParticipants } from '../infrastructure/moderation/moderation-write-participant.ts';
 import { ProductModerationRecordSyncHandler } from '../infrastructure/moderation/product-moderation-record-sync-handler.ts';
@@ -41,6 +42,7 @@ const IMPLEMENTATIONS = [
   ['PendingModerationRecord', InMemoryPendingModerationRecord],
   ['ModerationIncidentReporter', SentryModerationIncidentReporter],
   ['ModerationStatements', D1ModerationStatements],
+  ['ImageModerationWriter', ControlImageModerationWriter],
   ['EngagementModerationWriter', ControlEngagementModerationWriter],
   ['UserModerationRecordSyncHandler', UserModerationRecordSyncHandler],
   ['ProductModerationRecordSyncHandler', ProductModerationRecordSyncHandler],

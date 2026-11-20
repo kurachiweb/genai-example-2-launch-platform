@@ -2,6 +2,7 @@ import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../core/di/app-module.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
+import type { Database } from '../../../db/client.ts';
 import type { IdGenerator } from '../../core/ids/id-generator.ts';
 import { MEDIA_TYPES } from '../../core/media/identifiers.ts';
 import type {
@@ -12,11 +13,16 @@ import type {
   MediaQuarantine,
   UploadReceiver,
 } from '../../core/media/ports.ts';
+import type { Clock } from '../../core/time/clock.ts';
 import type { LoggingOptions } from '../logging/configure-logging.ts';
 import type { MessagePublisher } from '../messaging/queue-publisher.ts';
 import { D1MediaFileStore } from './d1-media-file-store.ts';
 import { MediaFileEraser } from './media-eraser.ts';
 import { MediaFilesService } from './media-files-service.ts';
+import {
+  D1MediaModerationControl,
+  type MediaModerationControl,
+} from './media-moderation-control.ts';
 import { MediaQuarantineService } from './media-quarantine-service.ts';
 import { R2MediaObjectStore } from './r2-media-object-store.ts';
 import { MediaUploadReceiver } from './upload-receiver.ts';
@@ -69,6 +75,22 @@ export function createMediaPlatformModule(
               publisher: context.get<MessagePublisher>(
                 PLATFORM_TYPES.MessagePublisher,
               ),
+              appName,
+            }),
+        )
+        .inSingletonScope();
+      bind<MediaModerationControl>(MEDIA_TYPES.MediaModerationControl)
+        .toDynamicValue(
+          (context) =>
+            new D1MediaModerationControl({
+              db: context.get<Database>(PLATFORM_TYPES.Database),
+              files: context.get<MediaFileStore>(MEDIA_TYPES.MediaFileStore),
+              publisher: context.get<MessagePublisher>(
+                PLATFORM_TYPES.MessagePublisher,
+              ),
+              eraser: context.get<MediaEraser>(MEDIA_TYPES.MediaEraser),
+              clock: context.get<Clock>(PLATFORM_TYPES.Clock),
+              ids: context.get<IdGenerator>(PLATFORM_TYPES.IdGenerator),
               appName,
             }),
         )
