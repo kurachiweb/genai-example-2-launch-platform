@@ -90,7 +90,7 @@
   - _Depends: 2.3_
   - _Requirements: 11.6, 11.7, 11.9, 11.11, 11.13, 13.4_
 
-- [ ] 3. 措置のユースケース(本specの識別子のファイルと登録箇所を変えない。3.7はmedia-pipelineの束縛の置き場所だけを変える)
+- [x] 3. 措置のユースケース(本specの識別子のファイルと登録箇所を変えない。3.7はmedia-pipelineの束縛の置き場所だけを変える)
 - [x] 3.1 利用者の停止と停止解除を作る
   - 対象の確かめにはidentity-authの仮7の利用者の管理の照会を使う
   - 先に、単体テストで、停止と停止解除の理由の必須と上限、退会済み・不在の拒否、既に同じ状態での変化なし(記録なし)、監査ログの対象が仮名化IDであること、保留中の措置を置いてから停止の操作口を呼ぶこと、変化なしでの保留の破棄、取り出し漏れのエラートラッキングへの通知、ログに識別子と件数だけを出しメールアドレス・ハンドル・ニックネーム・理由を出さないこと、競合の返却、一覧の読み取りの後に退会が重なったときの上流の`not_found`を`user_not_found`へ変えること、取り出し漏れを定型の通知のポート(`ModerationIncidentReporter`)へ送ること、停止の通知の依頼(例外を握る)と停止解除で通知しないこと、呼び出し側の参加の値(`participation`)を中身を読まずに保留中の措置へ渡すこと、結果の措置の記録のIDが保留中の措置の記録のIDであることを確かめる
@@ -134,7 +134,7 @@
   - _Depends: 2.3_
   - _Requirements: 5.5, 5.6, 5.7, 5.8, 5.9, 5.11, 5.13_
 
-- [ ] 3.7 隔離画像を閲覧できる管理者の判定を作り、束縛を差し替える
+- [x] 3.7 隔離画像を閲覧できる管理者の判定を作り、束縛を差し替える
   - 先に、単体テストで、管理者の主体で有効な管理者のときだけ画像用の用途を許し、利用者の主体・削除済みの管理者・ファイル用の用途を拒否することを確かめる
   - 先に、Workers統合テストで、管理者側の内部の配信経路から隔離画像を読め、利用者側・権限の無い主体では不存在と同じ応答になることを確かめる
   - 媒体の閲覧の判定の束縛を差し替え、使われなくなる既定の全拒否(`apps/api/src/infrastructure/media/deny-all-admin-media-review-policy.ts`)と同名の単体テストを削除する(2026-11-20に開発者が決定)。全拒否を使っていた`default-file-access-policies.unit.test.ts`・`apps/api/src/presentation/media/file-content-route.worker.test.ts`は試験用の判定に置き換え、束縛の単体テスト`apps/api/test/config/media-registrations.unit.test.ts`の期待値を本specの判定に直す。`.kiro/specs/media-pipeline/design.md`の既定の全拒否の記述に、本specが差し替えて削除した旨と`MediaModerationControl`を加えた旨の注記を加える
@@ -456,3 +456,4 @@
 - 3.5: `DefaultImageModerationService`(`application/moderation/image-moderation-service.ts`)。対象は`MediaFiles.findMany`、画像用でない用途は`file.storage !== 'images'`で`image_not_found`(そのため書き込みの単位の`quarantine_not_applicable`はこの経路では通常起きない)。論理削除済み(`deletedAt`あり)のファイルは拒否しない(media-pipelineでは物理削除まで配信され、隔離画像の一覧にも出るため。要件11.14の「削除済み」は記録が無い・削除待ちと解釈)。記録の`subjectUserId`は保有者が`user`のときだけ、`productId`はnull、監査ログの対象は`[fileId]`。参加の値の検査を理由の検証より前に行う。`storage_unavailable`はログを足さずにそのまま投げる(上流の操作口が警告を出す)
 - 3.6: `DefaultAdministrativeWithdrawalService`(`application/moderation/administrative-withdrawal-service.ts`、3.1の形)。通知のポートを持たない(メールを送らない)。設計に無い`ModerationIncidentReporter`を注入し、記録が取り出されないときは3.1と同じく`{ changed: true, actionId: null }`。退会済みは照会で除かれるため変化なしの結果は無い。上流の`forbidden`(管理者でない呼び出し)はそのまま投げる。Workers統合テストは`apps/api/src/composition/moderation-module.administrative-withdrawal.worker.test.ts`(`PLATFORM_TYPES.MessagePublisher`を記録する実装に差し替え`email.send`が無いことを確かめる)。競合は単体テストだけで確かめる
 - 5: eventに`AccountRecordErasureHandler`・`ProductRecordErasureHandler`(`apps/event/src/application/moderation/`、500件ずつ)、識別子`EVENT_MODERATION_TYPES`(`event-moderation-types.ts`)、`EVENT_MODERATION_MODULE`(名前`event-moderation`、`MODULES`の`MODERATION_PLATFORM_MODULE`の直後)。登録口に`ugc-moderation.account-record-erasure`・`ugc-moderation.product-record-erasure`(`purge_due`、1900)。`purge_due`の一覧を全件一致で比べる上流のWorkers統合テスト9件の期待値に本specの行を加え、sponsorshipの「`purge_due`の最後に並ぶ」単体テストを「措置の記録の削除を除く…の後に並ぶ」(`slice(-2)`)に変えた(記録に外部キーが無いため最後でも物理削除を妨げない)。8.2で`project-values.md`の非同期の処理の一覧に2件を加える
+- 3.7: `AdminRoleMediaReviewPolicy`(`apps/api/src/application/moderation/admin-role-media-review-policy.ts`、管理者の主体・`storage === 'images'`・`AdminDirectory.findProfiles`に居る(ロール不問)ときだけ許す)を`composition/media-review-policy.ts`で`FILE_ACCESS_TYPES.AdminMediaReviewPolicy`へ束縛し、全拒否のクラスと単体テストを削除した。削除済み・招待中の管理者はHTTPでは`AdminSessionVerifier`が先に401を返すため、判定そのものはコンテナから解決して確かめた(`apps/api/src/composition/media-review-policy.worker.test.ts`)。design.mdの上流への影響の表は全拒否の置き場所を`application/media/file-access-policies.ts`と書くが、実際は`infrastructure/media/deny-all-admin-media-review-policy.ts`だった。media-pipelineのdesign.mdの4か所に注記(注記1)を加え、`docs/GUIDES/tech/security/005`の管理者側の画像の1文を「有効な管理者のアカウントのときだけ返す」に直した

@@ -66,7 +66,6 @@ import {
   type SessionVerification,
   type SessionVerifier,
 } from '../../application/session/session-verifier.ts';
-import { DenyAllAdminMediaReviewPolicy } from '../../infrastructure/media/deny-all-admin-media-review-policy.ts';
 import { OwnerOnlyFileReadPolicy } from '../../infrastructure/media/owner-only-file-read-policy.ts';
 import {
   type CallerKind,
@@ -192,15 +191,9 @@ function testModule(options: AccessOptions): AppModule<TestApp> {
       bind<FileReadPolicy>(FILE_ACCESS_TYPES.DefaultFileReadPolicy).to(
         OwnerOnlyFileReadPolicy,
       );
-      if (options.adminReviewPolicy === undefined) {
-        bind<AdminMediaReviewPolicy>(
-          FILE_ACCESS_TYPES.AdminMediaReviewPolicy,
-        ).to(DenyAllAdminMediaReviewPolicy);
-      } else {
-        bind<AdminMediaReviewPolicy>(
-          FILE_ACCESS_TYPES.AdminMediaReviewPolicy,
-        ).toConstantValue(options.adminReviewPolicy);
-      }
+      bind<AdminMediaReviewPolicy>(
+        FILE_ACCESS_TYPES.AdminMediaReviewPolicy,
+      ).toConstantValue(options.adminReviewPolicy ?? denying().policy);
       if (options.registeredPolicy !== undefined) {
         bind<FileReadPolicy>(REGISTERED_READ_POLICY).toConstantValue(
           options.registeredPolicy,
@@ -533,12 +526,18 @@ describe('GET /internal/media/files/:fileId', () => {
       expect(calls).toHaveLength(1);
     });
 
-    test('管理者の画像確認の方針が既定(全拒否)なら、管理者側の画像の要求に404で応答する', async () => {
+    test('管理者の画像確認の方針が拒否すれば、管理者側の画像の要求に404で応答する', async () => {
       await seedQuarantinedImage(1);
+      const { policy, calls } = denying();
 
-      const response = await download(fileIdOf(1), { caller: 'admin' });
+      const response = await download(
+        fileIdOf(1),
+        { caller: 'admin' },
+        { adminReviewPolicy: policy },
+      );
 
       await expectIndistinguishableNotFound(response);
+      expect(calls).toHaveLength(1);
     });
 
     test('利用者側からの画像の要求は、保有者でも管理者の画像確認の方針が許可しても404にする', async () => {
