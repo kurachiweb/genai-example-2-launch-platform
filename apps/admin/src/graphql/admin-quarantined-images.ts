@@ -160,15 +160,20 @@ export async function invalidateAdminQuarantinedImageQueries(
   });
 }
 
-// 一覧の取得の失敗は一覧の中で再試行できるよう、例外にせずキャッシュに残す。続きのページはここで読み足さず、画面の「さらに読み込む」で読む
+// 一覧の取得の失敗は一覧の中で再試行できるよう、例外にせずキャッシュに残す。続きのページはここで読み足さず、画面の「さらに読み込む」で読む。同じ画面の中のタブの切り替えは、直前の一覧を残して読み込み中を示せるよう待たない
 export async function loadAdminQuarantinedImagesPage({
   context,
   deps,
+  cause,
 }: {
   readonly context: Pick<RouterContext, 'queryClient'>;
   readonly deps: AdminQuarantinedImageListArgs;
+  readonly cause: 'preload' | 'enter' | 'stay';
 }): Promise<void> {
-  await context.queryClient
+  const loading = context.queryClient
     .infiniteQuery(adminQuarantinedImagesQueryOptions(deps.reason))
     .catch(() => undefined);
+  if (cause !== 'stay') {
+    await loading;
+  }
 }

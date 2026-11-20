@@ -239,6 +239,7 @@ describe('loadAdminQuarantinedImagesPage', () => {
         await loadAdminQuarantinedImagesPage({
           context: { queryClient },
           deps: { reason: 'user_suspended' },
+          cause: 'enter',
         });
         return queryClient.getQueryData(
           adminQuarantinedImagesQueryOptions('user_suspended').queryKey,
@@ -265,6 +266,7 @@ describe('loadAdminQuarantinedImagesPage', () => {
         loadAdminQuarantinedImagesPage({
           context: { queryClient: client },
           deps: { reason: 'auto' },
+          cause: 'enter',
         }),
       unavailableResponse,
     );
@@ -275,5 +277,48 @@ describe('loadAdminQuarantinedImagesPage', () => {
         adminQuarantinedImagesQueryOptions('auto').queryKey,
       )?.status,
     ).toBe('error');
+  });
+
+  test.each(['enter', 'preload'] as const)(
+    '%sの読み込みは取得の終わりを待つ',
+    async (cause) => {
+      const { result } = await runThroughApi(
+        async (queryClient) => {
+          await loadAdminQuarantinedImagesPage({
+            context: { queryClient },
+            deps: { reason: 'auto' },
+            cause,
+          });
+          return queryClient.getQueryState(
+            adminQuarantinedImagesQueryOptions('auto').queryKey,
+          )?.fetchStatus;
+        },
+        dataResponse(pageOf([AUTO_IMAGE], null)),
+      );
+
+      expect(result).toBe('idle');
+    },
+  );
+
+  test('同じ画面の中のタブの切り替え(stay)は、直前の一覧を残して読み込み中を示せるよう、取得を始めるだけで待たない', async () => {
+    const { result } = await runThroughApi(
+      async (queryClient) => {
+        await loadAdminQuarantinedImagesPage({
+          context: { queryClient },
+          deps: { reason: 'admin_action' },
+          cause: 'stay',
+        });
+        const fetchStatus = queryClient.getQueryState(
+          adminQuarantinedImagesQueryOptions('admin_action').queryKey,
+        )?.fetchStatus;
+        await queryClient.infiniteQuery(
+          adminQuarantinedImagesQueryOptions('admin_action'),
+        );
+        return fetchStatus;
+      },
+      dataResponse(pageOf([AUTO_IMAGE], null)),
+    );
+
+    expect(result).toBe('fetching');
   });
 });

@@ -26,6 +26,7 @@ import { Route as AuthenticatedHelpArticlesOrderRouteImport } from './routes/_au
 import { Route as AuthenticatedInquiriesIndexRouteImport } from './routes/_authenticated/inquiries/index'
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedLegalDocumentsIndexRouteImport } from './routes/_authenticated/legal-documents/index'
+import { Route as AuthenticatedMediaModerationIndexRouteImport } from './routes/_authenticated/media-moderation/index'
 import { Route as AuthenticatedProductsIndexRouteImport } from './routes/_authenticated/products/index'
 import { Route as AuthenticatedProductsProductIdRouteImport } from './routes/_authenticated/products/$productId'
 import { Route as AuthenticatedRatingsIndexRouteImport } from './routes/_authenticated/ratings/index'
@@ -134,6 +135,12 @@ const AuthenticatedLegalDocumentsIndexRoute =
     path: '/legal-documents/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedMediaModerationIndexRoute =
+  AuthenticatedMediaModerationIndexRouteImport.update({
+    id: '/media-moderation/',
+    path: '/media-moderation/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProductsIndexRoute =
   AuthenticatedProductsIndexRouteImport.update({
     id: '/products/',
@@ -218,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/help-articles/': typeof AuthenticatedHelpArticlesIndexRoute
   '/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
+  '/media-moderation/': typeof AuthenticatedMediaModerationIndexRoute
   '/products/': typeof AuthenticatedProductsIndexRoute
   '/ratings/': typeof AuthenticatedRatingsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -247,6 +255,7 @@ export interface FileRoutesByTo {
   '/help-articles': typeof AuthenticatedHelpArticlesIndexRoute
   '/inquiries': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents': typeof AuthenticatedLegalDocumentsIndexRoute
+  '/media-moderation': typeof AuthenticatedMediaModerationIndexRoute
   '/products': typeof AuthenticatedProductsIndexRoute
   '/ratings': typeof AuthenticatedRatingsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
@@ -278,6 +287,7 @@ export interface FileRoutesById {
   '/_authenticated/help-articles/': typeof AuthenticatedHelpArticlesIndexRoute
   '/_authenticated/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/_authenticated/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
+  '/_authenticated/media-moderation/': typeof AuthenticatedMediaModerationIndexRoute
   '/_authenticated/products/': typeof AuthenticatedProductsIndexRoute
   '/_authenticated/ratings/': typeof AuthenticatedRatingsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
@@ -309,6 +319,7 @@ export interface FileRouteTypes {
     | '/help-articles/'
     | '/inquiries/'
     | '/legal-documents/'
+    | '/media-moderation/'
     | '/products/'
     | '/ratings/'
     | '/settings/'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/help-articles'
     | '/inquiries'
     | '/legal-documents'
+    | '/media-moderation'
     | '/products'
     | '/ratings'
     | '/settings'
@@ -368,6 +380,7 @@ export interface FileRouteTypes {
     | '/_authenticated/help-articles/'
     | '/_authenticated/inquiries/'
     | '/_authenticated/legal-documents/'
+    | '/_authenticated/media-moderation/'
     | '/_authenticated/products/'
     | '/_authenticated/ratings/'
     | '/_authenticated/settings/'
@@ -509,6 +522,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLegalDocumentsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/media-moderation/': {
+      id: '/_authenticated/media-moderation/'
+      path: '/media-moderation'
+      fullPath: '/media-moderation/'
+      preLoaderRoute: typeof AuthenticatedMediaModerationIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/products/': {
       id: '/_authenticated/products/'
       path: '/products'
@@ -604,6 +624,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHelpArticlesIndexRoute: typeof AuthenticatedHelpArticlesIndexRoute
   AuthenticatedInquiriesIndexRoute: typeof AuthenticatedInquiriesIndexRoute
   AuthenticatedLegalDocumentsIndexRoute: typeof AuthenticatedLegalDocumentsIndexRoute
+  AuthenticatedMediaModerationIndexRoute: typeof AuthenticatedMediaModerationIndexRoute
   AuthenticatedProductsIndexRoute: typeof AuthenticatedProductsIndexRoute
   AuthenticatedRatingsIndexRoute: typeof AuthenticatedRatingsIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
@@ -629,6 +650,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHelpArticlesIndexRoute: AuthenticatedHelpArticlesIndexRoute,
   AuthenticatedInquiriesIndexRoute: AuthenticatedInquiriesIndexRoute,
   AuthenticatedLegalDocumentsIndexRoute: AuthenticatedLegalDocumentsIndexRoute,
+  AuthenticatedMediaModerationIndexRoute:
+    AuthenticatedMediaModerationIndexRoute,
   AuthenticatedProductsIndexRoute: AuthenticatedProductsIndexRoute,
   AuthenticatedRatingsIndexRoute: AuthenticatedRatingsIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
