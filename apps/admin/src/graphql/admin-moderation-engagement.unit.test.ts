@@ -437,10 +437,12 @@ describe('loadAdminModerationCommentsPage・loadAdminModerationRatingsPage', () 
         await loadAdminModerationCommentsPage({
           context: { queryClient },
           deps: { state: 'hidden' },
+          cause: 'enter',
         });
         await loadAdminModerationRatingsPage({
           context: { queryClient },
           deps: { raterHandle: 'maker_ai' },
+          cause: 'enter',
         });
       },
       dataResponse({
@@ -467,8 +469,16 @@ describe('loadAdminModerationCommentsPage・loadAdminModerationRatingsPage', () 
   test('取得に失敗しても、一覧の中で再試行できるよう例外にせず失敗をキャッシュに残す', async () => {
     const { result, queryClient } = await runThroughApi(async (client) => {
       const context = { queryClient: client };
-      await loadAdminModerationCommentsPage({ context, deps: {} });
-      await loadAdminModerationRatingsPage({ context, deps: {} });
+      await loadAdminModerationCommentsPage({
+        context,
+        deps: {},
+        cause: 'enter',
+      });
+      await loadAdminModerationRatingsPage({
+        context,
+        deps: {},
+        cause: 'enter',
+      });
       return 'loaded';
     }, unavailableResponse);
 
@@ -482,5 +492,55 @@ describe('loadAdminModerationCommentsPage・loadAdminModerationRatingsPage', () 
       queryClient.getQueryState(adminModerationRatingsQueryOptions({}).queryKey)
         ?.status,
     ).toBe('error');
+  });
+
+  const fetchStatusesOf = (queryClient: QueryClient) => [
+    queryClient.getQueryState(adminModerationCommentsQueryOptions({}).queryKey)
+      ?.fetchStatus,
+    queryClient.getQueryState(adminModerationRatingsQueryOptions({}).queryKey)
+      ?.fetchStatus,
+  ];
+
+  const emptyListsResponse = dataResponse({
+    adminComments: connectionOf([]),
+    adminRatings: connectionOf([]),
+  });
+
+  test.each(['enter', 'preload'] as const)(
+    '%sの読み込みは取得の終わりを待つ',
+    async (cause) => {
+      const { result } = await runThroughApi(async (queryClient) => {
+        const context = { queryClient };
+        await loadAdminModerationCommentsPage({ context, deps: {}, cause });
+        await loadAdminModerationRatingsPage({ context, deps: {}, cause });
+        return fetchStatusesOf(queryClient);
+      }, emptyListsResponse);
+
+      expect(result).toStrictEqual(['idle', 'idle']);
+    },
+  );
+
+  test('同じ画面の中の条件の変更とページの移動(stay)は、直前の一覧を残して読み込み中を示せるよう、取得を始めるだけで待たない', async () => {
+    const { result } = await runThroughApi(async (queryClient) => {
+      const context = { queryClient };
+      await loadAdminModerationCommentsPage({
+        context,
+        deps: {},
+        cause: 'stay',
+      });
+      await loadAdminModerationRatingsPage({
+        context,
+        deps: {},
+        cause: 'stay',
+      });
+      const statuses = fetchStatusesOf(queryClient);
+      await Promise.all([
+        queryClient.query(adminModerationCommentsQueryOptions({})),
+        queryClient.query(adminModerationRatingsQueryOptions({})),
+      ]);
+      return statuses;
+    }, emptyListsResponse);
+
+    expect(result).toStrictEqual(['fetching', 'fetching']);
   });
 });

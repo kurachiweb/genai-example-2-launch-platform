@@ -336,27 +336,40 @@ export async function invalidateAdminModerationEngagementQueries(
   );
 }
 
-// 一覧の取得の失敗は一覧の中で再試行できるよう、例外にせずキャッシュに残す
+type ListLoadCause = 'preload' | 'enter' | 'stay';
+
+// 一覧の取得の失敗は一覧の中で再試行できるよう、例外にせずキャッシュに残す。
+// 同じ画面の中の条件の変更とページの移動で待つと、ルーターが前の条件の画面を保ったまま待ち、画面が直前の一覧を残して読み込み中を示せないため、取得を始めるだけにする
 export async function loadAdminModerationCommentsPage({
   context,
   deps,
+  cause,
 }: {
   readonly context: Pick<RouterContext, 'queryClient'>;
   readonly deps: AdminModerationCommentListArgs;
+  readonly cause: ListLoadCause;
 }): Promise<void> {
-  await context.queryClient
+  const loading = context.queryClient
     .query(adminModerationCommentsQueryOptions(deps))
     .catch(() => undefined);
+  if (cause !== 'stay') {
+    await loading;
+  }
 }
 
 export async function loadAdminModerationRatingsPage({
   context,
   deps,
+  cause,
 }: {
   readonly context: Pick<RouterContext, 'queryClient'>;
   readonly deps: AdminModerationRatingListArgs;
+  readonly cause: ListLoadCause;
 }): Promise<void> {
-  await context.queryClient
+  const loading = context.queryClient
     .query(adminModerationRatingsQueryOptions(deps))
     .catch(() => undefined);
+  if (cause !== 'stay') {
+    await loading;
+  }
 }

@@ -18,6 +18,7 @@ import { Route as AuthenticatedAccountIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedAccountsIndexRouteImport } from './routes/_authenticated/accounts/index'
 import { Route as AuthenticatedAuditLogsIndexRouteImport } from './routes/_authenticated/audit-logs/index'
 import { Route as AuthenticatedCategoriesIndexRouteImport } from './routes/_authenticated/categories/index'
+import { Route as AuthenticatedCommentsIndexRouteImport } from './routes/_authenticated/comments/index'
 import { Route as AuthenticatedHelpArticlesIndexRouteImport } from './routes/_authenticated/help-articles/index'
 import { Route as AuthenticatedHelpArticlesArticleIdRouteImport } from './routes/_authenticated/help-articles/$articleId'
 import { Route as AuthenticatedHelpArticlesNewRouteImport } from './routes/_authenticated/help-articles/new'
@@ -25,8 +26,12 @@ import { Route as AuthenticatedHelpArticlesOrderRouteImport } from './routes/_au
 import { Route as AuthenticatedInquiriesIndexRouteImport } from './routes/_authenticated/inquiries/index'
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedLegalDocumentsIndexRouteImport } from './routes/_authenticated/legal-documents/index'
+import { Route as AuthenticatedProductsIndexRouteImport } from './routes/_authenticated/products/index'
+import { Route as AuthenticatedProductsProductIdRouteImport } from './routes/_authenticated/products/$productId'
+import { Route as AuthenticatedRatingsIndexRouteImport } from './routes/_authenticated/ratings/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSponsorshipsIndexRouteImport } from './routes/_authenticated/sponsorships/index'
+import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
 import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
 import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/password-reset/confirm'
@@ -81,6 +86,12 @@ const AuthenticatedCategoriesIndexRoute =
     path: '/categories/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCommentsIndexRoute =
+  AuthenticatedCommentsIndexRouteImport.update({
+    id: '/comments/',
+    path: '/comments/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedHelpArticlesIndexRoute =
   AuthenticatedHelpArticlesIndexRouteImport.update({
     id: '/help-articles/',
@@ -123,6 +134,24 @@ const AuthenticatedLegalDocumentsIndexRoute =
     path: '/legal-documents/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProductsIndexRoute =
+  AuthenticatedProductsIndexRouteImport.update({
+    id: '/products/',
+    path: '/products/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProductsProductIdRoute =
+  AuthenticatedProductsProductIdRouteImport.update({
+    id: '/products/$productId',
+    path: '/products/$productId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedRatingsIndexRoute =
+  AuthenticatedRatingsIndexRouteImport.update({
+    id: '/ratings/',
+    path: '/ratings/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/settings/',
@@ -135,6 +164,11 @@ const AuthenticatedSponsorshipsIndexRoute =
     path: '/sponsorships/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthEmailChangeConfirmRoute = AuthEmailChangeConfirmRouteImport.update({
   id: '/auth/email-change/confirm',
   path: '/auth/email-change/confirm',
@@ -173,17 +207,22 @@ export interface FileRoutesByFullPath {
   '/help-articles/new': typeof AuthenticatedHelpArticlesNewRoute
   '/help-articles/order': typeof AuthenticatedHelpArticlesOrderRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
+  '/products/$productId': typeof AuthenticatedProductsProductIdRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
   '/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/audit-logs/': typeof AuthenticatedAuditLogsIndexRoute
   '/categories/': typeof AuthenticatedCategoriesIndexRoute
+  '/comments/': typeof AuthenticatedCommentsIndexRoute
   '/help-articles/': typeof AuthenticatedHelpArticlesIndexRoute
   '/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
+  '/products/': typeof AuthenticatedProductsIndexRoute
+  '/ratings/': typeof AuthenticatedRatingsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/sponsorships/': typeof AuthenticatedSponsorshipsIndexRoute
+  '/users/': typeof AuthenticatedUsersIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/legal-documents/$kind/': typeof AuthenticatedLegalDocumentsKindIndexRoute
   '/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
@@ -197,17 +236,22 @@ export interface FileRoutesByTo {
   '/help-articles/new': typeof AuthenticatedHelpArticlesNewRoute
   '/help-articles/order': typeof AuthenticatedHelpArticlesOrderRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
+  '/products/$productId': typeof AuthenticatedProductsProductIdRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/account': typeof AuthenticatedAccountIndexRoute
   '/accounts': typeof AuthenticatedAccountsIndexRoute
   '/audit-logs': typeof AuthenticatedAuditLogsIndexRoute
   '/categories': typeof AuthenticatedCategoriesIndexRoute
+  '/comments': typeof AuthenticatedCommentsIndexRoute
   '/help-articles': typeof AuthenticatedHelpArticlesIndexRoute
   '/inquiries': typeof AuthenticatedInquiriesIndexRoute
   '/legal-documents': typeof AuthenticatedLegalDocumentsIndexRoute
+  '/products': typeof AuthenticatedProductsIndexRoute
+  '/ratings': typeof AuthenticatedRatingsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/sponsorships': typeof AuthenticatedSponsorshipsIndexRoute
+  '/users': typeof AuthenticatedUsersIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
   '/legal-documents/$kind': typeof AuthenticatedLegalDocumentsKindIndexRoute
   '/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
@@ -223,17 +267,22 @@ export interface FileRoutesById {
   '/_authenticated/help-articles/new': typeof AuthenticatedHelpArticlesNewRoute
   '/_authenticated/help-articles/order': typeof AuthenticatedHelpArticlesOrderRoute
   '/_authenticated/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
+  '/_authenticated/products/$productId': typeof AuthenticatedProductsProductIdRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
   '/_authenticated/accounts/': typeof AuthenticatedAccountsIndexRoute
   '/_authenticated/audit-logs/': typeof AuthenticatedAuditLogsIndexRoute
   '/_authenticated/categories/': typeof AuthenticatedCategoriesIndexRoute
+  '/_authenticated/comments/': typeof AuthenticatedCommentsIndexRoute
   '/_authenticated/help-articles/': typeof AuthenticatedHelpArticlesIndexRoute
   '/_authenticated/inquiries/': typeof AuthenticatedInquiriesIndexRoute
   '/_authenticated/legal-documents/': typeof AuthenticatedLegalDocumentsIndexRoute
+  '/_authenticated/products/': typeof AuthenticatedProductsIndexRoute
+  '/_authenticated/ratings/': typeof AuthenticatedRatingsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/sponsorships/': typeof AuthenticatedSponsorshipsIndexRoute
+  '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/_authenticated/legal-documents/$kind/': typeof AuthenticatedLegalDocumentsKindIndexRoute
   '/_authenticated/legal-documents/$kind/revisions/$versionNumber': typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
@@ -249,17 +298,22 @@ export interface FileRouteTypes {
     | '/help-articles/new'
     | '/help-articles/order'
     | '/inquiries/$inquiryId'
+    | '/products/$productId'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
     | '/account/'
     | '/accounts/'
     | '/audit-logs/'
     | '/categories/'
+    | '/comments/'
     | '/help-articles/'
     | '/inquiries/'
     | '/legal-documents/'
+    | '/products/'
+    | '/ratings/'
     | '/settings/'
     | '/sponsorships/'
+    | '/users/'
     | '/auth/password-reset/'
     | '/legal-documents/$kind/'
     | '/legal-documents/$kind/revisions/$versionNumber'
@@ -273,17 +327,22 @@ export interface FileRouteTypes {
     | '/help-articles/new'
     | '/help-articles/order'
     | '/inquiries/$inquiryId'
+    | '/products/$productId'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
     | '/account'
     | '/accounts'
     | '/audit-logs'
     | '/categories'
+    | '/comments'
     | '/help-articles'
     | '/inquiries'
     | '/legal-documents'
+    | '/products'
+    | '/ratings'
     | '/settings'
     | '/sponsorships'
+    | '/users'
     | '/auth/password-reset'
     | '/legal-documents/$kind'
     | '/legal-documents/$kind/revisions/$versionNumber'
@@ -298,17 +357,22 @@ export interface FileRouteTypes {
     | '/_authenticated/help-articles/new'
     | '/_authenticated/help-articles/order'
     | '/_authenticated/inquiries/$inquiryId'
+    | '/_authenticated/products/$productId'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
     | '/_authenticated/account/'
     | '/_authenticated/accounts/'
     | '/_authenticated/audit-logs/'
     | '/_authenticated/categories/'
+    | '/_authenticated/comments/'
     | '/_authenticated/help-articles/'
     | '/_authenticated/inquiries/'
     | '/_authenticated/legal-documents/'
+    | '/_authenticated/products/'
+    | '/_authenticated/ratings/'
     | '/_authenticated/settings/'
     | '/_authenticated/sponsorships/'
+    | '/_authenticated/users/'
     | '/auth/password-reset/'
     | '/_authenticated/legal-documents/$kind/'
     | '/_authenticated/legal-documents/$kind/revisions/$versionNumber'
@@ -389,6 +453,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCategoriesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/comments/': {
+      id: '/_authenticated/comments/'
+      path: '/comments'
+      fullPath: '/comments/'
+      preLoaderRoute: typeof AuthenticatedCommentsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/help-articles/': {
       id: '/_authenticated/help-articles/'
       path: '/help-articles'
@@ -438,6 +509,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLegalDocumentsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/products/': {
+      id: '/_authenticated/products/'
+      path: '/products'
+      fullPath: '/products/'
+      preLoaderRoute: typeof AuthenticatedProductsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/products/$productId': {
+      id: '/_authenticated/products/$productId'
+      path: '/products/$productId'
+      fullPath: '/products/$productId'
+      preLoaderRoute: typeof AuthenticatedProductsProductIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ratings/': {
+      id: '/_authenticated/ratings/'
+      path: '/ratings'
+      fullPath: '/ratings/'
+      preLoaderRoute: typeof AuthenticatedRatingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
       path: '/settings'
@@ -450,6 +542,13 @@ declare module '@tanstack/react-router' {
       path: '/sponsorships'
       fullPath: '/sponsorships/'
       preLoaderRoute: typeof AuthenticatedSponsorshipsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/users/': {
+      id: '/_authenticated/users/'
+      path: '/users'
+      fullPath: '/users/'
+      preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/auth/email-change/confirm': {
@@ -496,15 +595,20 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHelpArticlesNewRoute: typeof AuthenticatedHelpArticlesNewRoute
   AuthenticatedHelpArticlesOrderRoute: typeof AuthenticatedHelpArticlesOrderRoute
   AuthenticatedInquiriesInquiryIdRoute: typeof AuthenticatedInquiriesInquiryIdRoute
+  AuthenticatedProductsProductIdRoute: typeof AuthenticatedProductsProductIdRoute
   AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
   AuthenticatedAccountsIndexRoute: typeof AuthenticatedAccountsIndexRoute
   AuthenticatedAuditLogsIndexRoute: typeof AuthenticatedAuditLogsIndexRoute
   AuthenticatedCategoriesIndexRoute: typeof AuthenticatedCategoriesIndexRoute
+  AuthenticatedCommentsIndexRoute: typeof AuthenticatedCommentsIndexRoute
   AuthenticatedHelpArticlesIndexRoute: typeof AuthenticatedHelpArticlesIndexRoute
   AuthenticatedInquiriesIndexRoute: typeof AuthenticatedInquiriesIndexRoute
   AuthenticatedLegalDocumentsIndexRoute: typeof AuthenticatedLegalDocumentsIndexRoute
+  AuthenticatedProductsIndexRoute: typeof AuthenticatedProductsIndexRoute
+  AuthenticatedRatingsIndexRoute: typeof AuthenticatedRatingsIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
   AuthenticatedSponsorshipsIndexRoute: typeof AuthenticatedSponsorshipsIndexRoute
+  AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedLegalDocumentsKindIndexRoute: typeof AuthenticatedLegalDocumentsKindIndexRoute
   AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute: typeof AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute
 }
@@ -516,15 +620,20 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHelpArticlesNewRoute: AuthenticatedHelpArticlesNewRoute,
   AuthenticatedHelpArticlesOrderRoute: AuthenticatedHelpArticlesOrderRoute,
   AuthenticatedInquiriesInquiryIdRoute: AuthenticatedInquiriesInquiryIdRoute,
+  AuthenticatedProductsProductIdRoute: AuthenticatedProductsProductIdRoute,
   AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
   AuthenticatedAccountsIndexRoute: AuthenticatedAccountsIndexRoute,
   AuthenticatedAuditLogsIndexRoute: AuthenticatedAuditLogsIndexRoute,
   AuthenticatedCategoriesIndexRoute: AuthenticatedCategoriesIndexRoute,
+  AuthenticatedCommentsIndexRoute: AuthenticatedCommentsIndexRoute,
   AuthenticatedHelpArticlesIndexRoute: AuthenticatedHelpArticlesIndexRoute,
   AuthenticatedInquiriesIndexRoute: AuthenticatedInquiriesIndexRoute,
   AuthenticatedLegalDocumentsIndexRoute: AuthenticatedLegalDocumentsIndexRoute,
+  AuthenticatedProductsIndexRoute: AuthenticatedProductsIndexRoute,
+  AuthenticatedRatingsIndexRoute: AuthenticatedRatingsIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   AuthenticatedSponsorshipsIndexRoute: AuthenticatedSponsorshipsIndexRoute,
+  AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
   AuthenticatedLegalDocumentsKindIndexRoute:
     AuthenticatedLegalDocumentsKindIndexRoute,
   AuthenticatedLegalDocumentsKindRevisionsVersionNumberRoute:
