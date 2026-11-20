@@ -263,6 +263,7 @@ describe('プロフィールの物理削除の波及処理の登録', () => {
       'notifications.account-purge',
       'engagement.account-erasure',
       'sponsorship.account-purge',
+      'ugc-moderation.account-record-erasure',
     ]);
     expect(
       registry.handlersFor('suspended').map(({ name }) => name),

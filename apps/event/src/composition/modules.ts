@@ -27,6 +27,7 @@ import {
   EVENT_MATCH_PLATFORM_MODULE,
 } from './match-module.ts';
 import { MEDIA_SMOKE_MODULE } from './media-smoke-module.ts';
+import { EVENT_MODERATION_MODULE } from './moderation-module.ts';
 import {
   EVENT_MEDIA_MODULE,
   EVENT_MEDIA_PLATFORM_MODULE,
@@ -76,6 +77,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_NOTIFICATIONS_MODULE,
     ENGAGEMENT_PLATFORM_MODULE,
     MODERATION_PLATFORM_MODULE,
+    EVENT_MODERATION_MODULE,
     EVENT_ENGAGEMENT_MODULE,
     EVENT_PROFILE_MODULE,
     EVENT_SEARCH_PLATFORM_MODULE,

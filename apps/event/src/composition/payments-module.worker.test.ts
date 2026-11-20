@@ -309,6 +309,7 @@ describe('メッセージの処理と波及処理の登録', () => {
       'notifications.account-purge',
       'engagement.account-erasure',
       'sponsorship.account-purge',
+      'ugc-moderation.account-record-erasure',
     ]);
     expect(namesFor('withdrawn')).toStrictEqual([
       'payments.open-checkout-expiry',

@@ -2,6 +2,7 @@ import type { ProductLifecycleAsyncRegistration } from '../../lib/core/product/p
 import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-types.ts';
 import { EVENT_ENGAGEMENT_TYPES } from '../application/engagement/event-engagement-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
+import { EVENT_MODERATION_TYPES } from '../application/moderation/event-moderation-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
@@ -82,5 +83,11 @@ export const PRODUCT_LIFECYCLE_ASYNC_HANDLERS: readonly ProductLifecycleAsyncReg
       events: ['purge_due'],
       order: 1700,
       handler: EVENT_YEAR_TOURNAMENT_TYPES.EntryUnlinkHandler,
+    },
+    {
+      name: 'ugc-moderation.product-record-erasure',
+      events: ['purge_due'],
+      order: 1900,
+      handler: EVENT_MODERATION_TYPES.ProductRecordErasureHandler,
     },
   ]);

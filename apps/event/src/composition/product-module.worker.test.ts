@@ -394,6 +394,7 @@ describe('プロダクトライフサイクルの非同期の処理の登録口'
       'tournament-week.entry-unlink',
       'sponsorship.product-purge',
       'tournament-year.entry-unlink',
+      'ugc-moderation.product-record-erasure',
     ]);
     expect(namesOf('deleted')).toStrictEqual([
       'match-engine.product-decision-follow-up',

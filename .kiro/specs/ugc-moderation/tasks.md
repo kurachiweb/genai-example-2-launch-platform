@@ -209,7 +209,7 @@
   - 完了状態: Workers統合テストが成功する
   - _Requirements: 8.9, 8.10, 9.10, 10.9, 11.14, 14.2, 14.3_
 
-- [ ] 5. (P) 物理削除の時期の措置の記録の削除を作り、eventの登録口に加える
+- [x] 5. (P) 物理削除の時期の措置の記録の削除を作り、eventの登録口に加える
   - 先に、単体テストで、利用者とプロダクトの物理削除の時期に関わる記録を500件ずつ削除し、残りがあれば続きを返すことを確かめる
   - 記録のストアは`core/moderation`の`ModerationRecordStore`を`MODERATION_PLATFORM_TYPES.ModerationRecordStore`で受け取る。eventの識別子は`Symbol.for('moderation.event.<名前>')`にして凍結し、単体テストを置く
   - eventの本specのモジュールとユーザー・プロダクトのライフサイクルの非同期の登録口(`purge_due`、1900)へ加える
@@ -455,3 +455,4 @@
 - 3.4: `DefaultRatingModerationService`(`application/moderation/rating-moderation-service.ts`)。対象は`AdminRatingDirectory.findByIds`(論理削除されていない行だけを返すため、取消済みは`rating_not_found`)、`invalidatedAt`で同じ状態を判定。注入は`AdminRatingDirectory`・`EngagementModerationWriter`・`AuditLogRecorder`・`IdGenerator`の4つだけ(保留中の措置・通知・定型の通知は持たない)。記録の`noticeStatus`は`'none'`固定、監査ログの対象は評価のID
 - 3.5: `DefaultImageModerationService`(`application/moderation/image-moderation-service.ts`)。対象は`MediaFiles.findMany`、画像用でない用途は`file.storage !== 'images'`で`image_not_found`(そのため書き込みの単位の`quarantine_not_applicable`はこの経路では通常起きない)。論理削除済み(`deletedAt`あり)のファイルは拒否しない(media-pipelineでは物理削除まで配信され、隔離画像の一覧にも出るため。要件11.14の「削除済み」は記録が無い・削除待ちと解釈)。記録の`subjectUserId`は保有者が`user`のときだけ、`productId`はnull、監査ログの対象は`[fileId]`。参加の値の検査を理由の検証より前に行う。`storage_unavailable`はログを足さずにそのまま投げる(上流の操作口が警告を出す)
 - 3.6: `DefaultAdministrativeWithdrawalService`(`application/moderation/administrative-withdrawal-service.ts`、3.1の形)。通知のポートを持たない(メールを送らない)。設計に無い`ModerationIncidentReporter`を注入し、記録が取り出されないときは3.1と同じく`{ changed: true, actionId: null }`。退会済みは照会で除かれるため変化なしの結果は無い。上流の`forbidden`(管理者でない呼び出し)はそのまま投げる。Workers統合テストは`apps/api/src/composition/moderation-module.administrative-withdrawal.worker.test.ts`(`PLATFORM_TYPES.MessagePublisher`を記録する実装に差し替え`email.send`が無いことを確かめる)。競合は単体テストだけで確かめる
+- 5: eventに`AccountRecordErasureHandler`・`ProductRecordErasureHandler`(`apps/event/src/application/moderation/`、500件ずつ)、識別子`EVENT_MODERATION_TYPES`(`event-moderation-types.ts`)、`EVENT_MODERATION_MODULE`(名前`event-moderation`、`MODULES`の`MODERATION_PLATFORM_MODULE`の直後)。登録口に`ugc-moderation.account-record-erasure`・`ugc-moderation.product-record-erasure`(`purge_due`、1900)。`purge_due`の一覧を全件一致で比べる上流のWorkers統合テスト9件の期待値に本specの行を加え、sponsorshipの「`purge_due`の最後に並ぶ」単体テストを「措置の記録の削除を除く…の後に並ぶ」(`slice(-2)`)に変えた(記録に外部キーが無いため最後でも物理削除を妨げない)。8.2で`project-values.md`の非同期の処理の一覧に2件を加える
