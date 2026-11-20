@@ -1,5 +1,6 @@
 import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
+import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import type { ProductLifecycleSyncRegistration } from '../infrastructure/product/product-lifecycle-sync-handler.ts';
 
@@ -25,5 +26,10 @@ export const PRODUCT_LIFECYCLE_SYNC_HANDLERS: readonly ProductLifecycleSyncRegis
       name: 'sponsorship.product-display-stop',
       events: ['hidden', 'unhidden'],
       handler: SPONSORSHIP_TYPES.ProductDisplayStopSyncHandler,
+    },
+    {
+      name: 'ugc-moderation.product-moderation-record',
+      events: ['hidden', 'unhidden'],
+      handler: MODERATION_TYPES.ProductModerationRecordSyncHandler,
     },
   ];

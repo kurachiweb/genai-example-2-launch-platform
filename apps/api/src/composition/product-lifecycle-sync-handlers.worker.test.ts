@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 
 import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
+import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import { createD1ProductLifecycleCommitter } from '../infrastructure/product/d1-product-lifecycle-committer.ts';
 import { PRODUCT_LIFECYCLE_SYNC_HANDLERS } from './product-lifecycle-sync-handlers.ts';
@@ -13,7 +14,7 @@ const UNUSED_ID_GENERATOR = {
 };
 
 describe('PRODUCT_LIFECYCLE_SYNC_HANDLERS', () => {
-  test('match-engineの即時の終了とdirectory-discoveryの索引文書の削除を非公開化と削除に、sponsorshipの申込へのプロダクトの論理削除の記録を削除に、sponsorshipの表示停止の区間の記録を非公開化と復元に登録する', () => {
+  test('match-engineの即時の終了とdirectory-discoveryの索引文書の削除を非公開化と削除に、sponsorshipの申込へのプロダクトの論理削除の記録を削除に、sponsorshipの表示停止の区間の記録とugc-moderationの措置の記録を非公開化と復元に登録する', () => {
     expect(PRODUCT_LIFECYCLE_SYNC_HANDLERS).toStrictEqual([
       {
         name: 'match-engine.product-match-closure',
@@ -34,6 +35,11 @@ describe('PRODUCT_LIFECYCLE_SYNC_HANDLERS', () => {
         name: 'sponsorship.product-display-stop',
         events: ['hidden', 'unhidden'],
         handler: SPONSORSHIP_TYPES.ProductDisplayStopSyncHandler,
+      },
+      {
+        name: 'ugc-moderation.product-moderation-record',
+        events: ['hidden', 'unhidden'],
+        handler: MODERATION_TYPES.ProductModerationRecordSyncHandler,
       },
     ]);
   });

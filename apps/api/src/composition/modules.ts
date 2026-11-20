@@ -48,6 +48,7 @@ import { LEGAL_MODULE } from './legal-module.ts';
 import { API_MATCH_MODULE, API_MATCH_PLATFORM_MODULE } from './match-module.ts';
 import { API_MEDIA_MODULE, API_MEDIA_PLATFORM_MODULE } from './media-module.ts';
 import { MEDIA_REVIEW_POLICY_BINDINGS } from './media-review-policy.ts';
+import { MODERATION_MODULE } from './moderation-module.ts';
 import {
   API_NOTIFICATIONS_PLATFORM_MODULE,
   NOTIFICATIONS_MODULE,
@@ -166,5 +167,6 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   DIRECTORY_MODULE,
   NOTIFICATIONS_MODULE,
   ENGAGEMENT_MODULE,
+  MODERATION_MODULE,
   PUBLIC_API_MODULE,
 ];

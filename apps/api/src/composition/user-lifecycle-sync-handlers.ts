@@ -2,6 +2,7 @@ import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
 import { ENGAGEMENT_TYPES } from '../application/engagement/engagement-types.ts';
 import { INQUIRY_TYPES } from '../application/inquiry/inquiry-types.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
+import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
 import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
 import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
@@ -66,5 +67,10 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       name: 'public-api.api-key-erasure',
       events: ['withdrawn'],
       handler: PUBLIC_API_TYPES.ApiKeyErasureSyncHandler,
+    },
+    {
+      name: 'ugc-moderation.user-moderation-record',
+      events: ['suspended', 'unsuspended', 'withdrawn'],
+      handler: MODERATION_TYPES.UserModerationRecordSyncHandler,
     },
   ];
