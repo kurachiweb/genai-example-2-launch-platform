@@ -14,6 +14,7 @@ import { graphqlMutationOptions } from '../../../lib/start/graphql/graphql-query
 import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { AUDITED_ACTION_NOTICE } from '../../../lib/utilities/messages/admin-console-messages.ts';
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
+import { invalidateAuditLogQueries } from '../../graphql/admin-audit-logs.ts';
 import {
   adminInquiryQueryOptions,
   markInquirySummariesStale,
@@ -92,6 +93,7 @@ function ReplyFields({
             queryKey: adminInquiryQueryOptions(inquiryId).queryKey,
           }),
           markInquirySummariesStale(queryClient),
+          invalidateAuditLogQueries(queryClient),
         ]);
         onSent();
       }}

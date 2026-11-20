@@ -19,6 +19,7 @@ import {
   GraphQLClientError,
 } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
+import { invalidateAuditLogQueries } from '../../graphql/admin-audit-logs.ts';
 import {
   type AdminNotificationSenderInfoState,
   adminNotificationSenderInfoQueryOptions,
@@ -96,7 +97,7 @@ const firstInvalidFieldOf = (
     ),
   );
 
-// 保存の確定。成功した値で照会のキャッシュを置き換え、競合で拒否された時はダイアログを閉じた後に最新の値が見えるよう読み直す
+// 保存の確定。成功した値で照会のキャッシュを置き換えて監査ログに残る保存の後に監査ログの照会を無効にし、競合で拒否された時はダイアログを閉じた後に最新の値が見えるよう読み直す
 function useSenderInfoSave() {
   const queryClient = useQueryClient();
   const { queryKey } = adminNotificationSenderInfoQueryOptions();
@@ -119,6 +120,7 @@ function useSenderInfoSave() {
       notificationSenderInfo: updateNotificationSenderInfo,
     });
     notify.success(SENDER_INFO_SAVED_MESSAGE);
+    await invalidateAuditLogQueries(queryClient);
   };
 }
 

@@ -15,6 +15,7 @@ import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import type { DisplayPreferences } from '../../../lib/utilities/datetime/display-preferences.ts';
 import { UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT } from '../../../lib/utilities/messages/state-messages.ts';
 import { failure, success } from '../../../test/admin-accounts-fixtures.ts';
+import { watchAuditLogQueries } from '../../../test/audit-log-queries.ts';
 import { renderInRouter } from '../../../test/page-router.tsx';
 import {
   type AdminYearFinalDateSetting,
@@ -137,6 +138,7 @@ async function renderForm(
   return {
     settingsInvalidated: () =>
       queryClient.getQueryState(queryKey)?.isInvalidated ?? false,
+    auditLogsInvalidated: watchAuditLogQueries(queryClient),
   };
 }
 
@@ -318,12 +320,13 @@ describe('確認のダイアログ', () => {
 });
 
 describe('保存', () => {
-  test('確定で対象年・選んだ日付・読み取った版・理由を送り、トーストで知らせて照会を読み直させる', async () => {
+  test('確定で対象年・選んだ日付・読み取った版・理由を送り、トーストで知らせて照会と監査ログの照会を読み直させる', async () => {
     const update = vi.fn<UpdateHandler>(() =>
       success({ updateYearFinalDate: SAVED_SETTING }),
     );
     respond(update);
-    const { settingsInvalidated } = await renderForm(NEXT_YEAR_SETTING);
+    const { settingsInvalidated, auditLogsInvalidated } =
+      await renderForm(NEXT_YEAR_SETTING);
 
     await openConfirm();
     await userEvent.fill(reasonField(), 'リーグ最終節の変更');
@@ -341,6 +344,7 @@ describe('保存', () => {
     });
     await expect.element(dialog()).not.toBeInTheDocument();
     expect(settingsInvalidated()).toBe(true);
+    expect(auditLogsInvalidated()).toBe(true);
   });
 
   test('現在の決勝実施日のまま保存でき、理由が空なら送らない', async () => {
@@ -480,10 +484,11 @@ describe('保存の失敗', () => {
       expected: CONFLICT_MESSAGE,
     },
   ])(
-    '$nameは、理由の入力を保ったまま案内の文言をダイアログの中に示し、閉じた後に照会を読み直させる',
+    '$nameは、理由の入力を保ったまま案内の文言をダイアログの中に示し、閉じた後に照会を読み直させ、監査ログの照会は読み直させない',
     async ({ error, expected }) => {
       respond(() => failure(error));
-      const { settingsInvalidated } = await renderForm(NEXT_YEAR_SETTING);
+      const { settingsInvalidated, auditLogsInvalidated } =
+        await renderForm(NEXT_YEAR_SETTING);
 
       await openConfirm();
       await userEvent.fill(reasonField(), '確認のため');
@@ -499,6 +504,7 @@ describe('保存の失敗', () => {
 
       await expect.element(dialog()).not.toBeInTheDocument();
       expect(settingsInvalidated()).toBe(true);
+      expect(auditLogsInvalidated()).toBe(false);
     },
   );
 

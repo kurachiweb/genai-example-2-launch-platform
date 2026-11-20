@@ -34,6 +34,7 @@ import {
   type ReplyHandler,
   respondAdminInquiriesGraphQL,
 } from '../../../test/admin-inquiries-fixtures.ts';
+import { watchAuditLogQueries } from '../../../test/audit-log-queries.ts';
 import {
   AdminInquiriesDocument,
   type AdminInquiryQuery,
@@ -298,7 +299,7 @@ describe('返信', () => {
     expect(reply.mock.calls[0]?.[0].reason ?? undefined).toBeUndefined();
   });
 
-  test('返信の成功で、一覧と未対応の件数を取り直さずに古いものとする', async () => {
+  test('返信の成功で、一覧と未対応の件数を取り直さずに古いものとし、監査ログの照会を無効にする', async () => {
     const context = await renderDetail({
       reply: () =>
         success({
@@ -309,12 +310,14 @@ describe('返信', () => {
         }),
     });
     seedSummaries(context.queryClient);
+    const auditLogsInvalidated = watchAuditLogQueries(context.queryClient);
 
     await userEvent.fill(replyBody(), '確認します。');
     await userEvent.click(replyButton());
 
     await expect.element(page.getByText('返信を送信しました。')).toBeVisible();
     await expectSummariesMarkedStale(context.queryClient);
+    await expect.poll(auditLogsInvalidated).toBe(true);
   });
 
   test('通知メールを送れなかった時は、返信を保存した上で送れなかった旨をトーストで示す', async () => {
@@ -622,9 +625,9 @@ describe('対応ステータスの変更', () => {
     await expect.element(changeStatusButton()).toBeDisabled();
   });
 
-  test('競合の拒否では、ダイアログに文言を示したまま詳細を取り直して最新のステータスを示す', async () => {
+  test('競合の拒否では、ダイアログに文言を示したまま詳細を取り直して最新のステータスを示し、監査ログの照会は無効にしない', async () => {
     let current = guestDetailOf();
-    await renderDetail({
+    const context = await renderDetail({
       id: GUEST_INQUIRY_ID,
       inquiry: () => detailResult(current),
       changeStatus: () => {
@@ -636,6 +639,7 @@ describe('対応ステータスの変更', () => {
         });
       },
     });
+    const auditLogsInvalidated = watchAuditLogQueries(context.queryClient);
     const callsBefore = inquiryCallsOf(executeGraphQL).length;
 
     await chooseStatus('対応中');
@@ -659,6 +663,7 @@ describe('対応ステータスの変更', () => {
 
     await expect.element(dialog()).not.toBeInTheDocument();
     expect(summaryOf('対応ステータス')?.textContent).toBe('却下');
+    expect(auditLogsInvalidated()).toBe(false);
   });
 
   test('競合でない拒否では、詳細を取り直さない', async () => {
@@ -681,7 +686,7 @@ describe('対応ステータスの変更', () => {
     expect(inquiryCallsOf(executeGraphQL)).toHaveLength(callsBefore);
   });
 
-  test('変更の成功で、一覧と未対応の件数を取り直さずに古いものとする', async () => {
+  test('変更の成功で、一覧と未対応の件数を取り直さずに古いものとし、監査ログの照会を無効にする', async () => {
     const context = await renderDetail({
       changeStatus: () =>
         success({
@@ -693,6 +698,7 @@ describe('対応ステータスの変更', () => {
         }),
     });
     seedSummaries(context.queryClient);
+    const auditLogsInvalidated = watchAuditLogQueries(context.queryClient);
 
     await chooseStatus('対応済');
     await userEvent.click(changeStatusButton());
@@ -702,6 +708,7 @@ describe('対応ステータスの変更', () => {
       .element(page.getByText('対応ステータスを変更しました。'))
       .toBeVisible();
     await expectSummariesMarkedStale(context.queryClient);
+    await expect.poll(auditLogsInvalidated).toBe(true);
   });
 });
 

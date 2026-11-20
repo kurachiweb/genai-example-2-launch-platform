@@ -25,6 +25,7 @@ import {
   terminationResultOf,
   type TerminationPreviewHandler,
 } from '../../../test/admin-sponsorships-fixtures.ts';
+import { watchAuditLogQueries } from '../../../test/audit-log-queries.ts';
 import { renderInRouter } from '../../../test/page-router.tsx';
 import {
   type AdminSponsorshipTerminationResult,
@@ -139,6 +140,7 @@ const renderDialog = async ({
     onNotTerminable,
     listInvalidated: () =>
       queryClient.getQueryState(queryKey)?.isInvalidated ?? false,
+    auditLogsInvalidated: watchAuditLogQueries(queryClient),
   };
 };
 
@@ -347,12 +349,16 @@ describe('理由の入力', () => {
 });
 
 describe('確定', () => {
-  test('確定すると申込IDと前後の空白を除いた理由で強制終了し、結果を渡して閉じ、一覧の取得を無効にする', async () => {
+  test('確定すると申込IDと前後の空白を除いた理由で強制終了し、結果を渡して閉じ、一覧と監査ログの取得を無効にする', async () => {
     const result = terminationResultOf();
-    const { onTerminated, onNotTerminable, listInvalidated } =
-      await renderDialog({
-        terminate: () => success({ terminateSponsorship: result }),
-      });
+    const {
+      onTerminated,
+      onNotTerminable,
+      listInvalidated,
+      auditLogsInvalidated,
+    } = await renderDialog({
+      terminate: () => success({ terminateSponsorship: result }),
+    });
     await openDialog();
     await expect
       .element(dialog())
@@ -367,19 +373,24 @@ describe('確定', () => {
     ]);
     expect(onTerminated).toHaveBeenCalledExactlyOnceWith(result);
     await expect.poll(listInvalidated).toBe(true);
+    await expect.poll(auditLogsInvalidated).toBe(true);
     expect(onNotTerminable).not.toHaveBeenCalled();
   });
 
-  test('強制終了できない広告は、ダイアログの中に強制終了できない旨を示して理由の入力を保ち、一覧の取得を無効にして知らせる', async () => {
-    const { onTerminated, onNotTerminable, listInvalidated } =
-      await renderDialog({
-        terminate: () =>
-          failure({
-            code: 'sponsorship_not_terminable',
-            message: NOT_TERMINABLE_MESSAGE,
-            status: 409,
-          }),
-      });
+  test('強制終了できない広告は、ダイアログの中に強制終了できない旨を示して理由の入力を保ち、一覧の取得を無効にして知らせ、監査ログの取得は無効にしない', async () => {
+    const {
+      onTerminated,
+      onNotTerminable,
+      listInvalidated,
+      auditLogsInvalidated,
+    } = await renderDialog({
+      terminate: () =>
+        failure({
+          code: 'sponsorship_not_terminable',
+          message: NOT_TERMINABLE_MESSAGE,
+          status: 409,
+        }),
+    });
     await openDialog();
     await expect
       .element(dialog())
@@ -393,6 +404,7 @@ describe('確定', () => {
       .toHaveTextContent(NOT_TERMINABLE_MESSAGE);
     await expect.element(reasonBox()).toHaveValue(REASON);
     await expect.poll(listInvalidated).toBe(true);
+    expect(auditLogsInvalidated()).toBe(false);
     expect(onNotTerminable).toHaveBeenCalledOnce();
     expect(onTerminated).not.toHaveBeenCalled();
   });

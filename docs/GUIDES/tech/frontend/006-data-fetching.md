@@ -339,6 +339,7 @@ await sendWithTurnstile(turnstile, (turnstileToken) =>
 
 - `mutate`・`mutateAsync`には`{ variables, turnstileToken }`を渡す。bot判定を求める操作は、`sendWithTurnstile`が`useTurnstileToken`から取り出したトークンを`turnstileToken`に入れる(`waitForToken()`のトークンを渡す投稿欄の例外は「[操作ごとのbot判定のトークン](015-star-rating-and-threaded-composer.md#操作ごとのbot判定のトークン)」)。最初のトークンが届く前の送信がbot判定に失敗した時は、次のトークンで1回だけ送り直す(「[bot判定のウィジェット](005-shared-components.md#bot判定のウィジェット)」)。
 - 変更の後は、影響する取得を`invalidateQueries`で無効にする。キーの先頭が操作の識別子のため、`[documentIdOf(<文書>)]`でその操作のすべての変数の取得をまとめて無効にできる。
+- 変更がサーバーで別の記録(監査ログなど)を残し、その記録を別の画面の取得が読むときは、その取得も影響する取得に含める。管理画面の監査ログは「[監査ログを残す操作の後の照会の無効化](009-admin-console-shell.md#監査ログを残す操作の後の照会の無効化)」に従う。
 - 変更の`mutationKey`は`[<操作の識別子>]`である。
 - フォームから変更するときは、`AppForm`の`onSubmit`で`mutateAsync`を待つ。失敗の`GraphQLClientError`の`details`は欄のエラーになり、欄に対応しない詳細と詳細の無い失敗は`onSubmitError`へ渡る(「[フォーム](005-shared-components.md#フォーム)」)。入力の検証の詳細の`field`は引数からのパス(`input.title`など)のため、`serverFieldPrefix`で引数の名前を外す。
 - 送信のボタンは、サーバーの詳細が付いた欄のエラーが1つでも残る間は無効のままである。詳細は利用者がその欄を入力し直すと消えるため、入力欄を描かない値をスキーマの入力に含めない(「[フォーム](005-shared-components.md#フォーム)」)。

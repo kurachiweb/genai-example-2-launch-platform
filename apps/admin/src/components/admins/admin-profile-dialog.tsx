@@ -46,7 +46,7 @@ function AdminProfileForm({ account }: AdminProfileFormProps) {
   const updateProfile = useMutation(
     graphqlMutationOptions(AdminUpdateProfileDocument),
   );
-  const refreshAccounts = useAdminAccountsRefresh();
+  const refreshAccounts = useAdminAccountsRefresh({ audited: false });
   const [failure, setFailure] = useState<string>();
 
   return (

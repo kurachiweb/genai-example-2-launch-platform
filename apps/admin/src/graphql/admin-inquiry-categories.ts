@@ -3,6 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { CategoryMasterItem } from '../../lib/components/admin/category-master-editor.tsx';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
+import { invalidateAuditLogQueries } from './admin-audit-logs.ts';
 import {
   AdminInquiriesDocument,
   AdminInquiryCategoriesDocument,
@@ -34,12 +35,12 @@ export const toAdminInquiryCategoryEntries = ({
   ),
 });
 
-// カテゴリの名前と問い合わせの紐付けは、問い合わせの一覧・詳細と絞り込みの選択肢にも表れるため、それらの取得もまとめて無効にする。表示していない取得は古いものとだけされ、次に表示した時に取得し直される
+// カテゴリの追加・名前の変更・削除の成功の後に呼ぶ。カテゴリの名前と問い合わせの紐付けは、問い合わせの一覧・詳細と絞り込みの選択肢にも表れるため、それらの取得もまとめて無効にする。操作は監査ログに残るため、監査ログの照会も無効にする。表示していない取得は古いものとだけされ、次に表示した時に取得し直される
 export async function invalidateInquiryCategoryQueries(
   queryClient: QueryClient,
 ): Promise<void> {
-  await Promise.all(
-    [
+  await Promise.all([
+    ...[
       documentIdOf(AdminInquiryCategoriesDocument),
       documentIdOf(AdminInquiryCategoryOptionsDocument),
       documentIdOf(AdminInquiriesDocument),
@@ -47,5 +48,6 @@ export async function invalidateInquiryCategoryQueries(
     ].map((documentId) =>
       queryClient.invalidateQueries({ queryKey: [documentId] }),
     ),
-  );
+    invalidateAuditLogQueries(queryClient),
+  ]);
 }

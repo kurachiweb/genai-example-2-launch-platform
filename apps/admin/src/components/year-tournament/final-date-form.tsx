@@ -21,6 +21,7 @@ import {
   GraphQLClientError,
 } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
+import { invalidateAuditLogQueries } from '../../graphql/admin-audit-logs.ts';
 import {
   type AdminYearFinalDateSetting,
   adminYearFinalDateSettingsQueryOptions,
@@ -164,7 +165,10 @@ export function FinalDateForm({ setting }: FinalDateFormProps) {
         throw error;
       });
     setSelected(undefined);
-    await queryClient.invalidateQueries({ queryKey });
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey }),
+      invalidateAuditLogQueries(queryClient),
+    ]);
     notify.success(FINAL_DATE_SAVED_MESSAGE);
   };
 

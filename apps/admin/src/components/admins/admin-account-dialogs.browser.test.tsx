@@ -30,6 +30,7 @@ import {
   adminViewerResult,
   adminWithRole,
 } from '../../../test/admin-viewer-fixtures.ts';
+import { watchAuditLogQueries } from '../../../test/audit-log-queries.ts';
 import {
   AdminAccountsDocument,
   AdminChangeRoleDocument,
@@ -71,10 +72,15 @@ const lastSuperAdminFailure = () =>
 async function renderWith(
   role: AdminRole,
   handlers: ReadonlyMap<unknown, GraphQLHandler>,
-): Promise<void> {
+): Promise<{ readonly auditLogsInvalidated: () => boolean }> {
   respondAdminGraphQL(executeGraphQL, { role, handlers });
-  await renderAccountsPage(role);
+  const router = await renderAccountsPage(role);
   await expect.element(table()).toBeVisible();
+  return {
+    auditLogsInvalidated: watchAuditLogQueries(
+      router.options.context.queryClient,
+    ),
+  };
 }
 
 beforeEach(() => {
@@ -88,11 +94,11 @@ afterEach(() => {
 describe('招待の再送', () => {
   const DIALOG = `「${INVITED_ACCOUNT.email}」に招待を再送しますか?`;
 
-  test('任意の理由と監査ログの旨を示して確かめてから再送し、一覧を取り直す', async () => {
+  test('任意の理由と監査ログの旨を示して確かめてから再送し、一覧を取り直して監査ログの照会を無効にする', async () => {
     const resend = vi.fn(() =>
       success({ resendAdminInvitation: INVITED_ACCOUNT }),
     );
-    await renderWith(
+    const { auditLogsInvalidated } = await renderWith(
       'MODERATOR',
       new Map([[AdminResendInvitationDocument, resend]]),
     );
@@ -111,15 +117,19 @@ describe('招待の再送', () => {
     await expect
       .poll(() => callsOf(executeGraphQL, AdminAccountsDocument).length)
       .toBe(2);
+    expect(auditLogsInvalidated()).toBe(true);
   });
 });
 
 describe('管理者の削除', () => {
   const DIALOG = '管理者「審査の担当」を削除しますか?';
 
-  test('任意の理由を添えて削除し、閉じた後は一覧の見出しへフォーカスを移す', async () => {
+  test('任意の理由を添えて削除し、閉じた後は一覧の見出しへフォーカスを移し、監査ログの照会を無効にする', async () => {
     const remove = vi.fn(() => success({ deleteAdmin: true }));
-    await renderWith('MODERATOR', new Map([[AdminDeleteDocument, remove]]));
+    const { auditLogsInvalidated } = await renderWith(
+      'MODERATOR',
+      new Map([[AdminDeleteDocument, remove]]),
+    );
 
     await button('「審査の担当」を削除').click();
     const dialog = dialogNamed(DIALOG);
@@ -136,6 +146,7 @@ describe('管理者の削除', () => {
     await expect
       .poll(() => callsOf(executeGraphQL, AdminAccountsDocument).length)
       .toBe(2);
+    expect(auditLogsInvalidated()).toBe(true);
   });
 
   test('招待中の管理者の削除は、招待の取り消しとして確かめる', async () => {
@@ -162,8 +173,8 @@ describe('管理者の削除', () => {
     await expect.element(button('「審査の担当」を削除')).toHaveFocus();
   });
 
-  test('最後の最上位管理者の拒否は、理由の入力を保ったままダイアログの中に示す', async () => {
-    await renderWith(
+  test('最後の最上位管理者の拒否は、理由の入力を保ったままダイアログの中に示し、監査ログの照会を無効にしない', async () => {
+    const { auditLogsInvalidated } = await renderWith(
       'SUPER_ADMIN',
       new Map([[AdminDeleteDocument, lastSuperAdminFailure]]),
     );
@@ -177,6 +188,7 @@ describe('管理者の削除', () => {
       .element(dialog.getByRole('alert'))
       .toHaveTextContent(LAST_SUPER_ADMIN_MESSAGE);
     await expect.element(reasonOf(dialog)).toHaveValue('体制の変更');
+    expect(auditLogsInvalidated()).toBe(false);
   });
 });
 
@@ -185,13 +197,13 @@ describe('ロールの変更', () => {
   const roleRadio = (name: string) =>
     dialogNamed(DIALOG).getByRole('radio', { name, exact: true });
 
-  test('現在のロールを示して選べなくし、選んだロールと任意の理由で変更する', async () => {
+  test('現在のロールを示して選べなくし、選んだロールと任意の理由で変更し、監査ログの照会を無効にする', async () => {
     const change = vi.fn(() =>
       success({
         changeAdminRole: { ...MODERATOR_ACCOUNT, role: 'SUPER_ADMIN' },
       }),
     );
-    await renderWith(
+    const { auditLogsInvalidated } = await renderWith(
       'SUPER_ADMIN',
       new Map([[AdminChangeRoleDocument, change]]),
     );
@@ -228,6 +240,7 @@ describe('ロールの変更', () => {
       .poll(() => callsOf(executeGraphQL, AdminAccountsDocument).length)
       .toBe(2);
     expect(callsOf(executeGraphQL, AdminViewerDocument)).toHaveLength(0);
+    expect(auditLogsInvalidated()).toBe(true);
   });
 
   test('最後の最上位管理者の自己降格の拒否を、ダイアログの中に示す', async () => {
@@ -318,19 +331,20 @@ describe('プロフィールの編集', () => {
     update: GraphQLHandler = () =>
       success({ updateAdminProfile: MODERATOR_ACCOUNT }),
   ) => {
-    await renderWith(
+    const rendered = await renderWith(
       'SUPER_ADMIN',
       new Map([[AdminUpdateProfileDocument, update]]),
     );
     await button('「審査の担当」のプロフィールを編集').click();
     await expect.element(dialog()).toBeVisible();
+    return rendered;
   };
 
-  test('現在の値から始め、画像を保ったまま編集したニックネームと肩書きを保存する', async () => {
+  test('現在の値から始め、画像を保ったまま編集したニックネームと肩書きを保存し、監査ログに残らないため監査ログの照会は無効にしない', async () => {
     const update = vi.fn(() =>
       success({ updateAdminProfile: MODERATOR_ACCOUNT }),
     );
-    await renderProfile(update);
+    const { auditLogsInvalidated } = await renderProfile(update);
 
     await expect.element(nicknameInput()).toHaveValue('審査の担当');
     await expect.element(titleInput()).toHaveValue('モデレーション担当');
@@ -348,6 +362,7 @@ describe('プロフィールの編集', () => {
     await expect
       .poll(() => callsOf(executeGraphQL, AdminAccountsDocument).length)
       .toBe(2);
+    expect(auditLogsInvalidated()).toBe(false);
   });
 
   test('画像を取り除くと、既定のアイコンに戻す旨を示し、画像なしで保存する', async () => {

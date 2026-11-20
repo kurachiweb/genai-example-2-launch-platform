@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
+import { auditLogsQueryOptions } from './admin-audit-logs.ts';
 import {
   adminInquiryCategoriesQueryOptions,
   invalidateInquiryCategoryQueries,
@@ -42,10 +43,11 @@ describe('toAdminInquiryCategoryEntries', () => {
 });
 
 describe('invalidateInquiryCategoryQueries', () => {
-  test('カテゴリの一覧・選択肢と問い合わせの一覧・詳細の取得を無効にし、他の取得は残す', async () => {
+  test('カテゴリの一覧・選択肢と問い合わせの一覧・詳細と、操作を記録した監査ログの検索の取得を無効にし、他の取得は残す', async () => {
     const queryClient = new QueryClient();
     const keys = [
       adminInquiryCategoriesQueryOptions().queryKey,
+      auditLogsQueryOptions({}).queryKey,
       [documentIdOf(AdminInquiryCategoryOptionsDocument), {}],
       [documentIdOf(AdminInquiriesDocument), { filter: {} }],
       [documentIdOf(AdminInquiryDocument), { id: BUG_ID }],

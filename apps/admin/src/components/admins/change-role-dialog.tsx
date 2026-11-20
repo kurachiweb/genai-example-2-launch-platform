@@ -70,7 +70,7 @@ function ChangeRoleForm({ account, onChanged }: ChangeRoleFormProps) {
     graphqlMutationOptions(AdminChangeRoleDocument),
   );
   const viewer = useCurrentAdmin();
-  const refreshAccounts = useAdminAccountsRefresh();
+  const refreshAccounts = useAdminAccountsRefresh({ audited: true });
   const refreshViewer = useAdminViewerRefresh();
   const [failure, setFailure] = useState<string>();
   const itemBaseId = useId();

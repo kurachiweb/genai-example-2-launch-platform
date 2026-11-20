@@ -119,7 +119,7 @@ export function AdminList({ accounts }: AdminListProps) {
   // 削除や自分のロールを下げる変更に成功すると開いた元の操作が消えるため、その時だけ見出しを戻り先にし、取り消しや操作が残る時は開いた元のボタンへ戻す
   const vanishedOpenerReturnFocusRef = useRef<HTMLElement | null>(null);
   const [dialog, setDialog] = useState<DialogState>(CLOSED);
-  const refreshAccounts = useAdminAccountsRefresh();
+  const refreshAccounts = useAdminAccountsRefresh({ audited: true });
   const resend = useMutation(
     graphqlMutationOptions(AdminResendInvitationDocument),
   );

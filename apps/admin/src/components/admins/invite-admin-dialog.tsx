@@ -45,7 +45,7 @@ function InviteAdminForm() {
     defaultValues: DEFAULT_VALUES,
   });
   const invite = useMutation(graphqlMutationOptions(AdminInviteDocument));
-  const refreshAccounts = useAdminAccountsRefresh();
+  const refreshAccounts = useAdminAccountsRefresh({ audited: true });
   const [failure, setFailure] = useState<string>();
 
   return (

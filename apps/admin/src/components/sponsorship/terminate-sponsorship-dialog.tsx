@@ -16,6 +16,7 @@ import {
 import { documentIdOf } from '../../../lib/utilities/graphql/persisted-document.ts';
 import { LOADING_LABEL } from '../../../lib/utilities/messages/state-messages.ts';
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
+import { invalidateAuditLogQueries } from '../../graphql/admin-audit-logs.ts';
 import {
   type AdminSponsorshipTerminationPreview,
   type AdminSponsorshipTerminationResult,
@@ -143,6 +144,7 @@ export function TerminateSponsorshipDialog({
       .catch(rethrowAfterNotTerminable);
     onTerminated(terminateSponsorship);
     void refreshList();
+    void invalidateAuditLogQueries(queryClient);
   };
 
   const description =

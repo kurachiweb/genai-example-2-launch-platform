@@ -17,6 +17,7 @@ import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import { UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT } from '../../../lib/utilities/messages/state-messages.ts';
 import { failure, success } from '../../../test/admin-accounts-fixtures.ts';
 import { adminWithRole } from '../../../test/admin-viewer-fixtures.ts';
+import { watchAuditLogQueries } from '../../../test/audit-log-queries.ts';
 import { renderInRouter } from '../../../test/page-router.tsx';
 import { adminUltrasPromotionSettingQueryOptions } from '../../graphql/admin-ultras-promotion.ts';
 import { toAdminViewer } from '../../graphql/admin-viewer.ts';
@@ -308,12 +309,15 @@ describe('切り替え', () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  test('確定で新しい値・読み取った版・理由を送り、表示を新しい値に置き換えてトーストで知らせる', async () => {
+  test('確定で新しい値・読み取った版・理由を送り、表示を新しい値に置き換えてトーストで知らせ、監査ログの照会を無効にする', async () => {
     const update = vi.fn<UpdateHandler>(() =>
       success({ updateUltrasPromotionSetting: DISABLED_SETTING }),
     );
     respond(settingOf(ENABLED_SETTING), update);
-    await renderSection();
+    const router = await renderSection();
+    const auditLogsInvalidated = watchAuditLogQueries(
+      router.options.context.queryClient,
+    );
     await expect.element(toggle()).toBeEnabled();
 
     await userEvent.click(toggle());
@@ -331,6 +335,7 @@ describe('切り替え', () => {
     expect(updatedAtTime()).toBe(DISABLED_SETTING.updatedAt);
     expect(valueOf(UPDATED_BY_LABEL)).toBe('運営の担当');
     expect(settingCalls()).toHaveLength(1);
+    expect(auditLogsInvalidated()).toBe(true);
   });
 
   test('オフの設定をオンにする時は、始める旨の説明と「オンにする」の確定を出し、理由が空なら送らず、オンにした旨をトーストで知らせる', async () => {
@@ -364,7 +369,7 @@ describe('切り替え', () => {
     expect(valueOf(UPDATED_BY_LABEL)).toBe('運営の担当');
   });
 
-  test('他の管理者が先に変更していた時は、理由の入力を保ったまま競合の文言を示して最新の値を読み直し、閉じた後に最新の値を見せる', async () => {
+  test('他の管理者が先に変更していた時は、理由の入力を保ったまま競合の文言を示して最新の値を読み直し、閉じた後に最新の値を見せ、監査ログの照会は無効にしない', async () => {
     let current: Setting = ENABLED_SETTING;
     const update = vi.fn<UpdateHandler>(() => {
       current = { ...DISABLED_SETTING, updatedByNickname: '別の担当' };
@@ -375,7 +380,10 @@ describe('切り替え', () => {
       });
     });
     respond(() => settingOf(current)(), update);
-    await renderSection();
+    const router = await renderSection();
+    const auditLogsInvalidated = watchAuditLogQueries(
+      router.options.context.queryClient,
+    );
     await expect.element(toggle()).toBeEnabled();
 
     await userEvent.click(toggle());
@@ -399,6 +407,7 @@ describe('切り替え', () => {
     await expect.element(dialog()).not.toBeInTheDocument();
     await expect.element(toggle()).toHaveAttribute('aria-checked', 'false');
     expect(valueOf(UPDATED_BY_LABEL)).toBe('別の担当');
+    expect(auditLogsInvalidated()).toBe(false);
   });
 
   test('GraphQLClientErrorでない失敗は、理由の入力を保ったまま問い合わせを促す文を含まない文言を示し、切り替えない', async () => {

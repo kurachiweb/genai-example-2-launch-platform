@@ -3,6 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { CategoryMasterItem } from '../../lib/components/admin/category-master-editor.tsx';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
+import { invalidateAuditLogQueries } from './admin-audit-logs.ts';
 import {
   AdminHelpArticleDocument,
   AdminHelpArticlesDocument,
@@ -56,17 +57,18 @@ export const toHelpCategoryEntries = ({
   ),
 });
 
-// カテゴリの名前の変更と削除の付け替えは記事の一覧・1件のカテゴリにも表れるため、それらの取得もまとめて無効にする
+// カテゴリの追加・名前の変更・削除・並べ替えの成功の後に呼ぶ。名前の変更と削除の付け替えは記事の一覧・1件のカテゴリにも表れるため、それらの取得もまとめて無効にする。操作は監査ログに残るため、監査ログの照会も無効にする
 export async function invalidateHelpCategoryQueries(
   queryClient: QueryClient,
 ): Promise<void> {
-  await Promise.all(
-    [
+  await Promise.all([
+    ...[
       documentIdOf(AdminHelpCategoriesDocument),
       documentIdOf(AdminHelpArticlesDocument),
       documentIdOf(AdminHelpArticleDocument),
     ].map((documentId) =>
       queryClient.invalidateQueries({ queryKey: [documentId] }),
     ),
-  );
+    invalidateAuditLogQueries(queryClient),
+  ]);
 }

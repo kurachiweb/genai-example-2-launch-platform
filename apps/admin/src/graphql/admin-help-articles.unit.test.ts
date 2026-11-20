@@ -4,6 +4,7 @@ import { isNotFound } from '@tanstack/react-router';
 
 import { GraphQLClientError } from '../../lib/utilities/graphql/graphql-result.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
+import { auditLogsQueryOptions } from './admin-audit-logs.ts';
 import {
   type AdminHelpArticleRowView,
   adminHelpArticleQueryOptions,
@@ -307,10 +308,11 @@ describe('取得の設定', () => {
 });
 
 describe('invalidateHelpArticleQueries', () => {
-  test('記事の一覧・1件・ハンドルの使用可否と、記事の件数を持つカテゴリの一覧の取得を無効にし、他の取得は残す', async () => {
+  test('記事の一覧・1件・ハンドルの使用可否と、記事の件数を持つカテゴリの一覧と、操作を記録した監査ログの検索の取得を無効にし、他の取得は残す', async () => {
     const queryClient = new QueryClient();
     const keys = [
       adminHelpArticlesQueryOptions().queryKey,
+      auditLogsQueryOptions({}).queryKey,
       adminHelpArticleQueryOptions(ARTICLE.id).queryKey,
       helpArticleHandleAvailabilityQueryOptions('guide').queryKey,
       [documentIdOf(AdminHelpCategoriesDocument), {}],

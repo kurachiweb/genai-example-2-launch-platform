@@ -14,6 +14,7 @@ import {
   GraphQLClientError,
 } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
+import { invalidateAuditLogQueries } from '../../graphql/admin-audit-logs.ts';
 import {
   type AdminUltrasPromotionSetting,
   adminUltrasPromotionSettingQueryOptions,
@@ -52,7 +53,7 @@ const failureMessageOf = (error: unknown): string =>
     ? PROMOTION_VERSION_CONFLICT_MESSAGE
     : errorMessageOf(error, ADMIN_PROFILE.contactAvailable);
 
-// 変更の確定。成功した値で照会のキャッシュを置き換え、競合で拒否された時は案内のとおりダイアログを閉じた後に最新の値が見えるよう読み直す
+// 変更の確定。成功した値で照会のキャッシュを置き換えて監査ログに残る変更の後に監査ログの照会を無効にし、競合で拒否された時は案内のとおりダイアログを閉じた後に最新の値が見えるよう読み直す
 function usePromotionSettingChange() {
   const queryClient = useQueryClient();
   const { queryKey } = adminUltrasPromotionSettingQueryOptions();
@@ -72,6 +73,7 @@ function usePromotionSettingChange() {
       ultrasPromotionSetting: updateUltrasPromotionSetting,
     });
     notify.success(promotionChangedMessageOf(input.enabled));
+    await invalidateAuditLogQueries(queryClient);
   };
 }
 
