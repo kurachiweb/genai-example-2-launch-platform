@@ -1426,6 +1426,7 @@ export declare const DASHBOARD_CARDS: readonly DashboardCard[]; // 初版は空
   - プロフィールの編集(ニックネーム・肩書き・`ImageUploadField`の画像)も`AdminFormDialog`で、監査ログの操作種別が無いため監査ログの旨を示さない。
   - 操作の可否はドメインの規則(`admin-account.ts`)と同じ判定(`admin-account-permissions.ts`)で決め、許可されない操作は描かない。自分の行は削除を描かず、プロフィールは`/account`で編集するため描かない。招待の完了前の行のプロフィールも描かない。最後の最上位管理者の保護はAPIの拒否の文言で示す。
   - 開いた元の操作が成功で消える場合(削除、自分のロールを下げてロールの変更が描かれなくなる場合)は、閉じた後に一覧の見出しへフォーカスを移す。
+- 監査ログの照会の無効化: `/accounts`の招待・招待の再送・削除・ロールの変更は、成功の後に監査ログの検索の照会を`invalidateAuditLogQueries`(`apps/admin/src/graphql/admin-audit-logs.ts`)で無効にし、`/audit-logs`に最新の記録を示す。失敗の後と、監査ログを残さないプロフィールの編集の後は無効にしない(`useAdminAccountsRefresh({ audited })`、`docs/GUIDES/tech/frontend/009-admin-console-shell.md`の「監査ログを残す操作の後の照会の無効化」)。
 - リカバリコードの表示では、両方を失うと復旧できない旨を示す(12.7)。
 
 ### e2e・docs

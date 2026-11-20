@@ -2236,6 +2236,7 @@ export declare const PRODUCT_DELETE_NOTICES: readonly ProductDeleteNotice[]; // 
 - `CategoryMasterEditor`(`withHandle: true`、`canEdit`は`useAdminRole`がモデレーター以上)。「その他」は各項目(`CategoryMasterItem`)の`systemDefault`を`true`にする。名前の検証は部品の中の`CategoryFormDialog`が`checkCategoryName`を呼ぶ(呼ぶ側からは渡さない)。ハンドルの検証は`validateHandle: (handle) => string | undefined`に、`checkHandleFormat(PRODUCT_CATEGORY_HANDLE_RULE)`の結果を文言に直す関数を渡す。削除の確認の説明は`deleteDescriptionOf`(論理削除済みで物理削除前のプロダクトも数え、14日待てば削除できる旨、仮9)、監査ログに記録される旨は`deleteAudited`で示す。名前・ハンドルの違反と重複の欄の詳細(`input.name`・`input.handle`)は、`serverFieldPrefix="input"`を渡してダイアログのそれぞれの欄に示す。操作の拒否(`product_category_in_use`など)と失敗は、`CategoryMasterEditor`の`failureMessageOf`に渡す`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言で表示する(`GraphQLClientError`はAPIの文言をそのまま、11.3〜11.7)。
 - 理由(11.8、2026-11-09に開発者が確定): `CategoryMasterEditor`には理由の入力欄が無く、削除は`reason="none"`で固定のため、本区画は理由を送らない(`undefined`)。監査ログには理由なしで記録し、記録される旨を`deleteAudited`で示す。問い合わせカテゴリの区画と同じ振る舞いで、上流の部品は変えない。APIの`reason`の引数は任意のまま残す。
 - 取得の設定・変換・無効化は`src/graphql/admin-product-categories.ts`(単体テスト付き)に置く(inquiryの`src/graphql/admin-inquiry-categories.ts`と同じ形)。
+- 監査ログの照会の無効化: プロダクトカテゴリの追加・更新・削除の成功の後は、`invalidateProductCategoryQueries`の中で監査ログの検索の照会も無効にする。失敗の後は無効にしない(`docs/GUIDES/tech/frontend/009-admin-console-shell.md`の「監査ログを残す操作の後の照会の無効化」)。
 
 ### docs
 
