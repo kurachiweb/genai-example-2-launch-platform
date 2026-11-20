@@ -289,7 +289,7 @@
   - _Depends: 6.3, 6.4, 6.5, 6.6, 6.7_
   - _Requirements: 14.1_
 
-- [ ] 7. 週ごとの統計(統計の群。措置の群の部品を読み込まない独立した継ぎ目)
+- [x] 7. 週ごとの統計(統計の群。措置の群の部品を読み込まない独立した継ぎ目)
 - [x] 7.1 統計の群の決定をページ配置・文言規則・準拠方針・日次タイムライン・モデレーションの運用の文書に先に書く
   - ページ配置: ダッシュボードの統計のカード(仮1・仮2)
   - 文言規則: 統計のカードの見出し・説明・「集計中」・集計が無い旨・取得の失敗の文言
@@ -372,7 +372,7 @@
   - _Depends: 7.8_
   - _Requirements: 1.2_
 
-- [ ] 7.10 統計のE2Eシナリオを作る
+- [x] 7.10 統計のE2Eシナリオを作る
   - `weekly-statistics.e2e.test.ts`: `e2e/admin/admin-test.ts`の`test`を使い、`signInAsNewAdmin`の管理者で、backend-platformの改訂2の`triggerScheduled({ worker: 'api', businessDate, businessTime: '04:21' })`(`e2e/support/scheduled-trigger.ts`)で4:21のジョブを動かし、ダッシュボードの統計のカードの表に今週の行が出ることを確かめる。独自の起動の補助を作らない
   - 完了状態: ローカルでE2Eが成功する
   - _Depends: 7.8_
@@ -486,3 +486,4 @@
 - 6.8: 代理の退会の操作(`components/moderation/users/administrative-withdrawal-action.tsx`(行のボタン、`RoleGate minimum="super_admin"`)・`administrative-withdrawal-dialog.tsx`(表に1つ置く確認のダイアログ))を`user-table.tsx`の`actionsOf`に加えた。設計との相違: タスクの文の1つの部品を、ボタンと表の単位のダイアログに分けた(成功で行が消えてもダイアログが消えず、フォーカスが`<body>`へ落ちないため。前例`admins/admin-list.tsx`)。成功で一覧の見出しへ、取り消しで押したボタンへフォーカス。テストは800行の制限で`users-page-withdrawal.browser.test.tsx`に置いた。ローカルで最上位管理者には全行に操作が出て、モデレーターには出ないことを確かめた。文書とコードの相違(6.2〜6.8に共通): 002・003は`*_not_found`の失敗で「ダイアログに文言を示し一覧を取り直す」と書くが、`useModerationMutation`は成功のときだけ照会を無効化し、失敗では取り直さない(停止などのダイアログは行の中にあるため、無効化すると文言ごとダイアログが消える。直すにはダイアログを表の単位へ移す形と合わせる必要がある)
 - 7.9: recharts 3.10.1(3.11.0は公開から2週間未満のため除外)とpeerの`react-is` 19.3.1をadminに完全固定で加え、`PREBUNDLED_DEPENDENCIES`に`recharts`を加えた。グラフ(`weekly-statistics-chart.tsx`: `aria-hidden`→`ClientOnly`→`CatchBoundary`→`Suspense`→`React.lazy`、`weekly-statistics-line-charts.tsx`がRechartsを読む唯一の部品、読み込みは`load-weekly-statistics-line-charts.ts`、枠の大きさは`weekly-statistics-chart-layout.ts`、軸の書式は`statistics-chart-values.ts`)をカードの直近の値と表の間に置いた。`accessibilityLayer={false}`(Recharts 3の`role="application"`のフォーカスできる要素を出さないため)・`isAnimationActive={false}`・ツールチップなし。色は`var(--primary)`・`var(--muted-foreground)`・`var(--border)`を属性で渡す。実装者の追加: 読み込み・描画の失敗は空の枠を残して`reportUnexpectedErrorInBrowser`で報告する(親が006の「統計のグラフ」に1行加えた)。ビルドでRechartsは`weekly-statistics-line-charts-*.js`だけにありダッシュボードのチャンクに含まれない。ローカルで5つのグラフの表示を確かめた
 - 6.7: 画像モデレーションのページ(`routes/_authenticated/media-moderation/index.tsx`・`components/pages/media-moderation-page.tsx`・`components/moderation/media/{quarantine-reason-tabs,quarantined-image-list,quarantined-image-card,image-moderation-actions}.tsx`・`quarantined-image-view.ts`(理由ごとの操作と保有者の表示)・`use-appended-image-focus.ts`(6.5の`use-appended-row-focus.ts`とほぼ同じで共通化の余地))。6.1のloaderに`cause`を加えた。タブの切り替えは`resetScroll: false`で前の一覧を`inert`で残す。自動判定と管理者操作の両方を持つ画像は4つの操作。最初の取得の失敗は`PartialErrorState`(設計は`ErrorState`、006に従った)。削除済みの管理者の保有者は「表示できない利用者」(003に規定なし)。画像は`alt=""`。ローカルで隔離画像が配信経路から読み込まれ表示されることを確かめた(6.2の申し送り)。確認に使った試験用の行はローカルD1から親が削除した。ローカルR2の隔離のバケットのオブジェクト`fedcba9876543210f0e1d2c3b4a59687`の削除は許可で拒否されたため残っている
+- 7.10: `e2e/admin/weekly-statistics.e2e.test.ts`(手順`weekly-statistics-steps.ts`)。`triggerScheduled({ worker: 'api', businessDate, businessTime: '04:21' })`→モデレーターの`signInAsNewAdmin`→ダッシュボードの統計のカードの表に今週の行がちょうど1つ・`time[datetime=weekStart]`・「集計中」を確かめる。文言は`statistics-messages.ts`から読む。ローカルでapi(`--test-scheduled`)・event・adminを起動して成功した。既知の制約: ローカルD1に今週より後の週の未確定の行(将来の業務日付で4:21を動かした場合)があると`listRecent`が今週の行を返さず落ちる
