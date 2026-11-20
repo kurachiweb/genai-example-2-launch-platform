@@ -301,7 +301,7 @@
   - _Depends: 1.5_
   - _Requirements: 16.6_
 
-- [ ] 7.2 週ごとの統計のテーブルとマイグレーションを作る
+- [x] 7.2 週ごとの統計のテーブルとマイグレーションを作る
   - 措置の記録のマイグレーションとは別のマイグレーションとして生成する
   - 主キーは他のテーブルと同じULIDにし、週の開始日に一意索引を張る(2026-11-20に開発者が決定したG4)
   - 先に、テーブルの定義の単体テストで、週の行の確定の値と件数の0以上の制約、ULIDの主キーと週の開始日の一意索引、他のspecのIDに外部キーが無いことを確かめる
@@ -463,3 +463,4 @@
 - 4.2: `DefaultAdminProductReader`(`application/moderation/admin-product-reader.ts`、テストの補助は800行の制限のため`application/moderation/testing/admin-product-reader-fakes.ts`)。`list`・`detail`は照会の時刻`now`を引数に取る(リゾルバが`clockOf(context).now()`を渡す)。設計との相違: 一覧のロゴのため設計の表に無い`MediaFiles.findMany`を1回加えた。詳細の`hiddenAt`は`AdminProductDirectory`にIDの照会が無く要約にも日時が無いため、非公開化中のときだけ`latestFor(['product.hide'])`の`occurredAt`を使う(通常は`hidden_at`と同じ値。3年を過ぎて記録が消えた後はnull)。ローンチ状態は上流の`toLaunchState`と同じ規則の`launchStateOf`で5値に写像し(上流の関数は`workers`の非公開の関数のため写しになる)、公開状態は上流の`toVisibility`と同じ規則。対戦相手の名前は`findSummaries(not-deleted)`、不戦勝・物理削除・論理削除はnull。不在の詳細はnullを返す。照合のテストに`ADMIN_LAUNCH_STATES`と上流の`AdminProductLaunchState`の一致を加えた
 - 4.5: `ModerationMaintenanceJob`と`MODERATION_MAINTENANCE_JOB_DEFINITION`(`application/moderation/jobs/moderation-maintenance-job.ts`、4:21・1910)。1時間以上前の依頼待ちを100件まで送り直し、1件の失敗は警告を出して数えて続け、失敗が1件以上なら`notice-redispatch-failed`(`job`・`count`)を送ってジョブは成功にする(投げ直すと同じ失敗を二重に通知するため)。一覧や削除そのものの失敗は投げ直し、`try/finally`で一覧の失敗でも削除を行う。保持期間はUTCの暦の3年(2/29は2/28へ寄せる、`moderationRecordRetentionCutoff`)で500件×最大10回。ログは件数だけ。Workers統合テスト`apps/api/src/composition/moderation-module.maintenance.worker.test.ts`はジョブと通知をテストの中で組み立てるため、4.6で束縛した後はコンテナから解決する形へ直してよい
 - 7.1: 統計の群を5文書(と`features/README.md`の索引)に書いた。設計に文面の無い文言は実装者が決め、7.8・7.9はこれに従う: カードの説明「直近26週と集計中の今週の運営状況の推移です。週は月曜日に始まり、値は毎日集計します。終わった週の値は変わりません。」(基準時刻の時差と集計時刻は画面に出さない)、収益の名前「合計収益(税込)」、直近の確定した週の見出し「<週の開始日>からの週」、増減「前週比+12」「前週比-3」「前週比±0」・金額「前週比+$12.34」「前週比±$0」、前週の行が無ければ「前週の値なし」、今週だけなら「終わった週の統計はまだありません。」、グラフの横軸「11/16」・金額の縦軸「$1,234」、表の見出し「週ごとの統計(直近26週と今週)」(新しい週が上、「集計中」は開始日の後)。既存の`MoneyText`は`$0.00`・`$9.00`と小数点以下を常に出し、デザイン原則(全て0なら省略)と食い違うため、7.8は独自の書式か`MoneyText`の変更が要る。`lastComputedAt`の表示の文言は定めていない。ジョブが止まり今週の間に作られた行が確定できないまま残る場合の`listRecent`の扱いを7.4・7.5で確かめる
+- 7.2: `moderation_weekly_statistics`(`apps/db/schema/moderation/moderation-weekly-statistics.ts`、マイグレーション`20261120061309_ugc_moderation_statistics`)。ULIDの主キー・`week_start`の一意索引(`moderation_weekly_statistics_week_start_unique`)・`finalized`は0/1のCHECKで既定値なし・4つの件数は0以上のCHECKで既定値なし・`net_revenue`は返金で負になり得るため符号のCHECKなし・`timestamps()`あり・外部キーなし。D1の統合テストで`onConflictDoUpdate({ target: weekStart, setWhere: finalized = false })`が確定した週を書き換えず`id`を保つことを確かめた(7.4のストアはこの形を使える)。マイグレーションの照合のテストは接尾辞を引数にして両方のマイグレーションを確かめる

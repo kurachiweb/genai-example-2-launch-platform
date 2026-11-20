@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test } from 'vitest';
 import { createDatabase } from './client.ts';
 import { users } from './schema/identity/users.ts';
 import { moderationActions } from './schema/moderation/moderation-actions.ts';
+import { moderationWeeklyStatistics } from './schema/moderation/moderation-weekly-statistics.ts';
 
 const ACTION_ID = '01JQ0000000000000000000M01';
 
@@ -82,6 +83,7 @@ function insertWith(column: string, value: string): Promise<unknown> {
 
 beforeEach(async () => {
   await db.delete(moderationActions);
+  await db.delete(moderationWeeklyStatistics);
   await db.delete(users);
   await db.insert(users).values({
     id: USER_ID,
@@ -176,6 +178,157 @@ describe('措置の記録の制約', () => {
     expect(await rejectionMessagesOf(insertWith(column, value))).toContainEqual(
       expect.stringContaining(
         `CHECK constraint failed: moderation_actions_${column}_check`,
+      ),
+    );
+  });
+});
+
+const STATISTICS_ID = '01JQ0000000000000000000W01';
+
+const WEEK_START = '2026-11-16';
+
+function weekRowOf(
+  overrides: Partial<typeof moderationWeeklyStatistics.$inferInsert> = {},
+): typeof moderationWeeklyStatistics.$inferInsert {
+  return {
+    id: STATISTICS_ID,
+    weekStart: WEEK_START,
+    netRevenue: 12000,
+    usersTotal: 30,
+    productsTotal: 12,
+    qualifierMatches: 4,
+    upvotes: 56,
+    finalized: false,
+    computedAt: AT,
+    ...overrides,
+  };
+}
+
+// 型で拒まれる値をD1へ渡すため、Drizzleを通さずに挿入の文を組み立てる
+function insertWeekWith(column: string, value: number): Promise<unknown> {
+  const values = {
+    net_revenue: 0,
+    users_total: 0,
+    products_total: 0,
+    qualifier_matches: 0,
+    upvotes: 0,
+    finalized: 0,
+    [column]: value,
+  };
+  return env.DB.prepare(
+    'INSERT INTO moderation_weekly_statistics (id, week_start, net_revenue, users_total, products_total, qualifier_matches, upvotes, finalized, computed_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)',
+  )
+    .bind(
+      STATISTICS_ID,
+      WEEK_START,
+      values.net_revenue,
+      values.users_total,
+      values.products_total,
+      values.qualifier_matches,
+      values.upvotes,
+      values.finalized,
+    )
+    .run();
+}
+
+describe('週ごとの統計の制約', () => {
+  test('週の行を作り、確定と集計日時を読み戻せる', async () => {
+    await db
+      .insert(moderationWeeklyStatistics)
+      .values(weekRowOf({ finalized: true }));
+
+    const rows = await db
+      .select({
+        weekStart: moderationWeeklyStatistics.weekStart,
+        finalized: moderationWeeklyStatistics.finalized,
+        computedAt: moderationWeeklyStatistics.computedAt,
+      })
+      .from(moderationWeeklyStatistics);
+
+    expect(rows).toEqual([
+      { weekStart: WEEK_START, finalized: true, computedAt: AT },
+    ]);
+  });
+
+  test('返金が上回った週の負の収益と、件数が0の週を保存できる', async () => {
+    await db.insert(moderationWeeklyStatistics).values(
+      weekRowOf({
+        netRevenue: -500,
+        usersTotal: 0,
+        productsTotal: 0,
+        qualifierMatches: 0,
+        upvotes: 0,
+      }),
+    );
+
+    const [row] = await db
+      .select({ netRevenue: moderationWeeklyStatistics.netRevenue })
+      .from(moderationWeeklyStatistics);
+
+    expect(row).toEqual({ netRevenue: -500 });
+  });
+
+  test('同じ週の開始日を持つ2つ目の行は、IDが違っても作れない', async () => {
+    await db.insert(moderationWeeklyStatistics).values(weekRowOf());
+
+    expect(
+      await rejectionMessagesOf(
+        db
+          .insert(moderationWeeklyStatistics)
+          .values(weekRowOf({ id: '01JQ0000000000000000000W02' })),
+      ),
+    ).toContainEqual(
+      expect.stringContaining(
+        'UNIQUE constraint failed: moderation_weekly_statistics.week_start',
+      ),
+    );
+    expect(await db.$count(moderationWeeklyStatistics)).toBe(1);
+  });
+
+  test('週の開始日の一意索引を対象に、未確定の週だけを書き換えるupsertができる', async () => {
+    await db.insert(moderationWeeklyStatistics).values(weekRowOf());
+    const upsert = (upvotes: number) =>
+      db
+        .insert(moderationWeeklyStatistics)
+        .values(
+          weekRowOf({
+            id: '01JQ0000000000000000000W02',
+            upvotes,
+            finalized: true,
+          }),
+        )
+        .onConflictDoUpdate({
+          target: moderationWeeklyStatistics.weekStart,
+          set: { upvotes, finalized: true },
+          setWhere: eq(moderationWeeklyStatistics.finalized, false),
+        });
+
+    await upsert(60);
+    await upsert(99);
+
+    const rows = await db
+      .select({
+        id: moderationWeeklyStatistics.id,
+        upvotes: moderationWeeklyStatistics.upvotes,
+        finalized: moderationWeeklyStatistics.finalized,
+      })
+      .from(moderationWeeklyStatistics);
+
+    expect(rows).toEqual([{ id: STATISTICS_ID, upvotes: 60, finalized: true }]);
+  });
+
+  test.each([
+    ['users_total', -1],
+    ['products_total', -1],
+    ['qualifier_matches', -1],
+    ['upvotes', -1],
+    ['finalized', 2],
+  ])('%sに範囲外の値(%d)を指定した行は作れない', async (column, value) => {
+    expect(
+      await rejectionMessagesOf(insertWeekWith(column, value)),
+    ).toContainEqual(
+      expect.stringContaining(
+        `CHECK constraint failed: moderation_weekly_statistics_${column}_check`,
       ),
     );
   });
