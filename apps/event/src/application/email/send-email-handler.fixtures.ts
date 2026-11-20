@@ -11,6 +11,7 @@ import type {
   AlertThrottle,
   SenderInfo,
   SenderInfoProvider,
+  SendIdempotency,
   SendRecordStore,
   SuppressionList,
   SuppressionStatus,
@@ -75,12 +76,17 @@ export const NOTIFICATION_KIND = defineEmailKind({
 export const VALID_INPUT = { title: INPUT_VALUE, url: SECRET_URL };
 
 export type PortCall =
-  | { readonly port: 'hasSent'; readonly requestId: string }
+  | {
+      readonly port: 'hasSent';
+      readonly requestId: string;
+      readonly idempotency?: SendIdempotency;
+    }
   | {
       readonly port: 'markSent';
       readonly requestId: string;
       readonly kind: string;
       readonly sentAt: Date;
+      readonly idempotencyKey?: string;
     }
   | { readonly port: 'getStatus'; readonly address: string }
   | { readonly port: 'senderInfo' }
@@ -147,12 +153,22 @@ function createBindings(
   return {
     kinds: createEmailKindRegistry([TRANSACTIONAL_KIND, NOTIFICATION_KIND]),
     sendRecords: {
-      hasSent: (requestId) => {
-        calls.push({ port: 'hasSent', requestId });
+      hasSent: (requestId, idempotency) => {
+        calls.push({
+          port: 'hasSent',
+          requestId,
+          ...(idempotency === undefined ? {} : { idempotency }),
+        });
         return Promise.resolve(options.sent ?? false);
       },
-      markSent: (requestId, kind, sentAt) => {
-        calls.push({ port: 'markSent', requestId, kind, sentAt });
+      markSent: (requestId, kind, sentAt, idempotencyKey) => {
+        calls.push({
+          port: 'markSent',
+          requestId,
+          kind,
+          sentAt,
+          ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
+        });
         return options.markSent?.() ?? Promise.resolve();
       },
     },

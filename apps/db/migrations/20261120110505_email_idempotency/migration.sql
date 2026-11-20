@@ -1,0 +1,2 @@
+ALTER TABLE `email_send_records` ADD `idempotency_key` text;--> statement-breakpoint
+CREATE UNIQUE INDEX `email_send_records_kind_idempotency_key_unique` ON `email_send_records` (`kind`,`idempotency_key`);

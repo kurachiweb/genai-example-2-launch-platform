@@ -51,6 +51,7 @@ const EMAIL_SEND_ERROR_REASONS = [
   'invalid-address',
   'invalid-headers',
   'invalid-deadline',
+  'invalid-idempotency-key',
   'too-large',
 ] as const satisfies readonly EmailSendErrorReason[];
 

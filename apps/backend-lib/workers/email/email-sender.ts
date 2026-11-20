@@ -11,6 +11,7 @@ import {
 import {
   EMAIL_SEND_MESSAGE,
   type EmailSendBody,
+  isValidEmailIdempotencyKey,
   isWithinEmailSendBodyLimit,
 } from '../../core/email/send-message.ts';
 import type { MessagePublisher } from '../messaging/queue-publisher.ts';
@@ -30,7 +31,7 @@ function buildBody<TInput>(
   registry: EmailKindRegistry,
   request: EmailSendRequest<TInput>,
 ): EmailSendBody {
-  const { kind, to, input, deadline, headers } = request;
+  const { kind, to, input, deadline, headers, idempotencyKey } = request;
   // 送信処理は登録された種別の検証規則で入力を検証し直すため、受付も同じ名前で引いた登録の規則で検証する
   const registered = registry.get(kind.name);
   if (registered === undefined) {
@@ -51,6 +52,12 @@ function buildBody<TInput>(
   if (deadline !== undefined && deadlineString === undefined) {
     throw new EmailSendError('invalid-deadline');
   }
+  if (
+    idempotencyKey !== undefined &&
+    !isValidEmailIdempotencyKey(idempotencyKey)
+  ) {
+    throw new EmailSendError('invalid-idempotency-key');
+  }
 
   const body: EmailSendBody = {
     kind: registered.name,
@@ -58,6 +65,7 @@ function buildBody<TInput>(
     input: parsedInput.data,
     ...(deadlineString === undefined ? {} : { deadline: deadlineString }),
     ...(headers === undefined ? {} : { headers }),
+    ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
   };
   if (!isWithinEmailSendBodyLimit(body)) {
     throw new EmailSendError('too-large');

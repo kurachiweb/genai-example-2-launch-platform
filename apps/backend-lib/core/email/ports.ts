@@ -8,6 +8,8 @@ export interface EmailSendRequest<TInput> {
   readonly input: TInput;
   readonly deadline?: Date;
   readonly headers?: ExtraHeaders;
+  // 同じ種別で同じキーの送信要求は、送信済みの記録の保持期間の間、時間を空けた2回目以降は送られない
+  readonly idempotencyKey?: string;
 }
 
 export interface EmailSender {
@@ -21,6 +23,7 @@ export type EmailSendErrorReason =
   | 'invalid-address'
   | 'invalid-headers'
   | 'invalid-deadline'
+  | 'invalid-idempotency-key'
   | 'too-large';
 
 const EMAIL_SEND_ERROR_MESSAGES: Readonly<
@@ -31,6 +34,7 @@ const EMAIL_SEND_ERROR_MESSAGES: Readonly<
   'invalid-address': '宛先のメールアドレスの形式が不正です',
   'invalid-headers': '追加ヘッダーが許可されていないか、値が不正です',
   'invalid-deadline': '送信期限が有効な日時ではありません',
+  'invalid-idempotency-key': '冪等のキーの形式が不正です',
   'too-large': '送信要求の本文が大きさの上限を超えています',
 };
 
@@ -91,9 +95,20 @@ export interface SenderInfoProvider {
   get(): Promise<SenderInfo | undefined>;
 }
 
+export interface SendIdempotency {
+  readonly kind: string;
+  readonly key: string;
+}
+
 export interface SendRecordStore {
-  hasSent(requestId: string): Promise<boolean>;
-  markSent(requestId: string, kind: string, sentAt: Date): Promise<void>;
+  // idempotencyを渡すと、識別子の一致に加えて同じ種別で同じキーの記録も送信済みとみなす
+  hasSent(requestId: string, idempotency?: SendIdempotency): Promise<boolean>;
+  markSent(
+    requestId: string,
+    kind: string,
+    sentAt: Date,
+    idempotencyKey?: string,
+  ): Promise<void>;
 }
 
 export interface AlertThrottle {

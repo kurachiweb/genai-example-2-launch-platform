@@ -8,6 +8,10 @@ import { createSendRecordRepository } from './send-record-repository.ts';
 const REQUEST_ID = '01JBD8G7Q3Z6W0K8N5S2X4Y9TA';
 const OTHER_REQUEST_ID = '01JBD8G7Q3Z6W0K8N5S2X4Y9TB';
 
+const KIND = 'test-domain.notice';
+const IDEMPOTENCY_KEY = '01JQ0ACT000000000000000001';
+const OTHER_IDEMPOTENCY_KEY = '01JQ0ACT000000000000000002';
+
 const SENT_AT = new Date('2026-10-27T03:04:05.678Z');
 
 const RETENTION_MILLISECONDS = 14 * 24 * 60 * 60 * 1000;
@@ -37,6 +41,7 @@ describe('createSendRecordRepository', () => {
         {
           id: REQUEST_ID,
           kind: 'email-delivery-smoke',
+          idempotencyKey: null,
           sentAt: SENT_AT,
           createdAt: SENT_AT,
           updatedAt: SENT_AT,
@@ -58,6 +63,7 @@ describe('createSendRecordRepository', () => {
         {
           id: REQUEST_ID,
           kind: 'email-delivery-smoke',
+          idempotencyKey: null,
           sentAt: SENT_AT,
           createdAt: SENT_AT,
           updatedAt: SENT_AT,
@@ -93,6 +99,88 @@ describe('createSendRecordRepository', () => {
       ]);
 
       expect(results).toEqual([true, false]);
+    });
+
+    test('冪等のキーを渡すと、識別子が違っても同じ種別で同じキーの記録があれば送信済みとする', async () => {
+      const repository = createSendRecordRepository(db);
+      await repository.markSent(REQUEST_ID, KIND, SENT_AT, IDEMPOTENCY_KEY);
+
+      const results = await Promise.all([
+        repository.hasSent(OTHER_REQUEST_ID, {
+          kind: KIND,
+          key: IDEMPOTENCY_KEY,
+        }),
+        repository.hasSent(OTHER_REQUEST_ID, {
+          kind: 'another-domain.kind',
+          key: IDEMPOTENCY_KEY,
+        }),
+        repository.hasSent(OTHER_REQUEST_ID, {
+          kind: KIND,
+          key: OTHER_IDEMPOTENCY_KEY,
+        }),
+        repository.hasSent(OTHER_REQUEST_ID),
+      ]);
+
+      expect(results).toEqual([true, false, false, false]);
+    });
+
+    test('冪等のキーを渡しても、同じ識別子の記録があれば送信済みとする', async () => {
+      const repository = createSendRecordRepository(db);
+      await repository.markSent(REQUEST_ID, KIND, SENT_AT);
+
+      await expect(
+        repository.hasSent(REQUEST_ID, { kind: KIND, key: IDEMPOTENCY_KEY }),
+      ).resolves.toBe(true);
+    });
+  });
+
+  describe('markSentの冪等のキー', () => {
+    test('冪等のキーを識別子・種別・送信日時と一緒に保存する', async () => {
+      const repository = createSendRecordRepository(db);
+
+      await repository.markSent(REQUEST_ID, KIND, SENT_AT, IDEMPOTENCY_KEY);
+
+      expect(await readRows()).toEqual([
+        {
+          id: REQUEST_ID,
+          kind: KIND,
+          idempotencyKey: IDEMPOTENCY_KEY,
+          sentAt: SENT_AT,
+          createdAt: SENT_AT,
+          updatedAt: SENT_AT,
+        },
+      ]);
+    });
+
+    test('同じ種別で同じキーの2回目の記録は、識別子が違っても成功し、行を増やさない', async () => {
+      const repository = createSendRecordRepository(db);
+      await repository.markSent(REQUEST_ID, KIND, SENT_AT, IDEMPOTENCY_KEY);
+
+      await repository.markSent(
+        OTHER_REQUEST_ID,
+        KIND,
+        new Date('2026-10-28T00:00:00.000Z'),
+        IDEMPOTENCY_KEY,
+      );
+
+      expect((await readRows()).map((row) => row.id)).toEqual([REQUEST_ID]);
+    });
+
+    test('種別が違えば同じキーでも別の行として記録する', async () => {
+      const repository = createSendRecordRepository(db);
+
+      await repository.markSent(REQUEST_ID, KIND, SENT_AT, IDEMPOTENCY_KEY);
+      await repository.markSent(
+        OTHER_REQUEST_ID,
+        'another-domain.kind',
+        SENT_AT,
+        IDEMPOTENCY_KEY,
+      );
+
+      expect((await readRows()).map((row) => row.id)).toEqual([
+        REQUEST_ID,
+        OTHER_REQUEST_ID,
+      ]);
     });
   });
 

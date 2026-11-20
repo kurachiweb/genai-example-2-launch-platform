@@ -17,7 +17,6 @@ import { ENGAGEMENT_PLATFORM_TYPES } from '../../../lib/core/engagement/identifi
 import type { CommentStore } from '../../../lib/core/engagement/ports.ts';
 import { IDENTITY_PLATFORM_TYPES } from '../../../lib/core/identity/identifiers.ts';
 import type { UserContactDirectory } from '../../../lib/core/identity/ports.ts';
-import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { MODERATION_PLATFORM_TYPES } from '../../../lib/core/moderation/identifiers.ts';
 import type {
   ModerationRecord,
@@ -31,7 +30,8 @@ import { normalizeModerationReason } from './moderation-reason.ts';
 export type ModerationNoticeDispatch = 'requested' | 'skipped' | 'not-pending';
 
 export interface ModerationNotifier {
-  // 依頼待ちの記録だけを送る。送信の依頼の例外はそのまま投げ、記録は依頼待ちのまま残る
+  // 依頼待ちの記録だけを送る。送信の依頼と依頼済みへの更新の例外はそのまま投げ、記録は依頼待ちのまま残る
+  // 送信の依頼は記録のIDを冪等のキーにするため、依頼済みへの更新だけが失敗した後に送り直しても2通目は送られない
   dispatch(actionId: string): Promise<ModerationNoticeDispatch>;
 }
 
@@ -42,8 +42,6 @@ export interface ModerationNotifierEnv {
 const CONTACT_PATH = '/contact';
 
 const EXCERPT_ELLIPSIS = '…';
-
-const logger = getAppLogger(['api', 'application', 'moderation']);
 
 type NoticeSending = 'sent' | 'no-recipient';
 
@@ -83,26 +81,13 @@ export class EmailModerationNotifier implements ModerationNotifier {
       });
       return marked ? 'skipped' : 'not-pending';
     }
-    await this.#markRequested(record.id);
+    await this.records.markNotice({
+      id: record.id,
+      from: 'pending',
+      to: 'requested',
+      at: this.clock.now(),
+    });
     return 'requested';
-  }
-
-  // 送信の依頼に冪等のキーが無いため、送信の直後に1文で依頼済みにして、送り直しで2回目の依頼になる窓を狭める
-  async #markRequested(actionId: string): Promise<void> {
-    try {
-      await this.records.markNotice({
-        id: actionId,
-        from: 'pending',
-        to: 'requested',
-        at: this.clock.now(),
-      });
-    } catch (error: unknown) {
-      logger.warning(
-        '措置の通知の送信を依頼した後に、依頼済みへの更新に失敗しました。送り直しで同じ通知を2回依頼し得ます',
-        { error, actionId },
-      );
-      throw error;
-    }
   }
 
   async #send(record: ModerationRecord): Promise<NoticeSending> {
@@ -132,6 +117,7 @@ export class EmailModerationNotifier implements ModerationNotifier {
     await this.emails.send({
       kind: MODERATION_USER_SUSPENDED_EMAIL,
       to: contact.email,
+      idempotencyKey: record.id,
       input: {
         nickname: contact.nickname,
         reason: this.#reasonOf(record),
@@ -156,6 +142,7 @@ export class EmailModerationNotifier implements ModerationNotifier {
     await this.emails.send({
       kind: MODERATION_PRODUCT_HIDDEN_EMAIL,
       to: contact.email,
+      idempotencyKey: record.id,
       input: {
         nickname: contact.nickname,
         productName: product.name,
@@ -189,6 +176,7 @@ export class EmailModerationNotifier implements ModerationNotifier {
     await this.emails.send({
       kind: MODERATION_COMMENT_HIDDEN_EMAIL,
       to: contact.email,
+      idempotencyKey: record.id,
       input: {
         nickname: contact.nickname,
         productName: product.name,

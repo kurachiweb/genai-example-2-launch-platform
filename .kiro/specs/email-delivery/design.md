@@ -172,7 +172,7 @@ graph TB
 apps/
 ├── db/schema/email/                              # メール送信基盤のテーブル定義
 │   ├── email-suppressions.ts                     # 抑止リスト(address・last_reason・last_event_at・expires_at)
-│   ├── email-send-records.ts                     # 送信済みの記録(送信要求の識別子・種別・送信日時)
+│   ├── email-send-records.ts                     # 送信済みの記録(送信要求の識別子・種別・冪等のキー・送信日時)
 │   ├── email-alert-throttles.ts                  # 警告の間引き(name・last_reported_at)
 │   ├── email-cleanup-cursors.ts                  # 後始末の続きの位置(name・after_key)
 │   └── *.unit.test.ts                            # 列の型・制約・既定値
@@ -466,6 +466,8 @@ sequenceDiagram
 | 11.10       | データ保持期間の追記                       | EmailDocs                                                                    | —                                                        | —                          |
 | 11.11       | オンボーディングの更新                     | EmailDocs                                                                    | —                                                        | —                          |
 
+- 注記1: ugc-moderationの検証の後の修正(要件12.8、2026-11-20に開発者が決定)が、送信要求に任意の冪等のキー(`EmailSendRequest.idempotencyKey`・`EmailSendBody.idempotencyKey`、不正な形式は`invalid-idempotency-key`)を加え、送信処理が送る前に同じ種別で同じキーの送信済みの記録を確かめて2回目以降を`duplicate`で完了するようにした(`SendRecordStore`の任意の引数、`email_send_records.idempotency_key`と一意索引、マイグレーション`20261120110505_email_idempotency`)。キーを持たない送信要求の振る舞い(送信要求の識別子だけによる重複の防止)と記録の保持期間(14日)は変えていない。ugc-moderationの措置の通知は措置の記録のIDをキーにして、依頼済みへの更新だけが失敗した後の送り直しで2通目を送らない。
+
 ## Components and Interfaces
 
 | Component                 | Domain/Layer         | Intent                                           | Req Coverage                                        | Key Dependencies (P0/P1)                                                                                   | Contracts      |
@@ -566,12 +568,15 @@ export interface EmailSendBody {
   readonly input: unknown; // 種別のinputSchemaで検証済みのJSON
   readonly deadline?: string; // ISO 8601(UTC)
   readonly headers?: Readonly<Record<string, string>>;
+  readonly idempotencyKey?: string; // 冪等のキー。[A-Za-z0-9_.:-]の1〜128文字
 }
 export declare const EMAIL_SEND_MESSAGE: MessageContract<
   'email.send',
   EmailSendBody
 >;
 export declare const MAX_EMAIL_SEND_BODY_BYTES: 65536;
+export declare const MAX_EMAIL_IDEMPOTENCY_KEY_LENGTH: 128;
+export declare function isValidEmailIdempotencyKey(key: string): boolean;
 export declare function isWithinEmailSendBodyLimit(
   body: EmailSendBody,
 ): boolean; // JSONにしたUTF-8が上限以下か
@@ -596,6 +601,7 @@ export declare function validateExtraHeaders(
 - Published: `email.send`(`MESSAGE_CONTRACTS`へ登録)。Subscribed: eventの`SendEmailHandler`。
 - `ALLOWED_EXTRA_HEADERS`はEmail Sendingの許可リストのうち`List-Unsubscribe`・`List-Unsubscribe-Post`・`List-Id`・`Auto-Submitted`・`Precedence`とする。値にCR・LFを含むもの、`List-Unsubscribe`が`<https://...>`を含まないもの、`List-Unsubscribe-Post`が`List-Unsubscribe=One-Click`以外のもの、1値2048バイト超・合計16KB超を拒否する(1.7)。名前は大文字小文字を区別せずに照合し、大文字小文字だけが違う重複は`too-many`にする。空の値と、`List-Unsubscribe`の無い`List-Unsubscribe-Post`も拒否する。`List-Unsubscribe`の値はカンマで単純に分割して検査するため、URIにカンマを含む値は拒否される。
 - 配送保証はbackend-platformの非同期メッセージに従い、重複配信がある。重複の防止は`SendRecordRepository`が担う。
+- `idempotencyKey`は任意の冪等のキーで、送信側の再実行で別の封筒になった同じ業務上の出来事の送信要求を、同じ種別で同じキーの送信済みの記録で見分けるために使う(ugc-moderationの検証の後の修正が加えた。2026-11-20に開発者が決定。Requirements Traceabilityの注記1)。
 
 #### ProviderOutcomeClassifier
 
@@ -814,6 +820,7 @@ export interface EmailSendRequest<TInput> {
   readonly input: TInput;
   readonly deadline?: Date;
   readonly headers?: ExtraHeaders;
+  readonly idempotencyKey?: string; // 同じ種別で同じキーの送信要求は、送信済みの記録の保持期間の間は1通だけ送る
 }
 export interface EmailSender {
   send<TInput>(request: EmailSendRequest<TInput>): Promise<string>; // 送信要求の識別子(ULID)
@@ -824,6 +831,7 @@ export type EmailSendErrorReason =
   | 'invalid-address'
   | 'invalid-headers'
   | 'invalid-deadline'
+  | 'invalid-idempotency-key'
   | 'too-large';
 export declare class EmailSendError extends Error {
   constructor(reason: EmailSendErrorReason); // メッセージは理由ごとの固定文で、宛先・入力の値を含めない
@@ -864,9 +872,18 @@ export interface SenderInfo {
 export interface SenderInfoProvider {
   get(): Promise<SenderInfo | undefined>; // 未設定はundefined
 }
+export interface SendIdempotency {
+  readonly kind: string;
+  readonly key: string;
+}
 export interface SendRecordStore {
-  hasSent(requestId: string): Promise<boolean>;
-  markSent(requestId: string, kind: string, sentAt: Date): Promise<void>;
+  hasSent(requestId: string, idempotency?: SendIdempotency): Promise<boolean>; // idempotencyがあれば同じ種別で同じキーの記録も送信済みとする
+  markSent(
+    requestId: string,
+    kind: string,
+    sentAt: Date,
+    idempotencyKey?: string,
+  ): Promise<void>;
 }
 export interface AlertThrottle {
   tryAcquire(
@@ -958,7 +975,7 @@ export declare function createEmailSender(
 ```
 
 - 事前条件: `request.kind`が`registry`に登録された同じ名前の種別であること。
-- 処理: 種別の検索→`inputSchema.parse`→`isValidEmailAddress(to)`→`validateExtraHeaders`→`deadline`が有効な日時か→本文をJSONにして`MAX_EMAIL_SEND_BODY_BYTES`以下か→`publisher.publish(EMAIL_SEND_MESSAGE, body)`の戻り値を送信要求の識別子として返す。
+- 処理: 種別の検索→`inputSchema.parse`→`isValidEmailAddress(to)`→`validateExtraHeaders`→`deadline`が有効な日時か→`idempotencyKey`があれば`isValidEmailIdempotencyKey`(`invalid-idempotency-key`)→本文をJSONにして`MAX_EMAIL_SEND_BODY_BYTES`以下か→`publisher.publish(EMAIL_SEND_MESSAGE, body)`の戻り値を送信要求の識別子として返す。
 - 失敗は理由ごとに`EmailSendError`。`MessagePublishError`は呼び出し側の不具合ではないため包まずにそのまま投げる(Queueの障害は呼び出し側の処理単位の失敗として扱う)。
 - 宛先は照合キーにせず元の値のまま送る(正規化は抑止リスト側で行う)。年が0000〜9999の外の期限は`invalid-deadline`にし、過去の期限は受け付ける(送信処理が期限切れとして扱う)。
 - `workers`の他の部品と同じくファクトリで、`EMAIL_PLATFORM_MODULE`が`toDynamicValue`で束縛する。
@@ -1002,7 +1019,7 @@ export declare function createSuppressionRepository(
 #### SendRecordRepository
 
 - `createSendRecordRepository(db: Database): SendRecordRepository`。`SendRecordRepository`は`SendRecordStore`に`deleteSentBefore(cutoff: Date): Promise<number>`を加えたインターフェースで、Clockを持たない(時刻は引数で受け取る)。
-- `markSent`は`onConflictDoNothing()`で挿入し、同じ識別子の2回目は何もしない。`id`は`ulidPrimaryKey()`で省略時に採番されるため、必ず封筒のIDを明示して入れる。保存するのは送信要求の識別子・種別・送信日時だけで、宛先・本文・入力を保存しない(6.7・10.3)。
+- `markSent`は`onConflictDoNothing()`で挿入し、同じ識別子の2回目は何もしない。冪等のキーを渡すと`idempotency_key`に入れ、同じ種別で同じキーの2回目も一意索引の競合で何もしない。`hasSent`は冪等のキーを渡すと、識別子の一致か、同じ種別で同じキーの記録のどちらかがあれば真を返す(ugc-moderationの検証の後の修正が加えた。2026-11-20に開発者が決定。Requirements Traceabilityの注記1)。`id`は`ulidPrimaryKey()`で省略時に採番されるため、必ず封筒のIDを明示して入れる。保存するのは送信要求の識別子・種別・冪等のキー・送信日時だけで、宛先・本文・入力を保存しない(6.7・10.3)。
 - `deleteSentBefore`は`sent_at < cutoff`で、ちょうど基準日時の行は残す。
 
 #### AlertThrottleRepository
@@ -1187,8 +1204,8 @@ export declare class SendEmailHandler implements MessageHandler<EmailSendBody> {
 }
 ```
 
-- 処理の順序: (1)`hasSent(meta.id)`なら`duplicate`で完了(6.7)。(2)`decideBeforeSend`が`skip`なら`expired`で完了(5.5)。(3)種別が無い・入力が検証に合わないなら`undeliverable`を通知して完了(6.3)。(4)通知メールで`getStatus`が抑止中なら`suppressed`で完了(8.4)。トランザクションメールは照会しない(8.5)。(5)送信者情報を取得して描画し、`EmailRenderError`なら`undeliverable`(`code: 'render-failed'`)を通知して完了(6.3)。(6)`provider.send`→`decideAfterOutcome`。
-- 行動: `completed`は`markSent`(失敗は`error`ログにとどめて完了し、再送を避ける)と`sent`のログ(6.6)。`defer`は`daily-limit`のとき`tryAcquire('email-daily-limit', now, 3600)`が真なら`daily-limit`を通知する。`tryAcquire`自体が失敗したときは`error`ログを出したうえで通知する(fingerprintが1つに固定されているため、重ねて送っても1つの問題にまとまる。例外にすると試行回数に数えない待機が再試行として数えられるため、例外にしない。research.mdの承認後の改訂2)。どちらも`{ kind: 'defer', delaySeconds }`を返す(5.1〜5.4)。`retry`は`EmailTransientFailure`を投げ、backend-platformの再試行(登録の`retry: EMAIL_SEND_RETRY_POLICY`)に任せる(6.1)。`give-up`は`report`なら`undeliverable`を通知し、結果をログに出して完了する(6.2〜6.4)。
+- 処理の順序: (1)`hasSent(meta.id, <本文に冪等のキーがあれば種別とキー>)`なら`duplicate`で完了(6.7)。(2)`decideBeforeSend`が`skip`なら`expired`で完了(5.5)。(3)種別が無い・入力が検証に合わないなら`undeliverable`を通知して完了(6.3)。(4)通知メールで`getStatus`が抑止中なら`suppressed`で完了(8.4)。トランザクションメールは照会しない(8.5)。(5)送信者情報を取得して描画し、`EmailRenderError`なら`undeliverable`(`code: 'render-failed'`)を通知して完了(6.3)。(6)`provider.send`→`decideAfterOutcome`。
+- 行動: `completed`は`markSent`(本文の冪等のキーを添える。失敗は`error`ログにとどめて完了し、再送を避ける)と`sent`のログ(6.6)。`defer`は`daily-limit`のとき`tryAcquire('email-daily-limit', now, 3600)`が真なら`daily-limit`を通知する。`tryAcquire`自体が失敗したときは`error`ログを出したうえで通知する(fingerprintが1つに固定されているため、重ねて送っても1つの問題にまとまる。例外にすると試行回数に数えない待機が再試行として数えられるため、例外にしない。research.mdの承認後の改訂2)。どちらも`{ kind: 'defer', delaySeconds }`を返す(5.1〜5.4)。`retry`は`EmailTransientFailure`を投げ、backend-platformの再試行(登録の`retry: EMAIL_SEND_RETRY_POLICY`)に任せる(6.1)。`give-up`は`report`なら`undeliverable`を通知し、結果をログに出して完了する(6.2〜6.4)。
 - 置き場所: `EmailRuntimeConfig`・`OutgoingEmail`・`EmailProvider`・`RenderedEmail`・`EmailRenderError`・`EmailRenderer`・`EmailIncident`・`EmailIncidentReporter`はeventの`application/email/ports.ts`、`SendEmailHandler`と`EmailTransientFailure`は`application/email/send-email-handler.ts`、DI識別子は`application/email/email-types.ts`の`EVENT_EMAIL_TYPES`(`EmailProvider`・`EmailRenderer`・`EmailIncidentReporter`・`EmailRuntimeConfig`・`SendEmailHandler`・`DeliveryEventHandler`)に置く。
 - 前判定の送信不能のコードは`unknown-kind`・`invalid-input`・`render-failed`。未登録の種別の`undeliverable`は`category`が`undefined`で、Sentryの`email_category`のタグを付けない。`EmailRenderError`の`cause`はログ・Sentryへ出さない。
 - ログ(10.1): カテゴリは`['event', 'application', 'email-send']`。結果`sent`・`deferred`・`expired`・`suppressed`・`duplicate`・`retrying`・`undeliverable`・`recipient-suppressed`・`recipient-not-allowed`と、種別・分類・送信要求の識別子・所要時間・試行回数。属性名は伏せ字の規則(`/email/i`)と予約の`category`を避けて`kind`・`kindCategory`・`requestId`・`deferCause`・`delaySeconds`などにする。宛先・件名・本文・入力・URLを属性に入れない(6.8)。
@@ -1447,7 +1464,7 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 ### Domain Model
 
 - 抑止記録(集約): メールアドレスの照合キーごとに1件。最後の契機の種類・日時と期限を持つ。不変条件: 期限なしの記録は期限付きに戻らない。最後の契機の日時は減らない。
-- 送信済みの記録: 送信要求の識別子ごとに1件。作成後に変わらない。
+- 送信済みの記録: 送信要求の識別子ごとに1件。冪等のキーを持つ記録は、種別とキーの組でも1件。作成後に変わらない。
 - 値オブジェクト: `EmailKind`・`EmailSendBody`・`EmailProviderOutcome`・`DeliveryEvent`・`SuppressionState`。
 
 ### Physical Data Model
@@ -1472,11 +1489,13 @@ export declare class ReactEmailRenderer implements EmailRenderer {
 | -------------------------- | --------- | ------------- | ---------------------------- |
 | `id`                       | `TEXT`    | `PRIMARY KEY` | 送信要求の識別子(封筒のULID) |
 | `kind`                     | `TEXT`    | `NOT NULL`    | メール種別の名前             |
+| `idempotency_key`          | `TEXT`    | NULL可        | 送信要求の冪等のキー         |
 | `sent_at`                  | `INTEGER` | `NOT NULL`    | UTCのエポックミリ秒          |
 | `created_at`・`updated_at` | `INTEGER` | `NOT NULL`    | 共通カラム                   |
 
 - `id`は共通カラム`ulidPrimaryKey`を使い、採番せずに封筒のIDを明示して挿入する。
-- 索引: `sent_at`。14日を過ぎた行を日次で削除する(Queuesのメッセージの保持期間の上限を超えて再配信されないため)。
+- 索引: `sent_at`。14日を過ぎた行を日次で削除する(Queuesのメッセージの保持期間の上限を超えて再配信されないため)。冪等のキーも同じ行とともに14日で消えるため、それより後の同じキーの送信要求は送られる。
+- 一意索引: `email_send_records_kind_idempotency_key_unique`(`kind`・`idempotency_key`)。キーを持たない行はNULLのため互いに競合しない。種別ごとの一意にして、機能ごとにキーの名前空間を分けなくても重ならないようにする(ugc-moderationの検証の後の修正が加えた。2026-11-20に開発者が決定。Requirements Traceabilityの注記1)。
 
 **`email_alert_throttles`**
 
@@ -1599,7 +1618,7 @@ graph LR
     F --> G[docs and manual checks]
 ```
 
-- 既存データは無い。マイグレーションはメールの3テーブルを作るもの(`20261027063108_email_delivery`)と、後始末の続きの位置のテーブルを作るもの(`20261027144241_email_cleanup_cursors`)の2つである。
+- 既存データは無い。マイグレーションはメールの3テーブルを作るもの(`20261027063108_email_delivery`)と、後始末の続きの位置のテーブルを作るもの(`20261027144241_email_cleanup_cursors`)の2つである。ugc-moderationの検証の後の修正が、送信済みの記録に冪等のキーの列と一意索引を加えるもの(`20261120110505_email_idempotency`)を足した(既存の行はキーを持たない)。
 - 前提: backend-platformの実装が完了していること。
 - 開発者の手作業(AIエージェントは行わない): Email Sendingへのstaging・prodの送信ドメインの登録と送信内容のプレビューの無効化、メールイベント用Queue(staging・prod)とイベントの購読(`bounced`・`complained`・`rejected`・`failed`)の作成(infra-deliveryがOpenTofuへ取り込むまでの間)、stagingの宛先の検証と`EMAIL_ALLOWED_RECIPIENTS`のInfisical(staging)への登録、`EMAIL_SMOKE_TOKEN`・`EMAIL_SMOKE_RECIPIENT`のInfisical(dev・staging)への登録、eventの`wrangler deploy --dry-run`によるバンドルの確認(AIエージェントの実行は権限で拒否される)、stagingでの疎通確認(`apps/event/wrangler.jsonc`にstagingのルートが無いため、infra-deliveryがルートを加えてから行う)。stagingのシークレットはInfisical(staging)を正とし、`wrangler secret put`はinfra-deliveryのCIのデプロイが導入されるまでの暫定の手段とする。
 

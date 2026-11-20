@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
+import { describe, expect, test } from 'bun:test';
 
 import { countGraphemes } from '../../../common-lib/text/graphemes.ts';
 import {
@@ -253,35 +252,6 @@ const harnessOf = (scenario: Scenario = {}): Harness => {
   };
 };
 
-const logs: LogRecord[] = [];
-
-beforeEach(() => {
-  logs.length = 0;
-  configureSync({
-    reset: true,
-    sinks: {
-      capture: (record) => {
-        logs.push(record);
-      },
-    },
-    loggers: [
-      { category: ['api'], sinks: ['capture'], lowestLevel: 'debug' },
-      { category: ['logtape', 'meta'], sinks: [], lowestLevel: 'warning' },
-    ],
-  });
-});
-
-afterEach(() => {
-  resetSync();
-});
-
-const moderationLogs = () =>
-  logs
-    .filter(
-      (record) => record.category.join('.') === 'api.application.moderation',
-    )
-    .map(({ level, properties }) => ({ level, properties }));
-
 const REQUESTED_MARK = {
   id: ACTION_ID,
   from: 'pending',
@@ -303,6 +273,7 @@ describe('EmailModerationNotifier 停止の通知', () => {
       {
         kind: MODERATION_USER_SUSPENDED_EMAIL,
         to: 'suspended@mail.example',
+        idempotencyKey: ACTION_ID,
         input: {
           nickname: '停止された人',
           reason: '規約違反の投稿を繰り返したため',
@@ -374,6 +345,7 @@ describe('EmailModerationNotifier プロダクトの非公開化の通知', () =
       {
         kind: MODERATION_PRODUCT_HIDDEN_EMAIL,
         to: 'owner@mail.example',
+        idempotencyKey: ACTION_ID,
         input: {
           nickname: '投稿者',
           productName: '非公開化されたプロダクト',
@@ -445,6 +417,7 @@ describe('EmailModerationNotifier コメントの非公開化の通知', () => {
       {
         kind: MODERATION_COMMENT_HIDDEN_EMAIL,
         to: 'commenter@mail.example',
+        idempotencyKey: ACTION_ID,
         input: {
           nickname: 'コメントした人',
           productName: '非公開化されたプロダクト',
@@ -615,7 +588,7 @@ describe('EmailModerationNotifier 送信の失敗', () => {
     expect(harness.marks).toEqual([]);
   });
 
-  test('送信の後に依頼済みへの更新だけが失敗したら、措置のIDを添えたwarningのログを出して例外を投げる', async () => {
+  test('送信の後に依頼済みへの更新だけが失敗したら、依頼待ちのまま例外を投げ、送り直しでも同じ措置の記録のIDを冪等のキーとして依頼する', async () => {
     const failure = new Error('D1への書き込みに失敗しました');
     const harness = harnessOf({
       record: recordOf(),
@@ -624,29 +597,19 @@ describe('EmailModerationNotifier 送信の失敗', () => {
     });
 
     expect(await caughtOf(harness.notifier.dispatch(ACTION_ID))).toBe(failure);
-    expect(harness.calls).toEqual(['find', 'send', 'mark:requested']);
-    expect(moderationLogs()).toEqual([
-      {
-        level: 'warning',
-        properties: { error: failure, actionId: ACTION_ID },
-      },
+    expect(await caughtOf(harness.notifier.dispatch(ACTION_ID))).toBe(failure);
+
+    expect(harness.calls).toEqual([
+      'find',
+      'send',
+      'mark:requested',
+      'find',
+      'send',
+      'mark:requested',
     ]);
-  });
-
-  test('ログに宛先・名前・理由を含めない', async () => {
-    const harness = harnessOf({
-      record: recordOf(),
-      contacts: [contactOf()],
-      markError: new Error('D1への書き込みに失敗しました'),
-    });
-
-    await harness.notifier.dispatch(ACTION_ID).catch(() => undefined);
-
-    const serialized = JSON.stringify(
-      logs.map(({ message, properties }) => ({ message, properties })),
-    );
-    expect(serialized).not.toContain('suspended@mail.example');
-    expect(serialized).not.toContain('停止された人');
-    expect(serialized).not.toContain('規約違反');
+    expect(harness.sent.map(({ idempotencyKey }) => idempotencyKey)).toEqual([
+      ACTION_ID,
+      ACTION_ID,
+    ]);
   });
 });

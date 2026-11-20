@@ -189,6 +189,19 @@ describe('createEmailSender', () => {
       expect(sent[0]?.body).toMatchObject({ headers: ONE_CLICK_HEADERS });
     });
 
+    test('冪等のキーをそのまま送信処理へ引き継ぐ', async () => {
+      const { queue, sent } = createRecordingQueue();
+      const sender = createSubject(queue);
+
+      await sender.send(
+        greetingRequest({ idempotencyKey: '01JQ0ACT000000000000000001' }),
+      );
+
+      expect(sent[0]?.body).toMatchObject({
+        idempotencyKey: '01JQ0ACT000000000000000001',
+      });
+    });
+
     test('送信期限と追加ヘッダーを指定しない要求の本文にはそれらの項目を含めない', async () => {
       const { queue, sent } = createRecordingQueue();
       const sender = createSubject(queue);
@@ -434,6 +447,25 @@ describe('createEmailSender', () => {
         );
 
         expectEmailSendError(error, 'invalid-deadline', [RECIPIENT]);
+        expect(sent).toHaveLength(0);
+      },
+    );
+
+    test.each([
+      ['空文字', ''],
+      ['129文字', 'a'.repeat(129)],
+      ['空白を含む値', 'action 1'],
+    ])(
+      '冪等のキーが%sだと送らずに理由invalid-idempotency-keyで失敗する',
+      async (_label, idempotencyKey) => {
+        const { queue, sent } = createRecordingQueue();
+        const sender = createSubject(queue);
+
+        const error = await captureRejection(
+          sender.send(greetingRequest({ idempotencyKey })),
+        );
+
+        expectEmailSendError(error, 'invalid-idempotency-key', [RECIPIENT]);
         expect(sent).toHaveLength(0);
       },
     );

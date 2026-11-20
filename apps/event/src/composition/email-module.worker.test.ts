@@ -225,6 +225,55 @@ describe('イベントサーバーのメールの結線', () => {
     expect(JSON.stringify(consoleCalls)).not.toContain(RECIPIENT_MARKER);
   });
 
+  test('同じ種別で同じ冪等のキーの送信要求は、別の封筒で届いても2回目を送らずに完了する', async () => {
+    const firstId = nextUlid();
+    const secondId = nextUlid();
+    const idempotencyKey = `01JQ0ACT0000000000000${String(sequence).padStart(5, '0')}`;
+    const recipient = `${RECIPIENT_MARKER}-idempotent@test.example`;
+    const requests = stubMailpit(mailpitAccepted);
+    const keyed = (id: string): QueueEnvelope => {
+      const envelope = smokeEnvelope(id, recipient);
+      return {
+        ...envelope,
+        body: { ...(envelope.body as object), idempotencyKey },
+      };
+    };
+
+    const first = await dispatch(env.JOBS_QUEUE_NAME, [
+      { id: firstId, body: keyed(firstId), attempts: 1 },
+    ]);
+    const second = await dispatch(env.JOBS_QUEUE_NAME, [
+      { id: secondId, body: keyed(secondId), attempts: 1 },
+    ]);
+
+    expect(first).toStrictEqual([{ acked: true, retried: false }]);
+    expect(second).toStrictEqual([{ acked: true, retried: false }]);
+    expect(requests).toHaveLength(1);
+    const records = await db
+      .select()
+      .from(emailSendRecords)
+      .where(eq(emailSendRecords.idempotencyKey, idempotencyKey));
+    expect(records).toMatchObject([
+      { id: firstId, kind: EMAIL_DELIVERY_SMOKE_KIND.name, idempotencyKey },
+    ]);
+  });
+
+  test('冪等のキーを持たない送信要求は、別の封筒なら同じ内容でもそれぞれ送る', async () => {
+    const firstId = nextUlid();
+    const secondId = nextUlid();
+    const recipient = `${RECIPIENT_MARKER}-keyless@test.example`;
+    const requests = stubMailpit(mailpitAccepted);
+
+    await dispatch(env.JOBS_QUEUE_NAME, [
+      { id: firstId, body: smokeEnvelope(firstId, recipient), attempts: 1 },
+    ]);
+    await dispatch(env.JOBS_QUEUE_NAME, [
+      { id: secondId, body: smokeEnvelope(secondId, recipient), attempts: 1 },
+    ]);
+
+    expect(requests).toHaveLength(2);
+  });
+
   test('Mailpitの一時的な障害では、メール送信の再試行の方針の間隔でQueuesの再試行に任せる', async () => {
     const id = nextUlid();
     stubMailpit(() => new Response(null, { status: 503 }));
