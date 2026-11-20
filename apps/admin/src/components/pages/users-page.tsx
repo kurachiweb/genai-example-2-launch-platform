@@ -46,15 +46,18 @@ export function UsersPage() {
   const show = (next: UserModerationSearch) => {
     void navigate({ search: next });
   };
+  const filter = (next: UserModerationSearch) => {
+    void navigate({ search: next, resetScroll: false });
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8">
       <AdminPageHeader title={COPY.title} description={COPY.description} />
       <UserFilters
         search={search}
-        onApply={show}
+        onApply={filter}
         onReset={() => {
-          show({});
+          filter({});
         }}
       />
       <UserTable

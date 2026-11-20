@@ -38,6 +38,7 @@ import {
   textField,
   usersPageHarness,
 } from '../../../test/moderation-users-page.ts';
+import { nextRendered, scrollPageDown } from '../../../test/window-scroll.ts';
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 
@@ -136,6 +137,37 @@ describe('絞り込み', () => {
     await expect.element(textField('メールアドレス')).toHaveValue('');
     await expect.element(statusSelect()).toHaveTextContent('すべて');
   });
+
+  test.each([
+    {
+      name: '適用',
+      path: USERS_PATH,
+      button: applyButton,
+      search: { handle: 'maker' },
+    },
+    {
+      name: '解除',
+      path: `${USERS_PATH}?handle=maker`,
+      button: resetButton,
+      search: {},
+    },
+  ])(
+    '「$name」で条件を変えても、ページのスクロールを先頭へ戻さず操作した位置に留める',
+    async ({ path, button, search }) => {
+      const router = await renderWith({ path });
+      await expect.element(table()).toBeVisible();
+      await textField('ハンドル').fill('maker');
+      const scrolled = scrollPageDown();
+      expect(scrolled).toBeGreaterThan(0);
+      const rendered = nextRendered(router);
+
+      (button().element() as HTMLElement).click();
+
+      await rendered;
+      expect(router.state.location.search).toEqual(search);
+      expect(window.scrollY).toBe(scrolled);
+    },
+  );
 
   test('ハンドル・ニックネームが前後の空白を除いて100文字を超えると、適用を止めて欄の下に理由を示し、最初の超過の欄へフォーカスを戻す', async () => {
     const router = await renderWith();

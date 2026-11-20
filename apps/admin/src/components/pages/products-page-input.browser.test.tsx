@@ -16,6 +16,7 @@ import type { GraphQLResult } from '../../../lib/utilities/graphql/graphql-resul
 import { success } from '../../../test/admin-accounts-fixtures.ts';
 import {
   LAUNCHED_PRODUCT_NODE,
+  PRODUCTS_PATH,
   type ProductsHandler,
   productsQueryOf,
   productsVariablesOf,
@@ -24,6 +25,7 @@ import {
   SUSPENDED_OWNER_PRODUCT_NODE,
   UNLAUNCHED_PRODUCT_NODE,
 } from '../../../test/moderation-products-fixtures.ts';
+import { nextRendered, scrollPageDown } from '../../../test/window-scroll.ts';
 import type { AdminProductsQuery } from '../../graphql/generated/graphql.ts';
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
@@ -62,12 +64,12 @@ const previousButton = () => pagination().getByRole('button', { name: '前へ' }
 
 const lastVariables = () => productsVariablesOf(executeGraphQL).at(-1);
 
-const renderWith = async (products?: ProductsHandler) => {
+const renderWith = async (products?: ProductsHandler, path?: string) => {
   respondModerationProductsGraphQL(executeGraphQL, {
     role: 'VIEWER',
     ...(products === undefined ? {} : { products }),
   });
-  const router = await renderModerationProductsPage('VIEWER');
+  const router = await renderModerationProductsPage('VIEWER', path);
   await expect.element(table()).toBeVisible();
   return router;
 };
@@ -168,6 +170,36 @@ describe('ページの移動のフォーカスとスクロール', () => {
     await expect.element(applyButton()).toHaveFocus();
     expect(scrolled).not.toHaveBeenCalled();
   });
+
+  test.each([
+    {
+      name: '適用',
+      path: PRODUCTS_PATH,
+      button: applyButton,
+      search: { name: 'Pitch' },
+    },
+    {
+      name: '解除',
+      path: `${PRODUCTS_PATH}?name=Pitch`,
+      button: resetButton,
+      search: {},
+    },
+  ])(
+    '「$name」で条件を変えても、ページのスクロールを先頭へ戻さず操作した位置に留める',
+    async ({ path, button, search }) => {
+      const router = await renderWith(undefined, path);
+      await userEvent.fill(textField('名称'), 'Pitch');
+      const position = scrollPageDown();
+      expect(position).toBeGreaterThan(0);
+      const rendered = nextRendered(router);
+
+      (button().element() as HTMLElement).click();
+
+      await rendered;
+      expect(router.state.location.search).toEqual(search);
+      expect(window.scrollY).toBe(position);
+    },
+  );
 });
 
 describe('検索語の上限', () => {

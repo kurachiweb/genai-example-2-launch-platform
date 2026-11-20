@@ -55,6 +55,9 @@ export function ProductsPage() {
   const show = (next: ProductModerationSearch) => {
     void navigate({ search: next });
   };
+  const filter = (next: ProductModerationSearch) => {
+    void navigate({ search: next, resetScroll: false });
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8">
@@ -72,9 +75,9 @@ export function ProductsPage() {
                 void categories.refetch();
               }),
             })}
-        onApply={show}
+        onApply={filter}
         onReset={() => {
-          show({});
+          filter({});
         }}
       />
       <ProductTable
