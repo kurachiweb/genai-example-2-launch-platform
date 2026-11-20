@@ -91,6 +91,7 @@ describe('スキーマの集約点', () => {
     'sponsorships',
     'sponsorship_display_stops',
     'api_keys',
+    'moderation_actions',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {

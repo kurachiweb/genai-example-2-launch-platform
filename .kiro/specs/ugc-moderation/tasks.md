@@ -8,7 +8,7 @@
   - 完了状態: 単体テストと写しの照合のテストが成功し、共有定義が他の層を読み込まない
   - _Requirements: 4.9, 5.7, 5.9, 8.9, 9.10, 10.9, 12.9, 16.2_
 
-- [ ] 1.2 措置の記録のテーブルとマイグレーションを作る
+- [x] 1.2 措置の記録のテーブルとマイグレーションを作る
   - DBのテーブル定義は`drizzle-orm`・`ulid`と自身のファイルだけを読み込むため、1.1の措置の種類・対象の種類・通知の状態の値は写しとして持ち、CHECKは`inArray(...).inlineParams()`で値を埋め込む。写しと1.1の値の一致を`config/ugc-moderation-contract-copies.unit.test.ts`に加える。週ごとの統計のテーブルは統計の群(7.2)が別のマイグレーションで作る
   - 先に、テーブルの定義の単体テストで、措置の種類・対象の種類・通知の状態(送らない・依頼待ち・依頼済み・送らなかった)の値の制約、索引、他のspecのID(利用者・プロダクト・コメント・評価・画像・管理者・イベント)に外部キーが無いことを確かめる
   - 同じく先に、マイグレーションの文とテーブル定義の照合(`schema/moderation/moderation-migration.unit.test.ts`)と、実際のD1での制約の検証(`apps/db/ugc-moderation-schema.worker.test.ts`)を書き、`schema/index.unit.test.ts`のテーブル名の一覧に加える
@@ -440,3 +440,4 @@
 ## Implementation Notes
 
 - 1.1: 規則は`apps/common-lib/moderation/moderation-actions.ts`(`MODERATION_ACTION_DEFINITIONS`・`checkModerationReason`・`MODERATION_REASON_MESSAGES`・`MODERATION_TARGET_KINDS`・`MODERATION_NOTICE_STATUSES`・ライフサイクルの種類の写し)、表示名は`moderation-labels.ts`(上流の値の写し`QUARANTINE_REASONS`・`DISPOSABLE_EMAIL_JUDGEMENTS`・`ADMIN_LAUNCH_STATES`・`ADMIN_COMMENT_STATES`と`mediaPurposeLabel`)。`MODERATION_REASON_MAX`は`AUDIT_REASON_MAX`を参照する。使い捨て判定の写しは上流の型`DisposableEmailStatus`に本specの`unverified`(確認前)を加えた一覧として照合する。`check:contract-copies`への追加に伴い`scripts/tooling/run-all.unit.test.ts`の期待値も直した。13種の措置の表示名(「ユーザーの停止」など)は実装者が決めたため、1.5で文言規則に同じ語を載せる。利用者の状態・公開状態・評価の状態の表示名は未作成で、画面のタスクで必要なら加える
+- 1.2: `moderation_actions`(`apps/db/schema/moderation/moderation-actions.ts`、マイグレーション`20261120025459_ugc_moderation`)。`notice_status`は既定値を持たず、書き込む側が措置ごとに決める。索引・CHECKの名前は`api_keys`の前例(`<テーブル>_<列>_idx`・`_check`)。マイグレーションの照合のテストは`_ugc_moderation`で終わるディレクトリを探すため、7.2の統計のマイグレーションは`_ugc_moderation_statistics`のように別の接尾辞にする。D1の統合テストはapiのvitestで走る(`apps/api/db/ugc-moderation-schema.worker.test.ts`のバインド先)

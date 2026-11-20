@@ -17,6 +17,7 @@ const BACKEND_USER_LIFECYCLE =
   'apps/backend-lib/core/identity/user-lifecycle.ts';
 const BACKEND_PRODUCT_LIFECYCLE =
   'apps/backend-lib/core/product/product-lifecycle.ts';
+const DB_MODERATION_ACTIONS = 'apps/db/schema/moderation/moderation-actions.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
   ts.createSourceFile(
@@ -92,6 +93,26 @@ const readStringArray = (path: string, name: string): readonly string[] => {
   });
 };
 
+const readObjectKeys = (path: string, name: string): readonly string[] => {
+  const initializer = readInitializer(path, name);
+  if (!ts.isObjectLiteralExpression(initializer)) {
+    throw new Error(
+      `${path}の${name}の初期化子がオブジェクトリテラルではありません: ${initializer.getText()}`,
+    );
+  }
+  return initializer.properties.map((property) => {
+    if (
+      !ts.isPropertyAssignment(property) ||
+      !ts.isStringLiteral(property.name)
+    ) {
+      throw new Error(
+        `${path}の${name}の要素が文字列のキーの代入ではありません: ${property.getText()}`,
+      );
+    }
+    return property.name.text;
+  });
+};
+
 // 型の別名の文字列リテラルの合併(`'a' | 'b'`)の値を宣言の順に読む
 const readStringUnion = (path: string, name: string): readonly string[] => {
   const declaration = onlyOne(
@@ -164,5 +185,40 @@ describe('ライフサイクルのイベントの種類の写し(apps/common-lib
     )) {
       expect(upstream).toContain(type);
     }
+  });
+});
+
+describe('措置の記録のCHECK制約の値の写し(apps/db/schema/moderation/moderation-actions.ts)', () => {
+  test('措置の種類の一覧がcommon-libのMODERATION_ACTIONSと順も含めて一致する', () => {
+    expect(
+      readStringArray(DB_MODERATION_ACTIONS, 'MODERATION_ACTIONS'),
+    ).toEqual(readStringArray(COMMON_MODERATION_ACTIONS, 'MODERATION_ACTIONS'));
+  });
+
+  test('措置の種類の一覧がcommon-libのMODERATION_ACTION_DEFINITIONSの措置と順も含めて一致する', () => {
+    expect(
+      readStringArray(DB_MODERATION_ACTIONS, 'MODERATION_ACTIONS'),
+    ).toEqual(
+      readObjectKeys(
+        COMMON_MODERATION_ACTIONS,
+        'MODERATION_ACTION_DEFINITIONS',
+      ),
+    );
+  });
+
+  test('対象の種類の一覧がcommon-libのMODERATION_TARGET_KINDSと順も含めて一致する', () => {
+    expect(
+      readStringArray(DB_MODERATION_ACTIONS, 'MODERATION_TARGET_KINDS'),
+    ).toEqual(
+      readStringArray(COMMON_MODERATION_ACTIONS, 'MODERATION_TARGET_KINDS'),
+    );
+  });
+
+  test('通知の状態の一覧がcommon-libのMODERATION_NOTICE_STATUSESと順も含めて一致する', () => {
+    expect(
+      readStringArray(DB_MODERATION_ACTIONS, 'MODERATION_NOTICE_STATUSES'),
+    ).toEqual(
+      readStringArray(COMMON_MODERATION_ACTIONS, 'MODERATION_NOTICE_STATUSES'),
+    );
   });
 });
