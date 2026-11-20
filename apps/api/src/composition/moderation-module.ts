@@ -33,6 +33,7 @@ import {
   type ImageModerationService,
 } from '../application/moderation/image-moderation-service.ts';
 import { ModerationMaintenanceJob } from '../application/moderation/jobs/moderation-maintenance-job.ts';
+import { WeeklyStatisticsJob } from '../application/moderation/jobs/weekly-statistics-job.ts';
 import {
   EmailModerationNotifier,
   type ModerationNotifier,
@@ -46,6 +47,7 @@ import type {
   EngagementModerationWriter,
   ImageModerationWriter,
   ModerationIncidentReporter,
+  WeeklyStatisticsStore,
 } from '../application/moderation/ports.ts';
 import {
   DefaultProductModerationService,
@@ -63,10 +65,15 @@ import {
   DefaultUserModerationService,
   type UserModerationService,
 } from '../application/moderation/user-moderation-service.ts';
+import {
+  DefaultWeeklyStatisticsReader,
+  type WeeklyStatisticsReader,
+} from '../application/moderation/weekly-statistics-reader.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { ControlEngagementModerationWriter } from '../infrastructure/moderation/control-engagement-moderation-writer.ts';
 import { ControlImageModerationWriter } from '../infrastructure/moderation/control-image-moderation-writer.ts';
 import { D1ModerationStatements } from '../infrastructure/moderation/d1-moderation-statements.ts';
+import { D1WeeklyStatisticsStore } from '../infrastructure/moderation/d1-weekly-statistics-store.ts';
 import {
   createModerationWriteParticipants,
   type ModerationWriteParticipants,
@@ -78,7 +85,7 @@ import type { ProductLifecycleSyncHandler } from '../infrastructure/product/prod
 import { resolverOf } from './container-resolver.ts';
 import { MODERATION_WRITE_PARTICIPANTS } from './moderation-write-participants.ts';
 
-// 措置の記録のストア(MODERATION_PLATFORM_MODULE)と、利用者・プロダクト・コメント・評価・画像の操作口と監査ログの準備は他のモジュールの束縛を使う
+// 措置の記録のストア(MODERATION_PLATFORM_MODULE)と、利用者・プロダクト・コメント・評価・画像の操作口と監査ログの準備、統計の集計が読む利用者・プロダクト・マッチ・収益の照会は他のモジュールの束縛を使う
 export const MODERATION_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
   name: 'moderation',
   bindings: new ContainerModule(({ bind }) => {
@@ -152,6 +159,15 @@ export const MODERATION_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     );
     bind<ScheduledJobHandler>(MODERATION_TYPES.ModerationMaintenanceJob).to(
       ModerationMaintenanceJob,
+    );
+    bind<WeeklyStatisticsStore>(MODERATION_TYPES.WeeklyStatisticsStore).to(
+      D1WeeklyStatisticsStore,
+    );
+    bind<ScheduledJobHandler>(MODERATION_TYPES.WeeklyStatisticsJob).to(
+      WeeklyStatisticsJob,
+    );
+    bind<WeeklyStatisticsReader>(MODERATION_TYPES.WeeklyStatisticsReader).to(
+      DefaultWeeklyStatisticsReader,
     );
   }),
 };

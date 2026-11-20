@@ -532,6 +532,24 @@ export type AdminSponsorshipStatusFilter =
   | 'SCHEDULED'
   | 'TERMINATED';
 
+/** 週ごとの統計の1週。未確定の週は集計中の今週か、集計が止まって確定していない週 */
+export type AdminStatisticsWeek = {
+  __typename?: 'AdminStatisticsWeek';
+  finalized: Scalars['Boolean']['output'];
+  /** 週の期間の純収益 */
+  netRevenue: Money;
+  /** 週の終わり(集計中の週は集計の時点)のプロダクトの総数 */
+  products: Scalars['Int']['output'];
+  /** 週の期間の予選の実施数 */
+  qualifierMatches: Scalars['Int']['output'];
+  /** 週の期間のUpvote数 */
+  upvotes: Scalars['Int']['output'];
+  /** 週の終わり(集計中の週は集計の時点)の利用者の総数 */
+  users: Scalars['Int']['output'];
+  /** 週の開始日(月曜日の業務日付) */
+  weekStart: Scalars['String']['output'];
+};
+
 /** 認証アプリへ登録する多要素認証の設定 */
 export type AdminTotpSetup = {
   __typename?: 'AdminTotpSetup';
@@ -599,6 +617,14 @@ export type AdminViewer = {
   remainingRecoveryCodes: Scalars['Int']['output'];
   role: AdminRole;
   title?: Maybe<Scalars['String']['output']>;
+};
+
+/** 週ごとの統計。weeksは週の古い順で、最後の週が未確定なら集計中の今週 */
+export type AdminWeeklyStatistics = {
+  __typename?: 'AdminWeeklyStatistics';
+  /** 週が無ければnull */
+  lastComputedAt?: Maybe<Scalars['DateTime']['output']>;
+  weeks: Array<AdminStatisticsWeek>;
 };
 
 /** 代理の退会の入力 */
@@ -2913,6 +2939,8 @@ export type Query = {
   adminUsers: AdminUserConnection;
   /** ログイン中の管理者。未ログイン・無効なセッションではnull */
   adminViewer?: Maybe<AdminViewer>;
+  /** 直近26週と集計中の今週の統計。表示のたびに集計し直さず、定期実行が保存した値を返す */
+  adminWeeklyStatistics: AdminWeeklyStatistics;
   /** 監査ログの検索。変更・削除の操作は無い */
   auditLogs: AuditLogPage;
   /** 本人の購入の決済画面の表示事項。他人・存在しない購入はcheckout_not_found */
@@ -4319,6 +4347,7 @@ export type ResolversTypes = {
   AdminSponsorshipConnection: ResolverTypeWrapper<AdminSponsorshipConnection>;
   AdminSponsorshipFilter: AdminSponsorshipFilter;
   AdminSponsorshipStatusFilter: AdminSponsorshipStatusFilter;
+  AdminStatisticsWeek: ResolverTypeWrapper<AdminStatisticsWeek>;
   AdminTotpSetup: ResolverTypeWrapper<AdminTotpSetup>;
   AdminUser: ResolverTypeWrapper<AdminUser>;
   AdminUserConnection: ResolverTypeWrapper<AdminUserConnection>;
@@ -4326,6 +4355,7 @@ export type ResolversTypes = {
   AdminUserStatus: AdminUserStatus;
   AdminUserSummary: ResolverTypeWrapper<AdminUserSummary>;
   AdminViewer: ResolverTypeWrapper<AdminViewerSource>;
+  AdminWeeklyStatistics: ResolverTypeWrapper<AdminWeeklyStatistics>;
   AdministrativeWithdrawalInput: AdministrativeWithdrawalInput;
   ApiKey: ResolverTypeWrapper<ApiKey>;
   ApiKeyConnection: ResolverTypeWrapper<ApiKeyConnection>;
@@ -4620,12 +4650,14 @@ export type ResolversParentTypes = {
   AdminSponsorship: AdminSponsorship;
   AdminSponsorshipConnection: AdminSponsorshipConnection;
   AdminSponsorshipFilter: AdminSponsorshipFilter;
+  AdminStatisticsWeek: AdminStatisticsWeek;
   AdminTotpSetup: AdminTotpSetup;
   AdminUser: AdminUser;
   AdminUserConnection: AdminUserConnection;
   AdminUserFilter: AdminUserFilter;
   AdminUserSummary: AdminUserSummary;
   AdminViewer: AdminViewerSource;
+  AdminWeeklyStatistics: AdminWeeklyStatistics;
   AdministrativeWithdrawalInput: AdministrativeWithdrawalInput;
   ApiKey: ApiKey;
   ApiKeyConnection: ApiKeyConnection;
@@ -5112,6 +5144,16 @@ export type AdminSponsorshipConnectionResolvers<ContextType = GraphQLContext, Pa
   pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
 };
 
+export type AdminStatisticsWeekResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminStatisticsWeek'] = ResolversParentTypes['AdminStatisticsWeek']> = {
+  finalized?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  netRevenue?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  products?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  qualifierMatches?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  upvotes?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  users?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  weekStart?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type AdminTotpSetupResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminTotpSetup'] = ResolversParentTypes['AdminTotpSetup']> = {
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   otpauthUri?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -5150,6 +5192,11 @@ export type AdminViewerResolvers<ContextType = GraphQLContext, ParentType extend
   remainingRecoveryCodes?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   role?: Resolver<ResolversTypes['AdminRole'], ParentType, ContextType>;
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminWeeklyStatisticsResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminWeeklyStatistics'] = ResolversParentTypes['AdminWeeklyStatistics']> = {
+  lastComputedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  weeks?: Resolver<Array<ResolversTypes['AdminStatisticsWeek']>, ParentType, ContextType>;
 };
 
 export type ApiKeyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ApiKey'] = ResolversParentTypes['ApiKey']> = {
@@ -6069,6 +6116,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminUnhandledInquiryCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   adminUsers?: Resolver<ResolversTypes['AdminUserConnection'], ParentType, ContextType, RequireFields<QueryAdminUsersArgs, 'first'>>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
+  adminWeeklyStatistics?: Resolver<ResolversTypes['AdminWeeklyStatistics'], ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
   checkout?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<QueryCheckoutArgs, 'purchaseId'>>;
   directory?: Resolver<ResolversTypes['DirectoryPage'], ParentType, ContextType, RequireFields<QueryDirectoryArgs, 'input'>>;
@@ -6526,11 +6574,13 @@ export type Resolvers<ContextType = GraphQLContext> = {
   AdminSecondFactorRequired?: AdminSecondFactorRequiredResolvers<ContextType>;
   AdminSponsorship?: AdminSponsorshipResolvers<ContextType>;
   AdminSponsorshipConnection?: AdminSponsorshipConnectionResolvers<ContextType>;
+  AdminStatisticsWeek?: AdminStatisticsWeekResolvers<ContextType>;
   AdminTotpSetup?: AdminTotpSetupResolvers<ContextType>;
   AdminUser?: AdminUserResolvers<ContextType>;
   AdminUserConnection?: AdminUserConnectionResolvers<ContextType>;
   AdminUserSummary?: AdminUserSummaryResolvers<ContextType>;
   AdminViewer?: AdminViewerResolvers<ContextType>;
+  AdminWeeklyStatistics?: AdminWeeklyStatisticsResolvers<ContextType>;
   ApiKey?: ApiKeyResolvers<ContextType>;
   ApiKeyConnection?: ApiKeyConnectionResolvers<ContextType>;
   ApiKeyScopes?: ApiKeyScopesResolvers<ContextType>;

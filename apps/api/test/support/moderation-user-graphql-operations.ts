@@ -31,6 +31,7 @@ import {
   type UserSuspension,
 } from '../../src/application/identity/user-suspension.ts';
 import { moderationSchemaModule } from '../../src/presentation/graphql/modules/moderation/index.ts';
+import { paymentsSchemaModule } from '../../src/presentation/graphql/modules/payments/index.ts';
 import { issueAdminSession } from './admin-graphql-harness.ts';
 import {
   createGraphQLGateway,
@@ -201,7 +202,8 @@ const gateway = createGraphQLGateway({
     UNSUSPEND_USER,
     WITHDRAW_USER_BY_ADMINISTRATOR,
   ],
-  schemaModules: [moderationSchemaModule],
+  // 統計の型が金額の型(Money)を使うため、それを宣言する決済のスキーマモジュールも読み込む
+  schemaModules: [paymentsSchemaModule, moderationSchemaModule],
   overrides: [overridesModule],
 });
 

@@ -238,6 +238,30 @@ export const MODERATION_TYPE_DEFS = /* GraphQL */ `
     nextCursor: String
   }
 
+  "週ごとの統計の1週。未確定の週は集計中の今週か、集計が止まって確定していない週"
+  type AdminStatisticsWeek {
+    "週の開始日(月曜日の業務日付)"
+    weekStart: String!
+    finalized: Boolean!
+    "週の期間の純収益"
+    netRevenue: Money!
+    "週の終わり(集計中の週は集計の時点)の利用者の総数"
+    users: Int!
+    "週の終わり(集計中の週は集計の時点)のプロダクトの総数"
+    products: Int!
+    "週の期間の予選の実施数"
+    qualifierMatches: Int!
+    "週の期間のUpvote数"
+    upvotes: Int!
+  }
+
+  "週ごとの統計。weeksは週の古い順で、最後の週が未確定なら集計中の今週"
+  type AdminWeeklyStatistics {
+    weeks: [AdminStatisticsWeek!]!
+    "週が無ければnull"
+    lastComputedAt: DateTime
+  }
+
   "措置の結果。既に同じ状態ならchangedは偽"
   type ModerationOutcome {
     changed: Boolean!
@@ -287,6 +311,8 @@ export const MODERATION_TYPE_DEFS = /* GraphQL */ `
   }
 
   type Query {
+    "直近26週と集計中の今週の統計。表示のたびに集計し直さず、定期実行が保存した値を返す"
+    adminWeeklyStatistics: AdminWeeklyStatistics!
     "退会していない利用者の一覧(登録日時の新しい順)。firstは1〜50"
     adminUsers(
       filter: AdminUserFilter

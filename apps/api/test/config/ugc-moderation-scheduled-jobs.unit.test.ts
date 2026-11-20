@@ -4,6 +4,7 @@ import { createCronRegistry } from '../../lib/core/scheduling/cron-registry.ts';
 import { createRunBudgetTable } from '../../lib/core/scheduling/run-budget.ts';
 import { toUtcCronExpression } from '../../lib/core/time/business-time.ts';
 import { MODERATION_MAINTENANCE_JOB_DEFINITION } from '../../src/application/moderation/jobs/moderation-maintenance-job.ts';
+import { WEEKLY_STATISTICS_JOB_DEFINITION } from '../../src/application/moderation/jobs/weekly-statistics-job.ts';
 import {
   SCHEDULED_JOBS,
   SCHEDULED_RUN_BUDGETS,
@@ -11,10 +12,13 @@ import {
 
 const DAILY_CRON = toUtcCronExpression({ hour: 4, minute: 21 });
 
-const ALL_JOBS = [MODERATION_MAINTENANCE_JOB_DEFINITION] as const;
+const ALL_JOBS = [
+  WEEKLY_STATISTICS_JOB_DEFINITION,
+  MODERATION_MAINTENANCE_JOB_DEFINITION,
+] as const;
 
 describe('UGC管理のジョブの定期実行の一覧への登録', () => {
-  test('4:21の保守のジョブの定義を、そのまま定期実行の一覧に1つだけ載せる', () => {
+  test('4:21の統計の集計と保守のジョブの定義を、そのまま定期実行の一覧に1つずつ載せる', () => {
     const registered = SCHEDULED_JOBS.filter(({ name }) =>
       name.startsWith('ugc-moderation.'),
     );
@@ -29,18 +33,19 @@ describe('UGC管理のジョブの定期実行の一覧への登録', () => {
     expect(() => createCronRegistry(SCHEDULED_JOBS)).not.toThrow();
   });
 
-  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、Yearトーナメントの再処理(1700)の後・キーワードの再抽出(2300)の前に保守のジョブが動く', () => {
+  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、Yearトーナメントの再処理(1700)の後・キーワードの再抽出(2300)の前に統計の集計(1900)・保守(1910)の順で動く', () => {
     const jobs = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(DAILY_CRON)
       .map(({ name, order }) => ({ name, order }));
     const index = jobs.findIndex(
-      ({ name }) => name === 'ugc-moderation.maintenance',
+      ({ name }) => name === 'ugc-moderation.weekly-statistics',
     );
 
     expect(DAILY_CRON).toBe('21 12 * * *');
     expect(new Set(jobs.map(({ order }) => order)).size).toBe(jobs.length);
-    expect(jobs.slice(index - 1, index + 2)).toEqual([
+    expect(jobs.slice(index - 1, index + 3)).toEqual([
       { name: 'tournament-year.entry-follow-up', order: 1700 },
+      { name: 'ugc-moderation.weekly-statistics', order: 1900 },
       { name: 'ugc-moderation.maintenance', order: 1910 },
       { name: 'content-processing.keyword-reextraction', order: 2300 },
     ]);

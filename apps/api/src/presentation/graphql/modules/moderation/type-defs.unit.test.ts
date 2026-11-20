@@ -13,7 +13,7 @@ function rootFieldsOf(typeName: 'Query' | 'Mutation'): string[] {
 }
 
 describe('MODERATION_TYPE_DEFS', () => {
-  test('措置の群の照会は利用者・プロダクト・コメント・評価・隔離画像の一覧と詳細とカテゴリの選択肢で、統計の照会を持たない', () => {
+  test('照会は週ごとの統計と、利用者・プロダクト・コメント・評価・隔離画像の一覧と詳細とカテゴリの選択肢である', () => {
     expect(rootFieldsOf('Query').toSorted()).toEqual([
       'adminComments',
       'adminModerationCategoryOptions',
@@ -23,6 +23,7 @@ describe('MODERATION_TYPE_DEFS', () => {
       'adminQuarantinedImages',
       'adminRatings',
       'adminUsers',
+      'adminWeeklyStatistics',
     ]);
   });
 

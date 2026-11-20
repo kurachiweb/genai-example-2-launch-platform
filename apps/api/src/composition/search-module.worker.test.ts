@@ -66,7 +66,10 @@ const ENGAGEMENT_JOB_NAMES = ['engagement.comment-anonymization'];
 const WEEK_TOURNAMENT_JOB_NAMES = ['tournament-week.entry-follow-up'];
 const SPONSORSHIP_JOB_NAMES = ['sponsorship.maintenance'];
 const YEAR_TOURNAMENT_JOB_NAMES = ['tournament-year.entry-follow-up'];
-const UGC_MODERATION_JOB_NAMES = ['ugc-moderation.maintenance'];
+const UGC_MODERATION_JOB_NAMES = [
+  'ugc-moderation.weekly-statistics',
+  'ugc-moderation.maintenance',
+];
 const REEXTRACTION_CATEGORY = 'api.search.reextraction';
 
 function createContainer() {
@@ -278,6 +281,10 @@ describe('定期実行からの日次の再抽出', () => {
         }),
         expect.objectContaining({
           name: UGC_MODERATION_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: UGC_MODERATION_JOB_NAMES[1],
           result: 'succeeded',
         }),
         expect.objectContaining({

@@ -18,6 +18,7 @@ import {
 } from '../../src/infrastructure/admin/testing/admin-store-fixtures.ts';
 import { clearModerationWrites } from '../../src/infrastructure/moderation/testing/moderation-write-fixtures.ts';
 import { moderationSchemaModule } from '../../src/presentation/graphql/modules/moderation/index.ts';
+import { paymentsSchemaModule } from '../../src/presentation/graphql/modules/payments/index.ts';
 import { issueAdminSession } from './admin-graphql-harness.ts';
 import {
   createGraphQLGateway,
@@ -410,7 +411,8 @@ const gateway = createGraphQLGateway({
     ...Object.values(TARGET_MODERATIONS),
     ...Object.values(IMAGE_MODERATIONS),
   ],
-  schemaModules: [moderationSchemaModule],
+  // 統計の型が金額の型(Money)を使うため、それを宣言する決済のスキーマモジュールも読み込む
+  schemaModules: [paymentsSchemaModule, moderationSchemaModule],
   overrides: [overridesModule],
 });
 

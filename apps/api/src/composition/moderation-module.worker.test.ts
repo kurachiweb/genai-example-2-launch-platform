@@ -25,6 +25,10 @@ import {
   MODERATION_MAINTENANCE_JOB_DEFINITION,
   ModerationMaintenanceJob,
 } from '../application/moderation/jobs/moderation-maintenance-job.ts';
+import {
+  WEEKLY_STATISTICS_JOB_DEFINITION,
+  WeeklyStatisticsJob,
+} from '../application/moderation/jobs/weekly-statistics-job.ts';
 import { EmailModerationNotifier } from '../application/moderation/moderation-notifier.ts';
 import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
 import {
@@ -36,10 +40,12 @@ import { DefaultProductModerationService } from '../application/moderation/produ
 import { DefaultQuarantinedImageReader } from '../application/moderation/quarantined-image-reader.ts';
 import { DefaultRatingModerationService } from '../application/moderation/rating-moderation-service.ts';
 import { DefaultUserModerationService } from '../application/moderation/user-moderation-service.ts';
+import { DefaultWeeklyStatisticsReader } from '../application/moderation/weekly-statistics-reader.ts';
 import type { UserLifecycleSyncHandler } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 import { ControlEngagementModerationWriter } from '../infrastructure/moderation/control-engagement-moderation-writer.ts';
 import { ControlImageModerationWriter } from '../infrastructure/moderation/control-image-moderation-writer.ts';
 import { D1ModerationStatements } from '../infrastructure/moderation/d1-moderation-statements.ts';
+import { D1WeeklyStatisticsStore } from '../infrastructure/moderation/d1-weekly-statistics-store.ts';
 import type { ModerationWriteParticipants } from '../infrastructure/moderation/moderation-write-participant.ts';
 import { ProductModerationRecordSyncHandler } from '../infrastructure/moderation/product-moderation-record-sync-handler.ts';
 import { SentryModerationIncidentReporter } from '../infrastructure/moderation/sentry-moderation-incident-reporter.ts';
@@ -59,12 +65,9 @@ const INVOCATION_KINDS = ['fetch', 'scheduled'] as const;
 
 const DAILY_CRON = toUtcCronExpression({ hour: 4, minute: 21 });
 
-// 参加者の解決の部品はクラスでなく登録から組み立てた値のため、解決を別のテストで確かめる。週ごとの統計の群は統計の群のタスクが束縛する
+// 参加者の解決の部品はクラスでなく登録から組み立てた値のため、解決を別のテストで確かめる
 const IDENTIFIERS_OUTSIDE_IMPLEMENTATIONS: readonly string[] = [
   'ModerationWriteParticipants',
-  'WeeklyStatisticsStore',
-  'WeeklyStatisticsJob',
-  'WeeklyStatisticsReader',
 ];
 
 const IMPLEMENTATIONS = [
@@ -88,6 +91,9 @@ const IMPLEMENTATIONS = [
   ['EngagementModerationWriter', ControlEngagementModerationWriter],
   ['UserModerationRecordSyncHandler', UserModerationRecordSyncHandler],
   ['ProductModerationRecordSyncHandler', ProductModerationRecordSyncHandler],
+  ['WeeklyStatisticsStore', D1WeeklyStatisticsStore],
+  ['WeeklyStatisticsJob', WeeklyStatisticsJob],
+  ['WeeklyStatisticsReader', DefaultWeeklyStatisticsReader],
 ] as const;
 
 const CONTEXT = {
@@ -152,7 +158,7 @@ describe('APIサーバーのモジュールの一覧への措置の束縛の登�
     );
   });
 
-  test('解決を確かめる識別子は、参加者の解決の部品と統計の群を除くMODERATION_TYPESの全てである', () => {
+  test('解決を確かめる識別子は、参加者の解決の部品を除くMODERATION_TYPESの全てである', () => {
     expect(IMPLEMENTATIONS.map(([name]) => name).toSorted()).toEqual(
       Object.keys(MODERATION_TYPES)
         .filter((name) => !IDENTIFIERS_OUTSIDE_IMPLEMENTATIONS.includes(name))
@@ -172,6 +178,27 @@ describe('APIサーバーのモジュールの一覧への措置の束縛の登�
       jobs.filter(({ order }) => order === 1910).map(({ name }) => name),
     ).toEqual(['ugc-moderation.maintenance']);
     expect(new Set(jobs.map(({ order }) => order)).size).toBe(jobs.length);
+  });
+
+  test('統計の集計のジョブを4:21の起動に順序1900で1つだけ登録し、保守のジョブより前に動かす', () => {
+    const jobs = createCronRegistry(SCHEDULED_JOBS).jobsFor(DAILY_CRON);
+
+    expect(
+      SCHEDULED_JOBS.filter(
+        ({ handler }) => handler === MODERATION_TYPES.WeeklyStatisticsJob,
+      ),
+    ).toStrictEqual([WEEKLY_STATISTICS_JOB_DEFINITION]);
+    expect(
+      jobs.filter(({ order }) => order === 1900).map(({ name }) => name),
+    ).toEqual(['ugc-moderation.weekly-statistics']);
+    expect(
+      jobs
+        .map(({ name }) => name)
+        .filter((name) => name.startsWith('ugc-moderation.')),
+    ).toEqual([
+      'ugc-moderation.weekly-statistics',
+      'ugc-moderation.maintenance',
+    ]);
   });
 
   test('利用者の停止・停止解除・退会を対象に、措置の記録の同期の処理をユーザーの同期の処理の登録口に1つ登録する', () => {
