@@ -424,7 +424,7 @@
   - _Depends: 6.6, 6.7, 8.3_
   - _Requirements: 16.4_
 
-- [ ] 8.6 代理の退会のE2Eシナリオを作る
+- [x] 8.6 代理の退会のE2Eシナリオを作る
   - `signInAsNewAdmin`の最上位管理者で、登録した利用者を`/users`で検索し、理由を入力して代理の退会を行い、その利用者でログインできないこと、監査ログの画面に代理の退会の記録が出ること、退会の完了のメールが送られないことを確かめる。モデレーターのユーザー一覧には操作が出ないことを確かめる
   - 完了状態: ローカルでE2Eが成功する
   - _Depends: 6.8, 8.3_
@@ -488,3 +488,4 @@
 - 6.7: 画像モデレーションのページ(`routes/_authenticated/media-moderation/index.tsx`・`components/pages/media-moderation-page.tsx`・`components/moderation/media/{quarantine-reason-tabs,quarantined-image-list,quarantined-image-card,image-moderation-actions}.tsx`・`quarantined-image-view.ts`(理由ごとの操作と保有者の表示)・`use-appended-image-focus.ts`(6.5の`use-appended-row-focus.ts`とほぼ同じで共通化の余地))。6.1のloaderに`cause`を加えた。タブの切り替えは`resetScroll: false`で前の一覧を`inert`で残す。自動判定と管理者操作の両方を持つ画像は4つの操作。最初の取得の失敗は`PartialErrorState`(設計は`ErrorState`、006に従った)。削除済みの管理者の保有者は「表示できない利用者」(003に規定なし)。画像は`alt=""`。ローカルで隔離画像が配信経路から読み込まれ表示されることを確かめた(6.2の申し送り)。確認に使った試験用の行はローカルD1から親が削除した。ローカルR2の隔離のバケットのオブジェクト`fedcba9876543210f0e1d2c3b4a59687`の削除は許可で拒否されたため残っている
 - 7.10: `e2e/admin/weekly-statistics.e2e.test.ts`(手順`weekly-statistics-steps.ts`)。`triggerScheduled({ worker: 'api', businessDate, businessTime: '04:21' })`→モデレーターの`signInAsNewAdmin`→ダッシュボードの統計のカードの表に今週の行がちょうど1つ・`time[datetime=weekStart]`・「集計中」を確かめる。文言は`statistics-messages.ts`から読む。ローカルでapi(`--test-scheduled`)・event・adminを起動して成功した。既知の制約: ローカルD1に今週より後の週の未確定の行(将来の業務日付で4:21を動かした場合)があると`listRecent`が今週の行を返さず落ちる
 - 6.9: `apps/admin/src/composition/admin-navigation.ts`の`ADMIN_NAV_ITEMS`にユーザー(20)・プロダクト(30)・コメント(40)・評価(50)・画像モデレーション(60)を加えた(全ロールが参照できるため必要なロールは持たせない)。全件一致で確かめる上流のテスト2つに加え、`apps/admin/test/admin-shell.browser.test.tsx`の`MENU_ITEMS`も更新した。`project-values.md`の「メニューの登録箇所」の行を15件に直した。admin全体の`test:browser`(82ファイル1121件)が成功し、ローカルで閲覧のみの管理者が5ページへメニューから移動できることを確かめた
+- 8.6: `e2e/admin/administrative-withdrawal.e2e.test.ts`(手順`administrative-withdrawal-steps.ts`)。最上位管理者が画面から登録した利用者をメールアドレスで検索して代理の退会→別の文脈でログインできない→監査ログに1行→退会の確定から20秒間その利用者にメールが1通も届かない(退会の完了のメール種別は存在しないため「何も届かない」で確かめる。登録の確認メールの到着を先に待つ)。モデレーターには「停止」はあるが「代理の退会」が無い。8.4の`user-moderation-steps.ts`と似た補助(行の取り方・監査ログの行)を自分のファイルに持つ(まとめる余地あり)
