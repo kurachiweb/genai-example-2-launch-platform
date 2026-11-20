@@ -42,6 +42,7 @@ export interface ModerationCommand {
 
 export interface ModerationOutcome {
   readonly changed: boolean;
+  // changed: trueでnullなら、状態は変わったが保留中の措置を取り出せず、措置の記録・監査ログ・参加者の文が書かれていない。呼び出し側が参加者の記録を確定済みと扱わないよう区別する
   readonly actionId: string | null;
 }
 

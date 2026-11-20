@@ -227,6 +227,7 @@ apps/
 │       ├── media-files-service.ts                 # MediaFilesの実装(紐付け・論理削除・即時削除・保有者単位の削除・保有者の識別子の列挙・取得・内容)
 │       ├── media-quarantine-service.ts            # MediaQuarantineの実装(理由の追加・解除と移動の依頼・一覧)
 │       ├── media-moderation-control.ts            # MediaModerationControl(呼び出し側の文を受け取る隔離理由の付け外しと削除の依頼。ugc-moderationのタスク2.5が加えた。2026-11-20に開発者が決定)
+│       ├── quarantine-relocation.ts               # MediaQuarantineServiceとMediaModerationControlが共有する、隔離理由の変更後の保存先の判定(needsRelocation: 理由の付け外しの後の保存先と移動の要否。同名のテストは無く、2つの実装のWorkers統合テストで確かめる。ugc-moderationのタスク2.5が加えた。2026-11-20)
 │       └── media-platform-module.ts               # 両アプリ共通の束縛(createMediaPlatformModule(appName))
 ├── api/
 │   ├── src/application/session/session-view.ts    # SessionView(api-gatewayの契約。identity-authの2.3が追記する。実装時に無ければ5.1が同じ形で置く。R3-1)

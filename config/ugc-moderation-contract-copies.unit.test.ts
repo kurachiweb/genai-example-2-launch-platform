@@ -20,6 +20,11 @@ const BACKEND_PRODUCT_LIFECYCLE =
 const BACKEND_PRODUCT_PORTS = 'apps/backend-lib/core/product/ports.ts';
 const BACKEND_ENGAGEMENT_PORTS = 'apps/backend-lib/core/engagement/ports.ts';
 const DB_MODERATION_ACTIONS = 'apps/db/schema/moderation/moderation-actions.ts';
+const BACKEND_MATCH_MODEL = 'apps/backend-lib/core/match/match-model.ts';
+const ADMIN_MATCH_RESULT_LABELS =
+  'apps/admin/src/components/moderation/products/match-result-labels.ts';
+const ADMIN_MODERATION_MESSAGES =
+  'apps/admin/src/components/moderation/shared/moderation-messages.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
   ts.createSourceFile(
@@ -109,6 +114,63 @@ const readObjectKeys = (path: string, name: string): readonly string[] => {
     ) {
       throw new Error(
         `${path}の${name}の要素が文字列のキーの代入ではありません: ${property.getText()}`,
+      );
+    }
+    return property.name.text;
+  });
+};
+
+const readStringConstant = (path: string, name: string): string => {
+  const initializer = readInitializer(path, name);
+  if (!ts.isStringLiteral(initializer)) {
+    throw new Error(
+      `${path}の${name}の初期化子が文字列リテラルではありません: ${initializer.getText()}`,
+    );
+  }
+  return initializer.text;
+};
+
+// new Set([<文字列>...])の要素を読む
+const readStringSet = (path: string, name: string): readonly string[] => {
+  const initializer = readInitializer(path, name);
+  const [argument] = ts.isNewExpression(initializer)
+    ? (initializer.arguments ?? [])
+    : [];
+  if (
+    !ts.isNewExpression(initializer) ||
+    initializer.expression.getText() !== 'Set' ||
+    argument === undefined ||
+    !ts.isArrayLiteralExpression(argument)
+  ) {
+    throw new Error(
+      `${path}の${name}の初期化子が配列リテラルを渡すnew Setではありません: ${initializer.getText()}`,
+    );
+  }
+  return argument.elements.map((element) => {
+    if (!ts.isStringLiteral(element)) {
+      throw new Error(
+        `${path}の${name}の要素が文字列リテラルではありません: ${element.getText()}`,
+      );
+    }
+    return element.text;
+  });
+};
+
+// キーが識別子か文字列リテラルの代入だけのオブジェクトのキーを宣言の順に読む
+const readPropertyNames = (path: string, name: string): readonly string[] => {
+  const initializer = readInitializer(path, name);
+  if (!ts.isObjectLiteralExpression(initializer)) {
+    throw new Error(
+      `${path}の${name}の初期化子がオブジェクトリテラルではありません: ${initializer.getText()}`,
+    );
+  }
+  return initializer.properties.map((property) => {
+    if (
+      !ts.isPropertyAssignment(property) ||
+      !(ts.isIdentifier(property.name) || ts.isStringLiteral(property.name))
+    ) {
+      throw new Error(
+        `${path}の${name}の要素が識別子か文字列のキーの代入ではありません: ${property.getText()}`,
       );
     }
     return property.name.text;
@@ -252,5 +314,53 @@ describe('措置の記録のCHECK制約の値の写し(apps/db/schema/moderation
     ).toEqual(
       readStringArray(COMMON_MODERATION_ACTIONS, 'MODERATION_NOTICE_STATUSES'),
     );
+  });
+});
+
+describe('マッチの値の写し(apps/admin/src/components/moderation)', () => {
+  test('種別の表示名のキーがmatch-engineのMATCH_KINDSと順も含めて一致する', () => {
+    expect(
+      readPropertyNames(ADMIN_MODERATION_MESSAGES, 'MATCH_KIND_LABELS'),
+    ).toEqual(readStringArray(BACKEND_MATCH_MODEL, 'MATCH_KINDS'));
+  });
+
+  test('予選の種別がmatch-engineのMATCH_KINDSに含まれる', () => {
+    expect(readStringArray(BACKEND_MATCH_MODEL, 'MATCH_KINDS')).toContain(
+      readStringConstant(ADMIN_MATCH_RESULT_LABELS, 'QUALIFIER_KIND'),
+    );
+  });
+
+  test('勝敗の表示名のキーがmatch-engineのENTRY_RESULTSと順も含めて一致する', () => {
+    expect(
+      readPropertyNames(ADMIN_MATCH_RESULT_LABELS, 'RESULT_LABELS'),
+    ).toEqual(readStringArray(BACKEND_MATCH_MODEL, 'ENTRY_RESULTS'));
+  });
+
+  test('不戦勝と敗北の結果がmatch-engineのENTRY_RESULTSに含まれる', () => {
+    const upstream = readStringArray(BACKEND_MATCH_MODEL, 'ENTRY_RESULTS');
+    expect(upstream).toContain(
+      readStringConstant(ADMIN_MATCH_RESULT_LABELS, 'BYE_RESULT'),
+    );
+    expect(upstream).toContain(
+      readStringConstant(ADMIN_MATCH_RESULT_LABELS, 'LOST_RESULT'),
+    );
+  });
+
+  test('開始前の段階がmatch-engineのMATCH_PHASESに含まれる', () => {
+    expect(readStringArray(BACKEND_MATCH_MODEL, 'MATCH_PHASES')).toContain(
+      readStringConstant(ADMIN_MATCH_RESULT_LABELS, 'SCHEDULED_PHASE'),
+    );
+  });
+
+  test('両者敗北の決着がmatch-engineのMATCH_DECISIONSに含まれる', () => {
+    const upstream = readStringArray(BACKEND_MATCH_MODEL, 'MATCH_DECISIONS');
+    const decisions = readStringSet(
+      ADMIN_MATCH_RESULT_LABELS,
+      'BOTH_LOST_DECISIONS',
+    );
+    expect(decisions).not.toHaveLength(0);
+    for (const decision of decisions) {
+      expect(upstream).toContain(decision);
+    }
   });
 });
