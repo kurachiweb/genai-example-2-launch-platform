@@ -1,6 +1,8 @@
+import type { MinorUnitAmount } from '../../../common-lib/payments/money.ts';
 import type { PreparedAuditEntry } from '../../../lib/core/admin/audit-log.ts';
 import type { QuarantineReason } from '../../../lib/core/media/media-file.ts';
 import type { NewModerationRecord } from '../../../lib/core/moderation/ports.ts';
+import type { BusinessDate } from '../../../lib/core/time/business-time.ts';
 
 export type ModerationIncident =
   | 'moderation-record-missing'
@@ -89,4 +91,22 @@ export interface EngagementModerationWriter {
   revalidateRating(
     write: EngagementModerationWrite,
   ): Promise<EngagementModerationChange>;
+}
+
+export interface WeeklyStatisticsRow {
+  readonly weekStart: BusinessDate;
+  readonly netRevenue: MinorUnitAmount;
+  readonly usersTotal: number;
+  readonly productsTotal: number;
+  readonly qualifierMatches: number;
+  readonly upvotes: number;
+  readonly finalized: boolean;
+  readonly computedAt: Date;
+}
+
+// 確定した週の値は変えない。listRecentは確定した週と、最も新しい週(未確定なら集計中の今週)を週の古い順に返し、ジョブが止まって確定できないまま後の週に追い越された週は値が週の途中のものであるため返さない
+export interface WeeklyStatisticsStore {
+  upsert(rows: readonly WeeklyStatisticsRow[]): Promise<void>;
+  findFinalized(weekStart: BusinessDate): Promise<boolean>;
+  listRecent(limit: number): Promise<readonly WeeklyStatisticsRow[]>;
 }

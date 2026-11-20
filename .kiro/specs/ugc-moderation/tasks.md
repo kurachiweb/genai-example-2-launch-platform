@@ -318,7 +318,7 @@
   - _Boundary: StatisticsWeek_
   - _Requirements: 1.5, 2.1, 2.5, 16.2_
 
-- [ ] 7.4 統計の群の識別子とポートを加え、週ごとの統計のストアを作る
+- [x] 7.4 統計の群の識別子とポートを加え、週ごとの統計のストアを作る
   - 本specのapiの識別子とポートのファイルへ、統計の群の識別子(週ごとの統計のストア・集計のジョブ・照会)と週ごとの統計のストアのポートを加える(措置の群の識別子を変えない)
   - 先に、Workers統合テストで、週の行のupsertが確定した週を書き換えないこと・2回実行して行が1つであること、確定の有無の照会、最近の行の古い順を確かめる
   - 完了状態: Workers統合テストが成功し、型検査が通る
@@ -465,3 +465,4 @@
 - 7.1: 統計の群を5文書(と`features/README.md`の索引)に書いた。設計に文面の無い文言は実装者が決め、7.8・7.9はこれに従う: カードの説明「直近26週と集計中の今週の運営状況の推移です。週は月曜日に始まり、値は毎日集計します。終わった週の値は変わりません。」(基準時刻の時差と集計時刻は画面に出さない)、収益の名前「合計収益(税込)」、直近の確定した週の見出し「<週の開始日>からの週」、増減「前週比+12」「前週比-3」「前週比±0」・金額「前週比+$12.34」「前週比±$0」、前週の行が無ければ「前週の値なし」、今週だけなら「終わった週の統計はまだありません。」、グラフの横軸「11/16」・金額の縦軸「$1,234」、表の見出し「週ごとの統計(直近26週と今週)」(新しい週が上、「集計中」は開始日の後)。既存の`MoneyText`は`$0.00`・`$9.00`と小数点以下を常に出し、デザイン原則(全て0なら省略)と食い違うため、7.8は独自の書式か`MoneyText`の変更が要る。`lastComputedAt`の表示の文言は定めていない。ジョブが止まり今週の間に作られた行が確定できないまま残る場合の`listRecent`の扱いを7.4・7.5で確かめる
 - 7.2: `moderation_weekly_statistics`(`apps/db/schema/moderation/moderation-weekly-statistics.ts`、マイグレーション`20261120061309_ugc_moderation_statistics`)。ULIDの主キー・`week_start`の一意索引(`moderation_weekly_statistics_week_start_unique`)・`finalized`は0/1のCHECKで既定値なし・4つの件数は0以上のCHECKで既定値なし・`net_revenue`は返金で負になり得るため符号のCHECKなし・`timestamps()`あり・外部キーなし。D1の統合テストで`onConflictDoUpdate({ target: weekStart, setWhere: finalized = false })`が確定した週を書き換えず`id`を保つことを確かめた(7.4のストアはこの形を使える)。マイグレーションの照合のテストは接尾辞を引数にして両方のマイグレーションを確かめる
 - 4.3: `DefaultAdminCommentReader`・`DefaultAdminRatingReader`(`application/moderation/admin-comment-reader.ts`・`admin-rating-reader.ts`、テストの補助`testing/admin-engagement-reader-fakes.ts`)。4.2と同じ形(ハンドルの解決で一致が無ければ上流を呼ばず空、表示名は利用者`not-withdrawn`・プロダクト`not-deleted`で各1回、最新の理由は非公開化中・無効化済みのものだけ)。設計との相違: 設計の照会の表に`adminProductRatings`の照会が無いため、`AdminRatingListFilter`に任意の`productId`を加えた(ハンドルと食い違えば空)。評価の状態は`invalidatedAt`から導く。戻り値の型は実装者が決めた(`commentId`・`ratingId`、`author`・`rater`は`{ userId, handle, nickname, suspended } | null`)ため、4.6〜4.8でGraphQLの`AdminComment`・`AdminRating`へ写す。照合のテストに`ADMIN_COMMENT_STATES`と上流の`AdminCommentState`の一致を加えた
+- 7.4: `MODERATION_TYPES`に`WeeklyStatisticsStore`・`WeeklyStatisticsJob`・`WeeklyStatisticsReader`、`ports.ts`に`WeeklyStatisticsRow`・`WeeklyStatisticsStore`を加え、`D1WeeklyStatisticsStore`(`infrastructure/moderation/d1-weekly-statistics-store.ts`、`PLATFORM_TYPES.Database`で注入)を作った。upsertは1文の`onConflictDoUpdate`(`setWhere: finalized = false`、`excluded."<列>"`)で、同じ週を1回の呼び出しに2行渡さない前提。`listRecent`は確定した週と最新の1週だけを新しい順に件数まで読み古い順で返し、追い越された未確定の週(ジョブが止まった週)は返さず件数にも数えない。7.5・7.8への申し送り: 最新の行が確定済みのときは`listRecent(27)`が確定した27週を返すため照会で26週に切るか決める。週に欠けがあり得るため、7.8の前週の有無は7日前に始まる行があるかで判定する(無ければ「前週の値なし」)

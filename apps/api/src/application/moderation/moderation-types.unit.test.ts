@@ -25,10 +25,13 @@ const EXPECTED_NAMES = [
   'UserModerationRecordSyncHandler',
   'ProductModerationRecordSyncHandler',
   'ModerationWriteParticipants',
+  'WeeklyStatisticsStore',
+  'WeeklyStatisticsJob',
+  'WeeklyStatisticsReader',
 ] as const;
 
 describe('MODERATION_TYPES', () => {
-  test('apiの措置のユースケース・照会・通知・保守のジョブ・書き込みの単位・定型の通知・文の組み立て・保留中の措置・同期の処理・参加者の解決の識別子だけを持つ', () => {
+  test('apiの措置のユースケース・照会・通知・保守のジョブ・書き込みの単位・定型の通知・文の組み立て・保留中の措置・同期の処理・参加者の解決と、統計の群の週ごとの統計のストア・集計のジョブ・照会の識別子だけを持つ', () => {
     expect(Object.keys(MODERATION_TYPES).toSorted()).toStrictEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

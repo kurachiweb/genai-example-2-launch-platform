@@ -62,6 +62,15 @@ const ProductModerationRecordSyncHandler: unique symbol = Symbol.for(
 const ModerationWriteParticipants: unique symbol = Symbol.for(
   'moderation.api.ModerationWriteParticipants',
 );
+const WeeklyStatisticsStore: unique symbol = Symbol.for(
+  'moderation.api.WeeklyStatisticsStore',
+);
+const WeeklyStatisticsJob: unique symbol = Symbol.for(
+  'moderation.api.WeeklyStatisticsJob',
+);
+const WeeklyStatisticsReader: unique symbol = Symbol.for(
+  'moderation.api.WeeklyStatisticsReader',
+);
 
 export const MODERATION_TYPES = Object.freeze({
   UserModerationService,
@@ -85,4 +94,7 @@ export const MODERATION_TYPES = Object.freeze({
   UserModerationRecordSyncHandler,
   ProductModerationRecordSyncHandler,
   ModerationWriteParticipants,
+  WeeklyStatisticsStore,
+  WeeklyStatisticsJob,
+  WeeklyStatisticsReader,
 });
