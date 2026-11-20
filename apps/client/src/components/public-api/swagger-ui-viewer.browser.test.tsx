@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import {
   afterEach,
   beforeEach,
@@ -81,18 +80,12 @@ interface HarnessProps {
   readonly loadSwaggerUi: SwaggerUiLoader;
 }
 
-// ページの見出しへのフォーカスの移動を確かめるため、ページと同じく見出しを持つ枠に置く
+// ページと同じく、ページの見出しの下に区画の見出しが並ぶ枠に置く
 function Harness({ loadSwaggerUi }: HarnessProps) {
-  const headingRef = useRef<HTMLHeadingElement>(null);
   return (
     <main className="bg-background p-4 text-foreground">
-      <h1 ref={headingRef} tabIndex={-1}>
-        {HEADING}
-      </h1>
-      <SwaggerUiViewer
-        loadSwaggerUi={loadSwaggerUi}
-        retryFocusRef={headingRef}
-      />
+      <h1>{HEADING}</h1>
+      <SwaggerUiViewer loadSwaggerUi={loadSwaggerUi} />
     </main>
   );
 }
@@ -198,7 +191,7 @@ describe('SwaggerUiViewer', () => {
     expect(loadSwaggerUi).not.toHaveBeenCalled();
   });
 
-  test('再試行を押すと、ページの見出しへフォーカスを移して読み込み直し、成功すればAPIリファレンスを示す', async () => {
+  test('再試行を押すと、区画の見出しへフォーカスを移して読み込み直し、成功すればAPIリファレンスを示す', async () => {
     const documentFetch = stubDocumentFetch(() =>
       Promise.resolve(new Response('unavailable', { status: 503 })),
     );
@@ -210,7 +203,9 @@ describe('SwaggerUiViewer', () => {
     await reference().getByRole('button', { name: '再試行' }).click();
 
     await expect
-      .element(page.getByRole('heading', { level: 1, name: HEADING }))
+      .element(
+        reference().getByRole('heading', { level: 2, name: REFERENCE_HEADING }),
+      )
       .toHaveFocus();
     await expect
       .element(reference().getByRole('status'))

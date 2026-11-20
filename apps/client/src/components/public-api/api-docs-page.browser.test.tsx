@@ -118,7 +118,7 @@ describe('ApiDocsPage', () => {
     await expect.element(page.getByText(INTRO)).toBeVisible();
   });
 
-  test('仕様書の取得に失敗すると、見出しと説明を残したまま失敗の文言と再試行と問い合わせへの導線を示し、再試行でページの見出しへフォーカスを移す', async () => {
+  test('仕様書の取得に失敗すると、見出しと説明を残したまま失敗の文言と再試行と問い合わせへの導線を示し、再試行で区画の見出しへフォーカスを移す', async () => {
     stubDocumentFetch(() =>
       Promise.resolve(new Response('unavailable', { status: 503 })),
     );
@@ -135,7 +135,11 @@ describe('ApiDocsPage', () => {
 
     await reference.getByRole('button', { name: '再試行' }).click();
 
-    await expect.element(page.getByRole('heading', { level: 1 })).toHaveFocus();
+    await expect
+      .element(
+        reference.getByRole('heading', { level: 2, name: 'APIリファレンス' }),
+      )
+      .toHaveFocus();
   });
 
   describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {

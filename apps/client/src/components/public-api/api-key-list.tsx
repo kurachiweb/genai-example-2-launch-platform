@@ -3,8 +3,8 @@ import type { RefObject } from 'react';
 import { FormMessage } from '../../../lib/components/form/form-message.tsx';
 import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { EmptyState } from '../../../lib/components/state/empty-state.tsx';
-import { ErrorState } from '../../../lib/components/state/error-state.tsx';
 import { LoadingSkeleton } from '../../../lib/components/state/loading-skeleton.tsx';
+import { PartialErrorState } from '../../../lib/components/state/partial-error-state.tsx';
 import { Button } from '../../../lib/components/ui/button/button.tsx';
 import { Skeleton } from '../../../lib/components/ui/skeleton/skeleton.tsx';
 import { errorMessageOf } from '../../../lib/utilities/graphql/graphql-result.ts';
@@ -82,7 +82,7 @@ export function ApiKeyList({
 
   if (loadFailed) {
     return (
-      <ErrorState
+      <PartialErrorState
         message={API_KEY_LIST_MESSAGES.loadError}
         onRetry={() => {
           retryFocusRef.current?.focus();

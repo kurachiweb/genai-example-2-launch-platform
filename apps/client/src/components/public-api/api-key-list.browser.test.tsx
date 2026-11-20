@@ -194,11 +194,14 @@ describe('ApiKeyList', () => {
     expect(list().query()).toBeNull();
   });
 
-  test('最初の取得の失敗は、固定の文言と再試行のボタンを示し、再試行で見出しへフォーカスを移して取り直す', async () => {
+  test('最初の取得の失敗は、一覧の位置の一部の失敗として固定の文言と再試行のボタンを示し、再試行で見出しへフォーカスを移して取り直す', async () => {
     const onRetry = vi.fn();
     await renderList({ initial: undefined, loadFailed: true, onRetry });
 
     await expect.element(page.getByRole('alert')).toHaveTextContent(LOAD_ERROR);
+    expect(
+      page.getByRole('alert').element().closest('[data-slot]'),
+    ).toHaveAttribute('data-slot', 'partial-error-state');
     expect(page.getByRole('link', { name: 'お問い合わせ' }).query()).toBeNull();
 
     await page.getByRole('button', { name: '再試行' }).click();

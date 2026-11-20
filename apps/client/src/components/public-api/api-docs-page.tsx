@@ -1,4 +1,4 @@
-import { type ReactNode, useId, useRef } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import { INLINE_LINK_CLASS_NAME } from '../../../lib/components/navigation/inline-link-class.ts';
 import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
@@ -36,16 +36,10 @@ function GuideSection({
 }
 
 export function ApiDocsPage({ loadSwaggerUi }: ApiDocsPageProps) {
-  const headingRef = useRef<HTMLHeadingElement>(null);
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-10">
       <div className="flex flex-col gap-4">
-        {/* 再試行で消える再試行のボタンから、フォーカスを<body>へ落とさないよう、移り先としてプログラムからだけフォーカスできるようにする */}
-        <h1
-          ref={headingRef}
-          tabIndex={-1}
-          className="rounded-sm text-3xl font-extrabold tracking-tight sm:text-4xl"
-        >
+        <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
           {API_DOCS_PAGE_TITLE}
         </h1>
         <p className="text-muted-foreground">{API_DOCS_MESSAGES.intro}</p>
@@ -80,7 +74,6 @@ export function ApiDocsPage({ loadSwaggerUi }: ApiDocsPageProps) {
         </GuideSection>
       </div>
       <SwaggerUiViewer
-        retryFocusRef={headingRef}
         {...(loadSwaggerUi === undefined ? {} : { loadSwaggerUi })}
       />
     </div>

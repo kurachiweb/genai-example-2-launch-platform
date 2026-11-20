@@ -243,6 +243,9 @@ describe('APIキーの設定の画面', () => {
     await renderPage({ cached: null });
 
     await expect.element(page.getByRole('alert')).toHaveTextContent(LOAD_ERROR);
+    expect(
+      page.getByRole('alert').element().closest('[data-slot]'),
+    ).toHaveAttribute('data-slot', 'partial-error-state');
     failing = false;
     await userEvent.click(page.getByRole('button', { name: '再試行' }));
 

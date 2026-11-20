@@ -176,6 +176,9 @@ describe('APIキーの設定の経路', () => {
     await expect
       .element(main().getByRole('alert'))
       .toHaveTextContent(LOAD_ERROR);
+    expect(
+      main().getByRole('alert').element().closest('[data-slot]'),
+    ).toHaveAttribute('data-slot', 'partial-error-state');
     await expect.element(settingsNavigation()).toBeVisible();
   });
 

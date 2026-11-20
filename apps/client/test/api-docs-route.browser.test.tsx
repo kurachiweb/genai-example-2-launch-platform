@@ -75,6 +75,36 @@ describe('APIドキュメントの経路', () => {
     });
   });
 
+  test('仕様書の取得に失敗した後に再試行すると、APIリファレンスの区画の見出しへフォーカスを移して取り直す', async () => {
+    const documentFetch = vi.fn(() =>
+      Promise.resolve(new Response('unavailable', { status: 503 })),
+    );
+    vi.spyOn(window, 'fetch').mockImplementation((input, init) => {
+      const url =
+        input instanceof Request ? input.url : new URL(String(input)).href;
+      return url === DOCUMENT_URL
+        ? documentFetch()
+        : originalFetch(input, init);
+    });
+    await renderApiDocs();
+    const reference = page.getByRole('region', { name: 'APIリファレンス' });
+    await expect.element(reference.getByRole('alert')).toBeVisible();
+    documentFetch.mockImplementation(
+      () => Promise.withResolvers<Response>().promise,
+    );
+
+    await reference.getByRole('button', { name: '再試行' }).click();
+
+    await expect
+      .element(
+        reference.getByRole('heading', { level: 2, name: 'APIリファレンス' }),
+      )
+      .toHaveFocus();
+    await vi.waitFor(() => {
+      expect(documentFetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
   test('ページのタイトルは「APIドキュメント」で、正規のURLは/api-docsにする', () => {
     const head = ApiDocsRoute.options.head as (() => PageHead) | undefined;
 
