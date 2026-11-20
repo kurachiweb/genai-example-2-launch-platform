@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 
 import { UnhandledInquiriesCard } from '../components/inquiry/unhandled-inquiries-card.tsx';
+import { WeeklyStatisticsCard } from '../components/moderation/statistics/weekly-statistics-card.tsx';
 
 export interface DashboardCard {
   // '<spec名>.<名詞句>'
@@ -14,6 +15,12 @@ export interface DashboardCard {
 
 // ダッシュボードに並べるカードの登録箇所。各specがカードを追記する
 export const DASHBOARD_CARDS: readonly DashboardCard[] = Object.freeze([
+  {
+    id: 'ugc-moderation.weekly-statistics',
+    order: 10,
+    width: 'full',
+    component: WeeklyStatisticsCard,
+  },
   {
     id: 'inquiry-chat.unhandled-inquiries',
     order: 20,
