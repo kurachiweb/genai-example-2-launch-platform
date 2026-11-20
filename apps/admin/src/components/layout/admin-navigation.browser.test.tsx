@@ -117,6 +117,11 @@ describe('AdminNavigation', () => {
       await expect.element(navigation()).toBeVisible();
       expect(linkLabels(navigation().element())).toStrictEqual([
         'ダッシュボード',
+        'ユーザー',
+        'プロダクト',
+        'コメント',
+        '評価',
+        '画像モデレーション',
         '問い合わせ',
         'スポンサー広告',
         'ヘルプ記事',
@@ -131,6 +136,11 @@ describe('AdminNavigation', () => {
 
     test.each([
       ['/', 'ダッシュボード'],
+      ['/users?status=suspended', 'ユーザー'],
+      ['/products/01ARZ3NDEKTSV4RRFFQ69G5FAV', 'プロダクト'],
+      ['/comments', 'コメント'],
+      ['/ratings', '評価'],
+      ['/media-moderation', '画像モデレーション'],
       ['/accounts', '管理者アカウント'],
       ['/accounts?status=invited', '管理者アカウント'],
       ['/account', '自分のアカウント'],
@@ -203,6 +213,11 @@ describe('AdminNavigation', () => {
       await expect.element(sheetNavigation).toBeVisible();
       expect(linkLabels(sheetNavigation.element())).toStrictEqual([
         'ダッシュボード',
+        'ユーザー',
+        'プロダクト',
+        'コメント',
+        '評価',
+        '画像モデレーション',
         '問い合わせ',
         'スポンサー広告',
         'ヘルプ記事',

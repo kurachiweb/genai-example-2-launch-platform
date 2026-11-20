@@ -217,7 +217,7 @@
   - _Depends: 2.1_
   - _Requirements: 13.6, 15.2_
 
-- [ ] 6. 措置の群の管理画面
+- [x] 6. 措置の群の管理画面
 - [x] 6.1 措置の群のGraphQLの操作を書き、型と管理者側の許可リストを生成する
   - 措置の群の照会と13の措置の操作を、adminの`src/graphql/operations/moderation/`に1ファイル1操作の`.graphql`で書く(統計の操作は7.7)。操作名は`Admin`で始め、`graphql()`を呼ばない
   - frontend-platformの「操作の追加手順」どおり、adminで`bun run graphql:generate`、apiで`bun run graphql:allowlist`を実行する。`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型は、`src/graphql/admin-moderation-users.ts`・`admin-moderation-products.ts`・`admin-moderation-engagement.ts`・`admin-quarantined-images.ts`だけが読み、画面の型への変換と一覧のloaderの関数を持つ(`frontend/006`。部品は生成物の型に直接依存しない)。`gql.ts`・`index.ts`を読まない
@@ -282,7 +282,7 @@
   - _Depends: 6.3_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.10, 5.12, 13.3, 14.5_
 
-- [ ] 6.9 管理画面のメニューへ5ページを登録する
+- [x] 6.9 管理画面のメニューへ5ページを登録する
   - メニューの登録箇所へユーザー(20)・プロダクト(30)・コメント(40)・評価(50)・画像モデレーション(60)を加える
   - 先に、ブラウザテストで、メニューの並びと現在のページの表示を確かめる。`ADMIN_NAV_ITEMS`を全件一致で確かめる上流のテスト(`components/layout/admin-nav-order.unit.test.ts`・`admin-navigation.browser.test.tsx`)の期待値に5件を加える
   - 完了状態: 単体テストとブラウザテストが成功し、ローカルで5ページへメニューから移動できる
@@ -487,3 +487,4 @@
 - 7.9: recharts 3.10.1(3.11.0は公開から2週間未満のため除外)とpeerの`react-is` 19.3.1をadminに完全固定で加え、`PREBUNDLED_DEPENDENCIES`に`recharts`を加えた。グラフ(`weekly-statistics-chart.tsx`: `aria-hidden`→`ClientOnly`→`CatchBoundary`→`Suspense`→`React.lazy`、`weekly-statistics-line-charts.tsx`がRechartsを読む唯一の部品、読み込みは`load-weekly-statistics-line-charts.ts`、枠の大きさは`weekly-statistics-chart-layout.ts`、軸の書式は`statistics-chart-values.ts`)をカードの直近の値と表の間に置いた。`accessibilityLayer={false}`(Recharts 3の`role="application"`のフォーカスできる要素を出さないため)・`isAnimationActive={false}`・ツールチップなし。色は`var(--primary)`・`var(--muted-foreground)`・`var(--border)`を属性で渡す。実装者の追加: 読み込み・描画の失敗は空の枠を残して`reportUnexpectedErrorInBrowser`で報告する(親が006の「統計のグラフ」に1行加えた)。ビルドでRechartsは`weekly-statistics-line-charts-*.js`だけにありダッシュボードのチャンクに含まれない。ローカルで5つのグラフの表示を確かめた
 - 6.7: 画像モデレーションのページ(`routes/_authenticated/media-moderation/index.tsx`・`components/pages/media-moderation-page.tsx`・`components/moderation/media/{quarantine-reason-tabs,quarantined-image-list,quarantined-image-card,image-moderation-actions}.tsx`・`quarantined-image-view.ts`(理由ごとの操作と保有者の表示)・`use-appended-image-focus.ts`(6.5の`use-appended-row-focus.ts`とほぼ同じで共通化の余地))。6.1のloaderに`cause`を加えた。タブの切り替えは`resetScroll: false`で前の一覧を`inert`で残す。自動判定と管理者操作の両方を持つ画像は4つの操作。最初の取得の失敗は`PartialErrorState`(設計は`ErrorState`、006に従った)。削除済みの管理者の保有者は「表示できない利用者」(003に規定なし)。画像は`alt=""`。ローカルで隔離画像が配信経路から読み込まれ表示されることを確かめた(6.2の申し送り)。確認に使った試験用の行はローカルD1から親が削除した。ローカルR2の隔離のバケットのオブジェクト`fedcba9876543210f0e1d2c3b4a59687`の削除は許可で拒否されたため残っている
 - 7.10: `e2e/admin/weekly-statistics.e2e.test.ts`(手順`weekly-statistics-steps.ts`)。`triggerScheduled({ worker: 'api', businessDate, businessTime: '04:21' })`→モデレーターの`signInAsNewAdmin`→ダッシュボードの統計のカードの表に今週の行がちょうど1つ・`time[datetime=weekStart]`・「集計中」を確かめる。文言は`statistics-messages.ts`から読む。ローカルでapi(`--test-scheduled`)・event・adminを起動して成功した。既知の制約: ローカルD1に今週より後の週の未確定の行(将来の業務日付で4:21を動かした場合)があると`listRecent`が今週の行を返さず落ちる
+- 6.9: `apps/admin/src/composition/admin-navigation.ts`の`ADMIN_NAV_ITEMS`にユーザー(20)・プロダクト(30)・コメント(40)・評価(50)・画像モデレーション(60)を加えた(全ロールが参照できるため必要なロールは持たせない)。全件一致で確かめる上流のテスト2つに加え、`apps/admin/test/admin-shell.browser.test.tsx`の`MENU_ITEMS`も更新した。`project-values.md`の「メニューの登録箇所」の行を15件に直した。admin全体の`test:browser`(82ファイル1121件)が成功し、ローカルで閲覧のみの管理者が5ページへメニューから移動できることを確かめた
