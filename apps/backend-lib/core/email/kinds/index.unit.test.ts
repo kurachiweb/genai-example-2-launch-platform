@@ -11,6 +11,7 @@ import { PAYMENTS_EMAIL_KINDS } from './payments.ts';
 import { SPONSORSHIP_EMAIL_KINDS } from './sponsorship.ts';
 import { TOURNAMENT_WEEK_EMAIL_KINDS } from './tournament-week.ts';
 import { TOURNAMENT_YEAR_EMAIL_KINDS } from './tournament-year.ts';
+import { MODERATION_EMAIL_KINDS } from './ugc-moderation.ts';
 import { ULTRAS_EMAIL_KINDS } from './ultras.ts';
 
 describe('EMAIL_KINDS', () => {
@@ -142,6 +143,24 @@ describe('EMAIL_KINDS', () => {
       'sponsorship.start-notice',
       'sponsorship.end-notice',
       'sponsorship.termination-notice',
+    ]);
+  });
+
+  test.each(MODERATION_EMAIL_KINDS.map((kind) => [kind.name, kind] as const))(
+    '措置の通知の種別%sをトランザクションメールとして名前で引ける',
+    (name, kind) => {
+      const registry = createEmailKindRegistry(EMAIL_KINDS);
+
+      expect(registry.get(name)).toBe(kind);
+      expect(registry.get(name)?.category).toBe('transactional');
+    },
+  );
+
+  test('措置の通知の種別は停止・プロダクトの非公開化・コメントの非公開化の3種である', () => {
+    expect(MODERATION_EMAIL_KINDS.map((kind) => kind.name)).toEqual([
+      'ugc-moderation.user-suspended',
+      'ugc-moderation.product-hidden',
+      'ugc-moderation.comment-hidden',
     ]);
   });
 

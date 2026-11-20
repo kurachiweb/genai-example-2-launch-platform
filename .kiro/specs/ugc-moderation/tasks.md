@@ -24,7 +24,7 @@
   - _Depends: 1.1_
   - _Requirements: 11.13, 13.1, 13.2_
 
-- [ ] 1.4 (P) 措置の通知の3つのメール種別とテンプレートを作る
+- [x] 1.4 (P) 措置の通知の3つのメール種別とテンプレートを作る
   - 先に、単体テストで、入力のスキーマ(日時・URL・抜粋の上限は1.1の定数)、件名、停止の本文の固定の段落(表示されなくなること・マッチ予定の取り消し・Ultrasは期間末に解約し返金しないこと・広告の段落・トーナメントの組み合わせ決定の時点の自動返金・問い合わせで退会を依頼できること)、非公開化の段落(未開始のマッチ予定の取り消し・広告の段落・トーナメントの組み合わせ決定の時点で非公開化中なら参加費が自動で全額返金されること)、理由の改行を保ったプレーンテキストの差し込み(HTMLとして解釈しない)、日時のUTCの表記、問い合わせへのボタン、配信停止のリンクが無いこと、代理の退会のメール種別が無いことを確かめる
   - 広告の段落は、sponsorshipが文言規則へ載せる次の文と一字一句同じにし、単体テストで本文に完全に一致する文字列として含まれることを確かめる
     - 停止(`ugc-moderation.user-suspended`): 「停止中は、あなたのスポンサー広告は表示されません。掲載期間は延長されませんが、表示を停止した日数分(1日のうち一部でも停止した日を含みます)の広告料金を、各広告の掲載期間が終わった時点で日割りにより自動で返金します。掲載期間が終わる前に退会した場合や、プロダクトを削除した場合は返金されません。」
@@ -442,3 +442,4 @@
 - 1.1: 規則は`apps/common-lib/moderation/moderation-actions.ts`(`MODERATION_ACTION_DEFINITIONS`・`checkModerationReason`・`MODERATION_REASON_MESSAGES`・`MODERATION_TARGET_KINDS`・`MODERATION_NOTICE_STATUSES`・ライフサイクルの種類の写し)、表示名は`moderation-labels.ts`(上流の値の写し`QUARANTINE_REASONS`・`DISPOSABLE_EMAIL_JUDGEMENTS`・`ADMIN_LAUNCH_STATES`・`ADMIN_COMMENT_STATES`と`mediaPurposeLabel`)。`MODERATION_REASON_MAX`は`AUDIT_REASON_MAX`を参照する。使い捨て判定の写しは上流の型`DisposableEmailStatus`に本specの`unverified`(確認前)を加えた一覧として照合する。`check:contract-copies`への追加に伴い`scripts/tooling/run-all.unit.test.ts`の期待値も直した。13種の措置の表示名(「ユーザーの停止」など)は実装者が決めたため、1.5で文言規則に同じ語を載せる。利用者の状態・公開状態・評価の状態の表示名は未作成で、画面のタスクで必要なら加える
 - 1.2: `moderation_actions`(`apps/db/schema/moderation/moderation-actions.ts`、マイグレーション`20261120025459_ugc_moderation`)。`notice_status`は既定値を持たず、書き込む側が措置ごとに決める。索引・CHECKの名前は`api_keys`の前例(`<テーブル>_<列>_idx`・`_check`)。マイグレーションの照合のテストは`_ugc_moderation`で終わるディレクトリを探すため、7.2の統計のマイグレーションは`_ugc_moderation_statistics`のように別の接尾辞にする。D1の統合テストはapiのvitestで走る(`apps/api/db/ugc-moderation-schema.worker.test.ts`のバインド先)
 - 1.3: 操作種別は`apps/common-lib/admin/audit-actions/ugc-moderation.ts`の`MODERATION_AUDIT_ACTION_DEFINITIONS`(措置の種類をキーにしたRecord。ユースケースが措置の種類から監査ログの定義を引くため)と`MODERATION_AUDIT_ACTIONS`(一覧)。1.1の定義と表示名から組み立てて写しを持たない。上流の`apps/admin/src/components/pages/audit-logs-page.browser.test.tsx`が表示名を全件一致で比べるため13件を加えた(以後の操作種別の追加でも同様)。`project-values.md`の監査ログの操作種別の一覧への追加は8.2
+- 1.4: メール種別は`apps/backend-lib/core/email/kinds/ugc-moderation.ts`、テンプレートは`apps/event/src/infrastructure/email/templates/ugc-moderation/`(テストは他のテンプレートと同じWorkers統合テスト)。件名と広告の段落以外の本文(プレビュー・停止日時の行・固定の段落・問い合わせのボタン)は実装者が決めたため、1.5で文言規則に同じ文を載せる(本文は`moderation-notice-copy.ts`と各`*-email-body.tsx`)。日時は`formatUtcDateTime(…, { withYear: true })`。理由と抜粋は`ModerationMultilineText`で行に分け`<br />`でつなぐ。入力のスキーマは理由を前後の空白を除かずに500書記素で数えるため、2.4の通知は理由を正規化した値(2.2の正規化)で渡し、抜粋は`…`を含めて100書記素に切ってから渡す。決済中のセッションの失効を停止の通知に書くかはResearch Neededのまま書いていない

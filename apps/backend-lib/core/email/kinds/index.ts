@@ -8,6 +8,7 @@ import { PAYMENTS_EMAIL_KINDS } from './payments.ts';
 import { SPONSORSHIP_EMAIL_KINDS } from './sponsorship.ts';
 import { TOURNAMENT_WEEK_EMAIL_KINDS } from './tournament-week.ts';
 import { TOURNAMENT_YEAR_EMAIL_KINDS } from './tournament-year.ts';
+import { MODERATION_EMAIL_KINDS } from './ugc-moderation.ts';
 import { ULTRAS_EMAIL_KINDS } from './ultras.ts';
 
 export const EMAIL_KINDS: readonly AnyEmailKind[] = Object.freeze([
@@ -21,4 +22,5 @@ export const EMAIL_KINDS: readonly AnyEmailKind[] = Object.freeze([
   ...TOURNAMENT_WEEK_EMAIL_KINDS,
   ...TOURNAMENT_YEAR_EMAIL_KINDS,
   ...SPONSORSHIP_EMAIL_KINDS,
+  ...MODERATION_EMAIL_KINDS,
 ]);
