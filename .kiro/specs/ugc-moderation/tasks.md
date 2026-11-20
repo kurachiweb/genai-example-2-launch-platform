@@ -290,7 +290,7 @@
   - _Requirements: 14.1_
 
 - [ ] 7. 週ごとの統計(統計の群。措置の群の部品を読み込まない独立した継ぎ目)
-- [ ] 7.1 統計の群の決定をページ配置・文言規則・準拠方針・日次タイムライン・モデレーションの運用の文書に先に書く
+- [x] 7.1 統計の群の決定をページ配置・文言規則・準拠方針・日次タイムライン・モデレーションの運用の文書に先に書く
   - ページ配置: ダッシュボードの統計のカード(仮1・仮2)
   - 文言規則: 統計のカードの見出し・説明・「集計中」・集計が無い旨・取得の失敗の文言
   - 準拠方針: データ保持期間に週ごとの統計(無期限、個人を含まない集計値)
@@ -462,3 +462,4 @@
 - 7.3: `apps/backend-lib/core/moderation/statistics-week.ts`(`weekOf`・`previousWeek`・`weeksToCompute`(戻り値の型`StatisticsWeeksToCompute`)・`isWeekFinished`(`to <= now`)・`lastDayOf`、戻り値は凍結)。backend-platformの業務時刻の関数だけを使う。design.mdのFile Structure Planの注記は「表示の対象の週」もこのファイルとするが、契約に関数が無いため作らず、7.5の照会が`previousWeek`を繰り返して直近26週と今週を作る
 - 4.2: `DefaultAdminProductReader`(`application/moderation/admin-product-reader.ts`、テストの補助は800行の制限のため`application/moderation/testing/admin-product-reader-fakes.ts`)。`list`・`detail`は照会の時刻`now`を引数に取る(リゾルバが`clockOf(context).now()`を渡す)。設計との相違: 一覧のロゴのため設計の表に無い`MediaFiles.findMany`を1回加えた。詳細の`hiddenAt`は`AdminProductDirectory`にIDの照会が無く要約にも日時が無いため、非公開化中のときだけ`latestFor(['product.hide'])`の`occurredAt`を使う(通常は`hidden_at`と同じ値。3年を過ぎて記録が消えた後はnull)。ローンチ状態は上流の`toLaunchState`と同じ規則の`launchStateOf`で5値に写像し(上流の関数は`workers`の非公開の関数のため写しになる)、公開状態は上流の`toVisibility`と同じ規則。対戦相手の名前は`findSummaries(not-deleted)`、不戦勝・物理削除・論理削除はnull。不在の詳細はnullを返す。照合のテストに`ADMIN_LAUNCH_STATES`と上流の`AdminProductLaunchState`の一致を加えた
 - 4.5: `ModerationMaintenanceJob`と`MODERATION_MAINTENANCE_JOB_DEFINITION`(`application/moderation/jobs/moderation-maintenance-job.ts`、4:21・1910)。1時間以上前の依頼待ちを100件まで送り直し、1件の失敗は警告を出して数えて続け、失敗が1件以上なら`notice-redispatch-failed`(`job`・`count`)を送ってジョブは成功にする(投げ直すと同じ失敗を二重に通知するため)。一覧や削除そのものの失敗は投げ直し、`try/finally`で一覧の失敗でも削除を行う。保持期間はUTCの暦の3年(2/29は2/28へ寄せる、`moderationRecordRetentionCutoff`)で500件×最大10回。ログは件数だけ。Workers統合テスト`apps/api/src/composition/moderation-module.maintenance.worker.test.ts`はジョブと通知をテストの中で組み立てるため、4.6で束縛した後はコンテナから解決する形へ直してよい
+- 7.1: 統計の群を5文書(と`features/README.md`の索引)に書いた。設計に文面の無い文言は実装者が決め、7.8・7.9はこれに従う: カードの説明「直近26週と集計中の今週の運営状況の推移です。週は月曜日に始まり、値は毎日集計します。終わった週の値は変わりません。」(基準時刻の時差と集計時刻は画面に出さない)、収益の名前「合計収益(税込)」、直近の確定した週の見出し「<週の開始日>からの週」、増減「前週比+12」「前週比-3」「前週比±0」・金額「前週比+$12.34」「前週比±$0」、前週の行が無ければ「前週の値なし」、今週だけなら「終わった週の統計はまだありません。」、グラフの横軸「11/16」・金額の縦軸「$1,234」、表の見出し「週ごとの統計(直近26週と今週)」(新しい週が上、「集計中」は開始日の後)。既存の`MoneyText`は`$0.00`・`$9.00`と小数点以下を常に出し、デザイン原則(全て0なら省略)と食い違うため、7.8は独自の書式か`MoneyText`の変更が要る。`lastComputedAt`の表示の文言は定めていない。ジョブが止まり今週の間に作られた行が確定できないまま残る場合の`listRecent`の扱いを7.4・7.5で確かめる
