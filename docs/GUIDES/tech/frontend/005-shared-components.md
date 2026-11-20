@@ -176,9 +176,9 @@ export function ProfileForm() {
 | `UnavailableNotice` | `reason`                                                                                                | 縮退運転中。利用できないことを示す題と理由                                                                                                                                                                                                              |
 | `RecoverableSlot`   | `frame`(省略可)・`fallback`(省略可)・`className`・`contactAvailable`・`contactHref`(省略可)・`children` | 登録口に登録された部品ごとのエラーの境界(`CatchBoundary`と`QueryErrorResetBoundary`)と`Suspense`。1つの部品の描画や取得の失敗をその位置に`ErrorState`で留め、他の部品の表示を続ける。境界が捕まえた失敗の送信と、再試行の後のフォーカスの移動を受け持つ |
 
-- 導線(`contactHref`・`EmptyState`の`action`の中のリンク)は通常の`<a href>`で描画し、クライアント側の遷移を行わない。
+- 共通部品が自ら描く導線(`ErrorState`・`UnexpectedErrorView`の`contactHref`)は通常の`<a href>`で描画し、クライアント側の遷移を行わない(共通部品はアプリのルーターを持たないため)。`EmptyState`の`action`は呼び出す側が渡す要素で、アプリの中の画面への導線にはアプリのリンクの部品(ルーターで遷移するもの)を渡してよい。
 - 問い合わせの画面を持たないアプリ(プロファイルの`contactAvailable`が偽)は、`ErrorState`・`UnexpectedErrorView`に`contactHref`を渡さない。`contactAvailable`が真のアプリだけが渡す。
-- `ErrorState`・`PartialErrorState`の`message`は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ(固定の文言にする例外は「[続きの読み込みの失敗](015-star-rating-and-threaded-composer.md#続きの読み込みの失敗)」)。`GraphQLClientError`でない例外では、問い合わせの導線が無いアプリに問い合わせを促す文を出さない(「[エラーの扱い](006-data-fetching.md#エラーの型と画面の分岐)」)。
+- `ErrorState`・`PartialErrorState`の`message`は`errorMessageOf(error, <プロファイル>.contactAvailable)`で選ぶ。固定の文言にする例外は、「[続きの読み込みの失敗](015-star-rating-and-threaded-composer.md#続きの読み込みの失敗)」と、要件が失敗の文言を理由によらない固定の文として定める区画である。`GraphQLClientError`でない例外では、問い合わせの導線が無いアプリに問い合わせを促す文を出さない(「[エラーの扱い](006-data-fetching.md#エラーの型と画面の分岐)」)。
 - `RecoverableSlot`は、登録口(各機能が部品を1件ずつ追記する一覧)の部品を並べるページが、部品ごとに包む(「[登録口に登録された区画の取得](006-data-fetching.md#登録口に登録された区画の取得)」)。`contactAvailable`には`<プロファイル>.contactAvailable`を渡し、失敗の文言は`errorMessageOf(error, contactAvailable)`で選ぶ。`contactHref`は`ErrorState`へそのまま渡すため、`contactAvailable`が真のアプリだけが渡す。
 - `RecoverableSlot`の`frame`は、読み込み中(`LoadingSkeleton`)と失敗(`ErrorState`)の表示を包む関数で、部品が自分で描く見出しを部品が描けない間だけ補うために使う。部品が描けた後は`frame`を通さない。
 - `RecoverableSlot`の`fallback`は、読み込み中に`frame`の中へ出す表示で、省略すると`LoadingSkeleton`を出す。区画の形に合わせたスケルトンは`fallback`で渡し、`children`の内側に別の`Suspense`を置かない。内側の`Suspense`が読み込み中を受け持つと、再試行の後のフォーカスを内容の描画まで保つ仕組みが働かず、フォーカスが`<body>`へ落ちる。
