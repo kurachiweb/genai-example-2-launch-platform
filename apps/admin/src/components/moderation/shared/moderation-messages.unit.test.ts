@@ -68,6 +68,7 @@ import {
   matchResultsCaption,
   MODERATION_CHANGED_MESSAGES,
   MODERATION_PAGE_COPY,
+  MODERATION_SEARCH_TERM_TOO_LONG_MESSAGE,
   MODERATION_UNCHANGED_MESSAGES,
   NO_MODERATION_RECORD_LABEL,
   productOwnerLabel,
@@ -667,6 +668,14 @@ describe('一覧と詳細の項目', () => {
     expect(SYSTEM_IMAGE_OWNER_LABEL).toBe('システム');
     expect(QUARANTINED_IMAGE_LIST_EMPTY_MESSAGE).toBe(
       'この隔離理由の画像はありません。',
+    );
+  });
+});
+
+describe('検索語の入力', () => {
+  test('上限を超えた検索語の文言は文言規則のとおり', () => {
+    expect(MODERATION_SEARCH_TERM_TOO_LONG_MESSAGE).toBe(
+      '検索語は100文字以内で入力してください。',
     );
   });
 });

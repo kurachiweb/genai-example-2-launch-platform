@@ -569,3 +569,15 @@ export const MODERATION_UNCHANGED_MESSAGES: Readonly<
   'image.release': ALREADY_REMOVED_REASON_MESSAGE,
   'image.delete': ALREADY_DELETED_MESSAGE,
 });
+
+export const PRODUCT_NOT_FOUND_MESSAGE = 'プロダクトが見つかりません。';
+
+export const productLogoAlt = (name: string): string => `${name}のロゴ`;
+
+export const productScreenshotAlt = (name: string, position: number): string =>
+  `${name}のスクリーンショット${String(position)}枚目`;
+
+export const NEW_TAB_NOTICE = '(新しいタブで開きます)';
+
+export const MODERATION_SEARCH_TERM_TOO_LONG_MESSAGE =
+  '検索語は100文字以内で入力してください。';
