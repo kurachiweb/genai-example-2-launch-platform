@@ -18,6 +18,7 @@ const BACKEND_USER_LIFECYCLE =
 const BACKEND_PRODUCT_LIFECYCLE =
   'apps/backend-lib/core/product/product-lifecycle.ts';
 const BACKEND_PRODUCT_PORTS = 'apps/backend-lib/core/product/ports.ts';
+const BACKEND_ENGAGEMENT_PORTS = 'apps/backend-lib/core/engagement/ports.ts';
 const DB_MODERATION_ACTIONS = 'apps/db/schema/moderation/moderation-actions.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
@@ -168,6 +169,26 @@ describe('ローンチ状態の写し(apps/common-lib/moderation/moderation-labe
     ).toEqual(
       readStringUnion(BACKEND_PRODUCT_PORTS, 'AdminProductLaunchState'),
     );
+  });
+});
+
+describe('コメントの状態の写し(apps/common-lib/moderation/moderation-labels.ts)', () => {
+  test('ADMIN_COMMENT_STATESがengagementの型AdminCommentStateの5値と順も含めて一致する', () => {
+    expect(
+      readStringArray(COMMON_MODERATION_LABELS, 'ADMIN_COMMENT_STATES'),
+    ).toEqual(readStringUnion(BACKEND_ENGAGEMENT_PORTS, 'AdminCommentState'));
+  });
+
+  test('コメントの状態は非公開化・削除・匿名化・投稿者が不可視・表示中の5値である', () => {
+    expect(
+      readStringUnion(BACKEND_ENGAGEMENT_PORTS, 'AdminCommentState'),
+    ).toEqual([
+      'hidden',
+      'deleted',
+      'anonymized',
+      'author_unavailable',
+      'shown',
+    ]);
   });
 });
 

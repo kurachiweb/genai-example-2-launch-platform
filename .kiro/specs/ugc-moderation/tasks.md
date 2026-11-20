@@ -160,7 +160,7 @@
   - _Depends: 2.1, 2.2_
   - _Requirements: 6.1, 6.2, 6.3, 6.5, 6.6, 7.1, 7.2, 7.3, 7.4, 7.8, 15.6_
 
-- [ ] 4.3 (P) コメントと評価の一覧の照会を作る
+- [x] 4.3 (P) コメントと評価の一覧の照会を作る
   - 一覧はengagementの仮6のコメントと評価の管理の照会(engagementのタスク2.7)を使う
   - 先に、単体テストで、投稿者・プロダクト・評価者のハンドルの解決、表示名のまとめた照会、最新の措置の理由を確かめる
   - 先に、1.1のコメントの状態の表示名の写しが上流のコメントの状態の5値(非公開化・削除・匿名化・投稿者が不可視・表示中)と一致することを、`config/ugc-moderation-contract-copies.unit.test.ts`に加えて確かめる
@@ -464,3 +464,4 @@
 - 4.5: `ModerationMaintenanceJob`と`MODERATION_MAINTENANCE_JOB_DEFINITION`(`application/moderation/jobs/moderation-maintenance-job.ts`、4:21・1910)。1時間以上前の依頼待ちを100件まで送り直し、1件の失敗は警告を出して数えて続け、失敗が1件以上なら`notice-redispatch-failed`(`job`・`count`)を送ってジョブは成功にする(投げ直すと同じ失敗を二重に通知するため)。一覧や削除そのものの失敗は投げ直し、`try/finally`で一覧の失敗でも削除を行う。保持期間はUTCの暦の3年(2/29は2/28へ寄せる、`moderationRecordRetentionCutoff`)で500件×最大10回。ログは件数だけ。Workers統合テスト`apps/api/src/composition/moderation-module.maintenance.worker.test.ts`はジョブと通知をテストの中で組み立てるため、4.6で束縛した後はコンテナから解決する形へ直してよい
 - 7.1: 統計の群を5文書(と`features/README.md`の索引)に書いた。設計に文面の無い文言は実装者が決め、7.8・7.9はこれに従う: カードの説明「直近26週と集計中の今週の運営状況の推移です。週は月曜日に始まり、値は毎日集計します。終わった週の値は変わりません。」(基準時刻の時差と集計時刻は画面に出さない)、収益の名前「合計収益(税込)」、直近の確定した週の見出し「<週の開始日>からの週」、増減「前週比+12」「前週比-3」「前週比±0」・金額「前週比+$12.34」「前週比±$0」、前週の行が無ければ「前週の値なし」、今週だけなら「終わった週の統計はまだありません。」、グラフの横軸「11/16」・金額の縦軸「$1,234」、表の見出し「週ごとの統計(直近26週と今週)」(新しい週が上、「集計中」は開始日の後)。既存の`MoneyText`は`$0.00`・`$9.00`と小数点以下を常に出し、デザイン原則(全て0なら省略)と食い違うため、7.8は独自の書式か`MoneyText`の変更が要る。`lastComputedAt`の表示の文言は定めていない。ジョブが止まり今週の間に作られた行が確定できないまま残る場合の`listRecent`の扱いを7.4・7.5で確かめる
 - 7.2: `moderation_weekly_statistics`(`apps/db/schema/moderation/moderation-weekly-statistics.ts`、マイグレーション`20261120061309_ugc_moderation_statistics`)。ULIDの主キー・`week_start`の一意索引(`moderation_weekly_statistics_week_start_unique`)・`finalized`は0/1のCHECKで既定値なし・4つの件数は0以上のCHECKで既定値なし・`net_revenue`は返金で負になり得るため符号のCHECKなし・`timestamps()`あり・外部キーなし。D1の統合テストで`onConflictDoUpdate({ target: weekStart, setWhere: finalized = false })`が確定した週を書き換えず`id`を保つことを確かめた(7.4のストアはこの形を使える)。マイグレーションの照合のテストは接尾辞を引数にして両方のマイグレーションを確かめる
+- 4.3: `DefaultAdminCommentReader`・`DefaultAdminRatingReader`(`application/moderation/admin-comment-reader.ts`・`admin-rating-reader.ts`、テストの補助`testing/admin-engagement-reader-fakes.ts`)。4.2と同じ形(ハンドルの解決で一致が無ければ上流を呼ばず空、表示名は利用者`not-withdrawn`・プロダクト`not-deleted`で各1回、最新の理由は非公開化中・無効化済みのものだけ)。設計との相違: 設計の照会の表に`adminProductRatings`の照会が無いため、`AdminRatingListFilter`に任意の`productId`を加えた(ハンドルと食い違えば空)。評価の状態は`invalidatedAt`から導く。戻り値の型は実装者が決めた(`commentId`・`ratingId`、`author`・`rater`は`{ userId, handle, nickname, suspended } | null`)ため、4.6〜4.8でGraphQLの`AdminComment`・`AdminRating`へ写す。照合のテストに`ADMIN_COMMENT_STATES`と上流の`AdminCommentState`の一致を加えた
