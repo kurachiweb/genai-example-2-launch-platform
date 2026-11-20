@@ -27,6 +27,7 @@ import {
   statisticsSeriesOf,
 } from './statistics-series.ts';
 import { StatisticsValueText } from './statistics-value-text.tsx';
+import { WeeklyStatisticsChart } from './weekly-statistics-chart.tsx';
 import { WeeklyStatisticsTable } from './weekly-statistics-table.tsx';
 
 interface StatisticsQueryResult {
@@ -136,6 +137,7 @@ export function WeeklyStatisticsCard() {
           ) : (
             <LatestWeekSummary latest={statistics.latestFinalized} />
           )}
+          <WeeklyStatisticsChart series={statistics.series} />
           <WeeklyStatisticsTable rows={statistics.rows} />
         </>
       )}

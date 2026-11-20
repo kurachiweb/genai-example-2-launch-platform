@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 
 import '../../../styles.css';
+import { addBusinessDays } from '../../../../common-lib/time/business-date-arithmetic.ts';
 import { runAxe } from '../../../../lib/test/a11y.ts';
 import {
   applyColorScheme,
@@ -60,6 +61,66 @@ const cardHeading = () =>
 const latestWeek = () => card().getByRole('region', { name: LATEST_HEADING });
 const statisticsTable = () =>
   card().getByRole('table', { name: TABLE_CAPTION });
+
+const CHART_SELECTOR = '[data-slot="weekly-statistics-chart"]';
+const CHART_CELL_SELECTOR = '[data-slot="weekly-statistics-chart-cell"]';
+const METRIC_LABELS = Object.freeze([
+  '合計収益(税込)',
+  'ユーザー数',
+  'プロダクト数',
+  '予選実施数',
+  'Upvote数',
+]);
+const FOCUSABLE_SELECTOR =
+  'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+type StatisticsWeekNode = (typeof STATISTICS_WEEKS)[number];
+
+// 直近26週と今週。値は週ごとに上下させ、グラフの点の高さの並びを値の並びと比べられるようにする
+const HALF_YEAR_WEEKS: readonly StatisticsWeekNode[] = Array.from(
+  { length: 27 },
+  (_, index): StatisticsWeekNode => ({
+    weekStart: addBusinessDays('2026-05-18', index * 7),
+    finalized: index < 26,
+    netRevenue: {
+      amount: ((index * 7) % 11) * 10_000 + index,
+      currency: 'usd',
+    },
+    users: 1_000 + ((index * 5) % 13) * 25,
+    products: 300 + ((index * 3) % 7),
+    qualifierMatches: (index * 4) % 9,
+    upvotes: 4_000 + ((index * 9) % 17) * 150,
+  }),
+);
+
+// 狭い画面では表の横スクロールの領域もカードの題名を含む名前を持つため、グラフはページに1つの枠から探す
+const chartOf = (): HTMLElement | null =>
+  main().element().querySelector<HTMLElement>(CHART_SELECTOR);
+
+const chartSurfacesOf = (): readonly SVGSVGElement[] =>
+  Array.from(
+    chartOf()?.querySelectorAll<SVGSVGElement>('svg.recharts-surface') ?? [],
+  );
+
+const waitForCharts = async (): Promise<void> => {
+  await expect.poll(() => chartSurfacesOf().length).toBe(5);
+};
+
+const chartCellsOf = (): readonly Element[] =>
+  Array.from(chartOf()?.querySelectorAll(CHART_CELL_SELECTOR) ?? []);
+
+const dotHeightsOf = (cell: Element): readonly number[] =>
+  Array.from(cell.querySelectorAll('.recharts-line-dot'), (dot) =>
+    Number(dot.getAttribute('cy')),
+  );
+
+const tickTextsOf = (cell: Element, axis: 'x' | 'y'): readonly string[] =>
+  Array.from(
+    cell.querySelectorAll(
+      `.recharts-${axis}Axis-tick-labels .recharts-cartesian-axis-tick-value`,
+    ),
+    (tick) => tick.textContent,
+  );
 
 const statisticsCallsOf = () =>
   executeGraphQL.mock.calls.filter(
@@ -233,6 +294,97 @@ describe('WeeklyStatisticsCard', () => {
     ).toStrictEqual(['2026-11-16', '2026-11-09', '2026-11-02']);
   });
 
+  test('グラフを直近の値と表の間に置き、5つの指標ごとに直近26週と今週の値を古い順に結ぶ', async () => {
+    await renderWeeks(HALF_YEAR_WEEKS);
+    await waitForCharts();
+
+    const chart = chartOf();
+    if (chart === null) {
+      throw new Error('統計のグラフがありません。');
+    }
+    const following = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(
+      card().getByRole('region').element().compareDocumentPosition(chart) &
+        following,
+    ).toBe(following);
+    expect(
+      chart.compareDocumentPosition(statisticsTable().element()) & following,
+    ).toBe(following);
+
+    const cells = chartCellsOf();
+    expect(
+      cells.map((cell) => cell.querySelector('p')?.textContent),
+    ).toStrictEqual([...METRIC_LABELS]);
+    const valuesByMetric = [
+      HALF_YEAR_WEEKS.map(({ netRevenue }) => netRevenue.amount),
+      HALF_YEAR_WEEKS.map(({ users }) => users),
+      HALF_YEAR_WEEKS.map(({ products }) => products),
+      HALF_YEAR_WEEKS.map(({ qualifierMatches }) => qualifierMatches),
+      HALF_YEAR_WEEKS.map(({ upvotes }) => upvotes),
+    ];
+    cells.forEach((cell, metricIndex) => {
+      const values = valuesByMetric[metricIndex] ?? [];
+      const heights = dotHeightsOf(cell);
+      expect(heights).toHaveLength(HALF_YEAR_WEEKS.length);
+      // SVGの縦の座標は下へ増えるため、値が増えた週は点が上へ動く
+      expect(
+        heights
+          .slice(1)
+          .map((height, index) => Math.sign((heights[index] ?? 0) - height)),
+      ).toStrictEqual(
+        values
+          .slice(1)
+          .map((value, index) => Math.sign(value - (values[index] ?? 0))),
+      );
+      const weekTicks = tickTextsOf(cell, 'x');
+      expect(weekTicks[0]).toBe('5/18');
+      expect(weekTicks.at(-1)).toBe('11/16');
+      for (const tick of weekTicks) {
+        expect(tick).toMatch(/^\d{1,2}\/\d{1,2}$/u);
+      }
+      const valueTicks = tickTextsOf(cell, 'y');
+      expect(valueTicks.length).toBeGreaterThan(1);
+      for (const tick of valueTicks) {
+        expect(tick).toMatch(
+          metricIndex === 0
+            ? /^\$\d{1,3}(?:,\d{3})*$/u
+            : /^\d{1,3}(?:,\d{3})*$/u,
+        );
+      }
+    });
+  });
+
+  test('グラフは読み上げとフォーカスの対象から外し、表が同じ週と値を示し続ける', async () => {
+    await renderWeeks(HALF_YEAR_WEEKS);
+    await waitForCharts();
+
+    const chart = chartOf();
+    expect(chart?.getAttribute('aria-hidden')).toBe('true');
+    expect(chart?.querySelectorAll(FOCUSABLE_SELECTOR)).toHaveLength(0);
+    expect(card().getByRole('img').elements()).toHaveLength(0);
+    expect(card().getByRole('application').elements()).toHaveLength(0);
+
+    const [, ...rows] = statisticsTable().getByRole('row').elements();
+    expect(rows).toHaveLength(HALF_YEAR_WEEKS.length);
+    expect(
+      Array.from(statisticsTable().element().querySelectorAll('time'), (time) =>
+        time.getAttribute('datetime'),
+      ),
+    ).toStrictEqual(
+      HALF_YEAR_WEEKS.map(({ weekStart }) => weekStart).toReversed(),
+    );
+    expect(
+      textsOf(Array.from(rows[0]?.querySelectorAll('td') ?? [])),
+    ).toStrictEqual([
+      '2026年11月16日(月)集計中',
+      '$600.26',
+      '1,000',
+      '301',
+      '5',
+      '5,950',
+    ]);
+  });
+
   test('今週だけなら、直近の値の位置に終わった週の統計が無い旨を示し、表に今週を集計中で示す', async () => {
     await renderWeeks([CURRENT_WEEK]);
 
@@ -245,6 +397,10 @@ describe('WeeklyStatisticsCard', () => {
     const rows = statisticsTable().getByRole('row').elements();
     expect(rows).toHaveLength(2);
     expect(rows[1]?.textContent).toContain('2026年11月16日(月)集計中');
+    await waitForCharts();
+    expect(
+      chartCellsOf().map((cell) => dotHeightsOf(cell).length),
+    ).toStrictEqual([1, 1, 1, 1, 1]);
   });
 
   test('一度も集計していなければ、直近の値と表の代わりに集計がまだ無い旨を示す', async () => {
@@ -254,6 +410,7 @@ describe('WeeklyStatisticsCard', () => {
       .element(card())
       .toHaveTextContent('統計はまだ集計されていません。');
     expect(card().getByRole('table').elements()).toHaveLength(0);
+    expect(chartOf()).toBeNull();
     expect(card().getByRole('heading', { level: 3 }).elements()).toHaveLength(
       0,
     );
@@ -327,6 +484,7 @@ describe('WeeklyStatisticsCard', () => {
     await page.viewport(400, 800);
     await renderWeeks(STATISTICS_WEEKS);
     await expect.element(statisticsTable()).toBeVisible();
+    await waitForCharts();
 
     const container = statisticsTable().element().parentElement;
     await expect.poll(() => container?.getAttribute('tabindex')).toBe('0');
@@ -339,6 +497,7 @@ describe('WeeklyStatisticsCard', () => {
       applyColorScheme(scheme);
       await renderWeeks(STATISTICS_WEEKS);
       await expect.element(statisticsTable()).toBeVisible();
+      await waitForCharts();
 
       expect(await runAxe(document.body)).toStrictEqual([]);
     },

@@ -45,6 +45,7 @@ const PREBUNDLED_DEPENDENCIES = [
   'rehype-sanitize',
   'rehype-stringify',
   'hast-util-to-text',
+  'recharts',
   ...EDITOR_PREBUNDLED_DEPENDENCIES,
 ];
 
