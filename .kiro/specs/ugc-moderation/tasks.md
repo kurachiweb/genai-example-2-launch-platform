@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 措置の規則・措置の記録のテーブル・監査ログの操作種別・メール・サービス仕様
+- [x] 1. 基盤: 措置の規則・措置の記録のテーブル・監査ログの操作種別・メール・サービス仕様
 - [x] 1.1 措置の規則と表示名の共有定義を作る
   - 前提: dev-tooling〜public-apiの25specの全タスクと、上流の改訂(identity-authの仮7(identity-authのタスク3.7)の`AdminUserDirectory`、product-launchの仮13(product-launchのタスク2.6)の`AdminProductDirectory`、engagementの仮6(engagementのタスク2.7、識別子はタスク2.1)の`AdminCommentDirectory`・`AdminRatingDirectory`、paymentsの仮7(paymentsのタスク5.5・5.7)の`PaymentRevenueReport`、backend-platformの改訂2のE2Eの`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)が完了していること(admin-foundationの`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements`・`AUDIT_ACTIONS`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・管理画面の共通部品・E2Eの`admin-bootstrap.ts`・`local-d1.ts`、identity-authの`UserSuspension`・`AdministrativeWithdrawal`・ライフサイクルの同期と非同期の登録口・`UserContactDirectory`・E2Eの`mailpit.ts`、product-launchの`ProductVisibilityControl`・ライフサイクルの登録口・`ProductDirectory`・`ProductCategoryDirectory`、engagementの`CommentModerationControl`・`RatingModerationControl`・`CommentStore`・`RatingStore`、media-pipelineの`MediaQuarantine`・`MediaFiles`・`AdminMediaReviewPolicy`の束縛の置き場所・`/_bff/files/*`の中継、user-profile-socialの`UserProfileDirectory`と停止の画像の隔離の処理、match-engineの`MatchDirectory`、directory-discoveryのE2Eの`directory-fixtures.ts`、email-deliveryのメールの基盤)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、13種の措置の対象の種類・理由の要否(画像の4つの操作だけ任意、停止・停止解除・代理の退会・非公開化・復元・コメントの非公開化と復元・無効化・無効化の取り消しは必須)・通知の要否(停止・非公開化・コメントの非公開化だけ依頼待ちで送り、代理の退会を含む他は送らない)・対応するライフサイクルの種類、理由の検証(空白だけ・500書記素と501書記素・画像の操作の理由の省略)、隔離理由と使い捨て判定の表示名が写した値の一覧を網羅することを確かめる
@@ -35,7 +35,7 @@
   - _Depends: 1.1_
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [ ] 1.5 (P) ページ配置・文言規則・準拠方針・日次タイムラインとモデレーションの運用の文書に、措置の群の決定を先に書く
+- [x] 1.5 (P) ページ配置・文言規則・準拠方針・日次タイムラインとモデレーションの運用の文書に、措置の群の決定を先に書く
   - ページ配置: 管理者側のユーザー・プロダクト(一覧と詳細)・コメント・評価・画像モデレーションのページの構成、ユーザー一覧の代理の退会の操作(最上位管理者だけ)と、メニューごとの必要なロールの一覧の代理の退会の行(仮4)
   - 文言規則: 設計のSupporting Referencesに挙げたエラー・確認・成功・状態の文言(統計のカードの文言を除く)と、代理の退会の確認の注記(仮4・仮5)
   - 準拠方針: データ保持期間に措置の記録、モデレーションと透明性に代理の退会(最上位管理者がユーザー一覧から行い、本人の意思の確かめと完了の知らせは運営者がシステムの外のメールで行う)
@@ -443,3 +443,4 @@
 - 1.2: `moderation_actions`(`apps/db/schema/moderation/moderation-actions.ts`、マイグレーション`20261120025459_ugc_moderation`)。`notice_status`は既定値を持たず、書き込む側が措置ごとに決める。索引・CHECKの名前は`api_keys`の前例(`<テーブル>_<列>_idx`・`_check`)。マイグレーションの照合のテストは`_ugc_moderation`で終わるディレクトリを探すため、7.2の統計のマイグレーションは`_ugc_moderation_statistics`のように別の接尾辞にする。D1の統合テストはapiのvitestで走る(`apps/api/db/ugc-moderation-schema.worker.test.ts`のバインド先)
 - 1.3: 操作種別は`apps/common-lib/admin/audit-actions/ugc-moderation.ts`の`MODERATION_AUDIT_ACTION_DEFINITIONS`(措置の種類をキーにしたRecord。ユースケースが措置の種類から監査ログの定義を引くため)と`MODERATION_AUDIT_ACTIONS`(一覧)。1.1の定義と表示名から組み立てて写しを持たない。上流の`apps/admin/src/components/pages/audit-logs-page.browser.test.tsx`が表示名を全件一致で比べるため13件を加えた(以後の操作種別の追加でも同様)。`project-values.md`の監査ログの操作種別の一覧への追加は8.2
 - 1.4: メール種別は`apps/backend-lib/core/email/kinds/ugc-moderation.ts`、テンプレートは`apps/event/src/infrastructure/email/templates/ugc-moderation/`(テストは他のテンプレートと同じWorkers統合テスト)。件名と広告の段落以外の本文(プレビュー・停止日時の行・固定の段落・問い合わせのボタン)は実装者が決めたため、1.5で文言規則に同じ文を載せる(本文は`moderation-notice-copy.ts`と各`*-email-body.tsx`)。日時は`formatUtcDateTime(…, { withYear: true })`。理由と抜粋は`ModerationMultilineText`で行に分け`<br />`でつなぐ。入力のスキーマは理由を前後の空白を除かずに500書記素で数えるため、2.4の通知は理由を正規化した値(2.2の正規化)で渡し、抜粋は`…`を含めて100書記素に切ってから渡す。決済中のセッションの失効を停止の通知に書くかはResearch Neededのまま書いていない
+- 1.5: 文言規則(`003-text-and-copy-rules.md`の「UGC管理の画面の文言」「措置の通知メールの本文」)・ページ配置(`002-page-layouts.md`の「UGC管理の共通の規則」と5ページ)・準拠方針・日次タイムライン・新規の`features/006-content-moderation.md`(と`features/README.md`の索引)を書いた。設計に文面の無い画面の文言(見出し・列見出し・絞り込みのラベル・空の一覧・トースト)と、URLのクエリのキー(users`handle・nickname・email・status`、products`name・handle・ownerHandle・category・launchState・visibility`、comments`authorHandle・productHandle・from・to・state`、ratings`productHandle・raterHandle・state`、media`reason`(既定は自動判定)、全一覧の位置は`after`)は実装者が決め、6のタスクはこれに従う。`account_state_conflict`の文言はdesign.mdのSupporting Referencesの「他の操作で状態が変わりました。最新の内容を読み込んでからやり直してください。」を載せた。design.md(1116行付近)は上流の`IDENTITY_ERRORS`をそのまま返すと書くが、上流の文言は「処理が重なりました。時間をおいて再度お試しください。」のため、3.1・3.6(または4.6のエラーの写像)で文言だけを本specの文に差し替える
