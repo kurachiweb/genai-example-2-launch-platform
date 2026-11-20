@@ -1,5 +1,5 @@
 import { useRouter } from '@tanstack/react-router';
-import { type ReactNode, useEffect, useId, useRef } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 import { DISPOSABLE_EMAIL_LABELS } from '../../../../common-lib/moderation/moderation-labels.ts';
 import {
@@ -19,6 +19,8 @@ import {
   USER_LIST_EMPTY_MESSAGE,
   userHandleLabel,
 } from '../shared/moderation-messages.ts';
+import { AdministrativeWithdrawalAction } from './administrative-withdrawal-action.tsx';
+import { AdministrativeWithdrawalDialog } from './administrative-withdrawal-dialog.tsx';
 import { UserModerationActions } from './user-moderation-actions.tsx';
 import { UserStatusCell } from './user-status-cell.tsx';
 
@@ -102,6 +104,20 @@ const columnsOf = (
   },
 ];
 
+interface WithdrawalState {
+  readonly open: boolean;
+  // 確定で行が消えても確認を開いたまま結果を示し、閉じる動きの間も題名を保つため、閉じても対象を残す
+  readonly target: AdminModerationUserView | undefined;
+  // 閉じる動きの最中に別の利用者で開き直すと前の入力が残るため、開くたびに数を変えて作り直す
+  readonly session: number;
+}
+
+const WITHDRAWAL_CLOSED: WithdrawalState = Object.freeze({
+  open: false,
+  target: undefined,
+  session: 0,
+});
+
 const prefersReducedMotion = (): boolean =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -140,8 +156,23 @@ export function UserTable({
     });
     pendingRef.current = unsubscribe;
   };
+  const [withdrawal, setWithdrawal] =
+    useState<WithdrawalState>(WITHDRAWAL_CLOSED);
+  // 代理の退会に成功すると開いた元の行が消えるため、その時だけ一覧の見出しを戻り先にし、取り消しでは開いた元のボタンへ戻す
+  const withdrawnReturnFocusRef = useRef<HTMLElement | null>(null);
+  const openWithdrawal = (user: AdminModerationUserView): void => {
+    withdrawnReturnFocusRef.current = null;
+    setWithdrawal((current) => ({
+      open: true,
+      target: user,
+      session: current.session + 1,
+    }));
+  };
   const actionsOf = (user: AdminModerationUserView) => (
-    <UserModerationActions user={user} returnFocusRef={headingRef} />
+    <>
+      <UserModerationActions user={user} returnFocusRef={headingRef} />
+      <AdministrativeWithdrawalAction user={user} onOpen={openWithdrawal} />
+    </>
   );
   return (
     <section
@@ -204,6 +235,20 @@ export function UserTable({
           />
         </div>
       </div>
+      {withdrawal.target === undefined ? null : (
+        <AdministrativeWithdrawalDialog
+          key={withdrawal.session}
+          open={withdrawal.open}
+          onOpenChange={(open) => {
+            setWithdrawal((current) => ({ ...current, open }));
+          }}
+          target={withdrawal.target}
+          onCompleted={() => {
+            withdrawnReturnFocusRef.current = headingRef.current;
+          }}
+          returnFocusRef={withdrawnReturnFocusRef}
+        />
+      )}
     </section>
   );
 }

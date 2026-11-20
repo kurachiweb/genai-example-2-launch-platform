@@ -240,7 +240,10 @@ describe('措置の操作', () => {
       await renderWith({ role });
       await expect.element(table()).toBeVisible();
 
-      expect(actionNames()).toStrictEqual([
+      // 最上位管理者だけに置く代理の退会はusers-page-withdrawal.browser.test.tsxが確かめる
+      expect(
+        actionNames().filter((name) => !name?.endsWith('の代理の退会')),
+      ).toStrictEqual([
         '「サンプル太郎」を停止',
         '「サンプル花子」を停止',
         '「サンプル花子」のプロフィール画像を隔離',
