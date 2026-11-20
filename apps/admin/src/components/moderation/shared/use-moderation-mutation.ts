@@ -7,6 +7,7 @@ import {
 import type { ModerationTargetKind } from '../../../../common-lib/moderation/moderation-actions.ts';
 import { MODERATION_ACTION_DEFINITIONS } from '../../../../common-lib/moderation/moderation-actions.ts';
 import { notify } from '../../../../lib/components/feedback/notify.ts';
+import { invalidateAuditLogQueries } from '../../../graphql/admin-audit-logs.ts';
 import {
   commentModerationActionOptions,
   invalidateAdminModerationEngagementQueries,
@@ -95,7 +96,7 @@ export type RunModeration = (
   input: ModerationActionInput,
 ) => Promise<ModerationOutcomeView>;
 
-// 措置を行い、対象の表示を新しい状態に取り直してから、変わったか変わらなかったかを知らせる。失敗は例外のまま呼び出し元へ返す
+// 措置を行い、対象の表示を新しい状態に取り直してから、変わったか変わらなかったかを知らせる。監査ログは状態が変わった措置だけが残すため、その時だけ監査ログの照会も無効にする。失敗は例外のまま呼び出し元へ返す
 export function useModerationMutation(
   operation: ModerationOperation,
 ): RunModeration {
@@ -106,8 +107,11 @@ export function useModerationMutation(
 
   return async (input) => {
     const outcome = await mutateAsync({ variables: input });
+    const invalidations = outcome.changed
+      ? [...AFFECTED_QUERIES[targetKind], invalidateAuditLogQueries]
+      : AFFECTED_QUERIES[targetKind];
     await Promise.all(
-      AFFECTED_QUERIES[targetKind].map((invalidate) => invalidate(queryClient)),
+      invalidations.map((invalidate) => invalidate(queryClient)),
     );
     if (outcome.changed) {
       notify.success(MODERATION_CHANGED_MESSAGES[operation]);

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { sqlStringLiteral } from '../../apps/api/scripts/admin/sql-string-literal.ts';
 import type { RatingScore } from '../../apps/common-lib/engagement/engagement-rules.ts';
 import type { LocalD1Row } from './local-d1-command.ts';
@@ -9,6 +11,9 @@ export interface ModerationProduct {
   readonly ownerUserId: string;
   readonly ownerHandle: string;
   readonly ownerEmail: string;
+  readonly ownerPseudonymousId: string;
+  readonly ownerNickname: string;
+  readonly launchDate: string;
 }
 
 export interface FixtureUser {
@@ -79,7 +84,7 @@ const valuesOf = (values: readonly string[]): string =>
 
 // 措置の対象は画面と同じ掲載の条件(公開中のプロダクト・有効で確認済みの投稿者・取り消されていない勝ちのローンチ)を満たすものに限る
 export function moderationProductSql(productHandle: string): string {
-  return `SELECT p.id AS product_id, l.id AS launch_id, u.id AS owner_user_id, u.handle AS owner_handle, u.email AS owner_email FROM products p JOIN users u ON u.id = p.user_id JOIN product_launches l ON l.product_id = p.id AND l.outcome = 'won' AND l.cancelled_at IS NULL WHERE p.handle = ${sqlStringLiteral(productHandle)} AND p.deleted_at IS NULL AND p.hidden_at IS NULL AND u.deleted_at IS NULL AND u.status = 'active' AND u.email_verified_at IS NOT NULL;`;
+  return `SELECT p.id AS product_id, l.id AS launch_id, u.id AS owner_user_id, u.handle AS owner_handle, u.email AS owner_email, u.pseudonymous_id AS owner_pseudonymous_id, u.nickname AS owner_nickname, l.launch_date AS launch_date FROM products p JOIN users u ON u.id = p.user_id JOIN product_launches l ON l.product_id = p.id AND l.outcome = 'won' AND l.cancelled_at IS NULL WHERE p.handle = ${sqlStringLiteral(productHandle)} AND p.deleted_at IS NULL AND p.hidden_at IS NULL AND u.deleted_at IS NULL AND u.status = 'active' AND u.email_verified_at IS NOT NULL;`;
 }
 
 export function parseModerationProduct(
@@ -98,19 +103,34 @@ export function parseModerationProduct(
     owner_user_id: ownerUserId,
     owner_handle: ownerHandle,
     owner_email: ownerEmail,
+    owner_pseudonymous_id: ownerPseudonymousId,
+    owner_nickname: ownerNickname,
+    launch_date: launchDate,
   } = row;
   if (
     typeof productId !== 'string' ||
     typeof launchId !== 'string' ||
     typeof ownerUserId !== 'string' ||
     typeof ownerHandle !== 'string' ||
-    typeof ownerEmail !== 'string'
+    typeof ownerEmail !== 'string' ||
+    typeof ownerPseudonymousId !== 'string' ||
+    typeof ownerNickname !== 'string' ||
+    typeof launchDate !== 'string'
   ) {
     throw new Error(
       `プロダクトの照会の結果の形式が正しくありません: ${JSON.stringify(rows)}`,
     );
   }
-  return { productId, launchId, ownerUserId, ownerHandle, ownerEmail };
+  return {
+    productId,
+    launchId,
+    ownerUserId,
+    ownerHandle,
+    ownerEmail,
+    ownerPseudonymousId,
+    ownerNickname,
+    launchDate,
+  };
 }
 
 const fixtureUserOf = (
@@ -119,7 +139,8 @@ const fixtureUserOf = (
   nextId: () => string,
 ): FixtureUser => ({
   id: nextId(),
-  pseudonymousId: nextId(),
+  // 監査ログは利用者を仮名化IDで指し、UUIDの形でない識別子の記録を拒否するため、登録の時と同じUUIDで作る
+  pseudonymousId: randomUUID(),
   handle,
   nickname,
   email: `${handle}@${TEST_EMAIL_DOMAIN}`,

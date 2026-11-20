@@ -43,12 +43,19 @@ const OWNER_EMAIL = 'e2e-mod-owner@test.example';
 
 const SUFFIX = 'a1b2c3d4';
 
+// 登録の時に作る仮名化IDと同じ、小文字のバージョン4のUUID
+const PSEUDONYMOUS_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+
 const PRODUCT: ModerationProduct = {
   productId: PRODUCT_ID,
   launchId: LAUNCH_ID,
   ownerUserId: OWNER_ID,
   ownerHandle: OWNER_HANDLE,
   ownerEmail: OWNER_EMAIL,
+  ownerPseudonymousId: `p-${OWNER_ID}`,
+  ownerNickname: OWNER_ID,
+  launchDate: '2026-11-19',
 };
 
 let db: Database;
@@ -146,6 +153,22 @@ const planOf = (
     ...overrides,
   });
 
+const MASKED_PSEUDONYMOUS_ID = '<仮名化ID>';
+
+const withMaskedPseudonymousIds = (
+  plan: EngagementTargetsPlan,
+): EngagementTargetsPlan => ({
+  ...plan,
+  comment: {
+    ...plan.comment,
+    author: { ...plan.comment.author, pseudonymousId: MASKED_PSEUDONYMOUS_ID },
+  },
+  ratings: plan.ratings.map((rating) => ({
+    ...rating,
+    rater: { ...rating.rater, pseudonymousId: MASKED_PSEUDONYMOUS_ID },
+  })),
+});
+
 beforeEach(async () => {
   idCount = 0;
   db = new Database(':memory:');
@@ -165,7 +188,7 @@ afterEach(() => {
 });
 
 describe('moderationProductSql・parseModerationProduct', () => {
-  test('ハンドルから掲載中のプロダクト・勝ちのローンチ・確認済みの投稿者を読む', () => {
+  test('ハンドルから掲載中のプロダクト・勝ちのローンチとその日付・確認済みの投稿者とその仮名化IDとニックネームを読む', () => {
     insertLaunch('L0', PRODUCT_ID, { outcome: 'lost' });
     insertLaunch('L2', PRODUCT_ID, { outcome: null });
 
@@ -240,6 +263,9 @@ describe('moderationProductSql・parseModerationProduct', () => {
             owner_user_id: 1,
             owner_handle: OWNER_HANDLE,
             owner_email: OWNER_EMAIL,
+            owner_pseudonymous_id: PRODUCT.ownerPseudonymousId,
+            owner_nickname: PRODUCT.ownerNickname,
+            launch_date: PRODUCT.launchDate,
           },
         ],
         HANDLE,
@@ -252,14 +278,15 @@ describe('planEngagementTargets', () => {
   test('接尾辞で分けた確認済みの利用者として、コメントの投稿者1人と評価の数の評価者を計画する', () => {
     const plan = planOf();
 
-    expect(plan).toEqual({
+    // 仮名化IDは乱数のUUIDのため印に置き換えて比べ、形と一意性は次の場合で確かめる
+    expect(withMaskedPseudonymousIds(plan)).toEqual({
       product: PRODUCT,
       comment: {
-        commentId: 'ID0003',
+        commentId: 'ID0002',
         body: `E2Eモデレーションのコメント${SUFFIX}です。`,
         author: {
           id: 'ID0001',
-          pseudonymousId: 'ID0002',
+          pseudonymousId: MASKED_PSEUDONYMOUS_ID,
           handle: `e2e-mod-${SUFFIX}-c`,
           nickname: `E2Eモデレーションの投稿者${SUFFIX}`,
           email: `e2e-mod-${SUFFIX}-c@test.example`,
@@ -267,22 +294,22 @@ describe('planEngagementTargets', () => {
       },
       ratings: [
         {
-          ratingId: 'ID0006',
+          ratingId: 'ID0004',
           score: 5,
           rater: {
-            id: 'ID0004',
-            pseudonymousId: 'ID0005',
+            id: 'ID0003',
+            pseudonymousId: MASKED_PSEUDONYMOUS_ID,
             handle: `e2e-mod-${SUFFIX}-r1`,
             nickname: `E2Eモデレーションの評価者${SUFFIX}-1`,
             email: `e2e-mod-${SUFFIX}-r1@test.example`,
           },
         },
         {
-          ratingId: 'ID0009',
+          ratingId: 'ID0006',
           score: 1,
           rater: {
-            id: 'ID0007',
-            pseudonymousId: 'ID0008',
+            id: 'ID0005',
+            pseudonymousId: MASKED_PSEUDONYMOUS_ID,
             handle: `e2e-mod-${SUFFIX}-r2`,
             nickname: `E2Eモデレーションの評価者${SUFFIX}-2`,
             email: `e2e-mod-${SUFFIX}-r2@test.example`,
@@ -291,6 +318,19 @@ describe('planEngagementTargets', () => {
       ],
       now: NOW,
     });
+  });
+
+  test('利用者の仮名化IDを、監査ログが利用者を指す識別子と同じUUIDの形で、利用者ごとに別の値で作る', () => {
+    const { comment, ratings } = planOf({ ratingScores: [5, 4, 3] });
+    const pseudonymousIds = [
+      comment.author.pseudonymousId,
+      ...ratings.map(({ rater }) => rater.pseudonymousId),
+    ];
+
+    for (const pseudonymousId of pseudonymousIds) {
+      expect(pseudonymousId).toMatch(PSEUDONYMOUS_ID_PATTERN);
+    }
+    expect(new Set(pseudonymousIds).size).toBe(pseudonymousIds.length);
   });
 
   test('評価の数が1〜9でなければ失敗する', () => {

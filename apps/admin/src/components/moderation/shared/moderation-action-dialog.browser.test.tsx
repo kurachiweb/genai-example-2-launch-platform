@@ -26,6 +26,7 @@ import {
 } from '../../../../test/moderation-fixtures.ts';
 import { renderModerationPart } from '../../../../test/moderation-render.tsx';
 import { adminModerationUsersQueryOptions } from '../../../graphql/admin-moderation-users.ts';
+import { auditLogsQueryOptions } from '../../../graphql/admin-audit-logs.ts';
 import { adminQuarantinedImagesQueryOptions } from '../../../graphql/admin-quarantined-images.ts';
 import {
   AdminDeleteQuarantinedImageDocument,
@@ -122,12 +123,20 @@ const renderDialog = async ({
   queryClient.setQueryData(usersKey, adminUsersQueryOf([ACTIVE_USER_NODE]));
   const imagesKey = adminQuarantinedImagesQueryOptions('auto').queryKey;
   queryClient.setQueryData(imagesKey, { pages: [], pageParams: [] });
+  const auditLogsKey = auditLogsQueryOptions({
+    filter: { targetId },
+  }).queryKey;
+  queryClient.setQueryData(auditLogsKey, {
+    auditLogs: { entries: [], nextCursor: null },
+  });
   return {
     onCompleted,
     usersInvalidated: () =>
       queryClient.getQueryState(usersKey)?.isInvalidated ?? false,
     imagesInvalidated: () =>
       queryClient.getQueryState(imagesKey)?.isInvalidated ?? false,
+    auditLogsInvalidated: () =>
+      queryClient.getQueryState(auditLogsKey)?.isInvalidated ?? false,
   };
 };
 
@@ -213,10 +222,11 @@ describe('確認の内容', () => {
 });
 
 describe('確定', () => {
-  test('確定すると対象と前後の空白を除いた理由で措置を行い、閉じて成功を知らせ、照会を無効にする', async () => {
-    const { onCompleted, usersInvalidated } = await renderDialog({
-      handlers: new Map([[AdminSuspendUserDocument, suspendWith(true)]]),
-    });
+  test('確定すると対象と前後の空白を除いた理由で措置を行い、閉じて成功を知らせ、影響する一覧と監査ログの照会を無効にする', async () => {
+    const { onCompleted, usersInvalidated, auditLogsInvalidated } =
+      await renderDialog({
+        handlers: new Map([[AdminSuspendUserDocument, suspendWith(true)]]),
+      });
     await openDialog();
 
     await reasonBox().fill(`  ${MODERATION_REASON}\n`);
@@ -230,13 +240,15 @@ describe('確定', () => {
       .element(page.getByText('ユーザーを停止しました。'))
       .toBeVisible();
     expect(usersInvalidated()).toBe(true);
+    expect(auditLogsInvalidated()).toBe(true);
     expect(onCompleted).toHaveBeenCalledExactlyOnceWith(true);
   });
 
-  test('既に同じ状態なら、状態が変わらなかった旨を知らせて照会を無効にする', async () => {
-    const { onCompleted, usersInvalidated } = await renderDialog({
-      handlers: new Map([[AdminSuspendUserDocument, suspendWith(false)]]),
-    });
+  test('既に同じ状態なら、状態が変わらなかった旨を知らせて影響する一覧の照会を無効にし、記録の増えない監査ログの照会は無効にしない', async () => {
+    const { onCompleted, usersInvalidated, auditLogsInvalidated } =
+      await renderDialog({
+        handlers: new Map([[AdminSuspendUserDocument, suspendWith(false)]]),
+      });
     await openDialog();
 
     await reasonBox().fill(MODERATION_REASON);
@@ -246,6 +258,7 @@ describe('確定', () => {
     await expect.element(page.getByText('既に停止中です。')).toBeVisible();
     expect(page.getByText('ユーザーを停止しました。').query()).toBeNull();
     expect(usersInvalidated()).toBe(true);
+    expect(auditLogsInvalidated()).toBe(false);
     expect(onCompleted).toHaveBeenCalledExactlyOnceWith(false);
   });
 
@@ -275,19 +288,20 @@ describe('確定', () => {
   });
 
   test('拒否されると、サーバーの文言をダイアログの中に示して理由の入力を保ち、知らせず照会も無効にしない', async () => {
-    const { onCompleted, usersInvalidated } = await renderDialog({
-      handlers: new Map([
-        [
-          AdminSuspendUserDocument,
-          () =>
-            failure({
-              code: 'account_state_conflict',
-              message: CONFLICT_MESSAGE,
-              status: 409,
-            }),
-        ],
-      ]),
-    });
+    const { onCompleted, usersInvalidated, auditLogsInvalidated } =
+      await renderDialog({
+        handlers: new Map([
+          [
+            AdminSuspendUserDocument,
+            () =>
+              failure({
+                code: 'account_state_conflict',
+                message: CONFLICT_MESSAGE,
+                status: 409,
+              }),
+          ],
+        ]),
+      });
     await openDialog();
 
     await reasonBox().fill(MODERATION_REASON);
@@ -298,6 +312,7 @@ describe('確定', () => {
       .toHaveTextContent(CONFLICT_MESSAGE);
     await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
     expect(usersInvalidated()).toBe(false);
+    expect(auditLogsInvalidated()).toBe(false);
     expect(onCompleted).not.toHaveBeenCalled();
   });
 

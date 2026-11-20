@@ -410,7 +410,7 @@
   - _Depends: 4.6, 5_
   - _Requirements: 16.4_
 
-- [ ] 8.4 利用者とプロダクトの措置のE2Eシナリオを作る
+- [x] 8.4 利用者とプロダクトの措置のE2Eシナリオを作る
   - `signInAsNewAdmin`のモデレーターで、`/users`でハンドルを検索して停止→ディレクトリからその利用者のプロダクトが消える→Mailpitに停止の通知→監査ログの画面に「ユーザーの停止」→理由を入力した停止解除で戻る、を確かめる
   - プロダクトの詳細で非公開化→利用者側の詳細ページが他者に404→通知メール→理由を入力した復元で戻る、を確かめる
   - 完了状態: ローカルでE2Eが成功する
@@ -490,3 +490,4 @@
 - 6.9: `apps/admin/src/composition/admin-navigation.ts`の`ADMIN_NAV_ITEMS`にユーザー(20)・プロダクト(30)・コメント(40)・評価(50)・画像モデレーション(60)を加えた(全ロールが参照できるため必要なロールは持たせない)。全件一致で確かめる上流のテスト2つに加え、`apps/admin/test/admin-shell.browser.test.tsx`の`MENU_ITEMS`も更新した。`project-values.md`の「メニューの登録箇所」の行を15件に直した。admin全体の`test:browser`(82ファイル1121件)が成功し、ローカルで閲覧のみの管理者が5ページへメニューから移動できることを確かめた
 - 8.6: `e2e/admin/administrative-withdrawal.e2e.test.ts`(手順`administrative-withdrawal-steps.ts`)。最上位管理者が画面から登録した利用者をメールアドレスで検索して代理の退会→別の文脈でログインできない→監査ログに1行→退会の確定から20秒間その利用者にメールが1通も届かない(退会の完了のメール種別は存在しないため「何も届かない」で確かめる。登録の確認メールの到着を先に待つ)。モデレーターには「停止」はあるが「代理の退会」が無い。8.4の`user-moderation-steps.ts`と似た補助(行の取り方・監査ログの行)を自分のファイルに持つ(まとめる余地あり)
 - 8.5: `e2e/admin/engagement-moderation.e2e.test.ts`(手順`engagement-moderation-steps.ts`): 補助のコメントの非公開化で利用者側に「このコメントは削除されました。」、評価(5と1)の1の無効化で平均が3.0(2件)→5.0(1件)。`e2e/admin/media-moderation.e2e.test.ts`(手順`media-moderation-steps.ts`): 利用者が画面から99×99のプロフィール画像を登録→代替の判定で隔離→自動判定のタブで原本が読み込まれる(幅99)→公開承認で一覧から消える。8.3の空の`describe('UGC管理の補助')`は場面が同じ確認を含むため削除した。管理画面はメニューでなく`page.goto`(検索パラメータ付き)で開く。ハイドレーション前の押下をダイアログが開くまで押し直す処理が手順のファイルに重複している(まとめる余地あり)
+- 8.4: `e2e/admin/user-moderation.e2e.test.ts`・`product-moderation.e2e.test.ts`(手順`user-moderation-steps.ts`・`product-moderation-steps.ts`)。停止(ハンドルで検索)→ディレクトリから消え利用者側の詳細が404→停止のメール→監査ログ「ユーザーの停止」→停止解除で戻る、プロダクトの非公開化→他者に404→メール→復元で戻る。E2Eで見つかった2つの問題を親の決定で根本から直した: (1)E2Eの補助`directory-fixture-sql.ts`の`planListedProducts`と`moderation-fixture-sql.ts`の`fixtureUserOf`が仮名化IDをULIDの形で作り、監査ログ(UUIDを要求)が利用者の措置を拒否していたため、本番と同じUUIDで作るようにした(`ModerationProduct`に所有者の仮名化ID・ニックネーム・ローンチの日付も加えた。週・年のトーナメントの補助はULIDのまま)。(2)措置の後に監査ログの照会が無効化されず`staleTime`の30秒は古い一覧が出たため、`use-moderation-mutation.ts`が状態を変えた(`changed`)ときだけ`invalidateAuditLogQueries`(`apps/admin/src/graphql/admin-audit-logs.ts`)も呼ぶようにし、`frontend/020`に書き足した(監査ログを残す他の管理操作は今も無効化しない)。レビューの指摘でルートの型検査の誤りを親が直した(乱数の仮名化IDを印に置き換えて比べる)

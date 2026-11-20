@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { sqlStringLiteral } from '../../apps/api/scripts/admin/sql-string-literal.ts';
 import type { MatchWindow } from '../../apps/backend-lib/core/match/match-model.ts';
 import { parseBusinessDate } from '../../apps/backend-lib/core/time/business-time.ts';
@@ -288,7 +290,8 @@ export function planListedProducts({
   const handle = `e2e-dir-${suffix}`;
   const owner: ListedProductsOwner = {
     id: nextId(),
-    pseudonymousId: nextId(),
+    // 監査ログは利用者を仮名化IDで指し、UUIDの形でない識別子の記録を拒否するため、登録の時と同じUUIDで作る
+    pseudonymousId: randomUUID(),
     handle,
     nickname: `E2Eディレクトリの投稿者${suffix}`,
     email: `${handle}@${TEST_EMAIL_DOMAIN}`,
