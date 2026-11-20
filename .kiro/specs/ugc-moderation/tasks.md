@@ -142,7 +142,7 @@
   - _Requirements: 11.3, 11.4_
 
 - [ ] 4. 措置の群の照会・保守のジョブ・束縛・GraphQL
-- [ ] 4.1 (P) ユーザー一覧の照会を作る
+- [x] 4.1 (P) ユーザー一覧の照会を作る
   - 一覧はidentity-authの仮7の利用者の管理の照会を使う
   - 先に、単体テストで、プロフィール画像と隔離理由と停止の最新の理由のまとめた照会、メールアドレスの絞り込みで結果の仮名化ID(0件は対象なし)を検索文字列なしで記録してから返すこと、記録の失敗で結果を返さないこと、メールアドレスを返さないことを確かめる
   - 完了状態: 単体テストが成功する
@@ -458,3 +458,4 @@
 - 5: eventに`AccountRecordErasureHandler`・`ProductRecordErasureHandler`(`apps/event/src/application/moderation/`、500件ずつ)、識別子`EVENT_MODERATION_TYPES`(`event-moderation-types.ts`)、`EVENT_MODERATION_MODULE`(名前`event-moderation`、`MODULES`の`MODERATION_PLATFORM_MODULE`の直後)。登録口に`ugc-moderation.account-record-erasure`・`ugc-moderation.product-record-erasure`(`purge_due`、1900)。`purge_due`の一覧を全件一致で比べる上流のWorkers統合テスト9件の期待値に本specの行を加え、sponsorshipの「`purge_due`の最後に並ぶ」単体テストを「措置の記録の削除を除く…の後に並ぶ」(`slice(-2)`)に変えた(記録に外部キーが無いため最後でも物理削除を妨げない)。8.2で`project-values.md`の非同期の処理の一覧に2件を加える
 - 3.7: `AdminRoleMediaReviewPolicy`(`apps/api/src/application/moderation/admin-role-media-review-policy.ts`、管理者の主体・`storage === 'images'`・`AdminDirectory.findProfiles`に居る(ロール不問)ときだけ許す)を`composition/media-review-policy.ts`で`FILE_ACCESS_TYPES.AdminMediaReviewPolicy`へ束縛し、全拒否のクラスと単体テストを削除した。削除済み・招待中の管理者はHTTPでは`AdminSessionVerifier`が先に401を返すため、判定そのものはコンテナから解決して確かめた(`apps/api/src/composition/media-review-policy.worker.test.ts`)。design.mdの上流への影響の表は全拒否の置き場所を`application/media/file-access-policies.ts`と書くが、実際は`infrastructure/media/deny-all-admin-media-review-policy.ts`だった。media-pipelineのdesign.mdの4か所に注記(注記1)を加え、`docs/GUIDES/tech/security/005`の管理者側の画像の1文を「有効な管理者のアカウントのときだけ返す」に直した
 - 4.4: `DefaultQuarantinedImageReader`(`application/moderation/quarantined-image-reader.ts`)。`MediaQuarantine.listByReason`(`ADMIN_LIST_PAGE_SIZE`の50件)の順を保ち、保有者の表示名は利用者(`UserProfileDirectory.findSummaries(ids, 'including-withdrawn')`)と管理者(`AdminDirectory.findProfiles`)を重複を除いて1回ずつ、`system`は`owner: null`、物理削除済みの利用者・削除済みの管理者は名前null。用途は生の用途名を返し、画面(6.7)が`mediaPurposeLabel`で表示名にする。検出内容の文字列は文言規則の書式で、信頼度は切り捨て(`Math.floor`、実装者の決定。8.2で文言規則に注記してよい)。返すファイルは`{ id, quarantined, quarantineReasons }`だけで、`path`は4.8が`downloadPathOf(id)`で作る
+- 4.1: `DefaultAdminUserReader`(`application/moderation/admin-user-reader.ts`)。上流の`AdminUserDirectory.search`の後、プロフィール(`not-withdrawn`)→画像(`MediaFiles.findMany`)と停止の最新の理由(`latestFor(['user.suspend'])`)を各1回。メールアドレスの絞り込み(`filter.email !== undefined`、空文字の正規化は4.6の入力の検証)があれば、一覧を組み立てた後に`user.email-search`を表示する利用者の仮名化IDだけ(0件は対象なし)で記録してから返し、記録の失敗では結果を返さない。戻り値の型(`AdminUserView`など)は実装者が決めた: 利用者のIDは`userId`、画像は`{ fileId, quarantined, quarantineReasons }`で、4.6・4.7が`path`(`downloadPathOf`)とGraphQLの`AdminUser`の形への写像を作る。使い捨ての判定は`emailVerified`が偽なら`unverified`、真で判定nullなら`undetermined`
