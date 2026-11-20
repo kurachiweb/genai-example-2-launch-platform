@@ -111,7 +111,7 @@
   - _Depends: 2.2, 2.4_
   - _Requirements: 9.6, 9.7, 9.8, 9.9, 9.10_
 
-- [ ] 3.4 (P) 評価の無効化と取り消しを作る
+- [x] 3.4 (P) 評価の無効化と取り消しを作る
   - 対象の確かめにはengagementの仮6の評価の管理の照会(engagementのタスク2.7)を使う
   - 先に、単体テストで、無効化と取り消しの理由の必須と上限、不在(取消済みを含む)の拒否、既に同じ状態と上流の変化なしでの変化なし、書き込みの単位のポート(`EngagementModerationWriter`)への記録と監査ログと呼び出し側の参加の値(`participation`)の受け渡し、通知しないことを確かめる
   - 完了状態: 単体テストが成功する
@@ -452,3 +452,4 @@
 - 3.1: `DefaultUserModerationService`(`application/moderation/user-moderation-service.ts`、インターフェース`UserModerationService`も同じファイル)。上流の競合は`moderationError('account_state_conflict')`(本specの文言)へ変える(design.mdの「そのまま返す」との相違)。上流の`not_found`は`user_not_found`へ、他の例外はそのまま投げ、全ての失敗の経路で保留中の措置を破棄する。設計との相違: 状態が変わったのに記録が取り出されなかったときは定型の通知へ送り、`{ changed: true, actionId: null }`を返し通知を依頼しない(存在しない記録のIDを返さないため)。この`changed: true`かつ`actionId: null`の組は`ModerationOutcome`の注記に無く、4.7以降のリゾルバと後続の呼び出し側が扱う必要がある。ログは`['api','application','moderation']`に`action`・`userId`・`operatorAdminId`・`actionId`・`result`だけを出す(メッセージ「利用者の措置を終えました」)。3.2〜3.6も同じ形にそろえる
 - 3.2: `DefaultProductModerationService`(`application/moderation/product-moderation-service.ts`、3.1と同じ形)。対象は`ProductDirectory.findSummaries([id], 'not-deleted')`の`hidden`で判定する(`AdminProductDirectory`にはIDの照会が無い)。監査ログの対象はプロダクトのID(設計に記載なし、実装者の決定)。保留中の措置の`subjectUserId`は所有者、`productId`と`targetId`はプロダクト。照会の後の論理削除で上流が投げる`product_not_found`は本specのエラー(同じコードと文言)へ変える
 - 3.3: `DefaultCommentModerationService`(`application/moderation/comment-moderation-service.ts`)。対象は設計どおり`CommentStore.findByIds`で、`hiddenAt`で同じ状態を判定する。投稿者が削除・匿名化したコメントも非公開化・復元できる(上流の`CommentModerationControl`に合わせた。匿名化済みは記録の`subjectUserId`をnullにし、通知は「送らなかった」になる)。書き込みの単位が記録と状態を一体で確定するため、保留中の措置と`ModerationIncidentReporter`は注入しない。上流の`comment_not_found`はそのまま返す(同じエラー)
+- 3.4: `DefaultRatingModerationService`(`application/moderation/rating-moderation-service.ts`)。対象は`AdminRatingDirectory.findByIds`(論理削除されていない行だけを返すため、取消済みは`rating_not_found`)、`invalidatedAt`で同じ状態を判定。注入は`AdminRatingDirectory`・`EngagementModerationWriter`・`AuditLogRecorder`・`IdGenerator`の4つだけ(保留中の措置・通知・定型の通知は持たない)。記録の`noticeStatus`は`'none'`固定、監査ログの対象は評価のID
