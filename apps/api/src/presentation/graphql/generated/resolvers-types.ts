@@ -304,12 +304,16 @@ export type AdminLegalRevision = {
 /** ローンチのマッチ結果 */
 export type AdminMatchResult = {
   __typename?: 'AdminMatchResult';
+  /** 決着の仕方(votes・last_upvote・no_votes・bye・walkover・both_forfeited)。未確定はnull */
+  decision?: Maybe<Scalars['String']['output']>;
   id: Scalars['ID']['output'];
   kind: Scalars['String']['output'];
   /** 業務日付 */
   matchDate: Scalars['String']['output'];
   /** 不戦勝・表示できない相手はnull */
   opponentName?: Maybe<Scalars['String']['output']>;
+  /** 照会の時点の進み具合(scheduled・live・tallying・finished) */
+  phase: Scalars['String']['output'];
   /** 未確定はnull */
   result?: Maybe<Scalars['String']['output']>;
   round?: Maybe<Scalars['Int']['output']>;
@@ -5032,10 +5036,12 @@ export type AdminLegalRevisionResolvers<ContextType = GraphQLContext, ParentType
 };
 
 export type AdminMatchResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminMatchResult'] = ResolversParentTypes['AdminMatchResult']> = {
+  decision?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   matchDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   opponentName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  phase?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   result?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   stage?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;

@@ -8,7 +8,9 @@ import type {
 import { MATCH_PLATFORM_TYPES } from '../../../lib/core/match/identifiers.ts';
 import type {
   EntryResult,
+  MatchDecision,
   MatchKind,
+  MatchPhase,
   MatchStage,
 } from '../../../lib/core/match/match-model.ts';
 import type {
@@ -103,6 +105,10 @@ export interface AdminProductMatchResult {
   readonly upvoteCount: number;
   // 未確定はnull
   readonly result: EntryResult | null;
+  // 照会の時点で導いた進み具合
+  readonly phase: MatchPhase;
+  // 未確定はnull
+  readonly decision: MatchDecision | null;
   // 不戦勝・相手の物理削除・論理削除はnull
   readonly opponentName: string | null;
 }
@@ -244,6 +250,8 @@ const matchResultsOf = (
         matchDate: match.matchDate,
         upvoteCount: own.upvoteCount,
         result: own.result,
+        phase: match.phase,
+        decision: match.decision,
         opponentName:
           opponentProductId === null
             ? null

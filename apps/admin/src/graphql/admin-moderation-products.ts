@@ -90,6 +90,10 @@ export interface AdminModerationMatchView {
   readonly upvoteCount: number;
   // nullは未確定
   readonly result: string | null;
+  // 照会の時点の進み具合(scheduled・live・tallying・finished)
+  readonly phase: string;
+  // 決着の仕方。nullは未確定
+  readonly decision: string | null;
   // nullは不戦勝・表示できない相手
   readonly opponentName: string | null;
 }
@@ -241,6 +245,8 @@ const toLaunch = (launch: GraphQLLaunch): AdminModerationLaunchView => ({
     matchDate: match.matchDate,
     upvoteCount: match.upvoteCount,
     result: match.result,
+    phase: match.phase,
+    decision: match.decision,
     opponentName: match.opponentName,
   })),
 });

@@ -275,6 +275,8 @@ type AdminLegalRevision {
 
 """ローンチのマッチ結果"""
 type AdminMatchResult {
+  """決着の仕方(votes・last_upvote・no_votes・bye・walkover・both_forfeited)。未確定はnull"""
+  decision: String
   id: ID!
   kind: String!
 
@@ -283,6 +285,9 @@ type AdminMatchResult {
 
   """不戦勝・表示できない相手はnull"""
   opponentName: String
+
+  """照会の時点の進み具合(scheduled・live・tallying・finished)"""
+  phase: String!
 
   """未確定はnull"""
   result: String

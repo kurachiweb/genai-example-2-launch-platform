@@ -355,6 +355,8 @@ describe('adminProduct', () => {
               matchDate: MATCH_DATE,
               upvoteCount: 12,
               result: 'won',
+              phase: 'finished',
+              decision: 'votes',
               opponentName: 'プロダクト3',
             },
           ],

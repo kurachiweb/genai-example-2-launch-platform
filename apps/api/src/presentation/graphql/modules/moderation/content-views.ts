@@ -160,6 +160,8 @@ export const toAdminProductDetail = (
       matchDate: match.matchDate,
       upvoteCount: match.upvoteCount,
       result: match.result,
+      phase: match.phase,
+      decision: match.decision,
       opponentName: match.opponentName,
     })),
   })),

@@ -30,6 +30,8 @@ query AdminProduct($id: ID!) {
         matchDate
         upvoteCount
         result
+        phase
+        decision
         opponentName
       }
     }

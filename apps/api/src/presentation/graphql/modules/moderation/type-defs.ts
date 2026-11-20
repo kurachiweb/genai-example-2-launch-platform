@@ -131,6 +131,10 @@ export const MODERATION_TYPE_DEFS = /* GraphQL */ `
     upvoteCount: Int!
     "未確定はnull"
     result: String
+    "照会の時点の進み具合(scheduled・live・tallying・finished)"
+    phase: String!
+    "決着の仕方(votes・last_upvote・no_votes・bye・walkover・both_forfeited)。未確定はnull"
+    decision: String
     "不戦勝・表示できない相手はnull"
     opponentName: String
   }

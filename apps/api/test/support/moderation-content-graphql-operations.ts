@@ -81,6 +81,8 @@ export interface AdminMatchResultFields {
   readonly matchDate: string;
   readonly upvoteCount: number;
   readonly result: string | null;
+  readonly phase: string;
+  readonly decision: string | null;
   readonly opponentName: string | null;
 }
 
@@ -236,6 +238,8 @@ export const ADMIN_PRODUCT = /* GraphQL */ `
           matchDate
           upvoteCount
           result
+          phase
+          decision
           opponentName
         }
       }
