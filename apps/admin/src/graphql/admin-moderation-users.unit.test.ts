@@ -234,7 +234,11 @@ describe('loadAdminModerationUsersPage', () => {
     const deps = { handle: 'maker', after: 'cursor-2' } as const;
     const { result, sent } = await runThroughApi(
       async (queryClient) => {
-        await loadAdminModerationUsersPage({ context: { queryClient }, deps });
+        await loadAdminModerationUsersPage({
+          context: { queryClient },
+          deps,
+          cause: 'enter',
+        });
         return queryClient.getQueryData(
           adminModerationUsersQueryOptions(deps).queryKey,
         );
@@ -261,6 +265,7 @@ describe('loadAdminModerationUsersPage', () => {
         loadAdminModerationUsersPage({
           context: { queryClient: client },
           deps: {},
+          cause: 'enter',
         }),
       unavailableResponse,
     );
@@ -270,5 +275,46 @@ describe('loadAdminModerationUsersPage', () => {
       queryClient.getQueryState(adminModerationUsersQueryOptions({}).queryKey)
         ?.status,
     ).toBe('error');
+  });
+
+  test.each(['enter', 'preload'] as const)(
+    '%sの読み込みは取得の終わりを待つ',
+    async (cause) => {
+      const { result } = await runThroughApi(
+        async (queryClient) => {
+          await loadAdminModerationUsersPage({
+            context: { queryClient },
+            deps: {},
+            cause,
+          });
+          return queryClient.getQueryState(
+            adminModerationUsersQueryOptions({}).queryKey,
+          )?.fetchStatus;
+        },
+        dataResponse(usersResponse([ACTIVE_USER])),
+      );
+
+      expect(result).toBe('idle');
+    },
+  );
+
+  test('同じ画面の中の条件の変更とページの移動(stay)は、直前の一覧を残して読み込み中を示せるよう、取得を始めるだけで待たない', async () => {
+    const { result } = await runThroughApi(
+      async (queryClient) => {
+        await loadAdminModerationUsersPage({
+          context: { queryClient },
+          deps: {},
+          cause: 'stay',
+        });
+        const fetchStatus = queryClient.getQueryState(
+          adminModerationUsersQueryOptions({}).queryKey,
+        )?.fetchStatus;
+        await queryClient.query(adminModerationUsersQueryOptions({}));
+        return fetchStatus;
+      },
+      dataResponse(usersResponse([ACTIVE_USER])),
+    );
+
+    expect(result).toBe('fetching');
   });
 });

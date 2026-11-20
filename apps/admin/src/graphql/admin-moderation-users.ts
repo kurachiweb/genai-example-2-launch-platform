@@ -155,15 +155,21 @@ export async function invalidateAdminModerationUserQueries(
   });
 }
 
-// 一覧の取得の失敗は一覧の中で再試行できるよう、例外にせずキャッシュに残す
+// 一覧の取得の失敗は一覧の中で再試行できるよう、例外にせずキャッシュに残す。
+// 同じ画面の中の条件の変更とページの移動で待つと、ルーターが前の条件の画面を保ったまま待ち、画面が直前の一覧を残して読み込み中を示せないため、取得を始めるだけにする
 export async function loadAdminModerationUsersPage({
   context,
   deps,
+  cause,
 }: {
   readonly context: Pick<RouterContext, 'queryClient'>;
   readonly deps: AdminModerationUserListArgs;
+  readonly cause: 'preload' | 'enter' | 'stay';
 }): Promise<void> {
-  await context.queryClient
+  const loading = context.queryClient
     .query(adminModerationUsersQueryOptions(deps))
     .catch(() => undefined);
+  if (cause !== 'stay') {
+    await loading;
+  }
 }
