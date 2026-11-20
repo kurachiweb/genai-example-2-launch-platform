@@ -61,8 +61,10 @@ export const MODERATION_TYPE_DEFS = /* GraphQL */ `
   "管理画面で表示する画像のファイル"
   type AdminMediaFile {
     id: ID!
-    "管理者側のサイトと同じオリジンの中継の経路"
+    "管理者側のサイトと同じオリジンの中継の経路。隔離中の画像を表示する"
     path: String!
+    "変換配信の画像。隔離中・削除待ち・保存未完了の画像はobjectKeyが空"
+    image: MediaImage!
     quarantined: Boolean!
     quarantineReasons: [QuarantineReason!]!
   }

@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 
 import { cn } from '../../../../lib/utilities/class-names.ts';
+import { MediaPicture } from '../../../../lib/components/media/media-picture.tsx';
 import { MediaPlaceholder } from '../../../../lib/components/media/media-placeholder.tsx';
 import {
   type PictureDisplay,
@@ -19,7 +20,7 @@ export interface AdminMediaImageProps {
   readonly className?: string;
 }
 
-// 隔離中の画像は画像配信ドメインから配信されないため、管理者側のサイトと同じオリジンの中継の経路から原本を表示する。寸法の分からない原本は表示の枠に収める
+// 公開中の画像は画像配信ドメインの変換配信から表示する。隔離中の画像は変換配信から配信されないため、管理者側のサイトと同じオリジンの中継の経路から原本を表示し、寸法の分からない原本は表示の枠に収める
 export function AdminMediaImage({
   file,
   display,
@@ -27,7 +28,9 @@ export function AdminMediaImage({
   placeholder,
   className,
 }: AdminMediaImageProps) {
-  const path = file?.path ?? null;
+  const servable =
+    file !== null && !file.quarantined && file.image.objectKey !== null;
+  const path = file === null || servable ? null : file.path;
   const [failedPath, setFailedPath] = useState<string | null>(null);
   const markFailed = useCallback(() => {
     setFailedPath(path);
@@ -41,8 +44,21 @@ export function AdminMediaImage({
     },
     [markFailed],
   );
-  const size = pictureSizeOf(display, null);
 
+  if (servable) {
+    return (
+      <MediaPicture
+        image={file.image}
+        display={display}
+        alt={alt}
+        placeholder={placeholder}
+        loading="lazy"
+        className={className}
+      />
+    );
+  }
+
+  const size = pictureSizeOf(display, null);
   if (path === null || failedPath === path) {
     return (
       <MediaPlaceholder

@@ -23,6 +23,8 @@ import { adminWithRole } from './admin-viewer-fixtures.ts';
 import {
   LOGO_FILE_ID,
   PRODUCT_ID,
+  graphQLImageOf,
+  LOGO_OBJECT_KEY,
   relayPathOf,
   respondModerationGraphQL,
   USER_ID,
@@ -44,6 +46,7 @@ export const LAUNCHED_PRODUCT_NODE: ProductNode = Object.freeze({
   logo: Object.freeze({
     id: LOGO_FILE_ID,
     path: relayPathOf(LOGO_FILE_ID),
+    image: graphQLImageOf(LOGO_FILE_ID, LOGO_OBJECT_KEY),
     quarantined: false,
     quarantineReasons: [],
   }),

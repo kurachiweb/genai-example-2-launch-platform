@@ -267,14 +267,16 @@ describe('プロダクトの一覧', () => {
       .toHaveAttribute('datetime', '2026-11-16');
   });
 
-  test('ロゴは画像配信ドメインを使わず同一オリジンの中継の経路から表示し、ロゴの無いプロダクトは代わりの表示にする', async () => {
+  test('公開中のロゴは画像配信ドメインの変換配信から表示し、ロゴの無いプロダクトは代わりの表示にする', async () => {
     await renderWith();
     await expect.element(table()).toBeVisible();
 
     const logo = rowOf(LAUNCHED_PRODUCT_NODE.name)
       .element()
-      .querySelector('td img');
-    expect(logo?.getAttribute('src')).toBe(LAUNCHED_PRODUCT_NODE.logo?.path);
+      .querySelector('td picture img');
+    expect(logo?.getAttribute('src')).toMatch(
+      `https://images.example/${LAUNCHED_PRODUCT_NODE.logo?.image.objectKey ?? ''}/`,
+    );
     expect(
       rowOf(UNLAUNCHED_PRODUCT_NODE.name)
         .element()

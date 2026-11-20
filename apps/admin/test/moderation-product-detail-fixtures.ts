@@ -21,6 +21,8 @@ import {
   LOGO_FILE_ID,
   PRODUCT_ID,
   RATING_ID,
+  graphQLImageOf,
+  objectKeyOf,
   relayPathOf,
   USER_ID,
 } from './moderation-fixtures.ts';
@@ -52,6 +54,10 @@ const mediaFile = (
 ) => ({
   id,
   path: relayPathOf(id),
+  image: graphQLImageOf(
+    id,
+    quarantineReasons.length > 0 ? null : objectKeyOf(id),
+  ),
   quarantined: quarantineReasons.length > 0,
   quarantineReasons,
 });

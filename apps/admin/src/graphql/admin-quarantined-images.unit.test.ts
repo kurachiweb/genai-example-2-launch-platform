@@ -37,6 +37,13 @@ const AUTO_IMAGE: ImageItem = {
   file: {
     id: FILE_ID,
     path: `/media/files/${FILE_ID}`,
+    image: {
+      id: FILE_ID,
+      objectKey: null,
+      fallbackFormat: 'PNG',
+      width: 512,
+      height: 512,
+    },
     quarantined: true,
     quarantineReasons: ['AUTO', 'ADMIN_ACTION'],
   },
@@ -55,6 +62,7 @@ const AUTO_IMAGE_VIEW: AdminQuarantinedImageView = {
   file: {
     id: FILE_ID,
     path: `/media/files/${FILE_ID}`,
+    image: { objectKey: null, fallbackFormat: 'PNG', width: 512, height: 512 },
     quarantined: true,
     quarantineReasons: ['auto', 'admin_action'],
   },

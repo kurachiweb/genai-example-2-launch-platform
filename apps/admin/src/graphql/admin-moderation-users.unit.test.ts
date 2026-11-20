@@ -39,6 +39,13 @@ const SUSPENDED_USER: UserNode = {
   avatar: {
     id: FILE_ID,
     path: `/media/files/${FILE_ID}`,
+    image: {
+      id: FILE_ID,
+      objectKey: null,
+      fallbackFormat: 'PNG',
+      width: 512,
+      height: 512,
+    },
     quarantined: true,
     quarantineReasons: ['USER_SUSPENDED'],
   },
@@ -126,6 +133,12 @@ describe('toAdminModerationUserPage', () => {
           avatar: {
             id: FILE_ID,
             path: `/media/files/${FILE_ID}`,
+            image: {
+              objectKey: null,
+              fallbackFormat: 'PNG',
+              width: 512,
+              height: 512,
+            },
             quarantined: true,
             quarantineReasons: ['user_suspended'],
           },

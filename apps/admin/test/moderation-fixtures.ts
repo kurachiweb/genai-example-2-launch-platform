@@ -37,9 +37,40 @@ export const MODERATION_REASON = '利用規約の禁止事項に当たる投稿�
 // 管理者側の中継の経路(/_bff/files/<ID>)は、ブラウザテストの開発サーバーでは見つからない応答になる
 export const relayPathOf = (fileId: string): string => `/_bff/files/${fileId}`;
 
+// 変換配信のオブジェクトキー。ブラウザテストの画像配信のオリジンは既定で読み込めない
+export const LOGO_OBJECT_KEY = 'fedcba9876543210'.repeat(2);
+
+// APIサーバーの照会が返す変換配信の画像。隔離中の画像はオブジェクトキーがnull
+export const graphQLImageOf = (
+  fileId: string,
+  objectKey: string | null,
+): {
+  readonly id: string;
+  readonly objectKey: string | null;
+  readonly fallbackFormat: 'PNG';
+  readonly width: number;
+  readonly height: number;
+} => ({
+  id: fileId,
+  objectKey,
+  fallbackFormat: 'PNG',
+  width: 512,
+  height: 512,
+});
+
+// オブジェクトキーをファイルのIDから作り、テストのファイルの間で重ならないようにする
+export const objectKeyOf = (fileId: string): string =>
+  fileId.toLowerCase().padStart(32, '0').slice(-32);
+
 export const PUBLIC_LOGO_FILE: AdminMediaFileView = Object.freeze({
   id: LOGO_FILE_ID,
   path: relayPathOf(LOGO_FILE_ID),
+  image: Object.freeze({
+    objectKey: LOGO_OBJECT_KEY,
+    fallbackFormat: 'PNG',
+    width: 512,
+    height: 512,
+  }),
   quarantined: false,
   quarantineReasons: Object.freeze([]),
 });
@@ -47,6 +78,12 @@ export const PUBLIC_LOGO_FILE: AdminMediaFileView = Object.freeze({
 export const QUARANTINED_AVATAR_FILE: AdminMediaFileView = Object.freeze({
   id: AVATAR_FILE_ID,
   path: relayPathOf(AVATAR_FILE_ID),
+  image: Object.freeze({
+    objectKey: null,
+    fallbackFormat: 'PNG',
+    width: 256,
+    height: 256,
+  }),
   quarantined: true,
   quarantineReasons: Object.freeze(['auto', 'user_suspended'] as const),
 });

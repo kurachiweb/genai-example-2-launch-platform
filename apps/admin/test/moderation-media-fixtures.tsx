@@ -19,6 +19,7 @@ import { success } from './admin-accounts-fixtures.ts';
 import { adminWithRole } from './admin-viewer-fixtures.ts';
 import {
   type ModerationGraphQLHandler,
+  graphQLImageOf,
   relayPathOf,
   respondModerationGraphQL,
 } from './moderation-fixtures.ts';
@@ -42,6 +43,7 @@ const imageNode = ({
     file: {
       id: fileId,
       path: relayPathOf(fileId),
+      image: graphQLImageOf(fileId, null),
       quarantined: true,
       quarantineReasons: [...reasons],
     },

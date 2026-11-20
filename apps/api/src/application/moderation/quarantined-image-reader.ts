@@ -8,6 +8,7 @@ import type {
 } from '../../../lib/core/admin/ports.ts';
 import { MEDIA_TYPES } from '../../../lib/core/media/identifiers.ts';
 import type {
+  MediaFileView,
   MediaOwner,
   ModerationFinding,
   QuarantineReason,
@@ -27,12 +28,6 @@ export interface QuarantinedImageListQuery {
   readonly cursor: string | undefined;
 }
 
-export interface QuarantinedImageFile {
-  readonly id: string;
-  readonly quarantined: boolean;
-  readonly quarantineReasons: readonly QuarantineReason[];
-}
-
 // 物理削除済みの利用者・削除済みの管理者は表示名を引けないため、nicknameとhandleがnullになる
 export interface QuarantinedImageOwner {
   readonly kind: 'user' | 'admin';
@@ -42,7 +37,7 @@ export interface QuarantinedImageOwner {
 }
 
 export interface QuarantinedImageItem {
-  readonly file: QuarantinedImageFile;
+  readonly file: MediaFileView;
   readonly purpose: string;
   // 保有者がsystem(識別子なし)の画像はnull
   readonly owner: QuarantinedImageOwner | null;
@@ -128,11 +123,7 @@ const toItem = (
   image: QuarantinedImage,
   names: OwnerNames,
 ): QuarantinedImageItem => ({
-  file: {
-    id: image.file.id,
-    quarantined: image.file.quarantined,
-    quarantineReasons: image.file.quarantineReasons,
-  },
+  file: image.file,
   purpose: image.file.purpose,
   owner: ownerOf(image.file.owner, names),
   quarantinedAt: image.quarantinedAt,

@@ -44,6 +44,7 @@ const SCREENSHOT_ID = '01JC0FILE00000000000000002';
 const CATEGORY_ID = '01JC0CATEGORY0000000000001';
 const LAUNCH_ID = '01JC0LAUNCH000000000000001';
 const MATCH_ID = '01JC0MATCH0000000000000001';
+const SCREENSHOT_OBJECT_KEY = '0123456789abcdef'.repeat(2);
 
 type ProductNode = AdminProductsQuery['adminProducts']['nodes'][number];
 
@@ -56,6 +57,13 @@ const HIDDEN_PRODUCT: ProductNode = {
   logo: {
     id: LOGO_ID,
     path: `/media/files/${LOGO_ID}`,
+    image: {
+      id: LOGO_ID,
+      objectKey: null,
+      fallbackFormat: 'PNG',
+      width: 512,
+      height: 512,
+    },
     quarantined: true,
     quarantineReasons: ['PRODUCT_HIDDEN'],
   },
@@ -78,6 +86,7 @@ const HIDDEN_PRODUCT_VIEW: AdminModerationProductView = {
   logo: {
     id: LOGO_ID,
     path: `/media/files/${LOGO_ID}`,
+    image: { objectKey: null, fallbackFormat: 'PNG', width: 512, height: 512 },
     quarantined: true,
     quarantineReasons: ['product_hidden'],
   },
@@ -121,6 +130,13 @@ const DETAIL: ProductDetail = {
     {
       id: SCREENSHOT_ID,
       path: `/media/files/${SCREENSHOT_ID}`,
+      image: {
+        id: SCREENSHOT_ID,
+        objectKey: SCREENSHOT_OBJECT_KEY,
+        fallbackFormat: 'PNG',
+        width: 512,
+        height: 512,
+      },
       quarantined: false,
       quarantineReasons: [],
     },
@@ -257,6 +273,12 @@ describe('toAdminModerationProductDetail', () => {
         {
           id: SCREENSHOT_ID,
           path: `/media/files/${SCREENSHOT_ID}`,
+          image: {
+            objectKey: SCREENSHOT_OBJECT_KEY,
+            fallbackFormat: 'PNG',
+            width: 512,
+            height: 512,
+          },
           quarantined: false,
           quarantineReasons: [],
         },

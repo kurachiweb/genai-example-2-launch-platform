@@ -1,4 +1,3 @@
-import { downloadPathOf } from '../../../../../common-lib/media/upload-protocol.ts';
 import type { DisposableEmailJudgement } from '../../../../../common-lib/moderation/moderation-labels.ts';
 import type { AdministrativeWithdrawalService } from '../../../../application/moderation/administrative-withdrawal-service.ts';
 import type {
@@ -17,12 +16,12 @@ import type {
 } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
+import { toAdminMediaFile } from './content-views.ts';
 import { toModerationError } from './errors.ts';
 import {
   ADMIN_USER_STATUSES,
   ADMIN_USERS_ARGS,
   ADMINISTRATIVE_WITHDRAWAL_ARGS,
-  QUARANTINE_REASONS,
   USER_MODERATION_ARGS,
 } from './inputs.ts';
 import {
@@ -51,8 +50,6 @@ const invert = <TKey extends string, TValue extends string>(
 
 const STATUS_OF = invert(ADMIN_USER_STATUSES);
 
-const QUARANTINE_REASON_OF = invert(QUARANTINE_REASONS);
-
 const readerOf = (context: GraphQLContext): AdminUserReader =>
   context.resolve<AdminUserReader>(MODERATION_TYPES.AdminUserReader);
 
@@ -72,17 +69,7 @@ const toAdminUser = (view: AdminUserView): AdminUser => ({
   id: view.userId,
   handle: view.handle,
   nickname: view.nickname,
-  avatar:
-    view.avatar === null
-      ? null
-      : {
-          id: view.avatar.fileId,
-          path: downloadPathOf(view.avatar.fileId),
-          quarantined: view.avatar.quarantined,
-          quarantineReasons: view.avatar.quarantineReasons.map(
-            (reason) => QUARANTINE_REASON_OF[reason],
-          ),
-        },
+  avatar: view.avatar === null ? null : toAdminMediaFile(view.avatar),
   registeredAt: view.registeredAt,
   disposableEmail: DISPOSABLE_EMAIL_CHECKS[view.disposableEmail],
   status: STATUS_OF[view.status],

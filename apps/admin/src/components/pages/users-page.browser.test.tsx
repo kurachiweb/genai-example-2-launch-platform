@@ -147,14 +147,17 @@ describe('ユーザーの一覧', () => {
     expect(table().element().textContent).not.toMatch(/@[^@\s]+\.example/u);
   });
 
-  test('プロフィール画像は同一オリジンの中継から表示し、隔離中なら「隔離中」の印を添え、登録の無い利用者はニックネームから作るアイコンを示す', async () => {
+  test('公開中のプロフィール画像は画像配信ドメインの変換配信から、隔離中なら同一オリジンの中継から表示して「隔離中」の印を添え、登録の無い利用者はニックネームから作るアイコンを示す', async () => {
     await renderWith();
     await expect.element(table()).toBeVisible();
 
     const imageOf = (node: UserNode) =>
       rowOf(node.nickname).element().querySelector('td img');
-    expect(imageOf(PUBLIC_AVATAR_USER_NODE)?.getAttribute('src')).toBe(
-      PUBLIC_AVATAR_USER_NODE.avatar?.path,
+    expect(imageOf(PUBLIC_AVATAR_USER_NODE)?.getAttribute('src')).toMatch(
+      `https://images.example/${PUBLIC_AVATAR_USER_NODE.avatar?.image.objectKey ?? ''}/`,
+    );
+    expect(imageOf(SUSPENDED_USER_NODE)?.getAttribute('src')).toBe(
+      SUSPENDED_USER_NODE.avatar?.path,
     );
     expect(cellTexts(PUBLIC_AVATAR_USER_NODE.nickname)[0]).toBe('');
     await expect

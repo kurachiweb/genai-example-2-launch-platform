@@ -62,6 +62,13 @@ async function seedImages(): Promise<void> {
 const mediaFileOf = (index: number, reasons: readonly string[]) => ({
   id: fileIdOf(index),
   path: downloadPathOf(fileIdOf(index)),
+  image: {
+    id: fileIdOf(index),
+    objectKey: null,
+    fallbackFormat: 'PNG',
+    width: 640,
+    height: 480,
+  },
   quarantined: reasons.length > 0,
   quarantineReasons: reasons,
 });

@@ -30,9 +30,11 @@ import {
   StoreUserSuspension,
   type UserSuspension,
 } from '../../src/application/identity/user-suspension.ts';
+import { mediaSchemaModule } from '../../src/presentation/graphql/modules/media/index.ts';
 import { moderationSchemaModule } from '../../src/presentation/graphql/modules/moderation/index.ts';
 import { paymentsSchemaModule } from '../../src/presentation/graphql/modules/payments/index.ts';
 import { issueAdminSession } from './admin-graphql-harness.ts';
+import type { MediaImageFields } from './moderation-content-graphql-operations.ts';
 import {
   createGraphQLGateway,
   type GatewayApp,
@@ -51,6 +53,7 @@ export interface ModerationNoteFields {
 export interface AdminMediaFileFields {
   readonly id: string;
   readonly path: string;
+  readonly image: MediaImageFields;
   readonly quarantined: boolean;
   readonly quarantineReasons: readonly string[];
 }
@@ -96,6 +99,13 @@ export const ADMIN_USERS = /* GraphQL */ `
         avatar {
           id
           path
+          image {
+            id
+            objectKey
+            fallbackFormat
+            width
+            height
+          }
           quarantined
           quarantineReasons
         }
@@ -203,7 +213,11 @@ const gateway = createGraphQLGateway({
     WITHDRAW_USER_BY_ADMINISTRATOR,
   ],
   // 統計の型が金額の型(Money)を使うため、それを宣言する決済のスキーマモジュールも読み込む
-  schemaModules: [paymentsSchemaModule, moderationSchemaModule],
+  schemaModules: [
+    paymentsSchemaModule,
+    mediaSchemaModule,
+    moderationSchemaModule,
+  ],
   overrides: [overridesModule],
 });
 

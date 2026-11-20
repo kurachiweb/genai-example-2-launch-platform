@@ -18,10 +18,7 @@ import type {
   MatchRecord,
 } from '../../../lib/core/match/ports.ts';
 import { MEDIA_TYPES } from '../../../lib/core/media/identifiers.ts';
-import type {
-  MediaFileView,
-  QuarantineReason,
-} from '../../../lib/core/media/media-file.ts';
+import type { MediaFileView } from '../../../lib/core/media/media-file.ts';
 import type { MediaFiles } from '../../../lib/core/media/ports.ts';
 import { MODERATION_PLATFORM_TYPES } from '../../../lib/core/moderation/identifiers.ts';
 import type {
@@ -59,12 +56,6 @@ export interface AdminProductListFilter {
   readonly visibility?: AdminProductVisibility;
 }
 
-export interface AdminProductMediaFile {
-  readonly fileId: string;
-  readonly quarantined: boolean;
-  readonly quarantineReasons: readonly QuarantineReason[];
-}
-
 export interface AdminProductOwner {
   readonly userId: string;
   readonly handle: string;
@@ -83,7 +74,7 @@ export interface AdminProductItem {
   readonly handle: string;
   readonly name: string;
   // ファイルの記録が照会で返らなければnull
-  readonly logo: AdminProductMediaFile | null;
+  readonly logo: MediaFileView | null;
   // 退会済み・物理削除済みの投稿者はnull
   readonly owner: AdminProductOwner | null;
   readonly category: { readonly id: string; readonly name: string };
@@ -134,7 +125,7 @@ export interface AdminProductDetail {
   readonly descriptionMarkdown: string;
   readonly websiteUrl: string;
   // 表示順。ファイルの記録が照会で返らないものは除く
-  readonly screenshots: readonly AdminProductMediaFile[];
+  readonly screenshots: readonly MediaFileView[];
   // 非公開化中のときだけ、最新の非公開化の記録から入れる
   readonly hiddenAt: Date | null;
   readonly latestHide: AdminProductHideNote | null;
@@ -171,17 +162,6 @@ const EMPTY_PAGE: AdminProductPage = Object.freeze({
 });
 
 const NO_RATINGS: RatingSummary = Object.freeze({ average: null, count: 0 });
-
-const mediaFileOf = (
-  file: MediaFileView | undefined,
-): AdminProductMediaFile | null =>
-  file === undefined
-    ? null
-    : {
-        fileId: file.id,
-        quarantined: file.quarantined,
-        quarantineReasons: file.quarantineReasons,
-      };
 
 const ownerOf = (
   user: UserSummaryRecord | undefined,
@@ -358,7 +338,7 @@ export class DefaultAdminProductReader implements AdminProductReader {
         productId,
         handle: summary.handle,
         name: summary.name,
-        logo: mediaFileOf(files.get(summary.logoFileId)),
+        logo: files.get(summary.logoFileId) ?? null,
         owner,
         category: { id: summary.category.id, name: summary.category.name },
         latestLaunch:
@@ -375,8 +355,8 @@ export class DefaultAdminProductReader implements AdminProductReader {
       descriptionMarkdown: detail.descriptionMarkdown,
       websiteUrl: summary.websiteUrl,
       screenshots: detail.screenshotFileIds.flatMap((fileId) => {
-        const file = mediaFileOf(files.get(fileId));
-        return file === null ? [] : [file];
+        const file = files.get(fileId);
+        return file === undefined ? [] : [file];
       }),
       hiddenAt: latestHide?.occurredAt ?? null,
       latestHide:
@@ -427,7 +407,7 @@ export class DefaultAdminProductReader implements AdminProductReader {
       productId: record.productId,
       handle: record.handle,
       name: record.name,
-      logo: mediaFileOf(logos.get(record.logoFileId)),
+      logo: logos.get(record.logoFileId) ?? null,
       owner: ownerOf(owners.get(record.ownerUserId)),
       category: record.category,
       latestLaunch: record.latestLaunch,

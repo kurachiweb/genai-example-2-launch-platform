@@ -13,6 +13,7 @@ import {
   fileIdOf,
   insertFile,
   insertReason,
+  objectKeyOf,
 } from '../../../../../lib/workers/media/testing/media-file-store-fixtures.ts';
 import {
   insertMatch,
@@ -172,6 +173,13 @@ const NODES: Readonly<Record<string, AdminProductFields>> = Object.freeze({
     logo: {
       id: logoFileIdOf(VISIBLE),
       path: downloadPathOf(logoFileIdOf(VISIBLE)),
+      image: {
+        id: logoFileIdOf(VISIBLE),
+        objectKey: objectKeyOf(1),
+        fallbackFormat: 'PNG',
+        width: 640,
+        height: 480,
+      },
       quarantined: false,
       quarantineReasons: [],
     },
@@ -332,6 +340,13 @@ describe('adminProduct', () => {
         {
           id: fileIdOf(SCREENSHOT_FILE),
           path: downloadPathOf(fileIdOf(SCREENSHOT_FILE)),
+          image: {
+            id: fileIdOf(SCREENSHOT_FILE),
+            objectKey: null,
+            fallbackFormat: 'PNG',
+            width: 640,
+            height: 480,
+          },
           quarantined: true,
           quarantineReasons: ['ADMIN_ACTION'],
         },

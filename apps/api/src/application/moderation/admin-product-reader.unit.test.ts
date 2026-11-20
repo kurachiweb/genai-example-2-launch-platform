@@ -33,6 +33,29 @@ import {
   createHarness,
 } from './testing/admin-product-reader-fakes.ts';
 
+const PUBLIC_LOGO = fileOf(LOGO_ID);
+
+const HIDDEN_LOGO = fileOf(OTHER_LOGO_ID, {
+  location: 'quarantine',
+  quarantined: true,
+  quarantineReasons: ['product_hidden'],
+});
+
+const QUARANTINED_LOGO = fileOf(LOGO_ID, {
+  location: 'quarantine',
+  quarantined: true,
+  quarantineReasons: ['product_hidden'],
+});
+
+const SCREENSHOT = fileOf(SCREENSHOT_ID, { purpose: 'product-screenshot' });
+
+const QUARANTINED_SCREENSHOT = fileOf(QUARANTINED_SCREENSHOT_ID, {
+  purpose: 'product-screenshot',
+  location: 'quarantine',
+  quarantined: true,
+  quarantineReasons: ['auto', 'product_hidden'],
+});
+
 describe('DefaultAdminProductReader.list', () => {
   test('絞り込みとページと照会の時刻を上流の一覧へ渡し、投稿者とロゴをそれぞれ1回の照会でまとめて読む', async () => {
     const { reader, calls } = createHarness({
@@ -66,14 +89,7 @@ describe('DefaultAdminProductReader.list', () => {
           nickname: '別の投稿者',
         }),
       ],
-      files: [
-        fileOf(LOGO_ID),
-        fileOf(OTHER_LOGO_ID, {
-          location: 'quarantine',
-          quarantined: true,
-          quarantineReasons: ['product_hidden'],
-        }),
-      ],
+      files: [PUBLIC_LOGO, HIDDEN_LOGO],
     });
 
     const page = await reader.list({
@@ -113,7 +129,7 @@ describe('DefaultAdminProductReader.list', () => {
         productId: PRODUCT_ID,
         handle: 'launch-stadium-tool',
         name: '試合を見守る道具',
-        logo: { fileId: LOGO_ID, quarantined: false, quarantineReasons: [] },
+        logo: PUBLIC_LOGO,
         owner: {
           userId: OWNER_ID,
           handle: 'owner-handle',
@@ -132,11 +148,7 @@ describe('DefaultAdminProductReader.list', () => {
         productId: OTHER_PRODUCT_ID,
         handle: 'other-tool',
         name: '別の道具',
-        logo: {
-          fileId: OTHER_LOGO_ID,
-          quarantined: true,
-          quarantineReasons: ['product_hidden'],
-        },
+        logo: HIDDEN_LOGO,
         owner: {
           userId: OTHER_OWNER_ID,
           handle: 'other-owner',
@@ -151,7 +163,7 @@ describe('DefaultAdminProductReader.list', () => {
         productId: OPPONENT_PRODUCT_ID,
         handle: 'third-tool',
         name: '三つ目の道具',
-        logo: { fileId: LOGO_ID, quarantined: false, quarantineReasons: [] },
+        logo: PUBLIC_LOGO,
         owner: {
           userId: OWNER_ID,
           handle: 'owner-handle',
@@ -367,20 +379,7 @@ describe('DefaultAdminProductReader.detail', () => {
         ],
       ]),
       users: [userOf({ suspended: true })],
-      files: [
-        fileOf(LOGO_ID, {
-          location: 'quarantine',
-          quarantined: true,
-          quarantineReasons: ['product_hidden'],
-        }),
-        fileOf(SCREENSHOT_ID, { purpose: 'product-screenshot' }),
-        fileOf(QUARANTINED_SCREENSHOT_ID, {
-          purpose: 'product-screenshot',
-          location: 'quarantine',
-          quarantined: true,
-          quarantineReasons: ['auto', 'product_hidden'],
-        }),
-      ],
+      files: [QUARANTINED_LOGO, SCREENSHOT, QUARANTINED_SCREENSHOT],
       ratingSummary: { average: 4.25, count: 4 },
       latest: {
         action: 'product.hide',
@@ -399,11 +398,7 @@ describe('DefaultAdminProductReader.detail', () => {
         productId: PRODUCT_ID,
         handle: 'launch-stadium-tool',
         name: '試合を見守る道具',
-        logo: {
-          fileId: LOGO_ID,
-          quarantined: true,
-          quarantineReasons: ['product_hidden'],
-        },
+        logo: QUARANTINED_LOGO,
         owner: {
           userId: OWNER_ID,
           handle: 'owner-handle',
@@ -421,14 +416,7 @@ describe('DefaultAdminProductReader.detail', () => {
       tagline: '投票の行方を見守る',
       descriptionMarkdown: '## 説明\n\n本文',
       websiteUrl: 'https://product.example/',
-      screenshots: [
-        { fileId: SCREENSHOT_ID, quarantined: false, quarantineReasons: [] },
-        {
-          fileId: QUARANTINED_SCREENSHOT_ID,
-          quarantined: true,
-          quarantineReasons: ['auto', 'product_hidden'],
-        },
-      ],
+      screenshots: [SCREENSHOT, QUARANTINED_SCREENSHOT],
       hiddenAt: HIDDEN_AT,
       latestHide: {
         reason: '規約に反する内容を掲載していたため',

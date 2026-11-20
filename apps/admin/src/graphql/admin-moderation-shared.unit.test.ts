@@ -19,6 +19,8 @@ import { AdminSuspendUserDocument } from './generated/graphql.ts';
 const FILE_ID = '01JC0FILE00000000000000001';
 const USER_ID = '01JC0USER00000000000000001';
 
+const OBJECT_KEY = '0123456789abcdef'.repeat(2);
+
 describe('toModerationPage', () => {
   test('続きがあれば最後の項目のカーソルを続きのカーソルにし、項目を順に写す', () => {
     expect(
@@ -77,6 +79,13 @@ describe('toAdminMediaFile', () => {
       toAdminMediaFile({
         id: FILE_ID,
         path: `/media/files/${FILE_ID}`,
+        image: {
+          id: FILE_ID,
+          objectKey: null,
+          fallbackFormat: 'JPG',
+          width: 800,
+          height: 600,
+        },
         quarantined: true,
         quarantineReasons: [
           'AUTO',
@@ -88,6 +97,12 @@ describe('toAdminMediaFile', () => {
     ).toStrictEqual({
       id: FILE_ID,
       path: `/media/files/${FILE_ID}`,
+      image: {
+        objectKey: null,
+        fallbackFormat: 'JPG',
+        width: 800,
+        height: 600,
+      },
       quarantined: true,
       quarantineReasons: [
         'auto',
@@ -104,10 +119,40 @@ describe('toAdminMediaFile', () => {
       toAdminMediaFile({
         id: FILE_ID,
         path: `/media/files/${FILE_ID}`,
+        image: {
+          id: FILE_ID,
+          objectKey: OBJECT_KEY,
+          fallbackFormat: 'PNG',
+          width: null,
+          height: null,
+        },
         quarantined: false,
         quarantineReasons: [],
       }).quarantineReasons,
     ).toStrictEqual([]);
+  });
+
+  test('公開中の画像は変換配信のオブジェクトキーと寸法を保つ', () => {
+    expect(
+      toAdminMediaFile({
+        id: FILE_ID,
+        path: `/media/files/${FILE_ID}`,
+        image: {
+          id: FILE_ID,
+          objectKey: OBJECT_KEY,
+          fallbackFormat: 'SVG',
+          width: null,
+          height: null,
+        },
+        quarantined: false,
+        quarantineReasons: [],
+      }).image,
+    ).toStrictEqual({
+      objectKey: OBJECT_KEY,
+      fallbackFormat: 'SVG',
+      width: null,
+      height: null,
+    });
   });
 });
 

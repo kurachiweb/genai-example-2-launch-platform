@@ -61,7 +61,7 @@ function ImageState({ file, quarantineName }: ImageStateProps) {
   );
 }
 
-// ロゴとスクリーンショットを、隔離中のものも含めて管理者側のサイトと同じオリジンから表示する
+// ロゴとスクリーンショットを、公開中のものは変換配信から、隔離中のものは管理者側のサイトと同じオリジンから表示する
 export function ProductImagesPanel({
   productName,
   logo,

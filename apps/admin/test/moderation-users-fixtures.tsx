@@ -23,6 +23,8 @@ import {
   ACTIVE_USER_NODE,
   MODERATION_REASON,
   type ModerationGraphQLHandler,
+  graphQLImageOf,
+  objectKeyOf,
   relayPathOf,
   respondModerationGraphQL,
 } from './moderation-fixtures.ts';
@@ -43,6 +45,10 @@ export const PUBLIC_AVATAR_USER_NODE: UserNode = Object.freeze<UserNode>({
   avatar: {
     id: PUBLIC_AVATAR_FILE_ID,
     path: relayPathOf(PUBLIC_AVATAR_FILE_ID),
+    image: graphQLImageOf(
+      PUBLIC_AVATAR_FILE_ID,
+      objectKeyOf(PUBLIC_AVATAR_FILE_ID),
+    ),
     quarantined: false,
     quarantineReasons: [],
   },
@@ -60,6 +66,7 @@ export const SUSPENDED_USER_NODE: UserNode = Object.freeze<UserNode>({
   avatar: {
     id: QUARANTINED_AVATAR_FILE_ID,
     path: relayPathOf(QUARANTINED_AVATAR_FILE_ID),
+    image: graphQLImageOf(QUARANTINED_AVATAR_FILE_ID, null),
     quarantined: true,
     quarantineReasons: ['USER_SUSPENDED'],
   },

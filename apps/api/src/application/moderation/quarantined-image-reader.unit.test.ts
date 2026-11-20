@@ -179,18 +179,13 @@ describe('DefaultQuarantinedImageReader', () => {
       { kind: 'user', id: USER_A },
       { quarantinedAt: new Date('2026-11-19T03:00:00.000Z') },
     );
+    const secondFile = imageFileViewOf({
+      ...second.file,
+      purpose: 'user-avatar',
+      quarantineReasons: ['user_suspended'],
+    });
     const { reader } = harness({
-      items: [
-        first,
-        {
-          ...second,
-          file: imageFileViewOf({
-            ...second.file,
-            purpose: 'user-avatar',
-            quarantineReasons: ['user_suspended'],
-          }),
-        },
-      ],
+      items: [first, { ...second, file: secondFile }],
       nextCursor: undefined,
     });
 
@@ -204,20 +199,12 @@ describe('DefaultQuarantinedImageReader', () => {
       })),
     ).toEqual([
       {
-        file: {
-          id: '01JQ0F11E000000000000000001',
-          quarantined: true,
-          quarantineReasons: ['auto', 'admin_action'],
-        },
+        file: first.file,
         purpose: 'product-logo',
         quarantinedAt: QUARANTINED_AT,
       },
       {
-        file: {
-          id: '01JQ0F11E000000000000000002',
-          quarantined: true,
-          quarantineReasons: ['user_suspended'],
-        },
+        file: secondFile,
         purpose: 'user-avatar',
         quarantinedAt: new Date('2026-11-19T03:00:00.000Z'),
       },

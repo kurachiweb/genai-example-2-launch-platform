@@ -300,7 +300,10 @@ type AdminMatchResult {
 type AdminMediaFile {
   id: ID!
 
-  """管理者側のサイトと同じオリジンの中継の経路"""
+  """変換配信の画像。隔離中・削除待ち・保存未完了の画像はobjectKeyが空"""
+  image: MediaImage!
+
+  """管理者側のサイトと同じオリジンの中継の経路。隔離中の画像を表示する"""
   path: String!
   quarantineReasons: [QuarantineReason!]!
   quarantined: Boolean!

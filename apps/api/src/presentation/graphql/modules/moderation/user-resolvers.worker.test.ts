@@ -11,6 +11,7 @@ import {
   fileIdOf,
   insertFile,
   insertReason,
+  objectKeyOf,
 } from '../../../../../lib/workers/media/testing/media-file-store-fixtures.ts';
 import { readModerationRows } from '../../../../../lib/workers/moderation/testing/moderation-record-fixtures.ts';
 import {
@@ -106,6 +107,13 @@ describe('adminUsers', () => {
           avatar: {
             id: fileIdOf(1),
             path: `/_bff/files/${fileIdOf(1)}`,
+            image: {
+              id: fileIdOf(1),
+              objectKey: null,
+              fallbackFormat: 'PNG',
+              width: 640,
+              height: 480,
+            },
             quarantined: true,
             quarantineReasons: ['AUTO'],
           },
@@ -130,6 +138,28 @@ describe('adminUsers', () => {
       pageInfo: { hasNextPage: false, endCursor: null },
     });
     expect(JSON.stringify(response.data)).not.toContain('mail.example');
+  });
+
+  test('公開中のプロフィール画像には変換配信のオブジェクトキーを返す', async () => {
+    await insertTargetUser(1);
+    await insertFile(1, { ownerId: userIdOf(1), contentType: 'image/jpeg' });
+    await insertAvatar(1, fileIdOf(1));
+
+    const response = await fetchAdminUsers({ first: 10 }, asViewer());
+
+    expect(response.data?.adminUsers?.nodes[0]?.avatar).toStrictEqual({
+      id: fileIdOf(1),
+      path: `/_bff/files/${fileIdOf(1)}`,
+      image: {
+        id: fileIdOf(1),
+        objectKey: objectKeyOf(1),
+        fallbackFormat: 'JPG',
+        width: 640,
+        height: 480,
+      },
+      quarantined: false,
+      quarantineReasons: [],
+    });
   });
 
   test('件数で区切り、上流の続きの位置をそのまま中継して次のページを返す', async () => {

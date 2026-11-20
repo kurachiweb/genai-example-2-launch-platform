@@ -12,10 +12,7 @@ import type {
   AdminUserStatus,
 } from '../../../lib/core/identity/ports.ts';
 import { MEDIA_TYPES } from '../../../lib/core/media/identifiers.ts';
-import type {
-  MediaFileView,
-  QuarantineReason,
-} from '../../../lib/core/media/media-file.ts';
+import type { MediaFileView } from '../../../lib/core/media/media-file.ts';
 import type { MediaFiles } from '../../../lib/core/media/ports.ts';
 import { MODERATION_PLATFORM_TYPES } from '../../../lib/core/moderation/identifiers.ts';
 import type {
@@ -29,12 +26,6 @@ import type {
 } from '../../../lib/core/profile/ports.ts';
 import type { ModerationOperator } from './ports.ts';
 
-export interface AdminUserAvatar {
-  readonly fileId: string;
-  readonly quarantined: boolean;
-  readonly quarantineReasons: readonly QuarantineReason[];
-}
-
 export interface AdminUserSuspensionNote {
   readonly reason: string | null;
   readonly occurredAt: Date;
@@ -46,7 +37,7 @@ export interface AdminUserView {
   readonly handle: string;
   readonly nickname: string;
   // プロフィール画像が無い・照会で返らない(物理削除済みの)ファイルはnull
-  readonly avatar: AdminUserAvatar | null;
+  readonly avatar: MediaFileView | null;
   readonly registeredAt: Date;
   readonly disposableEmail: DisposableEmailJudgement;
   readonly status: AdminUserStatus;
@@ -94,17 +85,9 @@ const disposableEmailOf = (user: AdminUserRecord): DisposableEmailJudgement => {
 const avatarOf = (
   user: AdminUserRecord,
   details: PageDetails,
-): AdminUserAvatar | null => {
+): MediaFileView | null => {
   const fileId = details.summaries.get(user.userId)?.avatarFileId ?? null;
-  const file = fileId === null ? undefined : details.files.get(fileId);
-  if (file === undefined) {
-    return null;
-  }
-  return {
-    fileId: file.id,
-    quarantined: file.quarantined,
-    quarantineReasons: file.quarantineReasons,
-  };
+  return fileId === null ? null : (details.files.get(fileId) ?? null);
 };
 
 const latestSuspensionOf = (

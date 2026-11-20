@@ -1,5 +1,5 @@
 import { downloadPathOf } from '../../../../../common-lib/media/upload-protocol.ts';
-import type { QuarantineReason as UpstreamQuarantineReason } from '../../../../../lib/core/media/media-file.ts';
+import type { MediaFileView } from '../../../../../lib/core/media/media-file.ts';
 import type { AdminCommentItem } from '../../../../application/moderation/admin-comment-reader.ts';
 import type {
   AdminProductDetail as AdminProductDetailView,
@@ -18,6 +18,7 @@ import type {
   ModerationNote,
   QuarantineReason,
 } from '../../generated/resolvers-types.ts';
+import { toMediaImage } from '../media/mappers.ts';
 import {
   ADMIN_COMMENT_STATES,
   ADMIN_PRODUCT_LAUNCH_STATES,
@@ -74,12 +75,6 @@ const commentStateOf = graphQLValueOf(ADMIN_COMMENT_STATES);
 
 const ratingStateOf = graphQLValueOf(ADMIN_RATING_STATES);
 
-interface MediaFileSource {
-  readonly id: string;
-  readonly quarantined: boolean;
-  readonly quarantineReasons: readonly UpstreamQuarantineReason[];
-}
-
 interface UserSummarySource {
   readonly userId: string;
   readonly handle: string;
@@ -92,10 +87,11 @@ interface NoteSource {
   readonly occurredAt: Date;
 }
 
-// 隔離中の画像も表示できるよう、変換配信ではなく管理者側のサイトと同じオリジンの中継の経路を返す
-export const toAdminMediaFile = (file: MediaFileSource): AdminMediaFile => ({
+// 隔離中の画像は変換配信から配信されないため、変換配信の画像に加えて管理者側のサイトと同じオリジンの中継の経路を返す
+export const toAdminMediaFile = (file: MediaFileView): AdminMediaFile => ({
   id: file.id,
   path: downloadPathOf(file.id),
+  image: toMediaImage(file),
   quarantined: file.quarantined,
   quarantineReasons: file.quarantineReasons.map((reason): QuarantineReason =>
     quarantineReasonOf(reason),
@@ -121,10 +117,7 @@ export const toAdminProduct = (item: AdminProductItem): AdminProduct => ({
   id: item.productId,
   handle: item.handle,
   name: item.name,
-  logo:
-    item.logo === null
-      ? null
-      : toAdminMediaFile({ ...item.logo, id: item.logo.fileId }),
+  logo: item.logo === null ? null : toAdminMediaFile(item.logo),
   owner: toUserSummary(item.owner),
   category: item.category,
   latestLaunchDate: item.latestLaunch?.launchDate ?? null,
@@ -141,9 +134,7 @@ export const toAdminProductDetail = (
   tagline: detail.tagline,
   descriptionMarkdown: detail.descriptionMarkdown,
   websiteUrl: detail.websiteUrl,
-  screenshots: detail.screenshots.map((file) =>
-    toAdminMediaFile({ ...file, id: file.fileId }),
-  ),
+  screenshots: detail.screenshots.map(toAdminMediaFile),
   hiddenAt: detail.hiddenAt,
   latestHide: toNote(detail.latestHide),
   ratingSummary: detail.ratingSummary,

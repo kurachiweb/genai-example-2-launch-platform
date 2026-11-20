@@ -17,6 +17,7 @@ import {
   insertAdmin,
 } from '../../src/infrastructure/admin/testing/admin-store-fixtures.ts';
 import { clearModerationWrites } from '../../src/infrastructure/moderation/testing/moderation-write-fixtures.ts';
+import { mediaSchemaModule } from '../../src/presentation/graphql/modules/media/index.ts';
 import { moderationSchemaModule } from '../../src/presentation/graphql/modules/moderation/index.ts';
 import { paymentsSchemaModule } from '../../src/presentation/graphql/modules/payments/index.ts';
 import { issueAdminSession } from './admin-graphql-harness.ts';
@@ -32,9 +33,18 @@ export { codesOf, detailsOf } from './payments-graphql-operations.ts';
 // 管理画面の照会と措置の日時を固定し、ローンチの状態と措置の記録の日時を予測できるようにする
 export const MODERATION_TEST_NOW = new Date('2026-11-25T00:00:00.000Z');
 
+export interface MediaImageFields {
+  readonly id: string;
+  readonly objectKey: string | null;
+  readonly fallbackFormat: string;
+  readonly width: number | null;
+  readonly height: number | null;
+}
+
 export interface MediaFileFields {
   readonly id: string;
   readonly path: string;
+  readonly image: MediaImageFields;
   readonly quarantined: boolean;
   readonly quarantineReasons: readonly string[];
 }
@@ -148,6 +158,13 @@ export interface AdminQuarantinedImageFields {
 const MEDIA_FILE_SELECTION = /* GraphQL */ `
   id
   path
+  image {
+    id
+    objectKey
+    fallbackFormat
+    width
+    height
+  }
   quarantined
   quarantineReasons
 `;
@@ -416,7 +433,11 @@ const gateway = createGraphQLGateway({
     ...Object.values(IMAGE_MODERATIONS),
   ],
   // 統計の型が金額の型(Money)を使うため、それを宣言する決済のスキーマモジュールも読み込む
-  schemaModules: [paymentsSchemaModule, moderationSchemaModule],
+  schemaModules: [
+    paymentsSchemaModule,
+    mediaSchemaModule,
+    moderationSchemaModule,
+  ],
   overrides: [overridesModule],
 });
 

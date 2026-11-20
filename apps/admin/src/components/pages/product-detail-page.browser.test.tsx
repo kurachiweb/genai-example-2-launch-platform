@@ -321,7 +321,7 @@ describe('公開状態', () => {
 });
 
 describe('画像', () => {
-  test('ロゴとスクリーンショットを同一オリジンの中継の経路から表示し、隔離理由のある画像に隔離中の印と隔離理由を添える', async () => {
+  test('公開中のロゴとスクリーンショットを画像配信ドメインの変換配信から、隔離理由のある画像を同一オリジンの中継の経路から表示し、隔離中の印と隔離理由を添える', async () => {
     await renderDetail();
 
     const images = sectionOf('画像');
@@ -331,9 +331,11 @@ describe('画像', () => {
     const sources = [...images.element().querySelectorAll('img')].map((image) =>
       image.getAttribute('src'),
     );
-    expect(sources.every((source) => source?.startsWith('/_bff/files/'))).toBe(
-      true,
-    );
+    expect(sources).toStrictEqual([
+      expect.stringMatching(/^https:\/\/images\.example\//u),
+      expect.stringMatching(/^https:\/\/images\.example\//u),
+      `/_bff/files/${SCREENSHOT_FILE_IDS[1] ?? ''}`,
+    ]);
     const items = [...images.element().querySelectorAll('li')];
     expect(items).toHaveLength(2);
     expect(items[0]?.textContent).not.toContain('隔離中');
@@ -343,7 +345,7 @@ describe('画像', () => {
     ).toBe('管理者操作');
   });
 
-  test('非公開化中のプロダクトの画像も、隔離画像として同一オリジンから表示する', async () => {
+  test('非公開化中のプロダクトの画像は、隔離画像として同一オリジンの中継から表示する', async () => {
     await renderDetail({ detail: HIDDEN_PRODUCT_DETAIL });
 
     const images = sectionOf('画像').element();
@@ -351,11 +353,13 @@ describe('画像', () => {
       [...images.querySelectorAll('img, [role="img"]')].length,
     ).toBeGreaterThanOrEqual(3);
     expect(images.textContent).toContain('非公開化、管理者操作');
-    expect(
-      [...images.querySelectorAll('img')].map((image) =>
-        image.getAttribute('src'),
-      ),
-    ).not.toContain(null);
+    const sources = [...images.querySelectorAll('img')].map((image) =>
+      image.getAttribute('src'),
+    );
+    expect(sources.length).toBeGreaterThan(0);
+    expect(sources.every((source) => source?.startsWith('/_bff/files/'))).toBe(
+      true,
+    );
   });
 
   test('隔離理由の無い画像ごとに、対象を名前に含む隔離の操作を置き、確定で画像のIDを送る', async () => {

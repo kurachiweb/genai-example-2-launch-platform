@@ -1,6 +1,13 @@
 fragment AdminModerationMediaFile on AdminMediaFile {
   id
   path
+  image {
+    id
+    objectKey
+    fallbackFormat
+    width
+    height
+  }
   quarantined
   quarantineReasons
 }

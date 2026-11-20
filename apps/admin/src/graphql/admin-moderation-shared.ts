@@ -2,6 +2,7 @@ import type { QuarantineReason } from '../../common-lib/moderation/moderation-la
 import { executeGraphQL } from '../../lib/start/graphql/execute-graphql.ts';
 import type { GraphQLMutationInput } from '../../lib/start/graphql/graphql-query-options.ts';
 import { requireData } from '../../lib/utilities/graphql/graphql-result.ts';
+import type { MediaImageView } from '../../lib/utilities/media/picture-sources.ts';
 import {
   type DocumentId,
   documentIdOf,
@@ -22,8 +23,10 @@ export interface ModerationNoteView {
 
 export interface AdminMediaFileView {
   readonly id: string;
-  // 管理者側のサイトと同じオリジンの中継の経路
+  // 管理者側のサイトと同じオリジンの中継の経路。隔離中の画像を表示する
   readonly path: string;
+  // 変換配信の画像。隔離中・削除待ち・保存未完了はobjectKeyがnull
+  readonly image: MediaImageView;
   readonly quarantined: boolean;
   readonly quarantineReasons: readonly QuarantineReason[];
 }
@@ -81,6 +84,7 @@ interface GraphQLConnection<TNode> {
 interface GraphQLMediaFile {
   readonly id: string;
   readonly path: string;
+  readonly image: MediaImageView & { readonly id: string };
   readonly quarantined: boolean;
   readonly quarantineReasons: readonly GraphQLQuarantineReason[];
 }
@@ -111,6 +115,12 @@ export function toAdminMediaFile(
     : {
         id: file.id,
         path: file.path,
+        image: {
+          objectKey: file.image.objectKey,
+          fallbackFormat: file.image.fallbackFormat,
+          width: file.image.width,
+          height: file.image.height,
+        },
         quarantined: file.quarantined,
         quarantineReasons: file.quarantineReasons.map(
           (reason) => QUARANTINE_REASON_OF[reason],

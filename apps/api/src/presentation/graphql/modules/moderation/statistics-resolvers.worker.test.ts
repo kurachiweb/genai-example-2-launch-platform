@@ -17,6 +17,7 @@ import {
   insertAdmin,
 } from '../../../../infrastructure/admin/testing/admin-store-fixtures.ts';
 import { D1WeeklyStatisticsStore } from '../../../../infrastructure/moderation/d1-weekly-statistics-store.ts';
+import { mediaSchemaModule } from '../media/index.ts';
 import { paymentsSchemaModule } from '../payments/index.ts';
 import { moderationSchemaModule } from './index.ts';
 
@@ -57,7 +58,11 @@ const ADMIN_WEEKLY_STATISTICS = /* GraphQL */ `
 
 const gateway = createGraphQLGateway({
   documents: [ADMIN_WEEKLY_STATISTICS],
-  schemaModules: [paymentsSchemaModule, moderationSchemaModule],
+  schemaModules: [
+    paymentsSchemaModule,
+    mediaSchemaModule,
+    moderationSchemaModule,
+  ],
 });
 
 const ADMIN_ROLES: readonly (readonly [number, AdminRole])[] = [

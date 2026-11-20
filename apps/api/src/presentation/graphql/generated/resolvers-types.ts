@@ -325,7 +325,9 @@ export type AdminMatchResult = {
 export type AdminMediaFile = {
   __typename?: 'AdminMediaFile';
   id: Scalars['ID']['output'];
-  /** 管理者側のサイトと同じオリジンの中継の経路 */
+  /** 変換配信の画像。隔離中・削除待ち・保存未完了の画像はobjectKeyが空 */
+  image: MediaImage;
+  /** 管理者側のサイトと同じオリジンの中継の経路。隔離中の画像を表示する */
   path: Scalars['String']['output'];
   quarantineReasons: Array<QuarantineReason>;
   quarantined: Scalars['Boolean']['output'];
@@ -5050,6 +5052,7 @@ export type AdminMatchResultResolvers<ContextType = GraphQLContext, ParentType e
 
 export type AdminMediaFileResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminMediaFile'] = ResolversParentTypes['AdminMediaFile']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  image?: Resolver<ResolversTypes['MediaImage'], ParentType, ContextType>;
   path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   quarantineReasons?: Resolver<Array<ResolversTypes['QuarantineReason']>, ParentType, ContextType>;
   quarantined?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
