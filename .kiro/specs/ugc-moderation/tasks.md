@@ -150,7 +150,7 @@
   - _Depends: 2.1, 2.2_
   - _Requirements: 3.1, 3.2, 3.3, 3.5, 3.6, 3.9, 13.8, 15.6_
 
-- [ ] 4.2 (P) プロダクトの一覧と詳細とカテゴリの照会を作る
+- [x] 4.2 (P) プロダクトの一覧と詳細とカテゴリの照会を作る
   - 一覧はproduct-launchの仮13のプロダクトの管理の照会を使う
   - 先に、単体テストで、投稿者のハンドルの解決(無ければ空)、一覧の投稿者の表示名、詳細の情報・スクリーンショット・ローンチ履歴とマッチ結果と対戦相手・画像の隔離理由・評価の平均と件数・非公開化の最新の理由を各照会1回で組み立てること、論理削除済みの不在、カテゴリの選択肢を確かめる
   - 先に、1.1のローンチ状態の表示名の写しが上流の最新のローンチの状態の5値と一致することを、`config/ugc-moderation-contract-copies.unit.test.ts`に加えて確かめる
@@ -460,3 +460,4 @@
 - 4.4: `DefaultQuarantinedImageReader`(`application/moderation/quarantined-image-reader.ts`)。`MediaQuarantine.listByReason`(`ADMIN_LIST_PAGE_SIZE`の50件)の順を保ち、保有者の表示名は利用者(`UserProfileDirectory.findSummaries(ids, 'including-withdrawn')`)と管理者(`AdminDirectory.findProfiles`)を重複を除いて1回ずつ、`system`は`owner: null`、物理削除済みの利用者・削除済みの管理者は名前null。用途は生の用途名を返し、画面(6.7)が`mediaPurposeLabel`で表示名にする。検出内容の文字列は文言規則の書式で、信頼度は切り捨て(`Math.floor`、実装者の決定。8.2で文言規則に注記してよい)。返すファイルは`{ id, quarantined, quarantineReasons }`だけで、`path`は4.8が`downloadPathOf(id)`で作る
 - 4.1: `DefaultAdminUserReader`(`application/moderation/admin-user-reader.ts`)。上流の`AdminUserDirectory.search`の後、プロフィール(`not-withdrawn`)→画像(`MediaFiles.findMany`)と停止の最新の理由(`latestFor(['user.suspend'])`)を各1回。メールアドレスの絞り込み(`filter.email !== undefined`、空文字の正規化は4.6の入力の検証)があれば、一覧を組み立てた後に`user.email-search`を表示する利用者の仮名化IDだけ(0件は対象なし)で記録してから返し、記録の失敗では結果を返さない。戻り値の型(`AdminUserView`など)は実装者が決めた: 利用者のIDは`userId`、画像は`{ fileId, quarantined, quarantineReasons }`で、4.6・4.7が`path`(`downloadPathOf`)とGraphQLの`AdminUser`の形への写像を作る。使い捨ての判定は`emailVerified`が偽なら`unverified`、真で判定nullなら`undetermined`
 - 7.3: `apps/backend-lib/core/moderation/statistics-week.ts`(`weekOf`・`previousWeek`・`weeksToCompute`(戻り値の型`StatisticsWeeksToCompute`)・`isWeekFinished`(`to <= now`)・`lastDayOf`、戻り値は凍結)。backend-platformの業務時刻の関数だけを使う。design.mdのFile Structure Planの注記は「表示の対象の週」もこのファイルとするが、契約に関数が無いため作らず、7.5の照会が`previousWeek`を繰り返して直近26週と今週を作る
+- 4.2: `DefaultAdminProductReader`(`application/moderation/admin-product-reader.ts`、テストの補助は800行の制限のため`application/moderation/testing/admin-product-reader-fakes.ts`)。`list`・`detail`は照会の時刻`now`を引数に取る(リゾルバが`clockOf(context).now()`を渡す)。設計との相違: 一覧のロゴのため設計の表に無い`MediaFiles.findMany`を1回加えた。詳細の`hiddenAt`は`AdminProductDirectory`にIDの照会が無く要約にも日時が無いため、非公開化中のときだけ`latestFor(['product.hide'])`の`occurredAt`を使う(通常は`hidden_at`と同じ値。3年を過ぎて記録が消えた後はnull)。ローンチ状態は上流の`toLaunchState`と同じ規則の`launchStateOf`で5値に写像し(上流の関数は`workers`の非公開の関数のため写しになる)、公開状態は上流の`toVisibility`と同じ規則。対戦相手の名前は`findSummaries(not-deleted)`、不戦勝・物理削除・論理削除はnull。不在の詳細はnullを返す。照合のテストに`ADMIN_LAUNCH_STATES`と上流の`AdminProductLaunchState`の一致を加えた

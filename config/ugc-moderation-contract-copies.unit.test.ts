@@ -17,6 +17,7 @@ const BACKEND_USER_LIFECYCLE =
   'apps/backend-lib/core/identity/user-lifecycle.ts';
 const BACKEND_PRODUCT_LIFECYCLE =
   'apps/backend-lib/core/product/product-lifecycle.ts';
+const BACKEND_PRODUCT_PORTS = 'apps/backend-lib/core/product/ports.ts';
 const DB_MODERATION_ACTIONS = 'apps/db/schema/moderation/moderation-actions.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
@@ -157,6 +158,16 @@ describe('使い捨て判定の写し(apps/common-lib/moderation/moderation-labe
       ...readStringUnion(BACKEND_DISPOSABLE_EMAIL, 'DisposableEmailStatus'),
       'unverified',
     ]);
+  });
+});
+
+describe('ローンチ状態の写し(apps/common-lib/moderation/moderation-labels.ts)', () => {
+  test('ADMIN_LAUNCH_STATESがproduct-launchの型AdminProductLaunchStateの5値と順も含めて一致する', () => {
+    expect(
+      readStringArray(COMMON_MODERATION_LABELS, 'ADMIN_LAUNCH_STATES'),
+    ).toEqual(
+      readStringUnion(BACKEND_PRODUCT_PORTS, 'AdminProductLaunchState'),
+    );
   });
 });
 
