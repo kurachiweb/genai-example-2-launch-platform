@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
@@ -29,6 +29,7 @@ import { adminModerationUsersQueryOptions } from '../../../graphql/admin-moderat
 import { auditLogsQueryOptions } from '../../../graphql/admin-audit-logs.ts';
 import { adminQuarantinedImagesQueryOptions } from '../../../graphql/admin-quarantined-images.ts';
 import {
+  AdminApproveQuarantinedImageDocument,
   AdminDeleteQuarantinedImageDocument,
   AdminSuspendUserDocument,
 } from '../../../graphql/generated/graphql.ts';
@@ -61,14 +62,43 @@ const AUDITED_NOTICE = 'この操作は監査ログに記録されます。';
 const CONFLICT_MESSAGE =
   '他の操作で状態が変わりました。最新の内容を読み込んでからやり直してください。';
 
+const USER_NOT_FOUND_MESSAGE = '利用者が見つかりません。';
+
+const IMAGE_NOT_FOUND_MESSAGE = '画像が見つかりません。';
+
 interface HarnessProps {
   readonly operation: ModerationOperation;
   readonly targetId: string;
   readonly onCompleted: (changed: boolean) => void;
+  readonly deferTargetMissingRefresh: boolean;
+  // 「rerender」で描き直し、「remove」でダイアログを閉じずに部品を外す
+  readonly control: EventTarget;
 }
 
-function Harness({ operation, targetId, onCompleted }: HarnessProps) {
+function Harness({
+  operation,
+  targetId,
+  onCompleted,
+  deferTargetMissingRefresh,
+  control,
+}: HarnessProps) {
   const [open, setOpen] = useState(false);
+  const [renders, setRenders] = useState(0);
+  const [removed, setRemoved] = useState(false);
+  useEffect(() => {
+    const rerender = () => {
+      setRenders((count) => count + 1);
+    };
+    const remove = () => {
+      setRemoved(true);
+    };
+    control.addEventListener('rerender', rerender);
+    control.addEventListener('remove', remove);
+    return () => {
+      control.removeEventListener('rerender', rerender);
+      control.removeEventListener('remove', remove);
+    };
+  }, [control]);
   const copy =
     operation === 'user.suspend'
       ? SUSPEND_COPY
@@ -83,18 +113,22 @@ function Harness({ operation, targetId, onCompleted }: HarnessProps) {
       >
         {OPENER}
       </button>
-      <ModerationActionDialog
-        open={open}
-        onOpenChange={setOpen}
-        operation={operation}
-        targetId={targetId}
-        title={copy.title}
-        description={copy.description}
-        confirmLabel={copy.confirmLabel}
-        onCompleted={({ changed }) => {
-          onCompleted(changed);
-        }}
-      />
+      <output>{renders}</output>
+      {removed ? null : (
+        <ModerationActionDialog
+          open={open}
+          onOpenChange={setOpen}
+          operation={operation}
+          targetId={targetId}
+          title={copy.title}
+          description={copy.description}
+          confirmLabel={copy.confirmLabel}
+          onCompleted={({ changed }) => {
+            onCompleted(changed);
+          }}
+          deferTargetMissingRefresh={deferTargetMissingRefresh}
+        />
+      )}
     </>
   );
 }
@@ -103,18 +137,23 @@ const renderDialog = async ({
   operation = 'user.suspend',
   targetId = USER_ID,
   handlers = new Map(),
+  deferTargetMissingRefresh = false,
 }: {
   readonly operation?: ModerationOperation;
   readonly targetId?: string;
   readonly handlers?: ReadonlyMap<unknown, ModerationGraphQLHandler>;
+  readonly deferTargetMissingRefresh?: boolean;
 } = {}) => {
   respondModerationGraphQL(executeGraphQL, { role: 'MODERATOR', handlers });
   const onCompleted = vi.fn<(changed: boolean) => void>();
+  const control = new EventTarget();
   const router = await renderModerationPart(
     <Harness
       operation={operation}
       targetId={targetId}
       onCompleted={onCompleted}
+      deferTargetMissingRefresh={deferTargetMissingRefresh}
+      control={control}
     />,
     { role: 'MODERATOR' },
   );
@@ -131,6 +170,7 @@ const renderDialog = async ({
   });
   return {
     onCompleted,
+    control,
     usersInvalidated: () =>
       queryClient.getQueryState(usersKey)?.isInvalidated ?? false,
     imagesInvalidated: () =>
@@ -314,6 +354,156 @@ describe('確定', () => {
     expect(usersInvalidated()).toBe(false);
     expect(auditLogsInvalidated()).toBe(false);
     expect(onCompleted).not.toHaveBeenCalled();
+  });
+
+  test('対象が見つからないと、サーバーの文言をダイアログの中に示して理由の入力を保ち、影響する一覧の照会を無効にし、監査ログの照会は無効にしない', async () => {
+    const { onCompleted, usersInvalidated, auditLogsInvalidated } =
+      await renderDialog({
+        handlers: new Map([
+          [
+            AdminSuspendUserDocument,
+            () =>
+              failure({
+                code: 'user_not_found',
+                message: USER_NOT_FOUND_MESSAGE,
+                status: 404,
+              }),
+          ],
+        ]),
+      });
+    await openDialog();
+
+    await reasonBox().fill(MODERATION_REASON);
+    await confirmButton().click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent(USER_NOT_FOUND_MESSAGE);
+    await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
+    expect(usersInvalidated()).toBe(true);
+    expect(auditLogsInvalidated()).toBe(false);
+    expect(onCompleted).not.toHaveBeenCalled();
+    expect(page.getByText('ユーザーを停止しました。').query()).toBeNull();
+  });
+
+  test('画像が見つからないと、隔離画像の一覧の照会を無効にする', async () => {
+    const { imagesInvalidated } = await renderDialog({
+      operation: 'image.approve',
+      targetId: LOGO_FILE_ID,
+      handlers: new Map([
+        [
+          AdminApproveQuarantinedImageDocument,
+          () =>
+            failure({
+              code: 'image_not_found',
+              message: IMAGE_NOT_FOUND_MESSAGE,
+              status: 404,
+            }),
+        ],
+      ]),
+    });
+    await openDialog();
+
+    await confirmButton(
+      IMAGE_DIALOG_COPY['image.approve'].confirmLabel,
+    ).click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent(IMAGE_NOT_FOUND_MESSAGE);
+    expect(imagesInvalidated()).toBe(true);
+  });
+
+  test('不在の失敗の取り直しを遅らせると、開いている間は照会を無効にせず文言と理由を示し、閉じた時に影響する一覧の照会を無効にする', async () => {
+    const { usersInvalidated, auditLogsInvalidated } = await renderDialog({
+      deferTargetMissingRefresh: true,
+      handlers: new Map([
+        [
+          AdminSuspendUserDocument,
+          () =>
+            failure({
+              code: 'user_not_found',
+              message: USER_NOT_FOUND_MESSAGE,
+              status: 404,
+            }),
+        ],
+      ]),
+    });
+    await openDialog();
+
+    await reasonBox().fill(MODERATION_REASON);
+    await confirmButton().click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent(USER_NOT_FOUND_MESSAGE);
+    await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
+    expect(usersInvalidated()).toBe(false);
+
+    await dialog().getByRole('button', { name: 'キャンセル' }).click();
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.poll(usersInvalidated).toBe(true);
+    expect(auditLogsInvalidated()).toBe(false);
+  });
+
+  test('不在の失敗の取り直しを遅らせた後、開いたまま描き直しても照会を無効にせず、閉じずに部品が外れた時に影響する一覧の照会を無効にする', async () => {
+    const { control, usersInvalidated } = await renderDialog({
+      deferTargetMissingRefresh: true,
+      handlers: new Map([
+        [
+          AdminSuspendUserDocument,
+          () =>
+            failure({
+              code: 'user_not_found',
+              message: USER_NOT_FOUND_MESSAGE,
+              status: 404,
+            }),
+        ],
+      ]),
+    });
+    await openDialog();
+    await reasonBox().fill(MODERATION_REASON);
+    await confirmButton().click();
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent(USER_NOT_FOUND_MESSAGE);
+
+    control.dispatchEvent(new Event('rerender'));
+    await expect
+      .element(page.getByRole('status', { includeHidden: true }))
+      .toHaveTextContent('1');
+    expect(usersInvalidated()).toBe(false);
+
+    control.dispatchEvent(new Event('remove'));
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.poll(usersInvalidated).toBe(true);
+  });
+
+  test('措置の対象でないものの`_not_found`(照会の操作の不在など)では一覧の照会を無効にしない', async () => {
+    const { usersInvalidated } = await renderDialog({
+      handlers: new Map([
+        [
+          AdminSuspendUserDocument,
+          () =>
+            failure({
+              code: 'persisted_operation_not_found',
+              message: '画面を再読み込みしてください。',
+              status: 400,
+            }),
+        ],
+      ]),
+    });
+    await openDialog();
+
+    await reasonBox().fill(MODERATION_REASON);
+    await confirmButton().click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent('画面を再読み込みしてください。');
+    expect(usersInvalidated()).toBe(false);
   });
 
   test('`GraphQLClientError`でない失敗は、問い合わせを促さない管理者側の文言をダイアログの中に示し、もう一度確定できる', async () => {

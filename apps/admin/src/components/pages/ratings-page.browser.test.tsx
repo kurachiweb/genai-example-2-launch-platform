@@ -11,6 +11,7 @@ import {
 import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import { emulateReducedMotion } from '../../../lib/test/reduced-motion.ts';
 import { failure, success } from '../../../test/admin-accounts-fixtures.ts';
+import { buttonBehindDialog } from '../../../test/moderation-render.tsx';
 import {
   changedResult,
   MODERATION_DISPLAY,
@@ -619,18 +620,29 @@ describe('措置の操作', () => {
     ]);
   });
 
-  test('確定の失敗はダイアログの中に示し、入力した理由を保つ', async () => {
+  test('確定の時点で評価が見つからないと、一覧を取り直して行が消えても、ダイアログの中に文言を示して理由を保ち、閉じると一覧の見出しへフォーカスを移す', async () => {
+    let missing = false;
     await renderWith({
       role: 'MODERATOR',
+      ratings: () =>
+        success(
+          ratingsQueryOf(
+            missing
+              ? RATING_NODES.filter(({ id }) => id !== VALID_RATING_NODE.id)
+              : RATING_NODES,
+          ),
+        ),
       handlers: new Map([
         [
           AdminInvalidateRatingDocument,
-          () =>
-            failure({
+          () => {
+            missing = true;
+            return failure({
               code: 'rating_not_found',
               message: '評価が見つかりません。',
               status: 404,
-            }),
+            });
+          },
         ],
       ]),
     });
@@ -641,7 +653,18 @@ describe('措置の操作', () => {
     await expect
       .element(dialog().getByRole('alert'))
       .toHaveTextContent('評価が見つかりません。');
+    await expect
+      .element(buttonBehindDialog('サンプル太郎さんの評価を無効化'))
+      .not.toBeInTheDocument();
+    await expect
+      .element(buttonBehindDialog('表示できない利用者さんの評価を無効化'))
+      .toBeInTheDocument();
     await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
+
+    await dialog().getByRole('button', { name: 'キャンセル' }).click();
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(listHeading()).toHaveFocus();
   });
 });
 

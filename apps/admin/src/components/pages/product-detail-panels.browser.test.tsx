@@ -502,6 +502,74 @@ describe('ローンチ履歴', () => {
   });
 });
 
+describe('対象が見つからない失敗', () => {
+  test('確定の時点で評価が見つからないと、ダイアログの中に文言を示して理由を保ち、閉じると評価の一覧を取り直して行を除き、評価の区画の見出しへフォーカスを移す', async () => {
+    let missing = false;
+    await renderDetail({
+      handlers: new Map<unknown, ProductDetailHandler>([
+        [
+          AdminProductRatingsDocument,
+          () =>
+            success(
+              productRatingsOf(
+                missing
+                  ? [INVALIDATED_RATING_NODE]
+                  : [ratingNodeOf(), INVALIDATED_RATING_NODE],
+              ),
+            ),
+        ],
+        [
+          AdminInvalidateRatingDocument,
+          () => {
+            missing = true;
+            return failure({
+              code: 'rating_not_found',
+              message: '評価が見つかりません。',
+              status: 404,
+            });
+          },
+        ],
+      ]),
+    });
+    await ratingTable()
+      .getByRole('button', { name: 'サンプル花子さんの評価を無効化' })
+      .click();
+    const dialog = page.getByRole('dialog');
+    const reasonBox = dialog.getByRole('textbox', {
+      name: '理由(必須)',
+      exact: true,
+    });
+    await reasonBox.fill('自作自演の評価のため');
+    await dialog.getByRole('button', { name: '無効化する' }).click();
+
+    await expect
+      .element(dialog.getByRole('alert'))
+      .toHaveTextContent('評価が見つかりません。');
+    await expect.element(reasonBox).toHaveValue('自作自演の評価のため');
+
+    await dialog.getByRole('button', { name: 'キャンセル' }).click();
+
+    await expect.element(dialog).not.toBeInTheDocument();
+    await expect
+      .element(
+        ratingTable().getByRole('button', {
+          name: 'サンプル花子さんの評価を無効化',
+        }),
+      )
+      .not.toBeInTheDocument();
+    await expect
+      .element(
+        ratingTable().getByRole('button', {
+          name: '表示できない利用者さんの評価の無効化の取り消し',
+        }),
+      )
+      .toBeVisible();
+    await expect
+      .element(sectionOf('評価').getByRole('heading', { level: 2 }))
+      .toHaveFocus();
+  });
+});
+
 describe('取り直し', () => {
   test('評価の措置の後に詳細を取り直して平均と件数を新しくする', async () => {
     let average = 4.25;

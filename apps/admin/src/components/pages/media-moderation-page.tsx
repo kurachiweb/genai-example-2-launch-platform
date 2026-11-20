@@ -4,6 +4,7 @@ import { useRef } from 'react';
 import { AdminPageHeader } from '../../../lib/components/admin/admin-page-header.tsx';
 import { QuarantineReasonTabs } from '../moderation/media/quarantine-reason-tabs.tsx';
 import { QuarantinedImageList } from '../moderation/media/quarantined-image-list.tsx';
+import { ModerationDialogHost } from '../moderation/shared/moderation-dialog-host.tsx';
 import { MODERATION_PAGE_COPY } from '../moderation/shared/moderation-messages.ts';
 import {
   quarantinedImageListArgsOf,
@@ -33,7 +34,9 @@ export function MediaModerationPage() {
         }}
         panelRef={panelRef}
       >
-        <QuarantinedImageList reason={reason} returnFocusRef={panelRef} />
+        <ModerationDialogHost fallbackFocusRef={panelRef}>
+          <QuarantinedImageList reason={reason} returnFocusRef={panelRef} />
+        </ModerationDialogHost>
       </QuarantineReasonTabs>
     </div>
   );

@@ -1,4 +1,4 @@
-import { type ReactNode, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
 
 import {
   AdminDataTable,
@@ -8,6 +8,7 @@ import {
 import { DateTime } from '../../../../lib/components/datetime/date-time.tsx';
 import { cn } from '../../../../lib/utilities/class-names.ts';
 import type { AdminModerationRatingView } from '../../../graphql/admin-moderation-engagement.ts';
+import { ModerationDialogHost } from '../shared/moderation-dialog-host.tsx';
 import {
   NO_VALUE_LABEL,
   productOwnerLabel,
@@ -32,10 +33,7 @@ export interface RatingTableProps {
 const prefersReducedMotion = (): boolean =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// 操作の列は、措置の操作の後のフォーカスの移り先を持つ表の側で描く
-const columnsOf = (
-  actionsOf: (rating: AdminModerationRatingView) => ReactNode,
-): readonly AdminDataTableColumn<AdminModerationRatingView>[] => [
+const COLUMNS: readonly AdminDataTableColumn<AdminModerationRatingView>[] = [
   {
     key: 'rater',
     header: RATING_LIST_COLUMNS.rater,
@@ -79,7 +77,7 @@ const columnsOf = (
   {
     key: 'actions',
     header: RATING_LIST_COLUMNS.actions,
-    cell: (rating) => actionsOf(rating),
+    cell: (rating) => <RatingModerationActions rating={rating} />,
   },
 ];
 
@@ -100,9 +98,6 @@ export function RatingTable({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
     });
   };
-  const actionsOf = (rating: AdminModerationRatingView) => (
-    <RatingModerationActions rating={rating} returnFocusRef={headingRef} />
-  );
   return (
     <section
       ref={sectionRef}
@@ -118,52 +113,54 @@ export function RatingTable({
       >
         {RATING_LIST_CAPTION}
       </h2>
-      <div className="relative" aria-busy={refetching || undefined}>
-        {refetching ? (
+      <ModerationDialogHost fallbackFocusRef={headingRef}>
+        <div className="relative" aria-busy={refetching || undefined}>
+          {refetching ? (
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 -top-2 h-1 rounded-full bg-primary/40"
+            />
+          ) : null}
           <div
-            aria-hidden="true"
-            className="absolute inset-x-0 -top-2 h-1 rounded-full bg-primary/40"
-          />
-        ) : null}
-        <div
-          inert={refetching}
-          className={cn(refetching && 'opacity-45 saturate-50')}
-        >
-          <AdminDataTable
-            caption={RATING_LIST_CAPTION}
-            columns={columnsOf(actionsOf)}
-            rows={rows}
-            rowKey={(rating) => rating.id}
-            {...(error === undefined
-              ? {}
-              : {
-                  error: {
-                    message: error.message,
-                    onRetry: () => {
-                      headingRef.current?.focus();
-                      error.onRetry();
+            inert={refetching}
+            className={cn(refetching && 'opacity-45 saturate-50')}
+          >
+            <AdminDataTable
+              caption={RATING_LIST_CAPTION}
+              columns={COLUMNS}
+              rows={rows}
+              rowKey={(rating) => rating.id}
+              {...(error === undefined
+                ? {}
+                : {
+                    error: {
+                      message: error.message,
+                      onRetry: () => {
+                        headingRef.current?.focus();
+                        error.onRetry();
+                      },
                     },
-                  },
-                })}
-            emptyMessage={RATING_LIST_EMPTY_MESSAGE}
-            pagination={{
-              ...pagination,
-              onPrevious: () => {
-                if (pagination.hasPrevious) {
-                  moveToList();
-                }
-                pagination.onPrevious();
-              },
-              onNext: () => {
-                if (pagination.hasNext) {
-                  moveToList();
-                }
-                pagination.onNext();
-              },
-            }}
-          />
+                  })}
+              emptyMessage={RATING_LIST_EMPTY_MESSAGE}
+              pagination={{
+                ...pagination,
+                onPrevious: () => {
+                  if (pagination.hasPrevious) {
+                    moveToList();
+                  }
+                  pagination.onPrevious();
+                },
+                onNext: () => {
+                  if (pagination.hasNext) {
+                    moveToList();
+                  }
+                  pagination.onNext();
+                },
+              }}
+            />
+          </div>
         </div>
-      </div>
+      </ModerationDialogHost>
     </section>
   );
 }

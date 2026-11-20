@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import type { ReactNode } from 'react';
 
 import { mediaPurposeLabel } from '../../../../common-lib/moderation/moderation-labels.ts';
 import { DateTime } from '../../../../lib/components/datetime/date-time.tsx';
@@ -15,7 +15,6 @@ import { quarantinedImageOwnerLabel } from './quarantined-image-view.ts';
 
 export interface QuarantinedImageCardProps {
   readonly image: AdminQuarantinedImageView;
-  readonly returnFocusRef: RefObject<HTMLElement | null>;
 }
 
 // 寸法の分からない原本を用途によらず同じ枠に収め、読み込めない時はスクリーンショットと同じ代わりの表示にする
@@ -40,10 +39,7 @@ function DetailItem({
 }
 
 // 隔離画像の1件。続きを読み込んだ後のフォーカスの移り先になるよう、項目をプログラムからだけフォーカスできるようにする
-export function QuarantinedImageCard({
-  image,
-  returnFocusRef,
-}: QuarantinedImageCardProps) {
+export function QuarantinedImageCard({ image }: QuarantinedImageCardProps) {
   const ownerLabel = quarantinedImageOwnerLabel(image.owner);
   const purposeLabel = mediaPurposeLabel(image.purpose);
 
@@ -91,7 +87,6 @@ export function QuarantinedImageCard({
           image={image}
           ownerLabel={ownerLabel}
           purposeLabel={purposeLabel}
-          returnFocusRef={returnFocusRef}
         />
       </div>
     </li>

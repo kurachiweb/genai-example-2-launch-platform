@@ -11,5 +11,5 @@ export const Route = createFileRoute('/_authenticated/products/$productId')({
   head: () => buildAdminPageHead({ title: PRODUCT_DETAIL_COPY.pageTitle }),
   component: ProductDetailPage,
   // 見つからないプロダクトはサイト全体の存在しないページではなく、一覧へ戻る導線を持つプロダクトの不在の表示にする
-  notFoundComponent: ProductNotFoundPage,
+  notFoundComponent: () => <ProductNotFoundPage />,
 });

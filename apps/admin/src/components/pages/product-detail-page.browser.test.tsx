@@ -397,7 +397,7 @@ describe('画像', () => {
 });
 
 describe('見つからないプロダクト', () => {
-  test('存在しない・論理削除されたプロダクトは、見つからない旨と一覧への導線を示す', async () => {
+  test('存在しない・論理削除されたプロダクトは、見つからない旨と一覧への導線を示し、最初の表示ではフォーカスを移さない', async () => {
     respondProductDetailGraphQL(executeGraphQL, {
       role: 'VIEWER',
       detail: null,
@@ -410,6 +410,7 @@ describe('見つからないプロダクト', () => {
     await expect
       .element(main().getByRole('link', { name: 'プロダクトの一覧へ' }))
       .toHaveAttribute('href', '/products');
+    expect(document.activeElement).toBe(document.body);
   });
 
   test('IDの形式の違反は、不在と同じ見つからない表示にする', async () => {

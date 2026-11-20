@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { getRouteApi, Link, notFound } from '@tanstack/react-router';
+import { getRouteApi, Link } from '@tanstack/react-router';
 import { ArrowLeftIcon } from 'lucide-react';
 
 import { AdminPageHeader } from '../../../lib/components/admin/admin-page-header.tsx';
@@ -11,6 +11,7 @@ import {
 import { AdminProductDetailSectionsView } from '../moderation/products/admin-product-detail-sections-view.tsx';
 import { ProductDetailView } from '../moderation/products/product-detail-view.tsx';
 import { PRODUCT_DETAIL_COPY } from '../moderation/shared/moderation-messages.ts';
+import { ProductNotFoundPage } from './product-not-found-page.tsx';
 
 const routeApi = getRouteApi('/_authenticated/products/$productId');
 
@@ -20,9 +21,9 @@ export function ProductDetailPage() {
     ...adminModerationProductQueryOptions(productId),
     select: toAdminModerationProductDetail,
   });
-  // loaderが確かめたプロダクトが取り直しで消えるのは表示中の論理削除の後で、見つからないプロダクトとして扱う
+  // loaderが確かめたプロダクトが取り直しで消えるのは、表示中の論理削除と、措置の確定の時点で見つからなかった後。措置の操作ごと詳細が外れるため、見つからない表示へフォーカスを移す
   if (detail === null) {
-    throw notFound();
+    return <ProductNotFoundPage replacedDetail />;
   }
 
   return (

@@ -11,6 +11,7 @@ import {
 import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import { UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT } from '../../../lib/utilities/messages/state-messages.ts';
 import { failure, success } from '../../../test/admin-accounts-fixtures.ts';
+import { buttonBehindDialog } from '../../../test/moderation-render.tsx';
 import {
   ACTIVE_USER_NODE,
   changedResult,
@@ -258,13 +259,25 @@ describe('代理の退会の確定', () => {
     await expect.element(listHeading()).toHaveFocus();
   });
 
-  test('サーバーが拒否すると、サーバーの文言をダイアログの中に示して理由の入力を保つ', async () => {
-    await renderAsSuperAdmin(() =>
-      failure({
-        code: 'user_not_found',
-        message: 'ユーザーが見つかりません。',
-        status: 404,
-      }),
+  test('確定の時点で利用者が見つからないと、一覧を取り直して行が消えても、サーバーの文言をダイアログの中に示して理由の入力を保ち、閉じると一覧の見出しへフォーカスを移す', async () => {
+    let missing = false;
+    await renderAsSuperAdmin(
+      () => {
+        missing = true;
+        return failure({
+          code: 'user_not_found',
+          message: '利用者が見つかりません。',
+          status: 404,
+        });
+      },
+      () =>
+        success(
+          usersQueryOf(
+            missing
+              ? USER_NODES.filter((node) => node.id !== ACTIVE_USER_NODE.id)
+              : USER_NODES,
+          ),
+        ),
     );
     await openWithdrawal();
 
@@ -273,9 +286,20 @@ describe('代理の退会の確定', () => {
 
     await expect
       .element(dialog().getByRole('alert'))
-      .toHaveTextContent('ユーザーが見つかりません。');
+      .toHaveTextContent('利用者が見つかりません。');
     await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
+    await expect
+      .element(buttonBehindDialog(WITHDRAW_TARO))
+      .not.toBeInTheDocument();
+    await expect
+      .element(buttonBehindDialog('「サンプル次郎」の代理の退会'))
+      .toBeInTheDocument();
     expect(page.getByText('ユーザーを退会させました。').query()).toBeNull();
+
+    await dialog().getByRole('button', { name: 'キャンセル' }).click();
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(listHeading()).toHaveFocus();
   });
 
   test('`GraphQLClientError`でない失敗は、問い合わせを促さない管理者側の文言をダイアログの中に示し、理由の入力を保つ', async () => {

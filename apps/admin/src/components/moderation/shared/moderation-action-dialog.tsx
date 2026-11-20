@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import { type ReactNode, type RefObject, useEffect, useRef } from 'react';
 
 import { MODERATION_ACTION_DEFINITIONS } from '../../../../common-lib/moderation/moderation-actions.ts';
 import { ConfirmActionDialog } from '../../../../lib/components/admin/confirm-action-dialog.tsx';
@@ -9,7 +9,10 @@ import {
   moderationActionOf,
   type ModerationOperation,
 } from './moderation-operations.ts';
-import { useModerationMutation } from './use-moderation-mutation.ts';
+import {
+  isTargetMissing,
+  useModerationMutation,
+} from './use-moderation-mutation.ts';
 
 export interface ModerationActionDialogProps {
   readonly open: boolean;
@@ -21,6 +24,10 @@ export interface ModerationActionDialogProps {
   readonly description: ReactNode;
   readonly confirmLabel: string;
   readonly onCompleted?: (outcome: ModerationOutcomeView) => void;
+  // 対象の不在で失敗した時。開いた元の操作が取り直しで消えるため、閉じた後のフォーカスの移り先を替える
+  readonly onTargetMissing?: () => void;
+  // 取り直しで対象が消えるとダイアログごと画面が替わる場所(詳細のページ)では、不在の失敗の取り直しを閉じるまで遅らせ、文言と理由を示し続ける
+  readonly deferTargetMissingRefresh?: boolean;
   readonly returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
@@ -37,25 +44,54 @@ export function ModerationActionDialog({
   description,
   confirmLabel,
   onCompleted,
+  onTargetMissing,
+  deferTargetMissingRefresh = false,
   returnFocusRef,
 }: ModerationActionDialogProps) {
-  const run = useModerationMutation(operation);
+  const { run, refreshAffected } = useModerationMutation(operation, {
+    deferTargetMissingRefresh,
+  });
+  const refreshOnCloseRef = useRef(false);
+  // 開いたまま画面を離れるなど、閉じずに外れた時も遅らせた取り直しを行う
+  useEffect(
+    () => () => {
+      if (refreshOnCloseRef.current) {
+        refreshOnCloseRef.current = false;
+        void refreshAffected();
+      }
+    },
+    [refreshAffected],
+  );
   const { reason } =
     MODERATION_ACTION_DEFINITIONS[moderationActionOf(operation)];
 
   return (
     <ConfirmActionDialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => {
+        if (!next && refreshOnCloseRef.current) {
+          refreshOnCloseRef.current = false;
+          void refreshAffected();
+        }
+        onOpenChange(next);
+      }}
       title={title}
       description={description}
       confirmLabel={confirmLabel}
       reason={reason}
       audited
       onConfirm={async (input) => {
-        // 理由を任意とする措置の空の理由は、APIサーバーが理由なしとして記録する
-        const outcome = await run({ targetId, reason: input.reason ?? '' });
-        onCompleted?.(outcome);
+        try {
+          // 理由を任意とする措置の空の理由は、APIサーバーが理由なしとして記録する
+          const outcome = await run({ targetId, reason: input.reason ?? '' });
+          onCompleted?.(outcome);
+        } catch (error) {
+          if (isTargetMissing(error)) {
+            refreshOnCloseRef.current = deferTargetMissingRefresh;
+            onTargetMissing?.();
+          }
+          throw error;
+        }
       }}
       failureMessageOf={failureMessageOf}
       {...(returnFocusRef === undefined ? {} : { returnFocusRef })}

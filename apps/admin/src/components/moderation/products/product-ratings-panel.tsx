@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 
 import { hasRole } from '../../../../common-lib/admin/admin-roles.ts';
 import {
@@ -20,6 +20,7 @@ import {
 import type { AdminModerationProductDetailView } from '../../../graphql/admin-moderation-products.ts';
 import { useAdminRole } from '../../layout/use-current-admin.ts';
 import { RatingModerationActions } from '../ratings/rating-moderation-actions.tsx';
+import { ModerationDialogHost } from '../shared/moderation-dialog-host.tsx';
 import {
   LOAD_MORE_LABEL,
   NO_VALID_RATINGS_MESSAGE,
@@ -97,6 +98,7 @@ export function ProductRatingsPanel({
   summary,
 }: ProductRatingsPanelProps) {
   const headingId = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const canModerate = hasRole(useAdminRole(), 'moderator');
   const ratings = useInfiniteQuery({
     ...adminProductRatingsQueryOptions(productId),
@@ -131,53 +133,65 @@ export function ProductRatingsPanel({
       aria-labelledby={headingId}
       className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4 sm:p-6"
     >
-      <h2 id={headingId} className="text-lg font-extrabold">
+      {/* 措置の後に評価の行が消えた時のフォーカスの移り先として、プログラムからだけフォーカスできるようにする */}
+      <h2
+        id={headingId}
+        ref={headingRef}
+        tabIndex={-1}
+        className="rounded-sm text-lg font-extrabold"
+      >
         {PRODUCT_DETAIL_COPY.sections.ratings}
       </h2>
       <p className="text-sm font-bold">{summaryTextOf(summary)}</p>
-      {loadError === null && rows?.length === 0 ? null : (
-        <div ref={tableRef}>
-          <AdminDataTable
-            caption={PRODUCT_RATING_LIST_CAPTION}
-            columns={columns}
-            rows={rows}
-            rowKey={({ id }) => id}
-            emptyMessage={NO_VALID_RATINGS_MESSAGE}
-            {...(loadError === null
-              ? {}
-              : {
-                  error: {
-                    message: errorMessageOf(
-                      loadError,
-                      ADMIN_PROFILE.contactAvailable,
-                    ),
-                    onRetry: () => {
-                      void ratings.refetch();
+      {/* 取り直しでプロダクトごと消えると詳細のページが見つからない表示に替わり、ダイアログも外れるため、不在の失敗の取り直しを閉じるまで遅らせる */}
+      <ModerationDialogHost
+        fallbackFocusRef={headingRef}
+        deferTargetMissingRefresh
+      >
+        {loadError === null && rows?.length === 0 ? null : (
+          <div ref={tableRef}>
+            <AdminDataTable
+              caption={PRODUCT_RATING_LIST_CAPTION}
+              columns={columns}
+              rows={rows}
+              rowKey={({ id }) => id}
+              emptyMessage={NO_VALID_RATINGS_MESSAGE}
+              {...(loadError === null
+                ? {}
+                : {
+                    error: {
+                      message: errorMessageOf(
+                        loadError,
+                        ADMIN_PROFILE.contactAvailable,
+                      ),
+                      onRetry: () => {
+                        void ratings.refetch();
+                      },
                     },
-                  },
-                })}
-          />
-        </div>
-      )}
-      {rows !== undefined && ratings.hasNextPage ? (
-        <div className="flex flex-col items-center gap-3">
-          {loadMoreError === null ? null : (
-            <FormMessage role="alert">
-              {errorMessageOf(loadMoreError, ADMIN_PROFILE.contactAvailable)}
-            </FormMessage>
-          )}
-          <Button
-            ref={loadMoreRef}
-            type="button"
-            variant="outline"
-            aria-disabled={loadingMore || undefined}
-            aria-busy={loadingMore || undefined}
-            onClick={loadMore}
-          >
-            {loadingMore ? LOADING_LABEL : LOAD_MORE_LABEL}
-          </Button>
-        </div>
-      ) : null}
+                  })}
+            />
+          </div>
+        )}
+        {rows !== undefined && ratings.hasNextPage ? (
+          <div className="flex flex-col items-center gap-3">
+            {loadMoreError === null ? null : (
+              <FormMessage role="alert">
+                {errorMessageOf(loadMoreError, ADMIN_PROFILE.contactAvailable)}
+              </FormMessage>
+            )}
+            <Button
+              ref={loadMoreRef}
+              type="button"
+              variant="outline"
+              aria-disabled={loadingMore || undefined}
+              aria-busy={loadingMore || undefined}
+              onClick={loadMore}
+            >
+              {loadingMore ? LOADING_LABEL : LOAD_MORE_LABEL}
+            </Button>
+          </div>
+        ) : null}
+      </ModerationDialogHost>
     </section>
   );
 }

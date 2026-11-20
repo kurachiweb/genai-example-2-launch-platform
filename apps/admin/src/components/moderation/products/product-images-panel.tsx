@@ -1,10 +1,11 @@
-import { type RefObject, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
 
 import { Badge } from '../../../../lib/components/ui/badge/badge.tsx';
 import type { PictureDisplay } from '../../../../lib/utilities/media/picture-sources.ts';
 import type { AdminMediaFileView } from '../../../graphql/admin-moderation-shared.ts';
 import { QuarantineImageButton } from '../media/quarantine-image-button.tsx';
 import { AdminMediaImage } from '../shared/admin-media-image.tsx';
+import { ModerationDialogHost } from '../shared/moderation-dialog-host.tsx';
 import {
   LOGO_QUARANTINE_NAME,
   NO_VALUE_LABEL,
@@ -37,21 +38,16 @@ const SCREENSHOT_DISPLAY: PictureDisplay = Object.freeze({
 interface ImageStateProps {
   readonly file: AdminMediaFileView | null;
   readonly quarantineName: string;
-  readonly returnFocusRef: RefObject<HTMLElement | null>;
 }
 
 // 隔離理由のある画像には印と理由を、無い画像には個別の隔離の操作を添える
-function ImageState({ file, quarantineName, returnFocusRef }: ImageStateProps) {
+function ImageState({ file, quarantineName }: ImageStateProps) {
   if (file === null) {
     return null;
   }
   if (!file.quarantined) {
     return (
-      <QuarantineImageButton
-        file={file}
-        accessibleName={quarantineName}
-        returnFocusRef={returnFocusRef}
-      />
+      <QuarantineImageButton file={file} accessibleName={quarantineName} />
     );
   }
   return (
@@ -87,52 +83,56 @@ export function ProductImagesPanel({
       >
         {PRODUCT_DETAIL_COPY.sections.images}
       </h2>
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm text-muted-foreground">
-          {PRODUCT_DETAIL_COPY.items.logo}
-        </h3>
-        <div className="flex flex-wrap items-start gap-3">
-          <AdminMediaImage
-            file={logo}
-            display={LOGO_DISPLAY}
-            alt={productLogoAlt(productName)}
-            placeholder={{ label: productName, seed: logo?.id ?? productName }}
-            className="rounded-md border border-border"
-          />
-          <ImageState
-            file={logo}
-            quarantineName={LOGO_QUARANTINE_NAME}
-            returnFocusRef={headingRef}
-          />
+      {/* 取り直しでプロダクトごと消えると詳細のページが見つからない表示に替わり、ダイアログも外れるため、不在の失敗の取り直しを閉じるまで遅らせる */}
+      <ModerationDialogHost
+        fallbackFocusRef={headingRef}
+        deferTargetMissingRefresh
+      >
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm text-muted-foreground">
+            {PRODUCT_DETAIL_COPY.items.logo}
+          </h3>
+          <div className="flex flex-wrap items-start gap-3">
+            <AdminMediaImage
+              file={logo}
+              display={LOGO_DISPLAY}
+              alt={productLogoAlt(productName)}
+              placeholder={{
+                label: productName,
+                seed: logo?.id ?? productName,
+              }}
+              className="rounded-md border border-border"
+            />
+            <ImageState file={logo} quarantineName={LOGO_QUARANTINE_NAME} />
+          </div>
         </div>
-      </div>
-      <div className="flex flex-col gap-2">
-        <h3 className="text-sm text-muted-foreground">
-          {PRODUCT_DETAIL_COPY.items.screenshots}
-        </h3>
-        {screenshots.length === 0 ? (
-          <p className="text-sm">{NO_VALUE_LABEL}</p>
-        ) : (
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {screenshots.map((file, index) => (
-              <li key={file.id} className="flex flex-col items-start gap-2">
-                <AdminMediaImage
-                  file={file}
-                  display={SCREENSHOT_DISPLAY}
-                  alt={productScreenshotAlt(productName, index + 1)}
-                  placeholder={{ label: productName, seed: file.id }}
-                  className="h-auto max-w-full rounded-md border border-border"
-                />
-                <ImageState
-                  file={file}
-                  quarantineName={screenshotQuarantineName(index + 1)}
-                  returnFocusRef={headingRef}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm text-muted-foreground">
+            {PRODUCT_DETAIL_COPY.items.screenshots}
+          </h3>
+          {screenshots.length === 0 ? (
+            <p className="text-sm">{NO_VALUE_LABEL}</p>
+          ) : (
+            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {screenshots.map((file, index) => (
+                <li key={file.id} className="flex flex-col items-start gap-2">
+                  <AdminMediaImage
+                    file={file}
+                    display={SCREENSHOT_DISPLAY}
+                    alt={productScreenshotAlt(productName, index + 1)}
+                    placeholder={{ label: productName, seed: file.id }}
+                    className="h-auto max-w-full rounded-md border border-border"
+                  />
+                  <ImageState
+                    file={file}
+                    quarantineName={screenshotQuarantineName(index + 1)}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </ModerationDialogHost>
     </section>
   );
 }

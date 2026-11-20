@@ -10,6 +10,7 @@ import {
 } from '../../../lib/test/computed-style.ts';
 import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import { failure, success } from '../../../test/admin-accounts-fixtures.ts';
+import { buttonBehindDialog } from '../../../test/moderation-render.tsx';
 import {
   ANONYMIZED_COMMENT_NODE,
   COMMENT_NODES,
@@ -365,18 +366,31 @@ describe('措置の操作', () => {
       .toBeVisible();
   });
 
-  test('確定の失敗はダイアログの中に示し、入力した理由を保つ', async () => {
+  test('確定の時点でコメントが見つからないと、一覧を取り直して行が消えても、ダイアログの中に文言を示して理由を保ち、閉じると一覧の見出しへフォーカスを移す', async () => {
+    let missing = false;
     await renderWith({
       role: 'MODERATOR',
+      comments: () =>
+        success(
+          commentsQueryOf(
+            missing
+              ? COMMENT_NODES.filter(
+                  ({ id }) => id !== UNAVAILABLE_AUTHOR_COMMENT_NODE.id,
+                )
+              : COMMENT_NODES,
+          ),
+        ),
       handlers: new Map([
         [
           AdminHideCommentDocument,
-          () =>
-            failure({
+          () => {
+            missing = true;
+            return failure({
               code: 'comment_not_found',
               message: 'コメントが見つかりません。',
               status: 404,
-            }),
+            });
+          },
         ],
       ]),
     });
@@ -387,10 +401,53 @@ describe('措置の操作', () => {
     await expect
       .element(dialog().getByRole('alert'))
       .toHaveTextContent('コメントが見つかりません。');
+    await expect
+      .element(buttonBehindDialog('サンプル三郎さんのコメントを非公開化'))
+      .not.toBeInTheDocument();
+    await expect
+      .element(buttonBehindDialog('サンプル太郎さんのコメントを非公開化'))
+      .toBeInTheDocument();
     await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
     expect(variablesOf(executeGraphQL, AdminHideCommentDocument)).toStrictEqual(
       [{ id: UNAVAILABLE_AUTHOR_COMMENT_NODE.id, reason: MODERATION_REASON }],
     );
+
+    await dialog().getByRole('button', { name: 'キャンセル' }).click();
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(listHeading()).toHaveFocus();
+  });
+
+  test('対象が見つからない以外の失敗では一覧を取り直さず、ダイアログの中に文言を示して理由を保つ', async () => {
+    let listRequests = 0;
+    await renderWith({
+      role: 'MODERATOR',
+      comments: () => {
+        listRequests += 1;
+        return success(commentsQueryOf(COMMENT_NODES));
+      },
+      handlers: new Map([
+        [
+          AdminHideCommentDocument,
+          () =>
+            failure({
+              code: 'forbidden',
+              message: 'この操作を行う権限がありません。',
+              status: 403,
+            }),
+        ],
+      ]),
+    });
+    await userEvent.click(actionButton('サンプル太郎さんのコメントを非公開化'));
+    await reasonBox().fill(MODERATION_REASON);
+    const requestsBeforeConfirm = listRequests;
+    await dialog().getByRole('button', { name: '非公開にする' }).click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent('この操作を行う権限がありません。');
+    await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
+    expect(listRequests).toBe(requestsBeforeConfirm);
   });
 });
 

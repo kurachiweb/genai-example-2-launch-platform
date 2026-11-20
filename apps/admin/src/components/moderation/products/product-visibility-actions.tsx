@@ -66,6 +66,8 @@ export function ProductVisibilityActions({
         title={copy.title}
         description={copy.description}
         confirmLabel={copy.confirmLabel}
+        // 取り直しでプロダクトが消えると詳細のページが見つからない表示に替わり、ダイアログも外れるため、不在の失敗の取り直しを閉じるまで遅らせる
+        deferTargetMissingRefresh
       />
     </RoleGate>
   );

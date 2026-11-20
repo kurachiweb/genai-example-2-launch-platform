@@ -25,7 +25,7 @@ import { useAppendedImageFocus } from './use-appended-image-focus.ts';
 
 export interface QuarantinedImageListProps {
   readonly reason: QuarantineReason;
-  // 再試行や措置の後に消える操作からフォーカスを<body>へ落とさないための移り先
+  // 再試行の後に消える操作からフォーカスを<body>へ落とさないための移り先
   readonly returnFocusRef: RefObject<HTMLElement | null>;
 }
 
@@ -114,11 +114,7 @@ export function QuarantinedImageList({
           className="flex flex-col gap-4"
         >
           {items.map((image) => (
-            <QuarantinedImageCard
-              key={image.file.id}
-              image={image}
-              returnFocusRef={returnFocusRef}
-            />
+            <QuarantinedImageCard key={image.file.id} image={image} />
           ))}
         </ul>
       )}

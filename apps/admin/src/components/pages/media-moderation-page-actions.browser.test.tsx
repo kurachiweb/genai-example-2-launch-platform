@@ -5,6 +5,7 @@ import { page, userEvent } from 'vitest/browser';
 import '../../styles.css';
 import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import { failure, success } from '../../../test/admin-accounts-fixtures.ts';
+import { buttonBehindDialog } from '../../../test/moderation-render.tsx';
 import {
   changedResult,
   MODERATION_DISPLAY,
@@ -259,6 +260,49 @@ describe('画像の操作の確定', () => {
         .getByRole('link', { name: /問い合わせ/u })
         .query(),
     ).toBeNull();
+  });
+
+  test('確定の時点で画像が見つからないと、一覧を取り直して項目が消えても、ダイアログの中に文言を示して理由を保ち、閉じるとタブの区画へフォーカスを移す', async () => {
+    let missing = false;
+    await renderWith({
+      role: 'MODERATOR',
+      images: (variables) =>
+        missing
+          ? success(quarantinedImagesOf([AUTO_AND_ADMIN_LOGO_IMAGE]))
+          : imagesByReason(variables),
+      handlers: new Map([
+        [
+          AdminDeleteQuarantinedImageDocument,
+          () => {
+            missing = true;
+            return failure({
+              code: 'image_not_found',
+              message: '画像が見つかりません。',
+              status: 404,
+            });
+          },
+        ],
+      ]),
+    });
+    await userEvent.click(actionButton(REJECT_NAME));
+    await reasonBox().fill(MODERATION_REASON);
+    await dialog().getByRole('button', { name: '公開を拒否する' }).click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent('画像が見つかりません。');
+    await expect
+      .element(buttonBehindDialog(REJECT_NAME))
+      .not.toBeInTheDocument();
+    await expect
+      .element(buttonBehindDialog('サンプル花子(@pixel_hanako)のロゴの削除'))
+      .toBeInTheDocument();
+    await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
+
+    await dialog().getByRole('button', { name: 'キャンセル' }).click();
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(tabPanel()).toHaveFocus();
   });
 
   test('取り消すと操作せずに閉じ、押した操作へフォーカスを戻す', async () => {

@@ -10,6 +10,7 @@ import {
 } from '../../../lib/test/computed-style.ts';
 import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import { failure, success } from '../../../test/admin-accounts-fixtures.ts';
+import { buttonBehindDialog } from '../../../test/moderation-render.tsx';
 import {
   ACTIVE_USER_NODE,
   changedResult,
@@ -380,6 +381,53 @@ describe('措置の操作', () => {
         '他の操作で状態が変わりました。最新の内容を読み込んでからやり直してください。',
       );
     await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
+  });
+
+  test('確定の時点で利用者が見つからないと、一覧を取り直して行が消えても、ダイアログの中に文言を示して理由を保ち、閉じると一覧の見出しへフォーカスを移す', async () => {
+    let missing = false;
+    await renderWith({
+      role: 'MODERATOR',
+      users: () =>
+        success(
+          usersQueryOf(
+            missing
+              ? USER_NODES.filter((node) => node.id !== ACTIVE_USER_NODE.id)
+              : USER_NODES,
+          ),
+        ),
+      handlers: new Map([
+        [
+          AdminSuspendUserDocument,
+          () => {
+            missing = true;
+            return failure({
+              code: 'user_not_found',
+              message: '利用者が見つかりません。',
+              status: 404,
+            });
+          },
+        ],
+      ]),
+    });
+    await userEvent.click(actionButton('「サンプル太郎」を停止'));
+    await reasonBox().fill(MODERATION_REASON);
+    await dialog().getByRole('button', { name: '停止する' }).click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent('利用者が見つかりません。');
+    await expect
+      .element(buttonBehindDialog('「サンプル太郎」を停止'))
+      .not.toBeInTheDocument();
+    await expect
+      .element(buttonBehindDialog('「サンプル花子」を停止'))
+      .toBeInTheDocument();
+    await expect.element(reasonBox()).toHaveValue(MODERATION_REASON);
+
+    await dialog().getByRole('button', { name: 'キャンセル' }).click();
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect.element(listHeading()).toHaveFocus();
   });
 
   test('取り消すと停止せずに閉じ、押した「停止」へフォーカスを戻す', async () => {

@@ -1,10 +1,9 @@
 import { ShieldAlertIcon } from 'lucide-react';
-import { type RefObject, useState } from 'react';
 
 import { Button } from '../../../../lib/components/ui/button/button.tsx';
 import type { AdminMediaFileView } from '../../../graphql/admin-moderation-shared.ts';
 import { RoleGate } from '../../layout/role-gate.tsx';
-import { ModerationActionDialog } from '../shared/moderation-action-dialog.tsx';
+import { useOpenModerationDialog } from '../shared/moderation-dialog-context.ts';
 import {
   IMAGE_DIALOG_COPY,
   QUARANTINE_IMAGE_LABEL,
@@ -16,20 +15,15 @@ export interface QuarantineImageButtonProps {
   readonly accessibleName: string;
   // 見える名前。既定は「隔離」
   readonly label?: string;
-  // 隔離の後に取り直した表示からボタンが消えるため、閉じた後のフォーカスの移り先
-  readonly returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
-const COPY = IMAGE_DIALOG_COPY['image.quarantine'];
-
-// 公開中の画像を個別に隔離する操作。モデレーター以上にだけ示す
+// 公開中の画像を個別に隔離する操作。確認は一覧の単位のダイアログで開き、モデレーター以上にだけ示す
 export function QuarantineImageButton({
   file,
   accessibleName,
   label = QUARANTINE_IMAGE_LABEL,
-  returnFocusRef,
 }: QuarantineImageButtonProps) {
-  const [open, setOpen] = useState(false);
+  const openDialog = useOpenModerationDialog();
 
   if (file.quarantined) {
     return null;
@@ -42,22 +36,16 @@ export function QuarantineImageButton({
         size="sm"
         aria-label={accessibleName}
         onClick={() => {
-          setOpen(true);
+          openDialog({
+            operation: 'image.quarantine',
+            targetId: file.id,
+            copy: IMAGE_DIALOG_COPY['image.quarantine'],
+          });
         }}
       >
         <ShieldAlertIcon aria-hidden="true" />
         {label}
       </Button>
-      <ModerationActionDialog
-        open={open}
-        onOpenChange={setOpen}
-        operation="image.quarantine"
-        targetId={file.id}
-        title={COPY.title}
-        description={COPY.description}
-        confirmLabel={COPY.confirmLabel}
-        {...(returnFocusRef === undefined ? {} : { returnFocusRef })}
-      />
     </RoleGate>
   );
 }

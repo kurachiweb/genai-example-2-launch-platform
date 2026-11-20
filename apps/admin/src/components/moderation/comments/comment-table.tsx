@@ -1,4 +1,4 @@
-import { type ReactNode, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
 
 import {
   ADMIN_COMMENT_STATE_LABELS,
@@ -12,6 +12,7 @@ import {
 import { DateTime } from '../../../../lib/components/datetime/date-time.tsx';
 import { cn } from '../../../../lib/utilities/class-names.ts';
 import type { AdminModerationCommentView } from '../../../graphql/admin-moderation-engagement.ts';
+import { ModerationDialogHost } from '../shared/moderation-dialog-host.tsx';
 import { ModerationNote } from '../shared/moderation-note.tsx';
 import {
   COMMENT_LIST_CAPTION,
@@ -81,10 +82,7 @@ function StateCell({
 const prefersReducedMotion = (): boolean =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// 操作の列は、措置の操作の後のフォーカスの移り先を持つ表の側で描く
-const columnsOf = (
-  actionsOf: (comment: AdminModerationCommentView) => ReactNode,
-): readonly AdminDataTableColumn<AdminModerationCommentView>[] => [
+const COLUMNS: readonly AdminDataTableColumn<AdminModerationCommentView>[] = [
   {
     key: 'body',
     header: COMMENT_LIST_COLUMNS.body,
@@ -127,7 +125,7 @@ const columnsOf = (
   {
     key: 'actions',
     header: COMMENT_LIST_COLUMNS.actions,
-    cell: (comment) => actionsOf(comment),
+    cell: (comment) => <CommentModerationActions comment={comment} />,
   },
 ];
 
@@ -148,9 +146,6 @@ export function CommentTable({
       behavior: prefersReducedMotion() ? 'auto' : 'smooth',
     });
   };
-  const actionsOf = (comment: AdminModerationCommentView) => (
-    <CommentModerationActions comment={comment} returnFocusRef={headingRef} />
-  );
   return (
     <section
       ref={sectionRef}
@@ -166,52 +161,54 @@ export function CommentTable({
       >
         {COMMENT_LIST_CAPTION}
       </h2>
-      <div className="relative" aria-busy={refetching || undefined}>
-        {refetching ? (
+      <ModerationDialogHost fallbackFocusRef={headingRef}>
+        <div className="relative" aria-busy={refetching || undefined}>
+          {refetching ? (
+            <div
+              aria-hidden="true"
+              className="absolute inset-x-0 -top-2 h-1 rounded-full bg-primary/40"
+            />
+          ) : null}
           <div
-            aria-hidden="true"
-            className="absolute inset-x-0 -top-2 h-1 rounded-full bg-primary/40"
-          />
-        ) : null}
-        <div
-          inert={refetching}
-          className={cn(refetching && 'opacity-45 saturate-50')}
-        >
-          <AdminDataTable
-            caption={COMMENT_LIST_CAPTION}
-            columns={columnsOf(actionsOf)}
-            rows={rows}
-            rowKey={(comment) => comment.id}
-            {...(error === undefined
-              ? {}
-              : {
-                  error: {
-                    message: error.message,
-                    onRetry: () => {
-                      headingRef.current?.focus();
-                      error.onRetry();
+            inert={refetching}
+            className={cn(refetching && 'opacity-45 saturate-50')}
+          >
+            <AdminDataTable
+              caption={COMMENT_LIST_CAPTION}
+              columns={COLUMNS}
+              rows={rows}
+              rowKey={(comment) => comment.id}
+              {...(error === undefined
+                ? {}
+                : {
+                    error: {
+                      message: error.message,
+                      onRetry: () => {
+                        headingRef.current?.focus();
+                        error.onRetry();
+                      },
                     },
-                  },
-                })}
-            emptyMessage={COMMENT_LIST_EMPTY_MESSAGE}
-            pagination={{
-              ...pagination,
-              onPrevious: () => {
-                if (pagination.hasPrevious) {
-                  moveToList();
-                }
-                pagination.onPrevious();
-              },
-              onNext: () => {
-                if (pagination.hasNext) {
-                  moveToList();
-                }
-                pagination.onNext();
-              },
-            }}
-          />
+                  })}
+              emptyMessage={COMMENT_LIST_EMPTY_MESSAGE}
+              pagination={{
+                ...pagination,
+                onPrevious: () => {
+                  if (pagination.hasPrevious) {
+                    moveToList();
+                  }
+                  pagination.onPrevious();
+                },
+                onNext: () => {
+                  if (pagination.hasNext) {
+                    moveToList();
+                  }
+                  pagination.onNext();
+                },
+              }}
+            />
+          </div>
         </div>
-      </div>
+      </ModerationDialogHost>
     </section>
   );
 }
