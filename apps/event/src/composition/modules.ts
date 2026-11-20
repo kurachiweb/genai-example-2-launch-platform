@@ -7,6 +7,7 @@ import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-module.ts';
 import { ENGAGEMENT_PLATFORM_MODULE } from '../../lib/workers/engagement/engagement-platform-module.ts';
 import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-platform-module.ts';
+import { MODERATION_PLATFORM_MODULE } from '../../lib/workers/moderation/moderation-platform-module.ts';
 import { PRODUCT_PLATFORM_MODULE } from '../../lib/workers/product/product-platform-module.ts';
 import { PROFILE_PLATFORM_MODULE } from '../../lib/workers/profile/profile-platform-module.ts';
 import { PUBLIC_API_PLATFORM_MODULE } from '../../lib/workers/public-api/public-api-platform-module.ts';
@@ -74,6 +75,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_NOTIFICATIONS_PLATFORM_MODULE,
     EVENT_NOTIFICATIONS_MODULE,
     ENGAGEMENT_PLATFORM_MODULE,
+    MODERATION_PLATFORM_MODULE,
     EVENT_ENGAGEMENT_MODULE,
     EVENT_PROFILE_MODULE,
     EVENT_SEARCH_PLATFORM_MODULE,

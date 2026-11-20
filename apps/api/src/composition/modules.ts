@@ -13,6 +13,7 @@ import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-mo
 import { ENGAGEMENT_PLATFORM_MODULE } from '../../lib/workers/engagement/engagement-platform-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-platform-module.ts';
+import { MODERATION_PLATFORM_MODULE } from '../../lib/workers/moderation/moderation-platform-module.ts';
 import { PRODUCT_PLATFORM_MODULE } from '../../lib/workers/product/product-platform-module.ts';
 import { PROFILE_PLATFORM_MODULE } from '../../lib/workers/profile/profile-platform-module.ts';
 import { PUBLIC_API_PLATFORM_MODULE } from '../../lib/workers/public-api/public-api-platform-module.ts';
@@ -138,6 +139,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   DIRECTORY_PLATFORM_MODULE,
   API_NOTIFICATIONS_PLATFORM_MODULE,
   ENGAGEMENT_PLATFORM_MODULE,
+  MODERATION_PLATFORM_MODULE,
   ADMIN_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,
