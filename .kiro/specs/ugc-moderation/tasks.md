@@ -119,7 +119,7 @@
   - _Depends: 2.2_
   - _Requirements: 10.4, 10.5, 10.6, 10.7, 10.8, 10.9_
 
-- [ ] 3.5 (P) 画像の公開承認・個別の隔離・隔離の解除・削除を作る
+- [x] 3.5 (P) 画像の公開承認・個別の隔離・隔離の解除・削除を作る
   - 先に、単体テストで、画像用の用途でない・記録が無いときの`image_not_found`、削除待ちのファイルへの削除が変化なしで他の操作が`image_not_found`になること、公開承認は自動判定の理由、隔離の解除は管理者操作の理由、削除は隔離画像を求めること(満たさなければ`image_action_not_applicable`)、個別の隔離は既に持つときも書き込みの単位を呼び変化なしを返すこと、非公開化・ユーザー停止の理由を外さないこと、任意の理由の上限、書き込みの単位のポート(`ImageModerationWriter`)へ記録と監査ログを渡すこと、その結果の`unchanged`・`not-found`の変換、`storage_unavailable`をそのまま返すこと、参加の値が付いた呼び出しを上流を呼ばずに内部エラーにすること、通知しないことを確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: ImageModerationService_
@@ -453,3 +453,4 @@
 - 3.2: `DefaultProductModerationService`(`application/moderation/product-moderation-service.ts`、3.1と同じ形)。対象は`ProductDirectory.findSummaries([id], 'not-deleted')`の`hidden`で判定する(`AdminProductDirectory`にはIDの照会が無い)。監査ログの対象はプロダクトのID(設計に記載なし、実装者の決定)。保留中の措置の`subjectUserId`は所有者、`productId`と`targetId`はプロダクト。照会の後の論理削除で上流が投げる`product_not_found`は本specのエラー(同じコードと文言)へ変える
 - 3.3: `DefaultCommentModerationService`(`application/moderation/comment-moderation-service.ts`)。対象は設計どおり`CommentStore.findByIds`で、`hiddenAt`で同じ状態を判定する。投稿者が削除・匿名化したコメントも非公開化・復元できる(上流の`CommentModerationControl`に合わせた。匿名化済みは記録の`subjectUserId`をnullにし、通知は「送らなかった」になる)。書き込みの単位が記録と状態を一体で確定するため、保留中の措置と`ModerationIncidentReporter`は注入しない。上流の`comment_not_found`はそのまま返す(同じエラー)
 - 3.4: `DefaultRatingModerationService`(`application/moderation/rating-moderation-service.ts`)。対象は`AdminRatingDirectory.findByIds`(論理削除されていない行だけを返すため、取消済みは`rating_not_found`)、`invalidatedAt`で同じ状態を判定。注入は`AdminRatingDirectory`・`EngagementModerationWriter`・`AuditLogRecorder`・`IdGenerator`の4つだけ(保留中の措置・通知・定型の通知は持たない)。記録の`noticeStatus`は`'none'`固定、監査ログの対象は評価のID
+- 3.5: `DefaultImageModerationService`(`application/moderation/image-moderation-service.ts`)。対象は`MediaFiles.findMany`、画像用でない用途は`file.storage !== 'images'`で`image_not_found`(そのため書き込みの単位の`quarantine_not_applicable`はこの経路では通常起きない)。論理削除済み(`deletedAt`あり)のファイルは拒否しない(media-pipelineでは物理削除まで配信され、隔離画像の一覧にも出るため。要件11.14の「削除済み」は記録が無い・削除待ちと解釈)。記録の`subjectUserId`は保有者が`user`のときだけ、`productId`はnull、監査ログの対象は`[fileId]`。参加の値の検査を理由の検証より前に行う。`storage_unavailable`はログを足さずにそのまま投げる(上流の操作口が警告を出す)
