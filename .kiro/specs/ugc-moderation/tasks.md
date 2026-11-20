@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 措置の規則・措置の記録のテーブル・監査ログの操作種別・メール・サービス仕様
-- [ ] 1.1 措置の規則と表示名の共有定義を作る
+- [x] 1.1 措置の規則と表示名の共有定義を作る
   - 前提: dev-tooling〜public-apiの25specの全タスクと、上流の改訂(identity-authの仮7(identity-authのタスク3.7)の`AdminUserDirectory`、product-launchの仮13(product-launchのタスク2.6)の`AdminProductDirectory`、engagementの仮6(engagementのタスク2.7、識別子はタスク2.1)の`AdminCommentDirectory`・`AdminRatingDirectory`、paymentsの仮7(paymentsのタスク5.5・5.7)の`PaymentRevenueReport`、backend-platformの改訂2のE2Eの`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)が完了していること(admin-foundationの`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements`・`AUDIT_ACTIONS`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・管理画面の共通部品・E2Eの`admin-bootstrap.ts`・`local-d1.ts`、identity-authの`UserSuspension`・`AdministrativeWithdrawal`・ライフサイクルの同期と非同期の登録口・`UserContactDirectory`・E2Eの`mailpit.ts`、product-launchの`ProductVisibilityControl`・ライフサイクルの登録口・`ProductDirectory`・`ProductCategoryDirectory`、engagementの`CommentModerationControl`・`RatingModerationControl`・`CommentStore`・`RatingStore`、media-pipelineの`MediaQuarantine`・`MediaFiles`・`AdminMediaReviewPolicy`の束縛の置き場所・`/_bff/files/*`の中継、user-profile-socialの`UserProfileDirectory`と停止の画像の隔離の処理、match-engineの`MatchDirectory`、directory-discoveryのE2Eの`directory-fixtures.ts`、email-deliveryのメールの基盤)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、13種の措置の対象の種類・理由の要否(画像の4つの操作だけ任意、停止・停止解除・代理の退会・非公開化・復元・コメントの非公開化と復元・無効化・無効化の取り消しは必須)・通知の要否(停止・非公開化・コメントの非公開化だけ依頼待ちで送り、代理の退会を含む他は送らない)・対応するライフサイクルの種類、理由の検証(空白だけ・500書記素と501書記素・画像の操作の理由の省略)、隔離理由と使い捨て判定の表示名が写した値の一覧を網羅することを確かめる
   - 上流の値(隔離理由・使い捨て判定・ローンチ状態・コメントの状態)は共有定義に写しとして持つ。common-libのテストは上流の`backend-lib/core`を読めないため、写しと上流の値の一致はルートの`config/ugc-moderation-contract-copies.unit.test.ts`で、ソースを読んで確かめる(`config/sponsorship-contract-copies.unit.test.ts`と同じ方式。ローンチ状態とコメントの状態の照合は4.2・4.3がこのファイルに加える)
@@ -436,3 +436,7 @@
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
   - _Depends: 7.9, 7.10, 7.11, 8.1, 8.2, 8.4, 8.5, 8.6_
   - _Requirements: 16.1_
+
+## Implementation Notes
+
+- 1.1: 規則は`apps/common-lib/moderation/moderation-actions.ts`(`MODERATION_ACTION_DEFINITIONS`・`checkModerationReason`・`MODERATION_REASON_MESSAGES`・`MODERATION_TARGET_KINDS`・`MODERATION_NOTICE_STATUSES`・ライフサイクルの種類の写し)、表示名は`moderation-labels.ts`(上流の値の写し`QUARANTINE_REASONS`・`DISPOSABLE_EMAIL_JUDGEMENTS`・`ADMIN_LAUNCH_STATES`・`ADMIN_COMMENT_STATES`と`mediaPurposeLabel`)。`MODERATION_REASON_MAX`は`AUDIT_REASON_MAX`を参照する。使い捨て判定の写しは上流の型`DisposableEmailStatus`に本specの`unverified`(確認前)を加えた一覧として照合する。`check:contract-copies`への追加に伴い`scripts/tooling/run-all.unit.test.ts`の期待値も直した。13種の措置の表示名(「ユーザーの停止」など)は実装者が決めたため、1.5で文言規則に同じ語を載せる。利用者の状態・公開状態・評価の状態の表示名は未作成で、画面のタスクで必要なら加える
