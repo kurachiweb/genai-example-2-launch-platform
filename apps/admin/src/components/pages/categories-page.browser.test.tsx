@@ -29,6 +29,7 @@ import {
   type AdminInquiryCategoriesQuery,
   AdminProductCategoriesDocument,
   AdminRenameInquiryCategoryDocument,
+  AdminReportCategoriesDocument,
   type AdminRole,
 } from '../../graphql/generated/graphql.ts';
 import { Route as AuthenticatedRoute } from '../../routes/_authenticated/route.tsx';
@@ -36,6 +37,7 @@ import { Route as CategoriesRoute } from '../../routes/_authenticated/categories
 import { HelpCategorySection } from '../help/help-category-section.tsx';
 import { InquiryCategorySection } from '../inquiry/inquiry-category-section.tsx';
 import { ProductCategorySection } from '../product/product-category-section.tsx';
+import { ReportCategorySection } from '../reporting/categories/report-category-section.tsx';
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 
@@ -93,6 +95,14 @@ const HELP_OTHER_CATEGORY = Object.freeze({
   articleCount: 0,
 });
 
+const REPORT_OTHER_CATEGORY = Object.freeze({
+  id: '01JE0000000000000000000002',
+  name: 'その他',
+  systemDefault: true,
+  infringement: false,
+  reportCount: 0,
+});
+
 const INTERNAL_ERROR = Object.freeze({
   code: 'internal_error',
   message: 'サーバーで問題が発生しました。時間をおいて再度お試しください。',
@@ -133,6 +143,11 @@ const respondCategories = (
       [
         AdminHelpCategoriesDocument,
         () => success({ adminHelpCategories: [{ ...HELP_OTHER_CATEGORY }] }),
+      ],
+      [
+        AdminReportCategoriesDocument,
+        () =>
+          success({ adminReportCategories: [{ ...REPORT_OTHER_CATEGORY }] }),
       ],
     ]),
   });
@@ -207,7 +222,7 @@ afterEach(() => {
 });
 
 describe('カテゴリの区画の登録口', () => {
-  test('プロダクトカテゴリの区画をorder 10、ヘルプ記事カテゴリの区画をorder 20、問い合わせカテゴリの区画をorder 30で登録し、凍結されている', () => {
+  test('プロダクトカテゴリの区画をorder 10、ヘルプ記事カテゴリの区画をorder 20、問い合わせカテゴリの区画をorder 30、通報カテゴリの区画をorder 40で登録し、凍結されている', () => {
     expect(CATEGORY_SECTIONS).toStrictEqual([
       {
         id: 'product-launch.product-categories',
@@ -226,6 +241,12 @@ describe('カテゴリの区画の登録口', () => {
         order: 30,
         title: SECTION_TITLE,
         component: InquiryCategorySection,
+      },
+      {
+        id: 'content-reporting.report-categories',
+        order: 40,
+        title: '通報カテゴリ',
+        component: ReportCategorySection,
       },
     ]);
     expect(Object.isFrozen(CATEGORY_SECTIONS)).toBe(true);
