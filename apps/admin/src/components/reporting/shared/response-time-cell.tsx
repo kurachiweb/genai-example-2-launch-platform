@@ -4,6 +4,7 @@ import { RESPONSE_TIME_ALERT_LABELS } from '../../../../common-lib/reporting/rep
 import type { ReportResponseTimeView } from '../../../graphql/admin-reporting-cases.ts';
 import {
   formatReportElapsed,
+  responseTimePrefixOf,
   UNKNOWN_RESPONSE_TIME_LABEL,
 } from './report-messages.ts';
 
@@ -24,7 +25,7 @@ export function ResponseTimeCell({ responseTime }: ResponseTimeCellProps) {
         <span>{UNKNOWN_RESPONSE_TIME_LABEL}</span>
       ) : (
         <span>
-          {completedAt === null ? '対応中' : '対応期間'}{' '}
+          {responseTimePrefixOf(completedAt)}{' '}
           <time dateTime={`PT${String(elapsedSeconds)}S`}>
             {formatReportElapsed(elapsedSeconds)}
           </time>

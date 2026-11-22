@@ -1,9 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import type {
-  ReportResponseTimeView,
-  ReportTargetView,
-} from '../../../graphql/admin-reporting-cases.ts';
+import type { ReportTargetView } from '../../../graphql/admin-reporting-cases.ts';
 import {
   categoryCountLabel,
   formatReportElapsed,
@@ -15,7 +12,7 @@ import {
   reportCaseDialogCopyOf,
   reportCountLabel,
   reportTargetLabelOf,
-  responseTimeLabelOf,
+  responseTimePrefixOf,
 } from './report-messages.ts';
 
 const EMPTY_TARGET: ReportTargetView = Object.freeze({
@@ -104,28 +101,9 @@ describe('対応期間', () => {
     expect(formatReportElapsed(0)).toBe('1時間未満');
   });
 
-  const responseTime = (
-    patch: Partial<ReportResponseTimeView>,
-  ): ReportResponseTimeView => ({
-    startedAt: '2026-11-01T00:00:00.000Z',
-    completedAt: null,
-    elapsedSeconds: 4 * HOUR,
-    alerts: [],
-    ...patch,
-  });
-
-  test('完了した案件は「対応期間」、未完了の案件は「対応中」、完了の日時を得られない案件は「不明」と示す', () => {
-    expect(
-      responseTimeLabelOf(
-        responseTime({ completedAt: '2026-11-01T04:00:00.000Z' }),
-      ),
-    ).toBe('対応期間 4時間');
-    expect(responseTimeLabelOf(responseTime({}))).toBe('対応中 4時間');
-    expect(
-      responseTimeLabelOf(
-        responseTime({ completedAt: null, elapsedSeconds: null }),
-      ),
-    ).toBe('不明');
+  test('完了した案件は「対応期間」、未完了の案件は「対応中」と示す', () => {
+    expect(responseTimePrefixOf('2026-11-01T04:00:00.000Z')).toBe('対応期間');
+    expect(responseTimePrefixOf(null)).toBe('対応中');
   });
 });
 

@@ -4,7 +4,6 @@ import type {
   InfringementInquiryOutcomeView,
   ReportCaseClosingOperation,
   ReportCaseOutcomeView,
-  ReportResponseTimeView,
   ReportTargetView,
 } from '../../../graphql/admin-reporting-cases.ts';
 import {
@@ -53,16 +52,8 @@ export const formatReportElapsed = (elapsedSeconds: number): string => {
   return hours > 0 ? `${String(hours)}時間` : '1時間未満';
 };
 
-export const responseTimeLabelOf = ({
-  completedAt,
-  elapsedSeconds,
-}: ReportResponseTimeView): string => {
-  if (elapsedSeconds === null) {
-    return UNKNOWN_RESPONSE_TIME_LABEL;
-  }
-  const prefix = completedAt === null ? '対応中' : '対応期間';
-  return `${prefix} ${formatReportElapsed(elapsedSeconds)}`;
-};
+export const responseTimePrefixOf = (completedAt: string | null): string =>
+  completedAt === null ? '対応中' : '対応期間';
 
 const availableTargetLabelOf = ({
   kind,
