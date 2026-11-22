@@ -321,3 +321,212 @@
 - **`changed: true`かつ`actionId: null`**: 上流の措置のユースケースは、状態は変わったが保留中の措置を取り出せなかった(束縛の誤り)とき、この組を返す。このとき措置の記録・監査ログに加えて参加者の文(案件の完了)も一括の書き込みに入っていない。`ReportCaseWorkflow.resolveWithMeasure`はこの組を案件の完了済みと扱わず、通知を送らずに想定外の失敗として投げる。
 - **登録の無い種類と参加者の値の誤り**: ugc-moderationの実装(`apps/api/src/infrastructure/moderation/moderation-write-participant.ts`)は、登録の無い種類を`AppError`でなく通常の`Error`にする(束縛か呼び出し側の誤りで、運用者に知らせるため)。参加者の契約も「payloadの形が違えば`Error`を投げる」ため、`ReportCaseClosingParticipant`の種類・形の誤りも通常の`Error`にした。上の「開発者の決定: 参加者の登録口」の「種類・形の誤りは`AppError(internal)`」は、この反映で置き換わる。
 - **変えた箇所**: design.mdのExisting Architecture Analysisの参加者の説明、措置による対応済の流れの注記、上流の契約の利用の節(`ModerationOutcome`・書き込みの参加者の登録口)、`ReportCaseWorkflow`の`resolveWithMeasure`、`D1ReportSubmissionStore`〜`D1ReportNoticeStore`の節の`ReportCaseClosingParticipant`、Testing Strategy(`ReportCaseWorkflow`・`ReportCaseClosingParticipant`)。
+
+---
+
+## 実装済みの上流との差分の分析(2026-11-22、kiro-validate-gap)
+
+### 分析の範囲と方法
+
+- **前提**: 要件・設計・タスクは承認済み(設計の最後の改訂は2026-11-20のugc-moderationの反映)。上流の28specは、data-export・launch-readinessを除いて実装済み(最後は27aefcbd)。本specのコードは無い。要件定義書の改訂(仮1〜仮8)は2026-10-25に適用済みで、要件の側の差分は無い。
+- **方法**: 設計のAllowed Dependencies・上流への影響・各コンポーネントが前提にする契約を、実装済みのコード(正本の`apps/backend-lib`・`apps/common-lib`・`apps/frontend-lib`・`apps/db`と各アプリの`src`)と照合した。照合は(1)ugc-moderation・admin-foundation、(2)バックエンドの基盤と各機能の照会・登録口、(3)フロントエンドの登録口・部品・E2Eの補助の3つに分け、新しいサブエージェントで並行して行った。影響の大きい主張(メールの冪等のキー、部分一意索引への衝突、`sendWithTurnstile`、上流のテストの固定、`AccountGuard`の識別子、`purge_due`の`order`)は、コードを直接読んで確かめた。
+- **設計の後に加わった技術ドキュメント**: `backend/021-cross-aggregate-admin-action-records.md`(2026-11-20、c7844a85)、`frontend/020-admin-search-and-moderation-actions.md`、`frontend/009`の「監査ログを残す操作の後の照会の無効化」(2733810d)、`external/001`・`infra/003`のメールの冪等のキー(2f745844)、`db/002`の部分一意索引への衝突の規則、`frontend/005`・`006`の`sendWithTurnstile`(50a97bc4、2026-11-03)。
+
+### 要約
+
+- 設計が名前で挙げる上流の契約は、ほぼすべて実装と一致する。登録口の空き(`PUBLIC_PROFILE_MENU_ITEMS` 10・`PRODUCT_PAGE_SECTIONS`の`bottom` 10・`COMMENT_ACTIONS` 10・`ADMIN_NAV_ITEMS` 70・`DASHBOARD_CARDS` 30・`CATEGORY_SECTIONS` 40・`ADMIN_PRODUCT_DETAIL_SECTIONS` 10・`MODERATION_WRITE_PARTICIPANTS`・4:21の2000と2010・`purge_due`の2000)も設計どおりである。`AuditTargetKind`には`report`・`category`が既にあり、追加は要らない。
+- 相違は、設計の後に上流で確定した規約に設計が追いついていないことによる。影響の大きいものは、メールの冪等のキー(G-1)、部分一意索引への衝突の書き方(G-2)、上流のテストの固定による「上流の再検証は要らない」の不成立(G-3)、管理画面の照会の無効化と対象の不在の扱い(G-10・G-11)、bot判定の送信の形(G-9)である。
+- いずれも新しいパッケージや外部APIを要さず、既存の前例を写せる。要件と受け入れ基準を変える必要は無い(G-3の並び順だけは開発者の確認が望ましい)。
+
+### 要件と資産の対応
+
+凡例: **一致**は既存の資産で足り設計どおり、**Missing**は本specが作るもの(設計に計画済み)、**Constraint**は設計の改訂を要する上流の制約、**Unknown**は設計の段階で決めるもの。
+
+| 要件                                   | 使う既存の資産                                                                                                                              | 判定                                                                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| 1(通報の導線)                          | `PUBLIC_PROFILE_MENU_ITEMS`・`PRODUCT_PAGE_SECTIONS`・`COMMENT_ACTIONS`、`frontend/015`のItem+Dialog、`useViewer()`                         | 一致。ダイアログ・項目はMissing。登録口のcontextにログイン状態が無く`useViewer()`で読む(G-16) |
+| 2(通報フォーム)                        | `useAppForm`・`AppForm`・`FormField`・`SubmitButton`・`TurnstileWidget`・`useTurnstileToken`・`sendWithTurnstile`・`graphqlMutationOptions` | Constraint(G-9)                                                                               |
+| 3(受け付け)・4(回数制限)               | `assertHuman`・`withValidatedArgs`・`RateLimitCounterClient`・`hashRateLimitKey`・`AccountGuard`、inquiry-chatの未ログインの送信            | Constraint(G-4・G-5・G-8)                                                                     |
+| 5(集約と案件)                          | 部分一意索引の前例(`product-launches.ts:33`)、`db/002`の衝突の規則                                                                          | Constraint(G-2)                                                                               |
+| 6・7(一覧・詳細)                       | `AdminDataTable`・`AdminFilterBar`・`AdminPageHeader`、`frontend/014`・`020`の検索条件と`loader`の規約                                      | Constraint(G-13)                                                                              |
+| 8(対応ステータス)                      | `buildAuditLogStatements`・`AuditLogRecorder.prepare`、`backend/008`の前進の文の例外                                                        | Constraint(G-7)                                                                               |
+| 9(措置)                                | `ProductModerationService.hide`・`CommentModerationService.hide`・`UserModerationService.suspend`、`MODERATION_WRITE_PARTICIPANTS`          | 一致(`backend/021`の規約とも合う)。画面はConstraint(G-10・G-11)                               |
+| 10・11(却下・通知)・12(照会)           | `EmailSender`・`defineEmailKind`・`defineEmailTemplate`・`toMatchingKey`                                                                    | Constraint(G-1)                                                                               |
+| 13(対応期間)                           | `AuditLogReader.latestFor`・`latestForMany`(90件ずつ)・`createFakeAuditLogReader`                                                           | 一致                                                                                          |
+| 14(カテゴリのマスタ)                   | `CATEGORY_SECTIONS`・`CategoryMasterEditor`(`deleteAudited`)・`checkCategoryName`・`categoryReferenceFailureOf`                             | 一致。無効化の範囲はConstraint(G-10)                                                          |
+| 15・16(ダッシュボード・プロダクト詳細) | `DASHBOARD_CARDS`・`DashboardCardFrame`・`ADMIN_PRODUCT_DETAIL_SECTIONS`・`RecoverableSlot`                                                 | Constraint(G-12)                                                                              |
+| 17(保持と削除)                         | `USER_LIFECYCLE_ASYNC_HANDLERS`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`・`USER_LIFECYCLE_SYNC_HANDLERS`・`ScheduledJobDefinition`               | Constraint(G-3・G-5・G-6・G-15)                                                               |
+| 18(データエクスポート)                 | data-exportは未実装。data-exportの設計は本specの`ReportExport.listPage`と一致                                                               | 一致(受け皿は後続specで作る)                                                                  |
+| 監査ログの操作種別                     | `defineAuditAction`・`AUDIT_ACTIONS`(`audit-actions/index.ts`で連結)                                                                        | 一致。`index.unit.test.ts`の更新が要る(G-3)                                                   |
+
+### 相違と新しい規約(設計の改訂の候補)
+
+#### G-1: メールの冪等のキー(重要)
+
+- **上流**: `EmailSendRequest.idempotencyKey?`(`apps/backend-lib/core/email/ports.ts:12`)。同じ種別で同じキーの依頼は、送信済みの記録の保持期間(14日)の間、2回目以降が送られない。送り直しのジョブを持つ通知はキーを必ず渡す規則である(`docs/GUIDES/tech/external/001-email-sending.md`の197・222行付近、`infra/003`の576行付近、`backend/021`の271行付近)。前例はugc-moderationの`moderation-notifier.ts:120`(`idempotencyKey: record.id`)。
+- **設計**: `ReportNotifier`・`content-reporting.notice-redispatch`・`InfringementInquiryService`に、キーの記述が無い。
+- **影響**: 仮3(完了から戻して再び完了すると通知を改めて依頼する)と仮4(照会の再送)があるため、通報IDや案件IDだけをキーにすると、正当な2回目の通知が14日の間は止められる。キーは「1回の完了・1回の照会」ごとに変わる値にする。メールアドレスと入力の値はキーに含められない(`[A-Za-z0-9_.:-]`の1〜128文字)。
+- **Research Needed**: キーの組み立て(例: 申出者への結果は`<通報ID>:<完了の日時のミリ秒>`、却下の投稿者への通知は`<案件ID>:<完了の日時のミリ秒>`、照会は`<案件ID>:<照会の日時のミリ秒>`)。未ログインの宛先を`toMatchingKey`でまとめる場合に、まとめた単位のキーを何にするか。
+
+#### G-2: 部分一意索引への衝突の書き方(重要)
+
+- **上流**: `docs/GUIDES/tech/db/002-d1-constraints.md`の78〜80行は、部分一意索引への衝突にDrizzleの`onConflictDoNothing({ target, where })`を使わないと定める(drizzle-orm 1.0.0-rc.5が構文の誤りのSQLを出すため)。代わりに、対象を指定しない`onConflictDoNothing()`か、`onConflictDoUpdate({ target, targetWhere, set })`(`targetWhere`は`sql`で値を埋め込む)を使う。前例は`apps/backend-lib/workers/payments/d1-payment-record-store.ts:135`。
+- **設計**: 360行の`ON CONFLICT (target_kind, target_id) WHERE closed_at IS NULL DO NOTHING`と、1548行の「Drizzleで生成できない場合は索引をカスタムマイグレーションで作る」。
+- **影響**: 索引はDrizzleで生成できる(`apps/db/schema/product/product-launches.ts:33`に前例がある)ため、カスタムマイグレーションは要らない。`report_cases`は主キーのULID以外に一意制約を持たない計画のため、`onConflictDoNothing()`で書ける。参照を消した案件(`target_id`がNULL)は、SQLiteがNULLどうしを区別するため衝突しない。
+
+#### G-3: 上流のテストの固定と「上流の再検証は要らない」の不成立(重要)
+
+- 次の上流のテストは登録の一覧や末尾を固定で確かめており、本specの登録で失敗する。設計のModified Filesとタスクに、これらの期待値の更新が無い。
+  - `apps/event/src/composition/user-lifecycle-async-handlers.unit.test.ts:81-101`: 「ugc-moderationは1900で、全てのドメインの物理削除の処理の後に並ぶ」(`namesFor('purge_due').at(-1)`がugc-moderation)。本specの2000は、この期待と衝突する。
+  - `apps/event/src/composition/product-lifecycle-async-handlers.unit.test.ts:105-114`(プロダクトの`purge_due`の一覧)。`apps/event/src/composition/engagement-module.worker.test.ts:385-400`など、一覧を固定で確かめるファイルが他にもある(合わせて約10ファイル、要洗い出し)。
+  - `apps/api/src/composition/moderation-write-participants.unit.test.ts:7`(「初版は参加者を登録しない」)。
+  - `apps/common-lib/admin/audit-actions/index.unit.test.ts`(操作種別の完全一致)。
+  - `ADMIN_NAV_ITEMS`の3つのテスト(`admin-nav-order.unit.test.ts`・`admin-navigation.browser.test.tsx`・`test/admin-shell.browser.test.tsx`、`frontend/009`の96行付近)。
+- **並び順の論点(Unknown)**: roadmapの帯の割り当ては本specに`purge_due`の2000を割り当てている。ugc-moderationの設計の`1900`は帯の値で、「全ドメインの後」は割り当て時点の並びをテストに固定したものと推測する。本specの処理は、措置の記録のIDを外部キー無しで持つだけで、ugc-moderationの記録の削除と順序の依存は無い。そのため、2000のままにして上流のテストの「末尾」の期待を改めるのが自然だと考える。1800(空き)へ移す案もあるが、roadmapの帯と食い違う。開発者の確認が望ましい。
+
+#### G-4: `AccountGuard`の識別子の名前
+
+- 設計55行の`IDENTITY_TYPES.AccountGuard`は誤りで、正しくは`IDENTITY_PLATFORM_TYPES.AccountGuard`(`apps/backend-lib/core/identity/identifiers.ts:11,17`)。`currentUser`の判定は設計どおりで、未ログイン・退会は`undefined`、停止中は`user.status: 'suspended'`を返すため、仮6はこのまま成り立つ。
+
+#### G-5: 未ログインの投稿の保護の規約(`security/008`)
+
+- 現在時刻はリゾルバが1回読み、ポートへ`now`を渡す(`security/008`の154行付近)。inquiry-chatのポートは`consume(clientIp, now)`で、`RateLimitCounterClient.assertWithinLimit(decision, now)`はメソッドである。設計の`ReportSubmissionRateLimit.consume(submitter, clientIp)`に`now`を加える。
+- 費用の小さい検証はbot判定の前に行う(同61行付近)。理由の書記素数・連絡先の形式は`withValidatedArgs`へ移し、`assertHuman`の前に誤りを返すのがよい(連絡先の要否はカテゴリに依存するため、ユースケースに残る)。
+- 保持期間の閾値は`ScheduledJobContext.scheduledTime`から引く(同218行付近)。設計の「実行時刻−14日」「実行時刻−1時間」を改める。
+- 会員と未ログインが同じ変更を使う構成は`security/008`の範囲外であり、設計が計画する`security/011-mixed-identity-submission-limits.md`で扱う前提と矛盾しない。
+
+#### G-6: `UserLifecycleSyncHandler`の形
+
+- 実装は`statementsFor(event, db)`で第2引数を持つ(`apps/api/src/infrastructure/identity/user-lifecycle-sync-handler.ts:11`)。設計1280行の書き方を合わせる。設計1481行の「`users`の削除(10000)」は、`users`の行を登録された処理ではなく実行器が全処理の後に消す実装(`apps/event/src/application/identity/user-lifecycle-runner.ts:98-99`)であり、10000は`withdrawn`の`identity-auth.email-suppression-cleanup`の値である。結論(本specの処理が`users`の削除の前に終わる)は変わらない。
+
+#### G-7: 書き込みの文の並びと違反の判定
+
+- `backend/008`は、監査ログを操作の文の先頭に置き、`CASE`式の前進の文を使う操作だけは前進の文を先頭・監査ログを最後にすると定める。設計の`forClosing`はこの例外に合うが、`forStatusChange`・`forInquiry`は並び順を明記していない。
+- 既存の実装は、取り消しの原因の違反を列に限って見分ける(`guarded-batch.ts:10`、`apps/backend-lib/workers/engagement/engagement-guard.ts:6`、各committer)。`D1ReportCaseWriter`の「NOT NULL制約の違反を`conflict`に」は、`report_cases.status`の違反に限る。上流の措置の確定は`report_cases.status`の違反を自分の競合と見なさず、生のD1エラーのまま届けるため、設計の「読み直して`report_case_state_conflict`」は成り立つ(コードで確認)。
+- `backend/021`の302行付近の統合テストの観点(参加者の文の違反で全体が取り消される)のうち、`report_cases.status`による取り消しの実地のテストは、本specのWorkers統合テストに置く。
+- 任意: `buildAuditLogStatements`の第3引数`guard`(`{ kind: 'condition' }`)と`isAuditGuardRejection`(`audit-log-statements.ts:19,54`)を、カテゴリの削除の不在の判定に使える。
+
+#### G-8: リゾルバの補助
+
+- 各モジュールの`resolver-support.ts`の`adminOnly`・`clientOnly`は、入力の検証より前に呼び出し元の種類を拒否する(`modules/moderation/resolver-support.ts:20-29`)。設計1464行付近は`requireAdmin`と`withValidatedArgs`の順を書いていない。
+- `withInputPath`(`field-paths.ts:27`)、inquiry-chatの`accountGuardOf`、ハンドルの検査には`HANDLE_PATTERN`より`checkHandleFormat(v, USER_HANDLE_RULE)`を使う前例がある。
+- `CURSOR_PAGE_ARGS`の`first`の上限は100で、設計の1〜50は独自のスキーマで書く(相違ではなく記述の補足)。
+
+#### G-9: bot判定の送信の形(フロントエンド)
+
+- 設計の`executeGraphQL({ turnstileToken: consume() })`は、現在の規約(`frontend/005`の265〜281行、`frontend/006`の315〜345行)と違う。`useMutation(graphqlMutationOptions(...))`を`sendWithTurnstile`(`apps/frontend-lib/utilities/bot-protection/send-with-turnstile.ts`)で送り、`bot_verification_failed`のときは1回だけ送り直す。
+
+#### G-10: 管理操作の後の照会の無効化(フロントエンド)
+
+- `frontend/009`の191〜199行(2733810d): 監査ログを残す操作は、成功の後に`invalidateAuditLogQueries`(`apps/admin/src/graphql/admin-audit-logs.ts:20`)を呼び、失敗と変化無しの後は呼ばない。テストは`watchAuditLogQueries`(`apps/admin/test/audit-log-queries.ts`)で確かめる。
+- 設計の`UseReportCaseMutation`は、本specの照会4つだけを無効にする。状態の変更・完了・却下・照会・カテゴリの操作に監査ログの照会の無効化を加え、措置による対応済ではugc-moderationの`invalidateAdminModeration*Queries`も加える。`ReportCategorySection`の無効化の範囲(カテゴリ・絞り込みの選択肢・案件・監査ログ)も設計に無い(前例は`admin-inquiry-categories.ts:39-56`)。
+- 27aefcbdは各specの設計書に無効化を書き足したが、本specは対象に入っていない。
+
+#### G-11: 対象の不在と確認のダイアログの置き場所(フロントエンド)
+
+- `frontend/020`の117〜164行(405ee4dc): 確認のダイアログは一覧の単位に1つ置き(`moderation/shared/moderation-dialog-host.tsx`)、行が消えても残す。対象の不在の失敗だけは影響する照会を無効にしてから投げ直し、詳細のページではダイアログを閉じるまで遅らせる(`deferTargetMissingRefresh`、`use-moderation-mutation.ts:71-177`)。
+- 設計は`/reports`の各行に`ReportCaseActions`とダイアログを持たせる。`status=OPEN`で絞った一覧では、確定すると行が消えてダイアログも消える。`report_target_unavailable`・`report_case_closed`・`report_case_state_conflict`の後に取り直す振る舞いも書かれていない。`isTargetMissing`は措置のコードだけを数えるため、本specは自分のコードの判定を持つ。
+- `InfringementInquiryDialog`のような独自の入力ダイアログは`ConfirmActionDialog`と同じ扱い(処理中は`aria-disabled`・`aria-busy`)にする(`frontend/009`の235行付近)。`ConfirmActionDialog`には理由の欄へ注記を足すpropが無く、`description`は`<p>`の中に描かれるため、「理由は通知に載る」は`description`の文で示す。
+
+#### G-12: 区画・カードの失敗の表示(フロントエンド)
+
+- `ADMIN_PRODUCT_DETAIL_SECTIONS`の区画は`RecoverableSlot`で包まれる(`admin-product-detail-sections-view.tsx:46`)。最初の失敗は`throwOnError: (_e, q) => q.state.data === undefined`で境界へ渡し、取り直しの失敗では表示中のデータを残す(`frontend/006`の144〜146行)。設計の`ProductReportsSection`の`PartialErrorState`を改める。区画は`ownerUserId`がnullの場合も扱う。
+- ダッシュボードのカードは定期再取得の対象ではなく、取り直しの失敗で件数を残す(前例`unhandled-inquiries-card.tsx:27-45`、`frontend/010`の177〜190行)。
+
+#### G-13: 管理画面の一覧のファイルの置き場所と検索条件(フロントエンド)
+
+- `frontend/020`の11〜64行・`frontend/014`・`frontend/006`の34〜38行: ルートには`validateSearch`・`loaderDeps`・`loader`・`head`・`component`だけを置き、ページは`components/pages/`、変換・`loader`・無効化の関数は`graphql/admin-<ドメイン>-<対象>.ts`(単体テスト付き)に置く。検索条件は項目ごとに`.catch(undefined)`で捨て、期間が逆なら両端を未指定にし、`<対象>SearchAt`・`<対象>FilterScopeOf`を置く。`loader`は`cause === 'stay'`で待たず、部品は`keepPreviousData`と`inert`・`aria-busy`を使う。
+- 設計のFile Structure Planに`graphql/admin-reporting-*.ts`・`client/src/graphql/reporting*.ts`・`components/pages/`が無く、`report-search.ts`の置き場所も020(`components/<ドメイン>/shared/`)と違う。状態の変更の応答を表示中の値へ写す前例に`withChangedInquiryStatus`(`admin-inquiries.ts:152`)がある。
+
+#### G-14: 計画している技術ドキュメントとの重複
+
+- 計画の`frontend/021-registered-action-dialogs.md`は、`frontend/015`の「メニューの登録口の項目とダイアログ」(224〜247行)と重なる。計画の`backend/022-submission-aggregation-and-case-resolution.md`のうち、措置と案件の完了の一体の確定は`backend/021`と重なる。新しい文書は差分(登録口をまたいで同じダイアログを使う形、集約と完了の規則)に絞り、重なる部分は既存の文書を参照する。番号`backend/022`・`frontend/021`・`security/011`・`features/007`は空いている(`frontend`の011・018は欠番)。
+
+#### G-15: 定期実行の制約
+
+- 4:21の合計の時間の予算は300秒(`SCHEDULED_RUN_BUDGETS`、`apps/api/src/composition/scheduled-jobs.ts:140`)。本specの2つのジョブ(2000・2010)はこの予算を分け合う。
+- ジョブの定義は、ジョブのファイルで凍結した`*_JOB_DEFINITION`をexportし、`scheduled-jobs.ts`から読む(前例`guest-inquiry-retention-job.ts:19`)。
+
+#### G-16: その他(軽微)
+
+- 登録口のcontext: `PublicProfileSectionContext`・`CommentActionContext`はログイン状態を持たないため`useViewer()`(`apps/client/src/components/auth/use-viewer.ts:10`)で読む。`PublicProfileSectionContext`は`suspended`を持つ。停止中の利用者のプロフィールに通報の項目を出すかは要件1に明記が無い(Unknown。要件1.1は「公開プロフィール」とだけ言う)。
+- E2E: 文書用のIPアドレスの`e2e/support/client-ip.ts`(`assumeDistinctClientIp`)と`e2e/support/bot-verification.ts`(`waitForBotToken`)を使う。`moderation-fixtures.ts`の投稿者はログインできないため、「自分のコメントには通報が無い」のE2Eは別の用意が要る。
+- モックアップ(`mockups/src/components/client/report-dialog.tsx`)は連絡先の欄を理由の前に置き、未ログインだけを条件にする。設計は要件2(停止中も含む、仮6)に従っており、変える必要は無い。管理者側の通報管理のモックアップは無い。
+- データエクスポートの文書(`docs/GUIDES/service/features/001-user-data-export.md`の446〜470行)に、`targetRef`がnullになる規則がまだ無い。設計のModified Filesの計画どおりタスク1.6で改める。
+
+### 実装の進め方の選択肢
+
+#### 案A: 設計を改訂してから実装する
+
+- G-1〜G-16を`/kiro-spec-design content-reporting`の部分改訂としてdesign.mdへ反映し、タスクの追加・変更(上流のテストの更新、無効化、ダイアログの置き場所、冪等のキー)をtasks.mdへ反映してから`ready_for_implementation`にする。
+- ✅ 実装の前に契約と期待値が確定し、kiro-implの自律実行で迷う点が減る。過去のspec(frontend-platform・ugc-moderationの反映)と同じ進め方。
+- ❌ 設計の改訂とタスクの再レビューの手間がかかる。
+
+#### 案B: 設計はそのままにし、実装の中で吸収する
+
+- 相違をtasks.mdのImplementation Notesに列挙し、各タスクの実装で上流の規約に合わせ、最後に設計書へ反映する。
+- ✅ すぐに実装へ進める。
+- ❌ G-1(キーの組み立て)とG-3(並び順)は実装の途中で判断が要り、自律実行で質問できない。設計書と実装の相違が実装の間ずっと残る。
+
+#### 案C: 重要な相違だけ設計を改訂し、残りは実装の中で吸収する(折衷)
+
+- 設計の判断を要するG-1・G-2・G-3・G-5・G-10・G-11だけをdesign.mdとtasks.mdへ反映する。名前の訂正や前例を写すだけのG-4・G-6・G-8・G-9・G-12・G-13・G-15・G-16はImplementation Notesに置く。
+- ✅ 判断が要る点を実装前に確定しつつ、改訂の量を抑える。
+- ❌ 設計書と実装の軽微な相違が一時的に残る。
+
+### 工数とリスク
+
+- **工数: L(1〜2週間)**。3テーブル・7ユースケース・2ジョブ・2つの波及処理・3つのメール種別・利用者側のダイアログ・管理画面の2ページと4つの登録を作る。前例(inquiry-chat・ugc-moderation)を写せるが、範囲が広い。設計の改訂(案AかC)は別に1〜2日。
+- **リスク: Medium**。上流の契約は実装と一致し、新しい技術は無い。ただし、措置の参加者による一括の書き込み、仮3の再開と部分一意索引の衝突、メールの冪等のキー、多数の上流のテストの期待値の更新のように、正しさの確認が難しい箇所が複数ある。
+
+### 設計フェーズへの推奨
+
+- **推奨**: 案C(または案A)。少なくともG-1・G-2・G-3は、実装の前に設計とタスクへ反映する。G-3の並び順は開発者の確認を経る。
+- **主な決定事項**: (1)メールの冪等のキーの組み立て(完了ごと・照会ごと)。(2)`purge_due`の2000のままで上流のテストの「末尾」を改めるか、1800へ移すか。(3)一覧のダイアログを一覧の単位に置き、確定・不在の後にどの照会を無効にするか。(4)新しい技術ドキュメント3本の範囲を既存の`backend/021`・`frontend/015`との差分に絞るか。
+- **Research Needed(設計で調べる)**:
+  - `idempotencyKey`の14日の保持期間と、notice-redispatchの再送の期間・仮3の再完了の間隔の関係。
+  - `purge_due`の一覧を固定するテストのファイルの網羅的な洗い出し(約10ファイル)。
+  - 停止中の利用者のプロフィールに通報の項目を出すか(要件1.1の解釈)。
+  - `report_target_unavailable`・`report_case_closed`・`report_case_state_conflict`のそれぞれで無効にする照会の範囲。
+
+## 差分の分析の判断の確定と反映(2026-11-22、開発者の回答)
+
+- **状態**: 上の「実装済みの上流との差分の分析」のG-1〜G-16を、開発者の回答に基づいてdesign.mdとtasks.mdへ反映した。要件と受け入れ基準は変えていない。判断を要する点は1件ずつ選択肢と推奨を示して質問した。
+
+### 開発者の回答
+
+| 論点                        | 採用した案                                                                                                                                               | 他の選択肢                                                                     |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 進め方                      | (推奨と異なる)G-1〜G-16の全16件をdesign.mdとtasks.mdへ反映する(案A)                                                                                      | 判断の要る6件だけを反映し残りはImplementation Notes(案C、推奨) / メモだけ(案B) |
+| G-1 メールの冪等のキー      | (推奨どおり)結果と却下の通知は完了ごとのキー(`<宛先のまとまりの通報のIDの最小>:<完了の日時のミリ秒>`・`<案件のID>:<完了の日時のミリ秒>`)、照会はキー無し | 照会も前回の照会の日時からのキー / 通報ID・案件IDだけのキー                    |
+| G-2 部分一意索引への衝突    | (推奨どおり)`onConflictDoUpdate`の`targetWhere`で案件の作成と更新を1文にする                                                                             | 対象を指定しない`onConflictDoNothing()`で3文の構成を保つ                       |
+| G-3 物理削除の処理の順      | (推奨と異なる)利用者・プロダクトの`purge_due`を1800にし、ugc-moderationの1900を末尾に保つ                                                                | roadmapの割り当てどおり2000にして上流のテストの「末尾」の期待を改める(推奨)    |
+| G-5 受け付けの検証の順      | (推奨どおり)入力の形式と連絡先の要否・形式を、リゾルバでbot判定の前に行う                                                                                | 形式だけbot判定の前 / 設計のまま                                               |
+| G-10 措置の後の照会の無効化 | (推奨どおり)ugc-moderationが措置の影響する照会の対応表を`invalidateModerationAffectedQueries`として公開し、本specが呼ぶ                                  | 本spec側で列挙する / 本specの照会と監査ログだけ                                |
+| G-11 確認のダイアログ       | (推奨どおり)一覧と詳細の単位に1つ置き、対象の不在・完了済み・競合の3つの失敗で案件の照会を取り直す(詳細では閉じるまで遅らせる)                           | 同じ形で対象の不在だけ取り直す                                                 |
+| G-14 技術ドキュメントの範囲 | (推奨どおり)3本とも作り、既存の`backend/021`・`frontend/015`・`frontend/020`・`security/008`と重なる部分は参照にして差分に絞る                           | `frontend/021`を作らず015へ追記 / 計画どおり自己完結                           |
+
+### 質問せずに決めた事項
+
+- **G-16: 停止中の利用者のプロフィールの通報の項目**: 停止中の利用者の公開プロフィールは本人にしか表示されない(`apps/api/src/application/profile/public-profile-reader.ts`の`isViewable`)。本人には通報の操作を出さない(要件1.2)ため、他の閲覧者に停止中の利用者の項目が描かれる場面は無く、判断は要らない。設計の`UserReportMenuItem`に注記した。
+- **G-7: 読んだ後の案件の物理削除**: 未完了の案件も、申出者の物理削除で通報が無くなると`eraseEmptyCases`で消え得る。`CASE`式の更新は行が無いと0件の更新で成功して監査ログだけが残るため、状態の変更・完了・照会の文の先頭に存在の検査の文(`report_cases.target_kind`にNULLを入れる`INSERT … SELECT … WHERE NOT EXISTS`)を置き、違反の列で`not-found`を見分けることにした。`backend/021`の173行付近の検査の文と`db/002`の「版の検査で一括の書き込み全体を取り消す」の形をそのまま使うため、選択肢を立てず規約に従った。監査ログには`guard`を渡さない(`backend/008`の前進の文の例外)。
+- **`invalidateModerationAffectedQueries`の切り出しの担当**: ugc-moderationは実装済みのため、本specのタスク8.2が`use-moderation-mutation.ts`から対応表を切り出してexportする。内容の持ち主はugc-moderationのままで、振る舞いは変えず、ugc-moderationの既存のブラウザテストで確かめる。
+- **登録の一覧を固定する上流のテスト**: 本specの登録で失敗する上流のテストの期待値は、各登録のタスク(1.3・3.6・5.2・6・7.3・8.5・8.6・8.7)が改める。対象は全アプリのテストの実行で失敗したものに限り、上流のテストの意図(並びの前後関係・重複の禁止・ugc-moderationが末尾)は保つ。
+
+### 変えた箇所
+
+- **design.md**: OverviewのImpact、This Spec Owns(`purge_due`の1800・技術ドキュメントの範囲)、Allowed Dependencies(backend-platformのジョブの定義・`scheduledTime`・予算・`assertWithinLimit(decision, now)`、api-gatewayの`withInputPath`と`clientOnly`・`adminOnly`、admin-foundationの`invalidateAuditLogQueries`・`watchAuditLogQueries`、ugc-moderationの`invalidateModerationAffectedQueries`・一覧の単位のダイアログ・`RecoverableSlot`、identity-authの`IDENTITY_PLATFORM_TYPES.AccountGuard`・`accountGuardOf`・`statementsFor(event, db)`・`useViewer()`、user-profile-socialの`checkHandleFormat`・`USER_HANDLE_RULE`、email-deliveryの`idempotencyKey`、frontend-platformの`graphqlMutationOptions`・`sendWithTurnstile`と管理画面の一覧と詳細の規約)、Revalidation Triggers、上流への影響(admin-foundation・ugc-moderation・identity-auth・product-launchの行、roadmapの報告、上流のテストの期待値の更新)、Existing Architecture Analysis、File Structure Plan(ジョブの定義・`resolver-support.ts`・eventの1800・clientの`graphql/reporting.ts`・adminのルートとページと`shared/report-search.ts`と`report-case-dialog-host.tsx`と`graphql/admin-reporting-*.ts`・E2Eの補助・技術ドキュメントの範囲)、Modified Files(マイグレーション・ugc-moderationの`use-moderation-mutation.ts`・上流のテスト・eventの1800・固有の値)、通報の受け付けの流れ(図・検証の順・通報者の確かめ直し・2文の一括の書き込み)、措置による対応済の流れ(存在の検査の文・`report_case_not_found`)、通知と照会の流れ(冪等のキー)、上流の契約の利用(`invalidateModerationAffectedQueries`・`invalidateAuditLogQueries`・`idempotencyKey`)、`ReportTargetResolver`、`ReportSubmissionService`(入力の注記・`consume`の`now`・前提と手順)、`ReportNotifier`、2つのジョブ(予定時刻・ジョブの定義・予算)、`ReportCaseWriter`(`not-found`)、`D1ReportCaseStatements`(文の並び・存在の検査の文)、`D1ReportCaseWriter`(違反の列の見分け)、`ReportCaseClosingParticipant`、`ReporterWithdrawalSyncHandler`、`ReportingSchemaModule`(認可と`submitReport`のリゾルバの順と入力の検証)、`ReportErasureHandlers`(1800と順序の説明)、clientの`UserReportMenuItem`・`ReportForm`・`UseSubmitReport`、adminの`ReportSearch`・ルートとページ・`ReportCaseActions`・`ReportCaseDialogHost`・`ReportCaseActionDialog`・`ReportCaseDetailView`の行・`InfringementInquiryDialog`・`UseReportCaseMutation`・`UnhandledReportsCard`・`ProductReportsSection`・`ReportCategorySection`、Physical Data Model、Error Handling、Testing Strategy(単体・Workers統合・ブラウザ・E2Eの追加の観点と上流のテストの期待値の更新)、Performance、Supporting References(`purge_due`の1800・冪等のキー)。
+- **tasks.md**: 1.1(前提)、1.2(部分一意索引の生成)、1.3(集約のテスト)、3.2(`onConflictDoUpdate`の1文)、3.5(存在の検査の文・文の並び・違反の列)、3.6(参加者の登録のテスト・`statementsFor(event, db)`)、4.1(`checkHandleFormat`)、4.2(検証の分担・確かめ直し・`now`)、4.4(冪等のキー)、4.5・4.6・4.7(`report_case_not_found`・照会のキー無し)、5.1(予定時刻・ジョブの定義・同じキーの送り直し)、5.2(`resolver-support.ts`・4:21の並びのテスト)、5.3(リゾルバの順)、5.4(`adminOnly`・物理削除された案件)、6(1800と上流のテスト)、7.1(`graphql/reporting.ts`)、7.2(`sendWithTurnstile`・`useViewer()`)、7.3(`frontend/015`と上流のテスト)、8.1(`graphql/admin-reporting-*.ts`)、8.2(検索条件の規約・ダイアログの置き場所・`invalidateModerationAffectedQueries`の切り出し・無効化と取り直し・`description`の文)、8.3(`components/pages/`・`inert`・ダイアログが残ること)、8.4(取り直しの遅延・照会のダイアログの`aria-busy`)、8.5(`RecoverableSlot`・カードの件数の保持・上流のテスト)、8.6(`deleteDescriptionOf`・`deleteAudited`・無効化・上流のテスト)、8.7(メニューのテスト)、9.1(技術ドキュメントの範囲・固有の値)、9.2(E2Eの補助)、9.3(自分のコメントの用意)、9.6(作業の報告)。
+- **roadmapへの報告**: 本specの帯の「使用中の値」は「4:21は2000・2010、波及処理は1800」になり、roadmapの帯の割り当て(波及処理の2000)と異なる。本specはroadmapを編集しないため、コントローラーへ報告する。
+
+### 反映のレビュー(2026-11-22)
+
+- design.mdとtasks.mdの変更部分を、新しいサブエージェントによる独立した確認(independent)でレビューした(cc-sddのdesign-review-gateとタスクのグラフのサニティレビューに相当)。1回目は安全機能による停止で結果が得られず、依頼を言い換えて再実行した。
+- 判定はNEEDS_FIXES(必須2件・軽微9件)で、全件を反映した。挙げた実在のファイル・関数・文書の節は、指摘の箇所を除いて書かれたとおりだった。存在の検査の文・部分一意索引への`ON CONFLICT … DO UPDATE`・違反の文言による列の見分けは、レビューで`bun:sqlite`により確かめられた。
+  - 必須1: 読んだ後の案件の物理削除の`report_case_not_found`が、管理画面の取り直しの対象に無かった。開発者の回答(推奨どおり)で4つ目の失敗として加え、詳細のページでは4つとも取り直しをダイアログを閉じるまで遅らせる(案件の不在は詳細を`NotFoundView`に替えてダイアログごと消し、他の失敗も確認の説明の前提を変えるため)。`frontend/020`は対象の不在だけを取り直すため、完了済み・競合・案件の不在でも取り直すことを規約との意図した違いとして設計に書き、`frontend/021`の範囲に入れた。
+  - 必須2: `ReportCaseWorkflow`の`changeStatus`・`resolveWithoutMeasure`・`reject`と`InfringementInquiryService`の手順に`not-found`の扱いを書き足した。照会でメールを送った後に案件が無いと分かった場合は、記録の失敗と同じく`captureEvent`(`inquiry-record-failed`)で知らせて`report_case_not_found`を返す。
+  - 軽微: 存在の検査の文の`id`を案件のIDにし、`target_kind`以外のNOT NULLの列に有効な値を入れる(SQLiteはNOT NULLの検査を列の定義順に行うため)。最後の受付日時を`MAX`で古い時刻へ戻さない。`markOutcome`が宛先のまとまりの通報を1文で全部進める前提を明記した。`security/008`の引用を節の名前(「確認の順序」「保持期間による削除」)に直した。`assertWithinLimit`の`now`をミリ秒(`now.getTime()`)にした。Components and InterfacesとRequirements Traceabilityの表、tasks.mdの5.3の`_Requirements`(2.4・3.5・3.6)を追従させた。`ReportCaseDialogHost`の失敗の後のフォーカスの戻り先(起点のボタンが消えたら一覧の見出し)とダイアログの文脈のファイル`report-case-dialog-context.ts`を加えた。設計書とタスクの本文から日付と経緯の書き方を除いた。上流のテストの一覧をタスクとそろえた。
+- 反映の後、要件の149件の受け入れ基準の番号がすべてタスクにあること、整形の検査が通ることを確かめた。
+- 2回目の確認(新しいサブエージェントによる独立した確認)の判定はNEEDS_FIXES(必須1件・軽微5件)で、前回の11件はすべて直っていた。全件を反映した。
+  - 必須: 「通知と照会」の流れの照会の段落が、送信の後の記録の失敗をすべて`report_case_state_conflict`としていた。案件の不在(`not-found`)では`captureEvent`で知らせて`report_case_not_found`を返す旨を加え、`InfringementInquiryService`の手順とそろえた。
+  - 軽微: tasks.mdの4.7に不在でもエラートラッキングへ通知することを加えた。This Spec Ownsの技術ドキュメントの参照先に`frontend/020`・`security/008`を加えた。Requirements Traceabilityの通報フォームの行に`ReportingSchemaModule`を加えた。Non-Goalsの要件定義書の改訂とRevalidation Triggersの仮1〜仮8から日付を除いた(日付はresearch.mdに残る)。tasks.mdの3.1のつながっていた2つの項目を分けた。
