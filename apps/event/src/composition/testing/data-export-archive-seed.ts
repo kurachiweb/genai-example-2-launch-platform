@@ -2,20 +2,15 @@ import { env } from 'cloudflare:workers';
 import { eq } from 'drizzle-orm';
 
 import { dataExports } from '../../../db/schema/data-export/data-exports.ts';
-import { launchComments } from '../../../db/schema/engagement/launch-comments.ts';
-import { productRatings } from '../../../db/schema/engagement/product-ratings.ts';
 import { userFollows } from '../../../db/schema/follow/user-follows.ts';
 import { inquiryMessageAttachments } from '../../../db/schema/inquiry/inquiry-message-attachments.ts';
 import { inquiryMessages } from '../../../db/schema/inquiry/inquiry-messages.ts';
 import { memberInquiries } from '../../../db/schema/inquiry/member-inquiries.ts';
-import { paymentRecords } from '../../../db/schema/payments/payment-records.ts';
 import { apiKeys } from '../../../db/schema/public-api/api-keys.ts';
 import { userProfileWebsites } from '../../../db/schema/profile/user-profile-websites.ts';
 import { userProfiles } from '../../../db/schema/profile/user-profiles.ts';
-import { reportCases } from '../../../db/schema/reporting/report-cases.ts';
-import { reports } from '../../../db/schema/reporting/reports.ts';
-import { sponsorships } from '../../../db/schema/sponsorship/sponsorships.ts';
 import { INQUIRY_CATEGORY_OTHER_ID } from '../../../common-lib/inquiry/inquiry-category-constants.ts';
+import { D1EngagementErasureStore } from '../../../lib/workers/engagement/d1-engagement-erasure-store.ts';
 import {
   commentIdOf,
   db,
@@ -41,15 +36,20 @@ import {
   objectKeyOf,
   fileIdOf,
 } from '../../../lib/workers/media/testing/media-file-store-fixtures.ts';
+import { D1PaymentRecordStore } from '../../../lib/workers/payments/d1-payment-record-store.ts';
+import { newPaymentRecord } from '../../../lib/workers/payments/testing/payment-store-fixtures.ts';
 import {
   insertCategory,
   categoryIdOf,
   insertScreenshot,
 } from '../../../lib/workers/product/testing/product-fixtures.ts';
 import {
-  openProductCaseOf,
+  clearReportingState,
   memberReportOf,
+  openProductCaseOf,
+  seed as seedReportRows,
 } from '../../../lib/workers/reporting/testing/report-erasure-fixtures.ts';
+import { D1DisplayStopStore } from '../../../lib/workers/sponsorship/d1-display-stop-store.ts';
 import {
   insertSponsorships,
   sponsorshipIdOf,
@@ -57,6 +57,9 @@ import {
   terminatedColumnsOf,
 } from '../../../lib/workers/sponsorship/testing/sponsorship-fixtures.ts';
 import { exportIdOf } from '../../../lib/workers/data-export/testing/data-export-fixtures.ts';
+import { resetMemberInquiryRows } from '../../infrastructure/inquiry/testing/member-inquiry-purge-fixtures.ts';
+import { D1ProfilePurgeStore } from '../../infrastructure/profile/d1-profile-purge-store.ts';
+import { D1SponsorshipPurgeStore } from '../../infrastructure/sponsorship/d1-sponsorship-purge-store.ts';
 
 export const OWNER = 1;
 const OTHER = 2;
@@ -111,21 +114,42 @@ export function at(offsetMs: number): Date {
   return new Date(T0.getTime() + offsetMs);
 }
 
+const ALL_PRODUCTS = [
+  OWN_PRODUCT,
+  OWN_DELETED_PRODUCT,
+  OTHER_PRODUCT,
+  OTHER_DELETED_PRODUCT,
+] as const;
+
+const PURGE_LIMIT = 500;
+
+const AFTER_ALL_RECORDS = new Date('2100-01-01T00:00:00.000Z');
+
+// 上流の補助の後片付けは最後に利用者の行まで消すため、利用者を参照する行を先に上流の削除の部品で消してから、match・メディアの補助を最後に呼ぶ
 export async function clearAll(): Promise<void> {
+  const ownerId = userIdOf(OWNER);
   await db.delete(dataExports);
-  await db.delete(reports);
-  await db.delete(reportCases);
-  await db.delete(inquiryMessageAttachments);
-  await db.delete(inquiryMessages);
-  await db.delete(memberInquiries);
-  await db.delete(sponsorships);
-  await db.delete(paymentRecords);
+  await clearReportingState();
+  await resetMemberInquiryRows();
+  const profilePurge = new D1ProfilePurgeStore(db);
+  await profilePurge.deleteFollowsBatch(ownerId, PURGE_LIMIT);
+  await profilePurge.deleteProfileRows(ownerId);
+  await new D1SponsorshipPurgeStore(db, new D1DisplayStopStore(db)).purgeByUser(
+    ownerId,
+  );
+  await new D1PaymentRecordStore(db).deleteRecordedBefore(
+    AFTER_ALL_RECORDS,
+    PURGE_LIMIT,
+  );
+  const engagementErasure = new D1EngagementErasureStore(db);
+  for (const product of ALL_PRODUCTS) {
+    await engagementErasure.eraseProduct({
+      productId: productIdOf(product),
+      limit: 500,
+    });
+  }
+  // APIキーの削除はapiの`infrastructure`にだけあってeventから読み込めず、上流の補助の`clearApiKeyTables`は利用者の行まで消すためmatchの後片付けと両立しない
   await db.delete(apiKeys);
-  await db.delete(userFollows);
-  await db.delete(userProfileWebsites);
-  await db.delete(userProfiles);
-  await db.delete(productRatings);
-  await db.delete(launchComments);
   await clearMatchTables();
   await clearMediaTables();
 }
@@ -218,6 +242,7 @@ async function seedAccounts(): Promise<void> {
   await insertUser(OTHER, { handle: OTHER_HANDLE, nickname: 'Other Maker' });
   await insertUser(WITHDRAWN_FOLLOWEE, { deletedAt: at(2000) });
   await insertUser(STRANGER);
+  // プロフィールの書き込みはapiの`infrastructure`にだけあり、eventから読み込めない。上流の補助は見出し・自己紹介・アバター・更新日時を指定できないため、行を直接入れる
   await db.insert(userProfiles).values({
     id: '01JE0DXPRF0000000000000001',
     userId: userIdOf(OWNER),
@@ -227,6 +252,7 @@ async function seedAccounts(): Promise<void> {
     createdAt: at(1500),
     updatedAt: at(1600),
   });
+  // プロフィールの書き込みはapiの`infrastructure`にだけあり、eventから読み込めない。上流の補助はサイトの名前と画像を指定できないため、行を直接入れる
   await db.insert(userProfileWebsites).values({
     id: '01JE0DXWEB0000000000000001',
     userId: userIdOf(OWNER),
@@ -236,6 +262,7 @@ async function seedAccounts(): Promise<void> {
     createdAt: at(1500),
     updatedAt: at(1500),
   });
+  // フォローの書き込みはapiの`infrastructure`にだけあり、eventから読み込めない。上流の補助は作成日時と退会済みのフォロー先を指定できないため、行を直接入れる
   await db.insert(userFollows).values([
     {
       id: '01JE0DXFLW0000000000000001',
@@ -460,7 +487,7 @@ async function seedMatchesAndEngagement(): Promise<void> {
 }
 
 async function seedReports(): Promise<void> {
-  await db.insert(reportCases).values([
+  const cases = [
     openProductCaseOf(1, {
       targetKind: 'comment',
       targetId: commentIdOf(3),
@@ -477,9 +504,9 @@ async function seedReports(): Promise<void> {
       productId: productIdOf(OTHER_DELETED_PRODUCT),
       targetOwnerUserId: userIdOf(OTHER),
     }),
-  ]);
+  ];
   const own = { reporterUserId: userIdOf(OWNER), contactEmail: null } as const;
-  await db.insert(reports).values([
+  const reportRows = [
     memberReportOf(1, 1, 1, {
       ...own,
       categoryName: 'スパム',
@@ -493,10 +520,12 @@ async function seedReports(): Promise<void> {
       contactEmail: null,
       reportedAt: at(10_300),
     }),
-  ]);
+  ];
+  await seedReportRows(cases, reportRows);
 }
 
 async function seedInquiry(): Promise<void> {
+  // 問い合わせの書き込みはapiの`infrastructure`にだけあり、eventから読み込めない。上流の補助は状態と日時を指定できず、解決済みの問い合わせを作れないため、行を直接入れる
   await db.insert(memberInquiries).values({
     id: INQUIRY_ID,
     userId: userIdOf(OWNER),
@@ -507,6 +536,7 @@ async function seedInquiry(): Promise<void> {
     createdAt: at(11_000),
     updatedAt: at(11_500),
   });
+  // メッセージの書き込みはapiの`infrastructure`にだけあり、eventから読み込めない。上流の補助は管理者の返信と本文を指定できないため、行を直接入れる
   await db.insert(inquiryMessages).values([
     {
       id: USER_MESSAGE_ID,
@@ -524,6 +554,7 @@ async function seedInquiry(): Promise<void> {
       createdAt: at(11_500),
     },
   ]);
+  // 添付の紐付けの書き込みはapiの`infrastructure`にだけあり、eventから読み込めない。上流の補助は添付の行の位置と実体の無いファイルの組み合わせを作れないため、行を直接入れる
   await db.insert(inquiryMessageAttachments).values([
     {
       messageId: USER_MESSAGE_ID,
@@ -552,88 +583,97 @@ async function seedPayments(): Promise<void> {
       },
     },
   ]);
+  const records = new D1PaymentRecordStore(db);
   const base = {
     pseudonymousId: 'pseudonymous-1',
-    currency: 'usd',
+    purchaseId: null,
     lastEventAt: at(13_000),
     recordedAt: at(13_000),
-    createdAt: at(13_000),
-    updatedAt: at(13_000),
   } as const;
-  await db.insert(paymentRecords).values([
-    {
-      ...base,
-      id: PAYMENT_IDS.sponsorship,
-      kind: 'one_time',
-      purpose: 'sponsorship',
-      status: 'succeeded',
-      amount: 5600,
-      quantity: 7,
-      stripeReference: 'cs_test_sponsorship',
-      relatedId: sponsorshipIdOf(1),
-      occurredAt: at(13_000),
-    },
-    {
-      ...base,
-      id: PAYMENT_IDS.subscription,
-      kind: 'subscription',
-      purpose: 'ultras',
-      status: 'succeeded',
-      amount: 900,
-      quantity: 1,
-      stripeReference: 'in_test_ultras',
-      relatedId: null,
-      occurredAt: at(13_100),
-    },
-    {
-      ...base,
-      id: PAYMENT_IDS.refund,
-      kind: 'refund',
-      purpose: 'sponsorship',
-      status: 'succeeded',
-      amount: -4800,
-      quantity: null,
-      stripeReference: 're_test_sponsorship',
-      relatedId: sponsorshipIdOf(1),
-      occurredAt: at(13_200),
-    },
-    {
-      ...base,
-      id: PAYMENT_IDS.dispute,
-      kind: 'dispute',
-      purpose: 'sponsorship',
-      status: 'disputed',
-      amount: -5600,
-      quantity: null,
-      stripeReference: 'dp_test_sponsorship',
-      relatedId: sponsorshipIdOf(1),
-      occurredAt: at(13_300),
-    },
-    {
-      ...base,
-      id: PAYMENT_IDS.smoke,
-      kind: 'one_time',
-      purpose: 'payments_smoke',
-      status: 'succeeded',
-      amount: 100,
-      quantity: 1,
-      stripeReference: 'cs_test_smoke',
-      relatedId: null,
-      occurredAt: at(13_400),
-    },
-    {
-      ...base,
-      id: PAYMENT_IDS.stranger,
-      pseudonymousId: 'pseudonymous-4',
-      kind: 'one_time',
-      purpose: 'sponsorship',
-      status: 'succeeded',
-      amount: 1,
-      quantity: 1,
-      stripeReference: 'cs_test_stranger',
-      relatedId: null,
-      occurredAt: at(13_500),
-    },
+  const recordOf = (
+    index: number,
+    columns: Parameters<typeof newPaymentRecord>[1],
+  ) => newPaymentRecord(index, { ...base, ...columns });
+  await db.batch([
+    records.upsertByReference(
+      recordOf(1, {
+        id: PAYMENT_IDS.sponsorship,
+        kind: 'one_time',
+        purpose: 'sponsorship',
+        status: 'succeeded',
+        amount: 5600,
+        quantity: 7,
+        stripeReference: 'cs_test_sponsorship',
+        relatedId: sponsorshipIdOf(1),
+        occurredAt: at(13_000),
+      }),
+    ),
+    records.upsertByReference(
+      recordOf(2, {
+        id: PAYMENT_IDS.subscription,
+        kind: 'subscription',
+        purpose: 'ultras',
+        status: 'succeeded',
+        amount: 900,
+        quantity: 1,
+        stripeReference: 'in_test_ultras',
+        relatedId: null,
+        occurredAt: at(13_100),
+      }),
+    ),
+    records.upsertByReference(
+      recordOf(3, {
+        id: PAYMENT_IDS.refund,
+        kind: 'refund',
+        purpose: 'sponsorship',
+        status: 'succeeded',
+        amount: -4800,
+        quantity: null,
+        stripeReference: 're_test_sponsorship',
+        relatedId: sponsorshipIdOf(1),
+        occurredAt: at(13_200),
+      }),
+    ),
+    records.insertDisputeStage(
+      recordOf(4, {
+        id: PAYMENT_IDS.dispute,
+        kind: 'dispute',
+        purpose: 'sponsorship',
+        status: 'disputed',
+        amount: -5600,
+        quantity: null,
+        stripeReference: 'dp_test_sponsorship',
+        relatedId: sponsorshipIdOf(1),
+        occurredAt: at(13_300),
+      }),
+    ),
+    records.upsertByReference(
+      recordOf(5, {
+        id: PAYMENT_IDS.smoke,
+        kind: 'one_time',
+        purpose: 'payments_smoke',
+        status: 'succeeded',
+        amount: 100,
+        quantity: 1,
+        stripeReference: 'cs_test_smoke',
+        relatedId: null,
+        occurredAt: at(13_400),
+      }),
+    ),
+    records.upsertByReference(
+      recordOf(6, {
+        id: PAYMENT_IDS.stranger,
+        pseudonymousId: 'pseudonymous-4',
+        kind: 'one_time',
+        purpose: 'sponsorship',
+        status: 'succeeded',
+        amount: 1,
+        quantity: 1,
+        stripeReference: 'cs_test_stranger',
+        relatedId: null,
+        occurredAt: at(13_500),
+      }),
+    ),
   ]);
 }
 
