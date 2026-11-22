@@ -393,17 +393,28 @@ describe('DefaultInfringementInquiryService.send', () => {
     });
   });
 
-  test('コメントの抜粋は通知の上限の100書記素に切り詰める', async () => {
+  test('100書記素を超えるコメントの抜粋は、99書記素で切って末尾に「…」を付け、合計100書記素にする', async () => {
     const { service, sent } = setup({
       caseRecord: COMMENT_CASE,
-      view: { ...COMMENT_VIEW, excerpt: '👍🏽'.repeat(150) },
+      view: { ...COMMENT_VIEW, excerpt: '👍🏽'.repeat(101) },
     });
 
     await service.send(COMMAND);
 
     const { excerpt } = sent[0]?.input as { readonly excerpt: string };
     expect(countGraphemes(excerpt)).toBe(100);
-    expect(excerpt).toBe('👍🏽'.repeat(100));
+    expect(excerpt).toBe(`${'👍🏽'.repeat(99)}…`);
+  });
+
+  test('ちょうど100書記素のコメントの抜粋は、切らずに「…」も付けない', async () => {
+    const { service, sent } = setup({
+      caseRecord: COMMENT_CASE,
+      view: { ...COMMENT_VIEW, excerpt: '👍🏽'.repeat(100) },
+    });
+
+    await service.send(COMMAND);
+
+    expect(sent[0]?.input).toMatchObject({ excerpt: '👍🏽'.repeat(100) });
   });
 
   test('本文の無いコメントの抜粋は載せない', async () => {

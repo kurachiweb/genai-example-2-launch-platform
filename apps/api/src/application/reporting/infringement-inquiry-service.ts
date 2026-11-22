@@ -7,7 +7,10 @@ import {
   isClosedStatus,
   REPORT_NOTICE_EXCERPT_MAX,
 } from '../../../common-lib/reporting/report-case-rules.ts';
-import { truncateGraphemes } from '../../../common-lib/text/graphemes.ts';
+import {
+  countGraphemes,
+  truncateGraphemes,
+} from '../../../common-lib/text/graphemes.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import type { AuditLogRecorder } from '../../../lib/core/admin/audit-log.ts';
 import { ADMIN_PLATFORM_TYPES } from '../../../lib/core/admin/identifiers.ts';
@@ -61,6 +64,8 @@ type InquiryTargetInput = Pick<
 
 const CONTACT_PATH = '/contact';
 
+const EXCERPT_ELLIPSIS = '…';
+
 const logger = getAppLogger(['api', 'application', 'reporting']);
 
 const validMessageOf = (message: string): string => {
@@ -101,11 +106,12 @@ const inquiryTargetOf = (record: ReportCaseRecord): InquiryTarget => {
 
 // 抜粋が空になる本文の無いコメントは、テンプレートが抜粋を描かないようnullにする
 const noticeExcerptOf = (excerpt: string | null): string | null => {
-  const truncated =
-    excerpt === null
-      ? ''
-      : truncateGraphemes(excerpt, REPORT_NOTICE_EXCERPT_MAX);
-  return truncated === '' ? null : truncated;
+  if (excerpt === null || excerpt === '') {
+    return null;
+  }
+  return countGraphemes(excerpt) <= REPORT_NOTICE_EXCERPT_MAX
+    ? excerpt
+    : `${truncateGraphemes(excerpt, REPORT_NOTICE_EXCERPT_MAX - 1)}${EXCERPT_ELLIPSIS}`;
 };
 
 const targetInputOf = (
