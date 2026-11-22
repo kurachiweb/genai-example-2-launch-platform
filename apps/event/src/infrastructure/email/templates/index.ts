@@ -1,6 +1,7 @@
 import type { EmailTemplate } from '../rendering/email-template.ts';
 import { ADMIN_EMAIL_TEMPLATES } from './admin/index.ts';
 import { REPORT_EMAIL_TEMPLATES } from './content-reporting/index.ts';
+import { DATA_EXPORT_EMAIL_TEMPLATES } from './data-export/index.ts';
 import { SMOKE_TEMPLATE } from './email-delivery/smoke-template.ts';
 import { IDENTITY_EMAIL_TEMPLATES } from './identity/index.ts';
 import { INQUIRY_REPLY_TEMPLATE } from './inquiry/inquiry-reply-template.ts';
@@ -26,5 +27,6 @@ export const EMAIL_TEMPLATES: readonly EmailTemplate<unknown>[] = Object.freeze(
     ...SPONSORSHIP_EMAIL_TEMPLATES,
     ...MODERATION_EMAIL_TEMPLATES,
     ...REPORT_EMAIL_TEMPLATES,
+    ...DATA_EXPORT_EMAIL_TEMPLATES,
   ],
 );
