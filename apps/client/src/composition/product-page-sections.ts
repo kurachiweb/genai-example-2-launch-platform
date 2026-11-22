@@ -8,6 +8,7 @@ import type {
   ProductOwnerAction,
   ProductPageSection,
 } from '../components/product-page/product-page-section-types.ts';
+import { ProductReportLink } from '../components/reporting/product-report-link.tsx';
 import { ScreenshotGallerySection } from '../components/product-page/screenshot-gallery-section.tsx';
 import { GoldSidebarPlacement } from '../components/sponsorship/gold-sidebar-placement.tsx';
 import { LegendPlacement } from '../components/sponsorship/legend-placement.tsx';
@@ -98,5 +99,11 @@ export const PRODUCT_PAGE_SECTIONS: readonly ProductPageSection[] =
       placement: 'bottom',
       order: 20,
       component: SilverPlacement,
+    },
+    {
+      id: 'content-reporting.product-report',
+      placement: 'bottom',
+      order: 10,
+      component: ProductReportLink,
     },
   ]);

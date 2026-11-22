@@ -7,6 +7,8 @@ import type {
   PublicProfileMenuItem,
   PublicProfileTab,
 } from '../components/profile/public-profile-section-types.ts';
+import { UserReportDialog } from '../components/reporting/user-report-dialog.tsx';
+import { UserReportMenuItem } from '../components/reporting/user-report-menu-item.tsx';
 import { UpvoteHistoryCount } from '../components/upvote-history/upvote-history-count.tsx';
 import { UPVOTE_HISTORY_TAB_LABEL } from '../components/upvote-history/upvote-history-messages.ts';
 import { UpvoteHistoryPanel } from '../components/upvote-history/upvote-history-panel.tsx';
@@ -41,4 +43,11 @@ export const PUBLIC_PROFILE_BADGES: readonly PublicProfileBadgeSection[] =
 
 // 公開プロフィールのフォローボタンの横の「…」メニューの項目の登録箇所。各specが自分の項目を追記する
 export const PUBLIC_PROFILE_MENU_ITEMS: readonly PublicProfileMenuItem[] =
-  Object.freeze([]);
+  Object.freeze([
+    {
+      id: 'content-reporting.user-report',
+      order: 10,
+      Item: UserReportMenuItem,
+      Dialog: UserReportDialog,
+    },
+  ]);

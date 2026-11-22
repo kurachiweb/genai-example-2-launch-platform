@@ -7,6 +7,13 @@ export const REPORT_DIALOG_TITLES: Readonly<Record<ReportTargetKind, string>> =
     comment: 'このコメントを通報',
   });
 
+export const REPORT_ACTION_LABELS: Readonly<Record<ReportTargetKind, string>> =
+  Object.freeze({
+    user: 'このユーザーを通報',
+    product: 'このプロダクトを通報',
+    comment: '通報',
+  });
+
 export const REPORT_MESSAGES = Object.freeze({
   dialogDescription:
     '通報内容は運営チームが確認します。通報者の情報が投稿者に伝わることはありません。',
