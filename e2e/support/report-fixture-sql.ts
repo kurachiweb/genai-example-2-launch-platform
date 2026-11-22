@@ -340,3 +340,21 @@ export function parseReportCaseState(
     throw new Error(formatError.message, { cause: error });
   }
 }
+
+// 画面から受け付けた通報の案件を、受け付けと同じ対象の解決で引いた対象の未完了の案件として探す
+export function openReportCaseIdSql(target: ReportFixtureTarget): string {
+  return `SELECT rc.id AS id FROM report_cases rc WHERE rc.target_kind = ${sqlStringLiteral(target.kind)} AND rc.target_id = (SELECT t.target_id FROM (${targetSql(target)}) t) AND rc.closed_at IS NULL;`;
+}
+
+export function parseOpenReportCaseId(
+  rows: readonly LocalD1Row[],
+  target: ReportFixtureTarget,
+): string {
+  const [row] = rows;
+  if (rows.length !== 1 || typeof row?.id !== 'string') {
+    throw new Error(
+      `対象(${JSON.stringify(target)})の未完了の通報の案件が1件ではありません: ${JSON.stringify(rows)}`,
+    );
+  }
+  return row.id;
+}

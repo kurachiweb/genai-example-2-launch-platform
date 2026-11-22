@@ -9,7 +9,10 @@ import {
 import { createListedProducts } from '../support/directory-fixtures.ts';
 import { createModerationTargets } from '../support/moderation-fixtures.ts';
 import { findUserIdByEmail } from '../support/notification-fixtures.ts';
-import { readReportCaseState } from '../support/report-fixtures.ts';
+import {
+  findOpenReportCaseId,
+  readReportCaseState,
+} from '../support/report-fixtures.ts';
 import { TEST_EMAIL_DOMAIN } from '../support/test-email.ts';
 import {
   createTestAccount,
@@ -37,7 +40,6 @@ import {
   expectNoCommentReportAction,
   expectNoProfileReportAction,
   expectNoProductReportAction,
-  findOpenReportCaseId,
   openCommentReportForm,
   openProductReportForm,
   openProfileReportForm,

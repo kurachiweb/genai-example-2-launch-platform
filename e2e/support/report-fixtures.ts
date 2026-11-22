@@ -4,6 +4,8 @@ import { fixtureId, ID_RANDOM_BYTES } from './directory-fixture-sql.ts';
 import { executeLocalD1 } from './local-d1.ts';
 import {
   type CreatedReport,
+  openReportCaseIdSql,
+  parseOpenReportCaseId,
   parseReportCaseState,
   parseReportFixtureInsert,
   parseReportFixtureLookup,
@@ -11,6 +13,7 @@ import {
   reportCaseStateSql,
   type ReportCaseState,
   type ReportFixtureRequest,
+  type ReportFixtureTarget,
   reportFixtureInsertSql,
   reportFixtureLookupSql,
 } from './report-fixture-sql.ts';
@@ -60,5 +63,15 @@ export async function readReportCaseState(
   return parseReportCaseState(
     await executeLocalD1(reportCaseStateSql(caseId)),
     caseId,
+  );
+}
+
+// 画面から受け付けた通報の案件を、対象の未完了の案件として探す
+export async function findOpenReportCaseId(
+  target: ReportFixtureTarget,
+): Promise<string> {
+  return parseOpenReportCaseId(
+    await executeLocalD1(openReportCaseIdSql(target)),
+    target,
   );
 }

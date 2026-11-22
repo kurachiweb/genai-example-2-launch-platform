@@ -13,6 +13,8 @@ import {
 import { readNestedD1Migrations } from '../../config/vitest/read-nested-d1-migrations.ts';
 import type { LocalD1Row } from './local-d1-command.ts';
 import {
+  openReportCaseIdSql,
+  parseOpenReportCaseId,
   parseReportCaseState,
   parseReportFixtureInsert,
   parseReportFixtureLookup,
@@ -629,6 +631,62 @@ describe('reportCaseStateSql・parseReportCaseState', () => {
     ).toThrow("ローカルのD1に通報の案件(x'y)がありません");
     expect(() => parseReportCaseState([{ status: 1 }], 'C')).toThrow(
       '通報の案件の照会の結果の形式が正しくありません',
+    );
+  });
+});
+
+describe('openReportCaseIdSql・parseOpenReportCaseId', () => {
+  const findOpen = (target: ReportFixtureRequest['target']): string =>
+    parseOpenReportCaseId(queryRows(openReportCaseIdSql(target)), target);
+
+  test('受け付けと同じ対象の解決で、プロダクトとユーザーはハンドルから、コメントはIDから未完了の案件を引く', () => {
+    const product = submit(guestOtherOnProduct);
+    const comment = submit(memberOtherOnComment);
+    const user = submit({
+      target: { kind: 'user', userHandle: OWNER_HANDLE },
+      categoryName: REPORT_CATEGORY_OTHER_NAME,
+      reporter: { kind: 'member', email: REPORTER_EMAIL },
+    });
+
+    expect(
+      findOpen({
+        kind: 'product',
+        productHandle: PRODUCT_HANDLE.toUpperCase(),
+      }),
+    ).toBe(product.created.caseId);
+    expect(findOpen({ kind: 'comment', commentId: COMMENT_ID })).toBe(
+      comment.created.caseId,
+    );
+    expect(findOpen({ kind: 'user', userHandle: OWNER_HANDLE })).toBe(
+      user.created.caseId,
+    );
+  });
+
+  test('完了した案件は引かず、同じ対象に作り直した未完了の案件を引く', () => {
+    const first = submit(memberOtherOnComment);
+    db.run(
+      `UPDATE report_cases SET status = 'rejected', closed_at = 1 WHERE id = ?`,
+      [first.created.caseId],
+    );
+    const { target } = memberOtherOnComment;
+
+    expect(() => findOpen(target)).toThrow(
+      `対象(${JSON.stringify(target)})の未完了の通報の案件が1件ではありません: []`,
+    );
+
+    const second = submit(memberOtherOnComment);
+
+    expect(findOpen(target)).toBe(second.created.caseId);
+  });
+
+  test('引用符を含む値も文字列のリテラルとして照会し、結果の形式が違えば失敗する', () => {
+    const target = { kind: 'product', productHandle: "x'y" } as const;
+
+    expect(() => findOpen(target)).toThrow(
+      '未完了の通報の案件が1件ではありません',
+    );
+    expect(() => parseOpenReportCaseId([{ id: 1 }], target)).toThrow(
+      '未完了の通報の案件が1件ではありません',
     );
   });
 });

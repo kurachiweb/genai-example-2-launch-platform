@@ -19,8 +19,6 @@ import {
   REACTION_TIMEOUT_MS,
   RETRY_TIMEOUT_MS,
 } from '../support/hydration-retry.ts';
-import { executeLocalD1, sqlStringLiteral } from '../support/local-d1.ts';
-import type { ReportFixtureTarget } from '../support/report-fixtures.ts';
 
 export interface ReportInput {
   readonly categoryName: string;
@@ -217,31 +215,4 @@ export async function expectNoCommentReportAction(
   ).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
-}
-
-const targetIdSql = (target: ReportFixtureTarget): string => {
-  switch (target.kind) {
-    case 'product':
-      return `(SELECT id FROM products WHERE handle = ${sqlStringLiteral(target.productHandle)} AND deleted_at IS NULL)`;
-    case 'user':
-      return `(SELECT id FROM users WHERE handle = ${sqlStringLiteral(target.userHandle)} AND deleted_at IS NULL)`;
-    case 'comment':
-      return sqlStringLiteral(target.commentId);
-  }
-};
-
-// 画面から受け付けた通報の案件を、対象の未完了の案件として探す
-export async function findOpenReportCaseId(
-  target: ReportFixtureTarget,
-): Promise<string> {
-  const rows = await executeLocalD1(
-    `SELECT id FROM report_cases WHERE target_kind = ${sqlStringLiteral(target.kind)} AND target_id = ${targetIdSql(target)} AND closed_at IS NULL;`,
-  );
-  const [row] = rows;
-  if (rows.length !== 1 || typeof row?.id !== 'string') {
-    throw new Error(
-      `対象(${JSON.stringify(target)})の未完了の通報の案件が1件ではありません: ${JSON.stringify(rows)}`,
-    );
-  }
-  return row.id;
 }
