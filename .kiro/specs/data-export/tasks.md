@@ -22,7 +22,7 @@
   - _Depends: 1.1_
   - _Requirements: 3.1, 3.6, 7.4, 12.5_
 
-- [ ] 1.4 (P) ZIP内のファイル名とZIPのファイル名とREADMEの規則を作る
+- [x] 1.4 (P) ZIP内のファイル名とZIPのファイル名とREADMEの規則を作る
   - 先に、単体テストで、ZIP内のファイル名の変換(禁止文字7種・拡張子を除く末尾の`.`と空白・予約名の大文字小文字・拡張子の無い名前・空になる名前)、ディレクトリごとの大文字小文字を区別しない衝突の連番と付けた名前の再衝突(`shot.png`・`shot-2.png`・`SHOT.png`)、ディレクトリごとに独立すること、ZIPのファイル名の基準時刻の日付(UTCの8:00の前後)、READMEの文面と構造のバージョン1を確かめる
   - 完了状態: 単体テストが成功し、規則が他の共有の規則と`BusinessTime`以外を読み込まない
   - _Boundary: ArchiveNames_
@@ -269,3 +269,4 @@
 - 1.1: 通知の状態(`none`・`pending`・`requested`・`skipped`)は設計の`DataExportRules`に無いため共有定義に含めず、`data_exports`のCHECKと`core/data-export/ports.ts`の`DataExportNoticeStatus`が持つ。
 - 1.2: `apps/db`は`common-lib`を読み込まないため、`status`・`failure_kind`のCHECKの値は1.1の定数の写しを直接書き、一致は4.1のWorkers統合テストで確かめる。マイグレーションは`feat/implement`のHEADのまま生成した(`20261122163142_data_export`)。後からmainにマイグレーションが入ったらディレクトリ名の日時を調整する。
 - 1.3: `GENERATION_RETRY_POLICY`は既存の`NOTIFICATION_RETRY_POLICY`と同じ`RetryPolicy`型の凍結したオブジェクトにした。`ArchiveTooLargeError`は`limit: 'bytes' | 'entries'`を持ち、メッセージに利用者の内容を含めない。
+- 1.4: 空や空白だけの拡張子は拡張子とみなさず末尾の除去の対象にし、名前が変わらなくなるまで除去してから予約名を判定する(`con.txt.`は`con_.txt`)。`allocate`は変換をせず、呼び出し側が`toPortableFileName`を通した名前を渡す。
