@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, test } from 'vitest';
 
+import {
+  REPORT_CATEGORY_INFRINGEMENT_ID,
+  REPORT_CATEGORY_INFRINGEMENT_NAME,
+} from '../../../common-lib/reporting/report-rules.ts';
 import type { ReportErasureStore } from '../../core/reporting/ports.ts';
 import { D1ReportErasureStore } from './d1-report-erasure-store.ts';
 import type { ReportErasureStatements } from './report-erasure-statements.ts';
@@ -82,6 +86,32 @@ describe('logicalDeleteByReporterStatement', () => {
     expect(rows.every((row) => row.reason.startsWith('申出者の理由'))).toBe(
       true,
     );
+  });
+
+  test('権利侵害の通報の申出者だけが退会しても、案件の権利侵害の起点を変えない', async () => {
+    const infringementReportedAt = daysBefore(2);
+    await seed(
+      [openProductCaseOf(1, { infringementReportedAt })],
+      [
+        memberReportOf(1, 1, 1, {
+          categoryId: REPORT_CATEGORY_INFRINGEMENT_ID,
+          categoryName: REPORT_CATEGORY_INFRINGEMENT_NAME,
+          reportedAt: infringementReportedAt,
+        }),
+        guestReportOf(2, 1),
+      ],
+    );
+
+    await db.batch([
+      statements.logicalDeleteByReporterStatement(reporterIdOf(1), LATER),
+    ]);
+
+    const [reportCase] = await readCases();
+    expect(reportCase).toMatchObject({
+      id: caseIdOf(1),
+      infringementReportedAt,
+      updatedAt: T0,
+    });
   });
 });
 

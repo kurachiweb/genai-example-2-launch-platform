@@ -1318,6 +1318,7 @@ export declare class ReportCaseClosingParticipant implements ModerationWritePart
 **Contracts**: Event [x]
 
 - `statementsFor(event, db)`(identity-authの`UserLifecycleSyncHandler`の形): `[ReportErasureStatements.logicalDeleteByReporterStatement(event.userId, event.occurredAt)]`(`REPORTING_PLATFORM_TYPES.ReportErasureStatements`で受け取る。infrastructure層のため`workers/reporting`の文の契約を読み込める)。登録は`USER_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'content-reporting.reporter-withdrawal', events: ['withdrawn'], handler: REPORTING_TYPES.ReporterWithdrawalSyncHandler }`(17.3)。
+- 論理削除は`reports`だけを変え、`report_cases.infringement_reported_at`を求め直さない。権利侵害の通報の申出者だけが退会しても、案件は権利侵害の案件のままで、対応期間の起点・目標の超過の強調・照会の可否も変わらない。対応期間はLR-004に基づき受け付けた申出からの期限であり、申出者の退会で起点を後ろへずらしたり権利侵害の扱いを外したりすると、受け付けた申出の期限の超過が見えなくなるためである(5.5)。カテゴリごとの件数は論理削除した通報を数えない(5.6)。
 
 ### api/presentation
 
