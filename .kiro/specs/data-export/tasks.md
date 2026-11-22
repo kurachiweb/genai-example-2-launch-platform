@@ -199,7 +199,7 @@
   - _Depends: 6.1, 6.3_
   - _Requirements: 5.11, 5.12, 6.2_
 
-- [ ] 6.5 ZIPの生成のサービスを作る
+- [x] 6.5 ZIPの生成のサービスを作る
   - 先に、単体テスト(偽の部品)で、リースの取得の結果ごとの扱い、前の実行の未完了のアップロードの破棄、退会済みで通知なしの失敗、画像と添付を先に書き読めないファイルを格納の集合に入れないこと、その後にテキストのファイルを書くこと、アップロードの完了の後にアカウントの読み取りの部品で退会を確かめ退会済みならZIPを削除して通知なしの失敗にすること、完了の記録と通知、実行の印の不一致(退会の削除の処理で記録が無い場合を含む)でZIPを削除すること、アップロードの記録が更新されなければアップロードを破棄して置き換え済みを返すこと、上限超過でアップロードを破棄して大きすぎる失敗にすること、一時的な失敗でアップロードを破棄しリースを解放して例外を投げること、完了・失敗のログの属性(要求のID・バイト数・項目数・所要時間・試行回数)を確かめる
   - 生成のサービスの束縛をイベントサーバーの本specのモジュールへ加える
   - 完了状態: 単体テストが成功し、結果が完了・使用中・終了済み・中止・大きすぎ・置き換え済みのいずれかか例外である
@@ -288,3 +288,4 @@
 - 6.4: `ExportSnapshotCollector.collect(userId, requestedAt, now)`はアカウント→プロダクトと活動→やり取りと取引→ファイルの照会の順に直列で呼び(D1の負荷を抑えるため)、退会済みなら`undefined`。照会するファイルIDはアイコン・ロゴ・スクリーンショット・問い合わせの添付で、計画の範囲と一致する。`snapshot.files`には記録のあるファイルだけが入り、隔離中は`quarantined: true`。
 - 5.2: 完了のまま有効期限を過ぎた記録は、日次のジョブが期限切れにするまでの間もGraphQLの表示で`EXPIRED`・`downloadPath: null`にする(要件11.8、保存の状態は変えない)。`after`には長さの上限を付けず不正は`invalid_cursor`。`byteSize`は`Float`。モジュール名は`api-data-export`で、5.3・5.4は`DATA_EXPORT_TYPES`の識別子・`data-export-module.ts`の束縛・`data-export-module.worker.test.ts`の`IMPLEMENTATIONS`を同時に足す。テストの補助は`apps/api/test/support/data-export-graphql-operations.ts`。
 - 5.3: 呼び出し元を先に確かめ、管理者側は未ログインでも404。利用者側の未ログインは不正な形のIDでも401。有効期限を過ぎた完了は日次のジョブの前でも404。保存先(R2)の読み出しの失敗だけを503(`data_export_archive_unavailable`、`Retry-After: 5`)にし、記録のD1の失敗は共通の500の定型。保存のメタデータが欠ければ`application/zip`と`attachmentDisposition(fileName ?? 'export.zip')`で補う。テストの組み立ては`apps/api/test/support/data-export-download-harness.ts`。
+- 6.5: `claim`の`not_found`は`finished`、`markReady`と`recordUpload`の不一致はどちらも`superseded`(設計は`markReady`の不一致を`done`と書くが、処理はどちらも`done`にするため差は出ない)。完了日時は注入した`Clock`の`now()`で有効期限はその7日後、ZIPの更新日時はリースの起点の`now`。破棄・削除に失敗したときはリースを解放せず、リースの期限の後の次の実行に任せる。完了の通知の例外でも`ready`(日次の送り直しに任せる)。ログのカテゴリは`['event', 'application', 'data-export']`。テストの偽の部品は`archive-generation-service.fixtures.ts`。
