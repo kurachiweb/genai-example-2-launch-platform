@@ -16,6 +16,7 @@ TanStack Start・TanStack Router・TanStack Queryを使う構成を前提とす�
 | `DASHBOARD_CARDS`・`DashboardCard`                              | `composition/dashboard-cards.ts`                                                         | ダッシュボードのカードの登録箇所                                                                                               |
 | `DashboardGrid`                                                 | `components/dashboard/dashboard-grid.tsx`                                                | カードの並びと、カードごとのエラーの境界                                                                                       |
 | `DashboardCardFrame`・`DashboardCardState`                      | `components/dashboard/dashboard-card-frame.tsx`                                          | カードの枠・題名・状態の表示                                                                                                   |
+| `dashboardCardStateOf`                                          | `components/dashboard/dashboard-card-state.ts`                                           | 照会の結果からカードの状態を組み立てる(取り直しの失敗では表示中の値を残す)                                                     |
 | `ADMIN_SETTINGS_SECTIONS`・`AdminSettingsSection`               | `composition/admin-settings-sections.ts`                                                 | 設定のページの区画の登録箇所                                                                                                   |
 | `AdminSettingsSectionsView`                                     | `components/settings/admin-settings-sections-view.tsx`                                   | 設定のページの区画の並びと、区画ごとのエラーの境界                                                                             |
 | `SectionFallback`                                               | `components/layout/section-fallback.tsx`                                                 | 読み込み中と失敗の間に区画の見出しを補う枠(カテゴリのページの区画と設定のページの区画が共用)                                   |
@@ -108,28 +109,28 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = Object.freeze([
 
 ```tsx
 export function PendingItemsCard() {
-  const query = useQuery(pendingItemsQueryOptions());
-  const state: DashboardCardState =
-    query.status === 'error'
-      ? {
-          status: 'error',
-          error: query.error,
-          retry: () => void query.refetch(),
-        }
-      : { status: query.status };
+  const { data, error, isFetching, refetch } = useQuery(
+    pendingItemsQueryOptions(),
+  );
   return (
     <DashboardCardFrame
       title="<カードの題名>"
       href="/<詳しい一覧のパス>"
-      state={state}
+      state={dashboardCardStateOf({
+        hasData: data !== undefined,
+        error,
+        isFetching,
+        refetch,
+      })}
     >
-      <p>{query.data?.count}件</p>
+      <p>{data?.count}件</p>
     </DashboardCardFrame>
   );
 }
 ```
 
 - `DashboardCardFrame`は、題名を`<h2>`にして`<section>`の名前にし、`href`を渡すと題名を詳しい一覧へのリンクにする。`state`は取得の状態で、TanStack Queryの`status`と同じ名前(`pending`・`error`・`success`)にする。`pending`では`LoadingSkeleton`、`error`では`ErrorState`と再試行、`success`では`children`を描く。再試行のボタンは取得し直すと消えるため、押した時にフォーカスを題名の`<h2>`(`tabIndex={-1}`)へ移す(「[処理の後のフォーカス](004-accessibility-rules.md#処理の後のフォーカス)」)。
+- カードの状態は`dashboardCardStateOf`で照会の結果から組み立てる。値があれば取り直しの失敗の後も`success`のまま表示中の値を残し、値が無い間は失敗が無いか取り直している間を`pending`、取り直していない失敗を`error`にする(定期の取り直しの失敗の扱いは「[loaderとの組み合わせ](010-live-refresh-queries.md#loaderとの組み合わせ)」と同じ)。
 - `DashboardGrid`は、カードごとに`RecoverableSlot`でエラーの境界(`CatchBoundary`と`QueryErrorResetBoundary`)と`Suspense`に包む。1つのカードの描画や取得の失敗は、そのカードの位置に`ErrorState`を出して留め、他のカードの表示を続ける。再試行は、取得の失敗の記録とエラーの境界の両方を解除して描き直す。再試行の後のフォーカスは、描き直したカードの題名の`<h2>`へ移し、再び失敗した時は新しい再試行のボタンへ移す(「[取得の遅い区画のストリーミング](006-data-fetching.md#取得の遅い区画のストリーミング)」と同じ規則)。`RecoverableSlot`は共通部品(「[状態表示](005-shared-components.md#状態表示)」)で、登録した部品を並べる他の表示も共通で使う。管理者側は`contactAvailable`に`ADMIN_PROFILE.contactAvailable`(偽)を渡し、`contactHref`を渡さないため、失敗の表示に問い合わせの導線と問い合わせを促す文が出ない。
 - 境界が捕まえた失敗はルーターの`defaultOnCatch`へ届かないため、`RecoverableSlot`がエラートラッキングへ送る。GraphQLの失敗(`GraphQLClientError`)は`executeGraphQL`が送っているため送り直さない(「[送信の入口](007-frontend-observability.md#送信の入口)」)。
 - カードが1件も無ければ、表示できる項目が無い旨の`EmptyState`を描く。カードを足す機能は、空の状態を確かめるテストを更新する。

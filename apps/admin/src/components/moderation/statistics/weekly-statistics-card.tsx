@@ -7,10 +7,8 @@ import {
   adminWeeklyStatisticsQueryOptions,
   toAdminWeeklyStatistics,
 } from '../../../graphql/admin-weekly-statistics.ts';
-import {
-  DashboardCardFrame,
-  type DashboardCardState,
-} from '../../dashboard/dashboard-card-frame.tsx';
+import { DashboardCardFrame } from '../../dashboard/dashboard-card-frame.tsx';
+import { dashboardCardStateOf } from '../../dashboard/dashboard-card-state.ts';
 import {
   NO_FINALIZED_WEEK_MESSAGE,
   NO_PREVIOUS_WEEK_TEXT,
@@ -29,35 +27,6 @@ import {
 import { StatisticsValueText } from './statistics-value-text.tsx';
 import { WeeklyStatisticsChart } from './weekly-statistics-chart.tsx';
 import { WeeklyStatisticsTable } from './weekly-statistics-table.tsx';
-
-interface StatisticsQueryResult {
-  readonly hasData: boolean;
-  readonly error: unknown;
-  readonly isFetching: boolean;
-  readonly refetch: () => unknown;
-}
-
-// 取り直しの失敗では表示中の値を残し、取り直している間は前の失敗を示さない
-const cardStateOf = ({
-  hasData,
-  error,
-  isFetching,
-  refetch,
-}: StatisticsQueryResult): DashboardCardState => {
-  if (hasData) {
-    return { status: 'success' };
-  }
-  if (error === null || isFetching) {
-    return { status: 'pending' };
-  }
-  return {
-    status: 'error',
-    error,
-    retry: () => {
-      void refetch();
-    },
-  };
-};
 
 function MetricDelta({ metric }: { readonly metric: StatisticsMetricSummary }) {
   if (metric.delta === null) {
@@ -118,7 +87,7 @@ export function WeeklyStatisticsCard() {
   return (
     <DashboardCardFrame
       title={WEEKLY_STATISTICS_TITLE}
-      state={cardStateOf({
+      state={dashboardCardStateOf({
         hasData: data !== undefined,
         error,
         isFetching,

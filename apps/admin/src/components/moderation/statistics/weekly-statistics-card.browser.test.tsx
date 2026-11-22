@@ -27,6 +27,7 @@ import {
   type PageRootRoute,
   renderPageRouter,
 } from '../../../../test/page-router.tsx';
+import { respondReportSummaries } from '../../../../test/reporting-summary-fixtures.ts';
 import { adminWeeklyStatisticsQueryOptions } from '../../../graphql/admin-weekly-statistics.ts';
 import {
   AdminUnhandledInquiryCountDocument,
@@ -160,6 +161,7 @@ const renderDashboard = (statistics: () => Promise<unknown>) => {
       ],
     ]),
   });
+  respondReportSummaries(executeGraphQL);
   return renderPageRouter({
     path: '/',
     createRoutes,

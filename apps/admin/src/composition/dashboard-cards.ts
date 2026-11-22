@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 
 import { UnhandledInquiriesCard } from '../components/inquiry/unhandled-inquiries-card.tsx';
 import { WeeklyStatisticsCard } from '../components/moderation/statistics/weekly-statistics-card.tsx';
+import { UnhandledReportsCard } from '../components/reporting/dashboard/unhandled-reports-card.tsx';
 
 export interface DashboardCard {
   // '<spec名>.<名詞句>'
@@ -26,5 +27,11 @@ export const DASHBOARD_CARDS: readonly DashboardCard[] = Object.freeze([
     order: 20,
     width: 'half',
     component: UnhandledInquiriesCard,
+  },
+  {
+    id: 'content-reporting.unhandled-reports',
+    order: 30,
+    width: 'half',
+    component: UnhandledReportsCard,
   },
 ]);
