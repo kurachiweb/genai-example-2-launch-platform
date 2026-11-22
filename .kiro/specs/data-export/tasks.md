@@ -184,7 +184,7 @@
   - _Boundary: ArchiveErasureHandler、一覧と並びを固定する上流のテストの期待値、content-reportingの`design.md`・`tasks.md`の1800の説明_
   - _Requirements: 3.7, 10.3, 10.4, 12.3, 12.4_
 
-- [ ] 6.3 (P) プロダクトと活動の読み取りの部品を作る
+- [x] 6.3 (P) プロダクトと活動の読み取りの部品を作る
   - 評価の無効化の有無はengagementの仮5の項目を写す。モジュールの束縛は6.4で加え、本タスクはモジュールのファイルとDIの識別子のファイルを触らない(識別子も6.4で加える)
   - 先に、単体テスト(偽の部品)で、プロダクト・ローンチの写し、ローンチのIDを90件ずつに分けたマッチと週間・年間の受賞の取得とローンチへの結び付け、コメント・評価(無効化の印を含む)・Upvoteの写し、自分のプロダクトに無いプロダクトだけを論理削除を除く範囲で名称を引くこと、紐付けを解除済みのUpvoteのプロダクトの`null`を確かめる
   - 完了状態: 単体テストが成功し、名称の照会が項目の数に比例しない
@@ -282,3 +282,4 @@
 - 4.3: 存在しないアップロードの破棄は、`R2Error`の`code`が10024(NoSuchUpload)のとき成功とみなす(`code`が無いときだけメッセージの`(10024)`で判定)。ローカルのminiflareは一度も存在しないIDに10001を返すため、実際のR2での10024の確認はstagingに残る。書き込み先は`write`・`complete`の失敗の後に閉じ、以降は`abort`だけを受け付ける。コンストラクタの型は`ExportBucketEnv`(`PlatformEnv`から代入できる)。
 - 4.4: `EmailDataExportNotifier`は`@injectable()`を付けず、コンストラクタの引数は`DataExportStore`・`UserContactDirectory`・`EmailSender`・`DataExportNotifierEnv`・appNameの順で、4.5が`toDynamicValue`で組み立てる。期限切れ・列の欠けた記録・未完了のままの依頼待ちは`skipped`にする(送り直しで直らないため)。
 - 4.5: `StoreDataExportTerminator.fail`は記録が無いか未完了でなければ何もせず`already_finished`を返す。破棄は`uploadId`と`objectKey`が揃うときだけ行い(設計は`upload_id`があれば、と書く)、成功しても`clearUpload`は呼ばず日次の後片付けに任せる。定型の通知の指紋は`['data-export', kind]`、タグは`data_export_incident`。5つの部品は処理単位ごとに`inSingletonScope()`。
+- 6.3: 返す型`ProductActivitySource`をリーダーのファイルから公開し、6.4の収集が使う。プロダクトも項目を明示して写す(上流の余分な項目を漏らさない)。他者のプロダクトの名称は重複を除いた全IDを`findSummaries(ids, 'not-deleted')`の1回で引く(90件の分割は上流が行う)。受賞は週間→年間の順。
