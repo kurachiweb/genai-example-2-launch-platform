@@ -46,7 +46,7 @@
   - _Boundary: `docs/GUIDES/service`の該当する5文書_
   - _Requirements: 13.6_
 
-- [ ] 2. (P) 上流の出力用の部品がイベントサーバーで使えることを契約のテストで確かめる
+- [x] 2. (P) 上流の出力用の部品がイベントサーバーで使えることを契約のテストで確かめる
   - 評価の無効化の有無(`invalidatedByAdmin`)はengagementがその仮5として提供する。本タスクはengagementのファイルを変更しない(本specの仮2とengagementの仮5は2026-10-24に開発者が確定)
   - 先に、`apps/event/src/composition/data-export-upstream-exports.worker.test.ts`のWorkers統合テストで、イベントサーバーの処理単位のコンテナから設計のAllowed Dependenciesに挙げた19の部品(`AccountExport`と設計のAllowed Dependenciesの出力用の部品の18)と`MediaFiles`が解決できること、ローカルのD1に用意した無効化した評価で`RatingExport.listByUser`が`invalidatedByAdmin`を真、無効化していない評価で偽を返すことを確かめる
   - 解決できない部品や項目があれば、本specのタスクを止めて所有するspecと開発者へ報告する
