@@ -26,7 +26,7 @@ const ARCHIVE_CONTENT_TYPE = 'application/zip';
 
 type RequestContainer = PlatformHonoEnv<PlatformEnv>['Variables']['container'];
 
-const logger = getAppLogger(['api', 'data-export', 'download']);
+const logger = getAppLogger(['api', 'presentation', 'data-export']);
 
 async function openArchive(
   storage: ExportArchiveStorage,
