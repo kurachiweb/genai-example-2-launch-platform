@@ -9,7 +9,9 @@ import {
   REPORT_CATEGORY_INFRINGEMENT_NAME,
   REPORT_CATEGORY_OTHER_ID,
   REPORT_CATEGORY_OTHER_NAME,
+  sortReportCategories,
 } from '../../apps/common-lib/reporting/report-rules.ts';
+import { truncateGraphemes } from '../../apps/common-lib/text/graphemes.ts';
 import { readNestedD1Migrations } from '../../config/vitest/read-nested-d1-migrations.ts';
 import type { LocalD1Row } from './local-d1-command.ts';
 import {
@@ -688,5 +690,38 @@ describe('openReportCaseIdSql・parseOpenReportCaseId', () => {
     expect(() => parseOpenReportCaseId([{ id: 1 }], target)).toThrow(
       '未完了の通報の案件が1件ではありません',
     );
+  });
+});
+
+// 補助が読み込む共用部品のファイルはルートの単体テストのカバレッジの分母に入るため、補助が使わない関数もここで呼ぶ
+describe('補助が読み込む共用部品の残りの関数', () => {
+  test('通報のカテゴリは追加したカテゴリ・権利侵害・その他の順に並べる', () => {
+    const at = (ms: number) => new Date(ms);
+    const categories = [
+      { id: REPORT_CATEGORY_OTHER_ID, systemDefault: true, createdAt: at(0) },
+      { id: 'B', systemDefault: false, createdAt: at(2) },
+      { id: 'UNKNOWN', systemDefault: true, createdAt: at(0) },
+      {
+        id: REPORT_CATEGORY_INFRINGEMENT_ID,
+        systemDefault: true,
+        createdAt: at(0),
+      },
+      { id: 'C', systemDefault: false, createdAt: at(1) },
+      { id: 'A', systemDefault: false, createdAt: at(1) },
+    ];
+
+    expect(sortReportCategories(categories).map(({ id }) => id)).toStrictEqual([
+      'A',
+      'C',
+      'B',
+      REPORT_CATEGORY_INFRINGEMENT_ID,
+      REPORT_CATEGORY_OTHER_ID,
+      'UNKNOWN',
+    ]);
+  });
+
+  test('書記素の数で切り詰める', () => {
+    expect(truncateGraphemes('👨‍👩‍👧あい', 2)).toBe('👨‍👩‍👧あ');
+    expect(truncateGraphemes('あ', 2)).toBe('あ');
   });
 });

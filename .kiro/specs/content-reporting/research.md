@@ -530,3 +530,92 @@
 - 2回目の確認(新しいサブエージェントによる独立した確認)の判定はNEEDS_FIXES(必須1件・軽微5件)で、前回の11件はすべて直っていた。全件を反映した。
   - 必須: 「通知と照会」の流れの照会の段落が、送信の後の記録の失敗をすべて`report_case_state_conflict`としていた。案件の不在(`not-found`)では`captureEvent`で知らせて`report_case_not_found`を返す旨を加え、`InfringementInquiryService`の手順とそろえた。
   - 軽微: tasks.mdの4.7に不在でもエラートラッキングへ通知することを加えた。This Spec Ownsの技術ドキュメントの参照先に`frontend/020`・`security/008`を加えた。Requirements Traceabilityの通報フォームの行に`ReportingSchemaModule`を加えた。Non-Goalsの要件定義書の改訂とRevalidation Triggersの仮1〜仮8から日付を除いた(日付はresearch.mdに残る)。tasks.mdの3.1のつながっていた2つの項目を分けた。
+
+## 実装の記録(2026-11-22)
+
+タスク9.6(要件20.1・20.3)の全体の検査と作業の報告である。本specの開始の直前のコミットは`ad2d27ff`、検査の時点のHEADは`1dd248fd`(47コミット)。検査で足したテストの変更は下の「検査で直したもの」に挙げる。
+
+### 検査の結果
+
+| 検査                                                                             | 結果                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 一括の検査(`bun run check`、整形・静的解析・型生成・GraphQL・型検査・写しの照合) | 検査で直した後の3回目の実行で25件全て成功(5件は対象外のため飛ばした)。1・2回目はapiの静的解析だけが終了コード137(メモリ不足による強制終了)で落ち、単独の`bun run lint`では毎回成功した(3回目の後にも単独で成功)。apiの静的解析の最大の使用量は約6.9GBで、開発コンテナの空き(約7.4GB)に近い(下の「環境の制約」)                                                                                                                                                                                                                                                                                            |
+| 単体テスト(`bun run test:all:unit --coverage`)                                   | 直した後に全て成功(ルート2,084件・common-lib 3,343件・api 11,967件・event 2,241件・frontend-lib 1,885件・client 1,376件・admin 748件)。直す前はルート・api・adminが閾値で失敗した(下の1〜3)                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ブラウザテスト(`bun run test:all:browser --coverage`)                            | frontend-lib(93ファイル1,229件)とadmin(98ファイル1,360件)は成功。clientは一括の実行で「Browser connection was closed」により247ファイル中84ファイルしか実行されず、単独の再実行でもメモリが尽きて時間切れが続いた。並列数を2にした4分割の実行(`--shard`と`--reporter=blob`)では、落ちた2ファイル(`match/full-time-countdown`・`year-tournament/year-entry-placements`、CDPの「Another locale override is already in effect」)を除く245ファイルが成功し、その2ファイルも単独の再実行で成功した。分割の結果を`--mergeReports --coverage`で合算したカバレッジは閾値を満たした                                |
+| Workers統合テスト(`bun run test:all:worker --coverage`)                          | eventは成功(123ファイル1,477件)。apiは本specと無関係の11ファイル(47件)が約90秒の時間切れで落ち、11ファイルとも単独の再実行で成功した(517件)。並列数を6にした3分割の実行と合算では576ファイル8,656件が全て成功し、カバレッジの閾値を満たした                                                                                                                                                                                                                                                                                                                                                               |
+| E2E(`run-with-secrets --scope local -- bun run test:e2e:dev-and-preview`)        | apiを`--test-scheduled`、eventをローカルの設定で起動し、`db:migrate:local`の後に`E2E_WORKERS=1`で単独に実行した。ビルド後のプレビューの段階は107件全て成功(本specの`report-submission`・`report-handling`・`report-rejection`・`report-categories`と直列の組`report-counts`を含む)。開発サーバーの段階は106件成功・1件失敗で、落ちたのは本specと無関係の`e2e/client/auth/two-factor.e2e.test.ts`(ログインのフォームのbot判定の欄が20秒以内に現れない)だけだった。同じテストを開発サーバーで単独に再実行すると成功した。終了後に起動した全てのサーバーを止め、48042〜48045番が空いたことを`curl`で確かめた |
+
+### カバレッジ
+
+- `git diff --name-only ad2d27ff`と未追跡のファイルのうち、`.ts`・`.tsx`のテスト・生成物を除くファイル(159件)を、ルートと各アプリの単体・ブラウザ・Workers統合テストのlcovと突き合わせた(共有ディレクトリの配置先は配置元に読み替えた)。計測された136件は、計測された種別の全てで行と関数が80%以上である。
+- 計測の対象に入らない23件は、型だけのファイル(`apps/api/src/application/reporting/ports.ts`・`apps/backend-lib/core/reporting/ports.ts`・`apps/backend-lib/workers/reporting/report-erasure-statements.ts`)、ブラウザテストの`coverage.include`が`src/components/**`だけのため外れる管理画面と利用者側の登録箇所とルート(`apps/admin/src/composition/`の3件・`apps/admin/src/routes/_authenticated/reports/`の2件・`apps/client/src/composition/`の3件。上流の前例と同じ)、テストの補助(`apps/admin/test/`の5件・`apps/api/test/support/reporting-case-graphql-operations.ts`)、E2Eの手順と補助と設定(`e2e/`の5件・`playwright.config.ts`。ローカルD1を操作する補助は前例どおり計測しない)である。
+
+### 検査で直したもの
+
+1. ルートの単体テストのカバレッジが`apps/common-lib/reporting/report-rules.ts`(関数50%・行73.81%)と`apps/common-lib/text/graphemes.ts`(関数50%・行37.5%)で閾値を下回った。E2Eの補助`e2e/support/report-fixture-sql.ts`が読み込む共用部品のファイルが、ルートのカバレッジの分母に入るためである。`testing/001`の「テストが読み込んだ他のアプリのソース」の規則(そのファイルの関数をすべて呼ぶ)に従い、`e2e/support/report-fixture-sql.unit.test.ts`に、補助が使わない`sortReportCategories`と`truncateGraphemes`を呼ぶ2件を足した(どちらも100%になった)。
+2. apiの単体テストのカバレッジが`src/presentation/graphql/auth-inputs.ts`(関数37.5%・行66.22%)で閾値を下回った。本specの`modules/reporting/inputs.unit.test.ts`・`errors.unit.test.ts`・`resolver-support.unit.test.ts`が、`inputs.ts`・`errors.ts`を通じて`auth-inputs.ts`を読み込み、その一部の関数だけを使ったためである(他の機能のスキーマモジュールの`inputs.ts`は単体テストを持たない)。ugc-moderationの実装の記録の1と同じく、3つのテストを内容を変えずに`*.worker.test.ts`へ移した(読み込みを`vitest`に替えただけ)。移した後は`inputs.ts`・`errors.ts`・`resolver-support.ts`がWorkers統合テストの分母に入り、閾値を満たす。
+3. adminの単体テストのカバレッジが`src/components/reporting/case/report-case-messages.ts`(関数0%)で閾値を下回った。`infringement-inquiry-form-schema.unit.test.ts`が読み込む文言のファイルの2つの関数(`reportStatusChangeTitle`・`reportStatusChangeDescription`)を単体テストが呼んでいなかったためである。`report-case-messages.unit.test.ts`を足し、題と3種の説明を確かめた(関数・行とも100%)。
+
+アプリのコードは変えていない。
+
+### 環境の制約
+
+- 開発コンテナ(メモリ約11.9GB・スワップ2GB)では、エディタの拡張機能などが常時約4.5GBを使い、残りで重い検査を流した。apiの静的解析(型情報を使う規則のため約6.9GB)、clientのブラウザテスト(V8のカバレッジでタブが1つ2GB超まで膨らむ)、apiのWorkers統合テスト(既定の並列数)は、全件を一度に流すとメモリが尽きて落ちた。どれも落ちたテスト・段階を単独や分割で流すと成功し、本specの変更が原因の失敗は無かった。
+- CIのランナー(`ubuntu-24.04`)のメモリが開発コンテナより小さい場合、apiの静的解析は同じく強制終了し得る。本specはapiと共有ディレクトリに114の`.ts`・`.tsx`のファイル(テストを含む)を加えたため、静的解析が読む型の情報の量が増えている。CIでの所要のメモリは計測していない。
+
+### 前提にした上流の改訂
+
+- admin-foundationの仮7(apiの`AuditLogReader.latestForMany`と、テストの共有の偽物`createFakeAuditLogReader`(`apps/api/src/application/admin/testing/fake-audit-log-reader.ts`))の実装を前提にした。本specは`DefaultReportCaseReader`の一覧の対応期間でこれを呼び、テストの偽物も上流のものを使い、admin-foundationの実装とテストは変えていない。
+
+### 上流の公開の契約
+
+上流の公開の契約(ポート・登録口の形・GraphQLの既存の型)は変えていない。上流のファイルへの変更は次の2種だけである。
+
+- ugc-moderationの書き込みの参加者の登録の一覧(`apps/api/src/composition/moderation-write-participants.ts`の`MODERATION_WRITE_PARTICIPANTS`)へ、本specの`content-reporting.report-case-closing`(`REPORT_CASE_CLOSING_PARTICIPATION`)を1件追記した。
+- 管理画面の措置の影響する照会の対応表(`apps/admin/src/components/moderation/shared/use-moderation-mutation.ts`)を、振る舞いを変えずに`invalidateModerationAffectedQueries(queryClient, targetKind)`として公開した。表の持ち主はugc-moderationのままで、ugc-moderationの既存のブラウザテストで確かめた。
+
+このほか、上流の登録口(監査ログの操作種別・メール種別・DBのスキーマの集約・同期と非同期の波及処理・定期実行・スキーマモジュール・管理画面のメニューとダッシュボードとカテゴリとプロダクトの詳細の区画・利用者側のコメントとプロダクトとプロフィールの操作)へ本specの項目を追記した。範囲外の重複の解消として、inquiry-chatのカードとugc-moderationの週の統計のカードの同じ判定を`apps/admin/src/components/dashboard/dashboard-card-state.ts`の`dashboardCardStateOf`へ移した(振る舞いは同じ、タスク8.5)。
+
+### 本specの登録に合わせて期待値を改めた上流のテスト
+
+登録の一覧を固定する上流のテストの期待値を、上流のテストの意図(並びの前後関係・重複の禁止・ugc-moderationが末尾)を保って改めた。
+
+| タスク | テスト                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 改めた内容                                                                                                                                                                                   |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.2    | `apps/db/schema/index.unit.test.ts`・`scripts/tooling/run-all.unit.test.ts`                                                                                                                                                                                                                                                                                                                                                                                          | スキーマの集約に通報の3テーブル、`check:contract-copies`のコマンドに`content-reporting-contract-copies.unit.test.ts`                                                                         |
+| 1.3    | `apps/common-lib/admin/audit-actions/index.unit.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                             | 操作種別の集約の末尾(ugc-moderationの後)に通報の7種                                                                                                                                          |
+| 1.5    | `apps/backend-lib/core/email/kinds/index.unit.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                               | メール種別の集約から通報の3種を引けることの検査を足した                                                                                                                                      |
+| 3.6    | `apps/api/src/composition/moderation-write-participants.unit.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                | 「初版は参加者を登録しない」を「通報の案件の完了の参加者だけを登録する」に                                                                                                                   |
+| 5.2    | `apps/api/src/composition/graphql-modules.worker.test.ts`・`apps/api/test/config/ugc-moderation-scheduled-jobs.unit.test.ts`・`apps/api/src/composition/search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts`                                                                                                                                                                                                                                   | `reporting`のモジュールが1つだけ登録され型がスキーマに含まれることの検査を足した、4:21のジョブの1910の次を2000に、4:21のジョブの一覧に2000・2010                                             |
+| 6      | `apps/event/src/composition/user-lifecycle-async-handlers.unit.test.ts`・`product-lifecycle-async-handlers.unit.test.ts`・`directory-module.worker.test.ts`・`engagement-module.worker.test.ts`・`match-module.purge.worker.test.ts`・`notifications-module.account-purge.worker.test.ts`・`payments-module.worker.test.ts`・`product-module.worker.test.ts`・`profile-module.worker.test.ts`・`ultras-module.worker.test.ts`・`user-product-erasure.worker.test.ts` | 利用者の`purge_due`の末尾3件を[sponsorship, content-reporting, ugc-moderation]にしテスト名に「通報の削除と」を加えた、directoryの`.slice(-6)`を`-7`に、各モジュールの`purge_due`の一覧に1800 |
+| 7.3    | `apps/client/src/components/engagement/comment-menu.browser.test.tsx`・`comment-actions.browser.test.ts`・`apps/client/src/components/profile/profile-card.browser.test.tsx`・`public-profile-sections.browser.test.ts`・`apps/client/src/components/product-page/product-page-sections.browser.test.ts`                                                                                                                                                             | コメントの操作・プロフィールのメニュー・プロダクトのページの区画に通報の項目(プロフィールのカードは既定の項目と`menuItems: []`の2つに分けた)                                                 |
+| 8.5    | `apps/admin/src/components/inquiry/unhandled-inquiries-card.browser.test.tsx`・`apps/admin/src/components/moderation/statistics/weekly-statistics-card.browser.test.tsx`・`apps/admin/src/components/pages/product-detail-page-missing.browser.test.tsx`・`product-detail-panels.browser.test.tsx`                                                                                                                                                                   | ダッシュボードのカードとプロダクトの詳細の区画の通報の照会に`respondReportSummaries`で応答                                                                                                   |
+| 8.6    | `apps/admin/src/components/pages/categories-page.browser.test.tsx`・`apps/admin/src/components/product/product-category-section.browser.test.tsx`                                                                                                                                                                                                                                                                                                                    | カテゴリのページの区画の末尾に「通報カテゴリ」                                                                                                                                               |
+| 8.6    | `apps/admin/src/components/pages/audit-logs-page.browser.test.tsx`                                                                                                                                                                                                                                                                                                                                                                                                   | 監査ログの操作種別の選択肢に通報の7種                                                                                                                                                        |
+| 8.7    | `apps/admin/src/components/layout/admin-nav-order.unit.test.ts`・`admin-navigation.browser.test.tsx`・`apps/admin/test/admin-shell.browser.test.tsx`                                                                                                                                                                                                                                                                                                                 | 管理画面のメニューに「通報」(70、16項目)                                                                                                                                                     |
+
+E2Eの補助の上流のファイルは、範囲外の最小の変更として`e2e/support/directory-fixtures.ts`の`ListedProducts`に`ownerEmail`を足し、`e2e/admin/user-moderation-steps.ts`の`moderationAuditLogRows`の中身を`auditLogRowsOf`として切り出した(振る舞いは同じ、タスク9.4)。並行で流すと時間切れになり得る件数の比較のため、`playwright.config.ts`の`SERIAL_GROUPS`に`report-counts`の組を加えた。
+
+### 層の規則
+
+- application層(`apps/api/src/application/reporting/`・`apps/event/src/application/reporting/`)に、`**/lib/workers/**`と`BatchItem`の読み込みが無いことを検索で確かめた(該当0件)。一括の書き込みの文はinfrastructure層の`D1ReportCaseStatements`・共有の`report-erasure-statements.ts`が組み、application層は型だけのポートで受け渡す。
+
+### 仮決定の確定
+
+- 仮1〜仮8は2026-10-24に開発者が全て確定した。仮3(4状態の間を手で自由に変え、手での変更は通知しない)・仮5(1営業日は土日を含む単純な24時間)・仮7(対象の物理削除では案件と通報を残し、対象への参照だけを消す)は推奨と異なる案Bである。
+
+### 2026-11-22の差分の分析の決定
+
+上の「差分の分析の判断の確定と反映」の開発者の回答のとおりに実装した。
+
+- メールの冪等のキー(G-1): 結果と却下の通知は完了ごとのキー(`<宛先のまとまりの通報のIDの最小>:<完了の日時のミリ秒>`・`<案件のID>:<完了の日時のミリ秒>`)、照会はキー無し。
+- 部分一意索引への衝突(G-2): `onConflictDoUpdate`の`targetWhere`(`closed_at is null`)で案件の作成と更新を1文にした(`D1ReportSubmissionStore`)。
+- 物理削除の処理の順(G-3): 利用者・プロダクトの`purge_due`を1800にし、ugc-moderationの1900を末尾に保った。
+- 受け付けの検証の順(G-5): 入力の形式と連絡先の要否・形式を、リゾルバでbot判定の前に行う。
+- 措置の後の照会の無効化(G-10): ugc-moderationの`invalidateModerationAffectedQueries`を呼ぶ。
+- 確認のダイアログ(G-11): 一覧と詳細の単位に1つ置き、対象の不在・完了済み・競合・案件の不在の失敗で案件の照会を取り直す(詳細では閉じるまで遅らせる)。
+- 技術ドキュメントの範囲(G-14): `backend/022`・`security/011`・`frontend/021`の3本を作り、既存の`backend/021`・`frontend/015`・`frontend/020`・`security/008`と重なる部分は参照にして差分に絞った。
+
+### roadmapの帯
+
+- 本specの帯の「使用中の値」は「4:21は2000・2010、波及処理は1800」である(送り直し`content-reporting.notice-redispatch`が2000、保持期間`content-reporting.report-retention`が2010、`purge_due`の`content-reporting.user-report-erasure`・`content-reporting.product-report-erasure`が1800)。波及処理の1800は、`.kiro/steering/roadmap.md`の帯の割り当ての表の「波及処理は2000」と異なる(G-3の開発者の決定による)。本specはroadmapを編集しないため、コントローラーへ報告する。

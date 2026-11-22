@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 通報の規則・テーブル・監査ログの操作種別・対応期間・メール・サービス仕様
+- [x] 1. 基盤: 通報の規則・テーブル・監査ログの操作種別・対応期間・メール・サービス仕様
 - [x] 1.1 通報と案件の規則と表示名の共有定義を作る
   - 前提: dev-tooling〜ugc-moderationの26specの全タスクが完了していること(ugc-moderationの`ProductModerationService`・`CommentModerationService`・`UserModerationService`と`ModerationCommand.participation`・書き込みの参加者の登録口(`ModerationWriteParticipant`・`ModerationWriteContext`・`MODERATION_WRITE_PARTICIPANTS`)・`ModerationOutcome.actionId`・`ADMIN_PRODUCT_DETAIL_SECTIONS`・E2Eの`moderation-fixtures.ts`、admin-foundationの`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements`・`AuditLogReader`(仮7の`latestForMany`を含む)とテストの共有の偽物`createFakeAuditLogReader`・`AUDIT_ACTIONS`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・`CategoryMasterEditor`・`ConfirmActionDialog`・E2Eの`admin-bootstrap.ts`・`local-d1.ts`、inquiry-chatの`CATEGORY_SECTIONS`、directory-discoveryの`PRODUCT_PAGE_SECTIONS`とE2Eの`directory-fixtures.ts`、user-profile-socialの`PUBLIC_PROFILE_MENU_ITEMS`・`UserProfileDirectory`、engagementの`COMMENT_ACTIONS`・`CommentStore`、product-launchの`ProductDirectory`とプロダクトライフサイクルの非同期の登録口、identity-authの`AccountGuard`・`UserContactDirectory`・ユーザーライフサイクルの同期と非同期の登録口・E2Eの`mailpit.ts`、backend-platformの`RateLimitCounterClient`・`hashRateLimitKey`・bot判定、api-gatewayの`assertHuman`、email-deliveryのメールの基盤)。無ければ該当するタスクを保留して開発者へ報告する。設計は実装済みの上流の規約(メールの冪等のキー・部分一意索引への衝突・`sendWithTurnstile`・監査ログの照会の無効化・一覧の単位の確認のダイアログ・`RecoverableSlot`)に従っており、各タスクもそれに従う。実装済みのコードとの照合の記録はresearch.mdの「実装済みの上流との差分の分析」にある
   - 先に、単体テストで、対象の種類、理由の検証(空白だけ・1,000書記素と1,001書記素・結合文字と絵文字)、連絡先の要否(未ログインと権利侵害の組だけ)、標準カテゴリの固定のIDの判定、カテゴリの並び順(追加の順・権利侵害・その他の順で末尾)、手での状態の変更の可否(4状態の全ての組で、同じ状態への変更だけ不可)と種類(未対応⇄対応中・完了への変更(完了どうしを含む)・完了からの再開)、対象の種類ごとの措置、管理者の理由の要否(措置・措置なしの対応済・却下と手での完了と再開は必須、未対応⇄対応中は任意)と500書記素・501書記素、照会の内容の上限、状態の値と表示名がinquiry-chatの問い合わせの対応ステータスと一致することを確かめる
@@ -50,7 +50,7 @@
   - _Boundary: `docs/GUIDES/service`の該当する8文書_
   - _Requirements: 20.6_
 
-- [ ] 2. 共有部品
+- [x] 2. 共有部品
 - [x] 2.1 通報の削除のストアを作り、両アプリに束縛する
   - 先に、識別子`REPORTING_PLATFORM_TYPES`が`Symbol.for('reporting.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
   - apiのジョブとeventの処理のapplication層が読み込めるよう、削除の操作の契約`ReportErasureStore`(文を返さないメソッド)を`apps/backend-lib/core/reporting/ports.ts`に、共有部品の識別子`REPORTING_PLATFORM_TYPES`を`core/reporting/identifiers.ts`に作る。退会の論理削除の文を返す`ReportErasureStatements`は`workers/reporting/report-erasure-statements.ts`に作り、apiのinfrastructure層の同期の処理(3.6)だけが使う。application層は`**/lib/workers/**`を型も含めて読み込めず、文も扱わないため、文の契約を`core`に置かず、削除の操作の契約と識別子を`workers`に置かない
@@ -67,7 +67,7 @@
   - _Depends: 2.1_
   - _Requirements: 17.7, 17.8_
 
-- [ ] 3. apiの土台: 識別子・ストア・同期の処理
+- [x] 3. apiの土台: 識別子・ストア・同期の処理
 - [x] 3.1 apiの識別子・ポート・入力と結果の型を作る
   - 設計の全てのユースケース・ストア・書き込みの単位のポート`ReportCaseWriter`・回数制限のポート`ReportSubmissionRateLimit`・ジョブ・同期の処理と、infrastructure層の文の組み立て`D1ReportCaseStatements`・措置の書き込みの参加者`ReportCaseClosingParticipant`のDIの識別子と、入力と結果の型を先に作る。application層のポートは文を返さず接続を受け取らない
   - 措置と一体の完了の参加の値(`application/reporting/report-case-closing-participation.ts`の種類`content-reporting.report-case-closing`・組み立て・読み取り)を作る。値は案件のID・措置・理由・日時・準備した監査ログだけで、文を含めない
@@ -116,7 +116,7 @@
   - _Depends: 2.1, 3.2, 3.3, 3.4, 3.5_
   - _Requirements: 17.3, 19.1_
 
-- [ ] 4. ユースケース(本specの識別子のファイルと登録箇所を変えない)
+- [x] 4. ユースケース(本specの識別子のファイルと登録箇所を変えない)
 - [x] 4.1 (P) 通報の対象の判定と表示名を作る
   - ハンドルの形式は`checkHandleFormat(targetRef, USER_HANDLE_RULE)`で検査する
   - 先に、単体テストで、ユーザーの現在と旧のハンドルの解決とハンドルの形式の誤り、停止中・退会済みの拒否、掲載中のプロダクトだけを受け付けること(未掲載・非公開化・投稿者が停止中・論理削除を拒否)、コメントの削除・非公開化・匿名化・投稿者が不可視・プロダクトが未掲載の拒否、投稿者と対象のプロダクトの返却、表示名の照会が種類ごとに1回であること、引けない対象と対象への参照を消した案件を照会せずに表示できない対象とすること、管理者向けに非公開化のコメントの抜粋も返すことを確かめる
@@ -176,7 +176,7 @@
   - _Depends: 1.4, 3.4, 4.1_
   - _Requirements: 6.1, 6.2, 7.1, 7.2, 7.3, 7.5, 7.6, 13.1, 13.2, 13.3, 13.5, 13.6, 15.1, 15.3, 19.6_
 
-- [ ] 5. ジョブ・束縛・GraphQL
+- [x] 5. ジョブ・束縛・GraphQL
 - [x] 5.1 通知の送り直しと保持期間の削除のジョブを作る
   - 閾値は実際に動いた時刻ではなく起動の予定時刻(`ScheduledJobContext.scheduledTime`)から引く(`security/008`)。2つのジョブの定義は各ジョブのファイルで凍結した`REPORT_NOTICE_REDISPATCH_JOB_DEFINITION`・`REPORT_RETENTION_JOB_DEFINITION`としてexportする(既存のジョブと同じ形)
   - 先に、単体テストで、予定時刻の1時間以上前に完了した依頼待ちの案件の送り直しと失敗の件数のエラートラッキングへの通知、予定時刻から引いた閾値による未ログインの通報の保持期間の削除・参照を消した案件の3年の削除・空の案件の削除の順序と繰り返しの上限と件数の記録、起動が遅れても同じ予定時刻なら対象が変わらないことを確かめる
@@ -222,7 +222,7 @@
   - _Depends: 2.1_
   - _Requirements: 17.4, 17.5, 17.6, 19.2_
 
-- [ ] 7. 利用者側の画面
+- [x] 7. 利用者側の画面
 - [x] 7.1 利用者側のGraphQLの操作を書き、型と許可リストを生成する
   - `reportCategories`・`submitReport`を利用者側の操作として`src/graphql/operations/reporting/`の1ファイル1操作の`*.graphql`(操作名は`Client`で始める)に書き、利用者側で`bun run graphql:generate`を実行して型と`<操作名>Document`を生成し、apiで`bun run graphql:allowlist`を実行して利用者側の許可リストを再生成する
   - カテゴリの照会の選択肢(`graphqlQueryOptions`)と通報の送信の選択肢(`graphqlMutationOptions`)を`src/graphql/reporting.ts`に作り、単体テストで選択肢と照会のキーを確かめる。部品は生成物の型に直接依存しない
@@ -244,7 +244,7 @@
   - _Depends: 7.2_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 8. 管理画面
+- [x] 8. 管理画面
 - [x] 8.1 管理者側のGraphQLの操作を書き、型と許可リストを生成する
   - 照会と案件の5つの操作・カテゴリの3つの操作を管理者側の操作として`src/graphql/operations/reporting/`の1ファイル1操作の`*.graphql`(操作名は`Admin`で始める)に書き、管理者側で`bun run graphql:generate`を実行して型と`<操作名>Document`を生成し、apiで`bun run graphql:allowlist`を実行して管理者側の許可リストを再生成する
   - 照会の変換・`loader`(失敗を握りつぶしてキャッシュに残し、`cause === 'stay'`では待たない)・無効化の関数を`src/graphql/admin-reporting-cases.ts`・`admin-reporting-categories.ts`・`admin-reporting-summaries.ts`に作り(`frontend/020`・`frontend/006`)、単体テストで変換と照会のキーと無効化の範囲を確かめる。部品は生成物の型に直接依存しない
@@ -304,7 +304,7 @@
   - _Depends: 8.3, 8.4_
   - _Requirements: 18.1_
 
-- [ ] 9. 統合・ドキュメント・E2E
+- [x] 9. 統合・ドキュメント・E2E
 - [x] 9.1 技術ドキュメントとオンボーディングを書く
   - `backend/022-submission-aggregation-and-case-resolution.md`・`security/011-mixed-identity-submission-limits.md`・`frontend/021-registered-action-dialogs.md`を本プロジェクト固有の値を含めずに書き、各READMEの文書一覧に加える。既存の文書と重なる部分は参照に置き換えて差分に絞る: `backend/022`は投稿の集約・完了と再開・対応期間の規則(措置と完了の一体の確定は`backend/021`を参照)、`frontend/021`は複数の登録口で同じダイアログを共有する形と一覧の単位のダイアログの置き場所と、`frontend/020`と異なり完了済み・競合・案件の不在の失敗でも一覧を取り直す場合の扱い(メニューの登録口の項目とダイアログは`frontend/015`、確認のダイアログと対象の不在の取り直しは`frontend/020`を参照)、`security/011`は会員と未ログインが同じ操作を使う投稿の回数制限と連絡先の要否(未ログインの投稿の保護は`security/008`を参照)
   - `docs/onboardings/project-values.md`にジョブ・処理・同期の処理・措置の書き込みの参加者(`content-reporting.report-case-closing`)・登録の名前と`order`(`purge_due`の1800)、メールの冪等のキーの組み立て、回数制限の規則、メール種別、監査ログの操作種別、標準カテゴリの固定のIDを、`CLAUDE.md`の「技術規則の参照先」に`backend/022`の行を加える
@@ -340,7 +340,7 @@
   - _Depends: 7.3, 8.3, 8.4, 8.6, 9.2_
   - _Requirements: 20.4_
 
-- [ ] 9.6 全体の検査とカバレッジを確かめ、作業を報告する
+- [x] 9.6 全体の検査とカバレッジを確かめ、作業を報告する
   - 整形・静的解析・型検査・4種のテストを全アプリで実行し、本specが変更したファイルのカバレッジが80%以上であることを確かめる
   - admin-foundationの仮7(`latestForMany`と共有の偽物)の実装を前提にした旨、上流の公開の契約を変えていない旨(ugc-moderationの書き込みの参加者の登録の一覧へ1件を追記し、管理画面の措置の影響する照会の対応表を振る舞いを変えずに`invalidateModerationAffectedQueries`として公開しただけである旨)、本specの登録に合わせて期待値を改めた上流のテストの一覧、application層に`**/lib/workers/**`・`BatchItem`の読み込みが無い旨、仮1〜仮8が2026-10-24に確定した旨(仮3・仮5・仮7は案B)、2026-11-22の差分の分析の決定(メールの冪等のキー・`onConflictDoUpdate`・`purge_due`の1800・検証の順・照会の無効化・一覧の単位のダイアログ・技術ドキュメントの範囲)、roadmapの帯の「使用中の値」(4:21は2000・2010、波及処理は1800で帯の割り当ての2000と異なる)を作業の報告に記録する
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
@@ -391,3 +391,4 @@
 - 8.7: `ADMIN_NAV_ITEMS`に`{ to: '/reports', label: '通報', order: 70 }`(「画像モデレーション」と「問い合わせ」の間、16項目)。上流の`admin-nav-order.unit.test.ts`・`admin-navigation.browser.test.tsx`・`test/admin-shell.browser.test.tsx`の期待値を改め、`/reports`・クエリ付きの一覧・`/reports/$caseId`で通報が現在のページになることを確かめた。管理者側の全テスト(単体744件・ブラウザ1,360件)が成功
 - 9.5: `e2e/admin/report-rejection.e2e.test.ts`・`report-categories.e2e.test.ts`と共通の手順`e2e/admin/report-case-steps.ts`(`openReportCaseDetail`・`expectReportCaseStatus`・`expectReportCaseBreakdown`・`rejectCommentReportCase`・`changeReportCaseStatus`・`expectNoClosingRecord`・`expectRejectionNotice`)。申出者は`moderation-fixtures`の評価者(ログイン中)を`createReport`で使う。「メールが増えない」は却下のメールが届いてから`administrative-withdrawal-steps.ts`の`expectNoEmailSince`で20秒待つ。**管理画面の文言の一部をE2Eに写した(`report-messages.ts`が`.tsx`の部品へつながる型の読み込みを持ち、ルートの型検査がTS6142で失敗するため。前例どおり)**。9.3の申し送りどおり`findOpenReportCaseId`を`e2e/support/report-fixtures.ts`へ移し(`report-fixture-sql.ts`の`openReportCaseIdSql`が`targetSql`を使う)、単体テストを付けた。開発コンテナに`ss`が無いため、ポートの確認は`curl`で行う
 - 9.4: `e2e/admin/report-handling.e2e.test.ts`。9.5の`report-case-steps.ts`に手順を足し(`changeReportCaseStatus`は内部の`submitStatusChange`へ一般化、未対応→対応中は理由が任意の欄なので`startReportCaseProgress`)、範囲外の最小の変更として`e2e/support/directory-fixtures.ts`の`ListedProducts`に`ownerEmail`を、`e2e/admin/user-moderation-steps.ts`の`moderationAuditLogRows`の中身を`auditLogRowsOf`として切り出した(振る舞いは同じ)。件数の確かめ方: ダッシュボードのカードは未対応だけを数えるので、通報の後に増え対応中で減ることを確かめる。プロダクトの詳細の区画は累計なので対応済の後も1件で、未完了の案件の行が消えることを確かめる。**カードの件数の比較は利用者側の`report-submission.e2e.test.ts`(未対応の権利侵害の案件を作る)と同時に流れると時間切れになり得るため、`playwright.config.ts`の`SERIAL_GROUPS`に`report-counts`の組を加えて順に流す**
+- 9.6: 全体の検査は開発コンテナのメモリの上限でapiの静的解析・clientのブラウザテスト・apiのWorkers統合テストの一括の実行が落ちることがあり、単独の再実行か`--shard`と`--reporter=blob`の分割の後の`--mergeReports --coverage`で通した(失敗はいずれも本spec外のファイル)。apiの`inputs`・`errors`・`resolver-support`の単体テストは、`auth-inputs.ts`の単体テストのカバレッジの不足を避けるためugc-moderationの前例に従いWorkers統合テストへ移した。ルートの単体テストが読み込む共用部品の関数は全て呼ぶ(testing/001)。作業の報告はresearch.mdの「実装の記録(2026-11-22)」
