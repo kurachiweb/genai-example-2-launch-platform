@@ -134,7 +134,7 @@
   - _Requirements: 3.4, 3.6, 12.3_
 
 - [ ] 5. APIサーバー: 要求・一覧・ダウンロード・日次のジョブ
-- [ ] 5.1 要求と一覧のユースケースと回数制限を作る
+- [x] 5.1 要求と一覧のユースケースと回数制限を作る
   - APIサーバーの本specのDIの識別子のファイルと、application層のポート(回数制限の`DataExportRequestLimits`と、`PLATFORM_TYPES.MessagePublisher`から受け取る`DataExportMessagePublisher`)のファイルを本タスクで作る。ユースケースは共有部品を`core/data-export`の型と識別子で受け取り、`**/lib/workers/**`を型も含めて読み込まない
   - 回数制限の実装`CounterDataExportRequestLimits`(厳密カウンタを使う)と規則`DATA_EXPORT_REQUEST_RULE`はAPIサーバーのinfrastructure層に置く(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)
   - 先に、Workers統合テストで、`CounterDataExportRequestLimits`が偽の厳密カウンタにハッシュ化した利用者のIDのキーで数え、上限超過で429(コード`rate_limit_exceeded`)と再試行の秒数になることを確かめる
@@ -283,3 +283,4 @@
 - 4.4: `EmailDataExportNotifier`は`@injectable()`を付けず、コンストラクタの引数は`DataExportStore`・`UserContactDirectory`・`EmailSender`・`DataExportNotifierEnv`・appNameの順で、4.5が`toDynamicValue`で組み立てる。期限切れ・列の欠けた記録・未完了のままの依頼待ちは`skipped`にする(送り直しで直らないため)。
 - 4.5: `StoreDataExportTerminator.fail`は記録が無いか未完了でなければ何もせず`already_finished`を返す。破棄は`uploadId`と`objectKey`が揃うときだけ行い(設計は`upload_id`があれば、と書く)、成功しても`clearUpload`は呼ばず日次の後片付けに任せる。定型の通知の指紋は`['data-export', kind]`、タグは`data_export_incident`。5つの部品は処理単位ごとに`inSingletonScope()`。
 - 6.3: 返す型`ProductActivitySource`をリーダーのファイルから公開し、6.4の収集が使う。プロダクトも項目を明示して写す(上流の余分な項目を漏らさない)。他者のプロダクトの名称は重複を除いた全IDを`findSummaries(ids, 'not-deleted')`の1回で引く(90件の分割は上流が行う)。受賞は週間→年間の順。
+- 5.1: 生成の依頼の失敗の503はコード`data_export_unavailable`(種類`unavailable`)にした(設計はコード名を決めていない)。`DataExportView`・`toDataExportView`はサービスと一覧が共用するため`data-export-view.ts`に分けた。`listMine`は`first`を検証しないので、5.2のリゾルバが20を超える`first`と不正な`after`を必ず拒否する。回数制限のキーは`hashRateLimitKey(hasher, 'data-export', userId)`。
