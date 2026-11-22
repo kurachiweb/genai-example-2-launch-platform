@@ -336,6 +336,7 @@ describe('退会の抑止記録の削除', () => {
     expect(await suppressedAddresses()).toEqual([OTHER_ADDRESS]);
     expect(await db.select().from(emailCleanupCursors)).toEqual([]);
     expect(await readHandlerRuns()).toMatchObject([
+      { eventId: eventIdOf(10), handlerName: 'data-export.archive-erasure' },
       { eventId: eventIdOf(10), handlerName: CLEANUP_HANDLER_NAME },
       {
         eventId: eventIdOf(10),

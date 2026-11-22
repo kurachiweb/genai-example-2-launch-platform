@@ -3,6 +3,7 @@ import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
+import { ArchiveErasureHandler } from '../application/data-export/archive-erasure-handler.ts';
 import { ArchiveGenerationService } from '../application/data-export/archive-generation-service.ts';
 import { EVENT_DATA_EXPORT_TYPES } from '../application/data-export/event-data-export-types.ts';
 import { ExportFileResolver } from '../application/data-export/export-file-resolver.ts';
@@ -44,5 +45,8 @@ export const EVENT_DATA_EXPORT_MODULE: AppModule<
     bind<GenerationWatchdogHandler>(
       EVENT_DATA_EXPORT_TYPES.GenerationWatchdogHandler,
     ).to(GenerationWatchdogHandler);
+    bind<ArchiveErasureHandler>(
+      EVENT_DATA_EXPORT_TYPES.ArchiveErasureHandler,
+    ).to(ArchiveErasureHandler);
   }),
 };

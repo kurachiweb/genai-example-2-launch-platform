@@ -305,6 +305,7 @@ describe('即時の終了の後続の処理の登録', () => {
       ACCOUNT_HANDLER_NAME,
       'tournament-week.account-entry-loss',
       'tournament-year.account-entry-loss',
+      'data-export.archive-erasure',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(

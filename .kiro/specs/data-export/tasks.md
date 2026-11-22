@@ -175,7 +175,7 @@
   - _Depends: 3.1, 4.5_
   - _Requirements: 3.7, 5.1, 5.2, 5.6, 5.7, 5.8, 5.9, 6.1, 6.3, 6.4, 6.5_
 
-- [ ] 6.2 退会と物理削除の時期の削除の処理を作り、登録する
+- [x] 6.2 退会と物理削除の時期の削除の処理を作り、登録する
   - 6.1が作るイベントサーバーの本specのモジュールへ束縛を加える
   - 先に、単体テスト(偽の部品)とWorkers統合テストで、退会(`withdrawn`)と物理削除の時期(`purge_due`)のそれぞれで、その利用者の期限切れ・失敗を含む全ての記録ごとの未完了のアップロードの破棄・オブジェクトの削除・記録の削除、100件で`continue`・それ未満で`done`、2回目の実行で結果が変わらないこと、他の利用者の記録を残すこと、削除の失敗が例外として再試行に回りエラートラッキングへ届くことを確かめる
   - ユーザーライフサイクルの非同期の登録へ`withdrawn`と`purge_due`の2100で加える。`purge_due`の2100はugc-moderationの1900の後に動く(D-1)
@@ -294,3 +294,4 @@
 - 7.1: 中継の経路は接頭辞より後ろを`decodeURIComponent`してから`encodeURIComponent`し直し、上流のパスを1つの区画に収める(メディアの中継と同じ方針)。取得の補助は`src/graphql/data-export.ts`(`myDataExportsQueryOptions(viewerId)`は`infiniteQueryOptions`で`refetchInterval`は未設定、`loadMyDataExports`・`invalidateMyDataExports`・`requestDataExportMutationOptions`)、フラグメントは`DataExportFields`。`routeTree.gen.ts`はStartのpluginのフッターを含む通常の生成の形にする(`@tanstack/router-generator`の直接の生成はフッターを落とす)。
 - 5.4: 共通の`drainInBatches`は同じ起動で処理済みのIDを飛ばし、残った件数だけ次の読み取りの`limit`を広げる(失敗した記録が先頭に溜まっても後ろへ進むため。上限は1回1000件)。`DataExportTerminator.fail`の例外は警告を出して次へ進み、最後に`Error`を投げてジョブを`failed`にする。`archive-deletion-failed`の件数は削除とアップロードの破棄の失敗の合算。閾値と`fail`の`now`は`scheduledTime`から求める。ログのカテゴリは`['api', 'application', 'data-export']`。
 - 7.2: 一覧は見出しを持たずページのh1で名前を付け、「自動更新」の`Switch`は一覧の右上(`components/match/auto-refresh-switch.tsx`を再利用)。`role="log"`は付けない(取り直しで項目が加わらず、既存の項目の状態が変わるだけのため。状態の変化は完了のメールで知らせる)。loaderの`staleTime: 0`と部品の`refetchOnMount: false`を組で使う。7.3は`DataExportList({ viewerId, labelledBy, retryFocusRef })`をルートで区画に置き換え、要求の後に`invalidateMyDataExports`を呼ぶ。
+- 6.2: `data-export.archive-erasure`は`withdrawn`・`purge_due`の2100。破棄は`uploadId`と`objectKey`が揃うときだけ、オブジェクトの削除は100件分を1回の`delete`にまとめ、R2が全て成功してから記録を`removeMany`で消す。削除の失敗は例外→再試行→デッドレター→基盤のSentryの経路で届く。上流のテストは末尾の固定を`relativeOrderOf`の相対の順へ改め、ugc-moderationは「identity-auth専用の10000番台より前」とした。`project-values.md`の「非同期の波及処理の登録」の表への追記は8.3の照合で行う。

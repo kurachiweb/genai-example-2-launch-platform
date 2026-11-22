@@ -12,6 +12,7 @@ import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { createQueueDispatcher } from '../../lib/workers/messaging/queue-consumer.ts';
 import { EVENT_DATA_EXPORT_TYPES } from '../application/data-export/event-data-export-types.ts';
+import { ArchiveErasureHandler } from '../application/data-export/archive-erasure-handler.ts';
 import { ArchiveGenerationService } from '../application/data-export/archive-generation-service.ts';
 import { GenerateArchiveHandler } from '../application/data-export/generate-archive-handler.ts';
 import { GenerationWatchdogHandler } from '../application/data-export/generation-watchdog-handler.ts';
@@ -35,6 +36,7 @@ const IMPLEMENTATIONS = [
   ['ArchiveGenerationService', ArchiveGenerationService],
   ['GenerateArchiveHandler', GenerateArchiveHandler],
   ['GenerationWatchdogHandler', GenerationWatchdogHandler],
+  ['ArchiveErasureHandler', ArchiveErasureHandler],
 ] as const;
 
 function createContainer(kind: InvocationScopeInfo['kind']): Container {

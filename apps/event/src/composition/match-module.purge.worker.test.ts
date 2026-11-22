@@ -318,6 +318,7 @@ describe('Upvoteの物理削除とマッチ記録の紐付けの解除の処理�
       'sponsorship.account-purge',
       'content-reporting.user-report-erasure',
       'ugc-moderation.account-record-erasure',
+      'data-export.archive-erasure',
     ]);
   });
 

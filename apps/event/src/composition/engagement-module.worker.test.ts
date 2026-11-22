@@ -397,6 +397,7 @@ describe('コメントと評価の物理削除の時期の処理の登録', () =
       'sponsorship.account-purge',
       'content-reporting.user-report-erasure',
       'ugc-moderation.account-record-erasure',
+      'data-export.archive-erasure',
     ]);
   });
 

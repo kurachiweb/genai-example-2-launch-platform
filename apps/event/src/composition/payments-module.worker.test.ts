@@ -311,6 +311,7 @@ describe('メッセージの処理と波及処理の登録', () => {
       'sponsorship.account-purge',
       'content-reporting.user-report-erasure',
       'ugc-moderation.account-record-erasure',
+      'data-export.archive-erasure',
     ]);
     expect(namesFor('withdrawn')).toStrictEqual([
       'payments.open-checkout-expiry',
@@ -318,6 +319,7 @@ describe('メッセージの処理と波及処理の登録', () => {
       'match-engine.account-decision-follow-up',
       'tournament-week.account-entry-loss',
       'tournament-year.account-entry-loss',
+      'data-export.archive-erasure',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(namesFor('suspended')).toStrictEqual([

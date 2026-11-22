@@ -1,4 +1,5 @@
 import type { UserLifecycleAsyncRegistration } from '../../lib/core/identity/user-lifecycle.ts';
+import { EVENT_DATA_EXPORT_TYPES } from '../application/data-export/event-data-export-types.ts';
 import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-types.ts';
 import { EVENT_ENGAGEMENT_TYPES } from '../application/engagement/event-engagement-types.ts';
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
@@ -132,6 +133,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['purge_due'],
       order: 1900,
       handler: EVENT_MODERATION_TYPES.AccountRecordErasureHandler,
+    },
+    {
+      name: 'data-export.archive-erasure',
+      events: ['withdrawn', 'purge_due'],
+      order: 2100,
+      handler: EVENT_DATA_EXPORT_TYPES.ArchiveErasureHandler,
     },
     {
       name: 'identity-auth.email-suppression-cleanup',

@@ -215,7 +215,7 @@
 - [x] 6. (P) 物理削除の時期の通報の削除と対象への参照の消去を作り、eventの登録口に加える
   - 先に、単体テストで、ユーザーの物理削除の時期に申出者の通報の削除・投稿者の案件の対象への参照の消去・空の案件の削除を上限ずつ行って残りがあれば続きを返すこと、プロダクトの物理削除の時期にそのプロダクトとコメントの案件の対象への参照を消すこと(案件と通報を削除しないこと)を確かめる
   - 2つの処理は`core/reporting`の`ReportErasureStore`を`REPORTING_PLATFORM_TYPES.ReportErasureStore`で受け取り、`**/lib/workers/**`を読み込まない
-  - eventの本specのモジュールと、ユーザー・プロダクトのライフサイクルの非同期の登録口(`purge_due`、1800)へ加える。1800は、ugc-moderationの措置の記録の削除(1900)を全ドメインの物理削除の処理の後(末尾)に保つための値で、roadmapの帯の割り当て(2000)と異なる
+  - eventの本specのモジュールと、ユーザー・プロダクトのライフサイクルの非同期の登録口(`purge_due`、1800)へ加える。1800は、ugc-moderationの措置の記録の削除(1900)を、data-exportの2100を除く全ドメインの物理削除の処理の後(末尾)に保つための値で、roadmapの帯の割り当て(2000)と異なる
   - `purge_due`の一覧と並びを固定する上流のテスト(`user-lifecycle-async-handlers.unit.test.ts`・`product-lifecycle-async-handlers.unit.test.ts`と、各モジュールのWorkers統合テストの`purge_due`の一覧。候補は`engagement-module.worker.test.ts`・`notifications-module.account-purge.worker.test.ts`・`match-module.purge.worker.test.ts`・`user-product-erasure.worker.test.ts`・`profile-module.worker.test.ts`・`directory-module.worker.test.ts`・`product-module.worker.test.ts`など)のうち失敗するものの期待値を、本specの1800を含む一覧に改める(上流の振る舞いと「ugc-moderationが末尾」の期待は変えない)
   - 完了状態: 単体テストと登録口の検査(同じ種類の`order`の重複なし)が成功し、eventの全テストが成功し、イベントサーバーの静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Boundary: ReportErasureHandlers, EventReportingModule_

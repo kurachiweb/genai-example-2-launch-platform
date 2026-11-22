@@ -23,6 +23,9 @@ const GenerateArchiveHandler: unique symbol = Symbol.for(
 const GenerationWatchdogHandler: unique symbol = Symbol.for(
   'data-export.GenerationWatchdogHandler',
 );
+const ArchiveErasureHandler: unique symbol = Symbol.for(
+  'data-export.ArchiveErasureHandler',
+);
 
 export const EVENT_DATA_EXPORT_TYPES = Object.freeze({
   AccountSourceReader,
@@ -33,4 +36,5 @@ export const EVENT_DATA_EXPORT_TYPES = Object.freeze({
   ArchiveGenerationService,
   GenerateArchiveHandler,
   GenerationWatchdogHandler,
+  ArchiveErasureHandler,
 });

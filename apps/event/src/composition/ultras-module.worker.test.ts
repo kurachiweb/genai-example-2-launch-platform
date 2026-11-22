@@ -388,6 +388,7 @@ describe('退会・停止の解約と物理削除の波及処理の登録', () =
       'match-engine.account-decision-follow-up',
       'tournament-week.account-entry-loss',
       'tournament-year.account-entry-loss',
+      'data-export.archive-erasure',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(namesFor('suspended')).toStrictEqual([
@@ -409,6 +410,7 @@ describe('退会・停止の解約と物理削除の波及処理の登録', () =
       'sponsorship.account-purge',
       'content-reporting.user-report-erasure',
       'ugc-moderation.account-record-erasure',
+      'data-export.archive-erasure',
     ]);
     expect(
       namesFor('unsuspended').filter((name) =>
