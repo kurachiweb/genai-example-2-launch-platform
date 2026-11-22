@@ -418,6 +418,38 @@ describe('措置の操作', () => {
     await expect.element(listHeading()).toHaveFocus();
   });
 
+  test('確定の時点でコメントが見つからなくても、取り直した一覧に開いた元の操作が残っていれば、閉じるとその操作へフォーカスを戻す', async () => {
+    await renderWith({
+      role: 'MODERATOR',
+      comments: () => success(commentsQueryOf(COMMENT_NODES)),
+      handlers: new Map([
+        [
+          AdminHideCommentDocument,
+          () =>
+            failure({
+              code: 'comment_not_found',
+              message: 'コメントが見つかりません。',
+              status: 404,
+            }),
+        ],
+      ]),
+    });
+    await userEvent.click(actionButton('サンプル太郎さんのコメントを非公開化'));
+    await reasonBox().fill(MODERATION_REASON);
+    await dialog().getByRole('button', { name: '非公開にする' }).click();
+
+    await expect
+      .element(dialog().getByRole('alert'))
+      .toHaveTextContent('コメントが見つかりません。');
+
+    await dialog().getByRole('button', { name: 'キャンセル' }).click();
+
+    await expect.element(dialog()).not.toBeInTheDocument();
+    await expect
+      .element(actionButton('サンプル太郎さんのコメントを非公開化'))
+      .toHaveFocus();
+  });
+
   test('対象が見つからない以外の失敗では一覧を取り直さず、ダイアログの中に文言を示して理由を保つ', async () => {
     let listRequests = 0;
     await renderWith({

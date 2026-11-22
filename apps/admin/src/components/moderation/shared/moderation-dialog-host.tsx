@@ -54,10 +54,13 @@ export function ModerationDialogHost({
     }));
   };
 
+  // 確定すると開いた元の操作は替わる・消えるため見出しへ移し、失敗と取り消しでは開いた元の操作が残っていればそこへ戻す。不在の失敗の取り直しを遅らせた時は閉じた後の取り直しで開いた元の操作が消え得るため、見出しへ移す
   const close = (): void => {
     const openerRemains = openerRef.current?.isConnected ?? false;
+    const refreshDeferred =
+      deferTargetMissingRefresh && targetMissingRef.current;
     returnFocusRef.current =
-      completedRef.current || targetMissingRef.current || !openerRemains
+      completedRef.current || refreshDeferred || !openerRemains
         ? fallbackFocusRef.current
         : null;
     setState((current) => ({ ...current, open: false }));
