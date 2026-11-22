@@ -35,6 +35,7 @@ import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedSettingsApiKeysRouteImport } from './routes/_authenticated/settings/api-keys'
 import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_authenticated/settings/billing'
+import { Route as AuthenticatedSettingsExportRouteImport } from './routes/_authenticated/settings/export'
 import { Route as AuthenticatedSettingsFollowsRouteImport } from './routes/_authenticated/settings/follows'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
 import { Route as AuthenticatedSettingsPlanRouteImport } from './routes/_authenticated/settings/plan'
@@ -191,6 +192,12 @@ const AuthenticatedSettingsBillingRoute =
     path: '/billing',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedSettingsExportRoute =
+  AuthenticatedSettingsExportRouteImport.update({
+    id: '/export',
+    path: '/export',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
 const AuthenticatedSettingsFollowsRoute =
   AuthenticatedSettingsFollowsRouteImport.update({
     id: '/follows',
@@ -321,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/api-keys': typeof AuthenticatedSettingsApiKeysRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
+  '/settings/export': typeof AuthenticatedSettingsExportRoute
   '/settings/follows': typeof AuthenticatedSettingsFollowsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
@@ -365,6 +373,7 @@ export interface FileRoutesByTo {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/api-keys': typeof AuthenticatedSettingsApiKeysRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
+  '/settings/export': typeof AuthenticatedSettingsExportRoute
   '/settings/follows': typeof AuthenticatedSettingsFollowsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
@@ -412,6 +421,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/api-keys': typeof AuthenticatedSettingsApiKeysRoute
   '/_authenticated/settings/billing': typeof AuthenticatedSettingsBillingRoute
+  '/_authenticated/settings/export': typeof AuthenticatedSettingsExportRoute
   '/_authenticated/settings/follows': typeof AuthenticatedSettingsFollowsRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/plan': typeof AuthenticatedSettingsPlanRoute
@@ -459,6 +469,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/api-keys'
     | '/settings/billing'
+    | '/settings/export'
     | '/settings/follows'
     | '/settings/notifications'
     | '/settings/plan'
@@ -503,6 +514,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/api-keys'
     | '/settings/billing'
+    | '/settings/export'
     | '/settings/follows'
     | '/settings/notifications'
     | '/settings/plan'
@@ -549,6 +561,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/api-keys'
     | '/_authenticated/settings/billing'
+    | '/_authenticated/settings/export'
     | '/_authenticated/settings/follows'
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/plan'
@@ -784,6 +797,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsBillingRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/settings/export': {
+      id: '/_authenticated/settings/export'
+      path: '/export'
+      fullPath: '/settings/export'
+      preLoaderRoute: typeof AuthenticatedSettingsExportRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
     '/_authenticated/settings/follows': {
       id: '/_authenticated/settings/follows'
       path: '/follows'
@@ -917,6 +937,7 @@ interface AuthenticatedSettingsRouteRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
   AuthenticatedSettingsApiKeysRoute: typeof AuthenticatedSettingsApiKeysRoute
   AuthenticatedSettingsBillingRoute: typeof AuthenticatedSettingsBillingRoute
+  AuthenticatedSettingsExportRoute: typeof AuthenticatedSettingsExportRoute
   AuthenticatedSettingsFollowsRoute: typeof AuthenticatedSettingsFollowsRoute
   AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
   AuthenticatedSettingsPlanRoute: typeof AuthenticatedSettingsPlanRoute
@@ -931,6 +952,7 @@ const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteCh
     AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
     AuthenticatedSettingsApiKeysRoute: AuthenticatedSettingsApiKeysRoute,
     AuthenticatedSettingsBillingRoute: AuthenticatedSettingsBillingRoute,
+    AuthenticatedSettingsExportRoute: AuthenticatedSettingsExportRoute,
     AuthenticatedSettingsFollowsRoute: AuthenticatedSettingsFollowsRoute,
     AuthenticatedSettingsNotificationsRoute:
       AuthenticatedSettingsNotificationsRoute,

@@ -1,0 +1,11 @@
+query ClientMyDataExports($first: Int!, $after: String) {
+  myDataExports(first: $first, after: $after) {
+    nodes {
+      ...DataExportFields
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

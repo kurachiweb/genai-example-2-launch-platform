@@ -1,0 +1,5 @@
+mutation ClientRequestDataExport {
+  requestDataExport {
+    ...DataExportFields
+  }
+}

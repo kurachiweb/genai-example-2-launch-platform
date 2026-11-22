@@ -213,7 +213,7 @@
   - _Requirements: 3.4, 3.6, 6.5, 12.3, 12.5_
 
 - [ ] 7. 利用者側の設定ページ
-- [ ] 7.1 (P) 中継の経路・GraphQLの操作・許可リスト・設定のナビゲーションとルートの枠を加える
+- [x] 7.1 (P) 中継の経路・GraphQLの操作・許可リスト・設定のナビゲーションとルートの枠を加える
   - 先に、単体テストで、中継の経路のパス・メソッド・上流のパス(百分率符号化)・時間切れ15分・凍結されていることと、管理者側の中継の経路に含まれないこと、設定のナビゲーションの項目(`/settings/export`・「データエクスポート」・`order` 100)を確かめる
   - 中継の経路はfrontend-platformの`defineRelayRoute`で定義し(素のオブジェクトにしない)、clientの`RELAY_ROUTES`の完全一致の経路の後に登録する
   - 2つのGraphQLの操作は、clientの`src/graphql/operations/data-export/`に1ファイル1操作の`.graphql`で書く(操作名は`ClientMyDataExports`・`ClientRequestDataExport`、`graphql()`を呼ばない)。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない
@@ -291,3 +291,4 @@
 - 6.5: `claim`の`not_found`は`finished`、`markReady`と`recordUpload`の不一致はどちらも`superseded`(設計は`markReady`の不一致を`done`と書くが、処理はどちらも`done`にするため差は出ない)。完了日時は注入した`Clock`の`now()`で有効期限はその7日後、ZIPの更新日時はリースの起点の`now`。破棄・削除に失敗したときはリースを解放せず、リースの期限の後の次の実行に任せる。完了の通知の例外でも`ready`(日次の送り直しに任せる)。ログのカテゴリは`['event', 'application', 'data-export']`。テストの偽の部品は`archive-generation-service.fixtures.ts`。
 - 8.3: 実装の前に書いた値(中継の経路・ジョブと退会の処理の`order`・メッセージの処理)は`project-values.md`に「実装中」の印を付け、全ての実装の完了後に照合して外す。`CLAUDE.md`の参照行は設計どおり`backend/023`だけ。`infra/004`のタグの規則`<ドメイン>_incident`に対し実装は`data_export_incident`(ハイフンをアンダースコアにする)で、実装の値を`project-values.md`に書いた。
 - 6.6: 生成の3回目は`terminator.fail`が`already_finished`でも`generation-failed`を送る(元の例外を握り潰さない)。3回目に`terminator.fail`自体が例外を投げたらそのまま投げてデッドレターへ移し、`generation-failed`は送らない。見張りは`queued`・`generating`だけを失敗にし、実際に失敗に移したときだけ`generation-abandoned`を送る。`defer`は試行の回数を1に戻す(G-8)が、2時間の見張りが上限を担保する。
+- 7.1: 中継の経路は接頭辞より後ろを`decodeURIComponent`してから`encodeURIComponent`し直し、上流のパスを1つの区画に収める(メディアの中継と同じ方針)。取得の補助は`src/graphql/data-export.ts`(`myDataExportsQueryOptions(viewerId)`は`infiniteQueryOptions`で`refetchInterval`は未設定、`loadMyDataExports`・`invalidateMyDataExports`・`requestDataExportMutationOptions`)、フラグメントは`DataExportFields`。`routeTree.gen.ts`はStartのpluginのフッターを含む通常の生成の形にする(`@tanstack/router-generator`の直接の生成はフッターを落とす)。

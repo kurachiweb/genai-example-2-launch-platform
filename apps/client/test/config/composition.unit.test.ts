@@ -19,6 +19,7 @@ import {
   pageRequest,
 } from '../../lib/test/server-entry-fixtures.ts';
 import { CLIENT_PROFILE } from '../../src/composition/app-profile.ts';
+import { DATA_EXPORT_DOWNLOAD_RELAY_ROUTE } from '../../src/composition/data-export-relay-route.ts';
 import { RELAY_ROUTES } from '../../src/composition/relay-routes.ts';
 import { CLIENT_SECURITY_POLICY } from '../../src/composition/security-policy.ts';
 
@@ -237,11 +238,12 @@ describe('CLIENT_SECURITY_POLICY', () => {
 });
 
 describe('RELAY_ROUTES', () => {
-  test('GraphQLの中継の経路の後に、アップロードとダウンロードの中継の経路を持つ', () => {
+  test('GraphQLの中継の経路の後に、アップロード・ファイルのダウンロード・データエクスポートのダウンロードの中継の経路を持つ', () => {
     expect(RELAY_ROUTES).toEqual([
       GRAPHQL_RELAY_ROUTE,
       UPLOAD_RELAY_ROUTE,
       FILE_DOWNLOAD_RELAY_ROUTE,
+      DATA_EXPORT_DOWNLOAD_RELAY_ROUTE,
     ]);
   });
 
