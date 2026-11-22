@@ -246,7 +246,7 @@
   - _Depends: 5.4, 6.2, 6.6_
   - _Requirements: 3.5, 3.6, 4.1, 4.4, 4.5, 4.6, 4.8, 4.9, 5.10, 5.11, 5.12, 7.2, 8.3, 13.1, 13.3_
 
-- [ ] 8.2 要求からダウンロードまでのE2Eテストを作る
+- [x] 8.2 要求からダウンロードまでのE2Eテストを作る
   - テストは`e2e/client/data-export.e2e.test.ts`に平置きし、画面の操作の手順(要求・一覧の状態の待ち・ダウンロード)を`e2e/client/data-export-steps.ts`に置く(D-3)
   - ローカルで起動したapi・event・clientとMailpitで、確認済みの利用者がプロフィールとプロダクトを用意して`/settings/export`で要求し、一覧の作成中、完了のメールのリンクが`/settings/export`であること、一覧のダウンロードの応答の`Content-Disposition`のファイル名、本文がZIPの署名で始まり`manifest.json`と`products.json`の名前を含むことを確かめる
   - 別の利用者で同じダウンロードのパスが404になることを確かめる
@@ -297,3 +297,4 @@
 - 6.2: `data-export.archive-erasure`は`withdrawn`・`purge_due`の2100。破棄は`uploadId`と`objectKey`が揃うときだけ、オブジェクトの削除は100件分を1回の`delete`にまとめ、R2が全て成功してから記録を`removeMany`で消す。削除の失敗は例外→再試行→デッドレター→基盤のSentryの経路で届く。上流のテストは末尾の固定を`relativeOrderOf`の相対の順へ改め、ugc-moderationは「identity-auth専用の10000番台より前」とした。`project-values.md`の「非同期の波及処理の登録」の表への追記は8.3の照合で行う。
 - 7.3: 送信中は`disabled`でなく`aria-disabled`・`aria-busy`と「送信中」の文言にし(`frontend/004`の「操作できない状態」)、未確認のときだけ`disabled`。失敗はトーストでなくボタンの直下の`role="alert"`に示し、秒数の無い429はサーバーの文言を示す。メールアドレスの未確認の案内は、プロダクト登録の部品を文言を引数に取る共通の`components/auth/email-verification-notice.tsx`(`EmailVerificationNotice`)へ移して共用し、product-launchの設計の文書も改めた。
 - 8.1: 800行の上限のため統合テストを`data-export-archive.worker.test.ts`(構造と12のJSON)と`data-export-archive.delivery.worker.test.ts`(重複・見張り・再試行・退会済み)に分け、共通部を`src/composition/testing/`に置いた。要件4.5は「全てのファイル名にUTF-8の印」だが、fflateは非ASCIIの名前にだけビット11を立てる(ASCIIだけの名前は印の有無で解釈が変わらない)。テストは非ASCIIの名前に印が立つことを確かめる。apiの`src/application/data-export`はWorkers統合のカバレッジの対象外のため、ジョブとエラーの単体テストを足した。
+- 8.2: E2Eは完了の確認を完了のメールのリンクで開き直して行い、一覧の定期の取り直しに依存しない。メールとQueueの処理に依存するため`@smoke`を付けない。実行の前に`db:migrate:local`とapi・event・clientの起動が要る。clientの単体テストのカバレッジ(関数80%)のため、ブラウザテストからだけ呼ばれていた`dataExportDownloadLabel`の単体テストを足した。
