@@ -93,7 +93,7 @@
   - _Requirements: 3.2, 3.3, 4.4, 4.5, 7.4, 13.2_
 
 - [ ] 4. api・event共通の部品
-- [ ] 4.1 要求の記録の作成・照会・削除を作り、共通の契約とDIの識別子を定める
+- [x] 4.1 要求の記録の作成・照会・削除を作り、共通の契約とDIの識別子を定める
   - api・eventのapplication層が受け取る5つの共有部品(要求の記録・保存先・通知・失敗の確定・エラートラッキングへの送信)の契約とその入出力の型(マルチパートの書き込み先・保存したZIPとメタデータの写し・送る出来事の種類を含む)を`apps/backend-lib/core/data-export/ports.ts`に、5つの識別子を`core/data-export/identifiers.ts`に本タスクで定める。契約にR2・D1の型を出さない。以降のタスクはこの2つのファイルを触らない。D1の実装は`workers/data-export/d1-data-export-store.ts`に置く
   - 先に、単体テスト(`core/data-export/identifiers.unit.test.ts`)で、5つの識別子の値が`Symbol.for('data-export.<名前>')`であり、オブジェクトが凍結されていることを確かめる
   - 先に、Workers統合テストで、作成と1件の削除、1件の照会、本人の一覧の要求日時の新しい順と他人の除外と、要求のIDより前から最大`limit + 1`件を読む区切り、本人の期限内の完了だけを返す照会(他人・作成中・失敗・期限切れを返さない)、利用者ごとの一覧の上限、90件を超える一括の削除、テーブルのCHECKの状態・失敗の種類の値が1.1の定数と一致することを確かめる
@@ -274,3 +274,4 @@
 - 1.6: 型を変えずに`null`を許す項目を足した変更は未公開の初版への追記として扱い、`schemaVersion`は1のままにした(公開済みなら加算が要る)。要求の記録の保持期間は「退会の後続処理で物理削除」と書いた。
 - 3.1: `ArchivePlan`に設計に無い`pathByFileId`(ファイルIDからZIP内のパス)を足し、3.2〜3.4はこれでJSONの`*Path`を組み立てる。元のファイル名の`/`と`\`は`toPortableFileName`の前に`-`へ置換する防御を足した(文書に記述なし)。プロダクトのディレクトリ名は生成時点のハンドルをそのまま使うため、`con`などのWindowsの予約名になり得る。
 - 3.5: `createZipArchiveWriter`の上限は省略可能で既定は`archive-limits.ts`の値。fflateはZIPの更新日時を実行環境のローカルのタイムゾーンで書くため、UTCの`Date`を渡す(workerdはUTC)。ファイルは`addStream`を待ってから次を書く。失敗の後の書き出しは以降を拒否するので、呼び出し側はアップロードを破棄する。
+- 4.1: `ports.ts`に4.2〜6.6が使う契約を全て定めた。`D1DataExportStore`は4.1の範囲だけを実装して`implements Pick<DataExportStore, ImplementedOperation>`としたため、4.2で`Pick`と`ImplementedOperation`を外し`implements DataExportStore`にする(テストの`store`の型注釈も同時に)。`create`は`createdAt`・`updatedAt`を`requestedAt`と同じ値にする。テストの補助は`workers/data-export/testing/data-export-fixtures.ts`。
