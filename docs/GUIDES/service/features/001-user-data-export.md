@@ -173,14 +173,15 @@ JSONファイル一覧はmanifest.jsonをご覧ください。
 | 項目                                     | 型                | 説明                                                                                                 |
 | ---------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------- |
 | `email`                                  | 文字列            | 確認済みのメールアドレス                                                                             |
-| `emailVerifiedAt`                        | 日時              | メールアドレス確認完了日時                                                                           |
+| `emailVerifiedAt`                        | 日時/null         | メールアドレス確認完了日時。確認の記録が無ければ`null`                                               |
 | `registeredAt`                           | 日時              | ユーザー登録日時                                                                                     |
 | `mfaEnabled`                             | 真偽値            | TOTP多要素認証の有効状態。シークレットやリカバリコードは含めない                                     |
 | `plan`                                   | オブジェクト/null | Ultras加入履歴が無ければ`null`                                                                       |
 | `plan.name`                              | 文字列            | 固定値`ultras`                                                                                       |
 | `plan.status`                            | 文字列            | `active`(有効)、`past_due`(決済再試行中も有効)、`canceled`(解約済みで期間末まで有効)、`ended`(終了)  |
 | `plan.startedAt`                         | 日時              | 加入日時                                                                                             |
-| `plan.currentPeriodEndsAt`               | 日時              | 現在の課金期間の終了日時                                                                             |
+| `plan.currentPeriodEndsAt`               | 日時/null         | 現在の課金期間の終了日時。期間が確定していなければ`null`                                             |
+| `notificationSettings`                   | オブジェクト/null | 通知の設定の記録が無ければ`null`                                                                     |
 | `plan.canceledAt`                        | 日時/null         | 解約操作の日時                                                                                       |
 | `notificationSettings.matchPreview`      | 真偽値            | マッチ開始予告メール(FR-NOTIF-001)の受信可否                                                         |
 | `notificationSettings.matchResult`       | 真偽値            | 勝敗結果通知メール(FR-NOTIF-004)の受信可否                                                           |

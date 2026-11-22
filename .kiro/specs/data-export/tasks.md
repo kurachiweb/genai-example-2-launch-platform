@@ -63,7 +63,7 @@
   - _Depends: 1.4_
   - _Requirements: 4.1, 4.3, 4.6, 4.7, 5.2, 5.3, 5.8, 5.11, 6.6_
 
-- [ ] 3.2 アカウント・プロフィール・プロダクト・ローンチのJSONの組み立てを作る
+- [x] 3.2 アカウント・プロフィール・プロダクト・ローンチのJSONの組み立てを作る
   - 先に、単体テストで、データエクスポートの文書の`account.json`・`profile.json`・`products.json`・`launches.json`の例と同じ入力から同じ項目名・値・順の出力、加入の履歴が無いときの`plan`の`null`、隔離された画像のパスの`null`と印、格納できなかったファイルのパスの`null`、記録の無いロゴの元のファイル名・形式・バイト数の`null`、論理削除の日時と管理者の非公開の印、未確定のマッチの`result`の`null`、週間・年間の受賞、日時のミリ秒付きのUTCと基準時刻の日付、仮名化IDとパスワードなどの秘密情報が出力に無いことを確かめる
   - 完了状態: 単体テストが成功し、4つのJSONの項目が文書の表と一致する
   - _Boundary: AccountDocuments, ProductDocuments_
@@ -275,3 +275,4 @@
 - 3.1: `ArchivePlan`に設計に無い`pathByFileId`(ファイルIDからZIP内のパス)を足し、3.2〜3.4はこれでJSONの`*Path`を組み立てる。元のファイル名の`/`と`\`は`toPortableFileName`の前に`-`へ置換する防御を足した(文書に記述なし)。プロダクトのディレクトリ名は生成時点のハンドルをそのまま使うため、`con`などのWindowsの予約名になり得る。
 - 3.5: `createZipArchiveWriter`の上限は省略可能で既定は`archive-limits.ts`の値。fflateはZIPの更新日時を実行環境のローカルのタイムゾーンで書くため、UTCの`Date`を渡す(workerdはUTC)。ファイルは`addStream`を待ってから次を書く。失敗の後の書き出しは以降を拒否するので、呼び出し側はアップロードを破棄する。
 - 4.1: `ports.ts`に4.2〜6.6が使う契約を全て定めた。`D1DataExportStore`は4.1の範囲だけを実装して`implements Pick<DataExportStore, ImplementedOperation>`としたため、4.2で`Pick`と`ImplementedOperation`を外し`implements DataExportStore`にする(テストの`store`の型注釈も同時に)。`create`は`createdAt`・`updatedAt`を`requestedAt`と同じ値にする。テストの補助は`workers/data-export/testing/data-export-fixtures.ts`。
+- 3.2: 4関数は`DocumentInput = {snapshot, plan, stored}`を受け取り、格納できなかったファイルのパスの`null`化は`documents/file-reference.ts`の`referenceFile`が行う。上流の型に合わせ`emailVerifiedAt`・`plan.currentPeriodEndsAt`・`notificationSettings`を`null`で出し得るとし、データエクスポートの文書の表を改めた。
