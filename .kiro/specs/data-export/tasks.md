@@ -124,7 +124,7 @@
   - _Depends: 1.5, 4.2_
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 12.1_
 
-- [ ] 4.5 失敗の確定とエラートラッキングへの送信を作り、両アプリへ共通の束縛を加える
+- [x] 4.5 失敗の確定とエラートラッキングへの送信を作り、両アプリへ共通の束縛を加える
   - 共通のモジュールを、アプリ名を引数で受け取る関数`createDataExportPlatformModule(appName)`として本タスクで作る(ログのカテゴリの先頭をアプリ名にするため。ログを出す実装は`toDynamicValue`で依存とアプリ名を受け取る)
   - エラートラッキングへの送信の実装を`workers/data-export/sentry-data-export-incident-reporter.ts`に置く。先に、Workers統合テスト(`sentry-data-export-incident-reporter.worker.test.ts`)で、出来事の種類ごとのレベル・指紋・タグ・コンテキスト、`AppError`以外の元の例外の`captureException`と`AppError`の定型の通知、ULIDの形でない要求のIDの`unknown`、個人情報を送らないことを確かめる
   - 先に、Workers統合テストで、失敗の確定が未完了のアップロードを破棄し(破棄の失敗でも続ける)通知の有無に応じた状態にすること、通知の失敗を警告に留めること、完了済みの要求で何もしないことを確かめる
@@ -281,3 +281,4 @@
 - 3.4: `buildExportDocuments`の出力の順は12のJSON→`.md`→`manifest.json`→`README.txt`で、6.5はこの順のまま`addText`に渡す。問い合わせの添付は`contentType`・`size`を添付自身の値で出し、格納できなければ`path`だけを`null`にする(`file-reference.ts`の`storedPathOf`)。
 - 4.3: 存在しないアップロードの破棄は、`R2Error`の`code`が10024(NoSuchUpload)のとき成功とみなす(`code`が無いときだけメッセージの`(10024)`で判定)。ローカルのminiflareは一度も存在しないIDに10001を返すため、実際のR2での10024の確認はstagingに残る。書き込み先は`write`・`complete`の失敗の後に閉じ、以降は`abort`だけを受け付ける。コンストラクタの型は`ExportBucketEnv`(`PlatformEnv`から代入できる)。
 - 4.4: `EmailDataExportNotifier`は`@injectable()`を付けず、コンストラクタの引数は`DataExportStore`・`UserContactDirectory`・`EmailSender`・`DataExportNotifierEnv`・appNameの順で、4.5が`toDynamicValue`で組み立てる。期限切れ・列の欠けた記録・未完了のままの依頼待ちは`skipped`にする(送り直しで直らないため)。
+- 4.5: `StoreDataExportTerminator.fail`は記録が無いか未完了でなければ何もせず`already_finished`を返す。破棄は`uploadId`と`objectKey`が揃うときだけ行い(設計は`upload_id`があれば、と書く)、成功しても`clearUpload`は呼ばず日次の後片付けに任せる。定型の通知の指紋は`['data-export', kind]`、タグは`data_export_incident`。5つの部品は処理単位ごとに`inSingletonScope()`。

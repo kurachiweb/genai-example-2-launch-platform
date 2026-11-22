@@ -8,6 +8,7 @@ import {
   type BotVerifier,
   createTurnstileVerifier,
 } from '../../lib/workers/bot-protection/turnstile-verifier.ts';
+import { createDataExportPlatformModule } from '../../lib/workers/data-export/data-export-platform-module.ts';
 import { DIRECTORY_PLATFORM_MODULE } from '../../lib/workers/directory/directory-platform-module.ts';
 import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-module.ts';
 import { ENGAGEMENT_PLATFORM_MODULE } from '../../lib/workers/engagement/engagement-platform-module.ts';
@@ -160,6 +161,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   createWeekTournamentPlatformModule('api'),
   createYearTournamentPlatformModule('api'),
   createSponsorshipPlatformModule('api'),
+  createDataExportPlatformModule('api'),
   WEEK_TOURNAMENT_API_MODULE,
   YEAR_TOURNAMENT_API_MODULE,
   SPONSORSHIP_API_MODULE,

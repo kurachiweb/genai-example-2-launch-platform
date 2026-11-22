@@ -2,6 +2,7 @@ import type { Hono } from 'hono';
 
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import { ADMIN_PLATFORM_MODULE } from '../../lib/workers/admin/admin-platform-module.ts';
+import { createDataExportPlatformModule } from '../../lib/workers/data-export/data-export-platform-module.ts';
 import { DIRECTORY_PLATFORM_MODULE } from '../../lib/workers/directory/directory-platform-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-module.ts';
@@ -93,6 +94,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     createWeekTournamentPlatformModule('event'),
     createYearTournamentPlatformModule('event'),
     createSponsorshipPlatformModule('event'),
+    createDataExportPlatformModule('event'),
     EVENT_WEEK_TOURNAMENT_MODULE,
     EVENT_YEAR_TOURNAMENT_MODULE,
     EVENT_SPONSORSHIP_MODULE,
