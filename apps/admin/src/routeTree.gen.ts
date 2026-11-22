@@ -30,6 +30,8 @@ import { Route as AuthenticatedMediaModerationIndexRouteImport } from './routes/
 import { Route as AuthenticatedProductsIndexRouteImport } from './routes/_authenticated/products/index'
 import { Route as AuthenticatedProductsProductIdRouteImport } from './routes/_authenticated/products/$productId'
 import { Route as AuthenticatedRatingsIndexRouteImport } from './routes/_authenticated/ratings/index'
+import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports/index'
+import { Route as AuthenticatedReportsCaseIdRouteImport } from './routes/_authenticated/reports/$caseId'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSponsorshipsIndexRouteImport } from './routes/_authenticated/sponsorships/index'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
@@ -159,6 +161,18 @@ const AuthenticatedRatingsIndexRoute =
     path: '/ratings/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReportsIndexRoute =
+  AuthenticatedReportsIndexRouteImport.update({
+    id: '/reports/',
+    path: '/reports/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsCaseIdRoute =
+  AuthenticatedReportsCaseIdRouteImport.update({
+    id: '/reports/$caseId',
+    path: '/reports/$caseId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/settings/',
@@ -215,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/help-articles/order': typeof AuthenticatedHelpArticlesOrderRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/products/$productId': typeof AuthenticatedProductsProductIdRoute
+  '/reports/$caseId': typeof AuthenticatedReportsCaseIdRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/account/': typeof AuthenticatedAccountIndexRoute
@@ -228,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/media-moderation/': typeof AuthenticatedMediaModerationIndexRoute
   '/products/': typeof AuthenticatedProductsIndexRoute
   '/ratings/': typeof AuthenticatedRatingsIndexRoute
+  '/reports/': typeof AuthenticatedReportsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/sponsorships/': typeof AuthenticatedSponsorshipsIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
@@ -245,6 +261,7 @@ export interface FileRoutesByTo {
   '/help-articles/order': typeof AuthenticatedHelpArticlesOrderRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/products/$productId': typeof AuthenticatedProductsProductIdRoute
+  '/reports/$caseId': typeof AuthenticatedReportsCaseIdRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/account': typeof AuthenticatedAccountIndexRoute
@@ -258,6 +275,7 @@ export interface FileRoutesByTo {
   '/media-moderation': typeof AuthenticatedMediaModerationIndexRoute
   '/products': typeof AuthenticatedProductsIndexRoute
   '/ratings': typeof AuthenticatedRatingsIndexRoute
+  '/reports': typeof AuthenticatedReportsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/sponsorships': typeof AuthenticatedSponsorshipsIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
@@ -277,6 +295,7 @@ export interface FileRoutesById {
   '/_authenticated/help-articles/order': typeof AuthenticatedHelpArticlesOrderRoute
   '/_authenticated/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/_authenticated/products/$productId': typeof AuthenticatedProductsProductIdRoute
+  '/_authenticated/reports/$caseId': typeof AuthenticatedReportsCaseIdRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/_authenticated/account/': typeof AuthenticatedAccountIndexRoute
@@ -290,6 +309,7 @@ export interface FileRoutesById {
   '/_authenticated/media-moderation/': typeof AuthenticatedMediaModerationIndexRoute
   '/_authenticated/products/': typeof AuthenticatedProductsIndexRoute
   '/_authenticated/ratings/': typeof AuthenticatedRatingsIndexRoute
+  '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/sponsorships/': typeof AuthenticatedSponsorshipsIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
@@ -309,6 +329,7 @@ export interface FileRouteTypes {
     | '/help-articles/order'
     | '/inquiries/$inquiryId'
     | '/products/$productId'
+    | '/reports/$caseId'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
     | '/account/'
@@ -322,6 +343,7 @@ export interface FileRouteTypes {
     | '/media-moderation/'
     | '/products/'
     | '/ratings/'
+    | '/reports/'
     | '/settings/'
     | '/sponsorships/'
     | '/users/'
@@ -339,6 +361,7 @@ export interface FileRouteTypes {
     | '/help-articles/order'
     | '/inquiries/$inquiryId'
     | '/products/$productId'
+    | '/reports/$caseId'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
     | '/account'
@@ -352,6 +375,7 @@ export interface FileRouteTypes {
     | '/media-moderation'
     | '/products'
     | '/ratings'
+    | '/reports'
     | '/settings'
     | '/sponsorships'
     | '/users'
@@ -370,6 +394,7 @@ export interface FileRouteTypes {
     | '/_authenticated/help-articles/order'
     | '/_authenticated/inquiries/$inquiryId'
     | '/_authenticated/products/$productId'
+    | '/_authenticated/reports/$caseId'
     | '/auth/email-change/confirm'
     | '/auth/password-reset/confirm'
     | '/_authenticated/account/'
@@ -383,6 +408,7 @@ export interface FileRouteTypes {
     | '/_authenticated/media-moderation/'
     | '/_authenticated/products/'
     | '/_authenticated/ratings/'
+    | '/_authenticated/reports/'
     | '/_authenticated/settings/'
     | '/_authenticated/sponsorships/'
     | '/_authenticated/users/'
@@ -550,6 +576,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRatingsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports/': {
+      id: '/_authenticated/reports/'
+      path: '/reports'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof AuthenticatedReportsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/$caseId': {
+      id: '/_authenticated/reports/$caseId'
+      path: '/reports/$caseId'
+      fullPath: '/reports/$caseId'
+      preLoaderRoute: typeof AuthenticatedReportsCaseIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
       path: '/settings'
@@ -616,6 +656,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedHelpArticlesOrderRoute: typeof AuthenticatedHelpArticlesOrderRoute
   AuthenticatedInquiriesInquiryIdRoute: typeof AuthenticatedInquiriesInquiryIdRoute
   AuthenticatedProductsProductIdRoute: typeof AuthenticatedProductsProductIdRoute
+  AuthenticatedReportsCaseIdRoute: typeof AuthenticatedReportsCaseIdRoute
   AuthenticatedAccountIndexRoute: typeof AuthenticatedAccountIndexRoute
   AuthenticatedAccountsIndexRoute: typeof AuthenticatedAccountsIndexRoute
   AuthenticatedAuditLogsIndexRoute: typeof AuthenticatedAuditLogsIndexRoute
@@ -627,6 +668,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedMediaModerationIndexRoute: typeof AuthenticatedMediaModerationIndexRoute
   AuthenticatedProductsIndexRoute: typeof AuthenticatedProductsIndexRoute
   AuthenticatedRatingsIndexRoute: typeof AuthenticatedRatingsIndexRoute
+  AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
   AuthenticatedSponsorshipsIndexRoute: typeof AuthenticatedSponsorshipsIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
@@ -642,6 +684,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedHelpArticlesOrderRoute: AuthenticatedHelpArticlesOrderRoute,
   AuthenticatedInquiriesInquiryIdRoute: AuthenticatedInquiriesInquiryIdRoute,
   AuthenticatedProductsProductIdRoute: AuthenticatedProductsProductIdRoute,
+  AuthenticatedReportsCaseIdRoute: AuthenticatedReportsCaseIdRoute,
   AuthenticatedAccountIndexRoute: AuthenticatedAccountIndexRoute,
   AuthenticatedAccountsIndexRoute: AuthenticatedAccountsIndexRoute,
   AuthenticatedAuditLogsIndexRoute: AuthenticatedAuditLogsIndexRoute,
@@ -654,6 +697,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedMediaModerationIndexRoute,
   AuthenticatedProductsIndexRoute: AuthenticatedProductsIndexRoute,
   AuthenticatedRatingsIndexRoute: AuthenticatedRatingsIndexRoute,
+  AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   AuthenticatedSponsorshipsIndexRoute: AuthenticatedSponsorshipsIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,

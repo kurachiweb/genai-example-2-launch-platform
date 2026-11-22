@@ -122,12 +122,15 @@ const TARGET_MISSING_CODES: ReadonlySet<string> = new Set([
 export const isTargetMissing = (error: unknown): boolean =>
   error instanceof GraphQLClientError && TARGET_MISSING_CODES.has(error.code);
 
-const invalidateAll = async (
+// 措置の対象の種類ごとの影響する照会を無効にする。措置を呼ぶ他の機能も、表を写さずにこの関数で無効にする
+export async function invalidateModerationAffectedQueries(
   queryClient: QueryClient,
-  invalidations: readonly Invalidate[],
-): Promise<void> => {
-  await Promise.all(invalidations.map((invalidate) => invalidate(queryClient)));
-};
+  targetKind: ModerationTargetKind,
+): Promise<void> {
+  await Promise.all(
+    AFFECTED_QUERIES[targetKind].map((invalidate) => invalidate(queryClient)),
+  );
+}
 
 // 措置を行い、対象の表示を新しい状態に取り直してから、変わったか変わらなかったかを知らせる。監査ログは状態が変わった措置だけが残すため、その時だけ監査ログの照会も無効にする。失敗は例外のまま呼び出し元へ返し、対象の不在の失敗だけは消えた対象を一覧から除くため、先に影響する照会を無効にする(遅らせる指定があれば呼び出し元に任せる)
 export function useModerationMutation(
@@ -140,7 +143,7 @@ export function useModerationMutation(
     MODERATION_ACTION_DEFINITIONS[moderationActionOf(operation)];
   // 呼び出し元が部品の外れる時の後始末に使うため、描画のたびに参照を変えない
   const refreshAffected = useCallback(
-    () => invalidateAll(queryClient, AFFECTED_QUERIES[targetKind]),
+    () => invalidateModerationAffectedQueries(queryClient, targetKind),
     [queryClient, targetKind],
   );
 
@@ -159,12 +162,10 @@ export function useModerationMutation(
 
   const run: RunModeration = async (input) => {
     const outcome = await mutate(input);
-    await invalidateAll(
-      queryClient,
-      outcome.changed
-        ? [...AFFECTED_QUERIES[targetKind], invalidateAuditLogQueries]
-        : AFFECTED_QUERIES[targetKind],
-    );
+    await Promise.all([
+      invalidateModerationAffectedQueries(queryClient, targetKind),
+      ...(outcome.changed ? [invalidateAuditLogQueries(queryClient)] : []),
+    ]);
     if (outcome.changed) {
       notify.success(MODERATION_CHANGED_MESSAGES[operation]);
     } else {
