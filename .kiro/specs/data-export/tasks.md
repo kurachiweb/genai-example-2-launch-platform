@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 共有定義・テーブル・メッセージとファイル名の規則・メール・サービス仕様
+- [x] 1. 基盤: 共有定義・テーブル・メッセージとファイル名の規則・メール・サービス仕様
 - [x] 1.1 要求の状態・上限・ダウンロードのパスの共有定義を作る
   - 前提: dev-tooling〜content-reportingの27specの全タスクが完了していること(identity-authの`AccountExport`・`AccountGuard`・`UserContactDirectory`・`SETTINGS_NAV_ITEMS`・ユーザーライフサイクルの非同期の登録口・E2Eの`mailpit.ts`、user-profile-socialの`ProfileExport`・`FollowExport`、product-launchの`ProductExport`・`LaunchExport`・`ProductDirectory`、match-engineの`MatchExport`・`UpvoteExport`、tournament-weekの`WeekAwardExport`、tournament-yearの`YearAwardExport`、engagementの`CommentExport`・`RatingExport`(engagementの仮5の`invalidatedByAdmin`を含む)、ultras-subscriptionの`UltrasPlanExport`、notificationsの`NotificationSettingsExport`、public-apiの`ApiKeyExport`、content-reportingの`ReportExport`、inquiry-chatの`InquiryExport`、sponsorshipの`SponsorshipExport`、paymentsの`PaymentHistoryExport`、media-pipelineの`MediaFiles`・`attachmentDisposition`、backend-platformの`RateLimitCounterClient`・`hashRateLimitKey`・メッセージと定期実行、api-gatewayの内部RESTとGraphQLとテストの補助、frontend-platformの`RelayRoute`、email-deliveryのメールの基盤)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、5つの状態(期限切れを含む)と表示の状態(待ち・生成中は作成中)の対応、失敗の種類、表示名、回数の上限3・期間86,400秒・有効期限7日・一覧の1ページ20件の値、ダウンロードのパスの組み立て(百分率符号化)を確かめる
@@ -55,7 +55,7 @@
   - _Depends: 1.1_
   - _Requirements: 5.6, 6.1_
 
-- [ ] 3. ZIPとJSONの純粋な部品
+- [x] 3. ZIPとJSONの純粋な部品
 - [x] 3.1 スナップショットの型とZIP内のパスの計画を作る
   - 先に、単体テストで、プロフィール画像・ロゴ・スクリーンショット(表示の順)・添付のパス、隔離中と記録の無いファイルを格納の対象から除くこと、同じディレクトリの同名のファイルの連番、プロダクトのディレクトリ名(論理削除済みを含む生成時点のハンドル、大文字小文字の衝突の連番)、自己紹介・説明文・コメントの`.md`のパス、空の自己紹介を書かないこと、該当するファイルが無いディレクトリを作らないこと、JSONの日時の書式(ミリ秒付きのISO 8601のUTC)と基準時刻の日付(`YYYY-MM-DD`、UTCの8:00の前後)の補助を確かめる
   - 日時と日付の書式の補助は`documents/export-formats.ts`に置き、3.2・3.3が読み込む
@@ -92,7 +92,7 @@
   - _Depends: 1.3_
   - _Requirements: 3.2, 3.3, 4.4, 4.5, 7.4, 13.2_
 
-- [ ] 4. api・event共通の部品
+- [x] 4. api・event共通の部品
 - [x] 4.1 要求の記録の作成・照会・削除を作り、共通の契約とDIの識別子を定める
   - api・eventのapplication層が受け取る5つの共有部品(要求の記録・保存先・通知・失敗の確定・エラートラッキングへの送信)の契約とその入出力の型(マルチパートの書き込み先・保存したZIPとメタデータの写し・送る出来事の種類を含む)を`apps/backend-lib/core/data-export/ports.ts`に、5つの識別子を`core/data-export/identifiers.ts`に本タスクで定める。契約にR2・D1の型を出さない。以降のタスクはこの2つのファイルを触らない。D1の実装は`workers/data-export/d1-data-export-store.ts`に置く
   - 先に、単体テスト(`core/data-export/identifiers.unit.test.ts`)で、5つの識別子の値が`Symbol.for('data-export.<名前>')`であり、オブジェクトが凍結されていることを確かめる
@@ -133,7 +133,7 @@
   - _Depends: 4.3, 4.4_
   - _Requirements: 3.4, 3.6, 12.3_
 
-- [ ] 5. APIサーバー: 要求・一覧・ダウンロード・日次のジョブ
+- [x] 5. APIサーバー: 要求・一覧・ダウンロード・日次のジョブ
 - [x] 5.1 要求と一覧のユースケースと回数制限を作る
   - APIサーバーの本specのDIの識別子のファイルと、application層のポート(回数制限の`DataExportRequestLimits`と、`PLATFORM_TYPES.MessagePublisher`から受け取る`DataExportMessagePublisher`)のファイルを本タスクで作る。ユースケースは共有部品を`core/data-export`の型と識別子で受け取り、`**/lib/workers/**`を型も含めて読み込まない
   - 回数制限の実装`CounterDataExportRequestLimits`(厳密カウンタを使う)と規則`DATA_EXPORT_REQUEST_RULE`はAPIサーバーのinfrastructure層に置く(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)
@@ -166,7 +166,7 @@
   - _Boundary: ArchiveExpiryJob, GenerationRecoveryJob、4:21の並びを固定する上流のテストの期待値_
   - _Requirements: 3.6, 8.6, 10.1, 10.2, 10.4, 10.5, 12.3, 12.4_
 
-- [ ] 6. イベントサーバー: データの収集・ZIPの生成・見張り・物理削除
+- [x] 6. イベントサーバー: データの収集・ZIPの生成・見張り・物理削除
 - [x] 6.1 (P) アカウントと、やり取りと取引の読み取りの部品を作り、イベントサーバーのモジュールの枠を作る
   - イベントサーバーの本specのDIの識別子のファイルとモジュール(本タスクの2つの読み取りの部品の束縛)を本タスクで作り、モジュールの登録へ加える。後続のタスクは束縛を追記する
   - 先に、単体テスト(偽の部品)で、アカウント・Ultras・通知の設定・APIキー・プロフィール・フォローの値のスナップショットへの写しと、退会済み(アカウントかプロフィールが無い)で何も返さないこと、アカウントの有無の確かめ、仮名化IDをスナップショットに入れないこと、通報と問い合わせを次のページが無くなるまで20件ずつ読むこと、問い合わせの文字列の日時の写し、スポンサー広告と、アカウントの仮名化IDで求めた決済履歴の写し、部品の例外をそのまま投げることを確かめる
@@ -212,7 +212,7 @@
   - 完了状態: 単体テストが成功し、イベントサーバーのコンテナから2つの処理を解決できる
   - _Requirements: 3.4, 3.6, 6.5, 12.3, 12.5_
 
-- [ ] 7. 利用者側の設定ページ
+- [x] 7. 利用者側の設定ページ
 - [x] 7.1 (P) 中継の経路・GraphQLの操作・許可リスト・設定のナビゲーションとルートの枠を加える
   - 先に、単体テストで、中継の経路のパス・メソッド・上流のパス(百分率符号化)・時間切れ15分・凍結されていることと、管理者側の中継の経路に含まれないこと、設定のナビゲーションの項目(`/settings/export`・「データエクスポート」・`order` 100)を確かめる
   - 中継の経路はfrontend-platformの`defineRelayRoute`で定義し(素のオブジェクトにしない)、clientの`RELAY_ROUTES`の完全一致の経路の後に登録する
@@ -237,7 +237,7 @@
   - 完了状態: ブラウザテストと単体テストが成功し、`/settings/export`から要求でき、一覧に作成中の要求が加わる
   - _Requirements: 1.1, 1.3, 2.3, 11.2, 11.4, 11.5, 11.9_
 
-- [ ] 8. 結合の検証と技術ドキュメント
+- [x] 8. 結合の検証と技術ドキュメント
 - [x] 8.1 生成したZIPが文書の構造と一致することを統合テストで確かめる
   - テストは`apps/event/src/composition/data-export-archive.worker.test.ts`に置く(既存の同じ種類のテストと同じ`src/composition`に置く)。上流の部品の実装とローカルのD1・R2に、プロフィール画像・隔離されたロゴ・同名のスクリーンショット2枚・日本語のファイル名の添付・論理削除済みのプロダクト・他人の論理削除済みのプロダクトへのコメントとUpvote・無効化された評価・通報・問い合わせ・スポンサー広告・決済履歴を用意し、生成のメッセージの処理を実行する
   - 展開した結果で、パスの一覧・12のJSONの項目と値・`null`の規則・manifestの件数・圧縮の方式・UTF-8の印・保存のメタデータ・ZIPのファイル名を確かめる。あわせて、同じメッセージの重複で1つのZIPだけができること、見張りによる失敗の後の完了でZIPが削除されること、完了のメールの依頼が1回だけであること、3回目の失敗で失敗と通知の依頼待ちになること、退会済みの利用者の要求で通知を依頼しないことを確かめる
@@ -298,3 +298,4 @@
 - 7.3: 送信中は`disabled`でなく`aria-disabled`・`aria-busy`と「送信中」の文言にし(`frontend/004`の「操作できない状態」)、未確認のときだけ`disabled`。失敗はトーストでなくボタンの直下の`role="alert"`に示し、秒数の無い429はサーバーの文言を示す。メールアドレスの未確認の案内は、プロダクト登録の部品を文言を引数に取る共通の`components/auth/email-verification-notice.tsx`(`EmailVerificationNotice`)へ移して共用し、product-launchの設計の文書も改めた。
 - 8.1: 800行の上限のため統合テストを`data-export-archive.worker.test.ts`(構造と12のJSON)と`data-export-archive.delivery.worker.test.ts`(重複・見張り・再試行・退会済み)に分け、共通部を`src/composition/testing/`に置いた。要件4.5は「全てのファイル名にUTF-8の印」だが、fflateは非ASCIIの名前にだけビット11を立てる(ASCIIだけの名前は印の有無で解釈が変わらない)。テストは非ASCIIの名前に印が立つことを確かめる。apiの`src/application/data-export`はWorkers統合のカバレッジの対象外のため、ジョブとエラーの単体テストを足した。
 - 8.2: E2Eは完了の確認を完了のメールのリンクで開き直して行い、一覧の定期の取り直しに依存しない。メールとQueueの処理に依存するため`@smoke`を付けない。実行の前に`db:migrate:local`とapi・event・clientの起動が要る。clientの単体テストのカバレッジ(関数80%)のため、ブラウザテストからだけ呼ばれていた`dataExportDownloadLabel`の単体テストを足した。
+- 全体の検証(2026-11-22): 単体テスト(全アプリ`--coverage`)・型検査・静的解析・整形・`graphql:check`・`db:migrations:check`・`cf-typegen:check`は成功。Workers統合テストはapi 589ファイル・8,934件、event 130ファイル・1,608件が`--shard`と`--reporter=blob`の分割の後の`--mergeReports --coverage`で成功し、閾値を満たす(apiは`--maxWorkers=2`で6分割。並行の負荷でメモリ不足になると孤立したworkerdが残るので止める)。ブラウザテストはadmin 98ファイル・1,361件が成功、clientは本specが変えていない4ファイルが並列の実行の時刻帯・言語の上書きの競合で落ち、単独の再実行で52件とも成功した。統合テストのデータの用意のうち、プロフィール・フォロー・問い合わせの6テーブルの挿入とAPIキーの削除は、eventから使える上流の補助・書き込みの部品が無いため理由のコメント付きで直接書く。
