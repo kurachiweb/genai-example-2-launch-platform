@@ -19,6 +19,7 @@ export * from './payments/index.ts';
 export * from './product/index.ts';
 export * from './public-api/index.ts';
 export * from './profile/index.ts';
+export * from './reporting/index.ts';
 export * from './sponsorship/index.ts';
 export * from './tournament/index.ts';
 export * from './ultras/index.ts';

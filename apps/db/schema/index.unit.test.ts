@@ -93,6 +93,9 @@ describe('スキーマの集約点', () => {
     'api_keys',
     'moderation_actions',
     'moderation_weekly_statistics',
+    'report_categories',
+    'report_cases',
+    'reports',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
