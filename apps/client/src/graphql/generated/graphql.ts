@@ -355,6 +355,12 @@ export type RegisterUserInput = {
   password: string;
 };
 
+/** 通報の対象の種類 */
+export type ReportTargetKind =
+  | 'COMMENT'
+  | 'PRODUCT'
+  | 'USER';
+
 export type RequestEmailChangeInput = {
   newEmail: string;
   reAuthentication: ReAuthenticationInput;
@@ -405,6 +411,17 @@ export type SponsorshipTier =
   | 'GOLD'
   | 'LEGEND'
   | 'SILVER';
+
+/** 通報の入力 */
+export type SubmitReportInput = {
+  categoryId: string | number;
+  /** 未ログインと停止中の利用者の権利侵害の通報だけで使い、他では捨てる */
+  contactEmail?: string | null | undefined;
+  reason: string;
+  targetKind: ReportTargetKind;
+  /** ユーザーはハンドル、プロダクトとコメントはID */
+  targetRef: string;
+};
 
 /** トロフィーの種類 */
 export type TrophyKind =
@@ -1148,6 +1165,18 @@ export type ClientUpdateApiKeyMutationVariables = Exact<{
 
 export type ClientUpdateApiKeyMutation = { updateApiKey: { id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } } };
 
+export type ClientReportCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientReportCategoriesQuery = { reportCategories: Array<{ id: string, name: string, infringement: boolean }> };
+
+export type ClientSubmitReportMutationVariables = Exact<{
+  input: SubmitReportInput;
+}>;
+
+
+export type ClientSubmitReportMutation = { submitReport: { accepted: boolean } };
+
 export type ClientActiveSponsorshipCountQueryVariables = Exact<{
   productHandle: string;
 }>;
@@ -1381,6 +1410,8 @@ export const ClientIssueApiKeyDocument = {"__meta__":{"hash":"sha256:187d7266e9f
 export const ClientMyApiKeysDocument = {"__meta__":{"hash":"sha256:b324ab84bd16119c6bfa3d08db667345b687f9fc2130dd4b92ecbbc9f9ea3df3"}} as unknown as DocumentNode<ClientMyApiKeysQuery, ClientMyApiKeysQueryVariables>;
 export const ClientReissueApiKeyDocument = {"__meta__":{"hash":"sha256:98d44a501ad311be8df1936649810d2c8a57b4b832f529d4b44ac352d67450a2"}} as unknown as DocumentNode<ClientReissueApiKeyMutation, ClientReissueApiKeyMutationVariables>;
 export const ClientUpdateApiKeyDocument = {"__meta__":{"hash":"sha256:a1a7a272b6c10d36c321dd8b86ee3f56b827354699904686920bf0544a36d368"}} as unknown as DocumentNode<ClientUpdateApiKeyMutation, ClientUpdateApiKeyMutationVariables>;
+export const ClientReportCategoriesDocument = {"__meta__":{"hash":"sha256:1158b2bc0020409811de38f80c8c020f6dc9a503efdeba7fb317ad05f0ea34ca"}} as unknown as DocumentNode<ClientReportCategoriesQuery, ClientReportCategoriesQueryVariables>;
+export const ClientSubmitReportDocument = {"__meta__":{"hash":"sha256:83b08470d067348b445a7ef1f3bb659137ab7667a52e321631d7fd16ad8f728a"}} as unknown as DocumentNode<ClientSubmitReportMutation, ClientSubmitReportMutationVariables>;
 export const ClientActiveSponsorshipCountDocument = {"__meta__":{"hash":"sha256:0a2516737da8b90a8984914cd732dcae721492d0e95b31d024b507287e0b1f63"}} as unknown as DocumentNode<ClientActiveSponsorshipCountQuery, ClientActiveSponsorshipCountQueryVariables>;
 export const ClientApplySponsorshipDocument = {"__meta__":{"hash":"sha256:e24146897bb5af5be36bca1bb2d882b2d7c2975d7dad5abe5a6b332e2038c834"}} as unknown as DocumentNode<ClientApplySponsorshipMutation, ClientApplySponsorshipMutationVariables>;
 export const ClientMySponsorshipsDocument = {"__meta__":{"hash":"sha256:610d892aebd7cbf7524557c19588d9ad66d573f36c61c310280fca1973ad9492"}} as unknown as DocumentNode<ClientMySponsorshipsQuery, ClientMySponsorshipsQueryVariables>;

@@ -111,6 +111,8 @@ type Documents = {
     "query ClientMyApiKeys($first: Int!, $after: String) {\n  myApiKeys(first: $first, after: $after) {\n    nodes {\n      ...ApiKeyFields\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.ClientMyApiKeysDocument,
     "mutation ClientReissueApiKey($id: ID!) {\n  reissueApiKey(id: $id) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}": typeof types.ClientReissueApiKeyDocument,
     "mutation ClientUpdateApiKey($id: ID!, $input: ApiKeyInput!) {\n  updateApiKey(id: $id, input: $input) {\n    ...ApiKeyFields\n  }\n}": typeof types.ClientUpdateApiKeyDocument,
+    "query ClientReportCategories {\n  reportCategories {\n    id\n    name\n    infringement\n  }\n}": typeof types.ClientReportCategoriesDocument,
+    "mutation ClientSubmitReport($input: SubmitReportInput!) {\n  submitReport(input: $input) {\n    accepted\n  }\n}": typeof types.ClientSubmitReportDocument,
     "query ClientActiveSponsorshipCount($productHandle: String!) {\n  activeSponsorshipCount(productHandle: $productHandle)\n}": typeof types.ClientActiveSponsorshipCountDocument,
     "mutation ClientApplySponsorship($input: ApplySponsorshipInput!) {\n  applySponsorship(input: $input) {\n    purchaseId\n  }\n}": typeof types.ClientApplySponsorshipDocument,
     "query ClientMySponsorships($first: Int!, $after: String) {\n  mySponsorships(first: $first, after: $after) {\n    nodes {\n      id\n      product {\n        handle\n        name\n        logo {\n          id\n          objectKey\n          fallbackFormat\n          width\n          height\n        }\n        listed\n      }\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminatedOn\n      terminationReason\n      terminationRefund {\n        days\n        amount {\n          amount\n          currency\n        }\n        status\n      }\n      displayStopRefund {\n        days\n        amount {\n          amount\n          currency\n        }\n        status\n      }\n      canResume\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n    nextDayStartsAt\n  }\n}": typeof types.ClientMySponsorshipsDocument,
@@ -231,6 +233,8 @@ const documents: Documents = {
     "query ClientMyApiKeys($first: Int!, $after: String) {\n  myApiKeys(first: $first, after: $after) {\n    nodes {\n      ...ApiKeyFields\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.ClientMyApiKeysDocument,
     "mutation ClientReissueApiKey($id: ID!) {\n  reissueApiKey(id: $id) {\n    apiKey {\n      ...ApiKeyFields\n    }\n    plainKey\n  }\n}": types.ClientReissueApiKeyDocument,
     "mutation ClientUpdateApiKey($id: ID!, $input: ApiKeyInput!) {\n  updateApiKey(id: $id, input: $input) {\n    ...ApiKeyFields\n  }\n}": types.ClientUpdateApiKeyDocument,
+    "query ClientReportCategories {\n  reportCategories {\n    id\n    name\n    infringement\n  }\n}": types.ClientReportCategoriesDocument,
+    "mutation ClientSubmitReport($input: SubmitReportInput!) {\n  submitReport(input: $input) {\n    accepted\n  }\n}": types.ClientSubmitReportDocument,
     "query ClientActiveSponsorshipCount($productHandle: String!) {\n  activeSponsorshipCount(productHandle: $productHandle)\n}": types.ClientActiveSponsorshipCountDocument,
     "mutation ClientApplySponsorship($input: ApplySponsorshipInput!) {\n  applySponsorship(input: $input) {\n    purchaseId\n  }\n}": types.ClientApplySponsorshipDocument,
     "query ClientMySponsorships($first: Int!, $after: String) {\n  mySponsorships(first: $first, after: $after) {\n    nodes {\n      id\n      product {\n        handle\n        name\n        logo {\n          id\n          objectKey\n          fallbackFormat\n          width\n          height\n        }\n        listed\n      }\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminatedOn\n      terminationReason\n      terminationRefund {\n        days\n        amount {\n          amount\n          currency\n        }\n        status\n      }\n      displayStopRefund {\n        days\n        amount {\n          amount\n          currency\n        }\n        status\n      }\n      canResume\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n    nextDayStartsAt\n  }\n}": types.ClientMySponsorshipsDocument,
@@ -656,6 +660,14 @@ export function graphql(source: "mutation ClientReissueApiKey($id: ID!) {\n  rei
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation ClientUpdateApiKey($id: ID!, $input: ApiKeyInput!) {\n  updateApiKey(id: $id, input: $input) {\n    ...ApiKeyFields\n  }\n}"): (typeof documents)["mutation ClientUpdateApiKey($id: ID!, $input: ApiKeyInput!) {\n  updateApiKey(id: $id, input: $input) {\n    ...ApiKeyFields\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query ClientReportCategories {\n  reportCategories {\n    id\n    name\n    infringement\n  }\n}"): (typeof documents)["query ClientReportCategories {\n  reportCategories {\n    id\n    name\n    infringement\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation ClientSubmitReport($input: SubmitReportInput!) {\n  submitReport(input: $input) {\n    accepted\n  }\n}"): (typeof documents)["mutation ClientSubmitReport($input: SubmitReportInput!) {\n  submitReport(input: $input) {\n    accepted\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

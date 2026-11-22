@@ -223,7 +223,7 @@
   - _Requirements: 17.4, 17.5, 17.6, 19.2_
 
 - [ ] 7. 利用者側の画面
-- [ ] 7.1 利用者側のGraphQLの操作を書き、型と許可リストを生成する
+- [x] 7.1 利用者側のGraphQLの操作を書き、型と許可リストを生成する
   - `reportCategories`・`submitReport`を利用者側の操作として`src/graphql/operations/reporting/`の1ファイル1操作の`*.graphql`(操作名は`Client`で始める)に書き、利用者側で`bun run graphql:generate`を実行して型と`<操作名>Document`を生成し、apiで`bun run graphql:allowlist`を実行して利用者側の許可リストを再生成する
   - カテゴリの照会の選択肢(`graphqlQueryOptions`)と通報の送信の選択肢(`graphqlMutationOptions`)を`src/graphql/reporting.ts`に作り、単体テストで選択肢と照会のキーを確かめる。部品は生成物の型に直接依存しない
   - 完了状態: 型の生成と型検査と単体テストが成功し、本specの利用者側の操作が利用者側の許可リストにだけ載る
@@ -377,3 +377,4 @@
 - 5.3: `submitReport`は`clientOnly`→`withValidatedArgs`→`clockOf(context).now()`を1回→`accountGuardOf(context).currentUser`(`active`はmember、他はguest)→`withInputPath('input', …)`の中で連絡先の要否と形式(`z.regexes.html5Email`、`auth-inputs.ts`と同じ判定)→`assertHuman('report')`→ユースケース。bot判定の操作名は`REPORT_BOT_ACTION = 'report'`(`submission-resolvers.ts`からexport)。`reportCategories`は呼び出し元を確かめない(利用者側への限定は許可リスト)。テストのセッションは`test/support/profile-graphql-operations.ts`の`issueUserSession`
 - 5.5: 型の項目のリゾルバは書かず(codegenの写像の指定が無く、ユースケースの値がGraphQLの型にそのまま合う)、`AdminProductReportSummary.openCase`(`AdminOpenReportCaseRef`、5.4の`AdminReportCase`とは別の型)はルートのリゾルバで組む。`summary-resolvers.ts`は`index.ts`が展開するため空の`Mutation: {}`を持つ。カテゴリの操作はGraphQLの`reason`をそのまま渡す(画面の`CategoryMasterEditor`は送らない)。テストの補助`codesOf`・`detailsOf`は`test/support/payments-graphql-operations.ts`から
 - 9.2: 補助は`e2e/support/report-fixture-sql.ts`(純粋な関数、本物のマイグレーションのSQLiteで単体テスト)と`report-fixtures.ts`(`createReport`・`readReportCaseState`、`executeLocalD1`)。挿入は本物の`D1ReportSubmissionStore`と同じ2文。対象はプロダクトとユーザーはハンドル、コメントはID、カテゴリは名前(大文字小文字を区別しない)、ログイン中の通報者は登録メールアドレス(有効な利用者だけ)。本番の受け付けが拒否・破棄する入力(未ログインの権利侵害で連絡先なし、権利侵害以外の未ログインの連絡先、本人のコンテンツ、理由の誤り)は投げる。対象の可視性は検査しない。D1へ直接書くため`assumeDistinctClientIp`・`waitForBotToken`は使わない(9.3・9.4の画面からの送信で直接使う)。**補助を呼ぶ空のE2Eは確認のために一時的に作って`--no-deps`(サーバーもシークレットも不要)で成功させ、リポジトリには残していない(9.5が実際のシナリオで`createReport`を呼ぶ)**
+- 7.1: 操作は`ClientReportCategories`・`ClientSubmitReport`(`apps/client/src/graphql/operations/reporting/`)。`apps/client/src/graphql/reporting.ts`に`reportCategoriesQueryOptions`(キーは`[documentId, {}]`で閲覧者を含めない。応答が閲覧者によらないため)・`submitReportMutationOptions`と、部品が生成物の型を直接使わないための`ReportCategoryOption`・`toReportCategoryOptions`・`ReportSubmission`・`toSubmitReportVariables`(小文字の対象の種類をGraphQLの大文字の列挙へ写し、`contactEmail`が無ければ入力に含めない)。**7.2は`useMutation(submitReportMutationOptions())`と`sendWithTurnstile(turnstile, (turnstileToken) => mutation.mutateAsync({ variables: toSubmitReportVariables(...), turnstileToken }))`の形で送る**
