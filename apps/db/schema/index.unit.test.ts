@@ -96,6 +96,7 @@ describe('スキーマの集約点', () => {
     'report_categories',
     'report_cases',
     'reports',
+    'data_exports',
   ])(
     'マイグレーションの生成が読むテーブル定義として、%sを再エクスポートする',
     (tableName) => {
