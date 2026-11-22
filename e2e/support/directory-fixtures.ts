@@ -39,6 +39,8 @@ export interface ListedProduct {
 
 export interface ListedProducts {
   readonly ownerHandle: string;
+  // 投稿者はログインできないが確認済みで、通知はローカルのメール受信箱のこの宛先で確かめられる
+  readonly ownerEmail: string;
   readonly matchDate: string;
   readonly products: readonly ListedProduct[];
 }
@@ -108,6 +110,7 @@ export async function createListedProducts({
   }
   return {
     ownerHandle: plan.owner.handle,
+    ownerEmail: plan.owner.email,
     matchDate: plan.matchDate,
     products: plan.products.map(({ handle, name }) => ({ handle, name })),
   };

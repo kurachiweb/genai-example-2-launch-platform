@@ -204,6 +204,21 @@ export async function moderationAuditLogRows(
   action: ModerationAction,
   targetId: string,
 ): Promise<Locator> {
+  return auditLogRowsOf(
+    page,
+    admin,
+    MODERATION_AUDIT_ACTION_DEFINITIONS[action].label,
+    targetId,
+  );
+}
+
+// 監査ログの画面を対象の識別子で絞り込み、操作者・操作種別の表示名・対象の揃った行を返す
+export async function auditLogRowsOf(
+  page: Page,
+  admin: Pick<AdminProfileInput, 'nickname'>,
+  actionLabel: string,
+  targetId: string,
+): Promise<Locator> {
   await openFromAdminNavigation(page, admin, AUDIT_LOGS_PATH);
   await expect(
     page.getByRole('heading', { level: 1, name: AUDIT_LOGS_TITLE }),
@@ -216,7 +231,7 @@ export async function moderationAuditLogRows(
   return page
     .getByRole('table', { name: AUDIT_LOG_LIST_CAPTION })
     .getByRole('row')
-    .filter({ hasText: MODERATION_AUDIT_ACTION_DEFINITIONS[action].label })
+    .filter({ hasText: actionLabel })
     .filter({ hasText: admin.nickname })
     .filter({ hasText: targetId });
 }
