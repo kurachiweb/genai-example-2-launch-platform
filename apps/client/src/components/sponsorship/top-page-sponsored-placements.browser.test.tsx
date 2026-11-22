@@ -186,6 +186,7 @@ beforeEach(() => {
 afterEach(async () => {
   applyColorScheme('light');
   await page.viewport(DESKTOP.width, DESKTOP.height);
+  await emulateBrowserDisplay(null);
 });
 
 describe('トップページの広告スペース', () => {
