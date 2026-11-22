@@ -238,7 +238,7 @@
   - _Requirements: 1.1, 1.3, 2.3, 11.2, 11.4, 11.5, 11.9_
 
 - [ ] 8. 結合の検証と技術ドキュメント
-- [ ] 8.1 生成したZIPが文書の構造と一致することを統合テストで確かめる
+- [x] 8.1 生成したZIPが文書の構造と一致することを統合テストで確かめる
   - テストは`apps/event/src/composition/data-export-archive.worker.test.ts`に置く(既存の同じ種類のテストと同じ`src/composition`に置く)。上流の部品の実装とローカルのD1・R2に、プロフィール画像・隔離されたロゴ・同名のスクリーンショット2枚・日本語のファイル名の添付・論理削除済みのプロダクト・他人の論理削除済みのプロダクトへのコメントとUpvote・無効化された評価・通報・問い合わせ・スポンサー広告・決済履歴を用意し、生成のメッセージの処理を実行する
   - 展開した結果で、パスの一覧・12のJSONの項目と値・`null`の規則・manifestの件数・圧縮の方式・UTF-8の印・保存のメタデータ・ZIPのファイル名を確かめる。あわせて、同じメッセージの重複で1つのZIPだけができること、見張りによる失敗の後の完了でZIPが削除されること、完了のメールの依頼が1回だけであること、3回目の失敗で失敗と通知の依頼待ちになること、退会済みの利用者の要求で通知を依頼しないことを確かめる
   - APIサーバー(`backend-lib`・`db`を含む)・イベントサーバー・利用者側のそれぞれのカバレッジの計測で、本specが変更したファイルのカバレッジが80%以上であることを確かめる
@@ -296,3 +296,4 @@
 - 7.2: 一覧は見出しを持たずページのh1で名前を付け、「自動更新」の`Switch`は一覧の右上(`components/match/auto-refresh-switch.tsx`を再利用)。`role="log"`は付けない(取り直しで項目が加わらず、既存の項目の状態が変わるだけのため。状態の変化は完了のメールで知らせる)。loaderの`staleTime: 0`と部品の`refetchOnMount: false`を組で使う。7.3は`DataExportList({ viewerId, labelledBy, retryFocusRef })`をルートで区画に置き換え、要求の後に`invalidateMyDataExports`を呼ぶ。
 - 6.2: `data-export.archive-erasure`は`withdrawn`・`purge_due`の2100。破棄は`uploadId`と`objectKey`が揃うときだけ、オブジェクトの削除は100件分を1回の`delete`にまとめ、R2が全て成功してから記録を`removeMany`で消す。削除の失敗は例外→再試行→デッドレター→基盤のSentryの経路で届く。上流のテストは末尾の固定を`relativeOrderOf`の相対の順へ改め、ugc-moderationは「identity-auth専用の10000番台より前」とした。`project-values.md`の「非同期の波及処理の登録」の表への追記は8.3の照合で行う。
 - 7.3: 送信中は`disabled`でなく`aria-disabled`・`aria-busy`と「送信中」の文言にし(`frontend/004`の「操作できない状態」)、未確認のときだけ`disabled`。失敗はトーストでなくボタンの直下の`role="alert"`に示し、秒数の無い429はサーバーの文言を示す。メールアドレスの未確認の案内は、プロダクト登録の部品を文言を引数に取る共通の`components/auth/email-verification-notice.tsx`(`EmailVerificationNotice`)へ移して共用し、product-launchの設計の文書も改めた。
+- 8.1: 800行の上限のため統合テストを`data-export-archive.worker.test.ts`(構造と12のJSON)と`data-export-archive.delivery.worker.test.ts`(重複・見張り・再試行・退会済み)に分け、共通部を`src/composition/testing/`に置いた。要件4.5は「全てのファイル名にUTF-8の印」だが、fflateは非ASCIIの名前にだけビット11を立てる(ASCIIだけの名前は印の有無で解釈が変わらない)。テストは非ASCIIの名前に印が立つことを確かめる。apiの`src/application/data-export`はWorkers統合のカバレッジの対象外のため、ジョブとエラーの単体テストを足した。
