@@ -51,11 +51,14 @@ export function ReportCaseDialogHost({
 }: ReportCaseDialogHostProps) {
   const [state, setState] = useState<HostState>(CLOSED);
   const completedRef = useRef(false);
+  // 遅らせた取り直しで案件が完了・不在になると、閉じた後に起点のボタンが消えてフォーカスが<body>へ落ちるため、見出しへ移す
+  const refreshDeferredRef = useRef(false);
   // 閉じる時に決める閉じた後のフォーカスの移り先
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const show = (request: OpenedRequest): void => {
     completedRef.current = false;
+    refreshDeferredRef.current = false;
     returnFocusRef.current = null;
     setState((current) => ({
       open: true,
@@ -74,12 +77,12 @@ export function ReportCaseDialogHost({
     }
   };
 
-  // 確定すると起点の操作は替わる・消えるため一覧の見出しへ移し、失敗と取り消しでは起点が残っていればそこへ戻す
+  // 確定すると起点の操作は替わる・消えるため一覧の見出しへ移し、失敗と取り消しでは起点が残っていればそこへ戻す。取り直しを遅らせた失敗は閉じた後の取り直しで起点が消え得るため、見出しへ移す
   const close = (): void => {
     const opener = state.request?.opener ?? null;
     const openerRemains = opener?.isConnected ?? false;
     returnFocusRef.current =
-      completedRef.current || !openerRemains
+      completedRef.current || refreshDeferredRef.current || !openerRemains
         ? fallbackFocusRef.current
         : opener;
     setState((current) => ({ ...current, open: false }));
@@ -107,6 +110,9 @@ export function ReportCaseDialogHost({
           }}
           onSwitchOperation={switchOperation}
           deferRefresh={deferRefresh}
+          onRefreshDeferred={() => {
+            refreshDeferredRef.current = true;
+          }}
           returnFocusRef={returnFocusRef}
         />
       )}

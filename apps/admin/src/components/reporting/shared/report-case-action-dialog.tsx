@@ -31,6 +31,8 @@ export interface ReportCaseActionDialogProps {
   readonly onSwitchOperation?: (operation: ReportCaseClosingOperation) => void;
   // 取り直しで確認の前提や画面ごとが替わる場所(詳細のページ)では、失敗の後の取り直しを閉じるまで遅らせ、文言と理由を示し続ける
   readonly deferRefresh?: boolean;
+  // 取り直しを閉じるまで遅らせた失敗の後に呼ぶ
+  readonly onRefreshDeferred?: () => void;
   readonly returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
@@ -53,6 +55,7 @@ export function ReportCaseActionDialog({
   onCompleted,
   onSwitchOperation,
   deferRefresh = false,
+  onRefreshDeferred,
   returnFocusRef,
 }: ReportCaseActionDialogProps) {
   const { run, refreshAfter } = useReportCaseMutation(operation, {
@@ -107,6 +110,7 @@ export function ReportCaseActionDialog({
         } catch (error) {
           if (deferRefresh && isReportCaseRefreshFailure(error)) {
             deferredFailureRef.current = error;
+            onRefreshDeferred?.();
           }
           throw error;
         }
