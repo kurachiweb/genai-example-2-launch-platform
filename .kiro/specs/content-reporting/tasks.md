@@ -84,7 +84,7 @@
   - _Depends: 1.2, 3.1_
   - _Requirements: 3.8, 3.9, 5.1, 5.2, 5.3, 5.5, 20.3_
 
-- [ ] 3.3 (P) 通報カテゴリのストアを作る
+- [x] 3.3 (P) 通報カテゴリのストアを作る
   - 先に、Workers統合テストで、一覧と紐付く件数、前後の空白を除いた大文字小文字を区別しない名前の重複の拒否(追加と名前の変更)、標準カテゴリの名前の変更と削除の拒否、削除で紐付く通報を「その他」へ付け替えて監査ログとともに一体で確定すること、付け替えた通報の受付時点の名前が変わらないことを確かめる
   - 完了状態: Workers統合テストが成功する
   - _Boundary: D1ReportCategoryStore_
@@ -357,3 +357,4 @@
 - 1.5: 種別は`apps/backend-lib/core/email/kinds/content-reporting.ts`(`REPORT_OUTCOME_EMAIL`・`REPORT_REJECTION_TO_POSTER_EMAIL`・`REPORT_INFRINGEMENT_INQUIRY_EMAIL`)、テンプレートは`apps/event/src/infrastructure/email/templates/content-reporting/`で、文言は文言規則の「通報のメールの本文」に一字一句揃えた(`report-notice-copy.ts`)。テンプレートのテストは前例に合わせて`*.worker.test.tsx`。**入力の`targetLabel`は、コメントのときは対象のプロダクトの名称で、表示できない対象はnull(4.4の`ReportNotifier`と4.7の照会はこの前提で入力を組み立てる)**。抜粋は`targetLabel`がnullなら描かず、コメント以外で渡されても描くため、4.4はコメントのときだけ抜粋を渡す。照会のプレビューは冒頭の2文。改行を保つ部品とUTCの日時の部品はugc-moderationと同じ処理を本specのディレクトリに複製した(テンプレートのディレクトリ間で読み込まない慣例のため)
 - 2.1: `REPORTING_PLATFORM_TYPES`(`reporting.<名前>`)は今は`ReportErasureStore`・`ReportErasureStatements`の2種で、2.2が`ReportExport`を加えるときに`core/reporting/identifiers.unit.test.ts`の期待値と束縛のテストの件数を改める。`REPORTING_PLATFORM_MODULE`はapi・eventの`composition/modules.ts`で`MODERATION_PLATFORM_MODULE`の直後。残りの有無(`remaining`)は件数でなく、前例の`D1ModerationRecordStore.eraseMatching`と同じく同じ一括の書き込みで条件の行を1件読み直して判定する(設計は「件数が上限に達したら」)。`eraseByReporter`は論理削除済みの通報も物理削除し、`eraseEmptyCases`は論理削除済みの通報が残る案件を残す(外部キー)。未ログインの通報の14日は`closed_at <= threshold`で、完了から戻した案件は`closed_at`がnull(制約)のため対象外。テストの補助は`workers/reporting/testing/report-erasure-fixtures.ts`
 - 3.2: `D1ReportSubmissionStore`(`apps/api/src/infrastructure/reporting/d1-report-submission-store.ts`)は案件の`onConflictDoUpdate`(`last_reported_at`は`MAX`、`infringement_reported_at`は`COALESCE`、`updated_at`は`excluded`)と、`case_id`・`category_name`を副問い合わせで埋める通報の挿入の2文。カテゴリの同時の削除は`NOT NULL constraint failed: reports.category_name`を原因の連鎖で見分けて`'category-missing'`を返す(SQLiteはNOT NULLを外部キーより先に検査する)。古い時刻の通報が後で確定すると`updated_at`だけは戻り得る
+- 3.3: `D1ReportCategoryStore`は名前の前後の空白もストアで除き(4.3のサービスも除くが二重でも害は無い。サービスは返す名前も除いた値にする)、標準カテゴリの保護と不在は監査ログの`guard`(`{ kind: 'condition' }`の`system_default = 0`)と`isAuditGuardRejection`で`not-found`にする(inquiry-chatの前例)。`list`は作成日時→IDの順で、フォームの並び(14.8)は4.3が`sortReportCategories`で行う。削除の付け替えは論理削除済みの通報も含め`updated_at`も更新する。付け替えた件数はポートが返さないため、4.3は先に`countReports`で数えて監査ログの詳細に入れる
