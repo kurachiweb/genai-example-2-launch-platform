@@ -1,0 +1,10 @@
+mutation AdminChangeReportCaseStatus(
+  $id: ID!
+  $from: ReportCaseStatus!
+  $to: ReportCaseStatus!
+  $reason: String
+) {
+  changeReportCaseStatus(id: $id, from: $from, to: $to, reason: $reason) {
+    status
+  }
+}

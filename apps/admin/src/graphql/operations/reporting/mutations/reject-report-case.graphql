@@ -1,0 +1,5 @@
+mutation AdminRejectReportCase($id: ID!, $reason: String!) {
+  rejectReportCase(id: $id, reason: $reason) {
+    status
+  }
+}

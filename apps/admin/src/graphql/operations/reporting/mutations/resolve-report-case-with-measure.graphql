@@ -1,0 +1,5 @@
+mutation AdminResolveReportCaseWithMeasure($id: ID!, $reason: String!) {
+  resolveReportCaseWithMeasure(id: $id, reason: $reason) {
+    status
+  }
+}

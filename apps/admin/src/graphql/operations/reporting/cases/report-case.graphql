@@ -1,0 +1,30 @@
+query AdminReportCase($id: ID!) {
+  adminReportCase(id: $id) {
+    case {
+      ...AdminReportCaseSummary
+    }
+    statusChangedAt
+    resolution
+    closingReason
+    closedAt
+    lastInquiry {
+      sentAt
+      message
+      deadline
+      overdue
+    }
+    inquiryAvailable
+    reports {
+      id
+      categoryName
+      reason
+      reportedAt
+      reporter {
+        kind
+        nickname
+        handle
+        hasContact
+      }
+    }
+  }
+}

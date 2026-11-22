@@ -1,0 +1,9 @@
+query AdminProductReportSummary($productId: ID!) {
+  adminProductReportSummary(productId: $productId) {
+    reportCount
+    openCase {
+      id
+      status
+    }
+  }
+}

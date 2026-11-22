@@ -1,0 +1,5 @@
+mutation AdminRenameReportCategory($id: ID!, $name: String!) {
+  renameReportCategory(id: $id, name: $name) {
+    id
+  }
+}

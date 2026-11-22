@@ -22,6 +22,7 @@ type Documents = {
     "fragment AdminModerationProduct on AdminProduct {\n  id\n  handle\n  name\n  logo {\n    id\n    path\n    image {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    quarantined\n    quarantineReasons\n  }\n  owner {\n    ...AdminModerationUserSummary\n  }\n  category {\n    id\n    name\n  }\n  latestLaunchDate\n  latestLaunchState\n  visibility\n}": typeof types.AdminModerationProductFragmentDoc,
     "fragment AdminModerationRating on AdminRating {\n  id\n  rater {\n    ...AdminModerationUserSummary\n  }\n  productName\n  productId\n  score\n  createdAt\n  updatedAt\n  state\n  latestInvalidation {\n    ...AdminModerationNote\n  }\n}": typeof types.AdminModerationRatingFragmentDoc,
     "fragment AdminModerationUserSummary on AdminUserSummary {\n  id\n  handle\n  nickname\n  suspended\n}": typeof types.AdminModerationUserSummaryFragmentDoc,
+    "fragment AdminReportCaseSummary on AdminReportCase {\n  id\n  target {\n    kind\n    id\n    detached\n    available\n    handle\n    label\n    excerpt\n    productId\n    productName\n    productHandle\n  }\n  status\n  reportCount\n  categoryCounts {\n    categoryId\n    name\n    count\n  }\n  firstReportedAt\n  lastReportedAt\n  infringement\n  responseTime {\n    startedAt\n    completedAt\n    elapsedSeconds\n    alerts\n  }\n}": typeof types.AdminReportCaseSummaryFragmentDoc,
     "query AdminAccounts {\n  adminAccounts {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": typeof types.AdminAccountsDocument,
     "mutation AdminChangeRole($id: ID!, $role: AdminRole!, $reason: String) {\n  changeAdminRole(id: $id, role: $role, reason: $reason) {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": typeof types.AdminChangeRoleDocument,
     "mutation AdminDelete($id: ID!, $reason: String) {\n  deleteAdmin(id: $id, reason: $reason)\n}": typeof types.AdminDeleteDocument,
@@ -99,6 +100,19 @@ type Documents = {
     "mutation AdminCreateProductCategory($input: ProductCategoryInput!) {\n  createProductCategory(input: $input) {\n    id\n  }\n}": typeof types.AdminCreateProductCategoryDocument,
     "mutation AdminDeleteProductCategory($id: ID!) {\n  deleteProductCategory(id: $id)\n}": typeof types.AdminDeleteProductCategoryDocument,
     "mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}": typeof types.AdminUpdateProductCategoryDocument,
+    "query AdminReportCase($id: ID!) {\n  adminReportCase(id: $id) {\n    case {\n      ...AdminReportCaseSummary\n    }\n    statusChangedAt\n    resolution\n    closingReason\n    closedAt\n    lastInquiry {\n      sentAt\n      message\n      deadline\n      overdue\n    }\n    inquiryAvailable\n    reports {\n      id\n      categoryName\n      reason\n      reportedAt\n      reporter {\n        kind\n        nickname\n        handle\n        hasContact\n      }\n    }\n  }\n}": typeof types.AdminReportCaseDocument,
+    "query AdminReportCases($filter: AdminReportCaseFilter, $first: Int!, $after: String) {\n  adminReportCases(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminReportCaseSummary\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.AdminReportCasesDocument,
+    "query AdminReportCategories {\n  adminReportCategories {\n    id\n    name\n    systemDefault\n    infringement\n    reportCount\n  }\n}": typeof types.AdminReportCategoriesDocument,
+    "mutation AdminChangeReportCaseStatus($id: ID!, $from: ReportCaseStatus!, $to: ReportCaseStatus!, $reason: String) {\n  changeReportCaseStatus(id: $id, from: $from, to: $to, reason: $reason) {\n    status\n  }\n}": typeof types.AdminChangeReportCaseStatusDocument,
+    "mutation AdminCreateReportCategory($name: String!) {\n  createReportCategory(name: $name) {\n    id\n  }\n}": typeof types.AdminCreateReportCategoryDocument,
+    "mutation AdminDeleteReportCategory($id: ID!) {\n  deleteReportCategory(id: $id) {\n    reassignedCount\n  }\n}": typeof types.AdminDeleteReportCategoryDocument,
+    "mutation AdminRejectReportCase($id: ID!, $reason: String!) {\n  rejectReportCase(id: $id, reason: $reason) {\n    status\n  }\n}": typeof types.AdminRejectReportCaseDocument,
+    "mutation AdminRenameReportCategory($id: ID!, $name: String!) {\n  renameReportCategory(id: $id, name: $name) {\n    id\n  }\n}": typeof types.AdminRenameReportCategoryDocument,
+    "mutation AdminResolveReportCaseWithMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithMeasure(id: $id, reason: $reason) {\n    status\n  }\n}": typeof types.AdminResolveReportCaseWithMeasureDocument,
+    "mutation AdminResolveReportCaseWithoutMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithoutMeasure(id: $id, reason: $reason) {\n    status\n  }\n}": typeof types.AdminResolveReportCaseWithoutMeasureDocument,
+    "mutation AdminSendInfringementInquiry($id: ID!, $message: String!, $reason: String) {\n  sendInfringementInquiry(id: $id, message: $message, reason: $reason) {\n    sentAt\n    deadline\n  }\n}": typeof types.AdminSendInfringementInquiryDocument,
+    "query AdminProductReportSummary($productId: ID!) {\n  adminProductReportSummary(productId: $productId) {\n    reportCount\n    openCase {\n      id\n      status\n    }\n  }\n}": typeof types.AdminProductReportSummaryDocument,
+    "query AdminUnhandledReportSummary {\n  adminUnhandledReportSummary {\n    open\n    infringementOpen\n  }\n}": typeof types.AdminUnhandledReportSummaryDocument,
     "query AdminSponsorships($filter: AdminSponsorshipFilter, $first: Int!, $after: String) {\n  adminSponsorships(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      productName\n      productHandle\n      productDeleted\n      applicantNickname\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminable\n      purchaseId\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.AdminSponsorshipsDocument,
     "query AdminSponsorshipTerminationPreview($id: ID!) {\n  sponsorshipTerminationPreview(id: $id) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n  }\n}": typeof types.AdminSponsorshipTerminationPreviewDocument,
     "mutation AdminTerminateSponsorship($id: ID!, $reason: String!) {\n  terminateSponsorship(id: $id, reason: $reason) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n    terminatedOn\n    terminationRefundStatus\n    stopRefundStatus\n    terminationRefundRequested {\n      amount\n      currency\n    }\n    stopRefundRequested {\n      amount\n      currency\n    }\n    purchaseId\n  }\n}": typeof types.AdminTerminateSponsorshipDocument,
@@ -117,6 +131,7 @@ const documents: Documents = {
     "fragment AdminModerationProduct on AdminProduct {\n  id\n  handle\n  name\n  logo {\n    id\n    path\n    image {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    quarantined\n    quarantineReasons\n  }\n  owner {\n    ...AdminModerationUserSummary\n  }\n  category {\n    id\n    name\n  }\n  latestLaunchDate\n  latestLaunchState\n  visibility\n}": types.AdminModerationProductFragmentDoc,
     "fragment AdminModerationRating on AdminRating {\n  id\n  rater {\n    ...AdminModerationUserSummary\n  }\n  productName\n  productId\n  score\n  createdAt\n  updatedAt\n  state\n  latestInvalidation {\n    ...AdminModerationNote\n  }\n}": types.AdminModerationRatingFragmentDoc,
     "fragment AdminModerationUserSummary on AdminUserSummary {\n  id\n  handle\n  nickname\n  suspended\n}": types.AdminModerationUserSummaryFragmentDoc,
+    "fragment AdminReportCaseSummary on AdminReportCase {\n  id\n  target {\n    kind\n    id\n    detached\n    available\n    handle\n    label\n    excerpt\n    productId\n    productName\n    productHandle\n  }\n  status\n  reportCount\n  categoryCounts {\n    categoryId\n    name\n    count\n  }\n  firstReportedAt\n  lastReportedAt\n  infringement\n  responseTime {\n    startedAt\n    completedAt\n    elapsedSeconds\n    alerts\n  }\n}": types.AdminReportCaseSummaryFragmentDoc,
     "query AdminAccounts {\n  adminAccounts {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": types.AdminAccountsDocument,
     "mutation AdminChangeRole($id: ID!, $role: AdminRole!, $reason: String) {\n  changeAdminRole(id: $id, role: $role, reason: $reason) {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": types.AdminChangeRoleDocument,
     "mutation AdminDelete($id: ID!, $reason: String) {\n  deleteAdmin(id: $id, reason: $reason)\n}": types.AdminDeleteDocument,
@@ -194,6 +209,19 @@ const documents: Documents = {
     "mutation AdminCreateProductCategory($input: ProductCategoryInput!) {\n  createProductCategory(input: $input) {\n    id\n  }\n}": types.AdminCreateProductCategoryDocument,
     "mutation AdminDeleteProductCategory($id: ID!) {\n  deleteProductCategory(id: $id)\n}": types.AdminDeleteProductCategoryDocument,
     "mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}": types.AdminUpdateProductCategoryDocument,
+    "query AdminReportCase($id: ID!) {\n  adminReportCase(id: $id) {\n    case {\n      ...AdminReportCaseSummary\n    }\n    statusChangedAt\n    resolution\n    closingReason\n    closedAt\n    lastInquiry {\n      sentAt\n      message\n      deadline\n      overdue\n    }\n    inquiryAvailable\n    reports {\n      id\n      categoryName\n      reason\n      reportedAt\n      reporter {\n        kind\n        nickname\n        handle\n        hasContact\n      }\n    }\n  }\n}": types.AdminReportCaseDocument,
+    "query AdminReportCases($filter: AdminReportCaseFilter, $first: Int!, $after: String) {\n  adminReportCases(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminReportCaseSummary\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.AdminReportCasesDocument,
+    "query AdminReportCategories {\n  adminReportCategories {\n    id\n    name\n    systemDefault\n    infringement\n    reportCount\n  }\n}": types.AdminReportCategoriesDocument,
+    "mutation AdminChangeReportCaseStatus($id: ID!, $from: ReportCaseStatus!, $to: ReportCaseStatus!, $reason: String) {\n  changeReportCaseStatus(id: $id, from: $from, to: $to, reason: $reason) {\n    status\n  }\n}": types.AdminChangeReportCaseStatusDocument,
+    "mutation AdminCreateReportCategory($name: String!) {\n  createReportCategory(name: $name) {\n    id\n  }\n}": types.AdminCreateReportCategoryDocument,
+    "mutation AdminDeleteReportCategory($id: ID!) {\n  deleteReportCategory(id: $id) {\n    reassignedCount\n  }\n}": types.AdminDeleteReportCategoryDocument,
+    "mutation AdminRejectReportCase($id: ID!, $reason: String!) {\n  rejectReportCase(id: $id, reason: $reason) {\n    status\n  }\n}": types.AdminRejectReportCaseDocument,
+    "mutation AdminRenameReportCategory($id: ID!, $name: String!) {\n  renameReportCategory(id: $id, name: $name) {\n    id\n  }\n}": types.AdminRenameReportCategoryDocument,
+    "mutation AdminResolveReportCaseWithMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithMeasure(id: $id, reason: $reason) {\n    status\n  }\n}": types.AdminResolveReportCaseWithMeasureDocument,
+    "mutation AdminResolveReportCaseWithoutMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithoutMeasure(id: $id, reason: $reason) {\n    status\n  }\n}": types.AdminResolveReportCaseWithoutMeasureDocument,
+    "mutation AdminSendInfringementInquiry($id: ID!, $message: String!, $reason: String) {\n  sendInfringementInquiry(id: $id, message: $message, reason: $reason) {\n    sentAt\n    deadline\n  }\n}": types.AdminSendInfringementInquiryDocument,
+    "query AdminProductReportSummary($productId: ID!) {\n  adminProductReportSummary(productId: $productId) {\n    reportCount\n    openCase {\n      id\n      status\n    }\n  }\n}": types.AdminProductReportSummaryDocument,
+    "query AdminUnhandledReportSummary {\n  adminUnhandledReportSummary {\n    open\n    infringementOpen\n  }\n}": types.AdminUnhandledReportSummaryDocument,
     "query AdminSponsorships($filter: AdminSponsorshipFilter, $first: Int!, $after: String) {\n  adminSponsorships(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      productName\n      productHandle\n      productDeleted\n      applicantNickname\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminable\n      purchaseId\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.AdminSponsorshipsDocument,
     "query AdminSponsorshipTerminationPreview($id: ID!) {\n  sponsorshipTerminationPreview(id: $id) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n  }\n}": types.AdminSponsorshipTerminationPreviewDocument,
     "mutation AdminTerminateSponsorship($id: ID!, $reason: String!) {\n  terminateSponsorship(id: $id, reason: $reason) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n    terminatedOn\n    terminationRefundStatus\n    stopRefundStatus\n    terminationRefundRequested {\n      amount\n      currency\n    }\n    stopRefundRequested {\n      amount\n      currency\n    }\n    purchaseId\n  }\n}": types.AdminTerminateSponsorshipDocument,
@@ -250,6 +278,10 @@ export function graphql(source: "fragment AdminModerationRating on AdminRating {
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "fragment AdminModerationUserSummary on AdminUserSummary {\n  id\n  handle\n  nickname\n  suspended\n}"): (typeof documents)["fragment AdminModerationUserSummary on AdminUserSummary {\n  id\n  handle\n  nickname\n  suspended\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment AdminReportCaseSummary on AdminReportCase {\n  id\n  target {\n    kind\n    id\n    detached\n    available\n    handle\n    label\n    excerpt\n    productId\n    productName\n    productHandle\n  }\n  status\n  reportCount\n  categoryCounts {\n    categoryId\n    name\n    count\n  }\n  firstReportedAt\n  lastReportedAt\n  infringement\n  responseTime {\n    startedAt\n    completedAt\n    elapsedSeconds\n    alerts\n  }\n}"): (typeof documents)["fragment AdminReportCaseSummary on AdminReportCase {\n  id\n  target {\n    kind\n    id\n    detached\n    available\n    handle\n    label\n    excerpt\n    productId\n    productName\n    productHandle\n  }\n  status\n  reportCount\n  categoryCounts {\n    categoryId\n    name\n    count\n  }\n  firstReportedAt\n  lastReportedAt\n  infringement\n  responseTime {\n    startedAt\n    completedAt\n    elapsedSeconds\n    alerts\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -558,6 +590,58 @@ export function graphql(source: "mutation AdminDeleteProductCategory($id: ID!) {
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}"): (typeof documents)["mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminReportCase($id: ID!) {\n  adminReportCase(id: $id) {\n    case {\n      ...AdminReportCaseSummary\n    }\n    statusChangedAt\n    resolution\n    closingReason\n    closedAt\n    lastInquiry {\n      sentAt\n      message\n      deadline\n      overdue\n    }\n    inquiryAvailable\n    reports {\n      id\n      categoryName\n      reason\n      reportedAt\n      reporter {\n        kind\n        nickname\n        handle\n        hasContact\n      }\n    }\n  }\n}"): (typeof documents)["query AdminReportCase($id: ID!) {\n  adminReportCase(id: $id) {\n    case {\n      ...AdminReportCaseSummary\n    }\n    statusChangedAt\n    resolution\n    closingReason\n    closedAt\n    lastInquiry {\n      sentAt\n      message\n      deadline\n      overdue\n    }\n    inquiryAvailable\n    reports {\n      id\n      categoryName\n      reason\n      reportedAt\n      reporter {\n        kind\n        nickname\n        handle\n        hasContact\n      }\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminReportCases($filter: AdminReportCaseFilter, $first: Int!, $after: String) {\n  adminReportCases(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminReportCaseSummary\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"): (typeof documents)["query AdminReportCases($filter: AdminReportCaseFilter, $first: Int!, $after: String) {\n  adminReportCases(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminReportCaseSummary\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminReportCategories {\n  adminReportCategories {\n    id\n    name\n    systemDefault\n    infringement\n    reportCount\n  }\n}"): (typeof documents)["query AdminReportCategories {\n  adminReportCategories {\n    id\n    name\n    systemDefault\n    infringement\n    reportCount\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminChangeReportCaseStatus($id: ID!, $from: ReportCaseStatus!, $to: ReportCaseStatus!, $reason: String) {\n  changeReportCaseStatus(id: $id, from: $from, to: $to, reason: $reason) {\n    status\n  }\n}"): (typeof documents)["mutation AdminChangeReportCaseStatus($id: ID!, $from: ReportCaseStatus!, $to: ReportCaseStatus!, $reason: String) {\n  changeReportCaseStatus(id: $id, from: $from, to: $to, reason: $reason) {\n    status\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminCreateReportCategory($name: String!) {\n  createReportCategory(name: $name) {\n    id\n  }\n}"): (typeof documents)["mutation AdminCreateReportCategory($name: String!) {\n  createReportCategory(name: $name) {\n    id\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminDeleteReportCategory($id: ID!) {\n  deleteReportCategory(id: $id) {\n    reassignedCount\n  }\n}"): (typeof documents)["mutation AdminDeleteReportCategory($id: ID!) {\n  deleteReportCategory(id: $id) {\n    reassignedCount\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminRejectReportCase($id: ID!, $reason: String!) {\n  rejectReportCase(id: $id, reason: $reason) {\n    status\n  }\n}"): (typeof documents)["mutation AdminRejectReportCase($id: ID!, $reason: String!) {\n  rejectReportCase(id: $id, reason: $reason) {\n    status\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminRenameReportCategory($id: ID!, $name: String!) {\n  renameReportCategory(id: $id, name: $name) {\n    id\n  }\n}"): (typeof documents)["mutation AdminRenameReportCategory($id: ID!, $name: String!) {\n  renameReportCategory(id: $id, name: $name) {\n    id\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminResolveReportCaseWithMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithMeasure(id: $id, reason: $reason) {\n    status\n  }\n}"): (typeof documents)["mutation AdminResolveReportCaseWithMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithMeasure(id: $id, reason: $reason) {\n    status\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminResolveReportCaseWithoutMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithoutMeasure(id: $id, reason: $reason) {\n    status\n  }\n}"): (typeof documents)["mutation AdminResolveReportCaseWithoutMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithoutMeasure(id: $id, reason: $reason) {\n    status\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminSendInfringementInquiry($id: ID!, $message: String!, $reason: String) {\n  sendInfringementInquiry(id: $id, message: $message, reason: $reason) {\n    sentAt\n    deadline\n  }\n}"): (typeof documents)["mutation AdminSendInfringementInquiry($id: ID!, $message: String!, $reason: String) {\n  sendInfringementInquiry(id: $id, message: $message, reason: $reason) {\n    sentAt\n    deadline\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminProductReportSummary($productId: ID!) {\n  adminProductReportSummary(productId: $productId) {\n    reportCount\n    openCase {\n      id\n      status\n    }\n  }\n}"): (typeof documents)["query AdminProductReportSummary($productId: ID!) {\n  adminProductReportSummary(productId: $productId) {\n    reportCount\n    openCase {\n      id\n      status\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminUnhandledReportSummary {\n  adminUnhandledReportSummary {\n    open\n    infringementOpen\n  }\n}"): (typeof documents)["query AdminUnhandledReportSummary {\n  adminUnhandledReportSummary {\n    open\n    infringementOpen\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
