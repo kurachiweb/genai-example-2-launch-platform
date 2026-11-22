@@ -31,6 +31,7 @@ import type {
   ReportCaseReportRecord,
   ReportCaseStore,
   ReportCategoryCount,
+  ReportNoticeCaseReader,
   UnhandledReportCount,
 } from '../../application/reporting/ports.ts';
 
@@ -173,7 +174,9 @@ function toRecord(
 }
 
 @injectable()
-export class D1ReportCaseStore implements ReportCaseStore {
+export class D1ReportCaseStore
+  implements ReportCaseStore, ReportNoticeCaseReader
+{
   constructor(@inject(PLATFORM_TYPES.Database) private readonly db: Database) {}
 
   async search(
@@ -215,15 +218,14 @@ export class D1ReportCaseStore implements ReportCaseStore {
   }
 
   async find(caseId: string): Promise<ReportCaseRecord | undefined> {
-    const [row] = await this.db
-      .select(CASE_COLUMNS)
-      .from(reportCases)
-      .where(and(eq(reportCases.id, caseId), hasVisibleReport(this.db)));
-    if (row === undefined) {
-      return undefined;
-    }
-    const aggregates = await this.aggregatesOf([caseId]);
-    return toRecord(row, aggregates.get(caseId));
+    return this.findWhere(
+      and(eq(reportCases.id, caseId), hasVisibleReport(this.db)),
+      caseId,
+    );
+  }
+
+  async findForNotice(caseId: string): Promise<ReportCaseRecord | undefined> {
+    return this.findWhere(eq(reportCases.id, caseId), caseId);
   }
 
   async listReports(
@@ -295,6 +297,21 @@ export class D1ReportCaseStore implements ReportCaseStore {
       reportCount: counted?.reportCount ?? 0,
       openCase: openCase ?? null,
     };
+  }
+
+  private async findWhere(
+    condition: SQL | undefined,
+    caseId: string,
+  ): Promise<ReportCaseRecord | undefined> {
+    const [row] = await this.db
+      .select(CASE_COLUMNS)
+      .from(reportCases)
+      .where(condition);
+    if (row === undefined) {
+      return undefined;
+    }
+    const aggregates = await this.aggregatesOf([caseId]);
+    return toRecord(row, aggregates.get(caseId));
   }
 
   // ページの案件の通報をカテゴリごとに1回で数え、カテゴリの現在の名前を結合する

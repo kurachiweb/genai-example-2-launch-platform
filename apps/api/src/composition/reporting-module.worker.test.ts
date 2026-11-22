@@ -38,6 +38,7 @@ const INVOCATION_KINDS = ['fetch', 'scheduled'] as const;
 const IMPLEMENTATIONS = [
   ['ReportSubmissionStore', D1ReportSubmissionStore],
   ['ReportCaseStore', D1ReportCaseStore],
+  ['ReportNoticeCaseReader', D1ReportCaseStore],
   ['ReportCategoryStore', D1ReportCategoryStore],
   ['ReportCaseStatements', D1ReportCaseStatements],
   ['ReportCaseWriter', D1ReportCaseWriter],

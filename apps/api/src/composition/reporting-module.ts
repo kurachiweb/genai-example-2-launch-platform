@@ -7,6 +7,7 @@ import type {
   ReportCaseStore,
   ReportCaseWriter,
   ReportCategoryStore,
+  ReportNoticeCaseReader,
   ReportNoticeStore,
   ReportSubmissionStore,
 } from '../application/reporting/ports.ts';
@@ -30,6 +31,9 @@ export const REPORTING_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
       D1ReportSubmissionStore,
     );
     bind<ReportCaseStore>(REPORTING_TYPES.ReportCaseStore).to(
+      D1ReportCaseStore,
+    );
+    bind<ReportNoticeCaseReader>(REPORTING_TYPES.ReportNoticeCaseReader).to(
       D1ReportCaseStore,
     );
     bind<ReportCategoryStore>(REPORTING_TYPES.ReportCategoryStore).to(

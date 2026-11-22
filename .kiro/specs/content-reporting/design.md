@@ -1024,6 +1024,7 @@ export interface ReportNotifier {
 }
 ```
 
+- 案件は`ReportNoticeCaseReader.findForNotice`で読む。表示する通報の有無の条件(`find`)は管理画面のためのもので、申出者が全員退会して全ての通報が論理削除された案件にも、却下の投稿者への通知を送り、申出者の通知を`skipped`へ進めるため、通知はこの条件で絞らない(絞ると依頼待ちが残り続け、完了の古い順の送り直しの枠を取り続ける)。
 - 案件が完了していなければ何もしない。申出者: `ReportNoticeStore.listPendingOutcome(caseId)`を宛先でまとめ(ログイン中は利用者のID、未ログインは`toMatchingKey(contactEmail)`)、ログイン中は`UserContactDirectory.findContact`(`undefined`は`skipped`)で宛先とニックネームを引き、`content-reporting.report-outcome`を宛先ごとに1回送り、`markOutcome(reportIds, 'requested')`。投稿者(却下だけ): 案件の投稿者への通知が`pending`なら`findContact(target_owner_user_id)`(`undefined`は`skipped`)で`content-reporting.rejection-to-poster`を送り`markPoster(caseId, 'requested')`(11.1〜11.5・11.10)。
 - 表示名・抜粋は`ReportTargetResolver.describe`(1回)。コメントの抜粋は先頭100書記素(`countGraphemes`の分割)。対象が引けなければ`targetLabel`をnullにし、本文は「通報いただいた内容」と書く。
 - 送信の依頼には「通知と照会」の流れの冪等のキーを渡す(申出者への結果は宛先のまとまりの通報のIDの最小と案件の`closed_at`、却下の投稿者への通知は案件のIDと`closed_at`)。`listPendingOutcome`は通報のIDの昇順で返し、まとめた後の最小のIDを宛先のまとまりのキーに使う。
@@ -1167,6 +1168,10 @@ export interface ReportCaseStore {
       readonly status: OpenReportCaseStatus;
     } | null;
   }>; // 対象がそのプロダクトの案件
+}
+// ReportCaseStoreの実装(D1ReportCaseStore)が併せて満たし、REPORTING_TYPES.ReportNoticeCaseReaderへ束縛する
+export interface ReportNoticeCaseReader {
+  findForNotice(caseId: string): Promise<ReportCaseRecord | undefined>; // 表示する通報が無い案件も返す(reportCountは0、categoryCountsは空、firstReportedAtはlastReportedAt)。無い案件はundefined
 }
 export interface CaseClosing {
   readonly caseId: string;

@@ -74,6 +74,38 @@ describe('EmailReportNotifier 却下の投稿者への通知', () => {
     ]);
   });
 
+  test('申出者が全員退会して全ての通報が論理削除された却下の案件でも、申出者を退会済みとして送らない記録にし、利用中の投稿者へ1通依頼する', async () => {
+    const { notifier, sent, outcomeMarks, posterMarks } = setupNotifier({
+      caseRecord: rejectedCaseOf({ reportCount: 0, categoryCounts: [] }),
+      pending: [member(1, MEMBER_A)],
+      posterPending: true,
+      contacts: [OWNER_CONTACT],
+    });
+
+    const result = await notifier.dispatch(CASE_ID);
+
+    expect(result).toEqual({ requested: 1, skipped: 1 });
+    expect(outcomeMarks).toEqual([
+      { reportIds: [reportIdOf(1)], to: 'skipped', at: NOW },
+    ]);
+    expect(
+      sent.map(({ kind, to, idempotencyKey }) => ({
+        kind,
+        to,
+        idempotencyKey,
+      })),
+    ).toEqual([
+      {
+        kind: REPORT_REJECTION_TO_POSTER_EMAIL,
+        to: 'owner@mail.example',
+        idempotencyKey: `${CASE_ID}:${String(CLOSED_AT.getTime())}`,
+      },
+    ]);
+    expect(posterMarks).toEqual([
+      { caseId: CASE_ID, to: 'requested', at: NOW },
+    ]);
+  });
+
   test('申出者へ送った後に投稿者へ送り、投稿者への入力に申出者の情報を含めない', async () => {
     const { notifier, sent } = setupNotifier({
       caseRecord: rejectedCaseOf(),

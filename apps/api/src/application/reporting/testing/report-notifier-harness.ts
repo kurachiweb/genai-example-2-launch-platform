@@ -9,7 +9,7 @@ import type {
 import type {
   PendingOutcomeNotice,
   ReportCaseRecord,
-  ReportCaseStore,
+  ReportNoticeCaseReader,
   ReportNoticeStore,
   ReportNotifier,
   ReportTargetKey,
@@ -183,17 +183,13 @@ interface Recorders {
 const caseStoreOf = (
   caseRecord: ReportCaseRecord | undefined,
   calls: string[],
-): ReportCaseStore => ({
-  find: (caseId) => {
-    calls.push('find');
+): ReportNoticeCaseReader => ({
+  findForNotice: (caseId) => {
+    calls.push('findForNotice');
     return Promise.resolve(
       caseRecord?.caseId === caseId ? caseRecord : undefined,
     );
   },
-  search: unused,
-  listReports: unused,
-  countUnhandled: unused,
-  productSummary: unused,
 });
 
 const noticeStoreOf = (

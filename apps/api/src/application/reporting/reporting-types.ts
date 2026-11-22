@@ -7,6 +7,10 @@ const ReportCaseStore: unique symbol = Symbol.for(
   'reporting.api.ReportCaseStore',
 );
 
+const ReportNoticeCaseReader: unique symbol = Symbol.for(
+  'reporting.api.ReportNoticeCaseReader',
+);
+
 const ReportCaseWriter: unique symbol = Symbol.for(
   'reporting.api.ReportCaseWriter',
 );
@@ -78,6 +82,7 @@ const ReportCaseClosingParticipant: unique symbol = Symbol.for(
 export const REPORTING_TYPES = Object.freeze({
   ReportSubmissionStore,
   ReportCaseStore,
+  ReportNoticeCaseReader,
   ReportCaseWriter,
   ReportCategoryStore,
   ReportNoticeStore,

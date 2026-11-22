@@ -5,6 +5,7 @@ import { REPORTING_TYPES } from './reporting-types.ts';
 const PORT_NAMES = [
   'ReportSubmissionStore',
   'ReportCaseStore',
+  'ReportNoticeCaseReader',
   'ReportCaseWriter',
   'ReportCategoryStore',
   'ReportNoticeStore',

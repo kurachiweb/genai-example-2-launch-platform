@@ -187,6 +187,12 @@ export interface ReportCaseStore {
   productSummary(productId: string): Promise<ProductReportSummary>;
 }
 
+// 申出者が全員退会して全ての通報を論理削除した案件の当事者にも通知を送るため、表示する通報の有無で絞らずに読む
+export interface ReportNoticeCaseReader {
+  // 表示する通報が無い案件はreportCountが0、categoryCountsが空、firstReportedAtがlastReportedAt
+  findForNotice(caseId: string): Promise<ReportCaseRecord | undefined>;
+}
+
 export interface CaseClosing {
   readonly caseId: string;
   readonly to: 'resolved' | 'rejected';

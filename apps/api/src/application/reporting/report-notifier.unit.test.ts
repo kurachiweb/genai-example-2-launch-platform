@@ -287,7 +287,7 @@ describe('EmailReportNotifier 申出者への結果', () => {
     await notifier.dispatch(CASE_ID);
 
     expect(calls).toEqual([
-      'find',
+      'findForNotice',
       'listPendingOutcome',
       'describe',
       'findContact',
@@ -339,7 +339,7 @@ describe('EmailReportNotifier 完了していない案件', () => {
       requested: 0,
       skipped: 0,
     });
-    expect(calls).toEqual(['find']);
+    expect(calls).toEqual(['findForNotice']);
   });
 
   test('理由の無い完了した案件は送らずに例外を投げる', async () => {
@@ -365,7 +365,7 @@ describe('EmailReportNotifier 完了していない案件', () => {
       skipped: 0,
     });
     expect(calls).toEqual([
-      'find',
+      'findForNotice',
       'listPendingOutcome',
       'posterNoticePending',
     ]);

@@ -24,7 +24,7 @@ import type { Clock } from '../../../lib/core/time/clock.ts';
 import type {
   PendingOutcomeNotice,
   ReportCaseRecord,
-  ReportCaseStore,
+  ReportNoticeCaseReader,
   ReportNoticeStore,
   ReportNotifier,
   ReportTargetKey,
@@ -188,8 +188,8 @@ const targetInputOf = (
 @injectable()
 export class EmailReportNotifier implements ReportNotifier {
   constructor(
-    @inject(REPORTING_TYPES.ReportCaseStore)
-    private readonly cases: ReportCaseStore,
+    @inject(REPORTING_TYPES.ReportNoticeCaseReader)
+    private readonly cases: ReportNoticeCaseReader,
     @inject(REPORTING_TYPES.ReportNoticeStore)
     private readonly notices: ReportNoticeStore,
     @inject(REPORTING_TYPES.ReportTargetResolver)
@@ -202,7 +202,7 @@ export class EmailReportNotifier implements ReportNotifier {
   ) {}
 
   async dispatch(caseId: string): Promise<DispatchCount> {
-    const closed = closedCaseOf(await this.cases.find(caseId));
+    const closed = closedCaseOf(await this.cases.findForNotice(caseId));
     if (closed === undefined) {
       return NOTHING;
     }
