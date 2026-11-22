@@ -10,8 +10,13 @@ const DataExportReader: unique symbol = Symbol.for(
   'data-export.DataExportReader',
 );
 
+const ArchiveDownloadService: unique symbol = Symbol.for(
+  'data-export.ArchiveDownloadService',
+);
+
 export const DATA_EXPORT_TYPES = Object.freeze({
   DataExportRequestLimits,
   DataExportRequestService,
   DataExportReader,
+  ArchiveDownloadService,
 });

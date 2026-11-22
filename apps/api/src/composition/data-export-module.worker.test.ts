@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest';
 
 import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { StoreArchiveDownloadService } from '../application/data-export/archive-download-service.ts';
 import { StoreDataExportReader } from '../application/data-export/data-export-reader.ts';
 import { StoreDataExportRequestService } from '../application/data-export/data-export-request-service.ts';
 import { DATA_EXPORT_TYPES } from '../application/data-export/data-export-types.ts';
@@ -18,6 +19,7 @@ const IMPLEMENTATIONS = [
   ['DataExportRequestLimits', CounterDataExportRequestLimits],
   ['DataExportRequestService', StoreDataExportRequestService],
   ['DataExportReader', StoreDataExportReader],
+  ['ArchiveDownloadService', StoreArchiveDownloadService],
 ] as const;
 
 function createContainer(kind: InvocationScopeInfo['kind']): Container {

@@ -189,8 +189,15 @@ export interface ListCall {
   readonly limit: number;
 }
 
+export interface OwnedReadyCall {
+  readonly id: string;
+  readonly userId: string;
+  readonly now: Date;
+}
+
 export interface FakeStore {
   readonly store: DataExportStore;
+  readonly ownedReadyCalls: OwnedReadyCall[];
   readonly created: DataExportRecord[];
   readonly removed: string[];
   readonly listCalls: ListCall[];
@@ -206,6 +213,7 @@ export function createStore(
   const created: DataExportRecord[] = [];
   const removed: string[] = [];
   const listCalls: ListCall[] = [];
+  const ownedReadyCalls: OwnedReadyCall[] = [];
   const records = options.records ?? [];
   const store: DataExportStore = {
     create: (input) => {
@@ -239,7 +247,20 @@ export function createStore(
       return Promise.resolve(page);
     },
     find: unexpected,
-    findOwnedReady: unexpected,
+    findOwnedReady: (input) => {
+      calls.push('store.findOwnedReady');
+      ownedReadyCalls.push(input);
+      return Promise.resolve(
+        records.find(
+          (record) =>
+            record.id === input.id &&
+            record.userId === input.userId &&
+            record.status === 'ready' &&
+            record.expiresAt !== null &&
+            record.expiresAt.getTime() > input.now.getTime(),
+        ),
+      );
+    },
     claim: unexpected,
     recordUpload: unexpected,
     releaseLease: unexpected,
@@ -255,5 +276,5 @@ export function createStore(
     listForUser: unexpected,
     removeMany: unexpected,
   };
-  return { store, created, removed, listCalls };
+  return { store, created, removed, listCalls, ownedReadyCalls };
 }

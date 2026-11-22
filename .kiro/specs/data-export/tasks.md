@@ -149,7 +149,7 @@
   - 完了状態: Workers統合テストが成功し、スキーマの生成が成功し、生成したスキーマのファイルに2つの操作がある
   - _Requirements: 1.2, 1.3, 1.6, 1.7, 1.8, 2.1, 2.2, 2.4, 3.8, 11.1_
 
-- [ ] 5.3 ダウンロードの認可と内部RESTの経路を作る
+- [x] 5.3 ダウンロードの認可と内部RESTの経路を作る
   - 5.2が作るAPIサーバーの本specのモジュールへ束縛を加えるため、5.2の後に行う(5.4と同じファイルを触るため並行にしない)
   - 先に、Workers統合テストで、本人のダウンロードが200でZIPの本文と`Content-Disposition`・`Content-Length`・`Cache-Control`・`nosniff`を返すこと、停止中の本人も200、未ログインの401、他の利用者・管理者側の呼び出し元・存在しない・不正な形のID・作成中・失敗・期限切れ(削除の前と、期限切れの状態の記録)・オブジェクトの無い記録の404と`archive-missing`の警告の送信、保存先の読み出しの失敗の503が共通のエラー形式(JSON)で返ることを確かめる(JSONでない5xxはfrontend-platformの中継が503`upstream_unavailable`に置き換えるため)
   - 内部RESTの登録箇所へ経路を加える
@@ -287,3 +287,4 @@
 - 6.1: 決済の`purpose`が`payments_smoke`(dev・stagingだけで受け付ける決済の疎通確認)の決済は、文書の`purpose`の列挙に無いため読み取りの部品で除く。`AccountSourceReader.read`は`pseudonymousId`を別の項目で返し、決済の照会にだけ使う。`exists`は6.5が完了の後の退会の確かめに使う。後続は`event-data-export-types.ts`の識別子と`data-export-module.ts`の束縛と`data-export-module.worker.test.ts`の`IMPLEMENTATIONS`を同時に足す。
 - 6.4: `ExportSnapshotCollector.collect(userId, requestedAt, now)`はアカウント→プロダクトと活動→やり取りと取引→ファイルの照会の順に直列で呼び(D1の負荷を抑えるため)、退会済みなら`undefined`。照会するファイルIDはアイコン・ロゴ・スクリーンショット・問い合わせの添付で、計画の範囲と一致する。`snapshot.files`には記録のあるファイルだけが入り、隔離中は`quarantined: true`。
 - 5.2: 完了のまま有効期限を過ぎた記録は、日次のジョブが期限切れにするまでの間もGraphQLの表示で`EXPIRED`・`downloadPath: null`にする(要件11.8、保存の状態は変えない)。`after`には長さの上限を付けず不正は`invalid_cursor`。`byteSize`は`Float`。モジュール名は`api-data-export`で、5.3・5.4は`DATA_EXPORT_TYPES`の識別子・`data-export-module.ts`の束縛・`data-export-module.worker.test.ts`の`IMPLEMENTATIONS`を同時に足す。テストの補助は`apps/api/test/support/data-export-graphql-operations.ts`。
+- 5.3: 呼び出し元を先に確かめ、管理者側は未ログインでも404。利用者側の未ログインは不正な形のIDでも401。有効期限を過ぎた完了は日次のジョブの前でも404。保存先(R2)の読み出しの失敗だけを503(`data_export_archive_unavailable`、`Retry-After: 5`)にし、記録のD1の失敗は共通の500の定型。保存のメタデータが欠ければ`application/zip`と`attachmentDisposition(fileName ?? 'export.zip')`で補う。テストの組み立ては`apps/api/test/support/data-export-download-harness.ts`。

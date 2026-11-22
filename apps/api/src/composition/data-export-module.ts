@@ -4,6 +4,10 @@ import { ContainerModule } from 'inversify';
 import type { AppModule } from '../../lib/core/di/app-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import {
+  type ArchiveDownloadService,
+  StoreArchiveDownloadService,
+} from '../application/data-export/archive-download-service.ts';
+import {
   type DataExportReader,
   StoreDataExportReader,
 } from '../application/data-export/data-export-reader.ts';
@@ -27,6 +31,9 @@ export const DATA_EXPORT_MODULE: AppModule<Hono<PlatformHonoEnv<Env>>> = {
     ).to(StoreDataExportRequestService);
     bind<DataExportReader>(DATA_EXPORT_TYPES.DataExportReader).to(
       StoreDataExportReader,
+    );
+    bind<ArchiveDownloadService>(DATA_EXPORT_TYPES.ArchiveDownloadService).to(
+      StoreArchiveDownloadService,
     );
   }),
 };
