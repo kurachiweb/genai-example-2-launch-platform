@@ -22,7 +22,7 @@
   - _Depends: 1.1_
   - _Requirements: 8.5, 14.7, 16.1, 16.2_
 
-- [ ] 1.4 (P) 対応期間と照会の期限の規則を作る
+- [x] 1.4 (P) 対応期間と照会の期限の規則を作る
   - 先に、単体テストで、確認開始の目標の超過(未対応だけ・起点から24時間の前後・土日をまたいでも同じ24時間で数えること)、判断の目標の超過(未完了と完了・9日の前後)、完了から戻した案件を未完了として扱い起点を変えないこと、完了の日時が無い完了した案件の不明、照会の期限(7日)と超過を確かめる
   - 完了状態: 単体テストが成功し、規則がD1と基準時刻の変換を読み込まない
   - _Boundary: ResponseTime_
@@ -350,3 +350,4 @@
 
 - 1.1: 規則は`apps/common-lib/reporting/report-rules.ts`(対象の種類・理由の検証・連絡先の要否・標準カテゴリの固定のID・カテゴリの並び)、`report-case-rules.ts`(状態・手での状態の変更の可否と種類・対象の種類ごとの措置・管理者の理由の要否・照会の上限と期限)、`report-labels.ts`。設計に無い追加として`REPORT_RESOLUTIONS`(1.2の制約の照合用)・`checkInquiryMessage`(`'ok' | 'empty' | 'too-long'`)・`REPORT_ADMIN_REASON_MAX`(`AUDIT_REASON_MAX`と同値)と補助の型をexportした。措置の表示名はugc-moderationの`MODERATION_ACTION_LABELS`を再利用し、状態の表示名はinquiry-chatの`INQUIRY_STATUS_LABELS`と単体テストで照合する。読み込み先は設計の記載(`common-lib/admin`と`zod`)より広く`common-lib/text`・`common-lib/moderation`も含む(境界の検査は通る)。写しの照合(`check:contract-copies`)は写しを持つ側(1.2のDBのスキーマ)で扱う
 - 1.3: 7種は`apps/common-lib/admin/audit-actions/content-reporting.ts`の`REPORTING_AUDIT_ACTIONS`(定数名は`REPORT_STATUS_CHANGE_ACTION`など)で、集約の末尾(ugc-moderationの後)に連結した。`report.resolve`・`report.reject`の詳細`mode`の値(`operation`・`manual`)の定数は作っていないため、4.5で組み立てる。手での再開の理由の必須は操作種別でなくapplication層の`checkReportAdminReason`で検査する
+- 1.4: 規則は`apps/backend-lib/core/reporting/response-time.ts`(`computeResponseTime`・`inquiryDeadline`・`isInquiryOverdue`)。`ResponseTimeAlert`の型は1.1の`report-labels.ts`から読み込んで再エクスポートし(設計は`response-time.ts`で宣言)、目標の定数は`number`型(設計はリテラル型)。境界は「超える」(`>`)で、ちょうどは超過でない。完了の日時が無い完了した案件は`elapsedMs: null`・`alerts: []`(設計に記載が無く、不明と超過の強調が矛盾しないよう決めた)。未完了の案件に渡された完了の日時は無視する
