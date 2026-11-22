@@ -62,6 +62,11 @@ export const REPORTING_ERRORS = Object.freeze({
     kind: 'unavailable',
     message: '照会を送れませんでした。時間をおいてやり直してください。',
   },
+  report_case_open_exists: {
+    kind: 'conflict',
+    message:
+      'この対象には未完了の別の案件があります。その案件で対応してください。',
+  },
 } satisfies Readonly<Record<string, ReportingErrorDefinition>>);
 
 export type ReportingErrorCode = keyof typeof REPORTING_ERRORS;
@@ -148,3 +153,11 @@ export const inquiryMessageRejectedError = (
   check: Exclude<InquiryMessageCheck, 'ok'>,
 ): AppError =>
   reportFieldError('message', check, INQUIRY_MESSAGE_MESSAGES[check]);
+
+// 変更の無い操作を監査ログに残さないよう、現在と同じ状態への変更は変更後の状態の欄の検証のエラーにする
+export const reportStatusUnchangedError = (): AppError =>
+  reportFieldError(
+    'status',
+    'unchanged',
+    '現在と異なる対応ステータスを選んでください。',
+  );

@@ -12,6 +12,7 @@ import {
   reportCategoryNameRejectedError,
   reportContactEmailRequiredError,
   reportingError,
+  reportStatusUnchangedError,
 } from './reporting-errors.ts';
 
 describe('reportingError', () => {
@@ -64,6 +65,12 @@ describe('reportingError', () => {
       'unavailable',
       503,
       '照会を送れませんでした。時間をおいてやり直してください。',
+    ],
+    [
+      'report_case_open_exists',
+      'conflict',
+      409,
+      'この対象には未完了の別の案件があります。その案件で対応してください。',
     ],
   ] as const)(
     '%sは種類%s(%d)と文言規則の文言のAppErrorになる',
@@ -184,6 +191,13 @@ describe('案件の操作の欄の誤り', () => {
       'message',
       'too-long',
       '照会の内容は1,000文字以内で入力してください。',
+    ],
+    [
+      '現在と同じ対応ステータスへの変更',
+      reportStatusUnchangedError,
+      'status',
+      'unchanged',
+      '現在と異なる対応ステータスを選んでください。',
     ],
   ] as const)(
     '%sは文言規則の文言で欄の詳細を持つ検証のエラーになる',
