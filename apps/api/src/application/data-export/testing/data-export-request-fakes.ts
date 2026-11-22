@@ -208,6 +208,7 @@ export function createStore(
   options: {
     readonly records?: readonly DataExportRecord[];
     readonly removeError?: Error;
+    readonly createError?: Error;
   } = {},
 ): FakeStore {
   const created: DataExportRecord[] = [];
@@ -218,6 +219,9 @@ export function createStore(
   const store: DataExportStore = {
     create: (input) => {
       calls.push('store.create');
+      if (options.createError !== undefined) {
+        return Promise.reject(options.createError);
+      }
       const record = recordOf({
         id: input.id,
         userId: input.userId,

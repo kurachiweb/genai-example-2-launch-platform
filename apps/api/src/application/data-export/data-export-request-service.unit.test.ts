@@ -37,6 +37,7 @@ interface Options {
   readonly limitsError?: Error;
   readonly failingTypes?: readonly string[];
   readonly removeError?: Error;
+  readonly createError?: Error;
 }
 
 function setup(options: Options = {}) {
@@ -46,6 +47,9 @@ function setup(options: Options = {}) {
     ...(options.removeError === undefined
       ? {}
       : { removeError: options.removeError }),
+    ...(options.createError === undefined
+      ? {}
+      : { createError: options.createError }),
   });
   const container = new Container();
   container.bind(IDENTITY_PLATFORM_TYPES.AccountGuard).toConstantValue(
@@ -220,6 +224,21 @@ describe('DataExportRequestService.request', () => {
     expect(error).toBe(exceeded);
     expect((error as AppError).retryAfterSeconds).toBe(3600);
     expect(calls).toEqual(['guard.requireUser', `limits.consume:${USER_ID}`]);
+  });
+
+  test('回数を数えた後に記録を作れなければ、その例外のまま拒否し、依頼を送らず、回数は戻さない', async () => {
+    const failure = new Error('記録の作成に失敗');
+    const { service, calls, published } = setup({ createError: failure });
+
+    const error = await rejectionOf(service.request(SESSION));
+
+    expect(error).toBe(failure);
+    expect(published).toEqual([]);
+    expect(calls).toEqual([
+      'guard.requireUser',
+      `limits.consume:${USER_ID}`,
+      'store.create',
+    ]);
   });
 
   test('生成の依頼を送れなければ記録を消して503の利用できない旨を返し、見張りは送らず、回数は戻さない', async () => {
