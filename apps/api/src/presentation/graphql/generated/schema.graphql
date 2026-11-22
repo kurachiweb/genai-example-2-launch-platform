@@ -1054,6 +1054,50 @@ input CreateHelpArticleInput {
   reason: String
 }
 
+"""データエクスポートの要求。ZIPの実体は持たず、ダウンロードの経路を指す"""
+type DataExport {
+  """ZIPのバイト数。4GiB未満の整数で、GraphQLのIntが32ビットのためFloatで返す。完了と期限切れだけが持つ"""
+  byteSize: Float
+
+  """生成の完了日時。完了と期限切れだけが持つ"""
+  completedAt: DateTime
+
+  """ダウンロードの内部の経路。完了で有効期限の前のときだけ持つ"""
+  downloadPath: String
+
+  """ZIPの有効期限。完了と期限切れだけが持つ"""
+  expiresAt: DateTime
+
+  """失敗の日時。失敗だけが持つ"""
+  failedAt: DateTime
+  failureKind: DataExportFailureKind
+
+  """ZIPのファイル名。完了と期限切れだけが持つ"""
+  fileName: String
+  id: ID!
+  requestedAt: DateTime!
+  status: DataExportStatus!
+}
+
+type DataExportConnection {
+  nodes: [DataExport!]!
+  pageInfo: PageInfo!
+}
+
+"""失敗の種類。TOO_LARGEは生成物の上限を超えたことを表す"""
+enum DataExportFailureKind {
+  ERROR
+  TOO_LARGE
+}
+
+"""要求の表示の状態。作成中は受け付けと生成中をまとめる"""
+enum DataExportStatus {
+  EXPIRED
+  FAILED
+  PENDING
+  READY
+}
+
 """UTCのRFC 3339形式の日時"""
 scalar DateTime
 
@@ -2010,6 +2054,9 @@ type Mutation {
   """パスワードリセットの要求。管理者の有無と状態を問わず同じ結果を返す"""
   requestAdminPasswordReset(email: String!): Boolean!
 
+  """データエクスポートを要求する。ZIPの生成は非同期で、要求は利用者ごとに24時間に3回まで。作成中の要求があっても受け付ける"""
+  requestDataExport: DataExport!
+
   """メールアドレス変更の要求"""
   requestEmailChange(input: RequestEmailChangeInput!): Boolean!
 
@@ -2926,6 +2973,9 @@ type Query {
 
   """自分のAPIキーの発行の新しい順の一覧。停止中の利用者も読める"""
   myApiKeys(after: String, first: Int = 50): ApiKeyConnection!
+
+  """自分のデータエクスポートの要求の新しい順の一覧。期限切れ・失敗を含む退会までの全ての要求を読め、停止中の利用者も読める"""
+  myDataExports(after: String, first: Int = 20): DataExportConnection!
 
   """ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20"""
   myFollowers(after: String, first: Int!): FollowEntryConnection!

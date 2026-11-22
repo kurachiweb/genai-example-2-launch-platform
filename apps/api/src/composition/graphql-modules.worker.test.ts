@@ -350,3 +350,21 @@ describe('GRAPHQL_SCHEMA_MODULES(通報)', () => {
     );
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(データエクスポート)', () => {
+  test('自分の要求の一覧と要求の操作と、状態・失敗の種類の列挙型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['myDataExports']?.type)).toBe(
+      'DataExportConnection!',
+    );
+    expect(String(mutation?.['requestDataExport']?.type)).toBe('DataExport!');
+    expect(String(schema.getType('DataExportStatus'))).toBe('DataExportStatus');
+    expect(String(schema.getType('DataExportFailureKind'))).toBe(
+      'DataExportFailureKind',
+    );
+  });
+});

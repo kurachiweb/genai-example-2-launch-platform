@@ -143,7 +143,7 @@
   - _Depends: 4.5_
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2.1, 2.2, 2.4, 2.5, 2.6, 2.7, 3.1, 11.1_
 
-- [ ] 5.2 エクスポートのGraphQLのスキーマモジュールを作る
+- [x] 5.2 エクスポートのGraphQLのスキーマモジュールを作る
   - 先に、api-gatewayのテストの補助(利用者側の呼び出し元のGraphQLの要求とテスト用の文書)を使うWorkers統合テストで、要求の3回の受け付けと4回目の429(コード`rate_limit_exceeded`)と再試行の秒数、厳密カウンタのアラームの後に再び受け付けること、未確認の403、停止中の利用者の受け付け、管理者側の呼び出し元の拒否、作成中の要求の並行の受け付け、一覧の表示の状態(期限切れを含む)と大きさの値、`first`と`after`による20件ずつのページと`pageInfo`、20を超える`first`の`validation_error`、不正な`after`の`invalid_cursor`、期限切れの項目のダウンロードのパスが`null`であることを確かめる
   - APIサーバーの本specのモジュール(要求と一覧のユースケースの束縛)を作ってモジュールの登録へ加え、スキーマモジュール(ルート型は`extend`を使わず`type Query`・`type Mutation`のまま書く)を登録する。APIサーバーのスキーマの生成(`graphql:generate`)でスキーマのファイルとリゾルバの型を更新する。許可リストの再生成は7.1で行う
   - 完了状態: Workers統合テストが成功し、スキーマの生成が成功し、生成したスキーマのファイルに2つの操作がある
@@ -286,3 +286,4 @@
 - 5.1: 生成の依頼の失敗の503はコード`data_export_unavailable`(種類`unavailable`)にした(設計はコード名を決めていない)。`DataExportView`・`toDataExportView`はサービスと一覧が共用するため`data-export-view.ts`に分けた。`listMine`は`first`を検証しないので、5.2のリゾルバが20を超える`first`と不正な`after`を必ず拒否する。回数制限のキーは`hashRateLimitKey(hasher, 'data-export', userId)`。
 - 6.1: 決済の`purpose`が`payments_smoke`(dev・stagingだけで受け付ける決済の疎通確認)の決済は、文書の`purpose`の列挙に無いため読み取りの部品で除く。`AccountSourceReader.read`は`pseudonymousId`を別の項目で返し、決済の照会にだけ使う。`exists`は6.5が完了の後の退会の確かめに使う。後続は`event-data-export-types.ts`の識別子と`data-export-module.ts`の束縛と`data-export-module.worker.test.ts`の`IMPLEMENTATIONS`を同時に足す。
 - 6.4: `ExportSnapshotCollector.collect(userId, requestedAt, now)`はアカウント→プロダクトと活動→やり取りと取引→ファイルの照会の順に直列で呼び(D1の負荷を抑えるため)、退会済みなら`undefined`。照会するファイルIDはアイコン・ロゴ・スクリーンショット・問い合わせの添付で、計画の範囲と一致する。`snapshot.files`には記録のあるファイルだけが入り、隔離中は`quarantined: true`。
+- 5.2: 完了のまま有効期限を過ぎた記録は、日次のジョブが期限切れにするまでの間もGraphQLの表示で`EXPIRED`・`downloadPath: null`にする(要件11.8、保存の状態は変えない)。`after`には長さの上限を付けず不正は`invalid_cursor`。`byteSize`は`Float`。モジュール名は`api-data-export`で、5.3・5.4は`DATA_EXPORT_TYPES`の識別子・`data-export-module.ts`の束縛・`data-export-module.worker.test.ts`の`IMPLEMENTATIONS`を同時に足す。テストの補助は`apps/api/test/support/data-export-graphql-operations.ts`。

@@ -1045,6 +1045,45 @@ export type CreateHelpArticleInput = {
   reason?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** データエクスポートの要求。ZIPの実体は持たず、ダウンロードの経路を指す */
+export type DataExport = {
+  __typename?: 'DataExport';
+  /** ZIPのバイト数。4GiB未満の整数で、GraphQLのIntが32ビットのためFloatで返す。完了と期限切れだけが持つ */
+  byteSize?: Maybe<Scalars['Float']['output']>;
+  /** 生成の完了日時。完了と期限切れだけが持つ */
+  completedAt?: Maybe<Scalars['DateTime']['output']>;
+  /** ダウンロードの内部の経路。完了で有効期限の前のときだけ持つ */
+  downloadPath?: Maybe<Scalars['String']['output']>;
+  /** ZIPの有効期限。完了と期限切れだけが持つ */
+  expiresAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 失敗の日時。失敗だけが持つ */
+  failedAt?: Maybe<Scalars['DateTime']['output']>;
+  failureKind?: Maybe<DataExportFailureKind>;
+  /** ZIPのファイル名。完了と期限切れだけが持つ */
+  fileName?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  requestedAt: Scalars['DateTime']['output'];
+  status: DataExportStatus;
+};
+
+export type DataExportConnection = {
+  __typename?: 'DataExportConnection';
+  nodes: Array<DataExport>;
+  pageInfo: PageInfo;
+};
+
+/** 失敗の種類。TOO_LARGEは生成物の上限を超えたことを表す */
+export type DataExportFailureKind =
+  | 'ERROR'
+  | 'TOO_LARGE';
+
+/** 要求の表示の状態。作成中は受け付けと生成中をまとめる */
+export type DataExportStatus =
+  | 'EXPIRED'
+  | 'FAILED'
+  | 'PENDING'
+  | 'READY';
+
 export type DeleteHelpArticlePayload = {
   __typename?: 'DeleteHelpArticlePayload';
   id: Scalars['ID']['output'];
@@ -1891,6 +1930,8 @@ export type Mutation = {
   requestAdminEmailChange: Scalars['Boolean']['output'];
   /** パスワードリセットの要求。管理者の有無と状態を問わず同じ結果を返す */
   requestAdminPasswordReset: Scalars['Boolean']['output'];
+  /** データエクスポートを要求する。ZIPの生成は非同期で、要求は利用者ごとに24時間に3回まで。作成中の要求があっても受け付ける */
+  requestDataExport: DataExport;
   /** メールアドレス変更の要求 */
   requestEmailChange: Scalars['Boolean']['output'];
   /** パスワード変更の要求 */
@@ -3227,6 +3268,8 @@ export type Query = {
   memberInquiry?: Maybe<MemberInquiry>;
   /** 自分のAPIキーの発行の新しい順の一覧。停止中の利用者も読める */
   myApiKeys: ApiKeyConnection;
+  /** 自分のデータエクスポートの要求の新しい順の一覧。期限切れ・失敗を含む退会までの全ての要求を読め、停止中の利用者も読める */
+  myDataExports: DataExportConnection;
   /** ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20 */
   myFollowers: FollowEntryConnection;
   /** ログイン中の利用者(停止中を含む)がフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20 */
@@ -3498,6 +3541,12 @@ export type QueryMemberInquiryArgs = {
 
 
 export type QueryMyApiKeysArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryMyDataExportsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -4730,6 +4779,10 @@ export type ResolversTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
   CreateHelpArticleInput: CreateHelpArticleInput;
+  DataExport: ResolverTypeWrapper<DataExport>;
+  DataExportConnection: ResolverTypeWrapper<DataExportConnection>;
+  DataExportFailureKind: DataExportFailureKind;
+  DataExportStatus: DataExportStatus;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   DeleteHelpArticlePayload: ResolverTypeWrapper<DeleteHelpArticlePayload>;
   DeleteHelpCategoryPayload: ResolverTypeWrapper<DeleteHelpCategoryPayload>;
@@ -5051,6 +5104,8 @@ export type ResolversParentTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
   CreateHelpArticleInput: CreateHelpArticleInput;
+  DataExport: DataExport;
+  DataExportConnection: DataExportConnection;
   DateTime: Scalars['DateTime']['output'];
   DeleteHelpArticlePayload: DeleteHelpArticlePayload;
   DeleteHelpCategoryPayload: DeleteHelpCategoryPayload;
@@ -5788,6 +5843,24 @@ export type ConfirmationResultResolvers<ContextType = GraphQLContext, ParentType
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
 };
 
+export type DataExportResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DataExport'] = ResolversParentTypes['DataExport']> = {
+  byteSize?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  completedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  downloadPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  expiresAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  failedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  failureKind?: Resolver<Maybe<ResolversTypes['DataExportFailureKind']>, ParentType, ContextType>;
+  fileName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  requestedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['DataExportStatus'], ParentType, ContextType>;
+};
+
+export type DataExportConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DataExportConnection'] = ResolversParentTypes['DataExportConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['DataExport']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
   name: 'DateTime';
 }
@@ -6233,6 +6306,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   replyToInquiry?: Resolver<ResolversTypes['InquiryReplyResult'], ParentType, ContextType, RequireFields<MutationReplyToInquiryArgs, 'body' | 'inquiryId'>>;
   requestAdminEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminEmailChangeArgs, 'newEmail' | 'reAuthentication'>>;
   requestAdminPasswordReset?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminPasswordResetArgs, 'email'>>;
+  requestDataExport?: Resolver<ResolversTypes['DataExport'], ParentType, ContextType>;
   requestEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestEmailChangeArgs, 'input'>>;
   requestPasswordChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestPasswordChangeArgs, 'input'>>;
   requestPasswordReset?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestPasswordResetArgs, 'email'>>;
@@ -6632,6 +6706,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   matchSupporters?: Resolver<Maybe<ResolversTypes['SupporterConnection']>, ParentType, ContextType, RequireFields<QueryMatchSupportersArgs, 'entryId' | 'first' | 'matchId' | 'productHandle'>>;
   memberInquiry?: Resolver<Maybe<ResolversTypes['MemberInquiry']>, ParentType, ContextType, RequireFields<QueryMemberInquiryArgs, 'id'>>;
   myApiKeys?: Resolver<ResolversTypes['ApiKeyConnection'], ParentType, ContextType, RequireFields<QueryMyApiKeysArgs, 'first'>>;
+  myDataExports?: Resolver<ResolversTypes['DataExportConnection'], ParentType, ContextType, RequireFields<QueryMyDataExportsArgs, 'first'>>;
   myFollowers?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowersArgs, 'first'>>;
   myFollowing?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowingArgs, 'first'>>;
   myInquiries?: Resolver<ResolversTypes['MemberInquiryPage'], ParentType, ContextType, Partial<QueryMyInquiriesArgs>>;
@@ -7125,6 +7200,8 @@ export type Resolvers<ContextType = GraphQLContext> = {
   CheckoutSummary?: CheckoutSummaryResolvers<ContextType>;
   CommentMutationResult?: CommentMutationResultResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
+  DataExport?: DataExportResolvers<ContextType>;
+  DataExportConnection?: DataExportConnectionResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   DeleteHelpArticlePayload?: DeleteHelpArticlePayloadResolvers<ContextType>;
   DeleteHelpCategoryPayload?: DeleteHelpCategoryPayloadResolvers<ContextType>;

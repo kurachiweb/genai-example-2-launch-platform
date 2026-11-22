@@ -38,6 +38,7 @@ import { createInternalRoutesModule } from '../presentation/gateway/internal-onl
 import allowlist from '../presentation/graphql/generated/allowlist.json';
 import { createGraphQLModule } from '../presentation/graphql/graphql-module.ts';
 import { ADMIN_MODULE } from './admin-module.ts';
+import { DATA_EXPORT_MODULE } from './data-export-module.ts';
 import { DIRECTORY_MODULE } from './directory-module.ts';
 import { API_EMAIL_MODULE } from './email-module.ts';
 import { ENGAGEMENT_MODULE } from './engagement-module.ts';
@@ -165,6 +166,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   WEEK_TOURNAMENT_API_MODULE,
   YEAR_TOURNAMENT_API_MODULE,
   SPONSORSHIP_API_MODULE,
+  DATA_EXPORT_MODULE,
   API_ULTRAS_MODULE,
   PROFILE_MODULE,
   PRODUCT_MODULE,
