@@ -17,6 +17,7 @@ import {
   respondProductDetailGraphQL,
 } from '../../../test/moderation-product-detail-fixtures.ts';
 import { buttonBehindDialog } from '../../../test/moderation-render.tsx';
+import { respondReportSummaries } from '../../../test/reporting-summary-fixtures.ts';
 import {
   AdminHideProductDocument,
   AdminProductDocument,
@@ -81,6 +82,7 @@ const renderWithVanishing = async ({
       ],
     ]),
   });
+  respondReportSummaries(executeGraphQL);
   await renderProductDetailPage('MODERATOR');
   await expect.element(main().getByRole('heading', { level: 1 })).toBeVisible();
 };

@@ -21,6 +21,7 @@ import {
   renderProductDetailPage,
   respondProductDetailGraphQL,
 } from '../../../test/moderation-product-detail-fixtures.ts';
+import { respondReportSummaries } from '../../../test/reporting-summary-fixtures.ts';
 import {
   AdminInvalidateRatingDocument,
   AdminProductDocument,
@@ -70,6 +71,7 @@ const renderDetail = async ({
     ...(detail === undefined ? {} : { detail }),
     ...(handlers === undefined ? {} : { handlers }),
   });
+  respondReportSummaries(executeGraphQL);
   await renderProductDetailPage(role);
   await expect.element(main().getByRole('heading', { level: 1 })).toBeVisible();
 };

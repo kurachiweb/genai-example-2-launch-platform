@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useEffect, useRef } from 'react';
+import type { RefObject } from 'react';
 
 import type { ReportTargetKind } from '../../../../common-lib/reporting/report-rules.ts';
 import { ConfirmActionDialog } from '../../../../lib/components/admin/confirm-action-dialog.tsx';
@@ -13,10 +13,8 @@ import {
   type ReportCaseDialogCopy,
   reportCaseActionLabel,
 } from './report-messages.ts';
-import {
-  isReportCaseRefreshFailure,
-  useReportCaseMutation,
-} from './use-report-case-mutation.ts';
+import { useDeferredReportCaseRefresh } from './use-deferred-report-case-refresh.ts';
+import { useReportCaseMutation } from './use-report-case-mutation.ts';
 
 export interface ReportCaseActionDialogProps {
   readonly open: boolean;
@@ -62,16 +60,7 @@ export function ReportCaseActionDialog({
     targetKind,
     deferRefresh,
   });
-  // 取り直しを遅らせた失敗。閉じた時と、閉じずに外れた時に取り直す
-  const deferredFailureRef = useRef<unknown>(undefined);
-  const refreshDeferred = useCallback((): void => {
-    const failure = deferredFailureRef.current;
-    deferredFailureRef.current = undefined;
-    if (failure !== undefined) {
-      void refreshAfter(failure);
-    }
-  }, [refreshAfter]);
-  useEffect(() => refreshDeferred, [refreshDeferred]);
+  const deferred = useDeferredReportCaseRefresh(refreshAfter);
 
   const failureActionOf = (error: unknown) =>
     operation === 'resolve-with-measure' &&
@@ -94,7 +83,7 @@ export function ReportCaseActionDialog({
       open={open}
       onOpenChange={(next) => {
         if (!next) {
-          refreshDeferred();
+          deferred.flush();
         }
         onOpenChange(next);
       }}
@@ -108,8 +97,7 @@ export function ReportCaseActionDialog({
           await run({ caseId, reason: input.reason ?? '' });
           onCompleted?.();
         } catch (error) {
-          if (deferRefresh && isReportCaseRefreshFailure(error)) {
-            deferredFailureRef.current = error;
+          if (deferRefresh && deferred.defer(error)) {
             onRefreshDeferred?.();
           }
           throw error;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import { isReportCaseRefreshFailure } from '../shared/use-report-case-mutation.ts';
+import { isReportCaseRefreshFailure } from './use-report-case-mutation.ts';
 
 export interface DeferredReportCaseRefresh {
   // 取り直す失敗なら持っておき、真を返す

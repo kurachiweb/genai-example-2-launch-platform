@@ -26,7 +26,7 @@ import {
   reportStatusChangeDescription,
   reportStatusChangeTitle,
 } from './report-case-messages.ts';
-import { useDeferredReportCaseRefresh } from './use-deferred-report-case-refresh.ts';
+import { useDeferredReportCaseRefresh } from '../shared/use-deferred-report-case-refresh.ts';
 
 export interface ReportCaseStatusControlProps {
   readonly caseId: string;

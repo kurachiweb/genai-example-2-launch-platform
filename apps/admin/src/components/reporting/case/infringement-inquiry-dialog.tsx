@@ -33,7 +33,7 @@ import {
   type InfringementInquiryFormOutput,
 } from './infringement-inquiry-form-schema.ts';
 import { INFRINGEMENT_INQUIRY_DIALOG_COPY } from './report-case-messages.ts';
-import { useDeferredReportCaseRefresh } from './use-deferred-report-case-refresh.ts';
+import { useDeferredReportCaseRefresh } from '../shared/use-deferred-report-case-refresh.ts';
 
 export interface InfringementInquiryDialogProps {
   readonly open: boolean;
