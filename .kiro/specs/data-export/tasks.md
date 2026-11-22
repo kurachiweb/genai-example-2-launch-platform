@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 共有定義・テーブル・メッセージとファイル名の規則・メール・サービス仕様
-- [ ] 1.1 要求の状態・上限・ダウンロードのパスの共有定義を作る
+- [x] 1.1 要求の状態・上限・ダウンロードのパスの共有定義を作る
   - 前提: dev-tooling〜content-reportingの27specの全タスクが完了していること(identity-authの`AccountExport`・`AccountGuard`・`UserContactDirectory`・`SETTINGS_NAV_ITEMS`・ユーザーライフサイクルの非同期の登録口・E2Eの`mailpit.ts`、user-profile-socialの`ProfileExport`・`FollowExport`、product-launchの`ProductExport`・`LaunchExport`・`ProductDirectory`、match-engineの`MatchExport`・`UpvoteExport`、tournament-weekの`WeekAwardExport`、tournament-yearの`YearAwardExport`、engagementの`CommentExport`・`RatingExport`(engagementの仮5の`invalidatedByAdmin`を含む)、ultras-subscriptionの`UltrasPlanExport`、notificationsの`NotificationSettingsExport`、public-apiの`ApiKeyExport`、content-reportingの`ReportExport`、inquiry-chatの`InquiryExport`、sponsorshipの`SponsorshipExport`、paymentsの`PaymentHistoryExport`、media-pipelineの`MediaFiles`・`attachmentDisposition`、backend-platformの`RateLimitCounterClient`・`hashRateLimitKey`・メッセージと定期実行、api-gatewayの内部RESTとGraphQLとテストの補助、frontend-platformの`RelayRoute`、email-deliveryのメールの基盤)。無ければ該当するタスクを保留して開発者へ報告する
   - 先に、単体テストで、5つの状態(期限切れを含む)と表示の状態(待ち・生成中は作成中)の対応、失敗の種類、表示名、回数の上限3・期間86,400秒・有効期限7日・一覧の1ページ20件の値、ダウンロードのパスの組み立て(百分率符号化)を確かめる
   - 完了状態: 単体テストが成功し、共有定義が他のどの層も読み込まない
@@ -263,3 +263,7 @@
   - _Boundary: `docs/GUIDES/tech`の2文書と`infra/004`の送信の表とオンボーディング_
   - _Depends: 4.5_
   - _Requirements: 12.1, 13.5_
+
+## Implementation Notes
+
+- 1.1: 通知の状態(`none`・`pending`・`requested`・`skipped`)は設計の`DataExportRules`に無いため共有定義に含めず、`data_exports`のCHECKと`core/data-export/ports.ts`の`DataExportNoticeStatus`が持つ。
