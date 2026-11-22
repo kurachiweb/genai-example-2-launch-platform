@@ -1,6 +1,7 @@
 import { inject, injectable } from 'inversify';
 
 import { getAppLogger } from '../../../../lib/core/logging/app-logger.ts';
+import { utcYearsBefore } from '../../../../lib/core/time/utc-calendar.ts';
 import type {
   ScheduledJobContext,
   ScheduledJobHandler,
@@ -17,22 +18,8 @@ export const AUDIT_LOG_DELETE_MAX_BATCHES = 20;
 
 const logger = getAppLogger(['api', 'admin', 'audit-log-retention']);
 
-// UTCの暦で3年前の同じ時刻。同じ日が無い2月29日は月末へ寄せ、3年に満たない記録を消さない
 export function auditLogRetentionCutoff(scheduledTime: Date): Date {
-  const year = scheduledTime.getUTCFullYear() - AUDIT_LOG_RETENTION_YEARS;
-  const month = scheduledTime.getUTCMonth();
-  const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  return new Date(
-    Date.UTC(
-      year,
-      month,
-      Math.min(scheduledTime.getUTCDate(), lastDayOfMonth),
-      scheduledTime.getUTCHours(),
-      scheduledTime.getUTCMinutes(),
-      scheduledTime.getUTCSeconds(),
-      scheduledTime.getUTCMilliseconds(),
-    ),
-  );
+  return utcYearsBefore(scheduledTime, AUDIT_LOG_RETENTION_YEARS);
 }
 
 @injectable()

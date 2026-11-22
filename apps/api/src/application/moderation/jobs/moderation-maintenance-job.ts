@@ -1,6 +1,7 @@
 import { inject, injectable } from 'inversify';
 
 import { getAppLogger } from '../../../../lib/core/logging/app-logger.ts';
+import { utcYearsBefore } from '../../../../lib/core/time/utc-calendar.ts';
 import { MODERATION_PLATFORM_TYPES } from '../../../../lib/core/moderation/identifiers.ts';
 import type { ModerationRecordStore } from '../../../../lib/core/moderation/ports.ts';
 import type {
@@ -34,23 +35,8 @@ const REDISPATCH_AFTER_MS = 60 * 60 * 1000;
 
 const logger = getAppLogger(['api', 'application', 'moderation']);
 
-// UTCの暦で3年前の同じ時刻。同じ日が無い2月29日は月末へ寄せ、3年に満たない記録を消さない
 export function moderationRecordRetentionCutoff(scheduledTime: Date): Date {
-  const year =
-    scheduledTime.getUTCFullYear() - MODERATION_RECORD_RETENTION_YEARS;
-  const month = scheduledTime.getUTCMonth();
-  const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  return new Date(
-    Date.UTC(
-      year,
-      month,
-      Math.min(scheduledTime.getUTCDate(), lastDayOfMonth),
-      scheduledTime.getUTCHours(),
-      scheduledTime.getUTCMinutes(),
-      scheduledTime.getUTCSeconds(),
-      scheduledTime.getUTCMilliseconds(),
-    ),
-  );
+  return utcYearsBefore(scheduledTime, MODERATION_RECORD_RETENTION_YEARS);
 }
 
 interface RedispatchSummary {

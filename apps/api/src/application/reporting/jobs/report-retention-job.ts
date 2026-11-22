@@ -1,6 +1,7 @@
 import { inject, injectable } from 'inversify';
 
 import { getAppLogger } from '../../../../lib/core/logging/app-logger.ts';
+import { utcYearsBefore } from '../../../../lib/core/time/utc-calendar.ts';
 import { REPORTING_PLATFORM_TYPES } from '../../../../lib/core/reporting/identifiers.ts';
 import type { ReportErasureStore } from '../../../../lib/core/reporting/ports.ts';
 import type {
@@ -43,22 +44,8 @@ export function reportGuestRetentionThreshold(scheduledTime: Date): Date {
   return new Date(scheduledTime.getTime() - GUEST_REPORT_RETENTION_MS);
 }
 
-// UTCの暦で3年前の同じ時刻。同じ日が無い2月29日は月末へ寄せ、3年に満たない案件を消さない
 export function reportDetachedCaseRetentionCutoff(scheduledTime: Date): Date {
-  const year = scheduledTime.getUTCFullYear() - DETACHED_CASE_RETENTION_YEARS;
-  const month = scheduledTime.getUTCMonth();
-  const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  return new Date(
-    Date.UTC(
-      year,
-      month,
-      Math.min(scheduledTime.getUTCDate(), lastDayOfMonth),
-      scheduledTime.getUTCHours(),
-      scheduledTime.getUTCMinutes(),
-      scheduledTime.getUTCSeconds(),
-      scheduledTime.getUTCMilliseconds(),
-    ),
-  );
+  return utcYearsBefore(scheduledTime, DETACHED_CASE_RETENTION_YEARS);
 }
 
 async function eraseInBatches(

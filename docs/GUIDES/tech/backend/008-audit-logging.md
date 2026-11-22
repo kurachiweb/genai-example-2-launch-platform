@@ -200,7 +200,7 @@ async hide(commentId: string, audit: PreparedAuditEntry): Promise<void> {
 
 `AuditLogRetentionJob`は日次で、保持期間(3年)を過ぎた監査ログを削除する。
 
-- 境界は`auditLogRetentionCutoff`で、起動の予定時刻のUTCの暦で3年前の同じ時刻とし、その時刻以前(含む)の記録を消す。同じ日が無い2月29日は、その月の末日へ寄せる。3年に満たない記録を消さない。
+- 境界は`auditLogRetentionCutoff`で、起動の予定時刻のUTCの暦で3年前の同じ時刻(共通ライブラリの`core/time/utc-calendar.ts`の`utcYearsBefore`)とし、その時刻以前(含む)の記録を消す。同じ日が無い2月29日は、その月の末日へ寄せる。3年に満たない記録を消さない。
 - 1回の削除は記録の古い順に500件(`AUDIT_LOG_DELETE_BATCH_SIZE`)までで、対象の行を先に、監査ログを後に、同じ並びの部分問い合わせで1つの一括の書き込みにする。1回の起動で20回(`AUDIT_LOG_DELETE_MAX_BATCHES`)まで繰り返し、残りは翌日の起動に任せる。Workerの処理時間の上限に収めるためである。
 - 結果は件数・回数・上限に達したかをレベル`info`のログに、失敗はそれまでの件数とともにレベル`error`のログに残して投げ直す。カテゴリは`[<APIサーバーのアプリ>, 'admin', 'audit-log-retention']`とする(カテゴリの付け方は「[カテゴリ](../infra/004-logging-and-error-tracking.md#カテゴリ)」)。
 - 保持期間の値はサービスのデータ保持期間の一覧と一致させる。

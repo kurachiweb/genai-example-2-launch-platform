@@ -391,3 +391,4 @@
 - 11.1: E2Eは`e2e/client/billing.e2e.test.ts`・`checkout.e2e.test.ts`(手順は`billing-steps.ts`・`checkout-steps.ts`)。疎通確認の決済は`startSmokeCheckout`が`payments_unavailable`のときだけ`test.skip`する。ローカルのD1とMailpitを使うためstagingでは実行できない(design.mdのTesting Strategyは「ローカル・stagingの検証で実行」と書く。12.1で揃える)。CSPの違反の記録は確定のクリックから移動までの間を取りこぼす
 - 11.3: 6つの場面(重複・順序・署名・期限切れ・二重決済(同時を含む)・返金の再試行と恒久的な失敗)のテストを確かめた。`test:all:unit`・`test:all:worker`・`test:all:browser`の`--coverage`が全て閾値を通る(本specのファイルで最も低いのは`purchase-reconciliation.ts`の行86.67%)
 - 12.2: 縮退の文言は`common-lib/payments/payments-unavailable-texts.ts`の`PAYMENTS_UNAVAILABLE_REASON`(画面の理由)と`PAYMENTS_UNAVAILABLE_MESSAGE`(APIの文言)。決済実装方針は`docs/GUIDES/service/features/004-payments.md`(返金ポリシーとの食い違いの申し送りを含む)
+- content-reportingの後の改善(2026-11-22、開発者の依頼): 保持期間の境界(UTCの暦で年数を引いた同じ時刻、2月29日は月末へ寄せる)の計算を共通の`apps/backend-lib/core/time/utc-calendar.ts`の`utcYearsBefore`へ移した。`paymentHistoryRetentionCutoff`はそれを呼ぶだけになり、振る舞いは変わらない
