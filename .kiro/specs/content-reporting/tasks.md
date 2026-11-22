@@ -134,7 +134,7 @@
   - _Depends: 3.2, 4.1_
   - _Requirements: 3.4, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 19.4_
 
-- [ ] 4.3 (P) 通報カテゴリの一覧と操作を作る
+- [x] 4.3 (P) 通報カテゴリの一覧と操作を作る
   - 先に、単体テストで、フォーム用の一覧の並び順と権利侵害の印、管理画面用の件数付きの一覧、名前の検証(空・30書記素超)、重複・標準の保護・不在のエラーコード、削除の付け替えた件数の監査ログの詳細、操作ごとの監査ログの準備を確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: ReportCategoryService_
@@ -359,3 +359,4 @@
 - 3.2: `D1ReportSubmissionStore`(`apps/api/src/infrastructure/reporting/d1-report-submission-store.ts`)は案件の`onConflictDoUpdate`(`last_reported_at`は`MAX`、`infringement_reported_at`は`COALESCE`、`updated_at`は`excluded`)と、`case_id`・`category_name`を副問い合わせで埋める通報の挿入の2文。カテゴリの同時の削除は`NOT NULL constraint failed: reports.category_name`を原因の連鎖で見分けて`'category-missing'`を返す(SQLiteはNOT NULLを外部キーより先に検査する)。古い時刻の通報が後で確定すると`updated_at`だけは戻り得る
 - 3.3: `D1ReportCategoryStore`は名前の前後の空白もストアで除き(4.3のサービスも除くが二重でも害は無い。サービスは返す名前も除いた値にする)、標準カテゴリの保護と不在は監査ログの`guard`(`{ kind: 'condition' }`の`system_default = 0`)と`isAuditGuardRejection`で`not-found`にする(inquiry-chatの前例)。`list`は作成日時→IDの順で、フォームの並び(14.8)は4.3が`sortReportCategories`で行う。削除の付け替えは論理削除済みの通報も含め`updated_at`も更新する。付け替えた件数はポートが返さないため、4.3は先に`countReports`で数えて監査ログの詳細に入れる
 - 3.4: `D1ReportCaseStore`の`search`は`(last_reported_at, id)`の降順でカーソルは`base64url('<ミリ秒>:<ID>')`(処理はファイル内の非公開の関数)。カテゴリと受付期間は同じ論理削除していない通報で満たす`EXISTS`で絞り、期間は開始を含み終了を含まない。カテゴリごとの件数は件数の降順→カテゴリのIDの昇順(設計に記載なし)。`lastReportedAt`は列の値で、最後の通報だけが論理削除された案件では表示する通報より新しい日時が出る。未対応は`status = 'open'`だけ、権利侵害は`infringement_reported_at IS NOT NULL`。`productSummary`は`target_kind = 'product' AND product_id = ?`で、プロダクトの対象では`productId`が対象のIDと同じ(4.1が入れる)。**内訳の`inArray`はページの件数だけバインド変数を使うため、4.8・5.4は1ページを50件以下に抑える**(`db/002`の上限100)
+- 4.3: `DefaultReportCategoryService`。**設計のFile Structure Planに無い`apps/api/src/application/reporting/reporting-errors.ts`(`REPORTING_ERRORS`)を、既存のinquiry-chat・help-center・ugc-moderationの`application/<機能>/<機能>-errors.ts`の形に合わせて作った。4.2・4.5・4.6・4.7のユースケースが投げるコードと文言はここへ追記し、5.2のpresentationの`errors.ts`はここを読む(並行のタスクが同時に追記しないよう、親が順に割り当てる)**。`report_category_protected`は設計どおり`unprocessable`(422)で、inquiry・helpの`conflict`と違う。重複のエラーには`name`の欄の詳細を付ける。`rename`は成功の後に`countReports`をもう1回呼んで件数を返す
