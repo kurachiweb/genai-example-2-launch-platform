@@ -117,7 +117,7 @@
   - _Requirements: 17.3, 19.1_
 
 - [ ] 4. ユースケース(本specの識別子のファイルと登録箇所を変えない)
-- [ ] 4.1 (P) 通報の対象の判定と表示名を作る
+- [x] 4.1 (P) 通報の対象の判定と表示名を作る
   - ハンドルの形式は`checkHandleFormat(targetRef, USER_HANDLE_RULE)`で検査する
   - 先に、単体テストで、ユーザーの現在と旧のハンドルの解決とハンドルの形式の誤り、停止中・退会済みの拒否、掲載中のプロダクトだけを受け付けること(未掲載・非公開化・投稿者が停止中・論理削除を拒否)、コメントの削除・非公開化・匿名化・投稿者が不可視・プロダクトが未掲載の拒否、投稿者と対象のプロダクトの返却、表示名の照会が種類ごとに1回であること、引けない対象と対象への参照を消した案件を照会せずに表示できない対象とすること、管理者向けに非公開化のコメントの抜粋も返すことを確かめる
   - 完了状態: 単体テストが成功する
@@ -360,3 +360,4 @@
 - 3.3: `D1ReportCategoryStore`は名前の前後の空白もストアで除き(4.3のサービスも除くが二重でも害は無い。サービスは返す名前も除いた値にする)、標準カテゴリの保護と不在は監査ログの`guard`(`{ kind: 'condition' }`の`system_default = 0`)と`isAuditGuardRejection`で`not-found`にする(inquiry-chatの前例)。`list`は作成日時→IDの順で、フォームの並び(14.8)は4.3が`sortReportCategories`で行う。削除の付け替えは論理削除済みの通報も含め`updated_at`も更新する。付け替えた件数はポートが返さないため、4.3は先に`countReports`で数えて監査ログの詳細に入れる
 - 3.4: `D1ReportCaseStore`の`search`は`(last_reported_at, id)`の降順でカーソルは`base64url('<ミリ秒>:<ID>')`(処理はファイル内の非公開の関数)。カテゴリと受付期間は同じ論理削除していない通報で満たす`EXISTS`で絞り、期間は開始を含み終了を含まない。カテゴリごとの件数は件数の降順→カテゴリのIDの昇順(設計に記載なし)。`lastReportedAt`は列の値で、最後の通報だけが論理削除された案件では表示する通報より新しい日時が出る。未対応は`status = 'open'`だけ、権利侵害は`infringement_reported_at IS NOT NULL`。`productSummary`は`target_kind = 'product' AND product_id = ?`で、プロダクトの対象では`productId`が対象のIDと同じ(4.1が入れる)。**内訳の`inArray`はページの件数だけバインド変数を使うため、4.8・5.4は1ページを50件以下に抑える**(`db/002`の上限100)
 - 4.3: `DefaultReportCategoryService`。**設計のFile Structure Planに無い`apps/api/src/application/reporting/reporting-errors.ts`(`REPORTING_ERRORS`)を、既存のinquiry-chat・help-center・ugc-moderationの`application/<機能>/<機能>-errors.ts`の形に合わせて作った。4.2・4.5・4.6・4.7のユースケースが投げるコードと文言はここへ追記し、5.2のpresentationの`errors.ts`はここを読む(並行のタスクが同時に追記しないよう、親が順に割り当てる)**。`report_category_protected`は設計どおり`unprocessable`(422)で、inquiry・helpの`conflict`と違う。重複のエラーには`name`の欄の詳細を付ける。`rename`は成功の後に`countReports`をもう1回呼んで件数を返す
+- 4.1: `DirectoryReportTargetResolver`(`apps/api/src/application/reporting/report-target-resolver.ts`)。**`describe`の結果の鍵は同じファイルからexportする`reportTargetKeyOf(key)`(`'<kind>:<targetId>'`、`targetId`がnullなら`'<kind>:'`)で作る(4.4・4.7・4.8はこの関数を使う)**。コメントの対象のプロダクトは鍵の`productId`から引く。抜粋は`truncateGraphemes(body, REPORT_LIST_EXCERPT_MAX)`(200書記素、省略記号なし、engagementの前例)。`describe`は停止中の利用者・非公開化のプロダクト・論理削除や非公開化や匿名化のコメントも`available: true`で返し(管理者の判断のため)、退会の利用者と削除のプロダクトは上流が返さないため`available: false`
