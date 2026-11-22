@@ -55,7 +55,7 @@ export const myDataExportsQueryOptions = (viewerId: string) =>
         : undefined,
   });
 
-// 取得の失敗は設定のナビゲーションを残したまま区画の中で再試行できるよう、例外にせずキャッシュに残す。続きのページはここで読み足さず、画面の「さらに表示」で読む
+// 作成中の要求の状態を最新にするため、開くたびに取得し直す。取得の失敗は設定のナビゲーションを残したまま区画の中で再試行できるよう、例外にせずキャッシュに残す。続きのページはここで読み足さず、画面の「さらに表示」で読む
 export async function loadMyDataExports({
   context,
 }: {
@@ -65,7 +65,10 @@ export async function loadMyDataExports({
   };
 }): Promise<void> {
   await context.queryClient
-    .infiniteQuery(myDataExportsQueryOptions(context.viewer.id))
+    .infiniteQuery({
+      ...myDataExportsQueryOptions(context.viewer.id),
+      staleTime: 0,
+    })
     .catch(() => undefined);
 }
 

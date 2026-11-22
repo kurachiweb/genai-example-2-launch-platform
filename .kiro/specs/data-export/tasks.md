@@ -224,7 +224,7 @@
   - _Depends: 5.2, 5.3_
   - _Requirements: 1.1, 1.8, 9.2_
 
-- [ ] 7.2 要求の一覧の表示の部品を作る
+- [x] 7.2 要求の一覧の表示の部品を作る
   - 先に、ブラウザテストで、一覧の作成中・完了(完了日時・有効期限・ファイル名・1,024基数の大きさ・ダウンロードのリンク)・期限切れ(履歴の項目と削除した旨、ダウンロードのリンクが無いこと)・失敗(大きすぎる場合の問い合わせの案内)、20件ずつの表示と「さらに表示」での続きの読み込み、作成中がある間だけの`LIVE_REFRESH_QUERY_OPTIONS`の間隔での取り直しと「自動更新」の`Switch`(作成中が無ければ描かない・切ると取り直さない・間隔の説明の`aria-describedby`)、0件と取得の失敗の区画内の表示、状態を文言でも示すこと、`<time datetime>`、`runAxe`の違反0件を確かめる
   - 完了状態: ブラウザテストが成功し、`/settings/export`に一覧が表示される
   - _Depends: 7.1_
@@ -293,3 +293,4 @@
 - 6.6: 生成の3回目は`terminator.fail`が`already_finished`でも`generation-failed`を送る(元の例外を握り潰さない)。3回目に`terminator.fail`自体が例外を投げたらそのまま投げてデッドレターへ移し、`generation-failed`は送らない。見張りは`queued`・`generating`だけを失敗にし、実際に失敗に移したときだけ`generation-abandoned`を送る。`defer`は試行の回数を1に戻す(G-8)が、2時間の見張りが上限を担保する。
 - 7.1: 中継の経路は接頭辞より後ろを`decodeURIComponent`してから`encodeURIComponent`し直し、上流のパスを1つの区画に収める(メディアの中継と同じ方針)。取得の補助は`src/graphql/data-export.ts`(`myDataExportsQueryOptions(viewerId)`は`infiniteQueryOptions`で`refetchInterval`は未設定、`loadMyDataExports`・`invalidateMyDataExports`・`requestDataExportMutationOptions`)、フラグメントは`DataExportFields`。`routeTree.gen.ts`はStartのpluginのフッターを含む通常の生成の形にする(`@tanstack/router-generator`の直接の生成はフッターを落とす)。
 - 5.4: 共通の`drainInBatches`は同じ起動で処理済みのIDを飛ばし、残った件数だけ次の読み取りの`limit`を広げる(失敗した記録が先頭に溜まっても後ろへ進むため。上限は1回1000件)。`DataExportTerminator.fail`の例外は警告を出して次へ進み、最後に`Error`を投げてジョブを`failed`にする。`archive-deletion-failed`の件数は削除とアップロードの破棄の失敗の合算。閾値と`fail`の`now`は`scheduledTime`から求める。ログのカテゴリは`['api', 'application', 'data-export']`。
+- 7.2: 一覧は見出しを持たずページのh1で名前を付け、「自動更新」の`Switch`は一覧の右上(`components/match/auto-refresh-switch.tsx`を再利用)。`role="log"`は付けない(取り直しで項目が加わらず、既存の項目の状態が変わるだけのため。状態の変化は完了のメールで知らせる)。loaderの`staleTime: 0`と部品の`refetchOnMount: false`を組で使う。7.3は`DataExportList({ viewerId, labelledBy, retryFocusRef })`をルートで区画に置き換え、要求の後に`invalidateMyDataExports`を呼ぶ。

@@ -13,6 +13,7 @@ import {
   documentIdOf,
   graphqlQueryKey,
 } from '../../lib/utilities/graphql/persisted-document.ts';
+import { createAppQueryClient } from '../../lib/start/query-client.ts';
 import {
   invalidateMyDataExports,
   loadMyDataExports,
@@ -157,6 +158,21 @@ describe('loadMyDataExports', () => {
 
     expect(result).toStrictEqual({ pages: [FIRST_PAGE], pageParams: [null] });
     expect(sent).toHaveLength(1);
+  });
+
+  test('作成中の要求の状態を最新にするため、キャッシュがあっても取得し直す', async () => {
+    const { sent } = await runThroughApi(
+      async (queryClient) => {
+        const context = { queryClient, viewer: VIEWER };
+        await loadMyDataExports({ context });
+        await loadMyDataExports({ context });
+        return undefined;
+      },
+      respondWith(FIRST_PAGE),
+      createAppQueryClient({ isServer: false }),
+    );
+
+    expect(sent).toHaveLength(2);
   });
 
   test('取得に失敗しても、区画の中で再試行できるよう例外にせず失敗をキャッシュに残す', async () => {
