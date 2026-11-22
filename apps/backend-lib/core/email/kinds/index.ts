@@ -1,5 +1,6 @@
 import type { AnyEmailKind } from '../email-kind.ts';
 import { ADMIN_EMAIL_KINDS } from './admin.ts';
+import { REPORT_EMAIL_KINDS } from './content-reporting.ts';
 import { EMAIL_DELIVERY_SMOKE_KIND } from './email-delivery-smoke.ts';
 import { IDENTITY_EMAIL_KINDS } from './identity.ts';
 import { INQUIRY_REPLY_NOTIFICATION_KIND } from './inquiry.ts';
@@ -23,4 +24,5 @@ export const EMAIL_KINDS: readonly AnyEmailKind[] = Object.freeze([
   ...TOURNAMENT_YEAR_EMAIL_KINDS,
   ...SPONSORSHIP_EMAIL_KINDS,
   ...MODERATION_EMAIL_KINDS,
+  ...REPORT_EMAIL_KINDS,
 ]);

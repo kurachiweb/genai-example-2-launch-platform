@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { createEmailKindRegistry } from '../email-kind.ts';
 import { ADMIN_EMAIL_KINDS } from './admin.ts';
+import { REPORT_EMAIL_KINDS } from './content-reporting.ts';
 import { EMAIL_DELIVERY_SMOKE_KIND } from './email-delivery-smoke.ts';
 import { IDENTITY_EMAIL_KINDS } from './identity.ts';
 import { EMAIL_KINDS } from './index.ts';
@@ -161,6 +162,24 @@ describe('EMAIL_KINDS', () => {
       'ugc-moderation.user-suspended',
       'ugc-moderation.product-hidden',
       'ugc-moderation.comment-hidden',
+    ]);
+  });
+
+  test.each(REPORT_EMAIL_KINDS.map((kind) => [kind.name, kind] as const))(
+    '通報の種別%sをトランザクションメールとして名前で引ける',
+    (name, kind) => {
+      const registry = createEmailKindRegistry(EMAIL_KINDS);
+
+      expect(registry.get(name)).toBe(kind);
+      expect(registry.get(name)?.category).toBe('transactional');
+    },
+  );
+
+  test('通報の種別は申出者への対応結果・投稿者への却下・権利侵害の照会の3種である', () => {
+    expect(REPORT_EMAIL_KINDS.map((kind) => kind.name)).toEqual([
+      'content-reporting.report-outcome',
+      'content-reporting.rejection-to-poster',
+      'content-reporting.infringement-inquiry',
     ]);
   });
 
