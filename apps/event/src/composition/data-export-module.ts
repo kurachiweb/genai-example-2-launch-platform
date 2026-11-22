@@ -7,6 +7,8 @@ import { ArchiveGenerationService } from '../application/data-export/archive-gen
 import { EVENT_DATA_EXPORT_TYPES } from '../application/data-export/event-data-export-types.ts';
 import { ExportFileResolver } from '../application/data-export/export-file-resolver.ts';
 import { ExportSnapshotCollector } from '../application/data-export/export-snapshot-collector.ts';
+import { GenerateArchiveHandler } from '../application/data-export/generate-archive-handler.ts';
+import { GenerationWatchdogHandler } from '../application/data-export/generation-watchdog-handler.ts';
 import { AccountSourceReader } from '../application/data-export/sources/account-source-reader.ts';
 import { CorrespondenceSourceReader } from '../application/data-export/sources/correspondence-source-reader.ts';
 import { ProductActivitySourceReader } from '../application/data-export/sources/product-activity-source-reader.ts';
@@ -36,5 +38,11 @@ export const EVENT_DATA_EXPORT_MODULE: AppModule<
     bind<ArchiveGenerationService>(
       EVENT_DATA_EXPORT_TYPES.ArchiveGenerationService,
     ).to(ArchiveGenerationService);
+    bind<GenerateArchiveHandler>(
+      EVENT_DATA_EXPORT_TYPES.GenerateArchiveHandler,
+    ).to(GenerateArchiveHandler);
+    bind<GenerationWatchdogHandler>(
+      EVENT_DATA_EXPORT_TYPES.GenerationWatchdogHandler,
+    ).to(GenerationWatchdogHandler);
   }),
 };

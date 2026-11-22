@@ -3,16 +3,25 @@ import { env } from 'cloudflare:workers';
 import type { Container } from 'inversify';
 import { describe, expect, test } from 'vitest';
 
+import {
+  DATA_EXPORT_GENERATE_MESSAGE,
+  DATA_EXPORT_WATCHDOG_MESSAGE,
+  GENERATION_RETRY_POLICY,
+} from '../../lib/core/data-export/data-export-messages.ts';
 import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { createQueueDispatcher } from '../../lib/workers/messaging/queue-consumer.ts';
 import { EVENT_DATA_EXPORT_TYPES } from '../application/data-export/event-data-export-types.ts';
 import { ArchiveGenerationService } from '../application/data-export/archive-generation-service.ts';
+import { GenerateArchiveHandler } from '../application/data-export/generate-archive-handler.ts';
+import { GenerationWatchdogHandler } from '../application/data-export/generation-watchdog-handler.ts';
 import { AccountSourceReader } from '../application/data-export/sources/account-source-reader.ts';
 import { ExportFileResolver } from '../application/data-export/export-file-resolver.ts';
 import { ExportSnapshotCollector } from '../application/data-export/export-snapshot-collector.ts';
 import { CorrespondenceSourceReader } from '../application/data-export/sources/correspondence-source-reader.ts';
 import { ProductActivitySourceReader } from '../application/data-export/sources/product-activity-source-reader.ts';
 import { EVENT_DATA_EXPORT_MODULE } from './data-export-module.ts';
+import { MESSAGE_HANDLERS } from './message-handlers.ts';
 import { MODULES } from './modules.ts';
 
 const INVOCATION_KINDS = ['fetch', 'queue'] as const;
@@ -24,6 +33,8 @@ const IMPLEMENTATIONS = [
   ['ExportFileResolver', ExportFileResolver],
   ['ExportSnapshotCollector', ExportSnapshotCollector],
   ['ArchiveGenerationService', ArchiveGenerationService],
+  ['GenerateArchiveHandler', GenerateArchiveHandler],
+  ['GenerationWatchdogHandler', GenerationWatchdogHandler],
 ] as const;
 
 function createContainer(kind: InvocationScopeInfo['kind']): Container {
@@ -81,4 +92,33 @@ describe('イベントサーバーのモジュールの一覧へのデータエ�
       ).toBeInstanceOf(implementation);
     },
   );
+});
+
+describe('データエクスポートのメッセージの処理の登録', () => {
+  test('生成は再試行の方針付きで、見張りは既定の方針で、それぞれの処理へ登録する', () => {
+    const registrations = MESSAGE_HANDLERS.filter(({ contract }) =>
+      [
+        DATA_EXPORT_GENERATE_MESSAGE.type,
+        DATA_EXPORT_WATCHDOG_MESSAGE.type,
+      ].includes(contract.type as never),
+    );
+
+    expect(registrations).toStrictEqual([
+      {
+        contract: DATA_EXPORT_GENERATE_MESSAGE,
+        handler: EVENT_DATA_EXPORT_TYPES.GenerateArchiveHandler,
+        retry: GENERATION_RETRY_POLICY,
+      },
+      {
+        contract: DATA_EXPORT_WATCHDOG_MESSAGE,
+        handler: EVENT_DATA_EXPORT_TYPES.GenerationWatchdogHandler,
+      },
+    ]);
+  });
+
+  test('登録の一覧からディスパッチャーを組み立てられる', () => {
+    expect(() =>
+      createQueueDispatcher(MESSAGE_HANDLERS, MODULES),
+    ).not.toThrow();
+  });
 });

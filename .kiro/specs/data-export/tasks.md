@@ -206,7 +206,7 @@
   - _Depends: 3.4, 4.5, 6.4_
   - _Requirements: 3.2, 3.3, 3.5, 3.7, 6.2, 7.1, 7.3, 7.4, 7.5, 12.1, 12.2_
 
-- [ ] 6.6 生成と見張りのメッセージの処理を作り、登録する
+- [x] 6.6 生成と見張りのメッセージの処理を作り、登録する
   - 先に、単体テスト(偽の部品)で、使用中の`defer`(1,200秒)、他の結果の`done`、試行の1・2回目の例外の投げ直し、3回目の失敗の確定と通知と`done`、見張りが作成中の要求だけを失敗にすること、3回目の失敗を元の例外とともに`generation-failed`で、見張りによる失敗の確定を`generation-abandoned`で、エラートラッキングへの送信の部品(偽の部品)へ渡すことを確かめる
   - 2つの処理の束縛をイベントサーバーの本specのモジュールへ加え、メッセージの処理の登録へ2種別を、生成には再試行の方針(3回・起点60秒・上限600秒)を付けて加える
   - 完了状態: 単体テストが成功し、イベントサーバーのコンテナから2つの処理を解決できる
@@ -290,3 +290,4 @@
 - 5.3: 呼び出し元を先に確かめ、管理者側は未ログインでも404。利用者側の未ログインは不正な形のIDでも401。有効期限を過ぎた完了は日次のジョブの前でも404。保存先(R2)の読み出しの失敗だけを503(`data_export_archive_unavailable`、`Retry-After: 5`)にし、記録のD1の失敗は共通の500の定型。保存のメタデータが欠ければ`application/zip`と`attachmentDisposition(fileName ?? 'export.zip')`で補う。テストの組み立ては`apps/api/test/support/data-export-download-harness.ts`。
 - 6.5: `claim`の`not_found`は`finished`、`markReady`と`recordUpload`の不一致はどちらも`superseded`(設計は`markReady`の不一致を`done`と書くが、処理はどちらも`done`にするため差は出ない)。完了日時は注入した`Clock`の`now()`で有効期限はその7日後、ZIPの更新日時はリースの起点の`now`。破棄・削除に失敗したときはリースを解放せず、リースの期限の後の次の実行に任せる。完了の通知の例外でも`ready`(日次の送り直しに任せる)。ログのカテゴリは`['event', 'application', 'data-export']`。テストの偽の部品は`archive-generation-service.fixtures.ts`。
 - 8.3: 実装の前に書いた値(中継の経路・ジョブと退会の処理の`order`・メッセージの処理)は`project-values.md`に「実装中」の印を付け、全ての実装の完了後に照合して外す。`CLAUDE.md`の参照行は設計どおり`backend/023`だけ。`infra/004`のタグの規則`<ドメイン>_incident`に対し実装は`data_export_incident`(ハイフンをアンダースコアにする)で、実装の値を`project-values.md`に書いた。
+- 6.6: 生成の3回目は`terminator.fail`が`already_finished`でも`generation-failed`を送る(元の例外を握り潰さない)。3回目に`terminator.fail`自体が例外を投げたらそのまま投げてデッドレターへ移し、`generation-failed`は送らない。見張りは`queued`・`generating`だけを失敗にし、実際に失敗に移したときだけ`generation-abandoned`を送る。`defer`は試行の回数を1に戻す(G-8)が、2時間の見張りが上限を担保する。

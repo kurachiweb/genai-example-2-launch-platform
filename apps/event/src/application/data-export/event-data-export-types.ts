@@ -17,6 +17,12 @@ const ExportSnapshotCollector: unique symbol = Symbol.for(
 const ArchiveGenerationService: unique symbol = Symbol.for(
   'data-export.ArchiveGenerationService',
 );
+const GenerateArchiveHandler: unique symbol = Symbol.for(
+  'data-export.GenerateArchiveHandler',
+);
+const GenerationWatchdogHandler: unique symbol = Symbol.for(
+  'data-export.GenerationWatchdogHandler',
+);
 
 export const EVENT_DATA_EXPORT_TYPES = Object.freeze({
   AccountSourceReader,
@@ -25,4 +31,6 @@ export const EVENT_DATA_EXPORT_TYPES = Object.freeze({
   ExportFileResolver,
   ExportSnapshotCollector,
   ArchiveGenerationService,
+  GenerateArchiveHandler,
+  GenerationWatchdogHandler,
 });

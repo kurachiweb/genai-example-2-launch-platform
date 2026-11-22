@@ -1,3 +1,8 @@
+import {
+  DATA_EXPORT_GENERATE_MESSAGE,
+  DATA_EXPORT_WATCHDOG_MESSAGE,
+  GENERATION_RETRY_POLICY,
+} from '../../lib/core/data-export/data-export-messages.ts';
 import { EMAIL_SEND_RETRY_POLICY } from '../../lib/core/email/delivery-decision.ts';
 import { EMAIL_SEND_MESSAGE } from '../../lib/core/email/send-message.ts';
 import {
@@ -34,6 +39,7 @@ import {
   ULTRAS_ACTIVATION_RETRY_POLICY,
   ULTRAS_RUN_ACTIVATION_HANDLERS_MESSAGE,
 } from '../../lib/core/ultras/activation-message.ts';
+import { EVENT_DATA_EXPORT_TYPES } from '../application/data-export/event-data-export-types.ts';
 import { EVENT_EMAIL_TYPES } from '../application/email/email-types.ts';
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
@@ -119,5 +125,14 @@ export const MESSAGE_HANDLERS: readonly MessageHandlerRegistration<unknown>[] =
     {
       contract: SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
       handler: EVENT_SPONSORSHIP_TYPES.PeriodEndSettlementHandler,
+    },
+    {
+      contract: DATA_EXPORT_GENERATE_MESSAGE,
+      handler: EVENT_DATA_EXPORT_TYPES.GenerateArchiveHandler,
+      retry: GENERATION_RETRY_POLICY,
+    },
+    {
+      contract: DATA_EXPORT_WATCHDOG_MESSAGE,
+      handler: EVENT_DATA_EXPORT_TYPES.GenerationWatchdogHandler,
     },
   ]);
