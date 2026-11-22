@@ -18,6 +18,7 @@ import { createTournamentPlatformModule } from '../../lib/workers/tournament/tou
 import { createWeekTournamentPlatformModule } from '../../lib/workers/week-tournament/week-tournament-platform-module.ts';
 import { createYearTournamentPlatformModule } from '../../lib/workers/year-tournament/year-tournament-platform-module.ts';
 import { createImageGatewayModule } from '../presentation/media/image-gateway-module.ts';
+import { EVENT_DATA_EXPORT_MODULE } from './data-export-module.ts';
 import { EVENT_DIRECTORY_MODULE } from './directory-module.ts';
 import { EVENT_EMAIL_MODULE } from './email-module.ts';
 import { EVENT_ENGAGEMENT_MODULE } from './engagement-module.ts';
@@ -100,4 +101,5 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<EventEnv>>>[] =
     EVENT_SPONSORSHIP_MODULE,
     EVENT_ULTRAS_MODULE,
     EVENT_PRODUCT_MODULE,
+    EVENT_DATA_EXPORT_MODULE,
   ]);

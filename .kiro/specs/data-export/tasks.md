@@ -167,7 +167,7 @@
   - _Requirements: 3.6, 8.6, 10.1, 10.2, 10.4, 10.5, 12.3, 12.4_
 
 - [ ] 6. イベントサーバー: データの収集・ZIPの生成・見張り・物理削除
-- [ ] 6.1 (P) アカウントと、やり取りと取引の読み取りの部品を作り、イベントサーバーのモジュールの枠を作る
+- [x] 6.1 (P) アカウントと、やり取りと取引の読み取りの部品を作り、イベントサーバーのモジュールの枠を作る
   - イベントサーバーの本specのDIの識別子のファイルとモジュール(本タスクの2つの読み取りの部品の束縛)を本タスクで作り、モジュールの登録へ加える。後続のタスクは束縛を追記する
   - 先に、単体テスト(偽の部品)で、アカウント・Ultras・通知の設定・APIキー・プロフィール・フォローの値のスナップショットへの写しと、退会済み(アカウントかプロフィールが無い)で何も返さないこと、アカウントの有無の確かめ、仮名化IDをスナップショットに入れないこと、通報と問い合わせを次のページが無くなるまで20件ずつ読むこと、問い合わせの文字列の日時の写し、スポンサー広告と、アカウントの仮名化IDで求めた決済履歴の写し、部品の例外をそのまま投げることを確かめる
   - 完了状態: 単体テストが成功し、イベントサーバーのコンテナから2つの読み取りの部品を解決でき、静的解析でイベントサーバーのapplication層に`**/lib/workers/**`の読み込みが無い(上流の部品と本specの共有部品は`core/<ドメイン>`の型と識別子で受け取る)
@@ -284,3 +284,4 @@
 - 4.5: `StoreDataExportTerminator.fail`は記録が無いか未完了でなければ何もせず`already_finished`を返す。破棄は`uploadId`と`objectKey`が揃うときだけ行い(設計は`upload_id`があれば、と書く)、成功しても`clearUpload`は呼ばず日次の後片付けに任せる。定型の通知の指紋は`['data-export', kind]`、タグは`data_export_incident`。5つの部品は処理単位ごとに`inSingletonScope()`。
 - 6.3: 返す型`ProductActivitySource`をリーダーのファイルから公開し、6.4の収集が使う。プロダクトも項目を明示して写す(上流の余分な項目を漏らさない)。他者のプロダクトの名称は重複を除いた全IDを`findSummaries(ids, 'not-deleted')`の1回で引く(90件の分割は上流が行う)。受賞は週間→年間の順。
 - 5.1: 生成の依頼の失敗の503はコード`data_export_unavailable`(種類`unavailable`)にした(設計はコード名を決めていない)。`DataExportView`・`toDataExportView`はサービスと一覧が共用するため`data-export-view.ts`に分けた。`listMine`は`first`を検証しないので、5.2のリゾルバが20を超える`first`と不正な`after`を必ず拒否する。回数制限のキーは`hashRateLimitKey(hasher, 'data-export', userId)`。
+- 6.1: 決済の`purpose`が`payments_smoke`(dev・stagingだけで受け付ける決済の疎通確認)の決済は、文書の`purpose`の列挙に無いため読み取りの部品で除く。`AccountSourceReader.read`は`pseudonymousId`を別の項目で返し、決済の照会にだけ使う。`exists`は6.5が完了の後の退会の確かめに使う。後続は`event-data-export-types.ts`の識別子と`data-export-module.ts`の束縛と`data-export-module.worker.test.ts`の`IMPLEMENTATIONS`を同時に足す。
