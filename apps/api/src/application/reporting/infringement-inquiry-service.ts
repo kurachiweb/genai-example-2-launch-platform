@@ -36,6 +36,7 @@ import type {
   ReportTargetResolver,
   ReportTargetView,
 } from './ports.ts';
+import { inquiryTargetPathOf } from './inquiry-target.ts';
 import { reportTargetKeyOf } from './report-target-resolver.ts';
 import {
   inquiryMessageRejectedError,
@@ -59,10 +60,6 @@ type InquiryTargetInput = Pick<
 >;
 
 const CONTACT_PATH = '/contact';
-
-const PROFILE_PATH_PREFIX = '/@';
-
-const PRODUCT_PATH_PREFIX = '/p/';
 
 const logger = getAppLogger(['api', 'application', 'reporting']);
 
@@ -102,9 +99,6 @@ const inquiryTargetOf = (record: ReportCaseRecord): InquiryTarget => {
   };
 };
 
-const pageUrlOf = (origin: string, prefix: string, handle: string): string =>
-  new URL(`${prefix}${encodeURIComponent(handle)}`, origin).href;
-
 // 抜粋が空になる本文の無いコメントは、テンプレートが抜粋を描かないようnullにする
 const noticeExcerptOf = (excerpt: string | null): string | null => {
   const truncated =
@@ -114,36 +108,29 @@ const noticeExcerptOf = (excerpt: string | null): string | null => {
   return truncated === '' ? null : truncated;
 };
 
-// 照会は利用者側のページを見て回答してもらうため、URLを示せない対象には送らない
 const targetInputOf = (
   key: ReportTargetKey,
   view: ReportTargetView | undefined,
   origin: string,
 ): InquiryTargetInput | undefined => {
-  if (view?.available !== true) {
+  const path = inquiryTargetPathOf(key.kind, view);
+  if (view === undefined || path === undefined) {
     return undefined;
   }
-  if (key.kind === 'comment') {
-    return view.productHandle === null
-      ? undefined
-      : {
-          targetKind: key.kind,
-          targetLabel: view.productName,
-          excerpt: noticeExcerptOf(view.excerpt),
-          targetUrl: pageUrlOf(origin, PRODUCT_PATH_PREFIX, view.productHandle),
-        };
-  }
-  if (view.handle === null) {
-    return undefined;
-  }
-  const prefix =
-    key.kind === 'user' ? PROFILE_PATH_PREFIX : PRODUCT_PATH_PREFIX;
-  return {
-    targetKind: key.kind,
-    targetLabel: view.label,
-    excerpt: null,
-    targetUrl: pageUrlOf(origin, prefix, view.handle),
-  };
+  const targetUrl = new URL(path, origin).href;
+  return key.kind === 'comment'
+    ? {
+        targetKind: key.kind,
+        targetLabel: view.productName,
+        excerpt: noticeExcerptOf(view.excerpt),
+        targetUrl,
+      }
+    : {
+        targetKind: key.kind,
+        targetLabel: view.label,
+        excerpt: null,
+        targetUrl,
+      };
 };
 
 @injectable()

@@ -31,7 +31,7 @@ export const reportTargetKeyOf = (
   key: Pick<ReportTargetKey, 'kind' | 'targetId'>,
 ): string => `${key.kind}:${key.targetId ?? ''}`;
 
-const UNAVAILABLE_VIEW: ReportTargetView = Object.freeze({
+export const UNAVAILABLE_TARGET_VIEW: ReportTargetView = Object.freeze({
   available: false,
   handle: null,
   label: null,
@@ -72,9 +72,9 @@ interface FoundTargets {
 
 const userViewOf = (user: UserSummaryRecord | undefined): ReportTargetView =>
   user === undefined
-    ? UNAVAILABLE_VIEW
+    ? UNAVAILABLE_TARGET_VIEW
     : {
-        ...UNAVAILABLE_VIEW,
+        ...UNAVAILABLE_TARGET_VIEW,
         available: true,
         handle: user.handle,
         label: user.nickname,
@@ -84,9 +84,9 @@ const productViewOf = (
   product: ProductSummaryRecord | undefined,
 ): ReportTargetView =>
   product === undefined
-    ? UNAVAILABLE_VIEW
+    ? UNAVAILABLE_TARGET_VIEW
     : {
-        ...UNAVAILABLE_VIEW,
+        ...UNAVAILABLE_TARGET_VIEW,
         available: true,
         handle: product.handle,
         label: product.name,
@@ -98,9 +98,9 @@ const commentViewOf = (
   product: ProductSummaryRecord | undefined,
 ): ReportTargetView =>
   comment === undefined
-    ? UNAVAILABLE_VIEW
+    ? UNAVAILABLE_TARGET_VIEW
     : {
-        ...UNAVAILABLE_VIEW,
+        ...UNAVAILABLE_TARGET_VIEW,
         available: true,
         excerpt: excerptOf(comment),
         productName: product?.name ?? null,
@@ -112,7 +112,7 @@ const viewOf = (
   found: FoundTargets,
 ): ReportTargetView => {
   if (key.targetId === null) {
-    return UNAVAILABLE_VIEW;
+    return UNAVAILABLE_TARGET_VIEW;
   }
   switch (key.kind) {
     case 'user': {
