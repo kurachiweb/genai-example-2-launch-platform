@@ -14,6 +14,10 @@ const COMMON_MODERATION_ACTIONS =
 const DB_REPORT_CASES = 'apps/db/schema/reporting/report-cases.ts';
 const DB_MIGRATIONS_DIR = 'apps/db/migrations';
 const SEED_MIGRATION_SUFFIX = '_content_reporting_seed';
+const API_SUBMISSION_RESOLVERS =
+  'apps/api/src/presentation/graphql/modules/reporting/submission-resolvers.ts';
+const CLIENT_REPORT_BOT_ACTIONS =
+  'apps/client/src/components/reporting/bot-actions.ts';
 
 const parseSource = (path: string): ts.SourceFile =>
   ts.createSourceFile(
@@ -207,4 +211,12 @@ describe('標準カテゴリの写し(apps/db/migrations/*_content_reporting_see
       expect(seedMigrationSql()).toContain(`('${id}', '${name}', 1,`);
     },
   );
+});
+
+describe('bot判定の操作名の写し(apps/client/src/components/reporting/bot-actions.ts)', () => {
+  test('REPORT_BOT_ACTIONがapiの通報のリゾルバのREPORT_BOT_ACTIONと一致する', () => {
+    expect(
+      readStringConstant(CLIENT_REPORT_BOT_ACTIONS, 'REPORT_BOT_ACTION'),
+    ).toBe(readStringConstant(API_SUBMISSION_RESOLVERS, 'REPORT_BOT_ACTION'));
+  });
 });
