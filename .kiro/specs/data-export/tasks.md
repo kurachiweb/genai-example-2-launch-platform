@@ -117,7 +117,7 @@
   - _Depends: 3.5, 4.1_
   - _Requirements: 3.2, 3.3, 7.1, 7.2, 7.3, 9.2, 10.5_
 
-- [ ] 4.4 完了と失敗の通知を作る
+- [x] 4.4 完了と失敗の通知を作る
   - 先に、Workers統合テストで、依頼待ちの完了と失敗でそれぞれの種別のメールを1回だけ依頼し依頼済みにすること、依頼待ちでなければ依頼しないこと、退会済みで送らずに送らない状態にすること、停止中の利用者に送ること、送信の失敗で依頼待ちのまま例外になること、送信の冪等のキーに要求のIDを渡し、送信の成功の後に通知の状態の前進が失敗した要求を再び通知しても2通目が送られないこと、メールの入力のページのURLが`CLIENT_SITE_ORIGIN`と`/settings/export`から、失敗のメールの問い合わせのURLが`CLIENT_SITE_ORIGIN`と`/contact`から組み立てられること、ログに個人情報が無いことを確かめる
   - 完了状態: Workers統合テストが成功し、1つの要求につき依頼が1回だけである
   - _Boundary: DataExportNotifier_
@@ -280,3 +280,4 @@
 - 4.2: `markReady`は`updated_at`を`completedAt`に、`markFailed`は`failedAt`にし、`listPendingNotices`の「確定から1時間」の基準にする。`recordUpload`は`object_key`も書く(完了のCHECKのため)。依頼待ちのまま`markExpired`すると`updated_at`が更新され、送り直しが最大1時間遅れる(実害なしと判断)。境界は`listStalled`・`listPendingNotices`が`<`、`listExpired`とリースの期限が`<=`。
 - 3.4: `buildExportDocuments`の出力の順は12のJSON→`.md`→`manifest.json`→`README.txt`で、6.5はこの順のまま`addText`に渡す。問い合わせの添付は`contentType`・`size`を添付自身の値で出し、格納できなければ`path`だけを`null`にする(`file-reference.ts`の`storedPathOf`)。
 - 4.3: 存在しないアップロードの破棄は、`R2Error`の`code`が10024(NoSuchUpload)のとき成功とみなす(`code`が無いときだけメッセージの`(10024)`で判定)。ローカルのminiflareは一度も存在しないIDに10001を返すため、実際のR2での10024の確認はstagingに残る。書き込み先は`write`・`complete`の失敗の後に閉じ、以降は`abort`だけを受け付ける。コンストラクタの型は`ExportBucketEnv`(`PlatformEnv`から代入できる)。
+- 4.4: `EmailDataExportNotifier`は`@injectable()`を付けず、コンストラクタの引数は`DataExportStore`・`UserContactDirectory`・`EmailSender`・`DataExportNotifierEnv`・appNameの順で、4.5が`toDynamicValue`で組み立てる。期限切れ・列の欠けた記録・未完了のままの依頼待ちは`skipped`にする(送り直しで直らないため)。
