@@ -14,9 +14,19 @@ const ArchiveDownloadService: unique symbol = Symbol.for(
   'data-export.ArchiveDownloadService',
 );
 
+const ArchiveExpiryJob: unique symbol = Symbol.for(
+  'data-export.ArchiveExpiryJob',
+);
+
+const GenerationRecoveryJob: unique symbol = Symbol.for(
+  'data-export.GenerationRecoveryJob',
+);
+
 export const DATA_EXPORT_TYPES = Object.freeze({
   DataExportRequestLimits,
   DataExportRequestService,
   DataExportReader,
   ArchiveDownloadService,
+  ArchiveExpiryJob,
+  GenerationRecoveryJob,
 });

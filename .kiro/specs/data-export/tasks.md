@@ -157,7 +157,7 @@
   - _Boundary: ArchiveDownloadService, ArchiveDownloadRoute_
   - _Requirements: 1.5, 1.8, 9.2, 9.3, 9.4, 9.5, 9.6_
 
-- [ ] 5.4 期限切れの削除と生成の受け皿の日次のジョブを作る
+- [x] 5.4 期限切れの削除と生成の受け皿の日次のジョブを作る
   - APIサーバーの本specのモジュールへジョブの束縛を加える
   - 先に、Workers統合テストで、期限を過ぎた完了のオブジェクトの削除と期限切れへの変更(記録は削除しない)、期限の前の完了を残すこと、失敗の記録を削除せず残る未完了のアップロードだけを破棄すること、オブジェクトの無い完了の期限切れへの変更、1件の削除の失敗で完了のまま残して次へ進むこと、100件ずつ最大10回、3時間を過ぎた作成中の失敗の確定と通知、確定から1時間を過ぎた依頼待ちの送り直し(1時間に満たない依頼待ちを送らないこと)、2回目の実行で結果が変わらないこと、削除と送り直しの失敗を件数とともに`error`で、受け皿による失敗の確定を`warning`で、エラートラッキングへの送信の部品(偽の部品)へ渡すことを確かめる
   - 定期実行の登録へ4:21の2100と2110で加える
@@ -292,3 +292,4 @@
 - 8.3: 実装の前に書いた値(中継の経路・ジョブと退会の処理の`order`・メッセージの処理)は`project-values.md`に「実装中」の印を付け、全ての実装の完了後に照合して外す。`CLAUDE.md`の参照行は設計どおり`backend/023`だけ。`infra/004`のタグの規則`<ドメイン>_incident`に対し実装は`data_export_incident`(ハイフンをアンダースコアにする)で、実装の値を`project-values.md`に書いた。
 - 6.6: 生成の3回目は`terminator.fail`が`already_finished`でも`generation-failed`を送る(元の例外を握り潰さない)。3回目に`terminator.fail`自体が例外を投げたらそのまま投げてデッドレターへ移し、`generation-failed`は送らない。見張りは`queued`・`generating`だけを失敗にし、実際に失敗に移したときだけ`generation-abandoned`を送る。`defer`は試行の回数を1に戻す(G-8)が、2時間の見張りが上限を担保する。
 - 7.1: 中継の経路は接頭辞より後ろを`decodeURIComponent`してから`encodeURIComponent`し直し、上流のパスを1つの区画に収める(メディアの中継と同じ方針)。取得の補助は`src/graphql/data-export.ts`(`myDataExportsQueryOptions(viewerId)`は`infiniteQueryOptions`で`refetchInterval`は未設定、`loadMyDataExports`・`invalidateMyDataExports`・`requestDataExportMutationOptions`)、フラグメントは`DataExportFields`。`routeTree.gen.ts`はStartのpluginのフッターを含む通常の生成の形にする(`@tanstack/router-generator`の直接の生成はフッターを落とす)。
+- 5.4: 共通の`drainInBatches`は同じ起動で処理済みのIDを飛ばし、残った件数だけ次の読み取りの`limit`を広げる(失敗した記録が先頭に溜まっても後ろへ進むため。上限は1回1000件)。`DataExportTerminator.fail`の例外は警告を出して次へ進み、最後に`Error`を投げてジョブを`failed`にする。`archive-deletion-failed`の件数は削除とアップロードの破棄の失敗の合算。閾値と`fail`の`now`は`scheduledTime`から求める。ログのカテゴリは`['api', 'application', 'data-export']`。

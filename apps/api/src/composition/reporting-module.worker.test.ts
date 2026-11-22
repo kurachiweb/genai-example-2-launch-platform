@@ -161,7 +161,7 @@ describe('定期実行の一覧への通報のジョブの登録', () => {
     });
   });
 
-  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、UGC管理の保守(1910)の後・キーワードの再抽出(2300)の前に送り直し(2000)・保持期間の削除(2010)の順で動く', () => {
+  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、UGC管理の保守(1910)の後・データエクスポートの期限切れの削除(2100)の前に送り直し(2000)・保持期間の削除(2010)の順で動く', () => {
     const jobs = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(DAILY_CRON)
       .map(({ name, order }) => ({ name, order }));
@@ -175,7 +175,7 @@ describe('定期実行の一覧への通報のジョブの登録', () => {
       { name: 'ugc-moderation.maintenance', order: 1910 },
       { name: 'content-reporting.notice-redispatch', order: 2000 },
       { name: 'content-reporting.report-retention', order: 2010 },
-      { name: 'content-processing.keyword-reextraction', order: 2300 },
+      { name: 'data-export.archive-expiry', order: 2100 },
     ]);
   });
 
