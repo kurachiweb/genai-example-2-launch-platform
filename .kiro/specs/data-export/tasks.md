@@ -69,7 +69,7 @@
   - _Boundary: AccountDocuments, ProductDocuments_
   - _Requirements: 4.2, 4.11, 5.1, 5.2, 5.3, 5.4, 5.10, 5.11, 5.12, 5.13_
 
-- [ ] 3.3 (P) 活動のJSONの組み立てを作る
+- [x] 3.3 (P) 活動のJSONの組み立てを作る
   - 先に、単体テストで、`comments`・`upvotes`・`ratings`・`follows`・`reports`の文書の例との一致、コメント・Upvote・評価の`product`の補完(自分の論理削除済みのプロダクトは名称とハンドル、他人の求められないプロダクトは`null`)、編集していないコメントの`updatedAt`、評価の無効化の印、通報に対応ステータスが無いこと、退会済み・物理削除済みの対象への通報が`targetRef: null`で項目ごと残ること、0件の空配列、他の利用者の行動の項目が無いことを確かめる
   - 完了状態: 単体テストが成功し、5つのJSONの項目が文書の表と一致する
   - _Boundary: ActivityDocuments_
@@ -276,3 +276,4 @@
 - 3.5: `createZipArchiveWriter`の上限は省略可能で既定は`archive-limits.ts`の値。fflateはZIPの更新日時を実行環境のローカルのタイムゾーンで書くため、UTCの`Date`を渡す(workerdはUTC)。ファイルは`addStream`を待ってから次を書く。失敗の後の書き出しは以降を拒否するので、呼び出し側はアップロードを破棄する。
 - 4.1: `ports.ts`に4.2〜6.6が使う契約を全て定めた。`D1DataExportStore`は4.1の範囲だけを実装して`implements Pick<DataExportStore, ImplementedOperation>`としたため、4.2で`Pick`と`ImplementedOperation`を外し`implements DataExportStore`にする(テストの`store`の型注釈も同時に)。`create`は`createdAt`・`updatedAt`を`requestedAt`と同じ値にする。テストの補助は`workers/data-export/testing/data-export-fixtures.ts`。
 - 3.2: 4関数は`DocumentInput = {snapshot, plan, stored}`を受け取り、格納できなかったファイルのパスの`null`化は`documents/file-reference.ts`の`referenceFile`が行う。上流の型に合わせ`emailVerifiedAt`・`plan.currentPeriodEndsAt`・`notificationSettings`を`null`で出し得るとし、データエクスポートの文書の表を改めた。
+- 3.3: コメント・Upvote・評価の`product`の補完は6.3の読み取りの部品の責務で、活動のJSONの関数はスナップショットの`ExportProductRef | null`を写すだけ。5関数は対応する配列だけを受け取る(`buildCommentsDocument(snapshot.comments)`など)。並び順は入力のまま。
