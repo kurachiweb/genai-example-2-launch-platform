@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 通報の規則・テーブル・監査ログの操作種別・対応期間・メール・サービス仕様
-- [ ] 1.1 通報と案件の規則と表示名の共有定義を作る
+- [x] 1.1 通報と案件の規則と表示名の共有定義を作る
   - 前提: dev-tooling〜ugc-moderationの26specの全タスクが完了していること(ugc-moderationの`ProductModerationService`・`CommentModerationService`・`UserModerationService`と`ModerationCommand.participation`・書き込みの参加者の登録口(`ModerationWriteParticipant`・`ModerationWriteContext`・`MODERATION_WRITE_PARTICIPANTS`)・`ModerationOutcome.actionId`・`ADMIN_PRODUCT_DETAIL_SECTIONS`・E2Eの`moderation-fixtures.ts`、admin-foundationの`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements`・`AuditLogReader`(仮7の`latestForMany`を含む)とテストの共有の偽物`createFakeAuditLogReader`・`AUDIT_ACTIONS`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・`CategoryMasterEditor`・`ConfirmActionDialog`・E2Eの`admin-bootstrap.ts`・`local-d1.ts`、inquiry-chatの`CATEGORY_SECTIONS`、directory-discoveryの`PRODUCT_PAGE_SECTIONS`とE2Eの`directory-fixtures.ts`、user-profile-socialの`PUBLIC_PROFILE_MENU_ITEMS`・`UserProfileDirectory`、engagementの`COMMENT_ACTIONS`・`CommentStore`、product-launchの`ProductDirectory`とプロダクトライフサイクルの非同期の登録口、identity-authの`AccountGuard`・`UserContactDirectory`・ユーザーライフサイクルの同期と非同期の登録口・E2Eの`mailpit.ts`、backend-platformの`RateLimitCounterClient`・`hashRateLimitKey`・bot判定、api-gatewayの`assertHuman`、email-deliveryのメールの基盤)。無ければ該当するタスクを保留して開発者へ報告する。設計は実装済みの上流の規約(メールの冪等のキー・部分一意索引への衝突・`sendWithTurnstile`・監査ログの照会の無効化・一覧の単位の確認のダイアログ・`RecoverableSlot`)に従っており、各タスクもそれに従う。実装済みのコードとの照合の記録はresearch.mdの「実装済みの上流との差分の分析」にある
   - 先に、単体テストで、対象の種類、理由の検証(空白だけ・1,000書記素と1,001書記素・結合文字と絵文字)、連絡先の要否(未ログインと権利侵害の組だけ)、標準カテゴリの固定のIDの判定、カテゴリの並び順(追加の順・権利侵害・その他の順で末尾)、手での状態の変更の可否(4状態の全ての組で、同じ状態への変更だけ不可)と種類(未対応⇄対応中・完了への変更(完了どうしを含む)・完了からの再開)、対象の種類ごとの措置、管理者の理由の要否(措置・措置なしの対応済・却下と手での完了と再開は必須、未対応⇄対応中は任意)と500書記素・501書記素、照会の内容の上限、状態の値と表示名がinquiry-chatの問い合わせの対応ステータスと一致することを確かめる
   - 完了状態: 単体テストが成功し、共有定義が`common-lib`の他のディレクトリと`zod`以外を読み込まない
@@ -345,3 +345,7 @@
   - admin-foundationの仮7(`latestForMany`と共有の偽物)の実装を前提にした旨、上流の公開の契約を変えていない旨(ugc-moderationの書き込みの参加者の登録の一覧へ1件を追記し、管理画面の措置の影響する照会の対応表を振る舞いを変えずに`invalidateModerationAffectedQueries`として公開しただけである旨)、本specの登録に合わせて期待値を改めた上流のテストの一覧、application層に`**/lib/workers/**`・`BatchItem`の読み込みが無い旨、仮1〜仮8が2026-10-24に確定した旨(仮3・仮5・仮7は案B)、2026-11-22の差分の分析の決定(メールの冪等のキー・`onConflictDoUpdate`・`purge_due`の1800・検証の順・照会の無効化・一覧の単位のダイアログ・技術ドキュメントの範囲)、roadmapの帯の「使用中の値」(4:21は2000・2010、波及処理は1800で帯の割り当ての2000と異なる)を作業の報告に記録する
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
   - _Requirements: 20.1, 20.3_
+
+## Implementation Notes
+
+- 1.1: 規則は`apps/common-lib/reporting/report-rules.ts`(対象の種類・理由の検証・連絡先の要否・標準カテゴリの固定のID・カテゴリの並び)、`report-case-rules.ts`(状態・手での状態の変更の可否と種類・対象の種類ごとの措置・管理者の理由の要否・照会の上限と期限)、`report-labels.ts`。設計に無い追加として`REPORT_RESOLUTIONS`(1.2の制約の照合用)・`checkInquiryMessage`(`'ok' | 'empty' | 'too-long'`)・`REPORT_ADMIN_REASON_MAX`(`AUDIT_REASON_MAX`と同値)と補助の型をexportした。措置の表示名はugc-moderationの`MODERATION_ACTION_LABELS`を再利用し、状態の表示名はinquiry-chatの`INQUIRY_STATUS_LABELS`と単体テストで照合する。読み込み先は設計の記載(`common-lib/admin`と`zod`)より広く`common-lib/text`・`common-lib/moderation`も含む(境界の検査は通る)。写しの照合(`check:contract-copies`)は写しを持つ側(1.2のDBのスキーマ)で扱う
