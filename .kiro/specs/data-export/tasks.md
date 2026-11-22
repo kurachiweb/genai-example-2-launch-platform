@@ -48,7 +48,7 @@
 
 - [ ] 2. (P) 上流の出力用の部品がイベントサーバーで使えることを契約のテストで確かめる
   - 評価の無効化の有無(`invalidatedByAdmin`)はengagementがその仮5として提供する。本タスクはengagementのファイルを変更しない(本specの仮2とengagementの仮5は2026-10-24に開発者が確定)
-  - 先に、`apps/event/test/data-export/upstream-export-bindings.worker.test.ts`のWorkers統合テストで、イベントサーバーの処理単位のコンテナから設計のAllowed Dependenciesに挙げた19の部品(`AccountExport`と設計のAllowed Dependenciesの出力用の部品の18)と`MediaFiles`が解決できること、ローカルのD1に用意した無効化した評価で`RatingExport.listByUser`が`invalidatedByAdmin`を真、無効化していない評価で偽を返すことを確かめる
+  - 先に、`apps/event/src/composition/data-export-upstream-exports.worker.test.ts`のWorkers統合テストで、イベントサーバーの処理単位のコンテナから設計のAllowed Dependenciesに挙げた19の部品(`AccountExport`と設計のAllowed Dependenciesの出力用の部品の18)と`MediaFiles`が解決できること、ローカルのD1に用意した無効化した評価で`RatingExport.listByUser`が`invalidatedByAdmin`を真、無効化していない評価で偽を返すことを確かめる
   - 解決できない部品や項目があれば、本specのタスクを止めて所有するspecと開発者へ報告する
   - 完了状態: Workers統合テストが成功し、19の部品と`MediaFiles`の束縛とengagementの項目が本specの前提どおりである
   - _Boundary: UpstreamExportBindingsTest_
@@ -94,10 +94,10 @@
 
 - [ ] 4. api・event共通の部品
 - [ ] 4.1 要求の記録の作成・照会・削除を作り、共通の契約とDIの識別子を定める
-  - api・eventのapplication層が受け取る4つの共有部品(要求の記録・保存先・通知・失敗の確定)の契約とその入出力の型(マルチパートの書き込み先・保存したZIPとメタデータの写しを含む)を`apps/backend-lib/core/data-export/ports.ts`に、4つの識別子を`core/data-export/identifiers.ts`に本タスクで定める。契約にR2・D1の型を出さない。以降のタスクはこの2つのファイルを触らない。D1の実装は`workers/data-export/d1-data-export-store.ts`に置く
-  - 先に、単体テスト(`core/data-export/identifiers.unit.test.ts`)で、4つの識別子の値が`Symbol.for('data-export.<名前>')`であり、オブジェクトが凍結されていることを確かめる
+  - api・eventのapplication層が受け取る5つの共有部品(要求の記録・保存先・通知・失敗の確定・エラートラッキングへの送信)の契約とその入出力の型(マルチパートの書き込み先・保存したZIPとメタデータの写し・送る出来事の種類を含む)を`apps/backend-lib/core/data-export/ports.ts`に、5つの識別子を`core/data-export/identifiers.ts`に本タスクで定める。契約にR2・D1の型を出さない。以降のタスクはこの2つのファイルを触らない。D1の実装は`workers/data-export/d1-data-export-store.ts`に置く
+  - 先に、単体テスト(`core/data-export/identifiers.unit.test.ts`)で、5つの識別子の値が`Symbol.for('data-export.<名前>')`であり、オブジェクトが凍結されていることを確かめる
   - 先に、Workers統合テストで、作成と1件の削除、1件の照会、本人の一覧の要求日時の新しい順と他人の除外と、要求のIDより前から最大`limit + 1`件を読む区切り、本人の期限内の完了だけを返す照会(他人・作成中・失敗・期限切れを返さない)、利用者ごとの一覧の上限、90件を超える一括の削除、テーブルのCHECKの状態・失敗の種類の値が1.1の定数と一致することを確かめる
-  - 完了状態: 単体テストとWorkers統合テストが成功し、4つの契約と識別子が`core/data-export`にあり、`core/data-export`が`workers`・`apps/db`・`cloudflare:*`を読み込まない
+  - 完了状態: 単体テストとWorkers統合テストが成功し、5つの契約と識別子が`core/data-export`にあり、`core/data-export`が`workers`・`apps/db`・`cloudflare:*`を読み込まない
   - _Boundary: DataExportStore_
   - _Requirements: 1.2, 1.7, 10.2, 10.4, 11.1_
 
@@ -118,17 +118,18 @@
   - _Requirements: 3.2, 3.3, 7.1, 7.2, 7.3, 9.2, 10.5_
 
 - [ ] 4.4 完了と失敗の通知を作る
-  - 先に、Workers統合テストで、依頼待ちの完了と失敗でそれぞれの種別のメールを1回だけ依頼し依頼済みにすること、依頼待ちでなければ依頼しないこと、退会済みで送らずに送らない状態にすること、停止中の利用者に送ること、送信の失敗で依頼待ちのまま例外になること、メールの入力のページのURLが`CLIENT_SITE_ORIGIN`と`/settings/export`から、失敗のメールの問い合わせのURLが`CLIENT_SITE_ORIGIN`と`/contact`から組み立てられること、ログに個人情報が無いことを確かめる
+  - 先に、Workers統合テストで、依頼待ちの完了と失敗でそれぞれの種別のメールを1回だけ依頼し依頼済みにすること、依頼待ちでなければ依頼しないこと、退会済みで送らずに送らない状態にすること、停止中の利用者に送ること、送信の失敗で依頼待ちのまま例外になること、送信の冪等のキーに要求のIDを渡し、送信の成功の後に通知の状態の前進が失敗した要求を再び通知しても2通目が送られないこと、メールの入力のページのURLが`CLIENT_SITE_ORIGIN`と`/settings/export`から、失敗のメールの問い合わせのURLが`CLIENT_SITE_ORIGIN`と`/contact`から組み立てられること、ログに個人情報が無いことを確かめる
   - 完了状態: Workers統合テストが成功し、1つの要求につき依頼が1回だけである
   - _Boundary: DataExportNotifier_
   - _Depends: 1.5, 4.2_
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 12.1_
 
-- [ ] 4.5 失敗の確定を作り、両アプリへ共通の束縛を加える
-  - 共通のモジュールを本タスクで作る
+- [ ] 4.5 失敗の確定とエラートラッキングへの送信を作り、両アプリへ共通の束縛を加える
+  - 共通のモジュールを、アプリ名を引数で受け取る関数`createDataExportPlatformModule(appName)`として本タスクで作る(ログのカテゴリの先頭をアプリ名にするため。ログを出す実装は`toDynamicValue`で依存とアプリ名を受け取る)
+  - エラートラッキングへの送信の実装を`workers/data-export/sentry-data-export-incident-reporter.ts`に置く。先に、Workers統合テスト(`sentry-data-export-incident-reporter.worker.test.ts`)で、出来事の種類ごとのレベル・指紋・タグ・コンテキスト、`AppError`以外の元の例外の`captureException`と`AppError`の定型の通知、ULIDの形でない要求のIDの`unknown`、個人情報を送らないことを確かめる
   - 先に、Workers統合テストで、失敗の確定が未完了のアップロードを破棄し(破棄の失敗でも続ける)通知の有無に応じた状態にすること、通知の失敗を警告に留めること、完了済みの要求で何もしないことを確かめる
-  - APIサーバーとイベントサーバーの共通のモジュールの登録へ本specのモジュールを加え、両方のコンテナから要求の記録・保存先・通知・失敗の確定を解決できることを確かめる
-  - 完了状態: Workers統合テストが成功し、両アプリのコンテナで4つの部品が解決できる
+  - APIサーバーとイベントサーバーの共通のモジュールの登録へ本specのモジュール(`createDataExportPlatformModule('api')`・`('event')`)を加え、両方のコンテナから要求の記録・保存先・通知・失敗の確定・エラートラッキングへの送信を解決できることを確かめる
+  - 完了状態: Workers統合テストが成功し、両アプリのコンテナで5つの部品が解決でき、両アプリのログがそれぞれのアプリ名のカテゴリに出る
   - _Depends: 4.3, 4.4_
   - _Requirements: 3.4, 3.6, 12.3_
 
@@ -136,21 +137,21 @@
 - [ ] 5.1 要求と一覧のユースケースと回数制限を作る
   - APIサーバーの本specのDIの識別子のファイルと、application層のポート(回数制限の`DataExportRequestLimits`と、`PLATFORM_TYPES.MessagePublisher`から受け取る`DataExportMessagePublisher`)のファイルを本タスクで作る。ユースケースは共有部品を`core/data-export`の型と識別子で受け取り、`**/lib/workers/**`を型も含めて読み込まない
   - 回数制限の実装`CounterDataExportRequestLimits`(厳密カウンタを使う)と規則`DATA_EXPORT_REQUEST_RULE`はAPIサーバーのinfrastructure層に置く(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)
-  - 先に、Workers統合テストで、`CounterDataExportRequestLimits`が偽の厳密カウンタにハッシュ化した利用者のIDのキーで数え、上限超過で429と再試行の秒数になることを確かめる
+  - 先に、Workers統合テストで、`CounterDataExportRequestLimits`が偽の厳密カウンタにハッシュ化した利用者のIDのキーで数え、上限超過で429(コード`rate_limit_exceeded`)と再試行の秒数になることを確かめる
   - 先に、単体テスト(`core/data-export`の契約の偽物と、偽の回数制限・偽の送信のポート)で、未ログインと未確認の拒否が回数を数える前に起きること、停止中の利用者の受け付け、回数制限のポートの呼び出しと上限超過の429の伝わり方、記録の作成の後の生成のメッセージと7,200秒後の見張りのメッセージ、生成のメッセージの送信の失敗で記録を消して利用できない旨を返すこと(回数は戻さない)、見張りの送信の失敗が警告だけであること、一覧が本人の期限切れ・失敗を含む記録を最大`first + 1`件返すこと、完了かつ期限内だけにダウンロードのパスを付けることを確かめる
   - 完了状態: 単体テストとWorkers統合テストが成功し、ユースケースがインフラ層を読み込まず、静的解析でapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 4.5_
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 2.1, 2.2, 2.4, 2.5, 2.6, 2.7, 3.1, 11.1_
 
 - [ ] 5.2 エクスポートのGraphQLのスキーマモジュールを作る
-  - 先に、api-gatewayのテストの補助(利用者側の呼び出し元のGraphQLの要求とテスト用の文書)を使うWorkers統合テストで、要求の3回の受け付けと4回目の429と再試行の秒数、厳密カウンタのアラームの後に再び受け付けること、未確認の403、停止中の利用者の受け付け、管理者側の呼び出し元の拒否、作成中の要求の並行の受け付け、一覧の表示の状態(期限切れを含む)と大きさの値、`first`と`after`による20件ずつのページと`pageInfo`、20を超える`first`の`validation_error`、不正な`after`の`invalid_cursor`、期限切れの項目のダウンロードのパスが`null`であることを確かめる
+  - 先に、api-gatewayのテストの補助(利用者側の呼び出し元のGraphQLの要求とテスト用の文書)を使うWorkers統合テストで、要求の3回の受け付けと4回目の429(コード`rate_limit_exceeded`)と再試行の秒数、厳密カウンタのアラームの後に再び受け付けること、未確認の403、停止中の利用者の受け付け、管理者側の呼び出し元の拒否、作成中の要求の並行の受け付け、一覧の表示の状態(期限切れを含む)と大きさの値、`first`と`after`による20件ずつのページと`pageInfo`、20を超える`first`の`validation_error`、不正な`after`の`invalid_cursor`、期限切れの項目のダウンロードのパスが`null`であることを確かめる
   - APIサーバーの本specのモジュール(要求と一覧のユースケースの束縛)を作ってモジュールの登録へ加え、スキーマモジュール(ルート型は`extend`を使わず`type Query`・`type Mutation`のまま書く)を登録する。APIサーバーのスキーマの生成(`graphql:generate`)でスキーマのファイルとリゾルバの型を更新する。許可リストの再生成は7.1で行う
   - 完了状態: Workers統合テストが成功し、スキーマの生成が成功し、生成したスキーマのファイルに2つの操作がある
   - _Requirements: 1.2, 1.3, 1.6, 1.7, 1.8, 2.1, 2.2, 2.4, 3.8, 11.1_
 
 - [ ] 5.3 ダウンロードの認可と内部RESTの経路を作る
   - 5.2が作るAPIサーバーの本specのモジュールへ束縛を加えるため、5.2の後に行う(5.4と同じファイルを触るため並行にしない)
-  - 先に、Workers統合テストで、本人のダウンロードが200でZIPの本文と`Content-Disposition`・`Content-Length`・`Cache-Control`・`nosniff`を返すこと、停止中の本人も200、未ログインの401、他の利用者・管理者側の呼び出し元・存在しない・不正な形のID・作成中・失敗・期限切れ(削除の前と、期限切れの状態の記録)・オブジェクトの無い記録の404と警告のログ、保存先の読み出しの失敗の503が共通のエラー形式(JSON)で返ることを確かめる(JSONでない5xxはfrontend-platformの中継が503`upstream_unavailable`に置き換えるため)
+  - 先に、Workers統合テストで、本人のダウンロードが200でZIPの本文と`Content-Disposition`・`Content-Length`・`Cache-Control`・`nosniff`を返すこと、停止中の本人も200、未ログインの401、他の利用者・管理者側の呼び出し元・存在しない・不正な形のID・作成中・失敗・期限切れ(削除の前と、期限切れの状態の記録)・オブジェクトの無い記録の404と`archive-missing`の警告の送信、保存先の読み出しの失敗の503が共通のエラー形式(JSON)で返ることを確かめる(JSONでない5xxはfrontend-platformの中継が503`upstream_unavailable`に置き換えるため)
   - 内部RESTの登録箇所へ経路を加える
   - 完了状態: Workers統合テストが成功し、404の応答が理由によらず同じ形である
   - _Boundary: ArchiveDownloadService, ArchiveDownloadRoute_
@@ -158,10 +159,11 @@
 
 - [ ] 5.4 期限切れの削除と生成の受け皿の日次のジョブを作る
   - APIサーバーの本specのモジュールへジョブの束縛を加える
-  - 先に、Workers統合テストで、期限を過ぎた完了のオブジェクトの削除と期限切れへの変更(記録は削除しない)、期限の前の完了を残すこと、失敗の記録を削除せず残る未完了のアップロードだけを破棄すること、オブジェクトの無い完了の期限切れへの変更、1件の削除の失敗で完了のまま残して次へ進むこと、100件ずつ最大10回、3時間を過ぎた作成中の失敗の確定と通知、30分を過ぎた依頼待ちの送り直し、2回目の実行で結果が変わらないこと、削除と送り直しの失敗をエラートラッキングへ、受け皿による失敗の確定を警告として送ることを確かめる
+  - 先に、Workers統合テストで、期限を過ぎた完了のオブジェクトの削除と期限切れへの変更(記録は削除しない)、期限の前の完了を残すこと、失敗の記録を削除せず残る未完了のアップロードだけを破棄すること、オブジェクトの無い完了の期限切れへの変更、1件の削除の失敗で完了のまま残して次へ進むこと、100件ずつ最大10回、3時間を過ぎた作成中の失敗の確定と通知、確定から1時間を過ぎた依頼待ちの送り直し(1時間に満たない依頼待ちを送らないこと)、2回目の実行で結果が変わらないこと、削除と送り直しの失敗を件数とともに`error`で、受け皿による失敗の確定を`warning`で、エラートラッキングへの送信の部品(偽の部品)へ渡すことを確かめる
   - 定期実行の登録へ4:21の2100と2110で加える
+  - 4:21の並びを固定する上流のテストの期待値を改める(`reporting-module.worker.test.ts`の2010の次を2100に、`search-module.worker.test.ts`の2か所(登録の並びと4:21の実行の要約)と`search-module.reextraction.worker.test.ts`の4:21の実行の要約の全件の固定に2つのジョブを加え、名前が実態と合わないテスト(「2300の前」など)はテスト名も改める。ほかに`jobsFor(DAILY_CRON)`や「定期実行を終えました」の要約の`jobs`で並びを確かめるテストがあれば同じく改める)
   - 完了状態: Workers統合テストが成功し、定期実行の登録の検証(同じ時刻の`order`の重複の拒否)を通り、ジョブが`**/lib/workers/**`を読み込まない
-  - _Boundary: ArchiveExpiryJob, GenerationRecoveryJob_
+  - _Boundary: ArchiveExpiryJob, GenerationRecoveryJob、4:21の並びを固定する上流のテストの期待値_
   - _Requirements: 3.6, 8.6, 10.1, 10.2, 10.4, 10.5, 12.3, 12.4_
 
 - [ ] 6. イベントサーバー: データの収集・ZIPの生成・見張り・物理削除
@@ -176,9 +178,10 @@
 - [ ] 6.2 退会と物理削除の時期の削除の処理を作り、登録する
   - 6.1が作るイベントサーバーの本specのモジュールへ束縛を加える
   - 先に、単体テスト(偽の部品)とWorkers統合テストで、退会(`withdrawn`)と物理削除の時期(`purge_due`)のそれぞれで、その利用者の期限切れ・失敗を含む全ての記録ごとの未完了のアップロードの破棄・オブジェクトの削除・記録の削除、100件で`continue`・それ未満で`done`、2回目の実行で結果が変わらないこと、他の利用者の記録を残すこと、削除の失敗が例外として再試行に回りエラートラッキングへ届くことを確かめる
-  - ユーザーライフサイクルの非同期の登録へ`withdrawn`と`purge_due`の2100で加える
+  - ユーザーライフサイクルの非同期の登録へ`withdrawn`と`purge_due`の2100で加える。`purge_due`の2100はugc-moderationの1900の後に動く(D-1)
+  - 登録に合わせて`apps/event/src/composition/user-lifecycle-async-handlers.unit.test.ts`の期待値を改める: `withdrawn`の全件の一致に本specを加え、ugc-moderationのテストの「末尾に並ぶ」期待を「identity-auth専用の10000番台より前に並ぶ」へ緩めてテスト名を改め、sponsorshipのテストの末尾3件とcontent-reportingのテストの末尾2件の期待を相対の順の期待へ改める(名前が実態と合わないテストはテスト名も改める)。`apps/event/src/composition/`の`purge_due`・`withdrawn`の全件を固定するWorkers統合テスト(設計のModified Filesの10か所)と、退会を実行して実行済みの処理を全件照合する2つ(`identity-module.worker.test.ts`・`payments-lifecycle-handlers.worker.test.ts`)に本specの処理を加える。着手の前に`namesFor(`・`handlersFor(`・`readHandlerRuns`で一覧を確かめるテストを洗い出し直すあわせて、content-reportingの`design.md`・`tasks.md`の`purge_due`の1800の説明を、本specの2100を除く旨に改める
   - 完了状態: テストが成功し、非同期の登録の検証(同じ種類の`order`の重複の拒否)を通る
-  - _Boundary: ArchiveErasureHandler_
+  - _Boundary: ArchiveErasureHandler、一覧と並びを固定する上流のテストの期待値、content-reportingの`design.md`・`tasks.md`の1800の説明_
   - _Requirements: 3.7, 10.3, 10.4, 12.3, 12.4_
 
 - [ ] 6.3 (P) プロダクトと活動の読み取りの部品を作る
@@ -204,7 +207,7 @@
   - _Requirements: 3.2, 3.3, 3.5, 3.7, 6.2, 7.1, 7.3, 7.4, 7.5, 12.1, 12.2_
 
 - [ ] 6.6 生成と見張りのメッセージの処理を作り、登録する
-  - 先に、単体テスト(偽の部品)で、使用中の`defer`(1,200秒)、他の結果の`done`、試行の1・2回目の例外の投げ直し、3回目の失敗の確定と通知と`done`、見張りが作成中の要求だけを失敗にすること、3回目の失敗をエラートラッキングへ、見張りによる失敗の確定を警告として送ることを確かめる
+  - 先に、単体テスト(偽の部品)で、使用中の`defer`(1,200秒)、他の結果の`done`、試行の1・2回目の例外の投げ直し、3回目の失敗の確定と通知と`done`、見張りが作成中の要求だけを失敗にすること、3回目の失敗を元の例外とともに`generation-failed`で、見張りによる失敗の確定を`generation-abandoned`で、エラートラッキングへの送信の部品(偽の部品)へ渡すことを確かめる
   - 2つの処理の束縛をイベントサーバーの本specのモジュールへ加え、メッセージの処理の登録へ2種別を、生成には再試行の方針(3回・起点60秒・上限600秒)を付けて加える
   - 完了状態: 単体テストが成功し、イベントサーバーのコンテナから2つの処理を解決できる
   - _Requirements: 3.4, 3.6, 6.5, 12.3, 12.5_
@@ -215,13 +218,14 @@
   - 中継の経路はfrontend-platformの`defineRelayRoute`で定義し(素のオブジェクトにしない)、clientの`RELAY_ROUTES`の完全一致の経路の後に登録する
   - 2つのGraphQLの操作は、clientの`src/graphql/operations/data-export/`に1ファイル1操作の`.graphql`で書く(操作名は`ClientMyDataExports`・`ClientRequestDataExport`、`graphql()`を呼ばない)。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`を読み、`gql.ts`・`index.ts`を読まない
   - 利用者側の中継の経路の登録・設定のナビゲーションの`order` 100・`/settings/export`のルートの最小の枠・2つのGraphQLの操作を加え、clientで`bun run graphql:generate`を実行して型を生成し、`graphql:allowlist`でAPIサーバーの許可リストを再生成して、本specの操作が利用者側の許可リストにだけ載り`graphql:check`が成功することを確かめる
-  - 完了状態: 単体テストと型検査とclientの`composition.unit.test.ts`(経路の凍結)・`codegen.unit.test.ts`(操作名の接頭辞)が成功し、`/settings/export`がナビゲーションから開け、利用者側の許可リストに2つの操作が載る
-  - _Boundary: DataExportRelayRoute、clientのGraphQLの操作、`/settings/export`のルート_
+  - 設定のナビゲーションの登録に合わせて`settings-nav-order.unit.test.ts`の登録の一覧と末尾の期待に`/settings/export`(100)を加え、テスト名の「APIキー(90)」「最後に並ぶ」を改める
+  - 完了状態: 単体テストと型検査とclientの`composition.unit.test.ts`(経路の凍結)・`codegen.unit.test.ts`(操作名の接頭辞)・`settings-nav-order.unit.test.ts`が成功し、`/settings/export`がナビゲーションから開け、利用者側の許可リストに2つの操作が載る
+  - _Boundary: DataExportRelayRoute、clientのGraphQLの操作、`/settings/export`のルート、`settings-nav-order.unit.test.ts`の期待値_
   - _Depends: 5.2, 5.3_
   - _Requirements: 1.1, 1.8, 9.2_
 
 - [ ] 7.2 要求の一覧の表示の部品を作る
-  - 先に、ブラウザテストで、一覧の作成中・完了(完了日時・有効期限・ファイル名・1,024基数の大きさ・ダウンロードのリンク)・期限切れ(履歴の項目と削除した旨、ダウンロードのリンクが無いこと)・失敗(大きすぎる場合の問い合わせの案内)、20件ずつの表示と「さらに表示」での続きの読み込み、作成中がある間だけの自動の取得し直し、0件と取得の失敗の区画内の表示、状態を文言でも示すこと、`<time datetime>`、`runAxe`の違反0件を確かめる
+  - 先に、ブラウザテストで、一覧の作成中・完了(完了日時・有効期限・ファイル名・1,024基数の大きさ・ダウンロードのリンク)・期限切れ(履歴の項目と削除した旨、ダウンロードのリンクが無いこと)・失敗(大きすぎる場合の問い合わせの案内)、20件ずつの表示と「さらに表示」での続きの読み込み、作成中がある間だけの`LIVE_REFRESH_QUERY_OPTIONS`の間隔での取り直しと「自動更新」の`Switch`(作成中が無ければ描かない・切ると取り直さない・間隔の説明の`aria-describedby`)、0件と取得の失敗の区画内の表示、状態を文言でも示すこと、`<time datetime>`、`runAxe`の違反0件を確かめる
   - 完了状態: ブラウザテストが成功し、`/settings/export`に一覧が表示される
   - _Depends: 7.1_
   - _Requirements: 9.1, 11.1, 11.3, 11.6, 11.7, 11.8, 11.9_
@@ -235,7 +239,7 @@
 
 - [ ] 8. 結合の検証と技術ドキュメント
 - [ ] 8.1 生成したZIPが文書の構造と一致することを統合テストで確かめる
-  - テストは`apps/event/test/data-export/`に置く。上流の部品の実装とローカルのD1・R2に、プロフィール画像・隔離されたロゴ・同名のスクリーンショット2枚・日本語のファイル名の添付・論理削除済みのプロダクト・他人の論理削除済みのプロダクトへのコメントとUpvote・無効化された評価・通報・問い合わせ・スポンサー広告・決済履歴を用意し、生成のメッセージの処理を実行する
+  - テストは`apps/event/src/composition/data-export-archive.worker.test.ts`に置く(既存の同じ種類のテストと同じ`src/composition`に置く)。上流の部品の実装とローカルのD1・R2に、プロフィール画像・隔離されたロゴ・同名のスクリーンショット2枚・日本語のファイル名の添付・論理削除済みのプロダクト・他人の論理削除済みのプロダクトへのコメントとUpvote・無効化された評価・通報・問い合わせ・スポンサー広告・決済履歴を用意し、生成のメッセージの処理を実行する
   - 展開した結果で、パスの一覧・12のJSONの項目と値・`null`の規則・manifestの件数・圧縮の方式・UTF-8の印・保存のメタデータ・ZIPのファイル名を確かめる。あわせて、同じメッセージの重複で1つのZIPだけができること、見張りによる失敗の後の完了でZIPが削除されること、完了のメールの依頼が1回だけであること、3回目の失敗で失敗と通知の依頼待ちになること、退会済みの利用者の要求で通知を依頼しないことを確かめる
   - APIサーバー(`backend-lib`・`db`を含む)・イベントサーバー・利用者側のそれぞれのカバレッジの計測で、本specが変更したファイルのカバレッジが80%以上であることを確かめる
   - 完了状態: Workers統合テストが成功し、カバレッジの閾値を満たす
@@ -243,6 +247,7 @@
   - _Requirements: 3.5, 3.6, 4.1, 4.4, 4.5, 4.6, 4.8, 4.9, 5.10, 5.11, 5.12, 7.2, 8.3, 13.1, 13.3_
 
 - [ ] 8.2 要求からダウンロードまでのE2Eテストを作る
+  - テストは`e2e/client/data-export.e2e.test.ts`に平置きし、画面の操作の手順(要求・一覧の状態の待ち・ダウンロード)を`e2e/client/data-export-steps.ts`に置く(D-3)
   - ローカルで起動したapi・event・clientとMailpitで、確認済みの利用者がプロフィールとプロダクトを用意して`/settings/export`で要求し、一覧の作成中、完了のメールのリンクが`/settings/export`であること、一覧のダウンロードの応答の`Content-Disposition`のファイル名、本文がZIPの署名で始まり`manifest.json`と`products.json`の名前を含むことを確かめる
   - 別の利用者で同じダウンロードのパスが404になることを確かめる
   - 完了状態: E2Eテストが成功する
@@ -252,8 +257,9 @@
 - [ ] 8.3 (P) 技術ドキュメントとオンボーディングを書く
   - `backend/023-streaming-archive-exports.md`: 各ドメインの出力の部品を組み立てる非同期のアーカイブの生成、同期のストリーミングのZIP(格納と圧縮の使い分け・UTF-8の印・ZIP64が無い上限)、均一な部分のマルチパートアップロード、リース・再試行・見張りのメッセージ・日次の受け皿、画像を先にJSONを最後に書く理由、CPU時間とメモリの実測の手順
   - `security/012-owner-scoped-generated-downloads.md`: 本人だけの生成物の同一オリジンの配信、存在を明かさない404、応答のヘッダー、期限と記録の削除、利用者ごとの回数制限と失敗で戻さない規則、ログとキーに利用者を表す値を含めない規則
-  - 両方に本プロジェクト固有の値を書かない。各README・`CLAUDE.md`の技術規則の参照先・`project-values.md`(名前・`order`・規則の値・メール種別・キーの接頭辞・部分の大きさ・リース・見張りの遅延・再試行・中継の経路と時間切れ)・`tech-stack.md`(同期のAPIだけを使う旨と、apiは`backend-lib`の検査とテストのために依存する旨)を更新する
+  - `docs/GUIDES/tech/infra/004-logging-and-error-tracking.md` — 送信の表に、非同期の生成が再試行の上限で失敗と確定した・見張りや日次の受け皿で失敗を確定した・期限を過ぎた生成物の削除に失敗した・生成物の実体が無い記録をダウンロードしようとした、の行を、ドメイン名を`<ドメイン>`として加える(依頼待ちの通知の送り直しの失敗は既存の行を使う)
+  - 両方に本プロジェクト固有の値を書かない。各README・`CLAUDE.md`の技術規則の参照先・`project-values.md`(名前・`order`・規則の値・メール種別・キーの接頭辞・部分の大きさ・リース・見張りの遅延・再試行・中継の経路と時間切れ・ログのカテゴリとレベルと属性・定型の通知の種類)・`tech-stack.md`(同期のAPIだけを使う旨と、apiは`backend-lib`の検査とテストのために依存する旨)を更新する
   - 完了状態: 文書が整形の検査を通り、技術ドキュメントにプロジェクト名とサービス固有の値が無い
-  - _Boundary: `docs/GUIDES/tech`の2文書とオンボーディング_
+  - _Boundary: `docs/GUIDES/tech`の2文書と`infra/004`の送信の表とオンボーディング_
   - _Depends: 4.5_
   - _Requirements: 12.1, 13.5_
