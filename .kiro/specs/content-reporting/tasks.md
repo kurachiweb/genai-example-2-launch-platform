@@ -37,7 +37,7 @@
   - _Depends: 1.1_
   - _Requirements: 11.1, 11.2, 11.6, 11.7, 12.2, 12.4_
 
-- [ ] 1.6 (P) ページ配置・文言規則・準拠方針・日次タイムライン・削除請求フロー・データエクスポートの文書に、本specの決定を先に書く
+- [x] 1.6 (P) ページ配置・文言規則・準拠方針・日次タイムライン・削除請求フロー・データエクスポートの文書に、本specの決定を先に書く
   - ページ配置: 通報のダイアログ、管理者側の通報の一覧と案件の詳細、ダッシュボードのカード、プロダクトの詳細の通報の区画、カテゴリのページの通報カテゴリの区画
   - 文言規則: 設計のSupporting Referencesに挙げた利用者側と管理者側の文言と、3つのメールの本文の要点
   - 準拠方針: データ保持期間にログイン中の利用者の通報と案件の行と、対象の物理削除で対象への参照を消した案件と通報の行(参照の消去から3年、申出者の理由は書き換えない、仮7)を加え、未ログインの通報の行に停止中の利用者の通報を含む旨(仮6)と、完了から戻した案件は再び完了してから14日を数える旨(仮3)を加える
@@ -352,3 +352,4 @@
 - 1.3: 7種は`apps/common-lib/admin/audit-actions/content-reporting.ts`の`REPORTING_AUDIT_ACTIONS`(定数名は`REPORT_STATUS_CHANGE_ACTION`など)で、集約の末尾(ugc-moderationの後)に連結した。`report.resolve`・`report.reject`の詳細`mode`の値(`operation`・`manual`)の定数は作っていないため、4.5で組み立てる。手での再開の理由の必須は操作種別でなくapplication層の`checkReportAdminReason`で検査する
 - 1.4: 規則は`apps/backend-lib/core/reporting/response-time.ts`(`computeResponseTime`・`inquiryDeadline`・`isInquiryOverdue`)。`ResponseTimeAlert`の型は1.1の`report-labels.ts`から読み込んで再エクスポートし(設計は`response-time.ts`で宣言)、目標の定数は`number`型(設計はリテラル型)。境界は「超える」(`>`)で、ちょうどは超過でない。完了の日時が無い完了した案件は`elapsedMs: null`・`alerts: []`(設計に記載が無く、不明と超過の強調が矛盾しないよう決めた)。未完了の案件に渡された完了の日時は無視する
 - 1.2: スキーマは`apps/db/schema/reporting/`、マイグレーションは`20261122054825_content_reporting`と初期データの`20261122054830_content_reporting_seed`。設計に無い既定値として`status`は`'open'`、2つの通知の状態は`'none'`。`reports.deleted_at`は前例の`softDelete()`で末尾の列。制約の名前は`report_cases_closed_at_check`・`report_cases_target_detached_at_check`・`report_cases_resolution_action_id_check`・`reports_contact_email_check`、部分一意索引は`report_cases_target_kind_target_id_open_unique`。値の写しは`config/content-reporting-contract-copies.unit.test.ts`で照合し(`check:contract-copies`に追加)、通知の状態はugc-moderationの`MODERATION_NOTICE_STATUSES`と照合する。`onConflictDoUpdate({ targetWhere: sql\`${closedAt} is null\` })`で部分一意索引を指せることは`apps/db/content-reporting-schema.worker.test.ts`で確かめた。`status`が`resolved`のときの`resolution`の非nullはスキーマで検査しない(application層で守る)
+- 1.6: 機能仕様は`docs/GUIDES/service/features/007-content-reporting.md`。設計に無い文言(一覧の説明・列と絞り込みの名前・詳細の題と見出し・経過時間の表記「3日4時間」「4時間」「1時間未満」(切り捨て)・照会の未送信・通報なし・照会の内容のエラー・同じ状態のエラー・3つのメールの本文)は文言規則(`design/003-text-and-copy-rules.md`)で決めたため、7・8のタスクは文言規則に従う。一覧のURLのクエリ名は`status`・`target`・`category`・`from`・`to`・`after`。カテゴリの削除の確認は共通の削除の題と説明「このカテゴリの通報<n>件は「その他」へ付け替えます。」に分ける。要件14.7(カテゴリの操作に任意の理由)に対し、上流の`CategoryMasterEditor`が`reason="none"`で理由の欄を持たないため、管理画面の操作では理由を記録しない(文書もコードに従う)。管理画面のメニューは16項目として文書に書いた(項目の追加は8.7)。specのrequirements.mdは申出者への通知をFR-ADMUG-030で引くが、要件定義書では031(通知)・032(宛先)に分かれているため、サービス文書は031・032・039で引く
