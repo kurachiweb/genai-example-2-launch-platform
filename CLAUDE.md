@@ -132,6 +132,7 @@
 - 対象と操作種別から最新の監査ログの日時を照会する処理を書く前に: [最新の日時の照会](docs/GUIDES/tech/backend/008-audit-logging.md#最新の日時の照会)
 - 他の機能の集約の状態を変える管理操作を、状態の変更と同じ一括の書き込みで記録する前に: [集約をまたぐ管理操作の記録の前提と用語](docs/GUIDES/tech/backend/021-cross-aggregate-admin-action-records.md#前提と用語)
 - 利用者の投稿を同じ対象の未完了の案件へ集約し、管理者が案件を完了・再開する機能を作る前に: [投稿の集約と案件の完了・再開の前提と用語](docs/GUIDES/tech/backend/022-submission-aggregation-and-case-resolution.md#前提と用語)
+- 利用者のデータのアーカイブを生成・配信する前に: [利用者のデータのアーカイブの非同期の生成の前提と用語](docs/GUIDES/tech/backend/023-streaming-archive-exports.md#前提と用語)
 - 上記の文書のプレースホルダーを本プロジェクトの値に読み替える前に: [本プロジェクト固有の値](docs/onboardings/project-values.md)
 
 ### Claude拡張ファイル間の矛盾、あるいは本プロジェクト規則との不一致について

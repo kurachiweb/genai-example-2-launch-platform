@@ -77,7 +77,7 @@
 
 ### アーカイブ生成
 
-- fflate(ZIPアーカイブのストリーミング生成)
+- fflate 0.8.3(ZIPアーカイブのストリーミング生成。版を固定し、同期のAPI(`Zip`・`ZipPassThrough`・`ZipDeflate`)だけを使う。非同期のAPIはWeb Workerか`worker_threads`を要するためWorkerの実行環境では使えない。ZIPを書き出すのはイベントサーバーで、APIサーバーは`apps/backend-lib`の型検査とテストのためにも依存する)
 
 ### マークダウン処理
 

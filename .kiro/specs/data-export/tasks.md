@@ -254,7 +254,7 @@
   - _Depends: 7.3, 8.1_
   - _Requirements: 13.1, 13.4_
 
-- [ ] 8.3 (P) 技術ドキュメントとオンボーディングを書く
+- [x] 8.3 (P) 技術ドキュメントとオンボーディングを書く
   - `backend/023-streaming-archive-exports.md`: 各ドメインの出力の部品を組み立てる非同期のアーカイブの生成、同期のストリーミングのZIP(格納と圧縮の使い分け・UTF-8の印・ZIP64が無い上限)、均一な部分のマルチパートアップロード、リース・再試行・見張りのメッセージ・日次の受け皿、画像を先にJSONを最後に書く理由、CPU時間とメモリの実測の手順
   - `security/012-owner-scoped-generated-downloads.md`: 本人だけの生成物の同一オリジンの配信、存在を明かさない404、応答のヘッダー、期限と記録の削除、利用者ごとの回数制限と失敗で戻さない規則、ログとキーに利用者を表す値を含めない規則
   - `docs/GUIDES/tech/infra/004-logging-and-error-tracking.md` — 送信の表に、非同期の生成が再試行の上限で失敗と確定した・見張りや日次の受け皿で失敗を確定した・期限を過ぎた生成物の削除に失敗した・生成物の実体が無い記録をダウンロードしようとした、の行を、ドメイン名を`<ドメイン>`として加える(依頼待ちの通知の送り直しの失敗は既存の行を使う)
@@ -289,3 +289,4 @@
 - 5.2: 完了のまま有効期限を過ぎた記録は、日次のジョブが期限切れにするまでの間もGraphQLの表示で`EXPIRED`・`downloadPath: null`にする(要件11.8、保存の状態は変えない)。`after`には長さの上限を付けず不正は`invalid_cursor`。`byteSize`は`Float`。モジュール名は`api-data-export`で、5.3・5.4は`DATA_EXPORT_TYPES`の識別子・`data-export-module.ts`の束縛・`data-export-module.worker.test.ts`の`IMPLEMENTATIONS`を同時に足す。テストの補助は`apps/api/test/support/data-export-graphql-operations.ts`。
 - 5.3: 呼び出し元を先に確かめ、管理者側は未ログインでも404。利用者側の未ログインは不正な形のIDでも401。有効期限を過ぎた完了は日次のジョブの前でも404。保存先(R2)の読み出しの失敗だけを503(`data_export_archive_unavailable`、`Retry-After: 5`)にし、記録のD1の失敗は共通の500の定型。保存のメタデータが欠ければ`application/zip`と`attachmentDisposition(fileName ?? 'export.zip')`で補う。テストの組み立ては`apps/api/test/support/data-export-download-harness.ts`。
 - 6.5: `claim`の`not_found`は`finished`、`markReady`と`recordUpload`の不一致はどちらも`superseded`(設計は`markReady`の不一致を`done`と書くが、処理はどちらも`done`にするため差は出ない)。完了日時は注入した`Clock`の`now()`で有効期限はその7日後、ZIPの更新日時はリースの起点の`now`。破棄・削除に失敗したときはリースを解放せず、リースの期限の後の次の実行に任せる。完了の通知の例外でも`ready`(日次の送り直しに任せる)。ログのカテゴリは`['event', 'application', 'data-export']`。テストの偽の部品は`archive-generation-service.fixtures.ts`。
+- 8.3: 実装の前に書いた値(中継の経路・ジョブと退会の処理の`order`・メッセージの処理)は`project-values.md`に「実装中」の印を付け、全ての実装の完了後に照合して外す。`CLAUDE.md`の参照行は設計どおり`backend/023`だけ。`infra/004`のタグの規則`<ドメイン>_incident`に対し実装は`data_export_incident`(ハイフンをアンダースコアにする)で、実装の値を`project-values.md`に書いた。
