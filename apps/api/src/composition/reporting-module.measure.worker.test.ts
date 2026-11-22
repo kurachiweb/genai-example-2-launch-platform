@@ -223,7 +223,7 @@ function interceptedStore(
   };
 }
 
-// 束縛は5.2で行うため、ユースケースは束縛済みの部品からテストの中で組み立てる。通知は依頼の記録だけにして、申出者への通知の状態を確定の直後のまま読む
+// 読んだ後の案件の物理削除を差し込み、措置の結果を記録するため、ユースケースは束縛済みの部品からテストの中で組み立てる。通知は依頼の記録だけにして、申出者への通知の状態を確定の直後のまま読む
 function createHarness(afterFirstFind?: AfterFirstFind): Harness {
   const container = createContainer();
   const outcomes: ModerationOutcome[] = [];

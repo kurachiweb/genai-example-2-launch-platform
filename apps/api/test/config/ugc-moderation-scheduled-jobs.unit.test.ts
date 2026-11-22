@@ -33,7 +33,7 @@ describe('UGC管理のジョブの定期実行の一覧への登録', () => {
     expect(() => createCronRegistry(SCHEDULED_JOBS)).not.toThrow();
   });
 
-  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、Yearトーナメントの再処理(1700)の後・キーワードの再抽出(2300)の前に統計の集計(1900)・保守(1910)の順で動く', () => {
+  test('4:21の起動(21 12 * * *)では、他の機能のジョブとorderが重ならず、Yearトーナメントの再処理(1700)の後・通報の通知の送り直し(2000)の前に統計の集計(1900)・保守(1910)の順で動く', () => {
     const jobs = createCronRegistry(SCHEDULED_JOBS)
       .jobsFor(DAILY_CRON)
       .map(({ name, order }) => ({ name, order }));
@@ -47,7 +47,7 @@ describe('UGC管理のジョブの定期実行の一覧への登録', () => {
       { name: 'tournament-year.entry-follow-up', order: 1700 },
       { name: 'ugc-moderation.weekly-statistics', order: 1900 },
       { name: 'ugc-moderation.maintenance', order: 1910 },
-      { name: 'content-processing.keyword-reextraction', order: 2300 },
+      { name: 'content-reporting.notice-redispatch', order: 2000 },
     ]);
   });
 

@@ -70,6 +70,10 @@ const UGC_MODERATION_JOB_NAMES = [
   'ugc-moderation.weekly-statistics',
   'ugc-moderation.maintenance',
 ];
+const CONTENT_REPORTING_JOB_NAMES = [
+  'content-reporting.notice-redispatch',
+  'content-reporting.report-retention',
+];
 const REEXTRACTION_CATEGORY = 'api.search.reextraction';
 
 function createContainer() {
@@ -171,6 +175,7 @@ describe('APIサーバーの検索のモジュール', () => {
       ...SPONSORSHIP_JOB_NAMES,
       ...YEAR_TOURNAMENT_JOB_NAMES,
       ...UGC_MODERATION_JOB_NAMES,
+      ...CONTENT_REPORTING_JOB_NAMES,
       REEXTRACTION_JOB_NAME,
     ]);
   });
@@ -285,6 +290,14 @@ describe('定期実行からの日次の再抽出', () => {
         }),
         expect.objectContaining({
           name: UGC_MODERATION_JOB_NAMES[1],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: CONTENT_REPORTING_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: CONTENT_REPORTING_JOB_NAMES[1],
           result: 'succeeded',
         }),
         expect.objectContaining({

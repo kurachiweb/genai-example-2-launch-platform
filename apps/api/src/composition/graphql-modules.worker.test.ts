@@ -297,3 +297,56 @@ describe('GRAPHQL_SCHEMA_MODULES(UGC管理の措置の群)', () => {
     );
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(通報)', () => {
+  test('通報のモジュールを1つだけ登録し、利用者側の通報と管理画面の案件・カテゴリ・件数の照会と操作の型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(
+      GRAPHQL_SCHEMA_MODULES.filter(({ name }) => name === 'reporting'),
+    ).toHaveLength(1);
+    expect(String(query?.['reportCategories']?.type)).toBe(
+      '[ReportCategory!]!',
+    );
+    expect(String(query?.['adminReportCases']?.type)).toBe(
+      'AdminReportCaseConnection!',
+    );
+    expect(String(query?.['adminReportCase']?.type)).toBe(
+      'AdminReportCaseDetail',
+    );
+    expect(String(query?.['adminUnhandledReportSummary']?.type)).toBe(
+      'AdminUnhandledReportSummary!',
+    );
+    expect(String(query?.['adminProductReportSummary']?.type)).toBe(
+      'AdminProductReportSummary!',
+    );
+    expect(String(query?.['adminReportCategories']?.type)).toBe(
+      '[AdminReportCategory!]!',
+    );
+    expect(String(mutation?.['submitReport']?.type)).toBe(
+      'SubmitReportPayload!',
+    );
+    expect(
+      [
+        'changeReportCaseStatus',
+        'resolveReportCaseWithMeasure',
+        'resolveReportCaseWithoutMeasure',
+        'rejectReportCase',
+      ].map((name) => String(mutation?.[name]?.type)),
+    ).toEqual(Array.from({ length: 4 }, () => 'ReportCaseOutcome!'));
+    expect(String(mutation?.['sendInfringementInquiry']?.type)).toBe(
+      'InfringementInquiryOutcome!',
+    );
+    expect(
+      ['createReportCategory', 'renameReportCategory'].map((name) =>
+        String(mutation?.[name]?.type),
+      ),
+    ).toEqual(['AdminReportCategory!', 'AdminReportCategory!']);
+    expect(String(mutation?.['deleteReportCategory']?.type)).toBe(
+      'ReportCategoryDeletion!',
+    );
+  });
+});

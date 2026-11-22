@@ -333,6 +333,13 @@ export type AdminMediaFile = {
   quarantined: Scalars['Boolean']['output'];
 };
 
+/** プロダクトの未完了の案件 */
+export type AdminOpenReportCaseRef = {
+  __typename?: 'AdminOpenReportCaseRef';
+  id: Scalars['ID']['output'];
+  status: ReportCaseStatus;
+};
+
 /** 管理画面のプロダクト */
 export type AdminProduct = {
   __typename?: 'AdminProduct';
@@ -388,6 +395,13 @@ export type AdminProductLaunchState =
   | 'LOST'
   | 'SCHEDULED'
   | 'WON';
+
+/** プロダクトへの通報の件数と未完了の案件 */
+export type AdminProductReportSummary = {
+  __typename?: 'AdminProductReportSummary';
+  openCase?: Maybe<AdminOpenReportCaseRef>;
+  reportCount: Scalars['Int']['output'];
+};
 
 /** プロダクトの公開状態 */
 export type AdminProductVisibility =
@@ -468,6 +482,135 @@ export type AdminReAuthenticationInput = {
 export type AdminRecoveryCodeSet = {
   __typename?: 'AdminRecoveryCodeSet';
   codes: Array<Scalars['String']['output']>;
+};
+
+/** 案件の通報 */
+export type AdminReport = {
+  __typename?: 'AdminReport';
+  /** カテゴリの現在の名前 */
+  categoryName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  reason: Scalars['String']['output'];
+  reportedAt: Scalars['DateTime']['output'];
+  reporter: AdminReporter;
+};
+
+/** 通報の案件 */
+export type AdminReportCase = {
+  __typename?: 'AdminReportCase';
+  categoryCounts: Array<AdminReportCategoryCount>;
+  firstReportedAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  infringement: Scalars['Boolean']['output'];
+  lastReportedAt: Scalars['DateTime']['output'];
+  /** 退会で論理削除した通報を除く件数 */
+  reportCount: Scalars['Int']['output'];
+  /** 権利侵害の案件だけ */
+  responseTime?: Maybe<AdminReportResponseTime>;
+  status: ReportCaseStatus;
+  target: AdminReportTarget;
+};
+
+/** 通報の案件の一覧 */
+export type AdminReportCaseConnection = {
+  __typename?: 'AdminReportCaseConnection';
+  nodes: Array<AdminReportCase>;
+  pageInfo: PageInfo;
+};
+
+/** 通報の案件の詳細 */
+export type AdminReportCaseDetail = {
+  __typename?: 'AdminReportCaseDetail';
+  case: AdminReportCase;
+  closedAt?: Maybe<Scalars['DateTime']['output']>;
+  closingReason?: Maybe<Scalars['String']['output']>;
+  /** 権利侵害の対応中の案件で、投稿者の宛先と利用者側のURLがあれば真 */
+  inquiryAvailable: Scalars['Boolean']['output'];
+  lastInquiry?: Maybe<AdminReportInquiry>;
+  /** 受付日時の昇順 */
+  reports: Array<AdminReport>;
+  resolution?: Maybe<ReportResolution>;
+  statusChangedAt: Scalars['DateTime']['output'];
+};
+
+/** 通報の案件の一覧の絞り込み */
+export type AdminReportCaseFilter = {
+  /** そのカテゴリの通報を含む案件 */
+  categoryId?: InputMaybe<Scalars['ID']['input']>;
+  reportedBefore?: InputMaybe<Scalars['DateTime']['input']>;
+  /** その期間に受け付けた通報を含む案件。開始は含み、終了は含まない */
+  reportedFrom?: InputMaybe<Scalars['DateTime']['input']>;
+  status?: InputMaybe<ReportCaseStatus>;
+  targetKind?: InputMaybe<ReportTargetKind>;
+};
+
+/** 管理画面の通報カテゴリ */
+export type AdminReportCategory = {
+  __typename?: 'AdminReportCategory';
+  id: Scalars['ID']['output'];
+  infringement: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  /** 紐付く通報の件数。退会で論理削除した通報を含む */
+  reportCount: Scalars['Int']['output'];
+  systemDefault: Scalars['Boolean']['output'];
+};
+
+/** 案件のカテゴリごとの通報の件数 */
+export type AdminReportCategoryCount = {
+  __typename?: 'AdminReportCategoryCount';
+  categoryId: Scalars['ID']['output'];
+  count: Scalars['Int']['output'];
+  /** カテゴリの現在の名前 */
+  name: Scalars['String']['output'];
+};
+
+/** 最後に送った権利侵害の照会 */
+export type AdminReportInquiry = {
+  __typename?: 'AdminReportInquiry';
+  deadline: Scalars['DateTime']['output'];
+  message: Scalars['String']['output'];
+  /** 対応中で回答の期限を過ぎていれば真 */
+  overdue: Scalars['Boolean']['output'];
+  sentAt: Scalars['DateTime']['output'];
+};
+
+/** 権利侵害の案件の対応期間 */
+export type AdminReportResponseTime = {
+  __typename?: 'AdminReportResponseTime';
+  alerts: Array<ResponseTimeAlert>;
+  completedAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 完了の日時が得られない完了した案件はnull */
+  elapsedSeconds?: Maybe<Scalars['Int']['output']>;
+  startedAt: Scalars['DateTime']['output'];
+};
+
+/** 管理画面の通報の対象 */
+export type AdminReportTarget = {
+  __typename?: 'AdminReportTarget';
+  /** 退会・削除・物理削除で読めない対象と、対象への参照を消した案件はfalse */
+  available: Scalars['Boolean']['output'];
+  detached: Scalars['Boolean']['output'];
+  /** コメントの本文の抜粋 */
+  excerpt?: Maybe<Scalars['String']['output']>;
+  handle?: Maybe<Scalars['String']['output']>;
+  /** 対象への参照を消した案件はnull */
+  id?: Maybe<Scalars['ID']['output']>;
+  kind: ReportTargetKind;
+  /** ユーザーはニックネーム、プロダクトは名称 */
+  label?: Maybe<Scalars['String']['output']>;
+  productHandle?: Maybe<Scalars['String']['output']>;
+  productId?: Maybe<Scalars['ID']['output']>;
+  productName?: Maybe<Scalars['String']['output']>;
+};
+
+/** 通報の申出者。kindはmember(ログイン中の利用者)かguest(未ログインと停止中の利用者) */
+export type AdminReporter = {
+  __typename?: 'AdminReporter';
+  handle?: Maybe<Scalars['String']['output']>;
+  /** 連絡先メールアドレスは返さず、有無だけを返す */
+  hasContact: Scalars['Boolean']['output'];
+  kind: Scalars['String']['output'];
+  nickname?: Maybe<Scalars['String']['output']>;
 };
 
 /** 管理者のロール */
@@ -563,6 +706,13 @@ export type AdminTotpSetup = {
   otpauthUri: Scalars['String']['output'];
   /** 認証アプリへ手入力するためのbase32 */
   secret: Scalars['String']['output'];
+};
+
+/** 未対応の案件の件数 */
+export type AdminUnhandledReportSummary = {
+  __typename?: 'AdminUnhandledReportSummary';
+  infringementOpen: Scalars['Int']['output'];
+  open: Scalars['Int']['output'];
 };
 
 /** 管理画面の利用者。メールアドレスは返さない */
@@ -1156,6 +1306,13 @@ export type HelpSearchHit = {
   title: Scalars['String']['output'];
 };
 
+/** 権利侵害の照会の結果 */
+export type InfringementInquiryOutcome = {
+  __typename?: 'InfringementInquiryOutcome';
+  deadline: Scalars['DateTime']['output'];
+  sentAt: Scalars['DateTime']['output'];
+};
+
 /** 問い合わせのカテゴリ */
 export type InquiryCategory = {
   __typename?: 'InquiryCategory';
@@ -1623,6 +1780,8 @@ export type Mutation = {
   changeAdminRole: AdminAccount;
   /** 対応ステータスの変更。変更後の詳細を返す。モデレーター以上 */
   changeInquiryStatus: AdminInquiry;
+  /** 案件の対応ステータスの手での変更 */
+  changeReportCaseStatus: ReportCaseOutcome;
   /** 招待の完了の2段階目。認証コードで有効化し、ログインする */
   completeAdminInvitation: AdminRecoveryCodeSet;
   /** 認証コードかリカバリコードによるログインの完了 */
@@ -1647,6 +1806,8 @@ export type Mutation = {
   createInquiryCategory: InquiryCategory;
   /** モデレーター以上の管理者がプロダクトカテゴリを追加する */
   createProductCategory: ProductCategory;
+  /** 通報カテゴリの追加 */
+  createReportCategory: AdminReportCategory;
   /** Customer Portalのセッションの作成。加入したことがある本人のStripe Customerにセッションを作り、移動先のURLを返す。戻り先はプラン管理画面 */
   createUltrasPortalSession: UltrasPortalSession;
   /** 管理者の削除 */
@@ -1665,6 +1826,8 @@ export type Mutation = {
   deleteProductCategory: Scalars['Boolean']['output'];
   /** 隔離画像の削除 */
   deleteQuarantinedImage: ModerationOutcome;
+  /** 通報カテゴリの削除。紐付く通報は「その他」へ付け替える */
+  deleteReportCategory: ReportCategoryDeletion;
   /** 多要素認証の無効化 */
   disableTotp: Scalars['Boolean']['output'];
   /** 下書きの破棄。最上位管理者 */
@@ -1709,11 +1872,15 @@ export type Mutation = {
   registerUser: Viewer;
   /** 自分のAPIキーと同じ名前と権限スコープの新しいキーを追加で発行する。元のキーは残す */
   reissueApiKey: IssuedApiKey;
+  /** 案件の却下 */
+  rejectReportCase: ReportCaseOutcome;
   /** 管理者操作の隔離理由を外す隔離の解除 */
   releaseQuarantinedImage: ModerationOutcome;
   renameHelpCategory: HelpCategory;
   /** カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上 */
   renameInquiryCategory: InquiryCategory;
+  /** 通報カテゴリの名前の変更 */
+  renameReportCategory: AdminReportCategory;
   /** ピン留めの群に続けてそれ以外の群の順でカテゴリの全記事のIDを渡す */
   reorderHelpArticles: Array<AdminHelpArticleRow>;
   /** 全カテゴリのIDを並べたい順で渡す */
@@ -1738,6 +1905,10 @@ export type Mutation = {
   resetAdminPassword: Scalars['Boolean']['output'];
   /** パスワードリセットの確定 */
   resetPassword: Scalars['Boolean']['output'];
+  /** 措置による対応済 */
+  resolveReportCaseWithMeasure: ReportCaseOutcome;
+  /** 措置なしの対応済 */
+  resolveReportCaseWithoutMeasure: ReportCaseOutcome;
   /** 本人の開始日前の未決済の申込の決済を始め直す */
   resumeSponsorshipCheckout: CheckoutStart;
   /** 評価の無効化の取り消し */
@@ -1748,6 +1919,8 @@ export type Mutation = {
   revokeSession: Scalars['Boolean']['output'];
   /** 下書きの保存。最上位管理者 */
   saveLegalDocumentDraft: AdminLegalDocument;
+  /** 権利侵害の案件の投稿者への照会 */
+  sendInfringementInquiry: InfringementInquiryOutcome;
   /** 招待の完了の1段階目。ニックネームとパスワードを仮に保存し、多要素認証の設定を始める */
   startAdminInvitation: AdminTotpSetup;
   /** 多要素認証の再設定の開始。完了まで現在の設定が有効なまま残る */
@@ -1766,6 +1939,8 @@ export type Mutation = {
   submitGuestInquiry: Scalars['Boolean']['output'];
   /** 停止していないログイン中の利用者の問い合わせの送信 */
   submitMemberInquiry: MemberInquiry;
+  /** ユーザー・プロダクト・コメントの通報 */
+  submitReport: SubmitReportPayload;
   /** 利用者の停止 */
   suspendUser: ModerationOutcome;
   /** 理由(500文字以内)を付けて広告を強制終了し、未掲載日数分と表示停止日数分の返金を依頼する。モデレーター以上の管理者 */
@@ -1857,6 +2032,14 @@ export type MutationChangeInquiryStatusArgs = {
 };
 
 
+export type MutationChangeReportCaseStatusArgs = {
+  from: ReportCaseStatus;
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+  to: ReportCaseStatus;
+};
+
+
 export type MutationCompleteAdminInvitationArgs = {
   token: Scalars['String']['input'];
   totpCode: Scalars['String']['input'];
@@ -1926,6 +2109,12 @@ export type MutationCreateProductCategoryArgs = {
 };
 
 
+export type MutationCreateReportCategoryArgs = {
+  name: Scalars['String']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDeleteAdminArgs = {
   id: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
@@ -1973,6 +2162,12 @@ export type MutationDeleteProductCategoryArgs = {
 
 export type MutationDeleteQuarantinedImageArgs = {
   fileId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeleteReportCategoryArgs = {
+  id: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2089,6 +2284,12 @@ export type MutationReissueApiKeyArgs = {
 };
 
 
+export type MutationRejectReportCaseArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
 export type MutationReleaseQuarantinedImageArgs = {
   fileId: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
@@ -2102,6 +2303,13 @@ export type MutationRenameHelpCategoryArgs = {
 
 
 export type MutationRenameInquiryCategoryArgs = {
+  id: Scalars['ID']['input'];
+  name: Scalars['String']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationRenameReportCategoryArgs = {
   id: Scalars['ID']['input'];
   name: Scalars['String']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
@@ -2169,6 +2377,18 @@ export type MutationResetPasswordArgs = {
 };
 
 
+export type MutationResolveReportCaseWithMeasureArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationResolveReportCaseWithoutMeasureArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
 export type MutationResumeSponsorshipCheckoutArgs = {
   id: Scalars['ID']['input'];
 };
@@ -2187,6 +2407,13 @@ export type MutationRevokeSessionArgs = {
 
 export type MutationSaveLegalDocumentDraftArgs = {
   input: SaveLegalDocumentDraftInput;
+};
+
+
+export type MutationSendInfringementInquiryArgs = {
+  id: Scalars['ID']['input'];
+  message: Scalars['String']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2224,6 +2451,11 @@ export type MutationSubmitGuestInquiryArgs = {
 
 export type MutationSubmitMemberInquiryArgs = {
   input: MemberInquiryInput;
+};
+
+
+export type MutationSubmitReportArgs = {
+  input: SubmitReportInput;
 };
 
 
@@ -2931,16 +3163,26 @@ export type Query = {
   adminProductCategories: Array<ProductCategory>;
   /** プロダクトの評価の一覧(更新日時の新しい順)。firstは1〜50 */
   adminProductRatings: AdminRatingConnection;
+  /** プロダクトへの通報の件数と未完了の案件 */
+  adminProductReportSummary: AdminProductReportSummary;
   /** 論理削除されていないプロダクトの一覧(登録日時の新しい順)。firstは1〜50 */
   adminProducts: AdminProductConnection;
   /** 隔離理由ごとの隔離画像の一覧(隔離された日時の新しい順に50件ずつ) */
   adminQuarantinedImages: AdminQuarantinedImagePage;
   /** 評価の一覧(更新日時の新しい順)。firstは1〜50 */
   adminRatings: AdminRatingConnection;
+  /** 通報の案件の詳細。無ければnull */
+  adminReportCase?: Maybe<AdminReportCaseDetail>;
+  /** 通報の案件の一覧。最後の受付日時の新しい順 */
+  adminReportCases: AdminReportCaseConnection;
+  /** 管理画面の通報カテゴリ */
+  adminReportCategories: Array<AdminReportCategory>;
   /** 退会者を除く申込の新しい順(1〜50件)。閲覧のみ以上の管理者 */
   adminSponsorships: AdminSponsorshipConnection;
   /** 退会済みを除く「未対応」のログインと未ログインの問い合わせの合計件数。閲覧のみ以上 */
   adminUnhandledInquiryCount: Scalars['Int']['output'];
+  /** 未対応の案件の件数 */
+  adminUnhandledReportSummary: AdminUnhandledReportSummary;
   /** 退会していない利用者の一覧(登録日時の新しい順)。firstは1〜50 */
   adminUsers: AdminUserConnection;
   /** ログイン中の管理者。未ログイン・無効なセッションではnull */
@@ -3035,6 +3277,8 @@ export type Query = {
   publicProfile?: Maybe<PublicProfileResult>;
   /** トップページの当日の予選。開始済みの予選を対戦カードと不戦勝に分けて返す。ログインを求めない */
   qualifierBoard: QualifierBoard;
+  /** 通報のフォームで選べるカテゴリ */
+  reportCategories: Array<ReportCategory>;
   /** 掲載中の広告。ログインを求めない */
   sponsoredPlacements: SponsoredPlacements;
   /** 料金ページのスポンサー広告の価格と申込の対象。ログインを求めない */
@@ -3121,6 +3365,11 @@ export type QueryAdminProductRatingsArgs = {
 };
 
 
+export type QueryAdminProductReportSummaryArgs = {
+  productId: Scalars['ID']['input'];
+};
+
+
 export type QueryAdminProductsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<AdminProductFilter>;
@@ -3137,6 +3386,18 @@ export type QueryAdminQuarantinedImagesArgs = {
 export type QueryAdminRatingsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   filter?: InputMaybe<AdminRatingFilter>;
+  first: Scalars['Int']['input'];
+};
+
+
+export type QueryAdminReportCaseArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryAdminReportCasesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminReportCaseFilter>;
   first: Scalars['Int']['input'];
 };
 
@@ -3412,6 +3673,48 @@ export type RelaunchBlockView = {
   releaseAt?: Maybe<Scalars['DateTime']['output']>;
 };
 
+/** 案件の操作の結果 */
+export type ReportCaseOutcome = {
+  __typename?: 'ReportCaseOutcome';
+  status: ReportCaseStatus;
+};
+
+/** 通報の案件の対応ステータス */
+export type ReportCaseStatus =
+  | 'IN_PROGRESS'
+  | 'OPEN'
+  | 'REJECTED'
+  | 'RESOLVED';
+
+/** 通報のフォームで選べるカテゴリ */
+export type ReportCategory = {
+  __typename?: 'ReportCategory';
+  id: Scalars['ID']['output'];
+  /** 権利侵害のカテゴリ。未ログインと停止中の利用者には連絡先メールアドレスを求める */
+  infringement: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+};
+
+/** 通報カテゴリの削除の結果 */
+export type ReportCategoryDeletion = {
+  __typename?: 'ReportCategoryDeletion';
+  /** 「その他」へ付け替えた通報の件数 */
+  reassignedCount: Scalars['Int']['output'];
+};
+
+/** 対応済の案件の措置。NONEは措置なしの対応済 */
+export type ReportResolution =
+  | 'COMMENT_HIDE'
+  | 'NONE'
+  | 'PRODUCT_HIDE'
+  | 'USER_SUSPEND';
+
+/** 通報の対象の種類 */
+export type ReportTargetKind =
+  | 'COMMENT'
+  | 'PRODUCT'
+  | 'USER';
+
 export type RequestEmailChangeInput = {
   newEmail: Scalars['String']['input'];
   reAuthentication: ReAuthenticationInput;
@@ -3431,6 +3734,11 @@ export type ResetPasswordInput = {
   newPassword: Scalars['String']['input'];
   token: Scalars['String']['input'];
 };
+
+/** 権利侵害の案件の対応期間の目標の超過 */
+export type ResponseTimeAlert =
+  | 'DECISION_OVERDUE'
+  | 'START_OVERDUE';
 
 /** 下書きの保存 */
 export type SaveLegalDocumentDraftInput = {
@@ -3615,6 +3923,23 @@ export type SponsorshipTierOffer = {
   tier: SponsorshipTier;
   /** 決済サービスから取得できなければnull */
   unitPrice?: Maybe<Money>;
+};
+
+/** 通報の入力 */
+export type SubmitReportInput = {
+  categoryId: Scalars['ID']['input'];
+  /** 未ログインと停止中の利用者の権利侵害の通報だけで使い、他では捨てる */
+  contactEmail?: InputMaybe<Scalars['String']['input']>;
+  reason: Scalars['String']['input'];
+  targetKind: ReportTargetKind;
+  /** ユーザーはハンドル、プロダクトとコメントはID */
+  targetRef: Scalars['String']['input'];
+};
+
+/** 通報の受け付けの結果 */
+export type SubmitReportPayload = {
+  __typename?: 'SubmitReportPayload';
+  accepted: Scalars['Boolean']['output'];
 };
 
 export type SupporterConnection = {
@@ -4331,11 +4656,13 @@ export type ResolversTypes = {
   AdminLegalRevision: ResolverTypeWrapper<AdminLegalRevision>;
   AdminMatchResult: ResolverTypeWrapper<AdminMatchResult>;
   AdminMediaFile: ResolverTypeWrapper<AdminMediaFile>;
+  AdminOpenReportCaseRef: ResolverTypeWrapper<AdminOpenReportCaseRef>;
   AdminProduct: ResolverTypeWrapper<AdminProduct>;
   AdminProductConnection: ResolverTypeWrapper<AdminProductConnection>;
   AdminProductDetail: ResolverTypeWrapper<AdminProductDetail>;
   AdminProductFilter: AdminProductFilter;
   AdminProductLaunchState: AdminProductLaunchState;
+  AdminProductReportSummary: ResolverTypeWrapper<AdminProductReportSummary>;
   AdminProductVisibility: AdminProductVisibility;
   AdminQuarantinedImage: ResolverTypeWrapper<AdminQuarantinedImage>;
   AdminQuarantinedImagePage: ResolverTypeWrapper<AdminQuarantinedImagePage>;
@@ -4346,6 +4673,17 @@ export type ResolversTypes = {
   AdminRatingSummary: ResolverTypeWrapper<AdminRatingSummary>;
   AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: ResolverTypeWrapper<AdminRecoveryCodeSet>;
+  AdminReport: ResolverTypeWrapper<AdminReport>;
+  AdminReportCase: ResolverTypeWrapper<AdminReportCase>;
+  AdminReportCaseConnection: ResolverTypeWrapper<AdminReportCaseConnection>;
+  AdminReportCaseDetail: ResolverTypeWrapper<AdminReportCaseDetail>;
+  AdminReportCaseFilter: AdminReportCaseFilter;
+  AdminReportCategory: ResolverTypeWrapper<AdminReportCategory>;
+  AdminReportCategoryCount: ResolverTypeWrapper<AdminReportCategoryCount>;
+  AdminReportInquiry: ResolverTypeWrapper<AdminReportInquiry>;
+  AdminReportResponseTime: ResolverTypeWrapper<AdminReportResponseTime>;
+  AdminReportTarget: ResolverTypeWrapper<AdminReportTarget>;
+  AdminReporter: ResolverTypeWrapper<AdminReporter>;
   AdminRole: AdminRole;
   AdminSecondFactorInput: AdminSecondFactorInput;
   AdminSecondFactorRequired: ResolverTypeWrapper<AdminSecondFactorRequired>;
@@ -4355,6 +4693,7 @@ export type ResolversTypes = {
   AdminSponsorshipStatusFilter: AdminSponsorshipStatusFilter;
   AdminStatisticsWeek: ResolverTypeWrapper<AdminStatisticsWeek>;
   AdminTotpSetup: ResolverTypeWrapper<AdminTotpSetup>;
+  AdminUnhandledReportSummary: ResolverTypeWrapper<AdminUnhandledReportSummary>;
   AdminUser: ResolverTypeWrapper<AdminUser>;
   AdminUserConnection: ResolverTypeWrapper<AdminUserConnection>;
   AdminUserFilter: AdminUserFilter;
@@ -4425,6 +4764,7 @@ export type ResolversTypes = {
   HelpCenterCategory: ResolverTypeWrapper<HelpCenterCategory>;
   HelpSearchHit: ResolverTypeWrapper<HelpSearchHit>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
+  InfringementInquiryOutcome: ResolverTypeWrapper<InfringementInquiryOutcome>;
   InquiryCategory: ResolverTypeWrapper<InquiryCategory>;
   InquiryComposer: ResolverTypeWrapper<InquiryComposerModel>;
   InquiryKind: InquiryKind;
@@ -4537,10 +4877,17 @@ export type ResolversTypes = {
   RegisterProductInput: RegisterProductInput;
   RegisterUserInput: RegisterUserInput;
   RelaunchBlockView: ResolverTypeWrapper<RelaunchBlockView>;
+  ReportCaseOutcome: ResolverTypeWrapper<ReportCaseOutcome>;
+  ReportCaseStatus: ReportCaseStatus;
+  ReportCategory: ResolverTypeWrapper<ReportCategory>;
+  ReportCategoryDeletion: ResolverTypeWrapper<ReportCategoryDeletion>;
+  ReportResolution: ReportResolution;
+  ReportTargetKind: ReportTargetKind;
   RequestEmailChangeInput: RequestEmailChangeInput;
   RequestPasswordChangeInput: RequestPasswordChangeInput;
   ResendVerificationResult: ResendVerificationResult;
   ResetPasswordInput: ResetPasswordInput;
+  ResponseTimeAlert: ResponseTimeAlert;
   SaveLegalDocumentDraftInput: SaveLegalDocumentDraftInput;
   SecondFactorInput: SecondFactorInput;
   SecondFactorRequired: ResolverTypeWrapper<SecondFactorRequired>;
@@ -4561,6 +4908,8 @@ export type ResolversTypes = {
   SponsorshipTier: SponsorshipTier;
   SponsorshipTierOffer: ResolverTypeWrapper<SponsorshipTierOffer>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
+  SubmitReportInput: SubmitReportInput;
+  SubmitReportPayload: ResolverTypeWrapper<SubmitReportPayload>;
   SupporterConnection: ResolverTypeWrapper<Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversTypes['UserSummary']> }>;
   SystemStatus: ResolverTypeWrapper<SystemStatus>;
   TotpSetup: ResolverTypeWrapper<TotpSetup>;
@@ -4639,10 +4988,12 @@ export type ResolversParentTypes = {
   AdminLegalRevision: AdminLegalRevision;
   AdminMatchResult: AdminMatchResult;
   AdminMediaFile: AdminMediaFile;
+  AdminOpenReportCaseRef: AdminOpenReportCaseRef;
   AdminProduct: AdminProduct;
   AdminProductConnection: AdminProductConnection;
   AdminProductDetail: AdminProductDetail;
   AdminProductFilter: AdminProductFilter;
+  AdminProductReportSummary: AdminProductReportSummary;
   AdminQuarantinedImage: AdminQuarantinedImage;
   AdminQuarantinedImagePage: AdminQuarantinedImagePage;
   AdminRating: AdminRating;
@@ -4651,6 +5002,17 @@ export type ResolversParentTypes = {
   AdminRatingSummary: AdminRatingSummary;
   AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: AdminRecoveryCodeSet;
+  AdminReport: AdminReport;
+  AdminReportCase: AdminReportCase;
+  AdminReportCaseConnection: AdminReportCaseConnection;
+  AdminReportCaseDetail: AdminReportCaseDetail;
+  AdminReportCaseFilter: AdminReportCaseFilter;
+  AdminReportCategory: AdminReportCategory;
+  AdminReportCategoryCount: AdminReportCategoryCount;
+  AdminReportInquiry: AdminReportInquiry;
+  AdminReportResponseTime: AdminReportResponseTime;
+  AdminReportTarget: AdminReportTarget;
+  AdminReporter: AdminReporter;
   AdminSecondFactorInput: AdminSecondFactorInput;
   AdminSecondFactorRequired: AdminSecondFactorRequired;
   AdminSponsorship: AdminSponsorship;
@@ -4658,6 +5020,7 @@ export type ResolversParentTypes = {
   AdminSponsorshipFilter: AdminSponsorshipFilter;
   AdminStatisticsWeek: AdminStatisticsWeek;
   AdminTotpSetup: AdminTotpSetup;
+  AdminUnhandledReportSummary: AdminUnhandledReportSummary;
   AdminUser: AdminUser;
   AdminUserConnection: AdminUserConnection;
   AdminUserFilter: AdminUserFilter;
@@ -4715,6 +5078,7 @@ export type ResolversParentTypes = {
   HelpCenterCategory: HelpCenterCategory;
   HelpSearchHit: HelpSearchHit;
   ID: Scalars['ID']['output'];
+  InfringementInquiryOutcome: InfringementInquiryOutcome;
   InquiryCategory: InquiryCategory;
   InquiryComposer: InquiryComposerModel;
   InquiryMessage: InquiryMessageModel;
@@ -4803,6 +5167,9 @@ export type ResolversParentTypes = {
   RegisterProductInput: RegisterProductInput;
   RegisterUserInput: RegisterUserInput;
   RelaunchBlockView: RelaunchBlockView;
+  ReportCaseOutcome: ReportCaseOutcome;
+  ReportCategory: ReportCategory;
+  ReportCategoryDeletion: ReportCategoryDeletion;
   RequestEmailChangeInput: RequestEmailChangeInput;
   RequestPasswordChangeInput: RequestPasswordChangeInput;
   ResetPasswordInput: ResetPasswordInput;
@@ -4822,6 +5189,8 @@ export type ResolversParentTypes = {
   SponsorshipTerminationResult: SponsorshipTerminationResult;
   SponsorshipTierOffer: SponsorshipTierOffer;
   String: Scalars['String']['output'];
+  SubmitReportInput: SubmitReportInput;
+  SubmitReportPayload: SubmitReportPayload;
   SupporterConnection: Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['UserSummary']> };
   SystemStatus: SystemStatus;
   TotpSetup: TotpSetup;
@@ -5058,6 +5427,11 @@ export type AdminMediaFileResolvers<ContextType = GraphQLContext, ParentType ext
   quarantined?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
+export type AdminOpenReportCaseRefResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminOpenReportCaseRef'] = ResolversParentTypes['AdminOpenReportCaseRef']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['ReportCaseStatus'], ParentType, ContextType>;
+};
+
 export type AdminProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminProduct'] = ResolversParentTypes['AdminProduct']> = {
   category?: Resolver<ResolversTypes['AdminCategoryRef'], ParentType, ContextType>;
   handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -5085,6 +5459,11 @@ export type AdminProductDetailResolvers<ContextType = GraphQLContext, ParentType
   screenshots?: Resolver<Array<ResolversTypes['AdminMediaFile']>, ParentType, ContextType>;
   tagline?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   websiteUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminProductReportSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminProductReportSummary'] = ResolversParentTypes['AdminProductReportSummary']> = {
+  openCase?: Resolver<Maybe<ResolversTypes['AdminOpenReportCaseRef']>, ParentType, ContextType>;
+  reportCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type AdminQuarantinedImageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminQuarantinedImage'] = ResolversParentTypes['AdminQuarantinedImage']> = {
@@ -5124,6 +5503,90 @@ export type AdminRatingSummaryResolvers<ContextType = GraphQLContext, ParentType
 
 export type AdminRecoveryCodeSetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRecoveryCodeSet'] = ResolversParentTypes['AdminRecoveryCodeSet']> = {
   codes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminReportResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReport'] = ResolversParentTypes['AdminReport']> = {
+  categoryName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reportedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  reporter?: Resolver<ResolversTypes['AdminReporter'], ParentType, ContextType>;
+};
+
+export type AdminReportCaseResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCase'] = ResolversParentTypes['AdminReportCase']> = {
+  categoryCounts?: Resolver<Array<ResolversTypes['AdminReportCategoryCount']>, ParentType, ContextType>;
+  firstReportedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  infringement?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  lastReportedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  reportCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  responseTime?: Resolver<Maybe<ResolversTypes['AdminReportResponseTime']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['ReportCaseStatus'], ParentType, ContextType>;
+  target?: Resolver<ResolversTypes['AdminReportTarget'], ParentType, ContextType>;
+};
+
+export type AdminReportCaseConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCaseConnection'] = ResolversParentTypes['AdminReportCaseConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminReportCase']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type AdminReportCaseDetailResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCaseDetail'] = ResolversParentTypes['AdminReportCaseDetail']> = {
+  case?: Resolver<ResolversTypes['AdminReportCase'], ParentType, ContextType>;
+  closedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  closingReason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  inquiryAvailable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  lastInquiry?: Resolver<Maybe<ResolversTypes['AdminReportInquiry']>, ParentType, ContextType>;
+  reports?: Resolver<Array<ResolversTypes['AdminReport']>, ParentType, ContextType>;
+  resolution?: Resolver<Maybe<ResolversTypes['ReportResolution']>, ParentType, ContextType>;
+  statusChangedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminReportCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCategory'] = ResolversParentTypes['AdminReportCategory']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  infringement?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reportCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  systemDefault?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type AdminReportCategoryCountResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCategoryCount'] = ResolversParentTypes['AdminReportCategoryCount']> = {
+  categoryId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminReportInquiryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportInquiry'] = ResolversParentTypes['AdminReportInquiry']> = {
+  deadline?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  overdue?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  sentAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminReportResponseTimeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportResponseTime'] = ResolversParentTypes['AdminReportResponseTime']> = {
+  alerts?: Resolver<Array<ResolversTypes['ResponseTimeAlert']>, ParentType, ContextType>;
+  completedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  elapsedSeconds?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  startedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminReportTargetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportTarget'] = ResolversParentTypes['AdminReportTarget']> = {
+  available?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  detached?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  excerpt?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  handle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['ReportTargetKind'], ParentType, ContextType>;
+  label?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  productHandle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  productId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  productName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminReporterResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReporter'] = ResolversParentTypes['AdminReporter']> = {
+  handle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hasContact?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type AdminSecondFactorRequiredResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminSecondFactorRequired'] = ResolversParentTypes['AdminSecondFactorRequired']> = {
@@ -5167,6 +5630,11 @@ export type AdminTotpSetupResolvers<ContextType = GraphQLContext, ParentType ext
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   otpauthUri?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   secret?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminUnhandledReportSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminUnhandledReportSummary'] = ResolversParentTypes['AdminUnhandledReportSummary']> = {
+  infringementOpen?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  open?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type AdminUserResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminUser'] = ResolversParentTypes['AdminUser']> = {
@@ -5457,6 +5925,11 @@ export type HelpSearchHitResolvers<ContextType = GraphQLContext, ParentType exte
   title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
+export type InfringementInquiryOutcomeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InfringementInquiryOutcome'] = ResolversParentTypes['InfringementInquiryOutcome']> = {
+  deadline?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  sentAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
 export type InquiryCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryCategory'] = ResolversParentTypes['InquiryCategory']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -5702,6 +6175,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   changeAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationChangeAdminPasswordArgs, 'newPassword' | 'reAuthentication'>>;
   changeAdminRole?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationChangeAdminRoleArgs, 'id' | 'role'>>;
   changeInquiryStatus?: Resolver<ResolversTypes['AdminInquiry'], ParentType, ContextType, RequireFields<MutationChangeInquiryStatusArgs, 'inquiryId' | 'status'>>;
+  changeReportCaseStatus?: Resolver<ResolversTypes['ReportCaseOutcome'], ParentType, ContextType, RequireFields<MutationChangeReportCaseStatusArgs, 'from' | 'id' | 'to'>>;
   completeAdminInvitation?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationCompleteAdminInvitationArgs, 'token' | 'totpCode'>>;
   completeAdminSecondFactorLogin?: Resolver<ResolversTypes['AdminViewer'], ParentType, ContextType, RequireFields<MutationCompleteAdminSecondFactorLoginArgs, 'challenge' | 'secondFactor'>>;
   completeAdminTotpReset?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationCompleteAdminTotpResetArgs, 'totpCode'>>;
@@ -5715,6 +6189,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   createHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationCreateHelpCategoryArgs, 'name'>>;
   createInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationCreateInquiryCategoryArgs, 'name'>>;
   createProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationCreateProductCategoryArgs, 'input'>>;
+  createReportCategory?: Resolver<ResolversTypes['AdminReportCategory'], ParentType, ContextType, RequireFields<MutationCreateReportCategoryArgs, 'name'>>;
   createUltrasPortalSession?: Resolver<ResolversTypes['UltrasPortalSession'], ParentType, ContextType>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
   deleteApiKey?: Resolver<ResolversTypes['ID'], ParentType, ContextType, RequireFields<MutationDeleteApiKeyArgs, 'id'>>;
@@ -5725,6 +6200,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   deleteProduct?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductArgs, 'expectedVersion' | 'productHandle'>>;
   deleteProductCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductCategoryArgs, 'id'>>;
   deleteQuarantinedImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationDeleteQuarantinedImageArgs, 'fileId'>>;
+  deleteReportCategory?: Resolver<ResolversTypes['ReportCategoryDeletion'], ParentType, ContextType, RequireFields<MutationDeleteReportCategoryArgs, 'id'>>;
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
   discardLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationDiscardLegalDocumentDraftArgs, 'input'>>;
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
@@ -5747,9 +6223,11 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   registerProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationRegisterProductArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
   reissueApiKey?: Resolver<ResolversTypes['IssuedApiKey'], ParentType, ContextType, RequireFields<MutationReissueApiKeyArgs, 'id'>>;
+  rejectReportCase?: Resolver<ResolversTypes['ReportCaseOutcome'], ParentType, ContextType, RequireFields<MutationRejectReportCaseArgs, 'id' | 'reason'>>;
   releaseQuarantinedImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationReleaseQuarantinedImageArgs, 'fileId'>>;
   renameHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationRenameHelpCategoryArgs, 'id' | 'name'>>;
   renameInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationRenameInquiryCategoryArgs, 'id' | 'name'>>;
+  renameReportCategory?: Resolver<ResolversTypes['AdminReportCategory'], ParentType, ContextType, RequireFields<MutationRenameReportCategoryArgs, 'id' | 'name'>>;
   reorderHelpArticles?: Resolver<Array<ResolversTypes['AdminHelpArticleRow']>, ParentType, ContextType, RequireFields<MutationReorderHelpArticlesArgs, 'categoryId' | 'orderedIds'>>;
   reorderHelpCategories?: Resolver<Array<ResolversTypes['HelpCategory']>, ParentType, ContextType, RequireFields<MutationReorderHelpCategoriesArgs, 'orderedIds'>>;
   replyToInquiry?: Resolver<ResolversTypes['InquiryReplyResult'], ParentType, ContextType, RequireFields<MutationReplyToInquiryArgs, 'body' | 'inquiryId'>>;
@@ -5762,11 +6240,14 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   resendVerificationEmail?: Resolver<ResolversTypes['ResendVerificationResult'], ParentType, ContextType>;
   resetAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetAdminPasswordArgs, 'newPassword' | 'token'>>;
   resetPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetPasswordArgs, 'input'>>;
+  resolveReportCaseWithMeasure?: Resolver<ResolversTypes['ReportCaseOutcome'], ParentType, ContextType, RequireFields<MutationResolveReportCaseWithMeasureArgs, 'id' | 'reason'>>;
+  resolveReportCaseWithoutMeasure?: Resolver<ResolversTypes['ReportCaseOutcome'], ParentType, ContextType, RequireFields<MutationResolveReportCaseWithoutMeasureArgs, 'id' | 'reason'>>;
   resumeSponsorshipCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationResumeSponsorshipCheckoutArgs, 'id'>>;
   revalidateRating?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationRevalidateRatingArgs, 'id' | 'reason'>>;
   revokeOtherSessions?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   revokeSession?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokeSessionArgs, 'id'>>;
   saveLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationSaveLegalDocumentDraftArgs, 'input'>>;
+  sendInfringementInquiry?: Resolver<ResolversTypes['InfringementInquiryOutcome'], ParentType, ContextType, RequireFields<MutationSendInfringementInquiryArgs, 'id' | 'message'>>;
   startAdminInvitation?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminInvitationArgs, 'nickname' | 'password' | 'token'>>;
   startAdminTotpReset?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminTotpResetArgs, 'reAuthentication'>>;
   startSmokeCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
@@ -5776,6 +6257,7 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   startYearTournamentCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationStartYearTournamentCheckoutArgs, 'launchId'>>;
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
+  submitReport?: Resolver<ResolversTypes['SubmitReportPayload'], ParentType, ContextType, RequireFields<MutationSubmitReportArgs, 'input'>>;
   suspendUser?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationSuspendUserArgs, 'id' | 'reason'>>;
   terminateSponsorship?: Resolver<ResolversTypes['SponsorshipTerminationResult'], ParentType, ContextType, RequireFields<MutationTerminateSponsorshipArgs, 'id' | 'reason'>>;
   unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
@@ -6118,11 +6600,16 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminProduct?: Resolver<Maybe<ResolversTypes['AdminProductDetail']>, ParentType, ContextType, RequireFields<QueryAdminProductArgs, 'id'>>;
   adminProductCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
   adminProductRatings?: Resolver<ResolversTypes['AdminRatingConnection'], ParentType, ContextType, RequireFields<QueryAdminProductRatingsArgs, 'first' | 'productId'>>;
+  adminProductReportSummary?: Resolver<ResolversTypes['AdminProductReportSummary'], ParentType, ContextType, RequireFields<QueryAdminProductReportSummaryArgs, 'productId'>>;
   adminProducts?: Resolver<ResolversTypes['AdminProductConnection'], ParentType, ContextType, RequireFields<QueryAdminProductsArgs, 'first'>>;
   adminQuarantinedImages?: Resolver<ResolversTypes['AdminQuarantinedImagePage'], ParentType, ContextType, RequireFields<QueryAdminQuarantinedImagesArgs, 'reason'>>;
   adminRatings?: Resolver<ResolversTypes['AdminRatingConnection'], ParentType, ContextType, RequireFields<QueryAdminRatingsArgs, 'first'>>;
+  adminReportCase?: Resolver<Maybe<ResolversTypes['AdminReportCaseDetail']>, ParentType, ContextType, RequireFields<QueryAdminReportCaseArgs, 'id'>>;
+  adminReportCases?: Resolver<ResolversTypes['AdminReportCaseConnection'], ParentType, ContextType, RequireFields<QueryAdminReportCasesArgs, 'first'>>;
+  adminReportCategories?: Resolver<Array<ResolversTypes['AdminReportCategory']>, ParentType, ContextType>;
   adminSponsorships?: Resolver<ResolversTypes['AdminSponsorshipConnection'], ParentType, ContextType, RequireFields<QueryAdminSponsorshipsArgs, 'first'>>;
   adminUnhandledInquiryCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  adminUnhandledReportSummary?: Resolver<ResolversTypes['AdminUnhandledReportSummary'], ParentType, ContextType>;
   adminUsers?: Resolver<ResolversTypes['AdminUserConnection'], ParentType, ContextType, RequireFields<QueryAdminUsersArgs, 'first'>>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
   adminWeeklyStatistics?: Resolver<ResolversTypes['AdminWeeklyStatistics'], ParentType, ContextType>;
@@ -6170,6 +6657,7 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   profileAwards?: Resolver<Maybe<Array<ResolversTypes['ProductAward']>>, ParentType, ContextType, RequireFields<QueryProfileAwardsArgs, 'userHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
   qualifierBoard?: Resolver<ResolversTypes['QualifierBoard'], ParentType, ContextType>;
+  reportCategories?: Resolver<Array<ResolversTypes['ReportCategory']>, ParentType, ContextType>;
   sponsoredPlacements?: Resolver<ResolversTypes['SponsoredPlacements'], ParentType, ContextType>;
   sponsorshipOffer?: Resolver<ResolversTypes['SponsorshipOffer'], ParentType, ContextType>;
   sponsorshipPeriodWindow?: Resolver<ResolversTypes['SponsorshipPeriodWindow'], ParentType, ContextType, RequireFields<QuerySponsorshipPeriodWindowArgs, 'productId' | 'tier'>>;
@@ -6196,6 +6684,20 @@ export type RelaunchBlockViewResolvers<ContextType = GraphQLContext, ParentType 
   code?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   releaseAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+};
+
+export type ReportCaseOutcomeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ReportCaseOutcome'] = ResolversParentTypes['ReportCaseOutcome']> = {
+  status?: Resolver<ResolversTypes['ReportCaseStatus'], ParentType, ContextType>;
+};
+
+export type ReportCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ReportCategory'] = ResolversParentTypes['ReportCategory']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  infringement?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type ReportCategoryDeletionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ReportCategoryDeletion'] = ResolversParentTypes['ReportCategoryDeletion']> = {
+  reassignedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
 export type SecondFactorRequiredResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SecondFactorRequired'] = ResolversParentTypes['SecondFactorRequired']> = {
@@ -6292,6 +6794,10 @@ export type SponsorshipTerminationResultResolvers<ContextType = GraphQLContext, 
 export type SponsorshipTierOfferResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipTierOffer'] = ResolversParentTypes['SponsorshipTierOffer']> = {
   tier?: Resolver<ResolversTypes['SponsorshipTier'], ParentType, ContextType>;
   unitPrice?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+};
+
+export type SubmitReportPayloadResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SubmitReportPayload'] = ResolversParentTypes['SubmitReportPayload']> = {
+  accepted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type SupporterConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SupporterConnection'] = ResolversParentTypes['SupporterConnection']> = {
@@ -6571,20 +7077,33 @@ export type Resolvers<ContextType = GraphQLContext> = {
   AdminLegalRevision?: AdminLegalRevisionResolvers<ContextType>;
   AdminMatchResult?: AdminMatchResultResolvers<ContextType>;
   AdminMediaFile?: AdminMediaFileResolvers<ContextType>;
+  AdminOpenReportCaseRef?: AdminOpenReportCaseRefResolvers<ContextType>;
   AdminProduct?: AdminProductResolvers<ContextType>;
   AdminProductConnection?: AdminProductConnectionResolvers<ContextType>;
   AdminProductDetail?: AdminProductDetailResolvers<ContextType>;
+  AdminProductReportSummary?: AdminProductReportSummaryResolvers<ContextType>;
   AdminQuarantinedImage?: AdminQuarantinedImageResolvers<ContextType>;
   AdminQuarantinedImagePage?: AdminQuarantinedImagePageResolvers<ContextType>;
   AdminRating?: AdminRatingResolvers<ContextType>;
   AdminRatingConnection?: AdminRatingConnectionResolvers<ContextType>;
   AdminRatingSummary?: AdminRatingSummaryResolvers<ContextType>;
   AdminRecoveryCodeSet?: AdminRecoveryCodeSetResolvers<ContextType>;
+  AdminReport?: AdminReportResolvers<ContextType>;
+  AdminReportCase?: AdminReportCaseResolvers<ContextType>;
+  AdminReportCaseConnection?: AdminReportCaseConnectionResolvers<ContextType>;
+  AdminReportCaseDetail?: AdminReportCaseDetailResolvers<ContextType>;
+  AdminReportCategory?: AdminReportCategoryResolvers<ContextType>;
+  AdminReportCategoryCount?: AdminReportCategoryCountResolvers<ContextType>;
+  AdminReportInquiry?: AdminReportInquiryResolvers<ContextType>;
+  AdminReportResponseTime?: AdminReportResponseTimeResolvers<ContextType>;
+  AdminReportTarget?: AdminReportTargetResolvers<ContextType>;
+  AdminReporter?: AdminReporterResolvers<ContextType>;
   AdminSecondFactorRequired?: AdminSecondFactorRequiredResolvers<ContextType>;
   AdminSponsorship?: AdminSponsorshipResolvers<ContextType>;
   AdminSponsorshipConnection?: AdminSponsorshipConnectionResolvers<ContextType>;
   AdminStatisticsWeek?: AdminStatisticsWeekResolvers<ContextType>;
   AdminTotpSetup?: AdminTotpSetupResolvers<ContextType>;
+  AdminUnhandledReportSummary?: AdminUnhandledReportSummaryResolvers<ContextType>;
   AdminUser?: AdminUserResolvers<ContextType>;
   AdminUserConnection?: AdminUserConnectionResolvers<ContextType>;
   AdminUserSummary?: AdminUserSummaryResolvers<ContextType>;
@@ -6627,6 +7146,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   HelpCategory?: HelpCategoryResolvers<ContextType>;
   HelpCenterCategory?: HelpCenterCategoryResolvers<ContextType>;
   HelpSearchHit?: HelpSearchHitResolvers<ContextType>;
+  InfringementInquiryOutcome?: InfringementInquiryOutcomeResolvers<ContextType>;
   InquiryCategory?: InquiryCategoryResolvers<ContextType>;
   InquiryComposer?: InquiryComposerResolvers<ContextType>;
   InquiryMessage?: InquiryMessageResolvers<ContextType>;
@@ -6703,6 +7223,9 @@ export type Resolvers<ContextType = GraphQLContext> = {
   Query?: QueryResolvers<ContextType>;
   RecoveryCodeSet?: RecoveryCodeSetResolvers<ContextType>;
   RelaunchBlockView?: RelaunchBlockViewResolvers<ContextType>;
+  ReportCaseOutcome?: ReportCaseOutcomeResolvers<ContextType>;
+  ReportCategory?: ReportCategoryResolvers<ContextType>;
+  ReportCategoryDeletion?: ReportCategoryDeletionResolvers<ContextType>;
   SecondFactorRequired?: SecondFactorRequiredResolvers<ContextType>;
   SponsorableProduct?: SponsorableProductResolvers<ContextType>;
   SponsoredAd?: SponsoredAdResolvers<ContextType>;
@@ -6716,6 +7239,7 @@ export type Resolvers<ContextType = GraphQLContext> = {
   SponsorshipTerminationPreview?: SponsorshipTerminationPreviewResolvers<ContextType>;
   SponsorshipTerminationResult?: SponsorshipTerminationResultResolvers<ContextType>;
   SponsorshipTierOffer?: SponsorshipTierOfferResolvers<ContextType>;
+  SubmitReportPayload?: SubmitReportPayloadResolvers<ContextType>;
   SupporterConnection?: SupporterConnectionResolvers<ContextType>;
   SystemStatus?: SystemStatusResolvers<ContextType>;
   TotpSetup?: TotpSetupResolvers<ContextType>;

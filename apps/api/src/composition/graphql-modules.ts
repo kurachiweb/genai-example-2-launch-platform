@@ -13,6 +13,7 @@ import { paymentsSchemaModule } from '../presentation/graphql/modules/payments/i
 import { productSchemaModule } from '../presentation/graphql/modules/product/index.ts';
 import { profileSchemaModule } from '../presentation/graphql/modules/profile/index.ts';
 import { publicApiSchemaModule } from '../presentation/graphql/modules/public-api/index.ts';
+import { reportingSchemaModule } from '../presentation/graphql/modules/reporting/index.ts';
 import { sponsorshipSchemaModule } from '../presentation/graphql/modules/sponsorship/index.ts';
 import { systemSchemaModule } from '../presentation/graphql/modules/system/index.ts';
 import { ultrasSchemaModule } from '../presentation/graphql/modules/ultras/index.ts';
@@ -41,4 +42,5 @@ export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
   sponsorshipSchemaModule,
   publicApiSchemaModule,
   moderationSchemaModule,
+  reportingSchemaModule,
 ];

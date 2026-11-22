@@ -309,6 +309,12 @@ type AdminMediaFile {
   quarantined: Boolean!
 }
 
+"""プロダクトの未完了の案件"""
+type AdminOpenReportCaseRef {
+  id: ID!
+  status: ReportCaseStatus!
+}
+
 """管理画面のプロダクト"""
 type AdminProduct {
   category: AdminCategoryRef!
@@ -365,6 +371,12 @@ enum AdminProductLaunchState {
   LOST
   SCHEDULED
   WON
+}
+
+"""プロダクトへの通報の件数と未完了の案件"""
+type AdminProductReportSummary {
+  openCase: AdminOpenReportCaseRef
+  reportCount: Int!
 }
 
 """プロダクトの公開状態"""
@@ -448,6 +460,138 @@ input AdminReAuthenticationInput {
 """この応答でだけ見せるリカバリコード"""
 type AdminRecoveryCodeSet {
   codes: [String!]!
+}
+
+"""案件の通報"""
+type AdminReport {
+  """カテゴリの現在の名前"""
+  categoryName: String!
+  id: ID!
+  reason: String!
+  reportedAt: DateTime!
+  reporter: AdminReporter!
+}
+
+"""通報の案件"""
+type AdminReportCase {
+  categoryCounts: [AdminReportCategoryCount!]!
+  firstReportedAt: DateTime!
+  id: ID!
+  infringement: Boolean!
+  lastReportedAt: DateTime!
+
+  """退会で論理削除した通報を除く件数"""
+  reportCount: Int!
+
+  """権利侵害の案件だけ"""
+  responseTime: AdminReportResponseTime
+  status: ReportCaseStatus!
+  target: AdminReportTarget!
+}
+
+"""通報の案件の一覧"""
+type AdminReportCaseConnection {
+  nodes: [AdminReportCase!]!
+  pageInfo: PageInfo!
+}
+
+"""通報の案件の詳細"""
+type AdminReportCaseDetail {
+  case: AdminReportCase!
+  closedAt: DateTime
+  closingReason: String
+
+  """権利侵害の対応中の案件で、投稿者の宛先と利用者側のURLがあれば真"""
+  inquiryAvailable: Boolean!
+  lastInquiry: AdminReportInquiry
+
+  """受付日時の昇順"""
+  reports: [AdminReport!]!
+  resolution: ReportResolution
+  statusChangedAt: DateTime!
+}
+
+"""通報の案件の一覧の絞り込み"""
+input AdminReportCaseFilter {
+  """そのカテゴリの通報を含む案件"""
+  categoryId: ID
+  reportedBefore: DateTime
+
+  """その期間に受け付けた通報を含む案件。開始は含み、終了は含まない"""
+  reportedFrom: DateTime
+  status: ReportCaseStatus
+  targetKind: ReportTargetKind
+}
+
+"""管理画面の通報カテゴリ"""
+type AdminReportCategory {
+  id: ID!
+  infringement: Boolean!
+  name: String!
+
+  """紐付く通報の件数。退会で論理削除した通報を含む"""
+  reportCount: Int!
+  systemDefault: Boolean!
+}
+
+"""案件のカテゴリごとの通報の件数"""
+type AdminReportCategoryCount {
+  categoryId: ID!
+  count: Int!
+
+  """カテゴリの現在の名前"""
+  name: String!
+}
+
+"""最後に送った権利侵害の照会"""
+type AdminReportInquiry {
+  deadline: DateTime!
+  message: String!
+
+  """対応中で回答の期限を過ぎていれば真"""
+  overdue: Boolean!
+  sentAt: DateTime!
+}
+
+"""権利侵害の案件の対応期間"""
+type AdminReportResponseTime {
+  alerts: [ResponseTimeAlert!]!
+  completedAt: DateTime
+
+  """完了の日時が得られない完了した案件はnull"""
+  elapsedSeconds: Int
+  startedAt: DateTime!
+}
+
+"""管理画面の通報の対象"""
+type AdminReportTarget {
+  """退会・削除・物理削除で読めない対象と、対象への参照を消した案件はfalse"""
+  available: Boolean!
+  detached: Boolean!
+
+  """コメントの本文の抜粋"""
+  excerpt: String
+  handle: String
+
+  """対象への参照を消した案件はnull"""
+  id: ID
+  kind: ReportTargetKind!
+
+  """ユーザーはニックネーム、プロダクトは名称"""
+  label: String
+  productHandle: String
+  productId: ID
+  productName: String
+}
+
+"""通報の申出者。kindはmember(ログイン中の利用者)かguest(未ログインと停止中の利用者)"""
+type AdminReporter {
+  handle: String
+
+  """連絡先メールアドレスは返さず、有無だけを返す"""
+  hasContact: Boolean!
+  kind: String!
+  nickname: String
 }
 
 """管理者のロール"""
@@ -554,6 +698,12 @@ type AdminTotpSetup {
 
   """認証アプリへ手入力するためのbase32"""
   secret: String!
+}
+
+"""未対応の案件の件数"""
+type AdminUnhandledReportSummary {
+  infringementOpen: Int!
+  open: Int!
 }
 
 """管理画面の利用者。メールアドレスは返さない"""
@@ -1178,6 +1328,12 @@ type HelpSearchHit {
   title: String!
 }
 
+"""権利侵害の照会の結果"""
+type InfringementInquiryOutcome {
+  deadline: DateTime!
+  sentAt: DateTime!
+}
+
 """問い合わせのカテゴリ"""
 type InquiryCategory {
   id: ID!
@@ -1688,6 +1844,9 @@ type Mutation {
   """対応ステータスの変更。変更後の詳細を返す。モデレーター以上"""
   changeInquiryStatus(inquiryId: ID!, reason: String, status: InquiryStatus!): AdminInquiry!
 
+  """案件の対応ステータスの手での変更"""
+  changeReportCaseStatus(from: ReportCaseStatus!, id: ID!, reason: String, to: ReportCaseStatus!): ReportCaseOutcome!
+
   """招待の完了の2段階目。認証コードで有効化し、ログインする"""
   completeAdminInvitation(token: String!, totpCode: String!): AdminRecoveryCodeSet!
 
@@ -1723,6 +1882,9 @@ type Mutation {
   """モデレーター以上の管理者がプロダクトカテゴリを追加する"""
   createProductCategory(input: ProductCategoryInput!, reason: String): ProductCategory!
 
+  """通報カテゴリの追加"""
+  createReportCategory(name: String!, reason: String): AdminReportCategory!
+
   """
   Customer Portalのセッションの作成。加入したことがある本人のStripe Customerにセッションを作り、移動先のURLを返す。戻り先はプラン管理画面
   """
@@ -1750,6 +1912,9 @@ type Mutation {
 
   """隔離画像の削除"""
   deleteQuarantinedImage(fileId: ID!, reason: String): ModerationOutcome!
+
+  """通報カテゴリの削除。紐付く通報は「その他」へ付け替える"""
+  deleteReportCategory(id: ID!, reason: String): ReportCategoryDeletion!
 
   """多要素認証の無効化"""
   disableTotp(input: ReAuthenticationInput!): Boolean!
@@ -1817,12 +1982,18 @@ type Mutation {
   """自分のAPIキーと同じ名前と権限スコープの新しいキーを追加で発行する。元のキーは残す"""
   reissueApiKey(id: ID!): IssuedApiKey!
 
+  """案件の却下"""
+  rejectReportCase(id: ID!, reason: String!): ReportCaseOutcome!
+
   """管理者操作の隔離理由を外す隔離の解除"""
   releaseQuarantinedImage(fileId: ID!, reason: String): ModerationOutcome!
   renameHelpCategory(id: ID!, name: String!): HelpCategory!
 
   """カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上"""
   renameInquiryCategory(id: ID!, name: String!, reason: String): InquiryCategory!
+
+  """通報カテゴリの名前の変更"""
+  renameReportCategory(id: ID!, name: String!, reason: String): AdminReportCategory!
 
   """ピン留めの群に続けてそれ以外の群の順でカテゴリの全記事のIDを渡す"""
   reorderHelpArticles(categoryId: ID!, orderedIds: [ID!]!): [AdminHelpArticleRow!]!
@@ -1864,6 +2035,12 @@ type Mutation {
   """パスワードリセットの確定"""
   resetPassword(input: ResetPasswordInput!): Boolean!
 
+  """措置による対応済"""
+  resolveReportCaseWithMeasure(id: ID!, reason: String!): ReportCaseOutcome!
+
+  """措置なしの対応済"""
+  resolveReportCaseWithoutMeasure(id: ID!, reason: String!): ReportCaseOutcome!
+
   """本人の開始日前の未決済の申込の決済を始め直す"""
   resumeSponsorshipCheckout(id: ID!): CheckoutStart!
 
@@ -1878,6 +2055,9 @@ type Mutation {
 
   """下書きの保存。最上位管理者"""
   saveLegalDocumentDraft(input: SaveLegalDocumentDraftInput!): AdminLegalDocument!
+
+  """権利侵害の案件の投稿者への照会"""
+  sendInfringementInquiry(id: ID!, message: String!, reason: String): InfringementInquiryOutcome!
 
   """招待の完了の1段階目。ニックネームとパスワードを仮に保存し、多要素認証の設定を始める"""
   startAdminInvitation(
@@ -1915,6 +2095,9 @@ type Mutation {
 
   """停止していないログイン中の利用者の問い合わせの送信"""
   submitMemberInquiry(input: MemberInquiryInput!): MemberInquiry!
+
+  """ユーザー・プロダクト・コメントの通報"""
+  submitReport(input: SubmitReportInput!): SubmitReportPayload!
 
   """利用者の停止"""
   suspendUser(id: ID!, reason: String!): ModerationOutcome!
@@ -2644,6 +2827,9 @@ type Query {
   """プロダクトの評価の一覧(更新日時の新しい順)。firstは1〜50"""
   adminProductRatings(after: String, first: Int!, productId: ID!): AdminRatingConnection!
 
+  """プロダクトへの通報の件数と未完了の案件"""
+  adminProductReportSummary(productId: ID!): AdminProductReportSummary!
+
   """論理削除されていないプロダクトの一覧(登録日時の新しい順)。firstは1〜50"""
   adminProducts(after: String, filter: AdminProductFilter, first: Int!): AdminProductConnection!
 
@@ -2653,11 +2839,23 @@ type Query {
   """評価の一覧(更新日時の新しい順)。firstは1〜50"""
   adminRatings(after: String, filter: AdminRatingFilter, first: Int!): AdminRatingConnection!
 
+  """通報の案件の詳細。無ければnull"""
+  adminReportCase(id: ID!): AdminReportCaseDetail
+
+  """通報の案件の一覧。最後の受付日時の新しい順"""
+  adminReportCases(after: String, filter: AdminReportCaseFilter, first: Int!): AdminReportCaseConnection!
+
+  """管理画面の通報カテゴリ"""
+  adminReportCategories: [AdminReportCategory!]!
+
   """退会者を除く申込の新しい順(1〜50件)。閲覧のみ以上の管理者"""
   adminSponsorships(after: String, filter: AdminSponsorshipFilter, first: Int!): AdminSponsorshipConnection!
 
   """退会済みを除く「未対応」のログインと未ログインの問い合わせの合計件数。閲覧のみ以上"""
   adminUnhandledInquiryCount: Int!
+
+  """未対応の案件の件数"""
+  adminUnhandledReportSummary: AdminUnhandledReportSummary!
 
   """退会していない利用者の一覧(登録日時の新しい順)。firstは1〜50"""
   adminUsers(after: String, filter: AdminUserFilter, first: Int!): AdminUserConnection!
@@ -2812,6 +3010,9 @@ type Query {
   """トップページの当日の予選。開始済みの予選を対戦カードと不戦勝に分けて返す。ログインを求めない"""
   qualifierBoard: QualifierBoard!
 
+  """通報のフォームで選べるカテゴリ"""
+  reportCategories: [ReportCategory!]!
+
   """掲載中の広告。ログインを求めない"""
   sponsoredPlacements: SponsoredPlacements!
 
@@ -2904,6 +3105,49 @@ type RelaunchBlockView {
   releaseAt: DateTime
 }
 
+"""案件の操作の結果"""
+type ReportCaseOutcome {
+  status: ReportCaseStatus!
+}
+
+"""通報の案件の対応ステータス"""
+enum ReportCaseStatus {
+  IN_PROGRESS
+  OPEN
+  REJECTED
+  RESOLVED
+}
+
+"""通報のフォームで選べるカテゴリ"""
+type ReportCategory {
+  id: ID!
+
+  """権利侵害のカテゴリ。未ログインと停止中の利用者には連絡先メールアドレスを求める"""
+  infringement: Boolean!
+  name: String!
+}
+
+"""通報カテゴリの削除の結果"""
+type ReportCategoryDeletion {
+  """「その他」へ付け替えた通報の件数"""
+  reassignedCount: Int!
+}
+
+"""対応済の案件の措置。NONEは措置なしの対応済"""
+enum ReportResolution {
+  COMMENT_HIDE
+  NONE
+  PRODUCT_HIDE
+  USER_SUSPEND
+}
+
+"""通報の対象の種類"""
+enum ReportTargetKind {
+  COMMENT
+  PRODUCT
+  USER
+}
+
 input RequestEmailChangeInput {
   newEmail: String!
   reAuthentication: ReAuthenticationInput!
@@ -2923,6 +3167,12 @@ enum ResendVerificationResult {
 input ResetPasswordInput {
   newPassword: String!
   token: String!
+}
+
+"""権利侵害の案件の対応期間の目標の超過"""
+enum ResponseTimeAlert {
+  DECISION_OVERDUE
+  START_OVERDUE
 }
 
 """下書きの保存"""
@@ -3120,6 +3370,24 @@ type SponsorshipTierOffer {
 
   """決済サービスから取得できなければnull"""
   unitPrice: Money
+}
+
+"""通報の入力"""
+input SubmitReportInput {
+  categoryId: ID!
+
+  """未ログインと停止中の利用者の権利侵害の通報だけで使い、他では捨てる"""
+  contactEmail: String
+  reason: String!
+  targetKind: ReportTargetKind!
+
+  """ユーザーはハンドル、プロダクトとコメントはID"""
+  targetRef: String!
+}
+
+"""通報の受け付けの結果"""
+type SubmitReportPayload {
+  accepted: Boolean!
 }
 
 type SupporterConnection {
