@@ -21,6 +21,7 @@ import {
   createRateLimitCounterClient,
   type RateLimitCounterClient,
 } from '../../lib/workers/rate-limit/rate-limit-counter-client.ts';
+import { REPORTING_PLATFORM_MODULE } from '../../lib/workers/reporting/reporting-platform-module.ts';
 import { createSponsorshipPlatformModule } from '../../lib/workers/sponsorship/sponsorship-platform-module.ts';
 import { createTournamentPlatformModule } from '../../lib/workers/tournament/tournament-platform-module.ts';
 import { createWeekTournamentPlatformModule } from '../../lib/workers/week-tournament/week-tournament-platform-module.ts';
@@ -141,6 +142,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_NOTIFICATIONS_PLATFORM_MODULE,
   ENGAGEMENT_PLATFORM_MODULE,
   MODERATION_PLATFORM_MODULE,
+  REPORTING_PLATFORM_MODULE,
   ADMIN_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,
