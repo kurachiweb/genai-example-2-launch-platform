@@ -3,7 +3,6 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { resetSync } from '@logtape/logtape';
 
 import { CLIENT_PROFILE } from '../../../client/src/composition/app-profile.ts';
-import { DATA_EXPORT_DOWNLOAD_RELAY_ROUTE } from '../../../client/src/composition/data-export-relay-route.ts';
 import {
   BASE_SECURITY_POLICY_SOURCES,
   mergeSecurityPolicySources,
@@ -150,10 +149,9 @@ describe('RELAY_ROUTES', () => {
   });
 
   test('利用者側だけが持つデータエクスポートのダウンロードの中継の経路を含まない', () => {
-    expect(RELAY_ROUTES).not.toContain(DATA_EXPORT_DOWNLOAD_RELAY_ROUTE);
-    expect(RELAY_ROUTES.map(({ path }) => path)).not.toContain(
-      DATA_EXPORT_DOWNLOAD_RELAY_ROUTE.path,
-    );
+    expect(
+      RELAY_ROUTES.filter(({ path }) => path.startsWith('/_bff/exports')),
+    ).toStrictEqual([]);
   });
 
   test('末尾が/*の経路を完全一致の経路より後に置く', () => {
