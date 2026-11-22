@@ -72,6 +72,18 @@ describe('reportingError', () => {
       409,
       'この対象には未完了の別の案件があります。その案件で対応してください。',
     ],
+    [
+      'report_measure_already_applied',
+      'unprocessable',
+      422,
+      '対象は既に非公開(停止中)です。措置なしで対応済にしてください。',
+    ],
+    [
+      'report_target_unavailable',
+      'unprocessable',
+      422,
+      '対象が見つかりません。措置なしで対応済にするか、却下してください。',
+    ],
   ] as const)(
     '%sは種類%s(%d)と文言規則の文言のAppErrorになる',
     (code, kind, status, message) => {

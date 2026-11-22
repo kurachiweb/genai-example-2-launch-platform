@@ -5,7 +5,15 @@ import type {
   AuditLogRecorder,
   PreparedAuditEntry,
 } from '../../../../lib/core/admin/audit-log.ts';
+import type { ReportMeasure } from '../../../../common-lib/reporting/report-case-rules.ts';
 import { AppError } from '../../../../lib/core/errors/app-error.ts';
+import type { CommentModerationService } from '../../moderation/comment-moderation-service.ts';
+import type {
+  ModerationCommand,
+  ModerationOutcome,
+} from '../../moderation/ports.ts';
+import type { ProductModerationService } from '../../moderation/product-moderation-service.ts';
+import type { UserModerationService } from '../../moderation/user-moderation-service.ts';
 import type {
   CaseClosing,
   ReportCaseRecord,
@@ -76,8 +84,15 @@ export type StatusChangeResult = Awaited<
 >;
 export type CloseResult = Awaited<ReturnType<ReportCaseWriter['close']>>;
 
+export const MEASURE_ACTION_ID = '01JQ0MACT00000000000000001';
+
 export interface WorkflowScenario {
   readonly caseRecord?: ReportCaseRecord | undefined;
+  // 2回目以降の案件の照会の結果。省略すれば最初と同じ
+  readonly reloadedCase?: ReportCaseRecord | undefined;
+  readonly reloadError?: Error;
+  readonly measureOutcome?: ModerationOutcome;
+  readonly measureError?: Error;
   readonly statusChangeResult?: StatusChangeResult;
   readonly closeResult?: CloseResult;
   readonly writeError?: Error;
@@ -93,6 +108,12 @@ export interface WorkflowHarness {
   readonly statusChanges: ReportCaseStatusChange[];
   readonly closings: CaseClosing[];
   readonly dispatched: string[];
+  readonly measures: MeasureCall[];
+}
+
+export interface MeasureCall {
+  readonly measure: ReportMeasure;
+  readonly command: ModerationCommand;
 }
 
 const unused = (): never => {
@@ -100,22 +121,67 @@ const unused = (): never => {
 };
 
 const caseStoreOf = (
-  caseRecord: ReportCaseRecord | undefined,
+  scenario: WorkflowScenario,
   calls: string[],
   found: string[],
-): ReportCaseStore => ({
-  find: (caseId) => {
-    calls.push('find');
-    found.push(caseId);
+): ReportCaseStore => {
+  const first = 'caseRecord' in scenario ? scenario.caseRecord : openCaseOf();
+  const reloaded = 'reloadedCase' in scenario ? scenario.reloadedCase : first;
+  return {
+    find: (caseId) => {
+      calls.push('find');
+      found.push(caseId);
+      const isReload = found.length > 1;
+      if (isReload && scenario.reloadError !== undefined) {
+        return Promise.reject(scenario.reloadError);
+      }
+      const record = isReload ? reloaded : first;
+      return Promise.resolve(record?.caseId === caseId ? record : undefined);
+    },
+    search: unused,
+    listReports: unused,
+    countUnhandled: unused,
+    productSummary: unused,
+  };
+};
+
+const measureOf =
+  (
+    measure: ReportMeasure,
+    scenario: WorkflowScenario,
+    calls: string[],
+    measures: MeasureCall[],
+  ) =>
+  (command: ModerationCommand): Promise<ModerationOutcome> => {
+    calls.push(measure);
+    measures.push({ measure, command });
+    if (scenario.measureError !== undefined) {
+      return Promise.reject(scenario.measureError);
+    }
     return Promise.resolve(
-      caseRecord?.caseId === caseId ? caseRecord : undefined,
+      scenario.measureOutcome ?? { changed: true, actionId: MEASURE_ACTION_ID },
     );
-  },
-  search: unused,
-  listReports: unused,
-  countUnhandled: unused,
-  productSummary: unused,
-});
+  };
+
+const moderationOf = (
+  scenario: WorkflowScenario,
+  calls: string[],
+  measures: MeasureCall[],
+) => {
+  const products: ProductModerationService = {
+    hide: measureOf('product.hide', scenario, calls, measures),
+    unhide: unused,
+  };
+  const comments: CommentModerationService = {
+    hide: measureOf('comment.hide', scenario, calls, measures),
+    unhide: unused,
+  };
+  const users: UserModerationService = {
+    suspend: measureOf('user.suspend', scenario, calls, measures),
+    unsuspend: unused,
+  };
+  return { products, comments, users };
+};
 
 // 準備済みの記録は記録の実装だけが作れるため、偽物は型の表明で作る。記録の検証そのものは監査ログのテストが確かめる
 const auditLogOf = (
@@ -192,13 +258,16 @@ export const setupWorkflow = (
   const statusChanges: ReportCaseStatusChange[] = [];
   const closings: CaseClosing[] = [];
   const dispatched: string[] = [];
-  const caseRecord =
-    'caseRecord' in scenario ? scenario.caseRecord : openCaseOf();
+  const measures: MeasureCall[] = [];
+  const moderation = moderationOf(scenario, calls, measures);
   const workflow = new DefaultReportCaseWorkflow(
-    caseStoreOf(caseRecord, calls, found),
+    caseStoreOf(scenario, calls, found),
     writerOf(scenario, calls, statusChanges, closings),
     auditLogOf(calls, prepared, preparedEntries),
     notifierOf(scenario.dispatchError, calls, dispatched),
+    moderation.products,
+    moderation.comments,
+    moderation.users,
   );
   return {
     workflow,
@@ -209,6 +278,7 @@ export const setupWorkflow = (
     statusChanges,
     closings,
     dispatched,
+    measures,
   };
 };
 
@@ -260,6 +330,20 @@ export const STATE_CONFLICT = {
   code: 'report_case_state_conflict',
   message:
     '他の操作で状態が変わりました。最新の内容を読み込んでからやり直してください。',
+  details: undefined,
+} as const;
+
+export const MEASURE_ALREADY_APPLIED = {
+  kind: 'unprocessable',
+  code: 'report_measure_already_applied',
+  message: '対象は既に非公開(停止中)です。措置なしで対応済にしてください。',
+  details: undefined,
+} as const;
+
+export const TARGET_UNAVAILABLE = {
+  kind: 'unprocessable',
+  code: 'report_target_unavailable',
+  message: '対象が見つかりません。措置なしで対応済にするか、却下してください。',
   details: undefined,
 } as const;
 

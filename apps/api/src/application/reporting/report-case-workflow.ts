@@ -11,16 +11,28 @@ import {
   isClosedStatus,
   type ManualStatusChangeKind,
   manualStatusChangeKind,
+  measureFor,
   type ReportAdminAction,
   type ReportCaseStatus,
 } from '../../../common-lib/reporting/report-case-rules.ts';
+import type { ReportTargetKind } from '../../../common-lib/reporting/report-rules.ts';
 import { trimWhiteSpace } from '../../../common-lib/text/white-space.ts';
 import type {
   AuditLogRecorder,
   PreparedAuditEntry,
 } from '../../../lib/core/admin/audit-log.ts';
 import { ADMIN_PLATFORM_TYPES } from '../../../lib/core/admin/identifiers.ts';
+import { AppError } from '../../../lib/core/errors/app-error.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
+import type { CommentModerationService } from '../moderation/comment-moderation-service.ts';
+import type { ModerationErrorCode } from '../moderation/moderation-errors.ts';
+import { MODERATION_TYPES } from '../moderation/moderation-types.ts';
+import type {
+  ModerationCommand,
+  ModerationOutcome,
+} from '../moderation/ports.ts';
+import type { ProductModerationService } from '../moderation/product-moderation-service.ts';
+import type { UserModerationService } from '../moderation/user-moderation-service.ts';
 import type {
   CaseClosing,
   ReportCaseClosingCommand,
@@ -32,6 +44,7 @@ import type {
   ReportCaseWriter,
   ReportNotifier,
 } from './ports.ts';
+import { toReportCaseClosingParticipation } from './report-case-closing-participation.ts';
 import {
   type ReportingErrorCode,
   reportAdminReasonRejectedError,
@@ -68,6 +81,12 @@ const CLOSE_FAILURES: Readonly<
   conflict: 'report_case_state_conflict',
   'not-found': 'report_case_not_found',
 });
+
+const TARGET_MISSING_CODES: ReadonlySet<string> = new Set<ModerationErrorCode>([
+  'product_not_found',
+  'comment_not_found',
+  'user_not_found',
+]);
 
 const logger = getAppLogger(['api', 'application', 'reporting']);
 
@@ -125,10 +144,7 @@ const rejectionPosterNoticeOf = (
   record.targetOwnerUserId === null ? 'skipped' : 'pending';
 
 @injectable()
-export class DefaultReportCaseWorkflow implements Pick<
-  ReportCaseWorkflow,
-  'changeStatus' | 'resolveWithoutMeasure' | 'reject'
-> {
+export class DefaultReportCaseWorkflow implements ReportCaseWorkflow {
   constructor(
     @inject(REPORTING_TYPES.ReportCaseStore)
     private readonly cases: ReportCaseStore,
@@ -138,6 +154,12 @@ export class DefaultReportCaseWorkflow implements Pick<
     private readonly auditLog: AuditLogRecorder,
     @inject(REPORTING_TYPES.ReportNotifier)
     private readonly notifier: ReportNotifier,
+    @inject(MODERATION_TYPES.ProductModerationService)
+    private readonly productModeration: ProductModerationService,
+    @inject(MODERATION_TYPES.CommentModerationService)
+    private readonly commentModeration: CommentModerationService,
+    @inject(MODERATION_TYPES.UserModerationService)
+    private readonly userModeration: UserModerationService,
   ) {}
 
   // 手での変更は記録の訂正のため、完了した案件も変えられ、当事者へ通知せず措置も行わない
@@ -168,6 +190,55 @@ export class DefaultReportCaseWorkflow implements Pick<
     }
     this.#logCommitted(command, to);
     return { status: to };
+  }
+
+  // 案件の完了と措置の記録のIDは参加者が上流の確定と同じ一括の書き込みに入れるため、成功の後に書き込まない
+  async resolveWithMeasure(
+    command: ReportCaseClosingCommand,
+  ): Promise<{ readonly status: 'resolved' }> {
+    const reason = requiredReasonOf('resolve', command.reason);
+    const record = await this.#findOpen(command.caseId);
+    if (record.targetId === null) {
+      throw reportingError('report_target_unavailable');
+    }
+    const closing = {
+      to: 'resolved',
+      resolution: measureFor(record.targetKind),
+      reason,
+      posterNotice: 'none',
+    } as const;
+    const audit = this.#prepare(
+      command,
+      closingAuditOf(closing, 'operation', record.status),
+      reason,
+    );
+    const outcome = await this.#applyMeasure(record.targetKind, command, {
+      targetId: record.targetId,
+      reason,
+      operator: command.operator,
+      at: command.at,
+      participation: toReportCaseClosingParticipation({
+        caseId: command.caseId,
+        ...closing,
+        at: command.at,
+        audit,
+      }),
+    });
+    if (!outcome.changed) {
+      throw reportingError('report_measure_already_applied');
+    }
+    if (outcome.actionId === null) {
+      logger.error(
+        '対象の状態は変わりましたが、措置の記録と通報の案件の完了が確定されませんでした',
+        { caseId: command.caseId },
+      );
+      throw new Error(
+        '措置の記録が確定されなかったため、通報の案件を完了していません',
+      );
+    }
+    this.#logCommitted(command, 'resolved');
+    await this.#notify(command.caseId);
+    return { status: 'resolved' };
   }
 
   async resolveWithoutMeasure(
@@ -213,6 +284,54 @@ export class DefaultReportCaseWorkflow implements Pick<
       throw reportingError('report_case_closed');
     }
     return record;
+  }
+
+  async #applyMeasure(
+    kind: ReportTargetKind,
+    command: ReportCaseCommand,
+    moderation: ModerationCommand,
+  ): Promise<ModerationOutcome> {
+    try {
+      return await this.#measureOf(kind)(moderation);
+    } catch (error: unknown) {
+      if (error instanceof AppError && TARGET_MISSING_CODES.has(error.code)) {
+        throw reportingError('report_target_unavailable');
+      }
+      throw await this.#measureFailureOf(command.caseId, error);
+    }
+  }
+
+  #measureOf(
+    kind: ReportTargetKind,
+  ): (command: ModerationCommand) => Promise<ModerationOutcome> {
+    switch (kind) {
+      case 'product':
+        return (moderation) => this.productModeration.hide(moderation);
+      case 'comment':
+        return (moderation) => this.commentModeration.hide(moderation);
+      case 'user':
+        return (moderation) => this.userModeration.suspend(moderation);
+    }
+  }
+
+  // 同時の完了と読んだ後の物理削除は参加者の文の違反で上流の確定ごと取り消されるため、案件を読み直して見分ける
+  async #measureFailureOf(caseId: string, error: unknown): Promise<unknown> {
+    let current: ReportCaseRecord | undefined;
+    try {
+      current = await this.cases.find(caseId);
+    } catch (reloadError: unknown) {
+      logger.warning('措置の失敗の後に通報の案件を読み直せませんでした', {
+        caseId,
+        error: reloadError,
+      });
+      return error;
+    }
+    if (current === undefined) {
+      return reportingError('report_case_not_found');
+    }
+    return isClosedStatus(current.status)
+      ? reportingError('report_case_state_conflict')
+      : error;
   }
 
   #prepare(

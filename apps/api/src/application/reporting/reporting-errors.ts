@@ -67,6 +67,15 @@ export const REPORTING_ERRORS = Object.freeze({
     message:
       'この対象には未完了の別の案件があります。その案件で対応してください。',
   },
+  report_measure_already_applied: {
+    kind: 'unprocessable',
+    message: '対象は既に非公開(停止中)です。措置なしで対応済にしてください。',
+  },
+  report_target_unavailable: {
+    kind: 'unprocessable',
+    message:
+      '対象が見つかりません。措置なしで対応済にするか、却下してください。',
+  },
 } satisfies Readonly<Record<string, ReportingErrorDefinition>>);
 
 export type ReportingErrorCode = keyof typeof REPORTING_ERRORS;
