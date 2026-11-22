@@ -33,9 +33,9 @@ export interface ExportDocuments {
   readonly files: readonly ExportTextFile[];
 }
 
-export const MANIFEST_PATH = 'manifest.json';
-export const README_PATH = 'README.txt';
-export const SERVICE_NAME = 'Launch Stadium';
+const MANIFEST_PATH = 'manifest.json';
+const README_PATH = 'README.txt';
+const SERVICE_NAME = 'Launch Stadium';
 
 const JSON_INDENT = 2;
 

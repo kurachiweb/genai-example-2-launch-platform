@@ -20,7 +20,7 @@ import {
 } from '../../gateway/internal-only.ts';
 import { readInternalCaller } from '../../gateway/internal-request.ts';
 
-export const ARCHIVE_DOWNLOAD_ROUTE_PATH = '/data-exports/:exportId/archive';
+const ARCHIVE_DOWNLOAD_ROUTE_PATH = '/data-exports/:exportId/archive';
 
 const ARCHIVE_CONTENT_TYPE = 'application/zip';
 
