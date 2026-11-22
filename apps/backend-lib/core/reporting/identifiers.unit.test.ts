@@ -5,10 +5,11 @@ import { REPORTING_PLATFORM_TYPES } from './identifiers.ts';
 const EXPECTED_NAMES = [
   'ReportErasureStore',
   'ReportErasureStatements',
+  'ReportExport',
 ] as const;
 
 describe('REPORTING_PLATFORM_TYPES', () => {
-  test('両アプリが共有する通報の削除の2種の識別子だけを持つ', () => {
+  test('両アプリが共有する通報の削除とデータエクスポートの3種の識別子だけを持つ', () => {
     expect(Object.keys(REPORTING_PLATFORM_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

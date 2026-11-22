@@ -8,9 +8,13 @@ import type { Container } from 'inversify';
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { REPORTING_PLATFORM_TYPES } from '../../lib/core/reporting/identifiers.ts';
-import type { ReportErasureStore } from '../../lib/core/reporting/ports.ts';
+import type {
+  ReportErasureStore,
+  ReportExport,
+} from '../../lib/core/reporting/ports.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { D1ReportErasureStore } from '../../lib/workers/reporting/d1-report-erasure-store.ts';
+import { D1ReportExport } from '../../lib/workers/reporting/d1-report-export.ts';
 import type { ReportErasureStatements } from '../../lib/workers/reporting/report-erasure-statements.ts';
 import {
   clearReportingState,
@@ -97,6 +101,37 @@ describe.each(INVOCATION_KINDS)(
         })),
       ).toEqual([{ targetId: null, targetDetachedAt: T0 }]);
       expect((await readReports()).map((row) => row.caseId)).toHaveLength(1);
+    });
+
+    test('処理単位のコンテナからデータエクスポートの通報の照会をD1の実装に解決し、利用者の通報を対象の参照とともに読める', async () => {
+      const container = createContainer(kind);
+      const reportExport = container.get<ReportExport>(
+        REPORTING_PLATFORM_TYPES.ReportExport,
+      );
+      await seed(
+        [
+          openProductCaseOf(1, {
+            targetKind: 'user',
+            targetId: reporterIdOf(1),
+            targetOwnerUserId: reporterIdOf(1),
+            productId: null,
+          }),
+          openProductCaseOf(2),
+        ],
+        [memberReportOf(1, 1, 1), memberReportOf(2, 2, 1), guestReportOf(3, 2)],
+      );
+
+      const page = await reportExport.listPage({
+        userId: reporterIdOf(1),
+        limit: 20,
+      });
+
+      expect(reportExport).toBeInstanceOf(D1ReportExport);
+      expect(page.records.map((record) => record.targetRef)).toEqual([
+        'reporter1',
+        null,
+      ]);
+      expect(page.nextAfter).toBeNull();
     });
   },
 );

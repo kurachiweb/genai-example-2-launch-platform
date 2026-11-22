@@ -2,8 +2,12 @@ import { ContainerModule } from 'inversify';
 
 import type { AppModule } from '../../core/di/app-module.ts';
 import { REPORTING_PLATFORM_TYPES } from '../../core/reporting/identifiers.ts';
-import type { ReportErasureStore } from '../../core/reporting/ports.ts';
+import type {
+  ReportErasureStore,
+  ReportExport,
+} from '../../core/reporting/ports.ts';
 import { D1ReportErasureStore } from './d1-report-erasure-store.ts';
+import { D1ReportExport } from './d1-report-export.ts';
 import type { ReportErasureStatements } from './report-erasure-statements.ts';
 
 // 経路を持たないモジュールは、routesを除いた形にすると環境を指定したどのアプリのAppModuleの一覧にも加えられる
@@ -17,6 +21,9 @@ export const REPORTING_PLATFORM_MODULE: Omit<AppModule, 'routes'> = {
       REPORTING_PLATFORM_TYPES.ReportErasureStatements,
     )
       .to(D1ReportErasureStore)
+      .inSingletonScope();
+    bind<ReportExport>(REPORTING_PLATFORM_TYPES.ReportExport)
+      .to(D1ReportExport)
       .inSingletonScope();
   }),
 };

@@ -60,7 +60,7 @@
   - _Depends: 1.2_
   - _Requirements: 17.1, 17.2, 17.4, 17.5, 17.6, 17.9, 17.10_
 
-- [ ] 2.2 データエクスポートの通報の照会を作る
+- [x] 2.2 データエクスポートの通報の照会を作る
   - data-exportのeventのapplication層が読み込めるよう、契約(`ReportExportRecord`・`ReportExport`)を`apps/backend-lib/core/reporting/ports.ts`に、識別子を2.1の`REPORTING_PLATFORM_TYPES`に加え、D1の実装`D1ReportExport`を`workers/reporting/d1-report-export.ts`に作って2.1のプラットフォームモジュールに束縛する。上流の`UserProfileDirectory`・`ProductDirectory`の契約と識別子は`core/profile`・`core/product`から読み込む
   - 先に、Workers統合テストで、項目(ID・対象の種類・対象の参照・受付時点のカテゴリ名・理由・受付日時)とIDの昇順と続きの位置、ユーザーとプロダクトの現在のハンドルとコメントのID、退会・物理削除の対象と対象への参照を消した通報の参照のnull、カテゴリの付け替えの後も受付時点の名前であること、論理削除の除外、対応ステータスと連絡先を返さないことを確かめる
   - 完了状態: Workers統合テストが成功し、eventで照会を解決できる
@@ -361,3 +361,4 @@
 - 3.4: `D1ReportCaseStore`の`search`は`(last_reported_at, id)`の降順でカーソルは`base64url('<ミリ秒>:<ID>')`(処理はファイル内の非公開の関数)。カテゴリと受付期間は同じ論理削除していない通報で満たす`EXISTS`で絞り、期間は開始を含み終了を含まない。カテゴリごとの件数は件数の降順→カテゴリのIDの昇順(設計に記載なし)。`lastReportedAt`は列の値で、最後の通報だけが論理削除された案件では表示する通報より新しい日時が出る。未対応は`status = 'open'`だけ、権利侵害は`infringement_reported_at IS NOT NULL`。`productSummary`は`target_kind = 'product' AND product_id = ?`で、プロダクトの対象では`productId`が対象のIDと同じ(4.1が入れる)。**内訳の`inArray`はページの件数だけバインド変数を使うため、4.8・5.4は1ページを50件以下に抑える**(`db/002`の上限100)
 - 4.3: `DefaultReportCategoryService`。**設計のFile Structure Planに無い`apps/api/src/application/reporting/reporting-errors.ts`(`REPORTING_ERRORS`)を、既存のinquiry-chat・help-center・ugc-moderationの`application/<機能>/<機能>-errors.ts`の形に合わせて作った。4.2・4.5・4.6・4.7のユースケースが投げるコードと文言はここへ追記し、5.2のpresentationの`errors.ts`はここを読む(並行のタスクが同時に追記しないよう、親が順に割り当てる)**。`report_category_protected`は設計どおり`unprocessable`(422)で、inquiry・helpの`conflict`と違う。重複のエラーには`name`の欄の詳細を付ける。`rename`は成功の後に`countReports`をもう1回呼んで件数を返す
 - 4.1: `DirectoryReportTargetResolver`(`apps/api/src/application/reporting/report-target-resolver.ts`)。**`describe`の結果の鍵は同じファイルからexportする`reportTargetKeyOf(key)`(`'<kind>:<targetId>'`、`targetId`がnullなら`'<kind>:'`)で作る(4.4・4.7・4.8はこの関数を使う)**。コメントの対象のプロダクトは鍵の`productId`から引く。抜粋は`truncateGraphemes(body, REPORT_LIST_EXCERPT_MAX)`(200書記素、省略記号なし、engagementの前例)。`describe`は停止中の利用者・非公開化のプロダクト・論理削除や非公開化や匿名化のコメントも`available: true`で返し(管理者の判断のため)、退会の利用者と削除のプロダクトは上流が返さないため`available: false`
+- 2.2: `REPORTING_PLATFORM_TYPES.ReportExport`(`D1ReportExport`、`listPage({ userId, after?, limit })`)はdata-exportの設計の`ExportReport`と同じ項目と型。呼び出し側(data-exportの`CorrespondenceSourceReader`)はdata-exportのspecのタスクで配線する(data-exportは未着手)。不正なカーソルは`AppError(bad_request, 'invalid_cursor')`(`D1InquiryExport`の前例)、`limit`は呼び出し側が1〜20で渡す前提で検査しない。`createdAt`は`reports.reported_at`。停止中の利用者・非公開化のプロダクトもハンドルを返す。プラットフォームモジュールの束縛のテストは上流の`PROFILE_PLATFORM_MODULE`・`PRODUCT_PLATFORM_MODULE`を含むコンテナで組む

@@ -4,9 +4,13 @@ import type { Container } from 'inversify';
 import { beforeEach, describe, expect, test } from 'vitest';
 
 import { REPORTING_PLATFORM_TYPES } from '../../lib/core/reporting/identifiers.ts';
-import type { ReportErasureStore } from '../../lib/core/reporting/ports.ts';
+import type {
+  ReportErasureStore,
+  ReportExport,
+} from '../../lib/core/reporting/ports.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { D1ReportErasureStore } from '../../lib/workers/reporting/d1-report-erasure-store.ts';
+import { D1ReportExport } from '../../lib/workers/reporting/d1-report-export.ts';
 import type { ReportErasureStatements } from '../../lib/workers/reporting/report-erasure-statements.ts';
 import {
   clearReportingState,
@@ -81,6 +85,14 @@ describe.each(INVOCATION_KINDS)(
       expect((await readReports()).map((row) => row.id)).toEqual([
         reportIdOf(2),
       ]);
+    });
+
+    test('処理単位のコンテナからデータエクスポートの通報の照会をD1の実装に解決できる', () => {
+      const container = createContainer(kind);
+
+      expect(
+        container.get<ReportExport>(REPORTING_PLATFORM_TYPES.ReportExport),
+      ).toBeInstanceOf(D1ReportExport);
     });
   },
 );

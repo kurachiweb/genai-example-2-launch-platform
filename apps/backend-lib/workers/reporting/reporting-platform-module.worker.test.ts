@@ -7,10 +7,16 @@ import { beforeEach, describe, expect, expectTypeOf, test } from 'vitest';
 import type { AppModule } from '../../core/di/app-module.ts';
 import type { InvocationScopeInfo } from '../../core/di/identifiers.ts';
 import { REPORTING_PLATFORM_TYPES } from '../../core/reporting/identifiers.ts';
-import type { ReportErasureStore } from '../../core/reporting/ports.ts';
+import type {
+  ReportErasureStore,
+  ReportExport,
+} from '../../core/reporting/ports.ts';
 import { createInvocationContainer } from '../di/invocation-container.ts';
+import { PRODUCT_PLATFORM_MODULE } from '../product/product-platform-module.ts';
+import { PROFILE_PLATFORM_MODULE } from '../profile/profile-platform-module.ts';
 import type { PlatformHonoEnv } from '../http/hono-env.ts';
 import { D1ReportErasureStore } from './d1-report-erasure-store.ts';
+import { D1ReportExport } from './d1-report-export.ts';
 import type { ReportErasureStatements } from './report-erasure-statements.ts';
 import { REPORTING_PLATFORM_MODULE } from './reporting-platform-module.ts';
 import {
@@ -41,7 +47,11 @@ function createContainer(
         clientIp: undefined,
       },
     },
-    [REPORTING_PLATFORM_MODULE],
+    [
+      REPORTING_PLATFORM_MODULE,
+      PROFILE_PLATFORM_MODULE,
+      PRODUCT_PLATFORM_MODULE,
+    ],
   );
 }
 
@@ -87,12 +97,43 @@ describe('REPORTING_PLATFORM_MODULE', () => {
     expect(await readCaseIds()).toEqual([]);
   });
 
+  test('データエクスポートの照会をD1の実装に解決し、上流の利用者とプロダクトの束縛で対象の参照を求める', async () => {
+    const container = createContainer('queue');
+    const reportExport = container.get<ReportExport>(
+      REPORTING_PLATFORM_TYPES.ReportExport,
+    );
+    await seed(
+      [
+        openProductCaseOf(1, {
+          targetKind: 'user',
+          targetId: reporterIdOf(1),
+          targetOwnerUserId: reporterIdOf(1),
+          productId: null,
+        }),
+        openProductCaseOf(2),
+      ],
+      [memberReportOf(1, 1, 1), memberReportOf(2, 2, 1)],
+    );
+
+    const page = await reportExport.listPage({
+      userId: reporterIdOf(1),
+      limit: 20,
+    });
+
+    expect(reportExport).toBeInstanceOf(D1ReportExport);
+    expect(page.records.map((record) => record.targetRef)).toEqual([
+      'reporter1',
+      null,
+    ]);
+    expect(page.nextAfter).toBeNull();
+  });
+
   test.each(['fetch', 'queue', 'scheduled'] as const)(
-    '%sの処理単位でも束縛した2つの識別子をすべて解決する',
+    '%sの処理単位でも束縛した3つの識別子をすべて解決する',
     (kind) => {
       const container = createContainer(kind);
 
-      expect(BOUND_IDENTIFIERS).toHaveLength(2);
+      expect(BOUND_IDENTIFIERS).toHaveLength(3);
       for (const identifier of BOUND_IDENTIFIERS) {
         expect(container.get(identifier)).toBeDefined();
       }
