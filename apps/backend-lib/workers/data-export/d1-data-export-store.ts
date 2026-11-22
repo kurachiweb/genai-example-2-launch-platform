@@ -1,10 +1,28 @@
-import { and, desc, eq, gt, inArray, lt } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  or,
+  sql,
+} from 'drizzle-orm';
 import { inject, injectable } from 'inversify';
 
 import type { Database } from '../../../db/client.ts';
 import { dataExports } from '../../../db/schema/data-export/data-exports.ts';
 import { PLATFORM_TYPES } from '../../core/di/identifiers.ts';
 import type {
+  DataExportFailureKind,
+  DataExportStatus,
+} from '../../../common-lib/data-export/data-export-rules.ts';
+import type {
+  ClaimResult,
   DataExportRecord,
   DataExportStore,
 } from '../../core/data-export/ports.ts';
@@ -13,14 +31,18 @@ const REMOVE_CHUNK_SIZE = 90;
 
 type StoredExport = typeof dataExports.$inferSelect;
 
-type ImplementedOperation =
-  | 'create'
-  | 'remove'
-  | 'find'
-  | 'findOwnedReady'
-  | 'listByUserPage'
-  | 'listForUser'
-  | 'removeMany';
+const UNFINISHED_STATUSES: readonly DataExportStatus[] = [
+  'queued',
+  'generating',
+];
+
+function runningUnder(id: string, runToken: string) {
+  return and(
+    eq(dataExports.id, id),
+    eq(dataExports.runToken, runToken),
+    eq(dataExports.status, 'generating'),
+  );
+}
 
 function toRecord(row: StoredExport): DataExportRecord {
   return {
@@ -45,10 +67,7 @@ function toRecord(row: StoredExport): DataExportRecord {
 }
 
 @injectable()
-export class D1DataExportStore implements Pick<
-  DataExportStore,
-  ImplementedOperation
-> {
+export class D1DataExportStore implements DataExportStore {
   constructor(@inject(PLATFORM_TYPES.Database) private readonly db: Database) {}
 
   async create(input: {
@@ -104,6 +123,221 @@ export class D1DataExportStore implements Pick<
       )
       .limit(1);
     return row === undefined ? undefined : toRecord(row);
+  }
+
+  async claim(input: {
+    readonly id: string;
+    readonly runToken: string;
+    readonly now: Date;
+    readonly leaseUntil: Date;
+  }): Promise<ClaimResult> {
+    const [claimed] = await this.db
+      .update(dataExports)
+      .set({
+        status: 'generating',
+        runToken: input.runToken,
+        leaseExpiresAt: input.leaseUntil,
+        attempts: sql`${dataExports.attempts} + 1`,
+        updatedAt: input.now,
+      })
+      .where(
+        and(
+          eq(dataExports.id, input.id),
+          inArray(dataExports.status, UNFINISHED_STATUSES),
+          or(
+            isNull(dataExports.leaseExpiresAt),
+            lte(dataExports.leaseExpiresAt, input.now),
+          ),
+        ),
+      )
+      .returning();
+    if (claimed !== undefined) {
+      return { kind: 'claimed', record: toRecord(claimed) };
+    }
+    const current = await this.find(input.id);
+    if (current === undefined) {
+      return { kind: 'not_found' };
+    }
+    return UNFINISHED_STATUSES.includes(current.status)
+      ? { kind: 'busy' }
+      : { kind: 'finished' };
+  }
+
+  async recordUpload(input: {
+    readonly id: string;
+    readonly runToken: string;
+    readonly uploadId: string;
+    readonly objectKey: string;
+  }): Promise<boolean> {
+    const updated = await this.db
+      .update(dataExports)
+      .set({ uploadId: input.uploadId, objectKey: input.objectKey })
+      .where(runningUnder(input.id, input.runToken))
+      .returning({ id: dataExports.id });
+    return updated.length > 0;
+  }
+
+  async releaseLease(input: {
+    readonly id: string;
+    readonly runToken: string;
+  }): Promise<void> {
+    await this.db
+      .update(dataExports)
+      .set({ runToken: null, leaseExpiresAt: null, uploadId: null })
+      .where(runningUnder(input.id, input.runToken));
+  }
+
+  async markReady(input: {
+    readonly id: string;
+    readonly runToken: string;
+    readonly fileName: string;
+    readonly byteSize: number;
+    readonly completedAt: Date;
+    readonly expiresAt: Date;
+  }): Promise<boolean> {
+    const updated = await this.db
+      .update(dataExports)
+      .set({
+        status: 'ready',
+        fileName: input.fileName,
+        byteSize: input.byteSize,
+        completedAt: input.completedAt,
+        expiresAt: input.expiresAt,
+        noticeStatus: 'pending',
+        uploadId: null,
+        runToken: null,
+        leaseExpiresAt: null,
+        updatedAt: input.completedAt,
+      })
+      .where(runningUnder(input.id, input.runToken))
+      .returning({ id: dataExports.id });
+    return updated.length > 0;
+  }
+
+  async markFailed(input: {
+    readonly id: string;
+    readonly kind: DataExportFailureKind;
+    readonly failedAt: Date;
+    readonly notice: 'pending' | 'skipped';
+  }): Promise<DataExportRecord | undefined> {
+    const [row] = await this.db
+      .update(dataExports)
+      .set({
+        status: 'failed',
+        failureKind: input.kind,
+        failedAt: input.failedAt,
+        noticeStatus: input.notice,
+        updatedAt: input.failedAt,
+      })
+      .where(
+        and(
+          eq(dataExports.id, input.id),
+          inArray(dataExports.status, UNFINISHED_STATUSES),
+        ),
+      )
+      .returning();
+    return row === undefined ? undefined : toRecord(row);
+  }
+
+  async advanceNotice(input: {
+    readonly id: string;
+    readonly to: 'requested' | 'skipped';
+  }): Promise<boolean> {
+    const updated = await this.db
+      .update(dataExports)
+      .set({ noticeStatus: input.to })
+      .where(
+        and(
+          eq(dataExports.id, input.id),
+          eq(dataExports.noticeStatus, 'pending'),
+        ),
+      )
+      .returning({ id: dataExports.id });
+    return updated.length > 0;
+  }
+
+  async listStalled(input: {
+    readonly requestedBefore: Date;
+    readonly limit: number;
+  }): Promise<readonly DataExportRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(dataExports)
+      .where(
+        and(
+          inArray(dataExports.status, UNFINISHED_STATUSES),
+          lt(dataExports.requestedAt, input.requestedBefore),
+        ),
+      )
+      .orderBy(asc(dataExports.requestedAt), asc(dataExports.id))
+      .limit(input.limit);
+    return rows.map(toRecord);
+  }
+
+  async listPendingNotices(input: {
+    readonly updatedBefore: Date;
+    readonly limit: number;
+  }): Promise<readonly DataExportRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(dataExports)
+      .where(
+        and(
+          eq(dataExports.noticeStatus, 'pending'),
+          lt(dataExports.updatedAt, input.updatedBefore),
+        ),
+      )
+      .orderBy(asc(dataExports.updatedAt), asc(dataExports.id))
+      .limit(input.limit);
+    return rows.map(toRecord);
+  }
+
+  async listExpired(input: {
+    readonly now: Date;
+    readonly limit: number;
+  }): Promise<readonly DataExportRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(dataExports)
+      .where(
+        and(
+          eq(dataExports.status, 'ready'),
+          lte(dataExports.expiresAt, input.now),
+        ),
+      )
+      .orderBy(asc(dataExports.expiresAt), asc(dataExports.id))
+      .limit(input.limit);
+    return rows.map(toRecord);
+  }
+
+  async markExpired(id: string): Promise<boolean> {
+    const updated = await this.db
+      .update(dataExports)
+      .set({ status: 'expired', objectKey: null })
+      .where(and(eq(dataExports.id, id), eq(dataExports.status, 'ready')))
+      .returning({ id: dataExports.id });
+    return updated.length > 0;
+  }
+
+  async listFailedWithUpload(input: {
+    readonly limit: number;
+  }): Promise<readonly DataExportRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(dataExports)
+      .where(
+        and(eq(dataExports.status, 'failed'), isNotNull(dataExports.uploadId)),
+      )
+      .orderBy(asc(dataExports.id))
+      .limit(input.limit);
+    return rows.map(toRecord);
+  }
+
+  async clearUpload(id: string): Promise<void> {
+    await this.db
+      .update(dataExports)
+      .set({ uploadId: null })
+      .where(and(eq(dataExports.id, id), eq(dataExports.status, 'failed')));
   }
 
   async listByUserPage(input: {

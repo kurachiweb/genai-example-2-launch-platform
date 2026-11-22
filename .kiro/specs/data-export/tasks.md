@@ -101,7 +101,7 @@
   - _Boundary: DataExportStore_
   - _Requirements: 1.2, 1.7, 10.2, 10.4, 11.1_
 
-- [ ] 4.2 要求の記録の状態の遷移と日次の処理の照会を作る
+- [x] 4.2 要求の記録の状態の遷移と日次の処理の照会を作る
   - 4.1と同じ要求の記録の読み書きのファイルを触るため、4.1の後に行う
   - 先に、Workers統合テストで、リースの取得(2つの実行で1つだけ取れる・期限切れのリースの取り直し・完了と期限切れと失敗で終了・無い記録)、実行の印が一致するときだけのアップロードの記録と完了(通知の状態を依頼待ちにする)、リースの解放、待ちと生成中からだけの失敗の確定と通知の状態、依頼待ちからだけの通知の状態の前進、完了だけを期限切れにして履歴の列を残しキーを外すこと、停滞・依頼待ち・期限を過ぎた完了(期限の境界)・途中のアップロードが残る失敗の照会とアップロードのIDの消去を確かめる
   - 完了状態: Workers統合テストが成功し、全ての状態の遷移が条件付きの更新で1回だけ起きる
@@ -277,3 +277,4 @@
 - 4.1: `ports.ts`に4.2〜6.6が使う契約を全て定めた。`D1DataExportStore`は4.1の範囲だけを実装して`implements Pick<DataExportStore, ImplementedOperation>`としたため、4.2で`Pick`と`ImplementedOperation`を外し`implements DataExportStore`にする(テストの`store`の型注釈も同時に)。`create`は`createdAt`・`updatedAt`を`requestedAt`と同じ値にする。テストの補助は`workers/data-export/testing/data-export-fixtures.ts`。
 - 3.2: 4関数は`DocumentInput = {snapshot, plan, stored}`を受け取り、格納できなかったファイルのパスの`null`化は`documents/file-reference.ts`の`referenceFile`が行う。上流の型に合わせ`emailVerifiedAt`・`plan.currentPeriodEndsAt`・`notificationSettings`を`null`で出し得るとし、データエクスポートの文書の表を改めた。
 - 3.3: コメント・Upvote・評価の`product`の補完は6.3の読み取りの部品の責務で、活動のJSONの関数はスナップショットの`ExportProductRef | null`を写すだけ。5関数は対応する配列だけを受け取る(`buildCommentsDocument(snapshot.comments)`など)。並び順は入力のまま。
+- 4.2: `markReady`は`updated_at`を`completedAt`に、`markFailed`は`failedAt`にし、`listPendingNotices`の「確定から1時間」の基準にする。`recordUpload`は`object_key`も書く(完了のCHECKのため)。依頼待ちのまま`markExpired`すると`updated_at`が更新され、送り直しが最大1時間遅れる(実害なしと判断)。境界は`listStalled`・`listPendingNotices`が`<`、`listExpired`とリースの期限が`<=`。
