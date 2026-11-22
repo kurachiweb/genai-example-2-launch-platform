@@ -80,7 +80,7 @@
   - 再ローンチ可否ポリシー: product-launchが所有し、tournament-week・tournament-yearが「トーナメント結果確定待ち」の条件を供給する
   - 決済フルフィルメント: paymentsが購入種別とフルフィルメントのポートを所有し、ultras-subscription・tournament-week・tournament-year・sponsorshipが実装する。返金の共通部品(`PaymentRefunds`)・未完了の決済セッションの失効(`OpenCheckoutExpirer`)・23:40の決済の突合のジョブ(`payments.checkout-reconciliation`、`order` 10)もpaymentsが所有し、後続specは突合の結果をフルフィルメントで受け取る(同じ時刻に突合のジョブを重ねて作らない)。23:40に他のジョブを登録するspec(match-engineなど)は`order`を10より大きくする
   - 通知イベント契約: notificationsが所有し、tournament-week・tournament-yearが発行する(予選のマッチはnotificationsがmatch-engineの`MatchDirectory.listForDate`で自ら集める)
-  - Cron・Queuesのディスパッチ: backend-platformが所有し、各specがジョブとメッセージ種別を登録する(時刻は日次タイムラインに従う)。ジョブと波及処理の名前は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`とする。4:21のジョブの名前と順序は日次タイムラインの表に載せ、表が無ければ最初にジョブを足すspecが作る。4:21のジョブの`order`とユーザーライフサイクルの波及処理の`order`は、下の表でspecごとに割り当てた同じ百の位の帯を使う(2026-10-23に開発者が決定)。他のspecのジョブが無い時刻に帯の値を使うジョブ(sponsorshipの0:07など)も、使用中の値に時刻とともに載せる。波及処理の`order`は0〜9999が各ドメインspec、10000以上がidentity-auth専用である。backend-platformの`createCronRegistry`とidentity-authの`createAsyncLifecycleRegistry`は`order`の範囲を検査せず、同じ時刻・同じ種類での重複だけを拒否するため、1000以上の帯もそのまま使える。帯の数値は同じ時刻・同じ種類の中の実行順でもあり、後続specの帯(1000番台以降)は上流のmedia-pipeline・email-deliveryのジョブの後に動く。content-processingの検索のキーワードの再抽出は、削除済みのデータの再抽出を要求しないよう全specの削除のジョブより後に動かすため、2300番台を使う(2026-10-31に開発者が決定)。上流の値より前に動く必要があるジョブ・波及処理を持つspecは、帯の外の値を使わずに設計時に開発者へ確認する。表に無いspec(基盤spec・legal-pages)は4:21のジョブも波及処理も持たず、必要になったら2400番台以降の未使用の帯を表に足して使う
+  - Cron・Queuesのディスパッチ: backend-platformが所有し、各specがジョブとメッセージ種別を登録する(時刻は日次タイムラインに従う)。ジョブと波及処理の名前は`<spec名>.<名詞句>`、メッセージ種別は`<ドメイン>.<動詞句>`とする。4:21のジョブの名前と順序は日次タイムラインの表に載せ、表が無ければ最初にジョブを足すspecが作る。4:21のジョブの`order`とユーザーライフサイクルの波及処理の`order`は、下の表でspecごとに割り当てた同じ百の位の帯を使う(2026-10-23に開発者が決定)。他のspecのジョブが無い時刻に帯の値を使うジョブ(sponsorshipの0:07など)も、使用中の値に時刻とともに載せる。波及処理の`order`は0〜9999が各ドメインspec、10000以上がidentity-auth専用である。backend-platformの`createCronRegistry`とidentity-authの`createAsyncLifecycleRegistry`は`order`の範囲を検査せず、同じ時刻・同じ種類での重複だけを拒否するため、1000以上の帯もそのまま使える。帯の数値は同じ時刻・同じ種類の中の実行順でもあり、後続specの帯(1000番台以降)は上流のmedia-pipeline・email-deliveryのジョブの後に動く。content-processingの検索のキーワードの再抽出は、削除済みのデータの再抽出を要求しないよう全specの削除のジョブより後に動かすため、2300番台を使う(2026-10-31に開発者が決定)。content-reportingの波及処理は、ugc-moderationの措置の記録の削除(1900)を全ドメインの物理削除の処理の後に保つため、帯の外の1800を使う(2026-11-22に開発者が決定)。上流の値より前に動く必要があるジョブ・波及処理を持つspecは、帯の外の値を使わずに設計時に開発者へ確認する。表に無いspec(基盤spec・legal-pages)は4:21のジョブも波及処理も持たず、必要になったら2400番台以降の未使用の帯を表に足して使う
 
     | spec                | 帯                                              | 使用中の値                             |
     | ------------------- | ----------------------------------------------- | -------------------------------------- |
@@ -104,7 +104,7 @@
     | tournament-year     | 1700番台                                        | 4:21は1700、波及処理は1700             |
     | public-api          | 1800番台                                        | —                                      |
     | ugc-moderation      | 1900番台                                        | 4:21は1900・1910、波及処理は1900       |
-    | content-reporting   | 2000番台                                        | 4:21は2000・2010、波及処理は2000       |
+    | content-reporting   | 2000番台                                        | 4:21は2000・2010、波及処理は1800       |
     | data-export         | 2100番台                                        | 4:21は2100・2110、波及処理は2100       |
     | launch-readiness    | 2200番台                                        | —                                      |
 
