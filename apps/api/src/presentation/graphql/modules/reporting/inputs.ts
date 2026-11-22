@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import { CATEGORY_NAME_MAX } from '../../../../../common-lib/admin/admin-input-rules.ts';
-import { EMAIL_MAX_LENGTH } from '../../../../../common-lib/identity/account-input-rules.ts';
 import {
   checkInquiryMessage,
   REPORT_ADMIN_REASON_MAX,
@@ -91,18 +90,14 @@ const reportReason = inputRuleOf(
   (value) => REPORTING_INPUT_MESSAGES.reason[checkReportReason(value)],
 );
 
-// 連絡先の要否は通報者の種類で、形式は要るときだけリゾルバが確かめるため、ここでは長さだけを確かめる
+// 連絡先の要否は通報者の種類で決まり、長さと形式は要るときだけリゾルバが確かめるため、ここでは前後の空白を除くだけにする
 const contactEmail = z
   .string()
   .nullish()
   .transform((value) => {
     const trimmed = trimWhiteSpace(value ?? '');
     return trimmed === '' ? undefined : trimmed;
-  })
-  .refine(
-    (value) => value === undefined || value.length <= EMAIL_MAX_LENGTH,
-    REPORTING_INPUT_MESSAGES.contactEmailTooLong,
-  );
+  });
 
 const targetRef = z
   .string()

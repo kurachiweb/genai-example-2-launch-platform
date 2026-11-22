@@ -57,17 +57,17 @@ export const INPUT_ARGUMENT = 'input';
 
 export const callerForbiddenError = (): AppError => authError('forbidden');
 
-// 連絡先の要否は通報者の種類で決まるため、引数の検証の後にリゾルバが形式を確かめる。詳細の欄はユースケースと同じく入力からの相対の経路にする
-export const reportContactEmailFormatError = (): AppError =>
+// 連絡先の要否は通報者の種類で決まるため、引数の検証の後にリゾルバが長さと形式を確かめる。詳細の欄はユースケースと同じく入力からの相対の経路にする
+const contactEmailError = (code: string, message: string): AppError =>
   new AppError({
     kind: 'bad_request',
     code: 'validation_error',
     message: '入力内容を確認してください。',
-    details: [
-      {
-        field: 'contactEmail',
-        code: 'invalid-format',
-        message: AUTH_INPUT_MESSAGES.emailFormat,
-      },
-    ],
+    details: [{ field: 'contactEmail', code, message }],
   });
+
+export const reportContactEmailTooLongError = (): AppError =>
+  contactEmailError('too-long', REPORTING_INPUT_MESSAGES.contactEmailTooLong);
+
+export const reportContactEmailFormatError = (): AppError =>
+  contactEmailError('invalid-format', AUTH_INPUT_MESSAGES.emailFormat);

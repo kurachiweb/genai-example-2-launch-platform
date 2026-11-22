@@ -25,8 +25,6 @@ const TARGET_REF_MESSAGE =
 const REPORT_CATEGORY_MESSAGE = 'カテゴリを選んでください。';
 const REASON_EMPTY_MESSAGE = '理由を入力してください。';
 const REASON_TOO_LONG_MESSAGE = '理由は1,000文字以内で入力してください。';
-const CONTACT_EMAIL_TOO_LONG_MESSAGE =
-  'メールアドレスは254文字以内で入力してください。';
 const CASE_ID_MESSAGE = '通報の案件が見つかりません。';
 const CATEGORY_ID_MESSAGE = 'カテゴリが見つかりません。';
 const PRODUCT_ID_MESSAGE = 'プロダクトが見つかりません。';
@@ -190,31 +188,18 @@ describe('SUBMIT_REPORT_ARGS', () => {
     ).toBeUndefined();
   });
 
-  test('前後の空白を除いて254文字の連絡先を受け付け、255文字を上限の欄の誤りにする。形式と要否は検証しない', () => {
+  test('前後の空白を除いた連絡先を、長さ・形式・要否を検証せずに渡す', () => {
     const domain = '@example.example';
-    const atMax = `${'a'.repeat(254 - domain.length)}${domain}`;
+    const overMax = `${'a'.repeat(255 - domain.length)}${domain}`;
 
     expect(
-      SUBMIT_REPORT_ARGS.parse(submitInputOf({ contactEmail: ` ${atMax} ` }))
+      SUBMIT_REPORT_ARGS.parse(submitInputOf({ contactEmail: ` ${overMax} ` }))
         .input.contactEmail,
-    ).toBe(atMax);
+    ).toBe(overMax);
     expect(
       SUBMIT_REPORT_ARGS.parse(submitInputOf({ contactEmail: 'not-an-email' }))
         .input.contactEmail,
     ).toBe('not-an-email');
-    expect(
-      issuesOf(
-        SUBMIT_REPORT_ARGS.safeParse(
-          submitInputOf({ contactEmail: `a${atMax}` }),
-        ),
-      ),
-    ).toEqual([
-      {
-        field: 'input.contactEmail',
-        code: 'custom',
-        message: CONTACT_EMAIL_TOO_LONG_MESSAGE,
-      },
-    ]);
   });
 });
 

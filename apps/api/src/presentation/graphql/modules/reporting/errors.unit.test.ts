@@ -5,6 +5,7 @@ import {
   callerForbiddenError,
   INPUT_ARGUMENT,
   reportContactEmailFormatError,
+  reportContactEmailTooLongError,
   REPORTING_INPUT_MESSAGES,
 } from './errors.ts';
 
@@ -38,6 +39,21 @@ describe('通報のスキーマモジュールのエラー', () => {
           field: 'contactEmail',
           code: 'invalid-format',
           message: 'メールアドレスの形式が正しくありません。',
+        },
+      ],
+    });
+  });
+
+  test('連絡先の長さの超過を、連絡先の欄の詳細を持つ検証の誤りにする', () => {
+    expect(shapeOf(reportContactEmailTooLongError())).toEqual({
+      kind: 'bad_request',
+      code: 'validation_error',
+      message: '入力内容を確認してください。',
+      details: [
+        {
+          field: 'contactEmail',
+          code: 'too-long',
+          message: 'メールアドレスは254文字以内で入力してください。',
         },
       ],
     });

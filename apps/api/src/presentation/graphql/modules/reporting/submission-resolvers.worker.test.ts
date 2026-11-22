@@ -45,6 +45,12 @@ const T0 = new Date('2026-11-22T00:00:00.000Z');
 
 const REPORT_BOT_TOKEN = botTokenFor('report');
 
+const CONTACT_DOMAIN = '@mail.example';
+
+const CONTACT_EMAIL_AT_MAX = `${'a'.repeat(254 - CONTACT_DOMAIN.length)}${CONTACT_DOMAIN}`;
+
+const CONTACT_EMAIL_TOO_LONG = `a${CONTACT_EMAIL_AT_MAX}`;
+
 const REPORT_CATEGORIES = /* GraphQL */ `
   query ClientReportCategories {
     reportCategories {
@@ -342,6 +348,36 @@ describe('submitReportの入力の誤り', () => {
     },
   );
 
+  test.each([
+    ['未ログイン', () => Promise.resolve(undefined)],
+    ['停止中', suspendedSession],
+  ])(
+    '%sの権利侵害の通報で連絡先が255文字なら、bot判定を呼ばずに連絡先の欄のtoo-longにする',
+    async (_name, sessionOf) => {
+      const calls = stubExternalServices();
+      const sessionToken = await sessionOf();
+
+      const response = await submitReport(
+        infringementInput({ contactEmail: CONTACT_EMAIL_TOO_LONG }),
+        {
+          botToken: REPORT_BOT_TOKEN,
+          ...(sessionToken !== undefined && { sessionToken }),
+        },
+      );
+
+      expect(codesOf(response)).toEqual(['validation_error']);
+      expect(detailsOf(response)).toEqual([
+        {
+          field: 'input.contactEmail',
+          code: 'too-long',
+          message: 'メールアドレスは254文字以内で入力してください。',
+        },
+      ]);
+      expect(calls.siteverifyTokens).toEqual([]);
+      expect(await readReports()).toEqual([]);
+    },
+  );
+
   test('存在しないカテゴリは、ユースケースの詳細の欄に入力の経路を付けてvalidation_errorにする', async () => {
     stubExternalServices();
 
@@ -432,6 +468,61 @@ describe('submitReportの受け付け', () => {
       ]);
     },
   );
+
+  test('未ログインの権利侵害の通報は、前後の空白を除いて254文字の連絡先を受け付ける', async () => {
+    stubExternalServices();
+
+    const response = await submitReport(
+      infringementInput({ contactEmail: ` ${CONTACT_EMAIL_AT_MAX} ` }),
+    );
+
+    expect(response.errors).toBeUndefined();
+    expect(await readReports()).toEqual([
+      expect.objectContaining({
+        reporterUserId: null,
+        contactEmail: CONTACT_EMAIL_AT_MAX,
+      }),
+    ]);
+  });
+
+  test.each([
+    ['権利侵害', REPORT_CATEGORY_INFRINGEMENT_ID],
+    ['その他', REPORT_CATEGORY_OTHER_ID],
+  ])(
+    'ログイン中の利用者の%sの通報は、255文字の連絡先でも拒否せずに捨てる',
+    async (_name, categoryId) => {
+      stubExternalServices();
+      const sessionToken = await memberSession();
+
+      const response = await submitReport(
+        reportInput({ categoryId, contactEmail: CONTACT_EMAIL_TOO_LONG }),
+        { botToken: REPORT_BOT_TOKEN, sessionToken },
+      );
+
+      expect(response.errors).toBeUndefined();
+      expect(response.data?.submitReport).toEqual({ accepted: true });
+      expect(await readReports()).toEqual([
+        expect.objectContaining({
+          reporterUserId: userIdOf(REPORTER),
+          contactEmail: null,
+        }),
+      ]);
+    },
+  );
+
+  test('未ログインの権利侵害以外の通報は、255文字の連絡先でも拒否せずに捨てる', async () => {
+    stubExternalServices();
+
+    const response = await submitReport(
+      reportInput({ contactEmail: CONTACT_EMAIL_TOO_LONG }),
+    );
+
+    expect(response.errors).toBeUndefined();
+    expect(response.data?.submitReport).toEqual({ accepted: true });
+    expect(await readReports()).toEqual([
+      expect.objectContaining({ reporterUserId: null, contactEmail: null }),
+    ]);
+  });
 
   test('未ログインの権利侵害以外の通報は、送られた連絡先を検証せずに捨てる', async () => {
     stubExternalServices();

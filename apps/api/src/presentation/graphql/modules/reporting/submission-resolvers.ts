@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { EMAIL_MAX_LENGTH } from '../../../../../common-lib/identity/account-input-rules.ts';
 import {
   type ReporterKind,
   requiresContactEmail,
@@ -14,7 +15,11 @@ import { withInputPath } from '../../field-paths.ts';
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
-import { INPUT_ARGUMENT, reportContactEmailFormatError } from './errors.ts';
+import {
+  INPUT_ARGUMENT,
+  reportContactEmailFormatError,
+  reportContactEmailTooLongError,
+} from './errors.ts';
 import { SUBMIT_REPORT_ARGS } from './inputs.ts';
 import { accountGuardOf, clientOnly, clockOf } from './resolver-support.ts';
 
@@ -37,7 +42,7 @@ async function reporterKindOf(context: GraphQLContext): Promise<ReporterKind> {
   return current?.user.status === 'active' ? 'member' : 'guest';
 }
 
-// 要らない連絡先は、カテゴリの選び直しやログインの後に残った値で通報を拒否しないよう、形式を確かめずに捨てる
+// 要らない連絡先は、カテゴリの選び直しやログインの後に残った値で通報を拒否しないよう、長さと形式を確かめずに捨てる
 function contactEmailFor(
   reporterKind: ReporterKind,
   input: {
@@ -50,6 +55,9 @@ function contactEmailFor(
   }
   if (input.contactEmail === undefined) {
     throw reportContactEmailRequiredError();
+  }
+  if (input.contactEmail.length > EMAIL_MAX_LENGTH) {
+    throw reportContactEmailTooLongError();
   }
   if (!z.regexes.html5Email.test(input.contactEmail)) {
     throw reportContactEmailFormatError();
