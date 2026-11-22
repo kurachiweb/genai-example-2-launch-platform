@@ -108,7 +108,7 @@
   - _Boundary: DataExportStore_
   - _Requirements: 3.5, 3.8, 7.5, 8.3, 10.1, 10.2, 10.5_
 
-- [ ] 4.3 (P) ZIPの保存先の操作とマルチパートの書き込み先を作る
+- [x] 4.3 (P) ZIPの保存先の操作とマルチパートの書き込み先を作る
   - 共通の契約とDIの識別子のファイルは触らない(4.1が定める)。R2の実装は`workers/data-export/r2-export-archive-storage.ts`に置く。media-pipelineの`attachmentDisposition`と`PLATFORM_TYPES.Env`を読み込む(設計の依存の方向で許可)
   - 先に、Workers統合テストで、ローカルのR2へ15MiBを書いて部分の大きさが均一で完了すること、保存のメタデータ(`application/zip`・日本語のファイル名を含む`attachment`・`private, no-store`)、読み出しの本文と大きさとメタデータの写し(R2の型を返さない)、アップロードの破棄の後にオブジェクトが無いこと、既に無いアップロードの破棄と無いキーの削除が成功することを確かめる
   - キーは`data-exports/<要求のID>.zip`とする
@@ -279,3 +279,4 @@
 - 3.3: コメント・Upvote・評価の`product`の補完は6.3の読み取りの部品の責務で、活動のJSONの関数はスナップショットの`ExportProductRef | null`を写すだけ。5関数は対応する配列だけを受け取る(`buildCommentsDocument(snapshot.comments)`など)。並び順は入力のまま。
 - 4.2: `markReady`は`updated_at`を`completedAt`に、`markFailed`は`failedAt`にし、`listPendingNotices`の「確定から1時間」の基準にする。`recordUpload`は`object_key`も書く(完了のCHECKのため)。依頼待ちのまま`markExpired`すると`updated_at`が更新され、送り直しが最大1時間遅れる(実害なしと判断)。境界は`listStalled`・`listPendingNotices`が`<`、`listExpired`とリースの期限が`<=`。
 - 3.4: `buildExportDocuments`の出力の順は12のJSON→`.md`→`manifest.json`→`README.txt`で、6.5はこの順のまま`addText`に渡す。問い合わせの添付は`contentType`・`size`を添付自身の値で出し、格納できなければ`path`だけを`null`にする(`file-reference.ts`の`storedPathOf`)。
+- 4.3: 存在しないアップロードの破棄は、`R2Error`の`code`が10024(NoSuchUpload)のとき成功とみなす(`code`が無いときだけメッセージの`(10024)`で判定)。ローカルのminiflareは一度も存在しないIDに10001を返すため、実際のR2での10024の確認はstagingに残る。書き込み先は`write`・`complete`の失敗の後に閉じ、以降は`abort`だけを受け付ける。コンストラクタの型は`ExportBucketEnv`(`PlatformEnv`から代入できる)。
