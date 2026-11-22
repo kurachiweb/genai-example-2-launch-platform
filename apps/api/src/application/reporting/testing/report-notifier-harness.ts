@@ -112,6 +112,7 @@ export const UNAVAILABLE_VIEW: ReportTargetView = {
   excerpt: null,
   productName: null,
   productHandle: null,
+  anonymized: false,
 };
 
 export const PRODUCT_VIEW: ReportTargetView = {

@@ -194,7 +194,7 @@ describe('EmailReportNotifier 却下の投稿者への通知', () => {
       caseRecord: rejectedCommentCase,
       posterPending: true,
       contacts: [OWNER_CONTACT],
-      view: { ...COMMENT_VIEW, excerpt: '' },
+      view: { ...COMMENT_VIEW, anonymized: true },
     });
 
     for (const harness of [withdrawn, detached, anonymized]) {

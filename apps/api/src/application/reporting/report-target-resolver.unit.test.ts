@@ -219,6 +219,7 @@ const UNAVAILABLE: ReportTargetView = {
   excerpt: null,
   productName: null,
   productHandle: null,
+  anonymized: false,
 };
 
 describe('DirectoryReportTargetResolver.resolveForSubmission(ユーザー)', () => {
@@ -524,6 +525,7 @@ describe('DirectoryReportTargetResolver.describe', () => {
       excerpt: null,
       productName: null,
       productHandle: null,
+      anonymized: false,
     });
     expect(views.get(reportTargetKeyOf(productKey))).toEqual({
       available: true,
@@ -532,6 +534,7 @@ describe('DirectoryReportTargetResolver.describe', () => {
       excerpt: null,
       productName: null,
       productHandle: null,
+      anonymized: false,
     });
   });
 
@@ -547,10 +550,11 @@ describe('DirectoryReportTargetResolver.describe', () => {
       excerpt: '**太字**のままのコメント',
       productName: 'もう一つの道具',
       productHandle: 'other-tool',
+      anonymized: false,
     });
   });
 
-  test('匿名化のコメントは空の抜粋を返す', async () => {
+  test('匿名化のコメントは匿名化の印と空の抜粋を返す', async () => {
     const { resolver } = describeFakes();
     const key: ReportTargetKey = {
       kind: 'comment',
@@ -563,6 +567,7 @@ describe('DirectoryReportTargetResolver.describe', () => {
     expect(views.get(reportTargetKeyOf(key))).toMatchObject({
       available: true,
       excerpt: '',
+      anonymized: true,
       productName: 'もう一つの道具',
     });
   });

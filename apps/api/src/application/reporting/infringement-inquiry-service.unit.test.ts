@@ -90,6 +90,7 @@ const UNAVAILABLE_VIEW: ReportTargetView = Object.freeze({
   excerpt: null,
   productName: null,
   productHandle: null,
+  anonymized: false,
 });
 
 const PRODUCT_VIEW: ReportTargetView = Object.freeze({

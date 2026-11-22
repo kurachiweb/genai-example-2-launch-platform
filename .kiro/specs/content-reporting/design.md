@@ -812,6 +812,7 @@ export interface ReportTargetView {
   readonly excerpt: string | null; // コメントの本文の先頭(一覧200文字)
   readonly productName: string | null; // コメントの対象のプロダクト
   readonly productHandle: string | null;
+  readonly anonymized: boolean; // 匿名化されたコメントだけtrue(投稿者へ通知を送らない、11.5)
 }
 export interface ReportTargetResolver {
   resolveForSubmission(

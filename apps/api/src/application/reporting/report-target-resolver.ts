@@ -38,6 +38,7 @@ export const UNAVAILABLE_TARGET_VIEW: ReportTargetView = Object.freeze({
   excerpt: null,
   productName: null,
   productHandle: null,
+  anonymized: false,
 });
 
 const uniqueIds = (ids: readonly (string | null)[]): readonly string[] => [
@@ -105,6 +106,7 @@ const commentViewOf = (
         excerpt: excerptOf(comment),
         productName: product?.name ?? null,
         productHandle: product?.handle ?? null,
+        anonymized: comment.anonymizedAt !== null,
       };
 
 const viewOf = (

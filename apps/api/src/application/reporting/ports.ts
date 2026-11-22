@@ -34,6 +34,8 @@ export interface ReportTargetView {
   readonly excerpt: string | null;
   readonly productName: string | null;
   readonly productHandle: string | null;
+  // 匿名化されたコメントだけtrue。匿名化で投稿者との紐付きが消え、投稿者へ通知を送れないため
+  readonly anonymized: boolean;
 }
 
 export interface ReportTargetResolver {

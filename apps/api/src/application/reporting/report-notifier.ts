@@ -52,7 +52,7 @@ type TargetInput = Pick<
 
 interface NoticeContent {
   readonly target: TargetInput;
-  // 表示名の照会は匿名化したコメントの抜粋を空文字で返すため、それを投稿者の匿名化として投稿者へ送らない(11.5)
+  // 匿名化したコメントは投稿者との紐付きが消えるため、投稿者へ送らない(11.5)
   readonly posterAnonymized: boolean;
   readonly reason: string;
   readonly decidedAt: string;
@@ -242,9 +242,7 @@ export class EmailReportNotifier implements ReportNotifier {
     return {
       target: targetInputOf(key, view),
       posterAnonymized:
-        key.kind === 'comment' &&
-        view?.available === true &&
-        view.excerpt === '',
+        key.kind === 'comment' && view?.available === true && view.anonymized,
       reason: closed.reason,
       decidedAt: closed.closedAt.toISOString(),
       contactUrl: new URL(CONTACT_PATH, this.env.CLIENT_SITE_ORIGIN).href,

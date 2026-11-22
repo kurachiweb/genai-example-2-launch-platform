@@ -233,7 +233,7 @@ describe('EmailReportNotifier 申出者への結果', () => {
     const anonymized = setupNotifier({
       caseRecord: commentCaseOf(),
       pending,
-      view: { ...COMMENT_VIEW, excerpt: '' },
+      view: { ...COMMENT_VIEW, excerpt: '', anonymized: true },
     });
 
     for (const harness of [unavailable, missing, productless, anonymized]) {
