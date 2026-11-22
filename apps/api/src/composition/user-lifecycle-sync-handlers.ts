@@ -7,6 +7,7 @@ import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
 import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
 import { PUBLIC_API_TYPES } from '../application/public-api/public-api-types.ts';
+import { REPORTING_TYPES } from '../application/reporting/reporting-types.ts';
 import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import type { UserLifecycleSyncRegistration } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 
@@ -72,5 +73,10 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       name: 'ugc-moderation.user-moderation-record',
       events: ['suspended', 'unsuspended', 'withdrawn'],
       handler: MODERATION_TYPES.UserModerationRecordSyncHandler,
+    },
+    {
+      name: 'content-reporting.reporter-withdrawal',
+      events: ['withdrawn'],
+      handler: REPORTING_TYPES.ReporterWithdrawalSyncHandler,
     },
   ];
