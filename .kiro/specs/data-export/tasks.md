@@ -76,7 +76,7 @@
   - _Depends: 3.1_
   - _Requirements: 4.2, 4.3, 4.11, 5.5, 5.6, 5.7, 5.12, 5.14_
 
-- [ ] 3.4 取引のJSON・manifest・READMEの組み立てと直列化をまとめる
+- [x] 3.4 取引のJSON・manifest・READMEの組み立てと直列化をまとめる
   - 先に、単体テストで、`inquiries`・`sponsorships`・`payments`の文書の例との一致、問い合わせの添付のパスと格納できなかった添付の`null`、manifestの12のJSONの順と要素数と生成時点のハンドル、JSONのLF・末尾の改行・BOMなし、出力の一覧に`README.txt`・`manifest.json`・12のJSON・`.md`が揃うことを確かめる
   - 3.2・3.3の関数を使い、スナップショットと計画と格納できたファイルの集合から全てのテキストのファイルを返す組み立ての関数を作る
   - 完了状態: 単体テストが成功し、組み立ての関数がこの3つの入力だけで全てのテキストのファイルを返す
@@ -278,3 +278,4 @@
 - 3.2: 4関数は`DocumentInput = {snapshot, plan, stored}`を受け取り、格納できなかったファイルのパスの`null`化は`documents/file-reference.ts`の`referenceFile`が行う。上流の型に合わせ`emailVerifiedAt`・`plan.currentPeriodEndsAt`・`notificationSettings`を`null`で出し得るとし、データエクスポートの文書の表を改めた。
 - 3.3: コメント・Upvote・評価の`product`の補完は6.3の読み取りの部品の責務で、活動のJSONの関数はスナップショットの`ExportProductRef | null`を写すだけ。5関数は対応する配列だけを受け取る(`buildCommentsDocument(snapshot.comments)`など)。並び順は入力のまま。
 - 4.2: `markReady`は`updated_at`を`completedAt`に、`markFailed`は`failedAt`にし、`listPendingNotices`の「確定から1時間」の基準にする。`recordUpload`は`object_key`も書く(完了のCHECKのため)。依頼待ちのまま`markExpired`すると`updated_at`が更新され、送り直しが最大1時間遅れる(実害なしと判断)。境界は`listStalled`・`listPendingNotices`が`<`、`listExpired`とリースの期限が`<=`。
+- 3.4: `buildExportDocuments`の出力の順は12のJSON→`.md`→`manifest.json`→`README.txt`で、6.5はこの順のまま`addText`に渡す。問い合わせの添付は`contentType`・`size`を添付自身の値で出し、格納できなければ`path`だけを`null`にする(`file-reference.ts`の`storedPathOf`)。

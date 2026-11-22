@@ -23,6 +23,16 @@ const NO_FILE: FileReference = {
   size: null,
 };
 
+// 格納できたファイルのうち、計画にパスがあるものだけをパスとして返す
+export function storedPathOf(
+  input: DocumentInput,
+  fileId: string,
+): string | null {
+  return input.stored.has(fileId)
+    ? (input.plan.pathByFileId.get(fileId) ?? null)
+    : null;
+}
+
 // 記録が無いファイルは隔離の印も判らないため、メタデータごとnullにする
 export function referenceFile(
   input: DocumentInput,
@@ -33,9 +43,7 @@ export function referenceFile(
     return NO_FILE;
   }
   return {
-    path: input.stored.has(fileId)
-      ? (input.plan.pathByFileId.get(fileId) ?? null)
-      : null,
+    path: storedPathOf(input, fileId),
     quarantined: view.quarantined,
     originalFileName: view.originalFileName,
     contentType: view.contentType,

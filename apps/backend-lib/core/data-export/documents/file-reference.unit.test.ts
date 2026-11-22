@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import type { ArchivePlan } from '../export-plan.ts';
 import type { ExportFileView, ExportSnapshot } from '../export-snapshot.ts';
-import { referenceFile } from './file-reference.ts';
+import { referenceFile, storedPathOf } from './file-reference.ts';
 import type { DocumentInput } from './file-reference.ts';
 
 function fileView(
@@ -104,5 +104,25 @@ describe('referenceFile', () => {
     const input = documentInput([fileView('F1')], {}, ['F1']);
 
     expect(referenceFile(input, 'F1').path).toBeNull();
+  });
+});
+
+describe('storedPathOf', () => {
+  test('格納できて計画にパスがあるファイルはパスを返す', () => {
+    const input = documentInput([], { F1: 'a/logo.png' }, ['F1']);
+
+    expect(storedPathOf(input, 'F1')).toBe('a/logo.png');
+  });
+
+  test('格納できなかったファイルはnullを返す', () => {
+    const input = documentInput([], { F1: 'a/logo.png' }, []);
+
+    expect(storedPathOf(input, 'F1')).toBeNull();
+  });
+
+  test('計画にパスが無いファイルはnullを返す', () => {
+    const input = documentInput([], {}, ['F1']);
+
+    expect(storedPathOf(input, 'F1')).toBeNull();
   });
 });
