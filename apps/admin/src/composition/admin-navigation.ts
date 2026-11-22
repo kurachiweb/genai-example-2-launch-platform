@@ -13,6 +13,7 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = Object.freeze([
   { to: '/comments', label: 'コメント', order: 40 },
   { to: '/ratings', label: '評価', order: 50 },
   { to: '/media-moderation', label: '画像モデレーション', order: 60 },
+  { to: '/reports', label: '通報', order: 70 },
   { to: '/inquiries', label: '問い合わせ', order: 80 },
   { to: '/sponsorships', label: 'スポンサー広告', order: 90 },
   { to: '/help-articles', label: 'ヘルプ記事', order: 100 },

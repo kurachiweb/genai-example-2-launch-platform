@@ -297,7 +297,7 @@
   - _Depends: 8.1_
   - _Requirements: 14.1, 14.2, 14.6, 14.8, 18.8_
 
-- [ ] 8.7 管理画面のメニューへ通報のページを登録する
+- [x] 8.7 管理画面のメニューへ通報のページを登録する
   - メニューの登録箇所へ通報(70)を加え、メニューの並びを固定する上流のテスト(`components/layout/admin-nav-order.unit.test.ts`・`admin-navigation.browser.test.tsx`・`test/admin-shell.browser.test.tsx`、`frontend/009`)の期待値を改める
   - 先に、ブラウザテストで、メニューの並びと現在のページの表示を確かめる
   - 完了状態: ブラウザテストと管理者側の全テストが成功し、ローカルでメニューから通報の一覧へ移動できる
@@ -388,3 +388,4 @@
 - 8.3: 一覧の部品は`apps/admin/src/components/reporting/list/`(`report-case-table.tsx`・`report-case-filters.tsx`・`report-list-messages.ts`)、テストの補助`test/reporting-reports-page.tsx`。共通の`ReportTargetCell`に省略できる`detailCaseId`(渡すと詳細へのリンク)を足した。**期間の入力の誤りは、ugc-moderationのコメントの絞り込みに合わせ「適用」で`checkAuditPeriodInput`により欄の誤りとして示して反映しない(URLの逆の期間は8.2どおり両方を未指定)。`design/002-page-layouts.md`の1608行目と文言規則(範囲外の日付・逆順の2行)を実装に合わせた**。件数の欄の`aria-live`は置かない(総件数が無く前例も無い)。URLのカテゴリが選択肢に無い有効なIDなら選択欄は空の表示(テストなし)
 - 8.5: カードは`components/reporting/dashboard/`の`UnhandledReportsCard`(`DASHBOARD_CARDS`の`content-reporting.unhandled-reports`、30、半幅)、区画は`components/reporting/product-detail/`の`ProductReportsSection`(`ADMIN_PRODUCT_DETAIL_SECTIONS`の`content-reporting.product-reports`、10、題「受け付けた通報」)。**範囲外の重複の解消として、inquiry-chatのカードとugc-moderationの週の統計のカードの同じ`cardStateOf`を`components/dashboard/dashboard-card-state.ts`の`dashboardCardStateOf`へ移し、3つのカードで使う(振る舞いは同じ。`frontend/009`の表とコードの例も更新)**。件数は通報の画面の共通の`reportCountLabel`(`ja-JP`固定、管理画面の前例どおり。inquiryのカードの`NumberText`は閲覧者のロケール)。テストの補助は`test/reporting-summary-fixtures.ts`の`respondReportSummaries`(上流のダッシュボードのテストもこれで応答する)
 - 8.4: 詳細の部品は`apps/admin/src/components/reporting/case/`、テストの補助`test/report-case-page-fixtures.ts`。**8.2の申し送りは、共通部品`ReportCaseActionDialog`に`onRefreshDeferred`、`ReportCaseDialogHost`に`refreshDeferredRef`を足し、遅らせた取り直しの失敗の後は起点が残っていても`fallbackFocusRef`(詳細では操作の区画の見出し)へ移して対処した(一覧は`deferRefresh`を使わず不変)**。状態の変更と照会のダイアログも新しい`case/use-deferred-report-case-refresh.ts`で取り直しを閉じるまで遅らせる(設計で明示なし、`frontend/021`に合わせた。`ReportCaseActionDialog`の中の同じ約10行は寄せていない)。不在の表示は設計の`NotFoundView`でなく`ReportCaseNotFoundPage`(文言規則の「通報の案件が見つかりません。」と「通報の一覧へ」を出すため。ugc-moderationの`ProductNotFoundPage`と同じ形)。状態の選択欄の既定値は現在と異なる3つの最初。却下は完了の種類を「却下」、対応済で措置がnullなら「措置なし」。通報0件の詳細は一覧の0件の文言を流用。導線は`target.available`が真で必要なハンドル・IDがある時だけ。照会の操作は`inquiryAvailable`に加えて画面でも対応中を確かめる
+- 8.7: `ADMIN_NAV_ITEMS`に`{ to: '/reports', label: '通報', order: 70 }`(「画像モデレーション」と「問い合わせ」の間、16項目)。上流の`admin-nav-order.unit.test.ts`・`admin-navigation.browser.test.tsx`・`test/admin-shell.browser.test.tsx`の期待値を改め、`/reports`・クエリ付きの一覧・`/reports/$caseId`で通報が現在のページになることを確かめた。管理者側の全テスト(単体744件・ブラウザ1,360件)が成功

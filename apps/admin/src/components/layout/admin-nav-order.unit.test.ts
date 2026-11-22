@@ -24,7 +24,7 @@ describe('メニューの項目の順序', () => {
     expect(ITEMS[0]?.to).toBe('/audit-logs');
   });
 
-  test('登録はダッシュボード(10)・ユーザー(20)・プロダクト(30)・コメント(40)・評価(50)・画像モデレーション(60)・問い合わせ(80)・スポンサー広告(90)・ヘルプ記事(100)・カテゴリ(110)・法務文書(120)・設定(130)・管理者アカウント(140)・監査ログ(150)・自分のアカウント(160)', () => {
+  test('登録はダッシュボード(10)・ユーザー(20)・プロダクト(30)・コメント(40)・評価(50)・画像モデレーション(60)・通報(70)・問い合わせ(80)・スポンサー広告(90)・ヘルプ記事(100)・カテゴリ(110)・法務文書(120)・設定(130)・管理者アカウント(140)・監査ログ(150)・自分のアカウント(160)', () => {
     expect(orderAdminNavItems(ADMIN_NAV_ITEMS)).toStrictEqual([
       { to: '/', label: 'ダッシュボード', order: 10 },
       { to: '/users', label: 'ユーザー', order: 20 },
@@ -32,6 +32,7 @@ describe('メニューの項目の順序', () => {
       { to: '/comments', label: 'コメント', order: 40 },
       { to: '/ratings', label: '評価', order: 50 },
       { to: '/media-moderation', label: '画像モデレーション', order: 60 },
+      { to: '/reports', label: '通報', order: 70 },
       { to: '/inquiries', label: '問い合わせ', order: 80 },
       { to: '/sponsorships', label: 'スポンサー広告', order: 90 },
       { to: '/help-articles', label: 'ヘルプ記事', order: 100 },
