@@ -14,7 +14,7 @@
   - 完了状態: 単体テストが成功し、マイグレーションをローカルのD1に適用すると標準カテゴリ2件ができる
   - _Requirements: 3.9, 5.2, 8.1, 9.3, 14.4, 17.5_
 
-- [ ] 1.3 (P) 通報の監査ログの操作種別を加える
+- [x] 1.3 (P) 通報の監査ログの操作種別を加える
   - 先に、単体テストで、7種の名前・表示名・対象の種類(案件・カテゴリ)・理由の要否(対応済と却下は必須)・詳細の鍵(状態の変更の前後、対応済の措置、対応済と却下の操作か手での変更かの区別と変更前の状態、カテゴリの削除の付け替えた件数)・対象の上限1と、全操作種別の集約の重複の検査を確かめる
   - 本specの操作種別のファイルを作り、監査ログの操作種別の集約へ加える。集約の完全一致を確かめる上流の単体テスト(`apps/common-lib/admin/audit-actions/index.unit.test.ts`)の期待値に本specの7種を加える
   - 完了状態: 単体テストが成功し、集約の検査を通る
@@ -349,3 +349,4 @@
 ## Implementation Notes
 
 - 1.1: 規則は`apps/common-lib/reporting/report-rules.ts`(対象の種類・理由の検証・連絡先の要否・標準カテゴリの固定のID・カテゴリの並び)、`report-case-rules.ts`(状態・手での状態の変更の可否と種類・対象の種類ごとの措置・管理者の理由の要否・照会の上限と期限)、`report-labels.ts`。設計に無い追加として`REPORT_RESOLUTIONS`(1.2の制約の照合用)・`checkInquiryMessage`(`'ok' | 'empty' | 'too-long'`)・`REPORT_ADMIN_REASON_MAX`(`AUDIT_REASON_MAX`と同値)と補助の型をexportした。措置の表示名はugc-moderationの`MODERATION_ACTION_LABELS`を再利用し、状態の表示名はinquiry-chatの`INQUIRY_STATUS_LABELS`と単体テストで照合する。読み込み先は設計の記載(`common-lib/admin`と`zod`)より広く`common-lib/text`・`common-lib/moderation`も含む(境界の検査は通る)。写しの照合(`check:contract-copies`)は写しを持つ側(1.2のDBのスキーマ)で扱う
+- 1.3: 7種は`apps/common-lib/admin/audit-actions/content-reporting.ts`の`REPORTING_AUDIT_ACTIONS`(定数名は`REPORT_STATUS_CHANGE_ACTION`など)で、集約の末尾(ugc-moderationの後)に連結した。`report.resolve`・`report.reject`の詳細`mode`の値(`operation`・`manual`)の定数は作っていないため、4.5で組み立てる。手での再開の理由の必須は操作種別でなくapplication層の`checkReportAdminReason`で検査する

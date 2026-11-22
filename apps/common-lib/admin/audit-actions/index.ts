@@ -1,5 +1,6 @@
 import type { AuditActionDefinition } from '../audit-action.ts';
 import { ADMIN_FOUNDATION_AUDIT_ACTIONS } from './admin-foundation.ts';
+import { REPORTING_AUDIT_ACTIONS } from './content-reporting.ts';
 import { HELP_CENTER_AUDIT_ACTIONS } from './help-center.ts';
 import { INQUIRY_AUDIT_ACTIONS } from './inquiry-chat.ts';
 import { NOTIFICATION_AUDIT_ACTIONS } from './notifications.ts';
@@ -19,4 +20,5 @@ export const AUDIT_ACTIONS: readonly AuditActionDefinition[] = Object.freeze([
   ...TOURNAMENT_YEAR_AUDIT_ACTIONS,
   ...SPONSORSHIP_AUDIT_ACTIONS,
   ...MODERATION_AUDIT_ACTIONS,
+  ...REPORTING_AUDIT_ACTIONS,
 ]);

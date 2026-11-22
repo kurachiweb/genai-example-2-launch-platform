@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import { createAuditActionCatalog } from '../audit-action.ts';
 import { ADMIN_FOUNDATION_AUDIT_ACTIONS } from './admin-foundation.ts';
+import { REPORTING_AUDIT_ACTIONS } from './content-reporting.ts';
 import { HELP_CENTER_AUDIT_ACTIONS } from './help-center.ts';
 import { AUDIT_ACTIONS } from './index.ts';
 import { INQUIRY_AUDIT_ACTIONS } from './inquiry-chat.ts';
@@ -17,7 +18,7 @@ describe('AUDIT_ACTIONS', () => {
     expect(() => createAuditActionCatalog(AUDIT_ACTIONS)).not.toThrow();
   });
 
-  test('admin-foundationの4種別・inquiry-chatの5種別・ultras-subscriptionの1種別・product-launchの3種別・help-centerの8種別・notificationsの1種別・tournament-yearの1種別・sponsorshipの1種別・ugc-moderationの13種別だけが載る', () => {
+  test('admin-foundationの4種別・inquiry-chatの5種別・ultras-subscriptionの1種別・product-launchの3種別・help-centerの8種別・notificationsの1種別・tournament-yearの1種別・sponsorshipの1種別・ugc-moderationの13種別・content-reportingの7種別だけが載る', () => {
     expect(AUDIT_ACTIONS.map((action) => action.name)).toEqual([
       'admin-account.invite',
       'admin-account.delete',
@@ -56,6 +57,13 @@ describe('AUDIT_ACTIONS', () => {
       'image.quarantine',
       'image.release',
       'image.delete',
+      'report.status-change',
+      'report.resolve',
+      'report.reject',
+      'report.inquire',
+      'report-category.create',
+      'report-category.rename',
+      'report-category.delete',
     ]);
   });
 
@@ -70,6 +78,7 @@ describe('AUDIT_ACTIONS', () => {
       ...TOURNAMENT_YEAR_AUDIT_ACTIONS,
       ...SPONSORSHIP_AUDIT_ACTIONS,
       ...MODERATION_AUDIT_ACTIONS,
+      ...REPORTING_AUDIT_ACTIONS,
     ].map((action) => [action.name, action]),
   )('登録した種別%sを名前で引ける', (name, action) => {
     expect(createAuditActionCatalog(AUDIT_ACTIONS).find(name)).toBe(action);
