@@ -2,11 +2,23 @@
 const AccountSourceReader: unique symbol = Symbol.for(
   'data-export.AccountSourceReader',
 );
+const ProductActivitySourceReader: unique symbol = Symbol.for(
+  'data-export.ProductActivitySourceReader',
+);
 const CorrespondenceSourceReader: unique symbol = Symbol.for(
   'data-export.CorrespondenceSourceReader',
+);
+const ExportFileResolver: unique symbol = Symbol.for(
+  'data-export.ExportFileResolver',
+);
+const ExportSnapshotCollector: unique symbol = Symbol.for(
+  'data-export.ExportSnapshotCollector',
 );
 
 export const EVENT_DATA_EXPORT_TYPES = Object.freeze({
   AccountSourceReader,
+  ProductActivitySourceReader,
   CorrespondenceSourceReader,
+  ExportFileResolver,
+  ExportSnapshotCollector,
 });

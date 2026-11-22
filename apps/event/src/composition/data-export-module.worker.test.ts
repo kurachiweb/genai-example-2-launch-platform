@@ -7,7 +7,10 @@ import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
 import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
 import { EVENT_DATA_EXPORT_TYPES } from '../application/data-export/event-data-export-types.ts';
 import { AccountSourceReader } from '../application/data-export/sources/account-source-reader.ts';
+import { ExportFileResolver } from '../application/data-export/export-file-resolver.ts';
+import { ExportSnapshotCollector } from '../application/data-export/export-snapshot-collector.ts';
 import { CorrespondenceSourceReader } from '../application/data-export/sources/correspondence-source-reader.ts';
+import { ProductActivitySourceReader } from '../application/data-export/sources/product-activity-source-reader.ts';
 import { EVENT_DATA_EXPORT_MODULE } from './data-export-module.ts';
 import { MODULES } from './modules.ts';
 
@@ -15,7 +18,10 @@ const INVOCATION_KINDS = ['fetch', 'queue'] as const;
 
 const IMPLEMENTATIONS = [
   ['AccountSourceReader', AccountSourceReader],
+  ['ProductActivitySourceReader', ProductActivitySourceReader],
   ['CorrespondenceSourceReader', CorrespondenceSourceReader],
+  ['ExportFileResolver', ExportFileResolver],
+  ['ExportSnapshotCollector', ExportSnapshotCollector],
 ] as const;
 
 function createContainer(kind: InvocationScopeInfo['kind']): Container {

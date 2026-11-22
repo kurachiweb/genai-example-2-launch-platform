@@ -192,7 +192,7 @@
   - _Depends: 3.1_
   - _Requirements: 5.3, 5.4, 5.5, 5.6, 5.12, 6.1_
 
-- [ ] 6.4 ファイルの照会と収集を作る
+- [x] 6.4 ファイルの照会と収集を作る
   - プロダクトと活動の読み取りの部品・ファイルの照会・収集の束縛をイベントサーバーの本specのモジュールへ加える
   - 先に、単体テスト(偽の部品)で、画像と添付のファイルIDの重複を除いた90件ずつの照会、隔離の印の写し、記録の無いファイルを含めないこと、アカウントが無いときに他の読み取りを呼ばないこと、3つの読み取りの結果とファイルの照会から1つのスナップショットを返すことを確かめる
   - 完了状態: 単体テストが成功し、イベントサーバーのコンテナから収集を解決できる
@@ -285,3 +285,4 @@
 - 6.3: 返す型`ProductActivitySource`をリーダーのファイルから公開し、6.4の収集が使う。プロダクトも項目を明示して写す(上流の余分な項目を漏らさない)。他者のプロダクトの名称は重複を除いた全IDを`findSummaries(ids, 'not-deleted')`の1回で引く(90件の分割は上流が行う)。受賞は週間→年間の順。
 - 5.1: 生成の依頼の失敗の503はコード`data_export_unavailable`(種類`unavailable`)にした(設計はコード名を決めていない)。`DataExportView`・`toDataExportView`はサービスと一覧が共用するため`data-export-view.ts`に分けた。`listMine`は`first`を検証しないので、5.2のリゾルバが20を超える`first`と不正な`after`を必ず拒否する。回数制限のキーは`hashRateLimitKey(hasher, 'data-export', userId)`。
 - 6.1: 決済の`purpose`が`payments_smoke`(dev・stagingだけで受け付ける決済の疎通確認)の決済は、文書の`purpose`の列挙に無いため読み取りの部品で除く。`AccountSourceReader.read`は`pseudonymousId`を別の項目で返し、決済の照会にだけ使う。`exists`は6.5が完了の後の退会の確かめに使う。後続は`event-data-export-types.ts`の識別子と`data-export-module.ts`の束縛と`data-export-module.worker.test.ts`の`IMPLEMENTATIONS`を同時に足す。
+- 6.4: `ExportSnapshotCollector.collect(userId, requestedAt, now)`はアカウント→プロダクトと活動→やり取りと取引→ファイルの照会の順に直列で呼び(D1の負荷を抑えるため)、退会済みなら`undefined`。照会するファイルIDはアイコン・ロゴ・スクリーンショット・問い合わせの添付で、計画の範囲と一致する。`snapshot.files`には記録のあるファイルだけが入り、隔離中は`quarantined: true`。
