@@ -19,9 +19,9 @@ export const INQUIRY_REPLY_METHOD =
 export const INQUIRY_OVERDUE_NOTICE =
   '期限までに回答が無い場合は、運営者の判断でこの投稿の公開を停止することがあります。';
 
-export const REPORTER_UNKNOWN_TARGET = '通報いただいた内容';
+const REPORTER_UNKNOWN_TARGET = '通報いただいた内容';
 
-export const POSTER_UNKNOWN_TARGET = 'あなたの投稿';
+const POSTER_UNKNOWN_TARGET = 'あなたの投稿';
 
 export interface ReportTargetDisplay {
   readonly targetKind: ReportTargetKind;

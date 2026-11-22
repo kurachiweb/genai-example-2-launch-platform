@@ -131,7 +131,7 @@ const CASE_SELECTION = /* GraphQL */ `
   }
 `;
 
-export const ADMIN_REPORT_CASES = /* GraphQL */ `
+const ADMIN_REPORT_CASES = /* GraphQL */ `
   query AdminReportCases(
     $filter: AdminReportCaseFilter
     $first: Int!
@@ -147,7 +147,7 @@ export const ADMIN_REPORT_CASES = /* GraphQL */ `
   }
 `;
 
-export const ADMIN_REPORT_CASE = /* GraphQL */ `
+const ADMIN_REPORT_CASE = /* GraphQL */ `
   query AdminReportCase($id: ID!) {
     adminReportCase(id: $id) {
       case { ${CASE_SELECTION} }
@@ -178,7 +178,7 @@ export const ADMIN_REPORT_CASE = /* GraphQL */ `
   }
 `;
 
-export const CHANGE_STATUS = /* GraphQL */ `
+const CHANGE_STATUS = /* GraphQL */ `
   mutation ChangeReportCaseStatus(
     $id: ID!
     $from: ReportCaseStatus!
@@ -211,7 +211,7 @@ export const RESOLVE_WITHOUT_MEASURE = closingMutation(
 
 export const REJECT = closingMutation('RejectReportCase', 'rejectReportCase');
 
-export const SEND_INQUIRY = /* GraphQL */ `
+const SEND_INQUIRY = /* GraphQL */ `
   mutation SendInfringementInquiry(
     $id: ID!
     $message: String!

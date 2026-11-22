@@ -15,7 +15,7 @@ import { inputRuleOf } from '../../auth-inputs.ts';
 import { REPORT_CASE_STATUSES, REPORT_TARGET_KINDS } from './enums.ts';
 import { REPORTING_INPUT_MESSAGES } from './errors.ts';
 
-export const REPORT_TARGET_REF_MAX_LENGTH = 100;
+const REPORT_TARGET_REF_MAX_LENGTH = 100;
 
 // 値の範囲はGraphQLの列挙型が確かめるため、ユースケースの値への写しだけを行う
 const enumOf = <TTable extends Readonly<Record<string, string>>>(

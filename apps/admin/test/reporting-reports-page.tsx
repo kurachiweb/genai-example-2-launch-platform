@@ -155,32 +155,31 @@ export const REPORT_CASE_NODES: readonly AdminReportCaseSummaryFragment[] =
     DETACHED_CASE_NODE,
   ]);
 
-export const REPORT_CATEGORIES_QUERY: AdminReportCategoriesQuery =
-  Object.freeze({
-    adminReportCategories: [
-      {
-        id: INFRINGEMENT_CATEGORY_ID,
-        name: '権利侵害',
-        systemDefault: true,
-        infringement: true,
-        reportCount: 4,
-      },
-      {
-        id: SPAM_CATEGORY_ID,
-        name: 'スパム',
-        systemDefault: false,
-        infringement: false,
-        reportCount: 1235,
-      },
-      {
-        id: OTHER_CATEGORY_ID,
-        name: 'その他',
-        systemDefault: true,
-        infringement: false,
-        reportCount: 2,
-      },
-    ],
-  });
+const REPORT_CATEGORIES_QUERY: AdminReportCategoriesQuery = Object.freeze({
+  adminReportCategories: [
+    {
+      id: INFRINGEMENT_CATEGORY_ID,
+      name: '権利侵害',
+      systemDefault: true,
+      infringement: true,
+      reportCount: 4,
+    },
+    {
+      id: SPAM_CATEGORY_ID,
+      name: 'スパム',
+      systemDefault: false,
+      infringement: false,
+      reportCount: 1235,
+    },
+    {
+      id: OTHER_CATEGORY_ID,
+      name: 'その他',
+      systemDefault: true,
+      infringement: false,
+      reportCount: 2,
+    },
+  ],
+});
 
 export const reportCasesPageOf = (
   nodes: readonly AdminReportCaseSummaryFragment[],

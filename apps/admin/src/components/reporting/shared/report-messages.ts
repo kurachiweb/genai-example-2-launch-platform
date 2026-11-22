@@ -24,9 +24,9 @@ export const REPORTS_PAGE_COPY = Object.freeze({
 
 export const REPORT_CASE_PAGE_TITLE = '通報の案件の詳細';
 
-export const UNAVAILABLE_TARGET_LABEL = '表示できない対象';
+const UNAVAILABLE_TARGET_LABEL = '表示できない対象';
 
-export const DETACHED_TARGET_LABEL = '削除された対象';
+const DETACHED_TARGET_LABEL = '削除された対象';
 
 export const UNKNOWN_RESPONSE_TIME_LABEL = '不明';
 
