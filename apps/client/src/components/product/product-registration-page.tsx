@@ -3,11 +3,14 @@ import { type ReactNode, useId } from 'react';
 import { RecoverableSlot } from '../../../lib/components/state/recoverable-slot.tsx';
 import { CLIENT_PROFILE } from '../../composition/app-profile.ts';
 import type { ClientViewer } from '../../graphql/viewer.ts';
+import { EmailVerificationNotice } from '../auth/email-verification-notice.tsx';
 import { useViewer } from '../auth/use-viewer.ts';
 import { CONTACT_HREF } from '../layout/site-links.ts';
 import { MyProductsSuspendedNotice } from './my-products-suspended-notice.tsx';
-import { ProductEmailVerificationNotice } from './product-email-verification-notice.tsx';
-import { PRODUCT_REGISTER_PAGE_TITLE } from './product-form-messages.ts';
+import {
+  EMAIL_VERIFICATION_REQUIRED_NOTICE,
+  PRODUCT_REGISTER_PAGE_TITLE,
+} from './product-form-messages.ts';
 import { ProductRegistrationContent } from './product-registration-content.tsx';
 
 export interface ProductRegistrationPageProps {
@@ -44,7 +47,9 @@ const noticeOf = (viewer: ClientViewer): ReactNode => {
   if (viewer.status === 'SUSPENDED') {
     return <MyProductsSuspendedNotice />;
   }
-  return viewer.emailVerified ? null : <ProductEmailVerificationNotice />;
+  return viewer.emailVerified ? null : (
+    <EmailVerificationNotice message={EMAIL_VERIFICATION_REQUIRED_NOTICE} />
+  );
 };
 
 export function ProductRegistrationPage({

@@ -4,12 +4,18 @@ import { Button } from '../../../lib/components/ui/button/button.tsx';
 import {
   RESEND_VERIFICATION_LABEL,
   VERIFY_EMAIL_PAGE_TITLE,
-} from '../auth/account-messages.ts';
-import { useResendVerification } from '../auth/use-resend-verification.ts';
-import { EMAIL_VERIFICATION_REQUIRED_NOTICE } from './product-form-messages.ts';
+} from './account-messages.ts';
+import { useResendVerification } from './use-resend-verification.ts';
 
-// 登録にはメールアドレスの確認が要る旨と、画面上部の帯と同じ確認メールの再送の操作
-export function ProductEmailVerificationNotice() {
+export interface EmailVerificationNoticeProps {
+  // 確認が要る操作ごとの案内の文言
+  readonly message: string;
+}
+
+// 操作にはメールアドレスの確認が要る旨と、画面上部の帯と同じ確認メールの再送の操作
+export function EmailVerificationNotice({
+  message,
+}: EmailVerificationNoticeProps) {
   const { resend, pending } = useResendVerification();
 
   return (
@@ -22,9 +28,7 @@ export function ProductEmailVerificationNotice() {
         aria-hidden="true"
         className="size-6 shrink-0 text-warning-strong"
       />
-      <p className="min-w-0 flex-1 text-sm leading-relaxed">
-        {EMAIL_VERIFICATION_REQUIRED_NOTICE}
-      </p>
+      <p className="min-w-0 flex-1 text-sm leading-relaxed">{message}</p>
       {/* aria-disabledは押下を止めないため、送信中の押下は再送の処理が無視する */}
       <Button
         type="button"

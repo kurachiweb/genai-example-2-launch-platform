@@ -230,7 +230,7 @@
   - _Depends: 7.1_
   - _Requirements: 9.1, 11.1, 11.3, 11.6, 11.7, 11.8, 11.9_
 
-- [ ] 7.3 要求の操作と区画の枠を作る
+- [x] 7.3 要求の操作と区画の枠を作る
   - 先に、ブラウザテストで、説明(含まれるデータ・24時間に3回・7日・メール)、未確認の利用者で要求の操作が無効で確認の案内があること、送信中の無効化、受け付けの通知と一覧の更新、429で再び要求できる日時の表示、未確認・通信の失敗の文言、`runAxe`の違反0件を確かめる
   - エラーの文言の対応付けは単体テストで確かめる
   - ルートの表示を、7.2が置いた一覧から区画(説明・要求の操作・一覧)へ置き換える
@@ -295,3 +295,4 @@
 - 5.4: 共通の`drainInBatches`は同じ起動で処理済みのIDを飛ばし、残った件数だけ次の読み取りの`limit`を広げる(失敗した記録が先頭に溜まっても後ろへ進むため。上限は1回1000件)。`DataExportTerminator.fail`の例外は警告を出して次へ進み、最後に`Error`を投げてジョブを`failed`にする。`archive-deletion-failed`の件数は削除とアップロードの破棄の失敗の合算。閾値と`fail`の`now`は`scheduledTime`から求める。ログのカテゴリは`['api', 'application', 'data-export']`。
 - 7.2: 一覧は見出しを持たずページのh1で名前を付け、「自動更新」の`Switch`は一覧の右上(`components/match/auto-refresh-switch.tsx`を再利用)。`role="log"`は付けない(取り直しで項目が加わらず、既存の項目の状態が変わるだけのため。状態の変化は完了のメールで知らせる)。loaderの`staleTime: 0`と部品の`refetchOnMount: false`を組で使う。7.3は`DataExportList({ viewerId, labelledBy, retryFocusRef })`をルートで区画に置き換え、要求の後に`invalidateMyDataExports`を呼ぶ。
 - 6.2: `data-export.archive-erasure`は`withdrawn`・`purge_due`の2100。破棄は`uploadId`と`objectKey`が揃うときだけ、オブジェクトの削除は100件分を1回の`delete`にまとめ、R2が全て成功してから記録を`removeMany`で消す。削除の失敗は例外→再試行→デッドレター→基盤のSentryの経路で届く。上流のテストは末尾の固定を`relativeOrderOf`の相対の順へ改め、ugc-moderationは「identity-auth専用の10000番台より前」とした。`project-values.md`の「非同期の波及処理の登録」の表への追記は8.3の照合で行う。
+- 7.3: 送信中は`disabled`でなく`aria-disabled`・`aria-busy`と「送信中」の文言にし(`frontend/004`の「操作できない状態」)、未確認のときだけ`disabled`。失敗はトーストでなくボタンの直下の`role="alert"`に示し、秒数の無い429はサーバーの文言を示す。メールアドレスの未確認の案内は、プロダクト登録の部品を文言を引数に取る共通の`components/auth/email-verification-notice.tsx`(`EmailVerificationNotice`)へ移して共用し、product-launchの設計の文書も改めた。

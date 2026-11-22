@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useId, useRef } from 'react';
 
-import { DataExportList } from '../../../components/data-export/data-export-list.tsx';
 import { DATA_EXPORT_PAGE_TITLE } from '../../../components/data-export/data-export-messages.ts';
+import { DataExportPanel } from '../../../components/data-export/data-export-panel.tsx';
 import { loadMyDataExports } from '../../../graphql/data-export.ts';
 import { buildSitePageHead } from '../../../head/page-heads.ts';
 
@@ -30,8 +30,9 @@ function DataExportSettingsRoute() {
       >
         {DATA_EXPORT_PAGE_TITLE}
       </h1>
-      <DataExportList
+      <DataExportPanel
         viewerId={viewer.id}
+        emailVerified={viewer.emailVerified}
         labelledBy={headingId}
         retryFocusRef={headingRef}
       />
