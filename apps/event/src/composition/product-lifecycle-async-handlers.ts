@@ -4,6 +4,7 @@ import { EVENT_ENGAGEMENT_TYPES } from '../application/engagement/event-engageme
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
 import { EVENT_MODERATION_TYPES } from '../application/moderation/event-moderation-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
+import { EVENT_REPORTING_TYPES } from '../application/reporting/event-reporting-types.ts';
 import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
 import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
@@ -83,6 +84,12 @@ export const PRODUCT_LIFECYCLE_ASYNC_HANDLERS: readonly ProductLifecycleAsyncReg
       events: ['purge_due'],
       order: 1700,
       handler: EVENT_YEAR_TOURNAMENT_TYPES.EntryUnlinkHandler,
+    },
+    {
+      name: 'content-reporting.product-report-erasure',
+      events: ['purge_due'],
+      order: 1800,
+      handler: EVENT_REPORTING_TYPES.ProductReportErasureHandler,
     },
     {
       name: 'ugc-moderation.product-record-erasure',

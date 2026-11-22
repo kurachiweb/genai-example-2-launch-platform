@@ -6,6 +6,7 @@ import {
   type ProductLifecycleEventType,
 } from '../../lib/core/product/product-lifecycle.ts';
 import { EVENT_MODERATION_TYPES } from '../application/moderation/event-moderation-types.ts';
+import { EVENT_REPORTING_TYPES } from '../application/reporting/event-reporting-types.ts';
 import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
 import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
@@ -81,6 +82,21 @@ describe('プロダクトライフサイクルの処理の登録口', () => {
     ]);
   });
 
+  test('content-reportingは物理削除の時期の到来に1800で案件の対象への参照の消去だけを登録する', () => {
+    expect(
+      PRODUCT_LIFECYCLE_ASYNC_HANDLERS.filter(({ name }) =>
+        name.startsWith('content-reporting.'),
+      ),
+    ).toStrictEqual([
+      {
+        name: 'content-reporting.product-report-erasure',
+        events: ['purge_due'],
+        order: 1800,
+        handler: EVENT_REPORTING_TYPES.ProductReportErasureHandler,
+      },
+    ]);
+  });
+
   test('ugc-moderationは物理削除の時期の到来に1900で措置の記録の削除だけを登録する', () => {
     expect(
       PRODUCT_LIFECYCLE_ASYNC_HANDLERS.filter(({ name }) =>
@@ -96,7 +112,7 @@ describe('プロダクトライフサイクルの処理の登録口', () => {
     ]);
   });
 
-  test('論理削除では即時の終了の後続の処理の後に、物理削除の時期の到来ではengagementの削除の後に並び、sponsorshipはtournament-weekとtournament-yearの間に、ugc-moderationは最後に並ぶ', () => {
+  test('論理削除では即時の終了の後続の処理の後に、物理削除の時期の到来ではengagementの削除の後に並び、sponsorshipはtournament-weekとtournament-yearの間に、content-reportingはugc-moderationの直前に、ugc-moderationは最後に並ぶ', () => {
     expect(namesFor('deleted')).toStrictEqual([
       'match-engine.product-decision-follow-up',
       'tournament-week.product-entry-loss',
@@ -110,6 +126,7 @@ describe('プロダクトライフサイクルの処理の登録口', () => {
       'tournament-week.entry-unlink',
       'sponsorship.product-purge',
       'tournament-year.entry-unlink',
+      'content-reporting.product-report-erasure',
       'ugc-moderation.product-record-erasure',
     ]);
   });
@@ -118,6 +135,7 @@ describe('プロダクトライフサイクルの処理の登録口', () => {
     'tournament-week.',
     'tournament-year.',
     'sponsorship.',
+    'content-reporting.',
     'ugc-moderation.',
   ])('%sの処理は、非公開化と非公開化の解除では呼ばれない', (prefix) => {
     const others = PRODUCT_LIFECYCLE_EVENT_TYPES.filter(

@@ -6,6 +6,7 @@ import {
   type UserLifecycleEventType,
 } from '../../lib/core/identity/user-lifecycle.ts';
 import { EVENT_MODERATION_TYPES } from '../application/moderation/event-moderation-types.ts';
+import { EVENT_REPORTING_TYPES } from '../application/reporting/event-reporting-types.ts';
 import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
 import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
@@ -54,7 +55,7 @@ describe('ユーザーライフサイクルの処理の登録口', () => {
     ]);
   });
 
-  test('sponsorshipは物理削除の開始に1600で申込の削除だけを登録し、措置の記録の削除を除く全てのドメインの物理削除の処理の後に並ぶ', () => {
+  test('sponsorshipは物理削除の開始に1600で申込の削除だけを登録し、通報の削除と措置の記録の削除を除く全てのドメインの物理削除の処理の後に並ぶ', () => {
     expect(
       USER_LIFECYCLE_ASYNC_HANDLERS.filter(({ name }) =>
         name.startsWith('sponsorship.'),
@@ -67,14 +68,39 @@ describe('ユーザーライフサイクルの処理の登録口', () => {
         handler: EVENT_SPONSORSHIP_TYPES.AccountPurgeHandler,
       },
     ]);
-    expect(namesFor('purge_due').slice(-2)).toStrictEqual([
+    expect(namesFor('purge_due').slice(-3)).toStrictEqual([
       'sponsorship.account-purge',
+      'content-reporting.user-report-erasure',
       'ugc-moderation.account-record-erasure',
     ]);
     expect(
       USER_LIFECYCLE_EVENT_TYPES.filter((type) => type !== 'purge_due')
         .flatMap((type) => namesFor(type))
         .filter((name) => name.startsWith('sponsorship.')),
+    ).toEqual([]);
+  });
+
+  test('content-reportingは物理削除の開始に1800で通報の削除と案件の参照の消去だけを登録し、措置の記録の削除の直前に並ぶ', () => {
+    expect(
+      USER_LIFECYCLE_ASYNC_HANDLERS.filter(({ name }) =>
+        name.startsWith('content-reporting.'),
+      ),
+    ).toStrictEqual([
+      {
+        name: 'content-reporting.user-report-erasure',
+        events: ['purge_due'],
+        order: 1800,
+        handler: EVENT_REPORTING_TYPES.UserReportErasureHandler,
+      },
+    ]);
+    expect(namesFor('purge_due').slice(-2)).toStrictEqual([
+      'content-reporting.user-report-erasure',
+      'ugc-moderation.account-record-erasure',
+    ]);
+    expect(
+      USER_LIFECYCLE_EVENT_TYPES.filter((type) => type !== 'purge_due')
+        .flatMap((type) => namesFor(type))
+        .filter((name) => name.startsWith('content-reporting.')),
     ).toEqual([]);
   });
 

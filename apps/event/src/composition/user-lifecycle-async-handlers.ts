@@ -9,6 +9,7 @@ import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-no
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
+import { EVENT_REPORTING_TYPES } from '../application/reporting/event-reporting-types.ts';
 import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
 import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
@@ -119,6 +120,12 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['withdrawn'],
       order: 1700,
       handler: EVENT_YEAR_TOURNAMENT_TYPES.AccountEntryLossHandler,
+    },
+    {
+      name: 'content-reporting.user-report-erasure',
+      events: ['purge_due'],
+      order: 1800,
+      handler: EVENT_REPORTING_TYPES.UserReportErasureHandler,
     },
     {
       name: 'ugc-moderation.account-record-erasure',

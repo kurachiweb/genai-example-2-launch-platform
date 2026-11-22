@@ -395,6 +395,7 @@ describe('コメントと評価の物理削除の時期の処理の登録', () =
       'notifications.account-purge',
       ACCOUNT_ERASURE_NAME,
       'sponsorship.account-purge',
+      'content-reporting.user-report-erasure',
       'ugc-moderation.account-record-erasure',
     ]);
   });
@@ -424,6 +425,7 @@ describe('コメントと評価の物理削除の時期の処理の登録', () =
       'tournament-week.entry-unlink',
       'sponsorship.product-purge',
       'tournament-year.entry-unlink',
+      'content-reporting.product-report-erasure',
       'ugc-moderation.product-record-erasure',
     ]);
   });

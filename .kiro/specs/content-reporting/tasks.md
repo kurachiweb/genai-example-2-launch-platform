@@ -212,7 +212,7 @@
   - 完了状態: Workers統合テストが成功する
   - _Requirements: 14.10, 15.1, 15.3, 15.5, 18.2_
 
-- [ ] 6. (P) 物理削除の時期の通報の削除と対象への参照の消去を作り、eventの登録口に加える
+- [x] 6. (P) 物理削除の時期の通報の削除と対象への参照の消去を作り、eventの登録口に加える
   - 先に、単体テストで、ユーザーの物理削除の時期に申出者の通報の削除・投稿者の案件の対象への参照の消去・空の案件の削除を上限ずつ行って残りがあれば続きを返すこと、プロダクトの物理削除の時期にそのプロダクトとコメントの案件の対象への参照を消すこと(案件と通報を削除しないこと)を確かめる
   - 2つの処理は`core/reporting`の`ReportErasureStore`を`REPORTING_PLATFORM_TYPES.ReportErasureStore`で受け取り、`**/lib/workers/**`を読み込まない
   - eventの本specのモジュールと、ユーザー・プロダクトのライフサイクルの非同期の登録口(`purge_due`、1800)へ加える。1800は、ugc-moderationの措置の記録の削除(1900)を全ドメインの物理削除の処理の後(末尾)に保つための値で、roadmapの帯の割り当て(2000)と異なる
@@ -362,3 +362,4 @@
 - 4.3: `DefaultReportCategoryService`。**設計のFile Structure Planに無い`apps/api/src/application/reporting/reporting-errors.ts`(`REPORTING_ERRORS`)を、既存のinquiry-chat・help-center・ugc-moderationの`application/<機能>/<機能>-errors.ts`の形に合わせて作った。4.2・4.5・4.6・4.7のユースケースが投げるコードと文言はここへ追記し、5.2のpresentationの`errors.ts`はここを読む(並行のタスクが同時に追記しないよう、親が順に割り当てる)**。`report_category_protected`は設計どおり`unprocessable`(422)で、inquiry・helpの`conflict`と違う。重複のエラーには`name`の欄の詳細を付ける。`rename`は成功の後に`countReports`をもう1回呼んで件数を返す
 - 4.1: `DirectoryReportTargetResolver`(`apps/api/src/application/reporting/report-target-resolver.ts`)。**`describe`の結果の鍵は同じファイルからexportする`reportTargetKeyOf(key)`(`'<kind>:<targetId>'`、`targetId`がnullなら`'<kind>:'`)で作る(4.4・4.7・4.8はこの関数を使う)**。コメントの対象のプロダクトは鍵の`productId`から引く。抜粋は`truncateGraphemes(body, REPORT_LIST_EXCERPT_MAX)`(200書記素、省略記号なし、engagementの前例)。`describe`は停止中の利用者・非公開化のプロダクト・論理削除や非公開化や匿名化のコメントも`available: true`で返し(管理者の判断のため)、退会の利用者と削除のプロダクトは上流が返さないため`available: false`
 - 2.2: `REPORTING_PLATFORM_TYPES.ReportExport`(`D1ReportExport`、`listPage({ userId, after?, limit })`)はdata-exportの設計の`ExportReport`と同じ項目と型。呼び出し側(data-exportの`CorrespondenceSourceReader`)はdata-exportのspecのタスクで配線する(data-exportは未着手)。不正なカーソルは`AppError(bad_request, 'invalid_cursor')`(`D1InquiryExport`の前例)、`limit`は呼び出し側が1〜20で渡す前提で検査しない。`createdAt`は`reports.reported_at`。停止中の利用者・非公開化のプロダクトもハンドルを返す。プラットフォームモジュールの束縛のテストは上流の`PROFILE_PLATFORM_MODULE`・`PRODUCT_PLATFORM_MODULE`を含むコンテナで組む
+- 6: eventの識別子は`EVENT_REPORTING_TYPES`(`reporting.event.<名前>`、`UserReportErasureHandler`・`ProductReportErasureHandler`)、モジュールは`EVENT_REPORTING_MODULE`(`apps/event/src/composition/reporting-module.ts`)。利用者は`eraseByReporter`→`detachCasesByOwner`→`eraseEmptyCases`を毎回すべて行い、どれかに残りがあれば(空の案件は件数が上限の500以上で)`continue`(`backend/007`の件数で切る削除)。時刻は`PLATFORM_TYPES.Clock`。上流のテストの期待値の変更: 利用者の登録口の「sponsorshipは…措置の記録の削除を除く全てのドメインの物理削除の処理の後に並ぶ」を`slice(-3)` = [sponsorship, content-reporting, ugc-moderation]にしテスト名に「通報の削除と」を加えた、directoryの`.slice(-6)`を`-7`に、他の7つのモジュールの`purge_due`の一覧に1800を挿入

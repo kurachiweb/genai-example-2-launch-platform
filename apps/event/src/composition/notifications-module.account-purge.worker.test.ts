@@ -326,6 +326,7 @@ describe('通知の物理削除の波及処理の登録', () => {
       HANDLER_NAME,
       'engagement.account-erasure',
       'sponsorship.account-purge',
+      'content-reporting.user-report-erasure',
       'ugc-moderation.account-record-erasure',
     ]);
   });
