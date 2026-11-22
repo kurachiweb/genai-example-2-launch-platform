@@ -1,3 +1,7 @@
+import {
+  DATA_EXPORT_GENERATE_MESSAGE,
+  DATA_EXPORT_WATCHDOG_MESSAGE,
+} from '../../data-export/data-export-messages.ts';
 import { EMAIL_SEND_MESSAGE } from '../../email/send-message.ts';
 import {
   MODERATE_IMAGE_MESSAGE,
@@ -40,4 +44,6 @@ export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
     EXPAND_NOTIFICATION_EVENT_MESSAGE,
     SPONSORSHIP_DISPATCH_NOTICES_MESSAGE,
     SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
+    DATA_EXPORT_GENERATE_MESSAGE,
+    DATA_EXPORT_WATCHDOG_MESSAGE,
   ]);

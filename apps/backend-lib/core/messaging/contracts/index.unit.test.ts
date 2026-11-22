@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
+import {
+  DATA_EXPORT_GENERATE_MESSAGE,
+  DATA_EXPORT_WATCHDOG_MESSAGE,
+} from '../../data-export/data-export-messages.ts';
 import { EMAIL_SEND_MESSAGE } from '../../email/send-message.ts';
 import {
   MODERATE_IMAGE_MESSAGE,
@@ -104,6 +108,19 @@ describe('MESSAGE_CONTRACTS', () => {
     [
       'スポンサー広告の掲載の終わりの精算の契約sponsorship.settle-period-end',
       SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
+    ],
+  ])('%sを集約している', (_label, contract) => {
+    expect(MESSAGE_CONTRACTS).toContain(contract);
+  });
+
+  test.each([
+    [
+      'データエクスポートの生成の契約data-export.generate-archive',
+      DATA_EXPORT_GENERATE_MESSAGE,
+    ],
+    [
+      'データエクスポートの見張りの契約data-export.check-generation',
+      DATA_EXPORT_WATCHDOG_MESSAGE,
     ],
   ])('%sを集約している', (_label, contract) => {
     expect(MESSAGE_CONTRACTS).toContain(contract);

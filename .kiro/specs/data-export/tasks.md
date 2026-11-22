@@ -14,7 +14,7 @@
   - 完了状態: 単体テストが成功し、マイグレーションをローカルのD1に適用できる
   - _Requirements: 3.5, 3.8, 7.5, 8.3, 10.2_
 
-- [ ] 1.3 (P) メッセージ種別・時間の定数・ZIPの上限を作る
+- [x] 1.3 (P) メッセージ種別・時間の定数・ZIPの上限を作る
   - 先に、単体テストで、2つのメッセージの本文の検証(要求のIDだけ)、見張りの遅延7,200秒・受け皿3時間・リース20分・使用中の待ち1,200秒・再試行3回(起点60秒・上限600秒)の値、ZIPの上限(4GiB・65,535件)と部分の大きさ10MiB、上限超過の例外の種類(バイト数・件数)を確かめる
   - メッセージ契約の集約へ2種別を加える
   - 完了状態: 単体テストと集約の重複の検査が成功し、規則が`cloudflare:*`・`apps/db`・`workers`を読み込まない
@@ -268,3 +268,4 @@
 
 - 1.1: 通知の状態(`none`・`pending`・`requested`・`skipped`)は設計の`DataExportRules`に無いため共有定義に含めず、`data_exports`のCHECKと`core/data-export/ports.ts`の`DataExportNoticeStatus`が持つ。
 - 1.2: `apps/db`は`common-lib`を読み込まないため、`status`・`failure_kind`のCHECKの値は1.1の定数の写しを直接書き、一致は4.1のWorkers統合テストで確かめる。マイグレーションは`feat/implement`のHEADのまま生成した(`20261122163142_data_export`)。後からmainにマイグレーションが入ったらディレクトリ名の日時を調整する。
+- 1.3: `GENERATION_RETRY_POLICY`は既存の`NOTIFICATION_RETRY_POLICY`と同じ`RetryPolicy`型の凍結したオブジェクトにした。`ArchiveTooLargeError`は`limit: 'bytes' | 'entries'`を持ち、メッセージに利用者の内容を含めない。
