@@ -76,7 +76,7 @@ const FIRST_SPREAD_OFFSET_DAYS = 2;
 
 const SPREAD_DAYS = LAUNCH_HORIZON_DAYS - FIRST_SPREAD_OFFSET_DAYS + 1;
 
-const DEFAULT_LOGO_FILE_ID = deterministicUlid(
+export const DEFAULT_LOGO_FILE_ID = deterministicUlid(
   new Date(0),
   'synthetic-shared-logo',
 );
@@ -204,5 +204,34 @@ export function launchOf(
     productId: product.id,
     launchDate: product.latestLaunchDate,
     createdAt: product.createdAt,
+  };
+}
+
+export interface SyntheticAdmin {
+  readonly id: string;
+  readonly email: string;
+  readonly nickname: string;
+  readonly createdAt: Date;
+}
+
+const ADMIN_AGE_DAYS = 380;
+
+// 管理者は利用者とは別の連番で作り、監査ログの操作者・ヘルプ記事の作成者・管理者の認証情報の持ち主にする
+export function adminAt(
+  context: Pick<EntityContext, 'seed' | 'baseDate'>,
+  index: number,
+): SyntheticAdmin {
+  const createdAt = new Date(
+    baseInstantOf(context.baseDate).getTime() - ADMIN_AGE_DAYS * DAY_MS,
+  );
+  const number = numberOf(index);
+  return {
+    id: deterministicUlid(
+      createdAt,
+      `${String(context.seed)}:admin:${String(index)}`,
+    ),
+    email: `synthetic-admin-${number}@readiness.example`,
+    nickname: `合成管理者${number}`,
+    createdAt,
   };
 }

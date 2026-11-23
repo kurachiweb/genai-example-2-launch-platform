@@ -6,7 +6,11 @@ import {
   toBusinessDateTime,
 } from '../../../lib/core/time/business-time.ts';
 import { commentsDataset } from './datasets/comments.ts';
+import { dailyBatchTargetsDataset } from './datasets/daily-batch-targets.ts';
+import { exportHeavyUserDataset } from './datasets/export-heavy-user.ts';
+import { helpArticlesDataset } from './datasets/help-articles.ts';
 import { matchesDataset } from './datasets/matches.ts';
+import { moderationDataset } from './datasets/moderation.ts';
 import { productsDataset } from './datasets/products.ts';
 import { sponsorshipsDataset } from './datasets/sponsorships.ts';
 import { usersDataset } from './datasets/users.ts';
@@ -40,6 +44,10 @@ export const DATASETS: readonly SyntheticDataset[] = [
   matchesDataset,
   commentsDataset,
   sponsorshipsDataset,
+  moderationDataset,
+  helpArticlesDataset,
+  exportHeavyUserDataset,
+  dailyBatchTargetsDataset,
 ];
 
 // リポジトリのルートのtmp(Git管理外)。このファイルは<ルート>/apps/api/scripts/readiness/synthetic-data/にある

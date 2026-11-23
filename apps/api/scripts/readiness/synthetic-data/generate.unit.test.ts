@@ -11,6 +11,9 @@ import {
 } from './generate.ts';
 import { createMigratedDatabase } from './migrated-database.ts';
 
+// マイグレーションが初期データの行を1件入れているテーブル
+const SEEDED_TABLES = new Set(['product_categories', 'help_categories']);
+
 const NOW = new Date('2026-11-24T10:00:00.000Z');
 
 describe('parseGenerateArguments', () => {
@@ -93,6 +96,10 @@ describe('DATASETS', () => {
       'matches',
       'comments',
       'sponsorships',
+      'moderation',
+      'help-articles',
+      'export-heavy-user',
+      'daily-batch-targets',
     ]);
     DATASETS.forEach((dataset, index) => {
       for (const dependency of dataset.dependsOn) {
@@ -150,7 +157,7 @@ describe('runGenerate', () => {
           db
             .query<{ n: number }, []>(`SELECT count(*) AS n FROM ${table}`)
             .get()?.n,
-        ).toBe(table === 'product_categories' ? rows + 1 : rows);
+        ).toBe(SEEDED_TABLES.has(table) ? rows + 1 : rows);
       }
       expect(db.query('PRAGMA foreign_key_check').all()).toEqual([]);
     } finally {
@@ -194,9 +201,56 @@ describe('runGenerate', () => {
     expect(samples.matchIds).toHaveLength(5);
     expect(samples.largestThreadProductHandle).toEqual(['synthetic-p-000001']);
     expect(samples.sponsoredProductHandles).toHaveLength(1);
+    expect(samples.largeHelpArticleHandle).toEqual([
+      'synthetic-help-max-length',
+    ]);
+    expect(samples.exportHeavyUserId).toHaveLength(1);
     expect(stdout).toContain('smoke');
     expect(stdout).toContain('2026-12-01');
     expect(stdout).toContain('users');
+  });
+
+  test('--export-user-idを渡すと、manifestの見本とファイルの全ての結び付けがその利用者になる', async () => {
+    const userId = '01JCDEFGHJKMNPQRSTVWXYZ012';
+    await run(['--export-user-id', userId]);
+
+    const manifest = JSON.parse(
+      await readFile(join(outDir, 'manifest.json'), 'utf8'),
+    ) as { exportUserId: string; samples: Record<string, string[]> };
+    expect(manifest.exportUserId).toBe(userId);
+    expect(manifest.samples.exportHeavyUserId).toEqual([userId]);
+    const exportFile = (await readdir(outDir)).find((name) =>
+      name.endsWith('-export-heavy-user.sql'),
+    );
+    const content = await readFile(join(outDir, exportFile ?? ''), 'utf8');
+    expect(content).toContain(userId);
+  });
+
+  test('投入の順の一覧は番号順で、最後のファイルが4:21の対象になり、見本が全データセットの分そろう', async () => {
+    await run();
+
+    const manifest = JSON.parse(
+      await readFile(join(outDir, 'manifest.json'), 'utf8'),
+    ) as {
+      files: { order: number; dataset: string }[];
+      samples: Record<string, string[]>;
+    };
+    const datasetOrder = [...new Set(manifest.files.map((f) => f.dataset))];
+    expect(datasetOrder).toEqual(DATASETS.map((dataset) => dataset.name));
+    expect(manifest.files.map((f) => f.order)).toEqual(
+      manifest.files.map((_, index) => index + 1),
+    );
+    expect(Object.keys(manifest.samples).toSorted()).toEqual([
+      'exportHeavyUserId',
+      'largeHelpArticleHandle',
+      'largestCreatorHandle',
+      'largestCreatorProductHandle',
+      'largestThreadProductHandle',
+      'matchIds',
+      'productHandles',
+      'profileHandles',
+      'sponsoredProductHandles',
+    ]);
   });
 
   test('同じ引数で2回実行すると出力が同じになる', async () => {
