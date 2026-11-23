@@ -19,7 +19,7 @@
   - _Depends: 1.1_
   - _Requirements: 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 1.3 (P) GraphQLの応答時間の集計を作る
+- [x] 1.3 (P) GraphQLの応答時間の集計を作る
   - エラートラッキングから書き出したブラウザの中継の要求(`/_bff/graphql`)のスパンとAPIサーバーのスパン(CSV、列名は引数で指定)を読み、トレースのIDと親子の関係で結んで、ブラウザのスパンの所要時間にAPIサーバーの属性`graphql.operation.name`の操作名を付ける(ギャップ分析のD-4)。操作ごとの標本数と95パーセンタイル(最近接順位法)を求め、閾値300msと最小の標本200件(仮4)で判定し、結べなかったスパンの数を表に並べる
   - 先に、単体テストで、20件と200件の95パーセンタイル、300msと301msの境界、標本不足、操作の指定と標本の無い操作、フロントエンドサーバーの中継のスパンを間に挟む結び付け、1つのトレースに複数の要求がある場合の結び付け、操作名の無いトレース、CSVの列の欠落を確かめる
   - 完了状態: 単体テストが成功し、例のCSVでサブコマンドが操作ごとの表を出す
@@ -430,6 +430,7 @@
 ## Implementation Notes
 
 - 1.1: 入口の表`COMMAND_TABLE`の各行は`{ description, load }`で、各タスクは`load:`の1行を`() => import('./commands/<name>.ts')`へ替える。コマンドは`run(args, io)`で、入力の形の誤りは`UsageError`(終了コード2)、判定の失敗は1を返す。最後に4行が替わったタスクが`notImplemented`の読み込みと`commands/shared/not-implemented.ts`を消す。層の検査は`scripts/delivery`の補助が非公開のため写しで、`http`・`https`・`net`を足した。
+- 1.3: 結び付けはAPIの`graphql.operation.name`の行から親をたどり最初のブラウザのスパンに付け、フロントエンドの行は通過する(ブラウザ1スパンにつき1標本)。全ての操作が合格のときだけ終了コード0(標本不足も1)。CSVの既定の列名は`trace_id`・`span_id`・`parent_span_id`・`side`(`browser`・`frontend`・`api`)・`operation`・`duration_ms`で、実際の書き出しの列名は引数で渡す。
 - 1.6: 本番の項目の結果はチェックリストの記入欄に、S-01〜S-23の結果は検証の記録の表に書く。受け入れた危険の主体の共有の行の理由は研究メモに無いため「開発者が追記する(未記入)」とした。設計のD-02の「UTCの式」の時刻は業務時刻(UTC-8)の表記で、Wrangler設定の式はUTCの`21 0`・`21 12`・`40 7`・`45 7`・`0 8`・`7 8`(記録の規則の節に対応を書いた)。
 - 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。
 - 3.2: `axe-core`はページのCSPで`addScriptTag`が阻まれるため`page.evaluate(axe.source)`で注入し、終わりのあるアニメーションの完了を待ってから検査する。違反の型に`route`・`state`を足した。`ROUTE_INVENTORY`は`routeTree.gen.ts`の`fullPaths`の文字列単位(末尾のスラッシュ違いは別の経路)で、管理者側の`with-data`は最上位管理者で開く状態。上流に補助が無い操作(法務文書の公開など)は`prepare`に画面の操作として書いた。

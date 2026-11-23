@@ -23,7 +23,7 @@ export const COMMAND_TABLE: CommandTable = {
   },
   'graphql-latency': {
     description: 'GraphQLの応答時間を、操作ごとの95パーセンタイルで集計する',
-    load: notImplemented('graphql-latency'),
+    load: () => import('./commands/graphql-latency.ts'),
   },
   'availability-probe': {
     description: 'デプロイ中の各アプリの応答を1秒ごとに監視して集計する',
