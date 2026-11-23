@@ -27,3 +27,19 @@ describe('OpenTofuのファイルの管理対象', () => {
     ).toBe(false);
   });
 });
+
+describe('検証の道具の出力先の管理対象', () => {
+  // 合成データのSQLや計測の書き出しは大きく、他の環境の識別子を含み得るため、リポジトリへ入れない
+  test.each([
+    ['ルートのtmpの直下', 'tmp/synthetic-data/manifest.json'],
+    ['ルートのtmpのディレクトリ自身', 'tmp/'],
+  ])('%sはGit管理外である', (_label, path) => {
+    expect(isGitIgnored(REPO_ROOT, path)).toBe(true);
+  });
+
+  test('ルート以外のtmpという名前のディレクトリは管理対象である', () => {
+    expect(isGitIgnored(REPO_ROOT, 'scripts/readiness/tmp/example.ts')).toBe(
+      false,
+    );
+  });
+});

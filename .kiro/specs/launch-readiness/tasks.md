@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 検証の道具・縮退の対応表・記録とチェックリストの様式
-- [ ] 1.1 ルートの検証の道具の骨格と層の検査を作る
+- [x] 1.1 ルートの検証の道具の骨格と層の検査を作る
   - 前提: dev-tooling〜data-exportの28specの全タスクが完了し、mainからstagingへ随時デプロイされていること(infra-deliveryのデプロイの仕組み・`operations/001`・`002`、backend-platformの定期実行の要約のログと共有の補助`e2e/support/scheduled-trigger.ts`、frontend-platformの`security-assertions.ts`と`runAxe`、admin-foundationの`admin-bootstrap.ts`・`local-d1.ts`、identity-authの`mailpit.ts`、各ドメインspecのE2Eの補助)。無ければ該当するタスクを保留して開発者へ報告する
   - spec横断レビューで採られた上流の改訂(backend-platformの改訂2: 4:21の予算の値の記載・予算の超過の警告・ローカルの定期実行の経路`/cdn-cgi/local/scheduled`・共有の補助`triggerScheduled`、infra-deliveryの改訂1: Workerごとのフォルダ`/workers/api`・`/workers/event`とapi・eventのローカルの起動の入口`run-with-secrets --scope local --worker <api|event>`、paymentsの仮7: `operations/004`のWorkerごとの制限付きキー)と、開発者の決定による上流の改訂(backend-platformの改訂3: Sentryの伏せ字の範囲の拡大、確定)は、上の前提の完了に含まれる。本specは上流specを編集しない。実装されていなければ、それに依存するタスク(1.5(と、そのコマンドを使う4.5)・2.3・3.1・4.1・7.4のA-09・7.5・7.10・8.3・9.1)を保留して開発者へ報告する
   - 入口に4つのサブコマンド(日次バッチの予算・応答時間の集計・応答の監視・縮退の起動)の振り分けの表を全行そろえて置き、各行は未実装を示す仮の処理を指す。以後のタスクは自分のサブコマンドのファイルを作り、表の自分の1行だけを差し替える
@@ -429,4 +429,5 @@
 
 ## Implementation Notes
 
+- 1.1: 入口の表`COMMAND_TABLE`の各行は`{ description, load }`で、各タスクは`load:`の1行を`() => import('./commands/<name>.ts')`へ替える。コマンドは`run(args, io)`で、入力の形の誤りは`UsageError`(終了コード2)、判定の失敗は1を返す。最後に4行が替わったタスクが`notImplemented`の読み込みと`commands/shared/not-implemented.ts`を消す。層の検査は`scripts/delivery`の補助が非公開のため写しで、`http`・`https`・`net`を足した。
 - 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。

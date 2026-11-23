@@ -75,5 +75,8 @@ playwright-report
 # Playwright MCPの出力先
 .playwright-mcp
 
+# 合成データと検証の出力先(ルートのtmpだけ)
+/tmp/
+
 # 生成AI用
 .claude/settings.local.json

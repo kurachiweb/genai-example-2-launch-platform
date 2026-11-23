@@ -20,6 +20,7 @@
     "shared-dirs:verify": "bun ./scripts/tooling/shared-dirs.ts verify",
     "shared-dirs:place": "bun ./scripts/tooling/shared-dirs.ts place",
     "delivery": "bun ./scripts/delivery/cli.ts",
+    "readiness": "bun scripts/readiness/cli.ts",
     "infra:check": "bun ./scripts/delivery/cli.ts infra-check",
     "infra:fmt": "tofu fmt -recursive apps/infra"
   },
