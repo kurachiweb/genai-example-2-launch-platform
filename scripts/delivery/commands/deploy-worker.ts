@@ -1,4 +1,4 @@
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 
 import {
   DEPLOY_ENVIRONMENTS,
@@ -14,6 +14,10 @@ import {
   WORKER_SCOPED_SECRETS,
   WORKER_SECRET_FOLDERS,
 } from '../core/secret-scope.ts';
+import {
+  SOURCEMAP_BUILD_OUT_DIRS,
+  WRANGLER_BUNDLED_ENTRY,
+} from '../core/sourcemap-upload.ts';
 import { VITE_BUILT_WORKERS, appDirOf } from '../core/worker-apps.ts';
 import {
   OPTIONAL_WORKER_SECRETS,
@@ -40,6 +44,7 @@ import { loadResourceCatalog } from './shared/load-catalog.ts';
 import { parseOptions, requiredChoice } from './shared/parse-options.ts';
 import { generateAllowlist } from './shared/previous-release-allowlist.ts';
 import { reportInputErrors } from './shared/report-violations.ts';
+import { uploadSourcemaps } from './upload-sourcemaps.ts';
 
 const NAME = 'deploy-worker';
 const TITLE = 'Workerのデプロイ';
@@ -143,14 +148,37 @@ const buildStepOf = ({ env, accountId }: DeployTarget): TargetStep => ({
   env: { CLOUDFLARE_ENV: env, [CLOUDFLARE_ACCOUNT_ID_KEY]: accountId },
 });
 
+// wrangler deployが自分でバンドルするとデバッグIDを埋め込んだ出力がデプロイに入らないため、書き出した出力をそのままデプロイする
+const bundleOutdirOf = ({ app, appDir }: DeployTarget): string =>
+  relative(appDir, SOURCEMAP_BUILD_OUT_DIRS[app]);
+
+const bundleStepOf = (target: DeployTarget): TargetStep => ({
+  args: [
+    'x',
+    'wrangler',
+    'deploy',
+    '--dry-run',
+    '--env',
+    target.env,
+    '--outdir',
+    bundleOutdirOf(target),
+  ],
+});
+
+const scriptArgsOf = (target: DeployTarget): readonly string[] =>
+  VITE_BUILT_WORKERS.has(target.app)
+    ? []
+    : [`${bundleOutdirOf(target)}/${WRANGLER_BUNDLED_ENTRY}`, '--no-bundle'];
+
 const deployArgsOf = (
-  { env, app }: DeployTarget,
+  target: DeployTarget,
   { commit, message }: VersionAnnotation,
 ): readonly string[] => [
   'x',
   'wrangler',
   'deploy',
-  ...(VITE_BUILT_WORKERS.has(app) ? [] : ['--env', env]),
+  ...scriptArgsOf(target),
+  ...(VITE_BUILT_WORKERS.has(target.app) ? [] : ['--env', target.env]),
   '--tag',
   commit,
   '--message',
@@ -249,7 +277,7 @@ const prepare = async (
   deps: DeliveryDeps,
 ): Promise<number> => {
   if (target.app === 'api') {
-    return generateAllowlist(
+    const allowlist = await generateAllowlist(
       NAME,
       {
         env: target.env,
@@ -259,16 +287,20 @@ const prepare = async (
       },
       deps,
     );
+    if (allowlist !== EXIT_SUCCESS) return allowlist;
   }
-  if (!VITE_BUILT_WORKERS.has(target.app)) return EXIT_SUCCESS;
-  const build = buildStepOf(target);
+  const build = VITE_BUILT_WORKERS.has(target.app)
+    ? buildStepOf(target)
+    : bundleStepOf(target);
   const code = await runInTarget(target.appDir, build, deps);
-  if (code === 0) return EXIT_SUCCESS;
-  writeError(
-    `(${target.appDir}) ${stepLineOf(build)} が終了コード${String(code)}で失敗しました。`,
-    deps,
-  );
-  return EXIT_FAILURE;
+  if (code !== 0) {
+    writeError(
+      `(${target.appDir}) ${stepLineOf(build)} が終了コード${String(code)}で失敗しました。`,
+      deps,
+    );
+    return EXIT_FAILURE;
+  }
+  return uploadSourcemaps(target.env, target.app, deps);
 };
 
 const deployWorker = async (
@@ -317,7 +349,7 @@ const deployWorker = async (
 export const command: DeliveryCommand = {
   name: NAME,
   description:
-    '宣言した必須と任意のシークレット(Workerごとのフォルダを優先)を標準入力で渡し、コミットのタグと実行のURLを付けて1つのWorkerをデプロイし、版のIDと起動時間を要約に書く(apiはclientのWorkerの版から特定した直前のリリースを含めて許可リストを生成してから、client・adminは環境を指定してビルドしてから)',
+    '宣言した必須と任意のシークレット(Workerごとのフォルダを優先)を標準入力で渡し、コミットのタグと実行のURLを付けて1つのWorkerをデプロイし、版のIDと起動時間を要約に書く(apiはclientのWorkerの版から特定した直前のリリースを含めて許可リストを生成してから、client・adminは環境を指定してビルドしてから。api・eventはバンドルを書き出し、client・adminはビルドの出力へ、デバッグIDの埋め込みとソースマップのアップロードをしてから、書き出したバンドルをそのままデプロイする)',
   run: async (args, deps) => {
     const { options } = parseOptions(args, {
       names: ['env', 'app'],

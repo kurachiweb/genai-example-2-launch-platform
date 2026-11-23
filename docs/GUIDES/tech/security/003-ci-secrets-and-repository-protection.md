@@ -56,7 +56,7 @@ sequenceDiagram
 | 主体                      | 認証するジョブ                                         | 取り出す環境とフォルダ                                                                              | 主体のIDの記入先                                                        |
 | ------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | 検査の主体                | 検査のワークフローの`tests`・`e2e`                     | `dev`の`/`(共通のフォルダ)と、E2EでAPIサーバー・イベントサーバーを起動するときの`/workers/<Worker>` | `<配布のスクリプト>/catalog/check-secrets.ts`の`CHECK_SECRETS_IDENTITY` |
-| `staging`のデプロイの主体 | mainへのpushで呼ばれるデプロイのワークフローの`deploy` | `staging`の`/ci/tofu`・`/ci/cloudflare`・`/`・`/workers/<Worker>`                                   | 資源一覧`staging.json`の`infisical.identityId`                          |
+| `staging`のデプロイの主体 | mainへのpushで呼ばれるデプロイのワークフローの`deploy` | `staging`の`/ci/tofu`・`/ci/cloudflare`・`/ci/sentry`・`/`・`/workers/<Worker>`                     | 資源一覧`staging.json`の`infisical.identityId`                          |
 | `prod`のデプロイの主体    | prodへのpushで呼ばれるデプロイのワークフローの`deploy` | `prod`の同じ構成のフォルダ                                                                          | 資源一覧`prod.json`の`infisical.identityId`                             |
 
 - 主体のIDは秘密でない識別子としてコミットする。OIDCトークンのクレームが縛りに合わなければ、IDを知っていても認証できない。
@@ -135,12 +135,13 @@ Infisicalの料金プランが独自のロール(環境やフォルダごとの�
 
 Infisicalの各環境のフォルダを、使うコマンドごとに分け、各コマンドに必要なフォルダだけを渡す。フォルダ名とキー名は、配布のスクリプトが前提とする規約である。
 
-| フォルダ            | 中身                                                                                                            | 取り出すコマンド                                                          |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `/`(共通のフォルダ) | Workerが宣言したシークレットの値                                                                                | 検査のテスト・E2E(`dev`)、Workerのデプロイ(`staging`・`prod`)             |
-| `/workers/<Worker>` | 同じキー名でWorkerごとに異なる値が要るシークレット                                                              | 検査のE2Eとローカルの起動(`dev`)、そのWorkerのデプロイ(`staging`・`prod`) |
-| `/ci/tofu`          | 状態の保管先の鍵(`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`)と暗号化のパスフレーズ(`TF_VAR_state_passphrase`) | OpenTofuの初期化・計画・適用と出力の読み取り(`staging`・`prod`)           |
-| `/ci/cloudflare`    | CloudflareのAPIトークン(`CLOUDFLARE_API_TOKEN`)                                                                 | OpenTofuのprovider・Wrangler(`staging`・`prod`)                           |
+| フォルダ            | 中身                                                                                                            | 取り出すコマンド                                                              |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `/`(共通のフォルダ) | Workerが宣言したシークレットの値                                                                                | 検査のテスト・E2E(`dev`)、Workerのデプロイ(`staging`・`prod`)                 |
+| `/workers/<Worker>` | 同じキー名でWorkerごとに異なる値が要るシークレット                                                              | 検査のE2Eとローカルの起動(`dev`)、そのWorkerのデプロイ(`staging`・`prod`)     |
+| `/ci/tofu`          | 状態の保管先の鍵(`AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY`)と暗号化のパスフレーズ(`TF_VAR_state_passphrase`) | OpenTofuの初期化・計画・適用と出力の読み取り(`staging`・`prod`)               |
+| `/ci/cloudflare`    | CloudflareのAPIトークン(`CLOUDFLARE_API_TOKEN`)                                                                 | OpenTofuのprovider・Wrangler(`staging`・`prod`)                               |
+| `/ci/sentry`        | エラートラッキングのソースマップのアップロードの認証と宛先(`SENTRY_AUTH_TOKEN`・`SENTRY_ORG`・`SENTRY_PROJECT`) | ソースマップのアップロード(`staging`・`prod`。未登録でもデプロイは止まらない) |
 
 - `/ci/*`の値はWorkerへ渡さない。Workerのシークレットは`/`と`/workers/<Worker>`からだけ選ぶ。
 - Workerごとのフォルダの値は、同じキーの共通のフォルダの値より優先し、そのWorkerにだけ渡す。

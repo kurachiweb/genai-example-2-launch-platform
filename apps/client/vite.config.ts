@@ -12,6 +12,8 @@ const LOCAL_STATE_PATH = '/workspace/.wrangler/state';
 
 export default defineConfig({
   define: VUE_FEATURE_FLAGS,
+  // ブラウザへ配信するファイルに参照のコメントを残さず、デプロイの手順がデバッグIDを埋め込んでアップロードした後に.mapを削除できるようにする
+  build: { sourcemap: 'hidden' },
   plugins: [
     cloudflare({
       viteEnvironment: { name: 'ssr' },

@@ -39,6 +39,8 @@ export const SOURCEMAP_BUILD_OUT_DIRS: Readonly<Record<WorkerKey, string>> = {
   event: 'apps/event/.wrangler/sourcemaps',
 };
 
+export const WRANGLER_BUNDLED_ENTRY = 'index.js';
+
 const SENTRY_CLI_ARGS: readonly string[] = ['x', '--no-install', 'sentry-cli'];
 
 export function sentryFolderKeys(): readonly [
