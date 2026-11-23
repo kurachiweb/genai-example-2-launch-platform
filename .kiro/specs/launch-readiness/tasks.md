@@ -111,7 +111,7 @@
   - _Depends: 3.2_
   - _Requirements: 14.1, 14.2, 14.5, 14.6, 14.7, 14.8_
 
-- [ ] 4.2 (P) 管理者の措置の流れの回帰テストを作る
+- [x] 4.2 (P) 管理者の措置の流れの回帰テストを作る
   - 利用者のコメントの投稿、他の利用者の通報、`signInAsNewAdmin`のモデレーターによる通報の一覧からの非公開化、利用者側での非表示、投稿者と申出者へのメール、監査ログの記録を確かめる
   - 完了状態: テストを実装してローカルで実行し、上流の不具合による失敗はテストの出力に残す(指摘の記録は7.1でまとめて行う)
   - _Boundary: E2E(client/regression/moderation-journey)_
@@ -440,6 +440,7 @@
 - 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。
 - 3.2: `axe-core`はページのCSPで`addScriptTag`が阻まれるため`page.evaluate(axe.source)`で注入し、終わりのあるアニメーションの完了を待ってから検査する。違反の型に`route`・`state`を足した。`ROUTE_INVENTORY`は`routeTree.gen.ts`の`fullPaths`の文字列単位(末尾のスラッシュ違いは別の経路)で、管理者側の`with-data`は最上位管理者で開く状態。上流に補助が無い操作(法務文書の公開など)は`prepare`に画面の操作として書いた。
 - 3.3: パスワードは固定の定数にせず(Betterleaksが検出する)、上流の`createTestAccount`の実行ごとの乱数を全員で共有し`BulkUser.password`で返す。ログインは永続化の文書ID(`ClientLoginDocument`)で`/_bff/graphql`へ送るため`apps/client/src/graphql/generated`と`apps/frontend-lib`の`documentIdOf`を読み込む(上流の`checkout-steps.ts`などと同じ)。投入は50行ずつ別の`executeLocalD1`で行い(1引数128KiBの上限)、文書用IPは3範囲で最大762人。
+- 4.2: 利用者側のテストから管理画面を開くため、`browser.newContext({ baseURL: <管理者側のURL> })`の文脈を使い、管理者を使うので`infisical run --env dev`で実行する。上流に通報の一覧の行から措置する手順が無いため`hideReportedCommentFromList`を自前で書き、画面の部品まで型の読み込みが辿る管理画面の文言とイベントサーバーのメールの件名は写した。監査ログは`REPORT_RESOLVE_ACTION`(案件)と`comment.hide`(コメント)の2件を確かめる。
 - 4.4: 当日の予選のプロダクトは未掲載で`productLiveMatch`がnullを返すため、数え上げは`qualifierBoard`から読む。100人のログインは20人ずつ並行で計測の外に置き、要求の失敗は状態コード0として数える。管理者のカテゴリの作成を含むため`infisical run --env dev`で実行する。ローカルの2回の実行は所要時間2.3〜2.5秒・5xx 0件・数え上げ100。負荷の極端な時に100件全てが120秒の時間切れになった1回は原因未特定で、7.1で静かな環境で再現を確かめる。
 - 6.1: `@sentry/cli` 3.8.2をルートへ完全固定し、`bun x --no-install sentry-cli`で呼ぶ(ワークフローで版を指定しないため`tool-versions`の照合の対象外)。値は環境変数`SENTRY_AUTH_TOKEN`・`SENTRY_ORG`・`SENTRY_PROJECT`で渡し、マスクはトークンだけ(フォルダ全体だと組織・プロジェクト名がログで伏せられる)。client・adminの`dist/client`の`.map`はアップロードを飛ばしても削除し、削除の失敗は終了コード1。api・eventの出力先`.wrangler/sourcemaps`は仮で、`wrangler deploy`が自分でバンドルするため埋め込みがデプロイに入るかを6.2で確かめる。
 - 8.1: 初動の目標時間・告知の更新の間隔・振り返りの期限・RTO・RPOは`operations/005`ではプレースホルダーにし、値は8.5で`project-values.md`へ入れる。`operations/006`へのリンクは8.2の完了で解消する。
