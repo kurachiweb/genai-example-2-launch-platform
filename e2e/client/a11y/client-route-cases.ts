@@ -33,8 +33,11 @@ import {
   type Unavailable,
   unsubscribeUserWorld,
 } from './client-route-flows-world.ts';
-import { routeCaseKey } from './client-route-report.ts';
-import { type StorageState, withSessionPage } from './route-sessions.ts';
+import { routeCaseKey } from '../../support/route-audit-report.ts';
+import {
+  type StorageState,
+  withSessionPage,
+} from '../../support/route-sessions.ts';
 
 export interface RouteTarget {
   readonly url: string;

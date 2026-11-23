@@ -1,7 +1,7 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 
-import { assumeDistinctClientIp } from '../../support/client-ip.ts';
-import { resolveE2ETargets } from '../../support/targets.ts';
+import { assumeDistinctClientIp } from './client-ip.ts';
+import { resolveE2ETargets } from './targets.ts';
 
 export type StorageState = Awaited<ReturnType<BrowserContext['storageState']>>;
 

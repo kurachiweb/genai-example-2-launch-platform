@@ -55,8 +55,13 @@ import {
   issueApiKey,
   openApiKeySettings,
 } from '../public-api-steps.ts';
-import { cachedWorld, peekWorld } from './route-world-cache.ts';
-import { type StorageState, withSessionPage } from './route-sessions.ts';
+import { worldCache } from '../../support/route-world-cache.ts';
+import {
+  type StorageState,
+  withSessionPage,
+} from '../../support/route-sessions.ts';
+
+const { cachedWorld, peekWorld } = worldCache('client');
 
 export interface HelpArticleRecord {
   readonly id: string;

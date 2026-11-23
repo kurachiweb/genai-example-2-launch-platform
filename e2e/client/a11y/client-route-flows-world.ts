@@ -42,8 +42,13 @@ import { registerSponsorshipOwner } from '../sponsorship-steps.ts';
 import { registerVerifiedAccount } from '../profile-steps.ts';
 import { publishLegalDocument } from './legal-publish-steps.ts';
 import { emptyUserWorld } from './client-route-world.ts';
-import { cachedWorld } from './route-world-cache.ts';
-import { type StorageState, withSessionPage } from './route-sessions.ts';
+import { worldCache } from '../../support/route-world-cache.ts';
+import {
+  type StorageState,
+  withSessionPage,
+} from '../../support/route-sessions.ts';
+
+const { cachedWorld } = worldCache('client');
 
 export interface Unavailable {
   readonly unavailable: string;

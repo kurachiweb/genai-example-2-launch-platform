@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { A11yViolation } from '../../support/a11y-scan.ts';
+import type { A11yViolation } from './a11y-scan.ts';
 import {
   describeFinding,
   describeSummary,
@@ -10,7 +10,7 @@ import {
   routeCaseKey,
   routeTestTitle,
   summarizeFindings,
-} from './client-route-report.ts';
+} from './route-audit-report.ts';
 
 const VIOLATION: A11yViolation = {
   route: '/p/$handle',

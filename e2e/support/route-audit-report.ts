@@ -1,4 +1,4 @@
-import type { A11yViolation } from '../../support/a11y-scan.ts';
+import type { A11yViolation } from './a11y-scan.ts';
 
 export interface RouteAuditFinding {
   readonly route: string;

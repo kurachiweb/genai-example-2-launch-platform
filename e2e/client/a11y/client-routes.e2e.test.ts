@@ -23,10 +23,10 @@ import {
   routeCaseKey,
   routeTestTitle,
   summarizeFindings,
-} from './client-route-report.ts';
+} from '../../support/route-audit-report.ts';
 import { deleteWorldHelpArticles } from './client-route-world.ts';
-import { withSessionPage } from './route-sessions.ts';
-import { findingsFilePath } from './route-world-cache.ts';
+import { withSessionPage } from '../../support/route-sessions.ts';
+import { findingsFilePath } from '../../support/route-world-cache.ts';
 
 // 管理者と複数の利用者の登録・プロダクトの登録・予選の開始・決済・トーナメントの用意を、その状態を最初に使うテストが行う
 const ROUTE_TEST_TIMEOUT_MS = 1_200_000;
@@ -62,14 +62,14 @@ function expectOpenedRoute(
 }
 
 async function recordFinding(finding: RouteAuditFinding): Promise<void> {
-  const path = findingsFilePath();
+  const path = findingsFilePath('client');
   await mkdir(dirname(path), { recursive: true });
   await appendFile(path, `${JSON.stringify(finding)}\n`, 'utf8');
 }
 
 // 7.1へ渡す違反とヘッダーの不足の一覧の置き場所と、その件数の要約を、実行の終わりに示す
 async function reportSummary(): Promise<void> {
-  const path = findingsFilePath();
+  const path = findingsFilePath('client');
   const text = await readFile(path, 'utf8').catch(() => '');
   const findings = parseFindingLines(text);
   process.stdout.write(
