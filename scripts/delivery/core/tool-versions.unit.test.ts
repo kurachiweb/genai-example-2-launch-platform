@@ -67,6 +67,14 @@ describe('readExpectedToolVersions', () => {
     ]);
   });
 
+  test('DockerfileにK6のARGが無いことを誤りとして返す', () => {
+    const dockerfile = replaceOnce(DOCKERFILE, 'ARG K6_VERSION=2.3.0\n', '');
+
+    expect(errorsOf({ dockerfile })).toEqual([
+      'DockerfileにARG K6_VERSIONがありません',
+    ]);
+  });
+
   test('完全に固定していない版と、同じ引数の食い違う既定値を誤りとして返す', () => {
     const dockerfile = `${replaceOnce(
       replaceOnce(DOCKERFILE, 'BUN_IMAGE_TAG=1.4.4-slim', 'BUN_IMAGE_TAG=1'),
@@ -227,6 +235,7 @@ describe('toolVersionsInEnv', () => {
         INFISICAL_CLI_VERSION: '0.44.8',
         WRANGLER_VERSION: '4.152.0',
         MAILPIT_VERSION: '1.32.0',
+        K6_VERSION: '2.3.0',
         PLAYWRIGHT_VERSION: '1.64.1',
         LOG_LEVEL: 'info',
       }),
@@ -241,6 +250,7 @@ describe('toolVersionsInEnv', () => {
       },
       { tool: 'wranglerTool', key: 'env.WRANGLER_VERSION', value: '4.152.0' },
       { tool: 'mailpit', key: 'env.MAILPIT_VERSION', value: '1.32.0' },
+      { tool: 'k6', key: 'env.K6_VERSION', value: '2.3.0' },
       { tool: 'playwright', key: 'env.PLAYWRIGHT_VERSION', value: '1.64.1' },
     ]);
     expect(toolVersionsInEnv(undefined)).toEqual([]);

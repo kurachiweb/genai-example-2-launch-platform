@@ -18,15 +18,16 @@ GitHub Actionsで検査・デプロイ・リリースを行うときの、ワー
 
 ## ワークフローの構成
 
-| ワークフロー       | 起動                                                    | ジョブ                                                                                  |
-| ------------------ | ------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `checks.yml`       | 再利用(`workflow_call`)                                 | `secret-scan`→`quality`→`tests`・`e2e`・`rehearsal`(並列)→`ci-gate`                     |
-| `deploy.yml`       | 再利用(`workflow_call`、入力`environment`)              | `deploy`(段階を`DEPLOY_STAGES`の順に実行)                                               |
-| `pull-request.yml` | main・prodへのプルリクエスト、`hotfix/**`へのpush       | `checks`(`checks.yml`を呼ぶ)                                                            |
-| `delivery.yml`     | main・prodへのpush                                      | `checks`→`deploy`(`deploy.yml`を呼ぶ。prodへのpushは`prod`、mainへのpushは`staging`)    |
-| `release-pr.yml`   | 手動の起動(`workflow_dispatch`、入力`head`。既定はmain) | `release-pr`(mainか`hotfix/<名前>`からprodへのプルリクエストを自動化の主体の名義で作る) |
+| ワークフロー         | 起動                                                                                                                       | ジョブ                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `checks.yml`         | 再利用(`workflow_call`)                                                                                                    | `secret-scan`→`quality`→`tests`・`e2e`・`rehearsal`(並列)→`ci-gate`                        |
+| `deploy.yml`         | 再利用(`workflow_call`、入力`environment`)                                                                                 | `deploy`(段階を`DEPLOY_STAGES`の順に実行)                                                  |
+| `pull-request.yml`   | main・prodへのプルリクエスト、`hotfix/**`へのpush                                                                          | `checks`(`checks.yml`を呼ぶ)                                                               |
+| `delivery.yml`       | main・prodへのpush                                                                                                         | `checks`→`deploy`(`deploy.yml`を呼ぶ。prodへのpushは`prod`、mainへのpushは`staging`)       |
+| `release-pr.yml`     | 手動の起動(`workflow_dispatch`、入力`head`。既定はmain)                                                                    | `release-pr`(mainか`hotfix/<名前>`からprodへのプルリクエストを自動化の主体の名義で作る)    |
+| `readiness-load.yml` | 手動の起動(`workflow_dispatch`、入力`environment`(検証の環境だけを選べる)・`parallel`・`duration_minutes`・見本のハンドル) | `plan`(入力の検証と対象のURLの取り出し)→`load`(並列の数だけの送信元で負荷試験の台本を実行) |
 
-- 準備の手順は複合アクション`.github/actions/setup-toolchain`にまとめる。Bunは常に、Node.js・OpenTofu・Infisical CLI・購読の操作用のWrangler・Mailpitは入力で選んで導入する。
+- 準備の手順は複合アクション`.github/actions/setup-toolchain`にまとめる。Bunは常に、Node.js・OpenTofu・Infisical CLI・購読の操作用のWrangler・Mailpit・負荷試験の道具(k6)は入力で選んで導入する。
 - 全ワークフローの最上位の`permissions`は`contents: read`にし、必要なジョブにだけ権限を足す。
 
 | 権限                   | 与えるジョブ                                                   | 理由                           |
@@ -40,11 +41,12 @@ GitHub Actionsで検査・デプロイ・リリースを行うときの、ワー
 
 手順を持つ全ジョブに`timeout-minutes`を付け、止まった子プロセス(待ち合わせ・ブラウザ・Wrangler)がランナーとOIDCのトークンの有効な時間を使い続けないようにする。再利用のワークフローを呼ぶジョブ(`uses`)は上限時間を持てないため、呼ばれる側のジョブに付ける。
 
-| ワークフロー     | ジョブと上限時間(分)                                                              |
-| ---------------- | --------------------------------------------------------------------------------- |
-| `checks.yml`     | `secret-scan` 15、`quality` 30、`tests` 60、`e2e` 60、`rehearsal` 30、`ci-gate` 5 |
-| `deploy.yml`     | `deploy` 60                                                                       |
-| `release-pr.yml` | `release-pr` 10                                                                   |
+| ワークフロー         | ジョブと上限時間(分)                                                              |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `checks.yml`         | `secret-scan` 15、`quality` 30、`tests` 60、`e2e` 60、`rehearsal` 30、`ci-gate` 5 |
+| `deploy.yml`         | `deploy` 60                                                                       |
+| `release-pr.yml`     | `release-pr` 10                                                                   |
+| `readiness-load.yml` | `plan` 5、`load` 45                                                               |
 
 - 自動化の主体が作ったプルリクエストは、新しいワークフローを起動しない。リリースのプルリクエストの必須チェックは、同じheadのコミットへのpush(mainへのマージ、`hotfix/**`へのpush)の検査結果で満たす。
 - リリース・承認・hotfixの運用は「[デプロイ手順](../operations/001-deployment.md)」に従う。
@@ -272,17 +274,17 @@ CIのログ・成果物・手順の要約に、秘密値を出さない。
 
 ## 版の固定と同期
 
-| 対象                                                             | 固定の方法                                                                                                                                                        | 正とする場所                                                       |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| 外部のアクション                                                 | 40桁のコミットSHAで参照し、行末のコメントに版のタグを書く(`uses: <アクション>@<SHA> # v<版>`)                                                                     | アクションのリリースのタグが指すコミット                           |
-| Bun・Node.js・OpenTofu・Infisical CLI・購読用のWrangler・Mailpit | 複合アクションの入力・環境変数に版を書く                                                                                                                          | 開発コンテナのイメージ定義の`ARG`                                  |
-| OpenTofuとprovider                                               | `required_version`・`required_providers`の完全固定とロックファイル(「[providerの固定とロックファイル](006-iac-with-opentofu.md#providerの固定とロックファイル)」) | `versions.tf`                                                      |
-| デプロイに使うWrangler                                           | 各アプリの`package.json`の版(`bunx wrangler`)                                                                                                                     | 「[依存パッケージの版管理](../coding/002-dependency-versions.md)」 |
-| Chromium                                                         | 依存パッケージの導入の後に、ルートの`@playwright/test`で導入する                                                                                                  | ルートの`package.json`                                             |
-| TruffleHog                                                       | アクションのSHAと、アクションの入力`version`のイメージのタグを同じ版にする                                                                                        | TruffleHogのリリース                                               |
+| 対象                                                                 | 固定の方法                                                                                                                                                        | 正とする場所                                                       |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| 外部のアクション                                                     | 40桁のコミットSHAで参照し、行末のコメントに版のタグを書く(`uses: <アクション>@<SHA> # v<版>`)                                                                     | アクションのリリースのタグが指すコミット                           |
+| Bun・Node.js・OpenTofu・Infisical CLI・購読用のWrangler・Mailpit・k6 | 複合アクションの入力・環境変数に版を書く                                                                                                                          | 開発コンテナのイメージ定義の`ARG`                                  |
+| OpenTofuとprovider                                                   | `required_version`・`required_providers`の完全固定とロックファイル(「[providerの固定とロックファイル](006-iac-with-opentofu.md#providerの固定とロックファイル)」) | `versions.tf`                                                      |
+| デプロイに使うWrangler                                               | 各アプリの`package.json`の版(`bunx wrangler`)                                                                                                                     | 「[依存パッケージの版管理](../coding/002-dependency-versions.md)」 |
+| Chromium                                                             | 依存パッケージの導入の後に、ルートの`@playwright/test`で導入する                                                                                                  | ルートの`package.json`                                             |
+| TruffleHog                                                           | アクションのSHAと、アクションの入力`version`のイメージのタグを同じ版にする                                                                                        | TruffleHogのリリース                                               |
 
 - ワークフローの検査(規則W9)が、ワークフローと複合アクションの版(setupアクションの入力、イメージ定義と同じ名前の環境変数、`run`の中の`wrangler@<版>`・`playwright@<版>`)を、イメージ定義の値と照合する。ツールの版を変えるときは、イメージ定義と複合アクション・ワークフローを同じ変更で改める。
-- Infisical CLIは、GitHubのリリースの配布物をリリースのチェックサムのファイルでSHA-256を検証して導入する。Mailpitは公式のチェックサムが無いため、開発コンテナと同じく検証せずに導入する。
+- Infisical CLIは、GitHubのリリースの配布物をリリースのチェックサムのファイルでSHA-256を検証して導入する。k6は、リリースのチェックサムのファイル(`k6-v<版>-checksums.txt`)でSHA-256を検証して導入する。Mailpitは公式のチェックサムが無いため、開発コンテナと同じく検証せずに導入する。
 - 購読用のWranglerは、ランナーの一時ディレクトリへ`bun add -g`で導入して`PATH`へ加える。アプリの`bunx wrangler`はアプリのディレクトリの版を優先するため、両者は混ざらない。購読用のWranglerを指定の版のNode.jsで動かすため、Node.jsも導入する。
 - OpenTofuのセットアップのアクションはラッパーを無効にする。ラッパーは実行したコマンドの行を標準出力へ加え、`tofu output -json`などの出力の解析を妨げるためである。
 - アクションの版を上げるときは、リリースのタグが指すコミットのSHAを確かめて書き換える。軽量タグはタグのSHAがコミットのSHAである。注釈付きタグは、タグのオブジェクトでなく、タグが指すコミットのSHAを使う。

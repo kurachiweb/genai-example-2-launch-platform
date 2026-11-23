@@ -37,7 +37,7 @@ RUN BUN_INSTALL=/opt/wrangler bun install -g "wrangler@${WRANGLER_VERSION}"
 # これは`stripe:stripe-docs`スキルが前提とする`stripe docs`コマンドに必要である。
 RUN BUN_INSTALL=/opt/stripe-cli bun install -g --trust "@stripe/cli@${STRIPE_CLI_VERSION}"
 
-# GitHub CLI・Betterleaks・Mailpit・Node.jsを導入する専用ビルドステージ。
+# GitHub CLI・Betterleaks・Mailpit・k6・Node.jsを導入する専用ビルドステージ。
 # Betterleaks・MailpitはAPT・npmレジストリのいずれにも公式パッケージが存在せず、GitHub CLIはAPT公式リポジトリ(cli.github.com/packages)が最新版のみ保持しバージョン固定インストールができないため、いずれも公式GitHub Releasesのバイナリを直接取得する。
 # bunを必要としないため、上記ステージとは別の軽量なベースイメージを使い、BuildKit上で並列にダウンロードできるようにする。
 FROM debian:trixie-slim AS release-binaries-builder
@@ -45,6 +45,7 @@ ARG TARGETARCH
 ARG GITHUB_VERSION=2.103.0
 ARG BETTERLEAKS_VERSION=1.9.0
 ARG MAILPIT_VERSION=1.32.0
+ARG K6_VERSION=2.3.0
 ARG RTK_VERSION=1.0.1
 ARG NODE_VERSION=26.12.1
 RUN --mount=type=cache,id=apt-lists-release-binaries-builder,target=/var/lib/apt/lists,sharing=locked \
@@ -80,6 +81,13 @@ RUN case "${TARGETARCH}" in amd64) RTK_TARGET=x86_64-unknown-linux-musl ;; arm64
   && curl -fsSL "https://github.com/rtk-ai/rtk/releases/download/v${RTK_VERSION}/checksums.txt" | grep " ${ARCHIVE}\$" | sha256sum -c - \
   && tar -xzf "${ARCHIVE}" -C /out/usr/local/bin rtk
 
+# k6はnpmのパッケージでもAPTの公式パッケージでもバージョン固定の取得ができる形で配布されないため、公式GitHub Releasesのバイナリを`k6-v<バージョン>-checksums.txt`によるSHA256検証付きで取得する。tar.gz内は`k6-v<バージョン>-linux-<アーキテクチャ>/k6`という位置に配置されているため、`--strip-components`で実行ファイルのみ展開先へ平坦化する。
+RUN case "${TARGETARCH}" in amd64|arm64) ;; *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; esac \
+  && ARCHIVE="k6-v${K6_VERSION}-linux-${TARGETARCH}.tar.gz" \
+  && curl -fsSLO "https://github.com/grafana/k6/releases/download/v${K6_VERSION}/${ARCHIVE}" \
+  && curl -fsSL "https://github.com/grafana/k6/releases/download/v${K6_VERSION}/k6-v${K6_VERSION}-checksums.txt" | grep " ${ARCHIVE}\$" | sha256sum -c - \
+  && tar -xzf "${ARCHIVE}" -C /out/usr/local/bin --strip-components=1 "k6-v${K6_VERSION}-linux-${TARGETARCH}/k6"
+
 # Node.jsの実行ファイルだけを、公式配布のSHASUMS256.txtによるSHA256検証付きで取得する(パッケージ管理はbunで行うためnpmは導入しない)。
 # ベースイメージの`node`はbunへのシンボリックリンクで、WranglerがBun上で動くとBunの組み込みの`undici`がカスタムのディスパッチャを呼ばないため、`wrangler dev`の中継がWorker本体への転送を始められずHTTPに応答しない。`/usr/local/bin/node`を置いてbunの代替より優先させ、`#!/usr/bin/env node`で始まるWrangler・ViteなどをNode.jsで動かす。
 RUN case "${TARGETARCH}" in amd64) NODE_ARCH=x64 ;; arm64) NODE_ARCH=arm64 ;; *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; esac \
@@ -113,7 +121,7 @@ COPY --from=tools-builder /opt/wrangler /opt/wrangler
 COPY --from=tools-builder /opt/stripe-cli /opt/stripe-cli
 COPY --from=tools-builder /usr/local/bin/ /usr/local/bin/
 
-# GitHub CLI・Betterleaks・Mailpit・RTK・Node.jsを導入する。各バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
+# GitHub CLI・Betterleaks・Mailpit・RTK・k6・Node.jsを導入する。各バイナリが標準的な`/usr`配下へ展開済みのため、PATH変更は不要。
 COPY --from=release-binaries-builder /out/ /
 
 # Playwright・chrome-devtools MCPが起動するChromiumを導入する。

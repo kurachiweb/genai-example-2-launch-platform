@@ -7,6 +7,7 @@ export const EXPECTED_VERSIONS: ExpectedToolVersions = {
   infisicalCli: '0.44.8',
   wranglerTool: '4.152.0',
   mailpit: '1.32.0',
+  k6: '2.3.0',
   playwright: '1.64.1',
 };
 
@@ -36,6 +37,9 @@ inputs:
     default: 'false'
   mailpit:
     description: Mailpitを導入する
+    default: 'false'
+  k6:
+    description: k6を導入する
     default: 'false'
 outputs:
   mailpit-bin:
@@ -74,6 +78,12 @@ runs:
       run: |
         curl -fsSLO "https://github.example/mailpit/releases/v\${MAILPIT_VERSION}/mailpit-linux-amd64.tar.gz"
         echo "bin=$RUNNER_TEMP/mailpit" >> "$GITHUB_OUTPUT"
+    - if: inputs.k6 == 'true'
+      shell: bash
+      env:
+        K6_VERSION: 2.3.0
+      run: |
+        curl -fsSLO "https://github.example/k6/releases/v\${K6_VERSION}/k6-v\${K6_VERSION}-linux-amd64.tar.gz"
 `;
 
 const checkoutStep = (indent: string, extra = ''): string =>
@@ -305,6 +315,7 @@ ARG WRANGLER_VERSION=4.152.0
 FROM debian:trixie-slim AS release-binaries-builder
 ARG TARGETARCH
 ARG MAILPIT_VERSION=1.32.0
+ARG K6_VERSION=2.3.0
 ARG NODE_VERSION=26.12.1
 
 FROM oven/bun:\${BUN_IMAGE_TAG}

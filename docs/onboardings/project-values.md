@@ -1578,3 +1578,20 @@ APIキーの形式・ハッシュによる保存と照合・権限スコープ�
 | `<保持期間の日数>`       | 7日(`DATA_EXPORT_RETENTION_DAYS`)                                                     |
 | `<回数の上限>`           | 3回(`DATA_EXPORT_REQUEST_LIMIT`)                                                      |
 | `<期間の秒数>`           | 86,400秒(24時間。`DATA_EXPORT_REQUEST_WINDOW_SECONDS`)                                |
+
+## 負荷試験
+
+台本の定義と閾値の判定は「[同時接続の負荷試験](../GUIDES/tech/testing/003-performance-verification.md#同時接続の負荷試験)」に従う。
+
+| 項目                         | 値                                                                                                                                                                           | 定義場所                                                                         |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| 台本                         | `scripts/readiness/load/browse-scenario.ts`(k6の台本)。純粋な部分(巡回の順・閾値・設定の読み取り)は同じディレクトリの`browse-plan.ts`                                        | `scripts/readiness/load/`                                                        |
+| ワークフロー                 | `.github/workflows/readiness-load.yml`(手動の起動。対象の環境は`staging`だけ。本番を選べない)                                                                                | 同ファイル                                                                       |
+| 主要な公開ページ(巡回の順)   | `/`・`/p`・`/p/<見本のプロダクトのハンドル>`・`/@<見本の利用者のハンドル>`・`/help`・`/pricing`の6つの後に、公開の照会(APIサーバーの`/v1/openapi.json`)を1回                 | `browse-plan.ts`の`visitPlan`                                                    |
+| 仮想の利用者の人数・待ち時間 | 1並列あたり20人(`VUS`)、各要求の後に3秒以上15秒未満                                                                                                                          | `browse-plan.ts`の`resolveLoadSettings`・`waitSeconds`                           |
+| 継続の時間・並列の数         | 既定は15分(入力`duration_minutes`、1〜30)・5並列(入力`parallel`、1〜10)。合計は既定で100人                                                                                   | `.github/workflows/readiness-load.yml`                                           |
+| 閾値                         | 5xxの割合0・429の件数0・200以外の件数0・全要求の応答時間の95パーセンタイル300ms未満                                                                                          | `browse-plan.ts`の`LOAD_THRESHOLDS`                                              |
+| 台本の環境変数               | `CLIENT_BASE_URL`・`API_BASE_URL`(必須。既定値なし)、`PRODUCT_HANDLES`・`PROFILE_HANDLES`(必須。カンマ区切り)、`VUS`・`DURATION`・`SUMMARY_PATH`(任意)                       | `browse-plan.ts`の`resolveLoadSettings`                                          |
+| 負荷をかける先のURL          | ワークフローが`apps/infra/environments/staging.json`の`hostnames.client`・`hostnames.api`から取り出す                                                                        | `.github/workflows/readiness-load.yml`                                           |
+| k6の版                       | `2.3.0`(`Dockerfile`の`K6_VERSION`・`setup-toolchain`の`K6_VERSION`。infra-deliveryの版の照合の対象)                                                                         | 「[版の固定と同期](../GUIDES/tech/infra/007-ci-cd-pipelines.md#版の固定と同期)」 |
+| ローカルでの1人・1分の試走   | `CLIENT_BASE_URL=http://localhost:48044 API_BASE_URL=http://localhost:48042 PRODUCT_HANDLES=<ハンドル> PROFILE_HANDLES=<ハンドル> VUS=1 DURATION=1m k6 run <台本の絶対パス>` | 「[ローカルポート一覧](README.md#ローカルポート一覧)」                           |

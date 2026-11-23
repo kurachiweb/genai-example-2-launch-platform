@@ -5,6 +5,7 @@ export interface ExpectedToolVersions {
   readonly infisicalCli: string;
   readonly wranglerTool: string;
   readonly mailpit: string;
+  readonly k6: string;
   readonly playwright: string;
 }
 
@@ -37,6 +38,7 @@ const DOCKERFILE_ARGS: Readonly<Record<ToolName, string>> = {
   infisicalCli: 'INFISICAL_CLI_VERSION',
   wranglerTool: 'WRANGLER_VERSION',
   mailpit: 'MAILPIT_VERSION',
+  k6: 'K6_VERSION',
   playwright: 'PLAYWRIGHT_VERSION',
 };
 
@@ -49,6 +51,7 @@ const ENV_TOOLS: Readonly<Record<string, ToolName>> = {
   INFISICAL_CLI_VERSION: 'infisicalCli',
   WRANGLER_VERSION: 'wranglerTool',
   MAILPIT_VERSION: 'mailpit',
+  K6_VERSION: 'k6',
   PLAYWRIGHT_VERSION: 'playwright',
 };
 
