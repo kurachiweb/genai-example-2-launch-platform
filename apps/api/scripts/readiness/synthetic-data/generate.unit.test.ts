@@ -87,7 +87,13 @@ describe('DATASETS', () => {
   test('依存の順に並び、名前が重ならない', () => {
     const names = DATASETS.map((dataset) => dataset.name);
 
-    expect(names).toEqual(['users', 'products']);
+    expect(names).toEqual([
+      'users',
+      'products',
+      'matches',
+      'comments',
+      'sponsorships',
+    ]);
     DATASETS.forEach((dataset, index) => {
       for (const dependency of dataset.dependsOn) {
         expect(names.indexOf(dependency)).toBeLessThan(index);
@@ -182,6 +188,12 @@ describe('runGenerate', () => {
       baseDate: '2026-12-01',
       samples: { largestCreatorHandle: ['synthetic-u-000001'] },
     });
+    const { samples } = manifest as {
+      samples: Record<string, string[]>;
+    };
+    expect(samples.matchIds).toHaveLength(5);
+    expect(samples.largestThreadProductHandle).toEqual(['synthetic-p-000001']);
+    expect(samples.sponsoredProductHandles).toHaveLength(1);
     expect(stdout).toContain('smoke');
     expect(stdout).toContain('2026-12-01');
     expect(stdout).toContain('users');

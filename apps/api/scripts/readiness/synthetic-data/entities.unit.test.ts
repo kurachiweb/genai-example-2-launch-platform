@@ -6,6 +6,7 @@ import {
   categoryAt,
   launchOf,
   productAt,
+  QUALIFIER_PARTNER_INDEX,
   userAt,
   type EntityContext,
 } from './entities.ts';
@@ -100,10 +101,20 @@ describe('productAt', () => {
     expect(productAt(context(), 0).latestLaunchDate).toBe('2026-11-25');
   });
 
+  test('作り手の対戦相手(番号1)のローンチも基準日の翌業務日にして、翌業務日の予選を2つの側にする', () => {
+    expect(QUALIFIER_PARTNER_INDEX).toBe(1);
+    expect(launchOf(context(), QUALIFIER_PARTNER_INDEX).launchDate).toBe(
+      '2026-11-25',
+    );
+    expect(productAt(context(), QUALIFIER_PARTNER_INDEX).latestLaunchDate).toBe(
+      '2026-11-25',
+    );
+  });
+
   test('それ以外のローンチは翌々業務日から90日先までの間に収まる', () => {
     const dates = Array.from(
-      { length: SMOKE_PROFILE.products - 1 },
-      (_, index) => launchOf(context(), index + 1).launchDate,
+      { length: SMOKE_PROFILE.products - 2 },
+      (_, index) => launchOf(context(), index + 2).launchDate,
     );
 
     expect(

@@ -5,7 +5,10 @@ import {
   parseBusinessDate,
   toBusinessDateTime,
 } from '../../../lib/core/time/business-time.ts';
+import { commentsDataset } from './datasets/comments.ts';
+import { matchesDataset } from './datasets/matches.ts';
 import { productsDataset } from './datasets/products.ts';
+import { sponsorshipsDataset } from './datasets/sponsorships.ts';
 import { usersDataset } from './datasets/users.ts';
 import { scaleProfileOf } from './scale-profile.ts';
 import {
@@ -34,6 +37,9 @@ export interface GenerateDependencies {
 export const DATASETS: readonly SyntheticDataset[] = [
   usersDataset,
   productsDataset,
+  matchesDataset,
+  commentsDataset,
+  sponsorshipsDataset,
 ];
 
 // リポジトリのルートのtmp(Git管理外)。このファイルは<ルート>/apps/api/scripts/readiness/synthetic-data/にある

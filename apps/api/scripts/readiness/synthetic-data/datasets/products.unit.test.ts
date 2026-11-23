@@ -97,19 +97,17 @@ describe('productsDataset', () => {
     ).toBe(20);
   });
 
-  test('フォロワーの最も多い作り手のプロダクトのローンチは、基準日の翌業務日に1件だけある', () => {
+  test('フォロワーの最も多い作り手とその対戦相手のプロダクトのローンチだけが、基準日の翌業務日にある', () => {
     applySmoke();
 
     expect(
-      scalar(
-        "SELECT p.handle FROM product_launches l JOIN products p ON p.id = l.product_id WHERE l.launch_date = '2026-11-25'",
-      ),
-    ).toBe('synthetic-p-000001');
-    expect(
-      scalar(
-        "SELECT count(*) FROM product_launches WHERE launch_date = '2026-11-25'",
-      ),
-    ).toBe(1);
+      db
+        .query<{ handle: string }, []>(
+          "SELECT p.handle AS handle FROM product_launches l JOIN products p ON p.id = l.product_id WHERE l.launch_date = '2026-11-25' ORDER BY p.handle",
+        )
+        .all()
+        .map((row) => row.handle),
+    ).toEqual(['synthetic-p-000001', 'synthetic-p-000002']);
     expect(
       scalar(
         "SELECT count(*) FROM products p JOIN users u ON u.id = p.user_id WHERE p.handle = 'synthetic-p-000001' AND u.handle = 'synthetic-u-000001'",

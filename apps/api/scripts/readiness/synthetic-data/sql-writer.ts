@@ -145,7 +145,7 @@ function kindOf(sqlType: string, key: string): ColumnKind {
   throw new TypeError(`列${key}の型${sqlType}は書き出せません`);
 }
 
-function planOf(table: SQLiteTable): TablePlan {
+function buildPlan(table: SQLiteTable): TablePlan {
   const name = getTableName(table);
   const columns = Object.entries(getColumns(table)).map(
     ([key, column]): ColumnPlan => ({
@@ -163,6 +163,19 @@ function planOf(table: SQLiteTable): TablePlan {
     columns,
     header: `INSERT INTO ${name} (${columns.map((column) => column.name).join(', ')}) VALUES `,
   };
+}
+
+const PLAN_CACHE = new WeakMap<SQLiteTable, TablePlan>();
+
+// 1行ごとに呼ばれても列の解析を繰り返さないよう、テーブル定義ごとに保持する
+function planOf(table: SQLiteTable): TablePlan {
+  const cached = PLAN_CACHE.get(table);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const plan = buildPlan(table);
+  PLAN_CACHE.set(table, plan);
+  return plan;
 }
 
 function integerLiteral(column: ColumnPlan, value: unknown): string {

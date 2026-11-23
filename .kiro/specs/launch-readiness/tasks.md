@@ -63,7 +63,7 @@
   - _Depends: 1.1_
   - _Requirements: 4.1_
 
-- [ ] 2.2 予選の勝利・コメント・広告のデータセットを作る
+- [x] 2.2 予選の勝利・コメント・広告のデータセットを作る
   - 基準日の翌業務日のフォロワー1万人の作り手の予選のマッチを、0:00の開始で`live`になる予定の状態で作る
   - 予選のマッチと結果(勝利10万件)と集計値、コメント20万件と1スレッド500件の返信、掲載中の広告1,000件を、match-engine・directory-discovery・engagement・sponsorshipの書き込みの規則(集計値・状態・索引文書)に合わせて生成する
   - 先に、単体テストで、件数・最大のスレッドの返信の数・勝利の分布・集計値と記録の一致を確かめる
@@ -436,6 +436,7 @@
 - 1.5: 差し替えは`wrangler dev --var KEY:VALUE`(Rekognition・GCP NL・DISIFYの鍵はローカルの`secrets.required`に無く環境変数では効かない)。Stripeは無効な鍵だと401が`StripeRejectedError`になり縮退の案内にならないため、`env -u STRIPE_API_KEY`で外す(設計の`rk_test_`の例と相違、`LocalOverride`は`vars`・`unsetSecrets`)。Rekognition・GCP NLはローカルの既定(stub・disabled)を外して実サービスへ無効な鍵で向ける。止めたサービスの一覧は`E2E_DEGRADED_SERVICES`(カンマ区切り)。運用者へ通知されない6行(GCP NLの時間切れ・上限、Stripeの4種)は6.5の指摘の候補で7.5で扱う。
 - 1.6: 本番の項目の結果はチェックリストの記入欄に、S-01〜S-23の結果は検証の記録の表に書く。受け入れた危険の主体の共有の行の理由は研究メモに無いため「開発者が追記する(未記入)」とした。設計のD-02の「UTCの式」の時刻は業務時刻(UTC-8)の表記で、Wrangler設定の式はUTCの`21 0`・`21 12`・`40 7`・`45 7`・`0 8`・`7 8`(記録の規則の節に対応を書いた)。
 - 2.1: 1文1行で1ファイル最大5,000文。改行は`sqlStringLiteral`が拒否するため、値に無い私用領域の文字で書いて`replace(..., char(10))`で戻す。manifestは設計の論理データモデルに合わせ、同じ種と基準日で同じ出力にするため`generatedAt`を持たない。作り手は利用者の番号0(`synthetic-u-000001`)で翌業務日のローンチを持ち、フォロワーは番号1〜1万。業務日付の計算に`lib/core/time/business-time.ts`、カテゴリに`common-lib`の定数を読み込む。完了状態の共有のローカルの状態への適用は、他のE2Eが同じ状態を使うため、2.3の完了の確認で全データセットをまとめて行う(2.1ではマイグレーション済みのSQLiteと別の`--persist-to`のD1で適用を確かめた)。
+- 2.2: 予選には2つの側が要るため、利用者の番号1のプロダクトも翌業務日のローンチにした(2.1の出力が変わる)。勝利は全プロダクトに均等に5件ずつ、同じ日に同じプロダクトが重ならない構造で、10件に1件は不戦勝。確定のマッチ・`qualifier_pairings`・`match_events`は再処理されない状態(イベントは確定から29日以内だけ`completed`)で作る。プロダクトの索引文書は`keyword_status='disabled'`(`pending`だと名前とタグラインが空のまま検索に出ず、4:21の再抽出が外部APIを呼ぶ。設計の`markPending`はヘルプ記事の規則)。広告は`payment_purchases`まで作り`payment_records`は作らない(E2Eの補助と同じ)。想定規模は208ファイル約415MB。週トーナメントの組み合わせ決定は確定済みの予選の勝利を拾うため、stagingの投入から復元までの間に週の組み合わせ決定が走ると合成のプロダクトが参加者になる(7.8で開発者へ伝える)。
 - 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。
 - 3.2: `axe-core`はページのCSPで`addScriptTag`が阻まれるため`page.evaluate(axe.source)`で注入し、終わりのあるアニメーションの完了を待ってから検査する。違反の型に`route`・`state`を足した。`ROUTE_INVENTORY`は`routeTree.gen.ts`の`fullPaths`の文字列単位(末尾のスラッシュ違いは別の経路)で、管理者側の`with-data`は最上位管理者で開く状態。上流に補助が無い操作(法務文書の公開など)は`prepare`に画面の操作として書いた。
 - 3.3: パスワードは固定の定数にせず(Betterleaksが検出する)、上流の`createTestAccount`の実行ごとの乱数を全員で共有し`BulkUser.password`で返す。ログインは永続化の文書ID(`ClientLoginDocument`)で`/_bff/graphql`へ送るため`apps/client/src/graphql/generated`と`apps/frontend-lib`の`documentIdOf`を読み込む(上流の`checkout-steps.ts`などと同じ)。投入は50行ずつ別の`executeLocalD1`で行い(1引数128KiBの上限)、文書用IPは3範囲で最大762人。

@@ -83,6 +83,8 @@ const DEFAULT_LOGO_FILE_ID = deterministicUlid(
 
 export const LARGEST_CREATOR_INDEX = 0;
 
+export const QUALIFIER_PARTNER_INDEX = 1;
+
 export function baseInstantOf(baseDate: string): Date {
   return fromBusinessDateTime(parseBusinessDate(baseDate), {
     hour: 0,
@@ -143,9 +145,9 @@ export function categoryAt(
   };
 }
 
-// 作り手(番号0)のローンチは基準日の翌業務日にし、投入の後の最初の0:00に開始する予選のマッチの対象にする。他は先の日付へ散らす
+// 作り手(番号0)とその対戦相手(番号1)のローンチは基準日の翌業務日にし、投入の後の最初の0:00に開始する2つの側の予選のマッチの対象にする。他は先の日付へ散らす
 function launchDateOf(baseDate: string, index: number): string {
-  if (index === LARGEST_CREATOR_INDEX) {
+  if (index === LARGEST_CREATOR_INDEX || index === QUALIFIER_PARTNER_INDEX) {
     return addBusinessDays(parseBusinessDate(baseDate), 1);
   }
   return addBusinessDays(
