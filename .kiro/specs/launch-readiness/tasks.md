@@ -162,7 +162,7 @@
   - _Depends: 3.2_
   - _Requirements: 12.1, 13.2_
 
-- [ ] 5.3 (P) キーボード操作の検査を作る
+- [x] 5.3 (P) キーボード操作の検査を作る
   - 利用者側の登録・プロダクト登録・Upvote・コメント・通報・決済の開始・設定と、管理者のログイン・通報の措置・利用者の停止・ヘルプのカテゴリと記事の並べ替え(上下の操作と`/help-articles/order`。並べ替えの対象を2件以上用意し、上下の移動・フォーカスの維持・両端のボタンの無効化を主に確かめ、保存が並びの食い違いなら読み込み直してやり直す)を、キーボードだけで操作し、フォーカスが見え、閉じ込められないことを確かめる
   - 完了状態: client・adminのキーボード操作のテストを実装してローカルで実行し、失敗の内容をテストの出力に残す(指摘の記録は7.1でまとめて行う)
   - _Boundary: E2E(client/a11y/keyboard-flows), E2E(admin/a11y/keyboard-flows)_
@@ -450,6 +450,7 @@
 - 4.6: 繰り返す時間は`READINESS_TRAFFIC_SECONDS`(秒。設計の`READINESS_TRAFFIC_MINUTES`ではなく`testing/004`の「秒数」に合わせた)、合成データの一覧は`READINESS_TRAFFIC_MANIFEST`(既定`/workspace/tmp/readiness/synthetic/manifest.json`)。主要6ページは6.4の台本と同じで、本文が上限のヘルプ記事を加え、周回ごとに新しいタブで開く(同じタブで繰り返すと本文が上限の記事でタブが異常終了する)。待ち時間を入れないため、ローカルでは1分に約350回の閲覧になる(標本を集める目的で、利用者側のIPアドレスの制限より十分に遅い)。
 - 5.1: 一覧の`prepare`の`open*`の手順は使わず、上流の補助でデータを用意して`page.goto`で開き、期待の状態コード(既定200、存在しない対象は404)・開いた後のパス名・スケルトンの消失を確かめてから検査する。用意した世界(管理者・利用者・マッチ・決済など)は`test-results/client-route-world-<親のpid>.json`に残して使い回す。法務文書の`with-data`は公開の版が無い種別だけを最上位管理者(公開のAPIは`super_admin`)で公開して検査し、`empty`は公開済みなら理由つきで対象外(公開は取り消せない)。`/pricing`は共有の機能フラグを切り替えず現在の状態で検査する。ローカルでは`/api-docs`(Swagger UIの描画後)に`color-contrast`・`select-name`の違反が出る(public-apiへの指摘として7.1で扱う)。管理者を使うため`infisical run --env dev`で実行し、全体の1回は約35分。
 - 5.2: 利用者側と共通の部品(`route-world-cache.ts`・`route-sessions.ts`・`route-audit-report.ts`)は設計の依存の向きに合わせて`e2e/support/`に置き、用意の記録と所見は名前空間(`client`・`admin`・`responsive`)ごとの別のファイル(`<namespace>-route-world-<ppid>.json`、環境変数`<NAMESPACE>_ROUTES_WORLD_FILE`)にする。閲覧のみの管理者の`/help-articles/new`は一覧へ戻されるため、移動先の一覧を検査する。0件の状態は他のテストとデータを共有するため、絞り込みの候補を順に開いて0件の条件を探す。法務文書の編集は最上位管理者だけ(`route-inventory`の`prepare`の「モデレーター以上」は実際と異なる)。ローカルの全体の1回で69の経路と状態に違反0件・ヘッダーの不足0件。
+- 5.3: キーボードの操作の部品`e2e/support/keyboard-operator.ts`がTabで目的の要素まで進み、止まった全ての要素で上流の`ringOutline()`と同じ基準(`:focus-visible`で2px以上の実線の非透明の輪郭)のフォーカスの見えを確かめる(見えなければ`expect.soft`)。ダイアログは1回のEscapeで閉じて元へフォーカスが戻ること、メニューと選択肢だけ押し直しを許す(2回超は失敗に残す)。ページ全体は最初の要素からTabで最後の要素へ届くことで閉じ込めが無いことを確かめる。Stripeの入力欄(iframe)は対象外。ローカルでは管理者側5件は成功し、利用者側はUpvoteのボタン(`focus-visible:outline-none`で輪郭が無い。同じ指定が他に5か所)と、通報のダイアログが開いた直後の1回のEscapeで閉じないことがある(間欠、原因は未確定)の2件が失敗する(7.1の指摘)。
 - 5.4: 4つの条件(そのまま・WCAG 1.4.12の文字の間隔・本文の文字列の1.5倍の伸び・文字の1.5倍の拡大)で、文書と要素の横のはみ出しと、文字の行の矩形と操作の部品の矩形の重なりを測る(固定の要素・隠した要素・閉じた`details`などは除く。親子の関係の要素同士の重なりは見ない)。開く操作は1回で、幅は開いた後に切り替える。5.1の用意を名前空間`client`で共有し、ヘルプ記事だけはテストのファイルごとに作って消す(`helpArticlesWorld`)ので、5.1と同じ実行で流してよい。ローカルでは`/p/$handle`(320px・文字の拡大)と`/settings/follows`(「フォローした日時」の`time`の`shrink-0`)が横にはみ出す(7.1の指摘)。
 - 5.5: api・event・画像配信の検査の対象外の判定はURLごと(利用者側がローカルなら実行し、そうでなければ環境変数を設定した対象だけ)。stagingの`/api-docs`は404で公開APIが未デプロイとみられるため、代表の経路は`/`・`/p`・`/help`・`/legal`・`/auth/login`・`/auth/register`にした。公開APIの成功応答(仕様書の200・プリフライトの204)には`Cache-Control`が無いため、`no-store`はAPIキーの無い401で確かめる(要件13.2と公開APIの文書に成功応答のキャッシュの規則は無い)。ローカルのapiは外部からの`/graphql`にGraphiQLとして200を返すため、その404はデプロイ先(7.3)だけで確かめる。画像配信は存在しない画像の404と`Set-Cookie`が無いことだけを確かめる。
 - 6.1: `@sentry/cli` 3.8.2をルートへ完全固定し、`bun x --no-install sentry-cli`で呼ぶ(ワークフローで版を指定しないため`tool-versions`の照合の対象外)。値は環境変数`SENTRY_AUTH_TOKEN`・`SENTRY_ORG`・`SENTRY_PROJECT`で渡し、マスクはトークンだけ(フォルダ全体だと組織・プロジェクト名がログで伏せられる)。client・adminの`dist/client`の`.map`はアップロードを飛ばしても削除し、削除の失敗は終了コード1。api・eventの出力先`.wrangler/sourcemaps`は仮で、`wrangler deploy`が自分でバンドルするため埋め込みがデプロイに入るかを6.2で確かめる。
