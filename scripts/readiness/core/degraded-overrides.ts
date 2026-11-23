@@ -207,9 +207,9 @@ export const DEGRADATION_MATRIX: readonly DegradationRow[] = [
     service: 'stripe',
     failure: 'auth',
     expected:
-      '認証の失敗(鍵の誤り)を含む429・5xx以外の4xxは恒久的な拒否(`StripeRejectedError`)になる。`payments_unavailable`には変換されず例外のまま呼び出し側へ伝わり、エラートラッキングへも送らない',
+      '認証の失敗(鍵の誤り)を含む429・5xx以外の4xxは恒久的な拒否(`StripeRejectedError`)になる。`payments_unavailable`には変換されず、利用者へは縮退の案内ではなく汎用のエラー(internal_error)になる。運用者へは、アプリのエラーではないため想定外の例外としてSentryへ届くが、決済の障害として区別されない',
     evidence: [STRIPE_GATEWAY, CHECKOUT_STARTER],
-    notifiesOperator: false,
+    notifiesOperator: true,
     owner: 'payments',
   },
   {

@@ -140,8 +140,24 @@ describe('対応表', () => {
       ({ service, failure }) => `${service}/${failure}`,
     );
 
-    expect(silent).toContain('stripe/auth');
-    expect(silent).not.toContain('hibp/timeout');
+    expect(silent).toEqual([
+      'gcp-nl/timeout',
+      'gcp-nl/quota',
+      'stripe/timeout',
+      'stripe/quota',
+      'stripe/bad-response',
+    ]);
+  });
+
+  test('Stripeの認証の失敗は、想定外の例外としてSentryへ届くが決済の障害として区別されないことを表す', () => {
+    const row = DEGRADATION_MATRIX.find(
+      ({ service, failure }) => service === 'stripe' && failure === 'auth',
+    );
+
+    expect(row?.notifiesOperator).toBe(true);
+    expect(row?.expected).toContain('想定外の例外としてSentryへ届く');
+    expect(row?.expected).toContain('決済の障害として区別されない');
+    expect(row?.expected).toContain('汎用のエラー(internal_error)');
   });
 });
 
