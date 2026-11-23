@@ -1595,3 +1595,15 @@ APIキーの形式・ハッシュによる保存と照合・権限スコープ�
 | 負荷をかける先のURL          | ワークフローが`apps/infra/environments/staging.json`の`hostnames.client`・`hostnames.api`から取り出す                                                                        | `.github/workflows/readiness-load.yml`                                           |
 | k6の版                       | `2.3.0`(`Dockerfile`の`K6_VERSION`・`setup-toolchain`の`K6_VERSION`。infra-deliveryの版の照合の対象)                                                                         | 「[版の固定と同期](../GUIDES/tech/infra/007-ci-cd-pipelines.md#版の固定と同期)」 |
 | ローカルでの1人・1分の試走   | `CLIENT_BASE_URL=http://localhost:48044 API_BASE_URL=http://localhost:48042 PRODUCT_HANDLES=<ハンドル> PROFILE_HANDLES=<ハンドル> VUS=1 DURATION=1m k6 run <台本の絶対パス>` | 「[ローカルポート一覧](README.md#ローカルポート一覧)」                           |
+
+## 閲覧の繰り返し
+
+未ログインの閲覧をブラウザのE2Eテストで繰り返す流れは「[閲覧の繰り返し](../GUIDES/tech/testing/004-cross-app-regression-and-audits.md#閲覧の繰り返し)」に従う。
+
+| 項目                           | 値                                                                                                                                                                                                                                       | 定義場所                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| テスト                         | `e2e/client/readiness/browse-traffic.e2e.test.ts`(`@traffic`)。純粋な部分(環境変数の読み取り・見本のハンドルの読み取り・開くパスの並び)は同じディレクトリの`browse-traffic-plan.ts`                                                      | `e2e/client/readiness/`                                                       |
+| 繰り返す時間の環境変数         | `READINESS_TRAFFIC_SECONDS`(秒数の正の整数。未設定か空文字なら対象外と表示して成功で終わる。整数でない値は誤り)                                                                                                                          | `browse-traffic-plan.ts`の`resolveBrowseTraffic`                              |
+| 見本のハンドルの一覧の環境変数 | `READINESS_TRAFFIC_MANIFEST`(合成データの`manifest.json`のパス。未設定か空文字なら`/workspace/tmp/readiness/synthetic/manifest.json`)                                                                                                    | `browse-traffic-plan.ts`の`resolveBrowseTraffic`                              |
+| 開くページ(1周の順)            | `/`・`/p`・`/p/<見本のプロダクトのハンドル>`・`/@<見本の利用者のハンドル>`・`/help`・`/pricing`の6つの後に、本文が上限のヘルプ記事の詳細`/help/<見本のヘルプ記事のハンドル>`を開く。見本のプロダクトと利用者は周回ごとに一覧を順に替える | `browse-traffic-plan.ts`の`browsePathsOf`                                     |
+| 実行                           | `READINESS_TRAFFIC_SECONDS=<秒数> E2E_CLIENT_URL=<利用者側のURL> bunx playwright test e2e/client/readiness/browse-traffic.e2e.test.ts`(`--grep @traffic`)                                                                                | 「[`@traffic`](../GUIDES/tech/testing/001-test-strategy.md#smoke以外のタグ)」 |
