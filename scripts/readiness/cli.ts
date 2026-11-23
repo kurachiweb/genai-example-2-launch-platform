@@ -27,7 +27,7 @@ export const COMMAND_TABLE: CommandTable = {
   },
   'availability-probe': {
     description: 'デプロイ中の各アプリの応答を1秒ごとに監視して集計する',
-    load: notImplemented('availability-probe'),
+    load: () => import('./commands/availability-probe.ts'),
   },
   'degraded-env': {
     description: '外部サービスを止めた縮退の起動の差し替えを表示する',
