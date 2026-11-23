@@ -189,7 +189,7 @@
   - tech-stack.mdへのk6と`@sentry/cli`の記載はコントローラーが済ませているため、6のタスクはtech-stack.mdを変更しない
   - 6.2の変更(6.3の確認まで)と6.4のワークフローは、合成データの投入(7.8)の前にmainへマージする。投入(7.8)から復元(7.14)までの間と、7.15のやり直しの投入から復元までの間はmainへマージしない
   - 6.1と6.4はどちらもinfra-deliveryの版の照合のデータへ追記し得るため、同時に行うときは別の行に書く。6.1はルートの`package.json`と`bun.lock`も変えるため、同じファイルを触る1.1・3.2と同時に進めるときは、先にマージした方へ合わせて`bun.lock`を作り直す
-- [ ] 6.1 (P) ソースマップのアップロードの計画と手順の部品を作る
+- [x] 6.1 (P) ソースマップのアップロードの計画と手順の部品を作る
   - `@sentry/cli`を、`coding/002`の「版を明示した追加手順」を準用して(`bun add --dev --exact @sentry/cli@<版>`)ルートの開発用の依存へ完全固定で加える。ワークフローの中で版を指定して呼ぶ場合は、infra-deliveryの版の照合の対象に加えて照合の検査を通す。導入先がルートだけで、主要パッケージの一覧の条件(複数の導入先で版をそろえる)に当たらないため一覧には加えない
   - アプリごとのアップロードの計画(出力先と`.map`の削除の対象)と、デバッグIDの埋め込み→アップロード→削除の手順の部品、`/ci/sentry`の値の取り出しとマスクを作る
   - 先に、単体テストで、アプリごとの計画、値の欠落時の警告と継続、呼び出しの順とマスクの先行を確かめる
@@ -439,5 +439,6 @@
 - 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。
 - 3.2: `axe-core`はページのCSPで`addScriptTag`が阻まれるため`page.evaluate(axe.source)`で注入し、終わりのあるアニメーションの完了を待ってから検査する。違反の型に`route`・`state`を足した。`ROUTE_INVENTORY`は`routeTree.gen.ts`の`fullPaths`の文字列単位(末尾のスラッシュ違いは別の経路)で、管理者側の`with-data`は最上位管理者で開く状態。上流に補助が無い操作(法務文書の公開など)は`prepare`に画面の操作として書いた。
 - 3.3: パスワードは固定の定数にせず(Betterleaksが検出する)、上流の`createTestAccount`の実行ごとの乱数を全員で共有し`BulkUser.password`で返す。ログインは永続化の文書ID(`ClientLoginDocument`)で`/_bff/graphql`へ送るため`apps/client/src/graphql/generated`と`apps/frontend-lib`の`documentIdOf`を読み込む(上流の`checkout-steps.ts`などと同じ)。投入は50行ずつ別の`executeLocalD1`で行い(1引数128KiBの上限)、文書用IPは3範囲で最大762人。
+- 6.1: `@sentry/cli` 3.8.2をルートへ完全固定し、`bun x --no-install sentry-cli`で呼ぶ(ワークフローで版を指定しないため`tool-versions`の照合の対象外)。値は環境変数`SENTRY_AUTH_TOKEN`・`SENTRY_ORG`・`SENTRY_PROJECT`で渡し、マスクはトークンだけ(フォルダ全体だと組織・プロジェクト名がログで伏せられる)。client・adminの`dist/client`の`.map`はアップロードを飛ばしても削除し、削除の失敗は終了コード1。api・eventの出力先`.wrangler/sourcemaps`は仮で、`wrangler deploy`が自分でバンドルするため埋め込みがデプロイに入るかを6.2で確かめる。
 - 8.1: 初動の目標時間・告知の更新の間隔・振り返りの期限・RTO・RPOは`operations/005`ではプレースホルダーにし、値は8.5で`project-values.md`へ入れる。`operations/006`へのリンクは8.2の完了で解消する。
 - 8.3: `security/009`は一般の規則と重大度の目安だけで、監視の対象とアラートの条件・閾値・通知先は8.5で`project-values.md`へ入れる。`operations/004`は既存の各節への追記と確認の表の拡張だけで、独立した本番の節は作らない(D-5)。本番では検証の決済をしないため、Webhookの配送の成功は最初の実際の通知の後に確かめる(チェックリストE-07の順序は開発者の判断事項)。
