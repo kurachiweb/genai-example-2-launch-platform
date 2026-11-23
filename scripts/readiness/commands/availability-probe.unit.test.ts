@@ -190,4 +190,63 @@ describe('availability-probe', () => {
     expect((error as UsageError).message).toContain(mention);
     expect(harness.urls).toEqual([]);
   });
+
+  describe('--help', () => {
+    test.each(['--help', '-h'])(
+      '%sは使い方を標準出力へ出して成功し、HTTPの要求をしない',
+      async (flag) => {
+        const harness = setup(ok);
+
+        const code = await harness.execute([flag]);
+
+        expect(code).toBe(EXIT_SUCCESS);
+        expect(harness.urls).toEqual([]);
+        expect(harness.stderr).toEqual([]);
+        const output = harness.stdout.join('');
+        expect(output).toContain('使い方: availability-probe');
+        expect(output).not.toContain('監視します');
+      },
+    );
+
+    test('他の引数と並べても使い方だけを表示してHTTPの要求をしない', async () => {
+      const harness = setup(ok);
+
+      const code = await harness.execute(['--duration', '5', '--help']);
+
+      expect(code).toBe(EXIT_SUCCESS);
+      expect(harness.urls).toEqual([]);
+      expect(harness.stdout.join('')).toContain('--duration');
+    });
+
+    test('全てのオプションと既定値と終了コードの意味を示す', async () => {
+      const harness = setup(ok);
+
+      await harness.execute(['--help']);
+
+      const output = harness.stdout.join('');
+      for (const option of [
+        '--duration',
+        '--client-url',
+        '--admin-url',
+        '--api-url',
+        '--event-url',
+      ]) {
+        expect(output).toContain(option);
+      }
+      for (const defaultValue of [
+        '1200',
+        'http://localhost:48044',
+        'http://localhost:48045',
+        'http://localhost:48042',
+        'http://localhost:48043',
+        '/health',
+        '/auth/login',
+      ]) {
+        expect(output).toContain(defaultValue);
+      }
+      expect(output).toContain('終了コード0');
+      expect(output).toContain('終了コード1');
+      expect(output).toContain('終了コード2');
+    });
+  });
 });

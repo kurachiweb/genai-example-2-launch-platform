@@ -33,6 +33,26 @@ const COLUMN_DEFAULTS = {
   'duration-column': 'duration_ms',
 } as const;
 
+const USAGE = [
+  '使い方: graphql-latency --input <CSVのパス> [オプション]',
+  '',
+  '  --input <パス>                  ブラウザ・フロントエンド・APIのスパンを1行ずつ書いたCSV(必須)',
+  `  --threshold-ms <数>             95パーセンタイルの閾値(ミリ秒、0以上の数)。既定は${String(DEFAULT_THRESHOLD_MS)}`,
+  `  --min-samples <整数>            操作ごとの最小の標本数(1以上の整数)。既定は${String(DEFAULT_MIN_SAMPLES)}`,
+  '  --operation <操作名>            集計する操作を絞る(複数回指定できる)。省略すると全ての操作を集計する',
+  `  --trace-id-column <列名>        トレースIDの列。既定は${COLUMN_DEFAULTS['trace-id-column']}`,
+  `  --span-id-column <列名>         スパンIDの列。既定は${COLUMN_DEFAULTS['span-id-column']}`,
+  `  --parent-span-id-column <列名>  親のスパンIDの列。既定は${COLUMN_DEFAULTS['parent-span-id-column']}`,
+  `  --side-column <列名>            行の種類(browser・frontend・api)の列。既定は${COLUMN_DEFAULTS['side-column']}`,
+  `  --operation-column <列名>       GraphQLの操作名の列。既定は${COLUMN_DEFAULTS['operation-column']}`,
+  `  --duration-column <列名>        所要時間(ミリ秒)の列。既定は${COLUMN_DEFAULTS['duration-column']}`,
+  '  -h, --help                      この使い方を表示する',
+  '',
+  'ブラウザのスパンをAPIのスパンの操作名と結び、操作ごとの95パーセンタイルを閾値で判定する。',
+  '終了コード0は全ての操作が合格、終了コード1は不合格・標本不足・標本なし、終了コード2は引数やCSVの形の誤りを表す。',
+  '',
+].join('\n');
+
 const SIDES: ReadonlySet<string> = new Set(['browser', 'frontend', 'api']);
 
 interface ColumnNames {
@@ -70,6 +90,7 @@ const parseOptions = (args: readonly string[]) => {
         'threshold-ms': { type: 'string' },
         'min-samples': { type: 'string' },
         operation: { type: 'string', multiple: true },
+        help: { type: 'boolean', short: 'h' },
         'trace-id-column': { type: 'string' },
         'span-id-column': { type: 'string' },
         'parent-span-id-column': { type: 'string' },
@@ -82,6 +103,8 @@ const parseOptions = (args: readonly string[]) => {
     throw new UsageError(messageOf(error));
   }
 };
+
+type ParsedValues = ReturnType<typeof parseOptions>;
 
 const numberOption = (
   name: string,
@@ -100,8 +123,7 @@ const numberOption = (
   return value;
 };
 
-const settingsOf = (args: readonly string[]): Settings => {
-  const values = parseOptions(args);
+const settingsOf = (values: ParsedValues): Settings => {
   if (values.input === undefined) {
     throw new UsageError('--inputでCSVのパスを指定してください');
   }
@@ -189,7 +211,12 @@ const loadRows = async (
 export const createRun =
   (deps: GraphqlLatencyDeps): ReadinessRun =>
   async (args, { stdout }) => {
-    const settings = settingsOf(args);
+    const values = parseOptions(args);
+    if (values.help === true) {
+      stdout.write(USAGE);
+      return EXIT_SUCCESS;
+    }
+    const settings = settingsOf(values);
     const rows = await loadRows(settings, deps);
     const { samples, unmatchedBrowserSpans } =
       joinBrowserSpansWithOperations(rows);

@@ -254,4 +254,74 @@ describe('graphql-latency', () => {
     expect(error).toBeInstanceOf(UsageError);
     expect((error as Error).message).toContain('missing.csv');
   });
+
+  describe('--help', () => {
+    const executeHelp = async (args: readonly string[]) => {
+      const stdout = createOutput();
+      const stderr = createOutput();
+      const reads: string[] = [];
+      const run = createRun({
+        readCsv: (path) => {
+          reads.push(path);
+          return Promise.resolve(parseCsv(csvOf()));
+        },
+      });
+      const exitCode = await run(args, { stdout, stderr });
+      return { exitCode, reads, stdout: stdout.text(), stderr: stderr.text() };
+    };
+
+    test.each(['--help', '-h'])(
+      '%sは使い方を標準出力へ出して成功し、CSVを読み込まない',
+      async (flag) => {
+        const result = await executeHelp([flag]);
+
+        expect(result.exitCode).toBe(EXIT_SUCCESS);
+        expect(result.stderr).toBe('');
+        expect(result.reads).toEqual([]);
+        expect(result.stdout).toContain('使い方: graphql-latency');
+      },
+    );
+
+    test('他の引数と並べても使い方だけを表示してCSVを読み込まない', async () => {
+      const result = await executeHelp(['--input', 'in.csv', '--help']);
+
+      expect(result.exitCode).toBe(EXIT_SUCCESS);
+      expect(result.reads).toEqual([]);
+      expect(result.stdout).toContain('--input');
+    });
+
+    test('全てのオプションと既定値と終了コードの意味を示す', async () => {
+      const { stdout } = await executeHelp(['--help']);
+
+      for (const option of [
+        '--input',
+        '--threshold-ms',
+        '--min-samples',
+        '--operation',
+        '--trace-id-column',
+        '--span-id-column',
+        '--parent-span-id-column',
+        '--side-column',
+        '--operation-column',
+        '--duration-column',
+      ]) {
+        expect(stdout).toContain(option);
+      }
+      for (const defaultValue of [
+        '300',
+        '200',
+        'trace_id',
+        'span_id',
+        'parent_span_id',
+        'side',
+        'operation',
+        'duration_ms',
+      ]) {
+        expect(stdout).toContain(defaultValue);
+      }
+      expect(stdout).toContain('終了コード0');
+      expect(stdout).toContain('終了コード1');
+      expect(stdout).toContain('終了コード2');
+    });
+  });
 });

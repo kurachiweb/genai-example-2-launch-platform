@@ -220,4 +220,48 @@ describe('degraded-env', () => {
 
     expect(harness.stdout()).toContain('起動はしません');
   });
+
+  describe('--help', () => {
+    test.each(['--help', '-h'])(
+      '%sは使い方だけを標準出力へ出して成功し、起動の差し替えも対応表も表示しない',
+      async (flag) => {
+        const harness = setup();
+
+        const code = await harness.execute([flag]);
+
+        expect(code).toBe(EXIT_SUCCESS);
+        expect(harness.stderr()).toBe('');
+        const out = harness.stdout();
+        expect(out).toContain('使い方: degraded-env');
+        expect(out).not.toContain('起動はしません');
+        expect(out).not.toContain('| サービス |');
+        expect(out).not.toContain('証跡の無い行(指摘の候補)');
+      },
+    );
+
+    test('サービスや他のオプションと並べても使い方だけを表示する', async () => {
+      const harness = setup();
+
+      const code = await harness.execute(['email', '--matrix', '--help']);
+
+      expect(code).toBe(EXIT_SUCCESS);
+      expect(harness.stdout()).toContain('使い方: degraded-env');
+      expect(harness.stdout()).not.toContain('起動はしません');
+    });
+
+    test('全てのサービスとオプションと終了コードの意味を示す', async () => {
+      const harness = setup();
+
+      await harness.execute(['--help']);
+
+      const out = harness.stdout();
+      for (const service of EXTERNAL_SERVICES) {
+        expect(out).toContain(service);
+      }
+      expect(out).toContain('all');
+      expect(out).toContain('--matrix');
+      expect(out).toContain('終了コード0');
+      expect(out).toContain('終了コード2');
+    });
+  });
 });

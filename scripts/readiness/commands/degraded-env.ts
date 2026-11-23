@@ -23,6 +23,8 @@ export interface DegradedEnvDeps {
 
 const ALL_KEYWORD = 'all';
 const MATRIX_FLAG = '--matrix';
+const HELP_FLAGS: ReadonlySet<string> = new Set(['--help', '-h']);
+const SERVICE_CHOICES = [...EXTERNAL_SERVICES, ALL_KEYWORD].join('・');
 
 const FAILURE_LABELS: Readonly<Record<FailureKind, string>> = {
   timeout: '時間切れ',
@@ -37,9 +39,23 @@ interface ParsedArgs {
 }
 
 const usageHint = (): string =>
-  `サービスは ${[...EXTERNAL_SERVICES, ALL_KEYWORD].join('・')} のいずれかを指定します。`;
+  `サービスは ${SERVICE_CHOICES} のいずれかを指定します。`;
 
-const parseArgs = (args: readonly string[]): ParsedArgs => {
+const USAGE = [
+  '使い方: degraded-env [サービス...] [--matrix]',
+  '',
+  `  サービス    止めるサービス(複数指定できる)。${SERVICE_CHOICES}のいずれか`,
+  `              サービスを省略するか${ALL_KEYWORD}を指定すると、全てのサービスを止める`,
+  `  ${MATRIX_FLAG}    縮退の対応表を、マークダウンの表で表示に加える`,
+  '  -h, --help  この使い方を表示する',
+  '',
+  '止めたサービスの縮退の起動のコマンドと、証跡の無い行・運用者へ通知されない行を表示する。起動はしない。',
+  '終了コード0は表示の成功、終了コード2は未知のサービスやオプションの誤りを表す。',
+  '',
+].join('\n');
+
+const parseArgs = (args: readonly string[]): ParsedArgs | 'help' => {
+  if (args.some((arg) => HELP_FLAGS.has(arg))) return 'help';
   const services = new Set<ExternalService>();
   let showMatrix = false;
   for (const arg of args) {
@@ -126,7 +142,12 @@ export function createDegradedEnvCommand({
 }: DegradedEnvDeps): ReadinessCommandModule {
   const run: ReadinessRun = (args, io) =>
     Promise.resolve().then(() => {
-      const { services, showMatrix } = parseArgs(args);
+      const parsed = parseArgs(args);
+      if (parsed === 'help') {
+        io.stdout.write(USAGE);
+        return EXIT_SUCCESS;
+      }
+      const { services, showMatrix } = parsed;
       io.stdout.write(
         [
           ...launchSection(services),

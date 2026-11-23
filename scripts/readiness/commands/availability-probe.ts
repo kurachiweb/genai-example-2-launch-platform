@@ -62,6 +62,34 @@ const DEFAULT_DURATION_SECONDS = 20 * 60;
 const MS_PER_SECOND = 1_000;
 const USER_AGENT = 'LaunchStadium-availability-probe/1.0';
 
+const USAGE_FLAG_WIDTH = 22;
+
+const usageLine = (flag: string, description: string): string =>
+  `  ${flag.padEnd(USAGE_FLAG_WIDTH)}${description}`;
+
+const originUsage = (key: AppKey): string => {
+  const { label, path, defaultOrigin } = APPS[key];
+  return usageLine(
+    `--${key}-url <URL>`,
+    `${label}のオリジン(監視する経路は${path})。既定は${defaultOrigin}`,
+  );
+};
+
+const USAGE = [
+  '使い方: availability-probe [オプション]',
+  '',
+  usageLine(
+    '--duration <SEC>',
+    `監視する秒数(1以上の整数)。既定は${String(DEFAULT_DURATION_SECONDS)}(${String(DEFAULT_DURATION_SECONDS / 60)}分)`,
+  ),
+  ...APP_KEYS.map(originUsage),
+  usageLine('-h, --help', 'この使い方を表示する'),
+  '',
+  'client・admin・api・eventの各経路へ1秒ごとにGETし、対象ごとの件数・失敗・最大の応答時間を集計する。',
+  '終了コード0は全ての対象で失敗が0件、終了コード1は失敗した応答がある、終了コード2は引数の誤りを表す。',
+  '',
+].join('\n');
+
 interface ProbeOptions {
   readonly durationSeconds: number;
   readonly origins: Readonly<Record<AppKey, string>>;
@@ -95,10 +123,9 @@ const parseOrigin = (
   );
 };
 
-const parseOptions = (args: readonly string[]): ProbeOptions => {
-  let values: Record<string, string | undefined>;
+const parseValues = (args: readonly string[]) => {
   try {
-    ({ values } = parseArgs({
+    return parseArgs({
       args: [...args],
       options: {
         duration: { type: 'string' },
@@ -106,15 +133,21 @@ const parseOptions = (args: readonly string[]): ProbeOptions => {
         'admin-url': { type: 'string' },
         'api-url': { type: 'string' },
         'event-url': { type: 'string' },
+        help: { type: 'boolean', short: 'h' },
       },
       strict: true,
       allowPositionals: false,
-    }));
+    }).values;
   } catch (error) {
     throw new UsageError(
       error instanceof Error ? error.message : String(error),
     );
   }
+};
+
+const parseOptions = (args: readonly string[]): ProbeOptions | 'help' => {
+  const values = parseValues(args);
+  if (values.help === true) return 'help';
   return {
     durationSeconds: parseDurationSeconds(values.duration),
     origins: Object.fromEntries(
@@ -142,7 +175,12 @@ export function createAvailabilityProbeCommand({
   clock,
 }: AvailabilityProbeDeps): ReadinessCommandModule {
   const run: ReadinessRun = async (args, io) => {
-    const { durationSeconds, origins } = parseOptions(args);
+    const options = parseOptions(args);
+    if (options === 'help') {
+      io.stdout.write(USAGE);
+      return EXIT_SUCCESS;
+    }
+    const { durationSeconds, origins } = options;
     const targets = targetsOf(origins);
     io.stdout.write(
       [
