@@ -1,4 +1,3 @@
-import { notImplemented } from './commands/shared/not-implemented.ts';
 import {
   EXIT_FAILURE,
   EXIT_SUCCESS,
@@ -15,11 +14,10 @@ export interface CommandEntry {
 
 export type CommandTable = Readonly<Record<string, CommandEntry>>;
 
-// 各行の`load`の1行だけを、`() => import('./commands/<名前>.ts')`へ差し替えてサブコマンドを実装する
 export const COMMAND_TABLE: CommandTable = {
   'cron-budget': {
     description: '日次バッチの予算と上限を、定期実行の要約のログから判定する',
-    load: notImplemented('cron-budget'),
+    load: () => import('./commands/cron-budget.ts'),
   },
   'graphql-latency': {
     description: 'GraphQLの応答時間を、操作ごとの95パーセンタイルで集計する',

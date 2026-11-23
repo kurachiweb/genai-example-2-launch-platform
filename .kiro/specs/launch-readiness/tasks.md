@@ -10,7 +10,7 @@
   - 完了状態: 単体テストとルートの整形・静的解析・型検査が成功し、`bun run readiness -- --help`が4つのサブコマンドを表示する
   - _Requirements: 19.1_
 
-- [ ] 1.2 (P) 日次バッチの予算の判定を作る
+- [x] 1.2 (P) 日次バッチの予算の判定を作る
   - 仮1の予算・上限・各ジョブの目安を定数で持ち、定期実行の要約のログの行(JSON Lines・JSON配列)から起動ごとの全体と各ジョブの所要時間・失敗・順序の食い違い・上限までの余裕を判定し、記録へ貼る表を出す。期待のジョブの順序は日次タイムラインの4:21の表から写したファイルを引数で渡す
   - 要約の行は、backend-platformの実装の項目(`kind: 'scheduled'`・`cron`・`result`・`jobs[].{name,result,durationMs}`・`totalDurationMs`、起動の識別は基底の`time`)で読み、ジョブの失敗の行と予算の超過の`level: 'warning'`の行は要約でないものとして無視する。判定は4:21(`21 12 * * *`)の起動だけで、予算を持つ他の起動(23:40・23:45・0:00)は所要時間を参考の値として並べる(ギャップ分析のD-2)
   - 先に、単体テストで、予算と上限と目安とCron Triggersの上限の境界(300,000と300,001ms、600,000と600,001ms、30,000と30,001ms、900,000msでの余裕)、失敗したジョブ、順序の入れ替え、要約でない行(ジョブの失敗の行・予算の超過の行)の無視、4:21以外の起動の参考の値、`totalDurationMs`とジョブの和の差、余裕の計算、ログの読み込みを確かめる
@@ -430,6 +430,7 @@
 ## Implementation Notes
 
 - 1.1: 入口の表`COMMAND_TABLE`の各行は`{ description, load }`で、各タスクは`load:`の1行を`() => import('./commands/<name>.ts')`へ替える。コマンドは`run(args, io)`で、入力の形の誤りは`UsageError`(終了コード2)、判定の失敗は1を返す。最後に4行が替わったタスクが`notImplemented`の読み込みと`commands/shared/not-implemented.ts`を消す。層の検査は`scripts/delivery`の補助が非公開のため写しで、`http`・`https`・`net`を足した。
+- 1.2: 予算の判定はジョブの所要時間の和で行い(設計の`totalMs`)、`totalDurationMs`との差は表の「要約との差」に出す(上流の警告は`totalDurationMs`で比べる)。`level`が`warning`以上の行と`jobs`の無い行は要約として読まない。期待の順序`test-fixtures/daily-batch-expected-order.txt`は日次タイムライン(`service/overview/007`)の4:21の表の30件で、`SCHEDULED_JOBS`の4:21の登録と一致する(7.10でそのまま使える)。ログにJSONでない行があれば入力の誤り(終了コード2)。
 - 1.3: 結び付けはAPIの`graphql.operation.name`の行から親をたどり最初のブラウザのスパンに付け、フロントエンドの行は通過する(ブラウザ1スパンにつき1標本)。全ての操作が合格のときだけ終了コード0(標本不足も1)。CSVの既定の列名は`trace_id`・`span_id`・`parent_span_id`・`side`(`browser`・`frontend`・`api`)・`operation`・`duration_ms`で、実際の書き出しの列名は引数で渡す。
 - 1.4: 対象のURLは`--client-url`・`--admin-url`・`--api-url`・`--event-url`の引数で上書きする(`scripts`から`e2e`の補助を読み込まないため環境変数は使わない)。3xxは成功、時間切れは10秒、遅い応答を待たず1秒の刻みで送り、終わりに残った要求も待って数える。観測が0件なら失敗。
 - 1.5: 差し替えは`wrangler dev --var KEY:VALUE`(Rekognition・GCP NL・DISIFYの鍵はローカルの`secrets.required`に無く環境変数では効かない)。Stripeは無効な鍵だと401が`StripeRejectedError`になり縮退の案内にならないため、`env -u STRIPE_API_KEY`で外す(設計の`rk_test_`の例と相違、`LocalOverride`は`vars`・`unsetSecrets`)。Rekognition・GCP NLはローカルの既定(stub・disabled)を外して実サービスへ無効な鍵で向ける。止めたサービスの一覧は`E2E_DEGRADED_SERVICES`(カンマ区切り)。運用者へ通知されない6行(GCP NLの時間切れ・上限、Stripeの4種)は6.5の指摘の候補で7.5で扱う。

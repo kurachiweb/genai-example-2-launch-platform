@@ -1,0 +1,185 @@
+[
+  {
+    "time": "2026-11-25T12:22:10.000Z",
+    "level": "error",
+    "category": "api.scheduled.dispatcher",
+    "message": "定期実行のジョブが失敗しました",
+    "kind": "scheduled",
+    "cron": "21 12 * * *",
+    "job": "inquiry-chat.guest-inquiry-retention",
+    "durationMs": 11000,
+    "error": {
+      "name": "Error",
+      "message": "D1 error"
+    }
+  },
+  {
+    "time": "2026-11-25T12:26:40.000Z",
+    "level": "warning",
+    "category": "api.scheduled.dispatcher",
+    "message": "定期実行の合計の所要時間が予算を超えました",
+    "kind": "scheduled",
+    "cron": "21 12 * * *",
+    "totalDurationMs": 679520,
+    "maxTotalDurationMs": 300000,
+    "jobCount": 29
+  },
+  {
+    "time": "2026-11-25T12:30:00.000Z",
+    "level": "info",
+    "category": "api.scheduled.dispatcher",
+    "message": "定期実行を終えました",
+    "correlationId": "0189d4c0-0000-4000-8000-000000000001",
+    "kind": "scheduled",
+    "cron": "21 12 * * *",
+    "result": "failed",
+    "jobs": [
+      {
+        "name": "identity-auth.purge-orchestrator",
+        "result": "succeeded",
+        "durationMs": 9000
+      },
+      {
+        "name": "identity-auth.credential-cleanup",
+        "result": "succeeded",
+        "durationMs": 10000
+      },
+      {
+        "name": "identity-auth.disposable-recheck-sweep",
+        "result": "succeeded",
+        "durationMs": 11000
+      },
+      {
+        "name": "admin-foundation.audit-log-retention",
+        "result": "succeeded",
+        "durationMs": 12000
+      },
+      {
+        "name": "admin-foundation.credential-cleanup",
+        "result": "succeeded",
+        "durationMs": 13000
+      },
+      {
+        "name": "inquiry-chat.guest-inquiry-retention",
+        "result": "failed",
+        "durationMs": 14000
+      },
+      {
+        "name": "payments.pending-checkout-sweep",
+        "result": "succeeded",
+        "durationMs": 15000
+      },
+      {
+        "name": "payments.history-retention",
+        "result": "succeeded",
+        "durationMs": 16000
+      },
+      {
+        "name": "ultras-subscription.pending-dispatch-sweep",
+        "result": "succeeded",
+        "durationMs": 17000
+      },
+      {
+        "name": "user-profile-social.orphaned-file-sweep",
+        "result": "succeeded",
+        "durationMs": 18000
+      },
+      {
+        "name": "media-pipeline.expired-file-erasure",
+        "result": "succeeded",
+        "durationMs": 31500
+      },
+      {
+        "name": "media-pipeline.moderation-requeue",
+        "result": "succeeded",
+        "durationMs": 20000
+      },
+      {
+        "name": "email-delivery.cleanup",
+        "result": "succeeded",
+        "durationMs": 21000
+      },
+      {
+        "name": "product-launch.purge-orchestrator",
+        "result": "succeeded",
+        "durationMs": 22000
+      },
+      {
+        "name": "product-launch.lifecycle-redispatch",
+        "result": "succeeded",
+        "durationMs": 23000
+      },
+      {
+        "name": "match-engine.event-redispatch",
+        "result": "succeeded",
+        "durationMs": 24000
+      },
+      {
+        "name": "match-engine.event-cleanup",
+        "result": "succeeded",
+        "durationMs": 25000
+      },
+      {
+        "name": "notifications.maintenance",
+        "result": "succeeded",
+        "durationMs": 26000
+      },
+      {
+        "name": "engagement.comment-anonymization",
+        "result": "succeeded",
+        "durationMs": 27000
+      },
+      {
+        "name": "tournament-week.entry-follow-up",
+        "result": "succeeded",
+        "durationMs": 28000
+      },
+      {
+        "name": "sponsorship.maintenance",
+        "result": "succeeded",
+        "durationMs": 29000
+      },
+      {
+        "name": "tournament-year.entry-follow-up",
+        "result": "succeeded",
+        "durationMs": 30000
+      },
+      {
+        "name": "ugc-moderation.weekly-statistics",
+        "result": "succeeded",
+        "durationMs": 31000
+      },
+      {
+        "name": "ugc-moderation.maintenance",
+        "result": "succeeded",
+        "durationMs": 32000
+      },
+      {
+        "name": "content-reporting.notice-redispatch",
+        "result": "succeeded",
+        "durationMs": 33000
+      },
+      {
+        "name": "content-reporting.report-retention",
+        "result": "succeeded",
+        "durationMs": 34000
+      },
+      {
+        "name": "data-export.archive-expiry",
+        "result": "succeeded",
+        "durationMs": 35000
+      },
+      {
+        "name": "data-export.generation-recovery",
+        "result": "succeeded",
+        "durationMs": 36000
+      },
+      {
+        "name": "content-processing.keyword-reextraction",
+        "result": "succeeded",
+        "durationMs": 37000
+      }
+    ],
+    "totalDurationMs": 679520
+  }
+]

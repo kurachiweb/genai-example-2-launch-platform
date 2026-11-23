@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
 import { COMMAND_TABLE, type CommandTable, runCli } from './cli.ts';
-import { notImplemented } from './commands/shared/not-implemented.ts';
 import {
   EXIT_FAILURE,
   EXIT_SUCCESS,
@@ -116,16 +115,6 @@ describe('runCli', () => {
       expect(typeof loaded?.run).toBe('function');
     },
   );
-
-  test('未実装の仮の処理は、未実装と示して失敗を返す', async () => {
-    const { exitCode, stdout, stderr } = await run(['sample'], {
-      sample: { description: '未実装の確認用', load: notImplemented('sample') },
-    });
-
-    expect(exitCode).toBe(EXIT_FAILURE);
-    expect(stdout).toBe('');
-    expect(stderr).toContain('sampleは未実装です');
-  });
 
   test('表の行が指すコマンドへ残りの引数を渡し、その終了コードを返す', async () => {
     const received: (readonly string[])[] = [];
