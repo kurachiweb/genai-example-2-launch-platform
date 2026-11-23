@@ -15,7 +15,7 @@ import { directorySearchPath } from '../directory-steps.ts';
 import { myProductEditPath } from '../product-steps.ts';
 import { createProfileHandle, profilePath } from '../profile-steps.ts';
 import {
-  adminWorld,
+  helpArticlesWorld,
   emptyUserWorld,
   matchWorld,
   memberWorld,
@@ -154,7 +154,7 @@ const unsubscribeLink: RouteResolver = async (browser) => {
 
 // 公開の直後に公開側で読めない時間があり得るため、公開の記事が読めるまで待ってから開く。開いた後の状態コードは別に確かめる
 const helpArticle: RouteResolver = async (browser) => {
-  const [article] = (await adminWorld(browser)).helpArticles;
+  const [article] = await helpArticlesWorld(browser);
   if (article === undefined) {
     throw new Error('公開のヘルプ記事を用意できませんでした');
   }
@@ -326,7 +326,7 @@ export const CLIENT_ROUTE_CASES: ReadonlyMap<string, RouteResolver> = new Map([
   [
     routeCaseKey('/help/', 'with-data'),
     async (browser) => {
-      await adminWorld(browser);
+      await helpArticlesWorld(browser);
       return { url: '/help' };
     },
   ],

@@ -1,7 +1,7 @@
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import { expect, type Page, type Response, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 import { scanPage } from '../../support/a11y-scan.ts';
 import {
@@ -9,11 +9,7 @@ import {
   type RouteEntry,
 } from '../../support/route-inventory.ts';
 import { findSecurityHeaderProblems } from '../../support/security-assertions.ts';
-import {
-  CLIENT_ROUTE_CASES,
-  isSkipped,
-  type RouteTarget,
-} from './client-route-cases.ts';
+import { CLIENT_ROUTE_CASES, isSkipped } from './client-route-cases.ts';
 import {
   describeFinding,
   describeSummary,
@@ -24,6 +20,7 @@ import {
   routeTestTitle,
   summarizeFindings,
 } from '../../support/route-audit-report.ts';
+import { expectOpenedRoute, expectSettled } from './route-open-steps.ts';
 import { deleteWorldHelpArticles } from './client-route-world.ts';
 import { withSessionPage } from '../../support/route-sessions.ts';
 import { findingsFilePath } from '../../support/route-world-cache.ts';
@@ -36,30 +33,11 @@ const NAVIGATION_TIMEOUT_MS = 120_000;
 
 const CLEANUP_TIMEOUT_MS = 600_000;
 
-const OK_STATUS = 200;
-
-// 画面の取得中に出るスケルトンと読み込み中の領域が全て消えてから検査する
-const LOADING_SELECTOR = '[data-slot="skeleton"], [aria-busy="true"]';
-
-const SETTLE_TIMEOUT_MS = 30_000;
-
 test.describe.configure({ timeout: ROUTE_TEST_TIMEOUT_MS });
 
 const clientEntries: readonly RouteEntry[] = ROUTE_INVENTORY.filter(
   ({ app }) => app === 'client',
 );
-
-// ログインへの移動やエラーの画面への差し替えで、検査したい状態と別の画面を検査して通らないよう、状態コードと移動先を確かめる
-function expectOpenedRoute(
-  page: Page,
-  response: Response | null,
-  { url, expectedStatus = OK_STATUS }: RouteTarget,
-): void {
-  expect(response?.status(), `${url}の応答の状態コード`).toBe(expectedStatus);
-  expect(new URL(page.url()).pathname, `${url}を開いた後の移動先`).toBe(
-    new URL(url, page.url()).pathname,
-  );
-}
 
 async function recordFinding(finding: RouteAuditFinding): Promise<void> {
   const path = findingsFilePath('client');
@@ -134,9 +112,7 @@ test.describe('利用者側の全経路のアクセシビリティとセキュ�
               timeout: NAVIGATION_TIMEOUT_MS,
             });
             expectOpenedRoute(page, response, outcome);
-            await expect(page.locator(LOADING_SELECTOR)).toHaveCount(0, {
-              timeout: SETTLE_TIMEOUT_MS,
-            });
+            await expectSettled(page);
             return {
               route: entry.path,
               state,

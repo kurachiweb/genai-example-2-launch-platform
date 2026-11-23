@@ -168,7 +168,7 @@
   - _Boundary: E2E(client/a11y/keyboard-flows), E2E(admin/a11y/keyboard-flows)_
   - _Requirements: 12.2_
 
-- [ ] 5.4 (P) 画面の幅と文字列の伸びの検査を作る
+- [x] 5.4 (P) 画面の幅と文字列の伸びの検査を作る
   - 経路の一覧の利用者側の全経路を320・768・1280pxで開き、横のはみ出しが無く、本文の文字列を1.5倍に伸ばしても要素が重ならないことを確かめる
   - 完了状態: テストを実装してローカルで実行し、失敗の内容をテストの出力に残す(指摘の記録は7.1でまとめて行う)
   - _Boundary: E2E(client/a11y/responsive-layout)_
@@ -447,6 +447,7 @@
 - 4.4: 当日の予選のプロダクトは未掲載で`productLiveMatch`がnullを返すため、数え上げは`qualifierBoard`から読む。100人のログインは20人ずつ並行で計測の外に置き、要求の失敗は状態コード0として数える。管理者のカテゴリの作成を含むため`infisical run --env dev`で実行する。ローカルの2回の実行は所要時間2.3〜2.5秒・5xx 0件・数え上げ100。負荷の極端な時に100件全てが120秒の時間切れになった1回は原因未特定で、7.1で静かな環境で再現を確かめる。
 - 5.1: 一覧の`prepare`の`open*`の手順は使わず、上流の補助でデータを用意して`page.goto`で開き、期待の状態コード(既定200、存在しない対象は404)・開いた後のパス名・スケルトンの消失を確かめてから検査する。用意した世界(管理者・利用者・マッチ・決済など)は`test-results/client-route-world-<親のpid>.json`に残して使い回す。法務文書の`with-data`は公開の版が無い種別だけを最上位管理者(公開のAPIは`super_admin`)で公開して検査し、`empty`は公開済みなら理由つきで対象外(公開は取り消せない)。`/pricing`は共有の機能フラグを切り替えず現在の状態で検査する。ローカルでは`/api-docs`(Swagger UIの描画後)に`color-contrast`・`select-name`の違反が出る(public-apiへの指摘として7.1で扱う)。管理者を使うため`infisical run --env dev`で実行し、全体の1回は約35分。
 - 5.2: 利用者側と共通の部品(`route-world-cache.ts`・`route-sessions.ts`・`route-audit-report.ts`)は設計の依存の向きに合わせて`e2e/support/`に置き、用意の記録と所見は名前空間(`client`・`admin`・`responsive`)ごとの別のファイル(`<namespace>-route-world-<ppid>.json`、環境変数`<NAMESPACE>_ROUTES_WORLD_FILE`)にする。閲覧のみの管理者の`/help-articles/new`は一覧へ戻されるため、移動先の一覧を検査する。0件の状態は他のテストとデータを共有するため、絞り込みの候補を順に開いて0件の条件を探す。法務文書の編集は最上位管理者だけ(`route-inventory`の`prepare`の「モデレーター以上」は実際と異なる)。ローカルの全体の1回で69の経路と状態に違反0件・ヘッダーの不足0件。
+- 5.4: 4つの条件(そのまま・WCAG 1.4.12の文字の間隔・本文の文字列の1.5倍の伸び・文字の1.5倍の拡大)で、文書と要素の横のはみ出しと、文字の行の矩形と操作の部品の矩形の重なりを測る(固定の要素・隠した要素・閉じた`details`などは除く。親子の関係の要素同士の重なりは見ない)。開く操作は1回で、幅は開いた後に切り替える。5.1の用意を名前空間`client`で共有し、ヘルプ記事だけはテストのファイルごとに作って消す(`helpArticlesWorld`)ので、5.1と同じ実行で流してよい。ローカルでは`/p/$handle`(320px・文字の拡大)と`/settings/follows`(「フォローした日時」の`time`の`shrink-0`)が横にはみ出す(7.1の指摘)。
 - 5.5: api・event・画像配信の検査の対象外の判定はURLごと(利用者側がローカルなら実行し、そうでなければ環境変数を設定した対象だけ)。stagingの`/api-docs`は404で公開APIが未デプロイとみられるため、代表の経路は`/`・`/p`・`/help`・`/legal`・`/auth/login`・`/auth/register`にした。公開APIの成功応答(仕様書の200・プリフライトの204)には`Cache-Control`が無いため、`no-store`はAPIキーの無い401で確かめる(要件13.2と公開APIの文書に成功応答のキャッシュの規則は無い)。ローカルのapiは外部からの`/graphql`にGraphiQLとして200を返すため、その404はデプロイ先(7.3)だけで確かめる。画像配信は存在しない画像の404と`Set-Cookie`が無いことだけを確かめる。
 - 6.1: `@sentry/cli` 3.8.2をルートへ完全固定し、`bun x --no-install sentry-cli`で呼ぶ(ワークフローで版を指定しないため`tool-versions`の照合の対象外)。値は環境変数`SENTRY_AUTH_TOKEN`・`SENTRY_ORG`・`SENTRY_PROJECT`で渡し、マスクはトークンだけ(フォルダ全体だと組織・プロジェクト名がログで伏せられる)。client・adminの`dist/client`の`.map`はアップロードを飛ばしても削除し、削除の失敗は終了コード1。api・eventの出力先`.wrangler/sourcemaps`は仮で、`wrangler deploy`が自分でバンドルするため埋め込みがデプロイに入るかを6.2で確かめる。
 - 7.3: NFR-SECUR-001〜046の46件は根拠あり44・一部2(012はF-4、021はF-7)。stagingの基線(`--grep @prod-check`)は29件中28件が成功し、公開APIの401の検査だけが`/v1/products`の404で失敗した。stagingは2026-11-16の`origin/main`(`3e9dcb82`)のままで、`feat/implement`はmainより453コミット進んでいる(F-5、公開APIなどが未デプロイ)。疎通確認のE2EはstagingでCloudflareのエッジが挿入する`type="module"`のWeb Analyticsのビーコンに`defer`を要求して落ちる(F-6、frontend-platformの検査の誤り)。7.4の指摘F-1〜F-4と同じ記録に載せた。

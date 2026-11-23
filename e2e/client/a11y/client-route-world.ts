@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
+import { basename } from 'node:path';
 
-import { expect, type Browser, type Page } from '@playwright/test';
+import { expect, type Browser, type Page, test } from '@playwright/test';
 
 import {
   BOLD_ACTION_LABEL,
@@ -61,7 +62,7 @@ import {
   withSessionPage,
 } from '../../support/route-sessions.ts';
 
-const { cachedWorld, peekWorld } = worldCache('client');
+const { cachedWorld, peekWorld, forgetWorld } = worldCache('client');
 
 export interface HelpArticleRecord {
   readonly id: string;
@@ -73,7 +74,6 @@ export interface AdminWorld {
   readonly productCategory: string;
   readonly helpCategory: string;
   readonly storageState: StorageState;
-  readonly helpArticles: readonly HelpArticleRecord[];
 }
 
 export interface UserWorld {
@@ -170,44 +170,56 @@ export const adminWorld = (browser: Browser): Promise<AdminWorld> =>
         handle: `e2e-a11y-${suffix}`,
       });
       await createCategory(page, HELP_CATEGORIES_TITLE, { name: helpCategory });
-      await warmUpHelpArticleEditor(page, HELP_ARTICLE_NEW_PATH);
-      const helpArticles = await createHelpArticles(page, helpCategory);
       return {
         productCategory,
         helpCategory,
         storageState: await context.storageState(),
-        helpArticles,
       };
     }),
   );
 
-// 消した記事を開き直して失敗しないよう、後始末は用意の1回につき1度だけ行う
+// 記事は後始末で消すため、同じ実行で続けて流す別のテストファイルの記事を消さないよう、テストファイルごとに用意して後始末する
+const helpArticlesKey = (): string =>
+  `help-articles:${basename(test.info().file)}`;
+
+export const helpArticlesWorld = (
+  browser: Browser,
+): Promise<readonly HelpArticleRecord[]> =>
+  adminWorld(browser).then((admin) =>
+    cachedWorld(helpArticlesKey(), () =>
+      withSessionPage(
+        browser,
+        'admin',
+        async (page) => {
+          await warmUpHelpArticleEditor(page, HELP_ARTICLE_NEW_PATH);
+          return createHelpArticles(page, admin.helpCategory);
+        },
+        admin.storageState,
+      ),
+    ),
+  );
+
+// 消した記事の記録を残すと、作り直されたワーカーが消えた記事を開いてしまうため、消したら記録も消す
 export async function deleteWorldHelpArticles(browser: Browser): Promise<void> {
+  const key = helpArticlesKey();
+  const articles = await peekWorld<readonly HelpArticleRecord[]>(key);
   const admin = await peekWorld<AdminWorld>('admin');
-  if (admin === undefined) {
+  if (articles === undefined || admin === undefined) {
     return;
   }
-  await cachedWorld('help-articles-cleanup', () =>
-    deleteHelpArticlesOf(browser, admin),
-  );
-}
-
-const deleteHelpArticlesOf = (
-  browser: Browser,
-  admin: AdminWorld,
-): Promise<true> =>
-  withSessionPage(
+  await withSessionPage(
     browser,
     'admin',
     async (page) => {
-      for (const { id, title } of admin.helpArticles) {
+      for (const { id, title } of articles) {
         await warmUpHelpArticleEditor(page, helpArticleEditPath(id));
         await deleteHelpArticle(page, id, title);
       }
-      return true as const;
     },
     admin.storageState,
   );
+  await forgetWorld(key);
+}
 
 interface AccountStage {
   readonly account: TestAccount;
