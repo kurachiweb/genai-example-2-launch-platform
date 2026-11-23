@@ -353,7 +353,7 @@
   - _Depends: 7.7, 7.14, 7.15_
   - _Requirements: 7.4, 9.4, 10.7, 10.8, 15.2, 15.5, 15.6_
 
-- [ ] 8.3 (P) 監視と対応方針、決済データ操作の本番の手順を書く
+- [x] 8.3 (P) 監視と対応方針、決済データ操作の本番の手順を書く
   - `security/009-monitoring-and-alerting.md`(監視の層・アラートの規則と重大度・通知先・初動の対応付け・外部サービスの無料枠の使用量を閾値の割合で通知し有償の契約へ切り替える規則・外部ステータスページの導線の判断・個人情報を設定に含めない規則)を書き、securityのREADMEに加える
   - `operations/004`の既存の各節の本番(ライブモード)の記載と「環境ごとの確認の一覧」へ、ライブモードの制限付きキー(Workerごと。登録先はinfra-deliveryの改訂1の`/workers/api`・`/workers/event`で、paymentsの仮7が既存の節に記した手順を参照する)・Webhook endpoint・価格・Customer Portal・再試行と顧客向けメール・税・決済手段・Adaptive Pricingの無効化・prodの決済手段のドメインの登録・不審請求の申し立ての不服申し立ての無効の本番の手順と確認方法を足す。独立した本番の節は作らない(ギャップ分析のD-5)
   - 完了状態: 文書が整形の検査を通り、固有の値が無いことを検索で確かめる
@@ -440,3 +440,4 @@
 - 3.2: `axe-core`はページのCSPで`addScriptTag`が阻まれるため`page.evaluate(axe.source)`で注入し、終わりのあるアニメーションの完了を待ってから検査する。違反の型に`route`・`state`を足した。`ROUTE_INVENTORY`は`routeTree.gen.ts`の`fullPaths`の文字列単位(末尾のスラッシュ違いは別の経路)で、管理者側の`with-data`は最上位管理者で開く状態。上流に補助が無い操作(法務文書の公開など)は`prepare`に画面の操作として書いた。
 - 3.3: パスワードは固定の定数にせず(Betterleaksが検出する)、上流の`createTestAccount`の実行ごとの乱数を全員で共有し`BulkUser.password`で返す。ログインは永続化の文書ID(`ClientLoginDocument`)で`/_bff/graphql`へ送るため`apps/client/src/graphql/generated`と`apps/frontend-lib`の`documentIdOf`を読み込む(上流の`checkout-steps.ts`などと同じ)。投入は50行ずつ別の`executeLocalD1`で行い(1引数128KiBの上限)、文書用IPは3範囲で最大762人。
 - 8.1: 初動の目標時間・告知の更新の間隔・振り返りの期限・RTO・RPOは`operations/005`ではプレースホルダーにし、値は8.5で`project-values.md`へ入れる。`operations/006`へのリンクは8.2の完了で解消する。
+- 8.3: `security/009`は一般の規則と重大度の目安だけで、監視の対象とアラートの条件・閾値・通知先は8.5で`project-values.md`へ入れる。`operations/004`は既存の各節への追記と確認の表の拡張だけで、独立した本番の節は作らない(D-5)。本番では検証の決済をしないため、Webhookの配送の成功は最初の実際の通知の後に確かめる(チェックリストE-07の順序は開発者の判断事項)。
