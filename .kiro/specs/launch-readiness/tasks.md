@@ -35,7 +35,7 @@
   - _Depends: 1.1_
   - _Requirements: 7.1_
 
-- [ ] 1.5 (P) 縮退運転の対応表とローカルの縮退の起動の差し替えを作る
+- [x] 1.5 (P) 縮退運転の対応表とローカルの縮退の起動の差し替えを作る
   - Rekognition・GCP NL・Stripe・メール送信・HIBP・DISIFYごとに、障害の種類・期待する振る舞い・証跡の上流の自動テスト(無ければ空)・運用者への通知の有無・担当specを対応表にする(各specのdesign.mdの記述から写す)
   - 鍵または宛先を無効な固定の値にしてapi・eventを起動するコマンドを表示する差し替えの一覧を作る(HIBPは差し替えの手段が無いため対応表だけ)。コマンドはinfra-deliveryの改訂1のWorkerごとの起動の入口(`run-with-secrets --scope local --worker <api|event>`)の形にする
   - 先に、単体テストで、6つのサービスの行、挙げた証跡のファイルが存在すること(書き誤りの検出)、差し替えのキーがWrangler設定に存在すること、表示するコマンドがWorkerごとの起動の入口を使い秘密の値を含まないことを確かめる
@@ -432,6 +432,7 @@
 - 1.1: 入口の表`COMMAND_TABLE`の各行は`{ description, load }`で、各タスクは`load:`の1行を`() => import('./commands/<name>.ts')`へ替える。コマンドは`run(args, io)`で、入力の形の誤りは`UsageError`(終了コード2)、判定の失敗は1を返す。最後に4行が替わったタスクが`notImplemented`の読み込みと`commands/shared/not-implemented.ts`を消す。層の検査は`scripts/delivery`の補助が非公開のため写しで、`http`・`https`・`net`を足した。
 - 1.3: 結び付けはAPIの`graphql.operation.name`の行から親をたどり最初のブラウザのスパンに付け、フロントエンドの行は通過する(ブラウザ1スパンにつき1標本)。全ての操作が合格のときだけ終了コード0(標本不足も1)。CSVの既定の列名は`trace_id`・`span_id`・`parent_span_id`・`side`(`browser`・`frontend`・`api`)・`operation`・`duration_ms`で、実際の書き出しの列名は引数で渡す。
 - 1.4: 対象のURLは`--client-url`・`--admin-url`・`--api-url`・`--event-url`の引数で上書きする(`scripts`から`e2e`の補助を読み込まないため環境変数は使わない)。3xxは成功、時間切れは10秒、遅い応答を待たず1秒の刻みで送り、終わりに残った要求も待って数える。観測が0件なら失敗。
+- 1.5: 差し替えは`wrangler dev --var KEY:VALUE`(Rekognition・GCP NL・DISIFYの鍵はローカルの`secrets.required`に無く環境変数では効かない)。Stripeは無効な鍵だと401が`StripeRejectedError`になり縮退の案内にならないため、`env -u STRIPE_API_KEY`で外す(設計の`rk_test_`の例と相違、`LocalOverride`は`vars`・`unsetSecrets`)。Rekognition・GCP NLはローカルの既定(stub・disabled)を外して実サービスへ無効な鍵で向ける。止めたサービスの一覧は`E2E_DEGRADED_SERVICES`(カンマ区切り)。運用者へ通知されない6行(GCP NLの時間切れ・上限、Stripeの4種)は6.5の指摘の候補で7.5で扱う。
 - 1.6: 本番の項目の結果はチェックリストの記入欄に、S-01〜S-23の結果は検証の記録の表に書く。受け入れた危険の主体の共有の行の理由は研究メモに無いため「開発者が追記する(未記入)」とした。設計のD-02の「UTCの式」の時刻は業務時刻(UTC-8)の表記で、Wrangler設定の式はUTCの`21 0`・`21 12`・`40 7`・`45 7`・`0 8`・`7 8`(記録の規則の節に対応を書いた)。
 - 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。
 - 3.2: `axe-core`はページのCSPで`addScriptTag`が阻まれるため`page.evaluate(axe.source)`で注入し、終わりのあるアニメーションの完了を待ってから検査する。違反の型に`route`・`state`を足した。`ROUTE_INVENTORY`は`routeTree.gen.ts`の`fullPaths`の文字列単位(末尾のスラッシュ違いは別の経路)で、管理者側の`with-data`は最上位管理者で開く状態。上流に補助が無い操作(法務文書の公開など)は`prepare`に画面の操作として書いた。

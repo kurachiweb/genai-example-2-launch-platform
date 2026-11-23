@@ -31,7 +31,7 @@ export const COMMAND_TABLE: CommandTable = {
   },
   'degraded-env': {
     description: '外部サービスを止めた縮退の起動の差し替えを表示する',
-    load: notImplemented('degraded-env'),
+    load: () => import('./commands/degraded-env.ts'),
   },
 };
 
