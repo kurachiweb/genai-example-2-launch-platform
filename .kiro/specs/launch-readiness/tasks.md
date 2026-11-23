@@ -94,7 +94,7 @@
   - _Boundary: A11yScan, RouteInventory_
   - _Requirements: 12.1, 14.7_
 
-- [ ] 3.3 (P) 100人の確認済みの利用者とログイン済みの要求の補助を作る
+- [x] 3.3 (P) 100人の確認済みの利用者とログイン済みの要求の補助を作る
   - 1人目をUIの新規登録とメールの確認で作り、その`users.password_hash`をローカルのD1から読み、残りの確認済みの利用者を同じ`password_hash`の文字列で指定の人数までローカルのD1へ投入する(保存の形式がソルトを含むため、同じパスワードで照合が通る。`HASH_PEPPER`の注入と`apps/*/src`の処理の写しを要さない)。利用者ごとに文書用のIPアドレスの範囲から送信元を割り当てる。上流に同等の補助があればそれを使う
   - bot判定のローカルのテスト用のキーで通るトークン・送信元・`Origin`を付けてログインし、セッションを持つ要求の文脈を返す
   - 完了状態: コミットしない一時的なE2Eで、3人の利用者がそれぞれログイン済みの要求で自分の情報を取得できることを確かめ、一時的なE2Eを消す
@@ -432,3 +432,4 @@
 - 1.1: 入口の表`COMMAND_TABLE`の各行は`{ description, load }`で、各タスクは`load:`の1行を`() => import('./commands/<name>.ts')`へ替える。コマンドは`run(args, io)`で、入力の形の誤りは`UsageError`(終了コード2)、判定の失敗は1を返す。最後に4行が替わったタスクが`notImplemented`の読み込みと`commands/shared/not-implemented.ts`を消す。層の検査は`scripts/delivery`の補助が非公開のため写しで、`http`・`https`・`net`を足した。
 - 1.6: 本番の項目の結果はチェックリストの記入欄に、S-01〜S-23の結果は検証の記録の表に書く。受け入れた危険の主体の共有の行の理由は研究メモに無いため「開発者が追記する(未記入)」とした。設計のD-02の「UTCの式」の時刻は業務時刻(UTC-8)の表記で、Wrangler設定の式はUTCの`21 0`・`21 12`・`40 7`・`45 7`・`0 8`・`7 8`(記録の規則の節に対応を書いた)。
 - 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。
+- 3.3: パスワードは固定の定数にせず(Betterleaksが検出する)、上流の`createTestAccount`の実行ごとの乱数を全員で共有し`BulkUser.password`で返す。ログインは永続化の文書ID(`ClientLoginDocument`)で`/_bff/graphql`へ送るため`apps/client/src/graphql/generated`と`apps/frontend-lib`の`documentIdOf`を読み込む(上流の`checkout-steps.ts`などと同じ)。投入は50行ずつ別の`executeLocalD1`で行い(1引数128KiBの上限)、文書用IPは3範囲で最大762人。
