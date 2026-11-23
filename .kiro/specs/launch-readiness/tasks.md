@@ -117,7 +117,7 @@
   - _Boundary: E2E(client/regression/moderation-journey)_
   - _Requirements: 14.3, 14.6_
 
-- [ ] 4.3 (P) ヘルプ・法務文書・データエクスポート・退会の流れの回帰テストを作る
+- [x] 4.3 (P) ヘルプ・法務文書・データエクスポート・退会の流れの回帰テストを作る
   - 管理者のヘルプ記事の公開と、記事の並べ替えの画面(`/help-articles/order`)での並べ替えが利用者側のヘルプトップとフッターの順に反映されること(`signInAsNewAdmin`のモデレーターが実行ごとの専用のカテゴリにピン留めの公開記事を2件作り、ピン留めの群の中で入れ替えて両方の相対的な順を確かめ、終わりに記事とカテゴリを削除する)、利用者側の検索、法務文書の表示、データエクスポートの要求とダウンロード、退会とその後のログインの拒否を確かめる
   - 完了状態: テストを実装してローカルで実行し、上流の不具合による失敗はテストの出力に残す(指摘の記録は7.1でまとめて行う)
   - _Boundary: E2E(client/regression/account-journey)_
@@ -442,6 +442,7 @@
 - 3.3: パスワードは固定の定数にせず(Betterleaksが検出する)、上流の`createTestAccount`の実行ごとの乱数を全員で共有し`BulkUser.password`で返す。ログインは永続化の文書ID(`ClientLoginDocument`)で`/_bff/graphql`へ送るため`apps/client/src/graphql/generated`と`apps/frontend-lib`の`documentIdOf`を読み込む(上流の`checkout-steps.ts`などと同じ)。投入は50行ずつ別の`executeLocalD1`で行い(1引数128KiBの上限)、文書用IPは3範囲で最大762人。
 - 4.1: 23:40の確定のジョブは実際の時刻で期限の過ぎたマッチだけを選ぶため、自前のSQL(`launch-journey-sql.ts`の`endQualifierMatchSql`)で対象の2プロダクトの予選の`ends_at`を過去へ移してから起動する(確定の処理そのものは本番の経路)。決済の転送は上流に判定が無いため`pgrep -f '[s]tripe listen'`で判定し、無ければ注記を付けて上流の補助で参加資格を作る(決済ありの分岐はローカルで未実行で、7.1で`stripe listen`を動かして確かめる)。Weekの参加は上流の補助が作る過去の週のプロダクトで行う。管理者のカテゴリの作成を含むため`infisical run --env dev`で実行する。レビューの後に重複した管理者のログインの1行を消した(`createMatchCategory`が自分でログインする)。
 - 4.2: 利用者側のテストから管理画面を開くため、`browser.newContext({ baseURL: <管理者側のURL> })`の文脈を使い、管理者を使うので`infisical run --env dev`で実行する。上流に通報の一覧の行から措置する手順が無いため`hideReportedCommentFromList`を自前で書き、画面の部品まで型の読み込みが辿る管理画面の文言とイベントサーバーのメールの件名は写した。監査ログは`REPORT_RESOLVE_ACTION`(案件)と`comment.hide`(コメント)の2件を確かめる。
+- 4.3: 上流の`moveHelpArticleUp`は「その他の記事」の群専用のため、ピン留めの群を入れ替える`movePinnedArticleUp`を自前で書き、保存の完了は成功の通知で確かめる。上流の退会の手順(`account-changes.e2e.test.ts`のローカル関数)は読み込めないため写した。法務文書は公開済みか準備中のどちらかを成功とし(公開は取り消せないため流れの中で公開しない)、本文の描画までは確かめない。後片付けは名前と題名を先に控え、作成の途中の失敗でも管理画面の一覧から探して消す。
 - 4.4: 当日の予選のプロダクトは未掲載で`productLiveMatch`がnullを返すため、数え上げは`qualifierBoard`から読む。100人のログインは20人ずつ並行で計測の外に置き、要求の失敗は状態コード0として数える。管理者のカテゴリの作成を含むため`infisical run --env dev`で実行する。ローカルの2回の実行は所要時間2.3〜2.5秒・5xx 0件・数え上げ100。負荷の極端な時に100件全てが120秒の時間切れになった1回は原因未特定で、7.1で静かな環境で再現を確かめる。
 - 6.1: `@sentry/cli` 3.8.2をルートへ完全固定し、`bun x --no-install sentry-cli`で呼ぶ(ワークフローで版を指定しないため`tool-versions`の照合の対象外)。値は環境変数`SENTRY_AUTH_TOKEN`・`SENTRY_ORG`・`SENTRY_PROJECT`で渡し、マスクはトークンだけ(フォルダ全体だと組織・プロジェクト名がログで伏せられる)。client・adminの`dist/client`の`.map`はアップロードを飛ばしても削除し、削除の失敗は終了コード1。api・eventの出力先`.wrangler/sourcemaps`は仮で、`wrangler deploy`が自分でバンドルするため埋め込みがデプロイに入るかを6.2で確かめる。
 - 8.1: 初動の目標時間・告知の更新の間隔・振り返りの期限・RTO・RPOは`operations/005`ではプレースホルダーにし、値は8.5で`project-values.md`へ入れる。`operations/006`へのリンクは8.2の完了で解消する。
