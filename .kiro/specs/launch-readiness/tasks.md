@@ -340,7 +340,7 @@
 
 - [ ] 8. 運用ドキュメント・固有の値・全体の検査
   - 8.1・8.3・8.4は7の結果に依存せず、1の完了の後なら7と並行して行える(並行の根拠はこの注記で、`(P)`は同じ大項目の中の並行だけを示す)。合成データの投入(7.8)から復元(7.14)までの間と、7.15のやり直しの投入から復元までの間はmainへマージしない
-- [ ] 8.1 (P) 障害対応の文書を書く
+- [x] 8.1 (P) 障害対応の文書を書く
   - `operations/005-incident-response.md`(検知・重大度・初動・外部ステータスページでの告知・外部サービスの障害・復元の判断と外部サービスとの突き合わせ・振り返り)を本プロジェクト固有の値を含めずに書き、operationsのREADMEの文書一覧に加える
   - 完了状態: 文書が整形の検査を通り、本プロジェクト名と固有の値が無いことを検索で確かめる
   - _Boundary: operations/005_
@@ -438,3 +438,4 @@
 - 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。
 - 3.2: `axe-core`はページのCSPで`addScriptTag`が阻まれるため`page.evaluate(axe.source)`で注入し、終わりのあるアニメーションの完了を待ってから検査する。違反の型に`route`・`state`を足した。`ROUTE_INVENTORY`は`routeTree.gen.ts`の`fullPaths`の文字列単位(末尾のスラッシュ違いは別の経路)で、管理者側の`with-data`は最上位管理者で開く状態。上流に補助が無い操作(法務文書の公開など)は`prepare`に画面の操作として書いた。
 - 3.3: パスワードは固定の定数にせず(Betterleaksが検出する)、上流の`createTestAccount`の実行ごとの乱数を全員で共有し`BulkUser.password`で返す。ログインは永続化の文書ID(`ClientLoginDocument`)で`/_bff/graphql`へ送るため`apps/client/src/graphql/generated`と`apps/frontend-lib`の`documentIdOf`を読み込む(上流の`checkout-steps.ts`などと同じ)。投入は50行ずつ別の`executeLocalD1`で行い(1引数128KiBの上限)、文書用IPは3範囲で最大762人。
+- 8.1: 初動の目標時間・告知の更新の間隔・振り返りの期限・RTO・RPOは`operations/005`ではプレースホルダーにし、値は8.5で`project-values.md`へ入れる。`operations/006`へのリンクは8.2の完了で解消する。
