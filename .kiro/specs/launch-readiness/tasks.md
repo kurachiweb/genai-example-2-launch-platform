@@ -360,7 +360,7 @@
   - _Boundary: security/009, operations/004_
   - _Requirements: 9.6, 10.6, 10.7, 15.3, 15.4, 15.5_
 
-- [ ] 8.4 (P) 性能の検証と回帰と監査の技術ドキュメントを書く
+- [x] 8.4 (P) 性能の検証と回帰と監査の技術ドキュメントを書く
   - `testing/003-performance-verification.md`と`testing/004-cross-app-regression-and-audits.md`を本プロジェクト固有の値を含めずに書いてtestingのREADMEに加え、`infra/004`に環境ごとのプロジェクトとIPアドレスの保存の無効化の確認を追記する(`infra/007`のソースマップの節への参照は6.2が加える)
   - 完了状態: 文書が整形の検査を通り、固有の値が無いことを検索で確かめる
   - _Boundary: testing/003, testing/004, infra/004_
@@ -442,3 +442,4 @@
 - 6.1: `@sentry/cli` 3.8.2をルートへ完全固定し、`bun x --no-install sentry-cli`で呼ぶ(ワークフローで版を指定しないため`tool-versions`の照合の対象外)。値は環境変数`SENTRY_AUTH_TOKEN`・`SENTRY_ORG`・`SENTRY_PROJECT`で渡し、マスクはトークンだけ(フォルダ全体だと組織・プロジェクト名がログで伏せられる)。client・adminの`dist/client`の`.map`はアップロードを飛ばしても削除し、削除の失敗は終了コード1。api・eventの出力先`.wrangler/sourcemaps`は仮で、`wrangler deploy`が自分でバンドルするため埋め込みがデプロイに入るかを6.2で確かめる。
 - 8.1: 初動の目標時間・告知の更新の間隔・振り返りの期限・RTO・RPOは`operations/005`ではプレースホルダーにし、値は8.5で`project-values.md`へ入れる。`operations/006`へのリンクは8.2の完了で解消する。
 - 8.3: `security/009`は一般の規則と重大度の目安だけで、監視の対象とアラートの条件・閾値・通知先は8.5で`project-values.md`へ入れる。`operations/004`は既存の各節への追記と確認の表の拡張だけで、独立した本番の節は作らない(D-5)。本番では検証の決済をしないため、Webhookの配送の成功は最初の実際の通知の後に確かめる(チェックリストE-07の順序は開発者の判断事項)。
+- 8.4: `testing/003`の日次バッチの判定は道具に合わせ、全体をジョブの所要時間の和で判定し`totalDurationMs`との差を併記すると書いた(`infra/003`の「上限と目安を`totalDurationMs`とジョブの`durationMs`で確かめる」とは判定の値が異なる)。道具の入口・閾値・件数・環境変数名は技術の文書に書かず、8.5で`project-values.md`へ入れる。閲覧の繰り返しの時間の単位は4.6で確かめる。
