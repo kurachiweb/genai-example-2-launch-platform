@@ -86,7 +86,7 @@
   - _Boundary: ReadinessTargets_
   - _Requirements: 13.2, 13.3_
 
-- [ ] 3.2 (P) ページの自動のアクセシビリティの検査と、全経路の一覧を作る
+- [x] 3.2 (P) ページの自動のアクセシビリティの検査と、全経路の一覧を作る
   - 画面の共通部品・client・adminと同じ版の`axe-core`(4.14.0)をルートの開発用の依存へ完全固定で加え、ページへ注入してWCAG 2.2のAとAAの規則で検査し、違反を経路と状態とともに返す。同じ変更で、`coding/002`の主要パッケージの一覧へ`axe-core`(導入先: ルート・画面の共通部品・画面を持つアプリ)を加える(ギャップ分析のD-6)
   - client・adminの全経路と代表の状態・用意の方法・検査しない理由の一覧を作る
   - 先に、単体テストで、生成されたルートの木の全経路が一覧にあること(実際の2つのファイル)と、一覧に無い経路を返すことを確かめる
@@ -432,4 +432,5 @@
 - 1.1: 入口の表`COMMAND_TABLE`の各行は`{ description, load }`で、各タスクは`load:`の1行を`() => import('./commands/<name>.ts')`へ替える。コマンドは`run(args, io)`で、入力の形の誤りは`UsageError`(終了コード2)、判定の失敗は1を返す。最後に4行が替わったタスクが`notImplemented`の読み込みと`commands/shared/not-implemented.ts`を消す。層の検査は`scripts/delivery`の補助が非公開のため写しで、`http`・`https`・`net`を足した。
 - 1.6: 本番の項目の結果はチェックリストの記入欄に、S-01〜S-23の結果は検証の記録の表に書く。受け入れた危険の主体の共有の行の理由は研究メモに無いため「開発者が追記する(未記入)」とした。設計のD-02の「UTCの式」の時刻は業務時刻(UTC-8)の表記で、Wrangler設定の式はUTCの`21 0`・`21 12`・`40 7`・`45 7`・`0 8`・`7 8`(記録の規則の節に対応を書いた)。
 - 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。
+- 3.2: `axe-core`はページのCSPで`addScriptTag`が阻まれるため`page.evaluate(axe.source)`で注入し、終わりのあるアニメーションの完了を待ってから検査する。違反の型に`route`・`state`を足した。`ROUTE_INVENTORY`は`routeTree.gen.ts`の`fullPaths`の文字列単位(末尾のスラッシュ違いは別の経路)で、管理者側の`with-data`は最上位管理者で開く状態。上流に補助が無い操作(法務文書の公開など)は`prepare`に画面の操作として書いた。
 - 3.3: パスワードは固定の定数にせず(Betterleaksが検出する)、上流の`createTestAccount`の実行ごとの乱数を全員で共有し`BulkUser.password`で返す。ログインは永続化の文書ID(`ClientLoginDocument`)で`/_bff/graphql`へ送るため`apps/client/src/graphql/generated`と`apps/frontend-lib`の`documentIdOf`を読み込む(上流の`checkout-steps.ts`などと同じ)。投入は50行ずつ別の`executeLocalD1`で行い(1引数128KiBの上限)、文書用IPは3範囲で最大762人。
