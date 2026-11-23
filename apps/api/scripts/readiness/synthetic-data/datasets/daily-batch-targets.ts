@@ -21,8 +21,10 @@ export {
 } from './daily-batch/coverage.ts';
 export {
   DEDICATED_ROWS_PER_JOB,
+  MEDIA_FILE_KEY_PREFIX,
   MEDIA_KEY_PREFIX,
   ORPHAN_FILE_COUNT,
+  mediaFileKeyLike,
   orphanOwnerIdOf,
 } from './daily-batch/media-files.ts';
 

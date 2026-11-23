@@ -1,6 +1,7 @@
 import { Database } from 'bun:sqlite';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 
+import { OBJECT_KEY_PATTERN } from '../../../../common-lib/media/image-variants.ts';
 import { USER_SESSION_POLICY } from '../../../../src/domain/auth/session-policy.ts';
 import { utcYearsBefore } from '../../../../lib/core/time/utc-calendar.ts';
 import { userAt, type EntityContext } from '../entities.ts';
@@ -15,8 +16,10 @@ import { commentsDataset } from './comments.ts';
 import {
   DAILY_BATCH_JOB_COVERAGE,
   DEDICATED_ROWS_PER_JOB,
+  MEDIA_FILE_KEY_PREFIX,
   MEDIA_KEY_PREFIX,
   dailyBatchTargetsDataset,
+  mediaFileKeyLike,
   orphanOwnerIdOf,
 } from './daily-batch-targets.ts';
 import { helpArticlesDataset } from './help-articles.ts';
@@ -146,20 +149,32 @@ describe('ファイルの記録(順序600・810・820・830)', () => {
     );
   });
 
+  test('全てのファイルの記録のオブジェクトキーが、画像のキャッシュの破棄のメッセージの本文の規則(32桁の16進数)に合う', () => {
+    const keys = db
+      .query<{ key: string }, []>('SELECT object_key AS key FROM media_files')
+      .all()
+      .map(({ key }) => key);
+
+    expect(keys.length).toBeGreaterThan(0);
+    expect(keys.filter((key) => !OBJECT_KEY_PATTERN.test(key))).toStrictEqual(
+      [],
+    );
+  });
+
   test('保有者の居ない記録と専用の行は検証用の規模でも縮小されない', () => {
     expect(
       scalar(
-        `SELECT count(*) FROM media_files WHERE object_key LIKE '${MEDIA_KEY_PREFIX}orphan/%'`,
+        `SELECT count(*) FROM media_files WHERE object_key LIKE '${mediaFileKeyLike('orphan')}'`,
       ),
     ).toBe(1_200);
     expect(
       scalar(
-        `SELECT count(*) FROM media_files WHERE object_key LIKE '${MEDIA_KEY_PREFIX}job-%'`,
+        `SELECT count(*) FROM media_files WHERE object_key LIKE '${MEDIA_FILE_KEY_PREFIX}08%'`,
       ),
     ).toBe(9);
     expect(
       scalar(
-        `SELECT count(*) FROM media_files WHERE object_key LIKE '${MEDIA_KEY_PREFIX}user/%'`,
+        `SELECT count(*) FROM media_files WHERE object_key LIKE '${mediaFileKeyLike('user')}'`,
       ),
     ).toBe(SMOKE_PROFILE.users);
   });
@@ -167,12 +182,12 @@ describe('ファイルの記録(順序600・810・820・830)', () => {
   test('利用者の全員が1件ずつ持ち、全てのキーが合成の接頭辞で一意で、共通の画像を指さない', () => {
     expect(
       scalar(
-        `SELECT count(*) FROM (SELECT owner_id FROM media_files WHERE object_key LIKE '${MEDIA_KEY_PREFIX}user/%' GROUP BY owner_id HAVING count(*) <> 1)`,
+        `SELECT count(*) FROM (SELECT owner_id FROM media_files WHERE object_key LIKE '${mediaFileKeyLike('user')}' GROUP BY owner_id HAVING count(*) <> 1)`,
       ),
     ).toBe(0);
     expect(
       scalar(
-        `SELECT count(*) FROM media_files WHERE object_key NOT LIKE '${MEDIA_KEY_PREFIX}%' OR object_key LIKE '%${LOGO_FILE_ID}%' OR id = '${LOGO_FILE_ID}'`,
+        `SELECT count(*) FROM media_files WHERE object_key NOT LIKE '${MEDIA_FILE_KEY_PREFIX}%' OR object_key LIKE '%${LOGO_FILE_ID}%' OR id = '${LOGO_FILE_ID}'`,
       ),
     ).toBe(0);
     expect(
@@ -183,7 +198,7 @@ describe('ファイルの記録(順序600・810・820・830)', () => {
   test('保有者の居ない記録の保有者は利用者の行が無く、IDが全ての合成の利用者のIDより後に並ぶ', () => {
     expect(
       scalar(
-        `SELECT count(*) FROM media_files f WHERE f.object_key LIKE '${MEDIA_KEY_PREFIX}orphan/%' AND EXISTS (SELECT 1 FROM users u WHERE u.id = f.owner_id)`,
+        `SELECT count(*) FROM media_files f WHERE f.object_key LIKE '${mediaFileKeyLike('orphan')}' AND EXISTS (SELECT 1 FROM users u WHERE u.id = f.owner_id)`,
       ),
     ).toBe(0);
     const allUsers = Array.from(
@@ -198,7 +213,7 @@ describe('ファイルの記録(順序600・810・820・830)', () => {
     }
     expect(
       scalar(
-        `SELECT count(DISTINCT owner_id) FROM media_files WHERE object_key LIKE '${MEDIA_KEY_PREFIX}orphan/%'`,
+        `SELECT count(DISTINCT owner_id) FROM media_files WHERE object_key LIKE '${mediaFileKeyLike('orphan')}'`,
       ),
     ).toBe(1_200);
   });
@@ -212,7 +227,7 @@ describe('ファイルの記録(順序600・810・820・830)', () => {
   });
 
   test('合成のファイル(利用者の全員の分と保有者の居ない分)はmedia-pipelineの810・820・830の条件に当たらない', () => {
-    const synthetic = `(object_key LIKE '${MEDIA_KEY_PREFIX}user/%' OR object_key LIKE '${MEDIA_KEY_PREFIX}orphan/%')`;
+    const synthetic = `(object_key LIKE '${mediaFileKeyLike('user')}' OR object_key LIKE '${mediaFileKeyLike('orphan')}')`;
 
     for (const job of [JOB_810, JOB_820, JOB_830]) {
       expect(
@@ -235,7 +250,7 @@ describe('ファイルの記録(順序600・810・820・830)', () => {
   ] as const)(
     '%sの専用の行は3件で、存在する合成の利用者の持ち物であり、自分のジョブの条件だけに当たる',
     (job, own, others) => {
-      const dedicated = `object_key LIKE '${MEDIA_KEY_PREFIX}job-${job}/%'`;
+      const dedicated = `object_key LIKE '${mediaFileKeyLike(job)}'`;
 
       expect(
         scalar(`SELECT count(*) FROM media_files WHERE ${dedicated}`),
@@ -263,7 +278,7 @@ describe('ファイルの記録(順序600・810・820・830)', () => {
   test('専用の行は保有者の居ないファイルの削除(順序600)に先に消されない', () => {
     expect(
       scalar(
-        `SELECT count(*) FROM media_files f WHERE f.object_key LIKE '${MEDIA_KEY_PREFIX}job-%' AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = f.owner_id)`,
+        `SELECT count(*) FROM media_files f WHERE f.object_key LIKE '${MEDIA_FILE_KEY_PREFIX}08%' AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = f.owner_id)`,
       ),
     ).toBe(0);
   });

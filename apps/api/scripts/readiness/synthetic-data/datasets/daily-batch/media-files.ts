@@ -9,8 +9,31 @@ import {
 } from '../../sql-writer.ts';
 import { DAY_MS, HOUR_MS } from './scale.ts';
 
-// 合成のファイルの記録だけが持つオブジェクトキーの接頭辞。実体は無く、共通の画像のキーとは重ならない
+// 合成のデータのうちファイルの記録以外(データエクスポートのアーカイブ)が持つオブジェクトキーの接頭辞
 export const MEDIA_KEY_PREFIX = 'synthetic-readiness/';
+
+// 画像のキャッシュの破棄のメッセージは32桁の16進数のキーしか受け付けず、合成のキーが合わないと物理削除が全件失敗するため、ファイルの記録のキーは接頭辞16桁・種別4桁・通し番号12桁の16進数にする。接頭辞は実体の無い合成のデータだけが持つ
+export const MEDIA_FILE_KEY_PREFIX = '5ee0d00d5ee0d00d';
+
+const KEY_KIND_TAGS = {
+  user: '0001',
+  orphan: '0002',
+  '810': '0810',
+  '820': '0820',
+  '830': '0830',
+} as const;
+
+type KeyKind = keyof typeof KEY_KIND_TAGS;
+
+const SERIAL_HEX_DIGITS = 12;
+
+export const mediaFileKeyLike = (kind: KeyKind): string =>
+  `${MEDIA_FILE_KEY_PREFIX}${KEY_KIND_TAGS[kind]}%`;
+
+const mediaFileKeyOf = (kind: KeyKind, serial: number): string =>
+  `${MEDIA_FILE_KEY_PREFIX}${KEY_KIND_TAGS[kind]}${serial
+    .toString(16)
+    .padStart(SERIAL_HEX_DIGITS, '0')}`;
 
 export const DEDICATED_ROWS_PER_JOB = 3;
 
@@ -31,6 +54,8 @@ type Job = '810' | '820' | '830';
 
 interface FileShape {
   readonly key: string;
+  readonly kind: KeyKind;
+  readonly serial: number;
   readonly ownerId: string;
   readonly createdAt: Date;
   readonly overrides?: SqlRow;
@@ -47,7 +72,7 @@ function baseRow(entities: EntityContext, shape: FileShape): SqlRow {
       createdAt,
       `${String(entities.seed)}:media:${shape.key}`,
     ),
-    objectKey: `${MEDIA_KEY_PREFIX}${shape.key}`,
+    objectKey: mediaFileKeyOf(shape.kind, shape.serial),
     purpose: USER_AVATAR_PURPOSE,
     storage: 'images',
     location: 'images',
@@ -87,6 +112,8 @@ function* userFileShapes(entities: EntityContext): Generator<FileShape> {
     const user = userAt(entities, index);
     yield {
       key: `user/${numberOf(index)}`,
+      kind: 'user',
+      serial: index,
       ownerId: user.id,
       createdAt: new Date(user.createdAt.getTime() + HOUR_MS),
     };
@@ -100,6 +127,8 @@ function* orphanFileShapes(entities: EntityContext): Generator<FileShape> {
   for (let index = 0; index < ORPHAN_FILE_COUNT; index += 1) {
     yield {
       key: `orphan/${numberOf(index)}`,
+      kind: 'orphan',
+      serial: index,
       ownerId: orphanOwnerIdOf(entities, index),
       createdAt,
     };
@@ -191,6 +220,8 @@ function dedicatedPlans(entities: EntityContext): PlannedDedicated[] {
       reason: file.reason,
       shape: {
         key: `job-${file.job}/${file.name}`,
+        kind: file.job,
+        serial: position,
         ownerId: userAt(entities, DEDICATED_FIRST_OWNER_INDEX + position).id,
         createdAt,
         overrides: file.overrides(createdAt, base),
