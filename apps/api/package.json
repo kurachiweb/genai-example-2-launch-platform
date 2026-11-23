@@ -16,6 +16,7 @@
     "db:migrate:local": "wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state",
     "db:migrations:check": "bun ./scripts/check-migrations.ts",
     "admin:invite-super-admin": "bun ./scripts/admin/issue-super-admin-invitation.ts",
+    "readiness:synthetic-data": "bun ./scripts/readiness/synthetic-data/generate.ts",
     "test:smoke": "bun ./scripts/smoke-wrangler-bundle.ts"
   },
   "dependencies": {
