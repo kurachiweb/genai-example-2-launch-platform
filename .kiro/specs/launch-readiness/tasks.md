@@ -80,7 +80,7 @@
   - _Requirements: 4.1, 4.2, 5.1_
 
 - [ ] 3. E2Eの補助
-- [ ] 3.1 (P) api・event・画像配信のURLの補助を作る
+- [x] 3.1 (P) api・event・画像配信のURLの補助を作る
   - api・event・画像配信のURL(既定はローカル、`E2E_API_URL`・`E2E_EVENT_URL`・`E2E_IMAGES_URL`で上書きし、空文字は未設定と同じ)を返す。APIサーバーとイベントサーバーの環境変数の名前と既定値は、backend-platformの共有の補助`scheduled-trigger.ts`と同じにする(定期実行の起動と業務日付の補助は上流の補助を使い、本specは作らない)
   - 完了状態: コミットしない一時的なE2Eで、環境変数の有無と空文字でURLが切り替わり、既定値が上流の補助と同じであることを確かめ、一時的なE2Eを消す
   - _Boundary: ReadinessTargets_
@@ -426,3 +426,7 @@
   - 完了状態: 7日後の確認の結果が記録にある
   - _Depends: 9.5_
   - _Requirements: 1.5, 5.2_
+
+## Implementation Notes
+
+- 3.1: api・eventのURLは上流の`resolveLocalWorkerOrigin`をそのまま呼び、画像配信のローカルの既定はイベントサーバー(`http://localhost:48043`)で`E2E_EVENT_URL`に連動しない。
