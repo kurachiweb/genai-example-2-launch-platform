@@ -9,6 +9,7 @@ import {
   runInStartRequest,
 } from '../../lib/test/start-request-fixtures.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
+import { createAppQueryClient } from '../../lib/start/query-client.ts';
 import {
   ClientMyFollowersDocument,
   ClientMyFollowingDocument,
@@ -158,9 +159,9 @@ const responseOf = (direction: 'following' | 'followers') =>
 const runThroughApi = async (
   run: (queryClient: QueryClient) => Promise<unknown>,
   respond: () => Promise<Response>,
+  queryClient = new QueryClient(),
 ) => {
   const api = recordingApi(respond);
-  const queryClient = new QueryClient();
   let result: unknown;
   await runInStartRequest({
     context: renderContextOf({ api, reported: [] }),
@@ -241,6 +242,7 @@ describe('loadFollowList', () => {
         return undefined;
       },
       () => Promise.resolve(responseOf('following')),
+      createAppQueryClient({ isServer: false }),
     );
 
     expect(sent).toHaveLength(2);

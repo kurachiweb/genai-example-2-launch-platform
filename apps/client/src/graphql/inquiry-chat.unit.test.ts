@@ -2,6 +2,14 @@ import { describe, expect, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 import { isNotFound } from '@tanstack/react-router';
 
+import { createAppQueryClient } from '../../lib/start/query-client.ts';
+import {
+  graphqlResponse,
+  htmlResponse,
+  recordingApi,
+  renderContextOf,
+  runInStartRequest,
+} from '../../lib/test/start-request-fixtures.ts';
 import { GraphQLClientError } from '../../lib/utilities/graphql/graphql-result.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import {
@@ -221,6 +229,30 @@ const validationError = (field: string) =>
   });
 
 describe('loadInquiryChatPage', () => {
+  test('別のページから戻った時も最新を示すよう、キャッシュに新しい値があっても取得し直す', async () => {
+    const api = recordingApi(() =>
+      Promise.resolve(graphqlResponse({ data: RESULT })),
+    );
+    const queryClient = createAppQueryClient({ isServer: false });
+    queryClient.setQueryData(
+      memberInquiryQueryOptions(VIEWER, INQUIRY_ID).queryKey,
+      RESULT,
+    );
+
+    await runInStartRequest({
+      context: renderContextOf({ api, reported: [] }),
+      render: async () => {
+        await loadInquiryChatPage({
+          context: { queryClient, viewer: VIEWER },
+          params: { inquiryId: INQUIRY_ID },
+        });
+        return htmlResponse();
+      },
+    });
+
+    expect(api.requests).toHaveLength(1);
+  });
+
   test('本人の問い合わせを取得できれば、ページを表示する', async () => {
     expect(
       await loadWhileFetching(INQUIRY_ID, () => Promise.resolve(RESULT)),

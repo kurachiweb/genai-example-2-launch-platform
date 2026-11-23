@@ -2,6 +2,14 @@ import { describe, expect, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 import { isNotFound } from '@tanstack/react-router';
 
+import { createAppQueryClient } from '../../lib/start/query-client.ts';
+import {
+  graphqlResponse,
+  htmlResponse,
+  recordingApi,
+  renderContextOf,
+  runInStartRequest,
+} from '../../lib/test/start-request-fixtures.ts';
 import { GraphQLClientError } from '../../lib/utilities/graphql/graphql-result.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import {
@@ -87,6 +95,29 @@ const validationError = (field: string) =>
   });
 
 describe('loadCheckoutPage', () => {
+  test('支払いの状態は決済後の反映で変わるため、キャッシュに新しい値があっても取得し直す', async () => {
+    const data = checkoutData(openCheckout());
+    const api = recordingApi(() => Promise.resolve(graphqlResponse({ data })));
+    const queryClient = createAppQueryClient({ isServer: false });
+    queryClient.setQueryData(
+      checkoutQueryOptions(VIEWER, CHECKOUT_PURCHASE_ID).queryKey,
+      data,
+    );
+
+    await runInStartRequest({
+      context: renderContextOf({ api, reported: [] }),
+      render: async () => {
+        await loadCheckoutPage({
+          context: { queryClient, viewer: VIEWER },
+          params: { purchaseId: CHECKOUT_PURCHASE_ID },
+        });
+        return htmlResponse();
+      },
+    });
+
+    expect(api.requests).toHaveLength(1);
+  });
+
   test.each([
     ['未完了の都度決済', openCheckout],
     ['未完了の定期課金', ultrasCheckout],
