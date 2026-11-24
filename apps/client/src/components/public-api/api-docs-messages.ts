@@ -22,6 +22,8 @@ export const API_DOCS_MESSAGES = Object.freeze({
     'APIキーの持ち主ごとに、全てのAPIキーの要求を合わせて、読み取りは1分あたり30回、更新は1分あたり15回までです。加えて、IPアドレスごとに1分あたり60回までです。上限を超えた要求には429を返します。',
   referenceHeading: 'APIリファレンス',
   referenceLoadingLabel: 'APIドキュメントを読み込み中',
+  serverSelectLabel: 'サーバー',
+  closeDialogLabel: '閉じる',
   loadError:
     'APIドキュメントを読み込めませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。',
 });

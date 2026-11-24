@@ -67,6 +67,9 @@ describe('loadSwaggerUi', () => {
 
     await expect.element(page.getByText('/products/{handle}')).toBeVisible();
     await expect.element(page.getByText('プロダクトの詳細')).toBeVisible();
+    await expect
+      .element(page.getByRole('combobox', { name: 'サーバー', exact: true }))
+      .toHaveValue('https://api.example/v1');
     const operation = document.querySelector('.swagger-ui .opblock-get');
     expect(operation).not.toBeNull();
     // スタイルを読み込んでいれば、GETの経路の枠に配布物のスタイルの枠線が付く
@@ -83,10 +86,13 @@ describe('loadSwaggerUi', () => {
     await page
       .getByRole('textbox', { name: 'auth-bearer-value' })
       .fill(API_KEY);
-    await page.getByRole('button', { name: 'Apply credentials' }).click();
+    await page
+      .getByRole('button', { name: 'Authorize', exact: true })
+      .last()
+      .click();
 
     await expect
-      .element(page.getByRole('button', { name: 'Remove authorization' }))
+      .element(page.getByRole('button', { name: 'Logout', exact: true }))
       .toBeVisible();
     expect(storedValues().filter((entry) => entry.includes(API_KEY))).toEqual(
       [],

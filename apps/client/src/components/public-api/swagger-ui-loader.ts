@@ -1,6 +1,7 @@
 import { createClientOnlyFn } from '@tanstack/react-start';
 
 import type { OpenApiDocument } from './openapi-document.ts';
+import { observeSwaggerUiAccessibility } from './swagger-ui-accessibility.ts';
 
 export interface SwaggerUiRenderOptions {
   // Reactが子を描かない空の要素。Swagger UIが中身を作る
@@ -55,6 +56,7 @@ export const createSwaggerUiLoader =
         persistAuthorization: false,
         deepLinking: false,
       });
+      observeSwaggerUiAccessibility(domNode);
     };
   };
 

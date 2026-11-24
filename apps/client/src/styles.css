@@ -4,5 +4,6 @@
 @import './components/tournament/tournament-final-showcase.css';
 @import './components/directory/directory.css';
 @import './components/product-page/product-page.css';
+@import './components/public-api/swagger-ui-overrides.css';
 
 @source '../lib/components';

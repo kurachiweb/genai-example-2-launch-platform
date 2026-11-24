@@ -1,0 +1,73 @@
+/*
+ * Swagger UIの配布物の色のうち、文字と背景のコントラスト比が4.5:1に届かない部品の色を上書きする。
+ * 描画先はページの配色に関わらず明るい配色に固定するため、ダークの配色で値が変わるページの配色のトークンを使わず、描画先の文字色(neutral-900)と同じく配色で変わらない色を使う。
+ * 配布物のスタイルは遅れて読み込まれ後勝ちになるため、ルートのクラスを重ねて配布物のセレクターより詳細度を上げる。
+ */
+
+.swagger-ui.swagger-ui {
+  --swagger-ui-text: var(--color-neutral-900);
+  --swagger-ui-muted-text: var(--color-neutral-600);
+  --swagger-ui-badge: var(--color-neutral-600);
+  --swagger-ui-badge-text: var(--color-white);
+  --swagger-ui-authorize: var(--color-green-800);
+  --swagger-ui-cancel: var(--color-red-700);
+  --swagger-ui-execute: var(--color-blue-700);
+}
+
+/* 明るい背景のメソッドの表示は、白い文字をやめて暗い文字にする。HEAD・OPTIONSなど暗い背景のメソッドは白い文字のまま足りる */
+.swagger-ui.swagger-ui
+  .opblock:is(
+    .opblock-get,
+    .opblock-post,
+    .opblock-put,
+    .opblock-delete,
+    .opblock-patch,
+    .opblock-deprecated
+  )
+  .opblock-summary-method {
+  color: var(--swagger-ui-text);
+  text-shadow: none;
+}
+
+.swagger-ui.swagger-ui .info .title small {
+  background: var(--swagger-ui-badge);
+}
+
+.swagger-ui.swagger-ui .info .title small pre {
+  color: var(--swagger-ui-badge-text);
+}
+
+.swagger-ui.swagger-ui .info .title small.version-stamp pre {
+  color: var(--swagger-ui-text);
+}
+
+.swagger-ui.swagger-ui .btn.authorize {
+  border-color: var(--swagger-ui-authorize);
+  color: var(--swagger-ui-authorize);
+}
+
+.swagger-ui.swagger-ui .btn.authorize svg {
+  color: var(--swagger-ui-authorize);
+  fill: var(--swagger-ui-authorize);
+}
+
+.swagger-ui.swagger-ui .btn.cancel {
+  border-color: var(--swagger-ui-cancel);
+  color: var(--swagger-ui-cancel);
+}
+
+.swagger-ui.swagger-ui .btn.execute {
+  background-color: var(--swagger-ui-execute);
+  border-color: var(--swagger-ui-execute);
+}
+
+.swagger-ui.swagger-ui .download-contents {
+  background: var(--swagger-ui-badge);
+  color: var(--swagger-ui-badge-text);
+}
+
+.swagger-ui.swagger-ui .json-schema-2020-12-expand-deep-button,
+.swagger-ui.swagger-ui .parameter__in,
+.swagger-ui.swagger-ui .parameter__extension {
+  color: var(--swagger-ui-muted-text);
+}

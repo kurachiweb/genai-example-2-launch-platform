@@ -171,7 +171,7 @@ graph TB
 - apiの`application/public-api`は`core/public-api`・上流の`core/<ドメイン>`の契約と識別子・backend-platformの`core`の部品だけを読み込み、`**/lib/workers/**`を型も含めて読み込まない。厳密カウンタは`infrastructure/public-api/counter-public-api-rate-limits.ts`だけが読み込む。data-exportのeventのapplication層は`core/public-api`の`ApiKeyExport`と`PUBLIC_API_PLATFORM_TYPES`だけを読み込む。
 - `presentation/rest/public-api`は`presentation/gateway`・`presentation/rest`(api-gateway)を読み込み、`presentation/graphql`を読み込まない。`presentation/graphql/modules/public-api`は`presentation/rest`を読み込まない。
 - `common-lib/public-api`は他のどの層も読み込まない(clientも読み込む)。
-- client: `common-lib/public-api`・`graphql/generated`(`graphql/operations/public-api/*.graphql`からの生成物) → `components/public-api` → `routes`。`components/public-api`は`graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`gql.ts`・`index.ts`を読まない。Zodの値は`lib/utilities/validation/zod.ts`の`z`から読み、`zod`からは型だけを読む。`swagger-ui-dist`は`components/public-api/swagger-ui-viewer.tsx`の動的な読み込みだけで参照する。
+- client: `common-lib/public-api`・`graphql/generated`(`graphql/operations/public-api/*.graphql`からの生成物) → `components/public-api` → `routes`。`components/public-api`は`graphql/generated/graphql.ts`の`<操作名>Document`と型を読み、`gql.ts`・`index.ts`を読まない。Zodの値は`lib/utilities/validation/zod.ts`の`z`から読み、`zod`からは型だけを読む。`swagger-ui-dist`は`components/public-api/swagger-ui-loader.ts`の動的な読み込みだけで参照する。
 
 ### Technology Stack
 
@@ -274,7 +274,10 @@ apps/
 │       ├── api-key-confirm-dialog.tsx                # 削除・再発行の確認
 │       ├── api-key-form-schema.ts                    # フォームのZodスキーマ(lib/utilities/validation/zod.tsのz、*.unit.test.ts)
 │       ├── api-docs-page.tsx                         # 見出し・説明・SwaggerUiViewer
-│       ├── swagger-ui-viewer.tsx                     # 仕様書の取得とSwagger UIの遅延読み込み
+│       ├── swagger-ui-viewer.tsx                     # 仕様書の取得と描画先
+│       ├── swagger-ui-loader.ts                      # Swagger UIの遅延読み込みと描画、描画の後の補助の開始
+│       ├── swagger-ui-accessibility.ts               # 描画の後の名前とフォーカスの補助(MutationObserverで作り直しに追従)
+│       ├── swagger-ui-overrides.css                  # コントラストが足りない部品の色の上書き(styles.cssから読み込む)
 │       └── openapi-document.ts                       # 仕様書の取得とserversの絶対URL化(*.unit.test.ts)
 e2e/
 ├── client/public-api.e2e.test.ts                     # 発行・読み取り・403・説明文の更新・削除で401
@@ -1261,6 +1264,7 @@ export declare function withAbsoluteServers(
 - `ApiDocsRoute`(`routes/api-docs.tsx`): ログイン不要。clientの他のページと同じく`buildSitePageHead`でタイトル「APIドキュメント」と正規のURL(15.1)。
 - `ApiDocsPage`: `h1`「APIドキュメント」、APIキーの発行場所(`/settings/api-keys`へのリンク)・認証(`Authorization: Bearer <APIキー>`)・回数の制限の概要の説明、その下に`SwaggerUiViewer`(15.6)。
 - `SwaggerUiViewer`: ブラウザでだけ動く。公開設定は他の部品と同じく`appRuntimeOf(router.options.context).publicConfig`から読む。`PublicRuntimeConfig.publicApiOrigin`が`undefined`(値を置いていない環境)なら、仕様書を取得せず`ErrorState`(要件15.5の文言)を表示する。(1)`fetch(openApiDocumentUrl(publicApiOrigin))`。読み込み中は`LoadingSkeleton`(15.4)、失敗は`ErrorState`(文言は要件15.5、再試行・問い合わせ)。(2)`import('swagger-ui-dist/swagger-ui-bundle.js')`と`import('swagger-ui-dist/swagger-ui.css')`を動的に読み込み、`SwaggerUIBundle({ domNode, spec: withAbsoluteServers(document, origin), presets: [SwaggerUIBundle.presets.apis], validatorUrl: null, persistAuthorization: false, deepLinking: false })`(15.2・15.3)。(3)外側の要素を明るい配色に固定する(Swagger UIはダークモードを持たない)。
+- アクセシビリティ(launch-readinessの指摘F-13): Swagger UIの部品のうちコントラスト比が4.5:1に届かないもの(メソッド表示・バージョン・Authorize・Cancel・Execute・Download・引数の位置・スキーマの展開)は、`swagger-ui-overrides.css`が`.swagger-ui.swagger-ui`の詳細度で色を上書きする。描画先は明るい配色に固定のため、配色で値が変わるトークンでなく既定のパレットの色を使う。名前の無い部品は、`swagger-ui-loader.ts`が描画の直後に掛ける`observeSwaggerUiAccessibility`が、`MutationObserver`で作り直しにも追従して補う(`#servers`に「サーバー」、列挙の引数の選択欄に引数の名前、閉じるボタンに「閉じる」、表示の文言を含まない`aria-label`の除去、例の表示に`tabindex=0`)。
 - 動的な読み込みのチャンクは同一オリジンから配信され、CSPの`script-src 'self' 'nonce-…'`(`unsafe-eval`なし)・`style-src 'self' 'unsafe-inline'`・`img-src 'self' data: blob:`で動く想定である。追加する許可先は`connect-src`の公開APIのオリジンだけ(15.7)。Swagger UIの束が`eval`・`new Function`・ワーカー・インラインのスクリプトを使うかは導入時(tasks.mdの7.3)にE2EのCSPの違反の検査で確かめ、違反が出たらCSPを緩めずに開発者へ報告する(research.mdのResearch Needed)。動的な読み込みの前例は、マークダウンの入力欄の`load-crepe-editor.ts`(`lazy`と動的な`import()`)である。
 
 ### docs
