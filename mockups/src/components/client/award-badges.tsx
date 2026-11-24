@@ -33,7 +33,7 @@ export function AwardBadges({ awards }: Props) {
         <button
           type="button"
           translate="no"
-          className="gold-gradient relative z-10 inline-flex cursor-default items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold text-gold-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          className="gold-gradient relative z-10 inline-flex cursor-default items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold text-gold-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <TrophyIcon className="size-3.5" aria-hidden="true" />
           {TITLES[kind]}

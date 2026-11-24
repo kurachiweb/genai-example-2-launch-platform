@@ -65,7 +65,7 @@ export function StarRatingInput({
           onClick={() => onChange(star)}
           onPointerEnter={() => !disabled && setHover(star)}
           onKeyDown={(event) => handleKeyDown(event, star)}
-          className="rounded-md p-0.5 focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md p-0.5 focus-visible:ring-3 focus-visible:ring-ring/60 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <StarIcon
             aria-hidden="true"

@@ -76,7 +76,7 @@ export function ScreenshotGallery({ shots, productName }: Props) {
                 type="button"
                 onClick={() => setOpenIndex(index)}
                 aria-label={`スクリーンショット${index + 1}枚目を拡大`}
-                className="block h-52 overflow-hidden rounded-xl border border-border bg-muted shadow-sm transition-shadow hover:shadow-md focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:outline-none sm:h-72"
+                className="block h-52 overflow-hidden rounded-xl border border-border bg-muted shadow-sm transition-shadow hover:shadow-md focus-visible:ring-3 focus-visible:ring-ring/60 sm:h-72"
                 style={{ aspectRatio: `${shot.width} / ${shot.height}` }}
               >
                 <ScreenshotImage

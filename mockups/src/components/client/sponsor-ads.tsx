@@ -84,7 +84,7 @@ export function LegendBanner({ ads }: { ads: SponsorAd[] }) {
             href={ad.product.siteUrl}
             rel="sponsored noopener"
             target="_blank"
-            className="absolute inset-0 rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="absolute inset-0 rounded-lg focus-visible:ring-3 focus-visible:ring-ring/50"
             aria-label={`${ad.product.name}のサイトを別タブで開く(スポンサー広告)`}
           />
         </li>
@@ -113,7 +113,7 @@ export function GoldCard({ ad }: { ad: SponsorAd }) {
         href={ad.product.siteUrl}
         rel="sponsored noopener"
         target="_blank"
-        className="absolute inset-0 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="absolute inset-0 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50"
         aria-label={`${ad.product.name}のサイトを別タブで開く(スポンサー広告)`}
       />
     </div>

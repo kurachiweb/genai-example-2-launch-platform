@@ -98,7 +98,7 @@ export function ProfileTabs({ model, state, tab, onTabChange }: Props) {
         <TabsContent
           key={value}
           value={value}
-          className="mt-5 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          className="mt-5 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <h2 className="sr-only">{LABELS[value]}</h2>
           <TabBody

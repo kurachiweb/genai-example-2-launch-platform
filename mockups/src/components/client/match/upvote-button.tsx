@@ -51,7 +51,7 @@ export function UpvoteButton({
       aria-disabled={disabledReason != null}
       onClick={disabledReason ? undefined : onClick}
       className={cn(
-        'group flex shrink-0 flex-col items-center justify-center rounded-xl border-2 transition-[background-color,border-color,transform,box-shadow] focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:outline-none active:scale-95',
+        'group flex shrink-0 flex-col items-center justify-center rounded-xl border-2 transition-[background-color,border-color,transform,box-shadow] focus-visible:ring-3 focus-visible:ring-ring/60 active:scale-95',
         sizeClasses.button,
         pressed
           ? 'border-primary bg-primary text-primary-foreground shadow-md shadow-primary/30'
