@@ -706,6 +706,13 @@
   - _Boundary: 下流specの設計_
   - _Requirements: 15.1, 15.2_
 
+- [x] 14. launch-readinessの検証の指摘の修正
+
+- [x] 14.1 `FormField`にラベルの位置の指定を加える(launch-readinessのF-8)
+  - 任意の`labelPlacement?: 'top' | 'end'`(既定は`top`)を加え、`end`では入力欄・ラベル・説明・エラーの順に文書へ置き、2列のグリッドで入力欄の右にラベルを並べる。説明・エラー・`aria-describedby`・`labelId`の関連付けは変えない
+  - `components/form/form-field.browser.test.tsx`で文書とTabの順序・名前と`labelId`・説明とエラーの関連付け・幅の狭い親での折り返し・axeの違反0件(ライト・ダーク)を確かめ、`AppForm`のカタログに`LabelAfterControl`・`LabelAfterControlError`を加える。design.mdと`frontend/004`・`frontend/005`に指定を書く
+  - _Requirements: 8.1, 10.1, 10.6, 10.7_
+
 ## Implementation Notes
 
 - 1.1(1.3・5.9・9.1への申し送り): `test:browser`は設定ファイルが無いとexit 1になるため、プリセット・ブラウザモード・Chromiumだけの最小の`vitest.browser.config.ts`を置いた。成果物の置き場所・共有Chromium(`browserOptionsPreset`・`resolveBrowserLaunchOptions`)・カバレッジの対象の絞り込みは1.3で加える。`@tanstack/react-router` 1.170.41を直接宣言した(`@tanstack/react-start` 1.168.60が完全固定する版と同じ)。`@tanstack/react-router-ssr-query`・`graphql`は未導入。`tsconfig.json`の`include`は`**/*.ts`・`**/*.tsx`で、TypeScriptの`**`はドットで始まるディレクトリに一致しないため、5.9で`.storybook/`を明示する。文書の相違: coding/001(59〜61行・94行)は全アプリの`tsconfig.json`が基底設定を`extends`すると定め、スクリプト契約の`test:browser`を「ブラウザテストを持つアプリ」に限るため、9.1で`coding/003`に加えて`coding/001`にも共通部品の例外を書く。
@@ -797,3 +804,4 @@
 - 13.x(開発者の手動の確認): 注入の下のビルドの後に`apps/{client,admin}/dist/server`にシークレットのファイルが無いこと(と、13.1より前のビルドの残りが無いこと)を、開発者が手動で確かめた。
 - legal-pagesからの申し送りの対応(2026-11-05): サーバー側の描画で取得に失敗するとハイドレーションの後にエラーの文言が変わる(`ShallowErrorPlugin`が`GraphQLClientError`をメッセージだけの`Error`にするため)問題を、`start/graphql-client-error-adapter.ts`の`graphqlClientErrorAdapter`(`createSerializationAdapter`)を`createFrontendStartOptions`の`serializationAdapters`へ登録して直した。登録した変換は、サーバー側の描画(`router-core`の`ssr-server`)とサーバー関数(`getDefaultSerovalPlugins`)のどちらでも、ルーターの既定のプラグインより先に並ぶ。原因の例外とスタックは渡さない。これに合わせ、疎通確認の`loader`の回避策(`toSystemStatusLoaderData`・`fromSystemStatusLoaderData`)を外し、`GraphQLResult`をそのまま返すようにした。確認はlegal-pagesのE2E(サーバー側の描画のレート制限による500で、ハイドレーションの前後のエラーの文言が同じ)で行った
 - 共通部品の修正(user-profile-socialの10.1のE2Eで発見した不具合): `6ca5da82`とこの修正で、`DialogContent`・`SheetContent`・`PopoverContent`・`SelectContent`・`DropdownMenuContent`・`TooltipContent`が`submit`の伝播を止める(共通の`stopSubmitPropagation`)。ポータルの中のフォームの`submit`は外側の`<form>`へ伝わらないため、外側のフォームの送信をポータルの中から起こす使い方はできない
+- 2026-11-24(launch-readinessのF-8): `FormField`の`labelPlacement="end"`は入力欄をラベルより文書の先に置く。見た目の並びを`className`のグリッドの配置や`order`で入れ替えると、Tabと読み上げの順序が食い違う

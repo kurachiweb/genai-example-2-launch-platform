@@ -7,6 +7,7 @@ import {
   GraphQLClientError,
 } from '../../utilities/graphql/graphql-result.ts';
 import { z } from '../../utilities/validation/zod.ts';
+import { Checkbox } from '../ui/checkbox/checkbox.tsx';
 import { Input } from '../ui/input/input.tsx';
 import { Textarea } from '../ui/textarea/textarea.tsx';
 import { AppForm, type SubmitErrorContext } from './app-form.tsx';
@@ -100,6 +101,53 @@ function ProductForm({
       <SubmitButton className="self-start" disabled={allLocked}>
         投稿する
       </SubmitButton>
+    </AppForm>
+  );
+}
+
+const agreementSchema = z.object({
+  agreed: z.boolean().refine((value) => value, '利用規約に同意してください。'),
+});
+
+function AgreementForm() {
+  const form = useAppForm(agreementSchema, {
+    defaultValues: { agreed: false },
+  });
+  return (
+    <AppForm
+      form={form}
+      onSubmit={() => undefined}
+      onSubmitError={() => undefined}
+      aria-label="利用規約への同意"
+      className="flex max-w-md flex-col gap-4"
+    >
+      <FormField
+        control={form.control}
+        name="agreed"
+        labelPlacement="end"
+        description="同意しないと登録できません。"
+        label={
+          <span>
+            <a href="#terms" className="underline underline-offset-4">
+              利用規約
+            </a>
+            に同意し、18歳以上であることを表明する(必須)
+          </span>
+        }
+      >
+        {({ value, onChange, ...control }) => (
+          <Checkbox
+            {...control}
+            checked={value}
+            onCheckedChange={(checked) => {
+              onChange(checked === true);
+            }}
+            aria-required
+            className="mt-0.5"
+          />
+        )}
+      </FormField>
+      <SubmitButton className="self-start">登録する</SubmitButton>
     </AppForm>
   );
 }
@@ -217,4 +265,18 @@ export const UnexpectedSubmitError: Story = {
 export const UnexpectedSubmitErrorWithoutContact: Story = {
   args: { onSubmit: fn(failUnexpectedly), contactAvailable: false },
   play: submitValidProduct,
+};
+
+export const LabelAfterControl: Story = {
+  render: () => <AgreementForm />,
+};
+
+export const LabelAfterControlError: Story = {
+  render: () => <AgreementForm />,
+  play: async ({ canvas, userEvent }) => {
+    const agreement = canvas.getByRole('checkbox');
+    await userEvent.click(agreement);
+    await userEvent.click(agreement);
+    await userEvent.tab();
+  },
 };

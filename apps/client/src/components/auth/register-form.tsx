@@ -51,10 +51,6 @@ const DEFAULT_VALUES: RegisterFormInput = Object.freeze({
   agreedToTerms: false,
 });
 
-// FormFieldはラベルを入力欄の上に置くため、同意の欄だけはチェックボックスを左、ラベルを右に並べ、エラーを2列にまたがせる
-const AGREEMENT_FIELD_CLASS_NAME =
-  'grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 *:data-[slot=form-message]:col-span-2 *:data-[slot=label]:col-start-2 *:data-[slot=label]:row-start-1 *:data-[slot=label]:leading-normal';
-
 export function RegisterForm() {
   const form = useAppForm(REGISTER_FORM_SCHEMA, {
     defaultValues: DEFAULT_VALUES,
@@ -129,7 +125,7 @@ export function RegisterForm() {
         <FormField
           control={form.control}
           name="agreedToTerms"
-          className={AGREEMENT_FIELD_CLASS_NAME}
+          labelPlacement="end"
           label={
             <span>
               <PathLink href={TERMS_HREF} className={INLINE_LINK_CLASS_NAME}>

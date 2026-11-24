@@ -33,6 +33,29 @@ const withLabelId = <TControl extends object>(
     enumerable: false,
   }) as TControl & { readonly labelId: string };
 
+export type FormFieldLabelPlacement = 'top' | 'end';
+
+// 入力欄の右へラベルを並べる時も、Tabと読み上げの順序を見た目に合わせるため、入力欄をラベルより文書の前に置く
+const LAYOUT_CLASS_NAMES: Readonly<
+  Record<
+    FormFieldLabelPlacement,
+    {
+      readonly field: string;
+      readonly label?: string;
+      readonly description?: string;
+      readonly message?: string;
+    }
+  >
+> = {
+  top: { field: 'flex flex-col gap-2' },
+  end: {
+    field: 'grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2',
+    label: 'leading-normal',
+    description: 'col-start-2',
+    message: 'col-span-2',
+  },
+};
+
 export interface FormFieldProps<
   TFieldValues extends FieldValues,
   TName extends FieldPath<TFieldValues>,
@@ -42,6 +65,7 @@ export interface FormFieldProps<
   readonly name: TName;
   readonly label: ReactNode;
   readonly description?: ReactNode;
+  readonly labelPlacement?: FormFieldLabelPlacement;
   readonly className?: string;
   readonly disabled?: boolean;
   readonly children: (
@@ -58,6 +82,7 @@ export function FormField<
   name,
   label,
   description,
+  labelPlacement = 'top',
   className,
   disabled,
   children,
@@ -83,15 +108,16 @@ export function FormField<
   ]
     .filter((value) => value !== undefined)
     .join(' ');
+  const layout = LAYOUT_CLASS_NAMES[labelPlacement];
+  const labelElement = (
+    <Label id={labelId} htmlFor={controlId} className={layout.label}>
+      {label}
+    </Label>
+  );
 
   return (
-    <div
-      data-slot="form-field"
-      className={cn('flex flex-col gap-2', className)}
-    >
-      <Label id={labelId} htmlFor={controlId}>
-        {label}
-      </Label>
+    <div data-slot="form-field" className={cn(layout.field, className)}>
+      {labelPlacement === 'top' ? labelElement : null}
       {children(
         withLabelId(
           {
@@ -103,12 +129,20 @@ export function FormField<
           labelId,
         ),
       )}
+      {labelPlacement === 'end' ? labelElement : null}
       {description === undefined ? null : (
-        <p id={descriptionId} className="text-sm text-muted-foreground">
+        <p
+          id={descriptionId}
+          className={cn('text-sm text-muted-foreground', layout.description)}
+        >
           {description}
         </p>
       )}
-      {hasError ? <FormMessage id={messageId}>{message}</FormMessage> : null}
+      {hasError ? (
+        <FormMessage id={messageId} className={layout.message}>
+          {message}
+        </FormMessage>
+      ) : null}
     </div>
   );
 }
