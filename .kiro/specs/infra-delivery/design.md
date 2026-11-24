@@ -39,7 +39,7 @@
 
 ### Out of Boundary
 
-- prodの資源・状態の保管先・Infisicalのprodの主体とシークレットの値の作成、prodの識別子の反映、最初のprodのデプロイ(launch-readiness)。
+- prodの資源・状態の保管先・Infisicalのprodのシークレットの値の作成、共有の主体がprodのデプロイからログインできることの確認(2026-11-23の開発者の決定(launch-readinessのギャップ分析の論点D-1)によりprodの主体は作らない)、prodの識別子の反映、最初のprodのデプロイ(launch-readiness)。
 - Wrangler設定のバインディング名・資源の名前の決定、`secrets.required`のキー、Worker・Durable Objectsのコード(backend-platform・frontend-platform・email-deliveryほか)。本specはそれらを読むだけで、上記の値以外を変えない。
 - 一括検査・一括テスト・共有ディレクトリの配置のコマンドと、テストの命名・カバレッジの閾値(dev-tooling)。本specはCIから呼ぶだけである。
 - GraphQLの許可リストの生成とスキーマの検査(api-gateway)、疎通確認の画面とそのE2Eの内容(frontend-platform)。本specは`@smoke`タグの付与だけを行う。
@@ -187,7 +187,7 @@ graph TB
 apps/infra/
 ├── environments/
 │   ├── staging.json                     # 資源一覧(staging): 名前・識別子・管轄・ホスト名・Infisical・GitHubのEnvironment
-│   └── prod.json                        # 資源一覧(prod): 同じ形。Infisicalの主体の識別子はlaunch-readinessが埋める
+│   └── prod.json                        # 資源一覧(prod): 同じ形。Infisicalの主体の識別子は検査・stagingと共有する主体のID
 ├── backends/
 │   ├── staging.s3.hcl                   # stateの保管先(バケット・キー・接続先)の部分設定
 │   └── prod.s3.hcl
@@ -572,7 +572,7 @@ graph LR
 **Responsibilities & Constraints**
 
 - `apps/infra/environments/staging.json`・`prod.json`に置き、OpenTofu(`jsondecode(file())`)と`scripts/delivery`(`parseResourceCatalog`)の両方が読む。秘密値を持たない。
-- 値は上流specの命名(「Supporting References」の資源一覧の表)に従う。`infisical.projectId`は、両環境とも既存のプロジェクト(`.infisical.yaml`の`secrets-management.project-id`)と同じ値にする(K3)。prodの主体の識別子(`infisical.identityId`)は、launch-readinessが作るまで全桁0のUUIDとする。
+- 値は上流specの命名(「Supporting References」の資源一覧の表)に従う。`infisical.projectId`は、両環境とも既存のプロジェクト(`.infisical.yaml`の`secrets-management.project-id`)と同じ値にする(K3)。prodの主体の識別子(`infisical.identityId`)は、2026-11-23の開発者の決定(launch-readinessのギャップ分析の論点D-1)により、検査・stagingと共有する1つの主体のIDとする(「Supporting References」の「主体とOIDCの縛り」)。
 - 後続specは`r2`・`queues`・`hostnames`のmapに項目を加えて資源を追加する(1.10)。キーは英小文字で始まり英小文字・数字・ハイフンから成り(`^[a-z][a-z0-9-]*$`)、Wrangler設定のバインディング名とは独立している。
 - `catalog`は`core`と同じく純粋で、ファイルを読まない。読み込みは`commands`(`commands/shared/load-catalog.ts`)が行い、`parseResourceCatalog`には解析済みの値と、期待する環境(ファイル名の環境)を渡す。
 
@@ -1603,7 +1603,7 @@ export declare function planE2eStack(input: E2eStackPlanInput): E2eStackPlan;
 
 ### Domain Model
 
-- 環境(`staging`・`prod`)ごとに、資源一覧1つ・状態1つ・Infisicalの環境1つ・GitHubのEnvironment1つ・主体1つが1対1に対応する。検査は環境を持たず、Infisicalのdevの環境と検査用の主体を使う。Infisicalのプロジェクトは3つの環境で共通の1つである(K3)。
+- 環境(`staging`・`prod`)ごとに、資源一覧1つ・状態1つ・Infisicalの環境1つ・GitHubのEnvironment1つ・主体1つが1対1に対応する(主体だけは、2026-11-23の開発者の決定(launch-readinessのギャップ分析の論点D-1)により、検査・staging・prodで1つを共有する例外がある。「Supporting References」の「主体とOIDCの縛り」)。検査は環境を持たず、Infisicalのdevの環境と検査用の主体を使う。Infisicalのプロジェクトは3つの環境で共通の1つである(K3)。
 - 資源の識別子(D1の`database_id`・Turnstileのサイトキー・Web Analyticsのトークン)は、OpenTofuの状態が正で、Wrangler設定はその写しである。`reconcile-ids`が写しの一致を保証する。
 - 版のタグ(デプロイしたコミット)は、Workerの版の情報としてCloudflareに保存され、直前のリリースの特定とロールバックの版の特定に使う。
 
@@ -1695,7 +1695,7 @@ export declare function planE2eStack(input: E2eStackPlanInput): E2eStackPlan;
 
 ## Security Considerations
 
-- **主体の分離**: 検査・stagingのデプロイ・prodのデプロイで別々の主体を使い、検査はdevだけ、stagingのデプロイはstagingだけ、prodのデプロイはprodだけを取り出す(4.2)。stagingとprodの主体はEnvironmentのsubjectと`deploy.yml`の`job_workflow_ref`で縛り、Environmentのデプロイ対象ブランチ(staging→main、prod→prod)と組み合わせて、PRのコードやほかのワークフローからはその主体で認証できない(4.3)。機械の主体はViewerで、書き込めない(4.6)。
+- **主体の分離**: 検査・stagingのデプロイ・prodのデプロイで別々の主体を使い、検査はdevだけ、stagingのデプロイはstagingだけ、prodのデプロイはprodだけを取り出す(4.2)。stagingとprodの主体はEnvironmentのsubjectと`deploy.yml`の`job_workflow_ref`で縛り、Environmentのデプロイ対象ブランチ(staging→main、prod→prod)と組み合わせて、PRのコードやほかのワークフローからはその主体で認証できない(4.3)。機械の主体はViewerで、書き込めない(4.6)。本プロジェクトは2026-11-23の開発者の決定(launch-readinessのギャップ分析の論点D-1)により3つの主体を分けず1つの主体を共有するため、この分離は働かない(受け入れた危険は「Supporting References」の「主体とOIDCの縛り」)。
 - **1つのプロジェクトで全環境を読める主体**(K3で受け入れたリスク): Infisicalは1つのプロジェクトのままで、FreeプランのViewerはプロジェクト全体に効く。そのため、どの機械の主体も権限の上では全環境のシークレットを読める。同じリポジトリへpushできる者がワークフローを書き換えたPRや、承認数0のmainへマージされたコードは、他の環境の値を読み出し得る。Freeプランでできる範囲で、次のとおり緩和する(詳細はresearch.mdのRisks)。
   - prodの値はlaunch-readinessがリリース時に登録し、それまでprodの環境に値を置かない(Q6)。
   - `ci-deploy-prod`のOIDCの縛り(Environment`prod`・`deploy.yml@refs/heads/prod`・デプロイ対象ブランチ)を保ち、フォークのPRと他のリポジトリにはトークンを渡さない。
@@ -1734,7 +1734,7 @@ graph TB
 - 既存のデータは無い。2026-10-29に開発者へ確かめた時点で、上流specの手順(email-delivery)によるstagingの資源(送信ドメイン・メールイベント用Queue・購読)は作られていない。そのため、最初の適用で米国の管轄のQueueと送信ドメインを新しく作り、購読はデプロイの`ensure-email-subscription`が作る(改訂4)。
 - 手作業で作成済みの資源が後から見つかった場合は、`live/main.tf`に`import`ブロックを一時的に置いて取り込む(12.2)。ただし、米国の管轄を持たないQueue・D1・R2は管轄を変えられず、取り込むと2.1・2.2を満たせないため、開発者が削除してから最初の適用を行う。Queueを作り直すときは、そのQueueへの購読も削除し、デプロイの`ensure-email-subscription`に作り直させる。購読はOpenTofuの管理外のため、既にあれば`ensure-email-subscription`が`present`と判定する。
 - 開発者の手作業(AIエージェントは行わない): 「Supporting References」の初回の準備の表の全項目、stagingの最初の実行の後のTurnstileの秘密鍵の登録、ルールセットの変更、Claude設定のdenyの追加。
-- prodはlaunch-readinessが、prodのstateのバケットとR2トークン、Infisicalのprodの環境のフォルダと各specが宣言したシークレットの値、prodの主体、資源一覧`prod.json`の主体の識別子を用意し、リリースのPRのマージで資源を作成して識別子を反映し、2回目のリリースでWorkerをデプロイする(8.4)。
+- prodはlaunch-readinessが、prodのstateのバケットとR2トークン、Infisicalのprodの環境のフォルダと各specが宣言したシークレットの値を用意し、共有の主体(資源一覧`prod.json`の主体の識別子は記入済み。2026-11-23の開発者の決定(launch-readinessのギャップ分析の論点D-1))がprodのデプロイからログインできることを確かめ、リリースのPRのマージで資源を作成して識別子を反映し、2回目のリリースでWorkerをデプロイする(8.4)。
 
 ## 上流spec・他specへの影響
 
@@ -1753,7 +1753,7 @@ graph TB
 | ultras-subscription・inquiry-chat・legal-pages | 新しいシークレット・変数・資源は無い。メールのリンクはapiとeventの既存の`CLIENT_SITE_ORIGIN`を使う(eventの値はpaymentsが加える)(spec横断レビュー、2026-10-23)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | notifications                                  | eventの`EVENT_SITE_ORIGIN`(配信停止のURLの基点)の3環境の値は「Supporting References」の「ホスト名から導かれる変数の値」の一覧と同じにする。変数はnotificationsがWrangler設定と`project-values.md`の変数の値の表に書き、本specは値の一覧を持つだけである。新しいシークレットは無い(改訂1、spec横断レビュー、2026-10-24)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | public-api                                     | apiの`IMAGES_ORIGIN`(公開APIの応答の画像の絶対URLの基点)とclientの`PUBLIC_API_ORIGIN`(Swagger UIの仕様書の取得と試行、CSPの`connect-src`)の3環境の値は「Supporting References」の「ホスト名から導かれる変数の値」の一覧と同じにする。変数はpublic-apiがWrangler設定と`project-values.md`の変数の値の表に書き、本specは値の一覧を持つだけである。`PUBLIC_API_RATE_LIMITER`はRate Limitingのバインディングで、OpenTofuの資源の識別子ではないため、識別子の反映と照合の対象に含めない。新しいシークレットは無い(改訂1、spec横断レビュー、2026-10-24)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| launch-readiness                               | prodの準備(stateのバケット・Infisicalのprodの主体とフォルダ・各specが宣言したprodのシークレットの値・資源一覧の主体の識別子)・資源の作成・識別子の反映・最初のデプロイ、Sentryのソースマップのアップロードの手順の追加、stagingの`SENTRY_DSN`の値(K8)。prodの`STRIPE_API_KEY`(prodの`/workers/api`・`/workers/event`へ別々の値。launch-readinessの仮13)・`STRIPE_WEBHOOK_SECRET`の登録と、clientの`STRIPE_PUBLISHABLE_KEY`の仮の値のライブモードの公開キーへの置き換え(payments)。launch-readinessの仮7の承認後の条件付きの追記: `core/secret-scope.ts`の`SecretFolder`へフォルダ`/ci/sentry`、`commands/deploy-worker.ts`へソースマップのアップロードの手順、`.github/workflows/deploy.yml`へその手順、新設の`core/sourcemap-upload.ts`・`commands/upload-sourcemaps.ts`。いずれも`checkWorkflowPolicy`・`layering.unit.test.ts`・`repo-contract.unit.test.ts`を通し、`DEPLOY_STAGES`の順序と`WORKER_SECRET_FOLDERS`の規則を変えない。値が無い環境では警告だけでデプロイを続ける(改訂1)                                                                                                                                                                                                                         |
+| launch-readiness                               | prodの準備(stateのバケット・Infisicalのprodのフォルダ・各specが宣言したprodのシークレットの値・共有の主体のprodのデプロイからのログインの確認。主体は作らない(2026-11-23の開発者の決定、launch-readinessのD-1))・資源の作成・識別子の反映・最初のデプロイ、Sentryのソースマップのアップロードの手順の追加、stagingの`SENTRY_DSN`の値(K8)。prodの`STRIPE_API_KEY`(prodの`/workers/api`・`/workers/event`へ別々の値。launch-readinessの仮13)・`STRIPE_WEBHOOK_SECRET`の登録と、clientの`STRIPE_PUBLISHABLE_KEY`の仮の値のライブモードの公開キーへの置き換え(payments)。launch-readinessの仮7の承認後の条件付きの追記: `core/secret-scope.ts`の`SecretFolder`へフォルダ`/ci/sentry`、`commands/deploy-worker.ts`へソースマップのアップロードの手順、`.github/workflows/deploy.yml`へその手順、新設の`core/sourcemap-upload.ts`・`commands/upload-sourcemaps.ts`。いずれも`checkWorkflowPolicy`・`layering.unit.test.ts`・`repo-contract.unit.test.ts`を通し、`DEPLOY_STAGES`の順序と`WORKER_SECRET_FOLDERS`の規則を変えない。値が無い環境では警告だけでデプロイを続ける(改訂1)                                                                                                                                      |
 
 - K8(research.md、承認済み): backend-platform・frontend-platformはstagingの`secrets.required`に`SENTRY_DSN`を持ち、値の登録をlaunch-readinessとしている。stagingへの随時デプロイには最初のstagingのデプロイの前に値が要るため、本specの初回の準備で開発者がstaging用のSentryのDSNを登録する(Sentryのstaging用のプロジェクトはlaunch-readinessより前に作る)。
 
@@ -1808,7 +1808,8 @@ graph TB
 | `ci-deploy-prod`    | Viewer(prod)         | `repo:kurachiweb/genai-example-2-launch-platform:environment:prod`    | `kurachiweb/genai-example-2-launch-platform/.github/workflows/deploy.yml@refs/heads/prod` | 同上                            |
 
 - 3つの主体は同じプロジェクトにあり、FreeプランのViewerはプロジェクト全体に効く。括弧内は各コマンドが取り出す環境で、権限の境界ではない(K3。「Security Considerations」)。
-- 主体の数は、開発者を含めて4つ(`ci-deploy-prod`はlaunch-readinessが作る)で、Freeプランの上限5に収まる。
+- 上の表は主体を分ける場合の縛りである。本プロジェクトは、2026-11-23の開発者の決定(launch-readinessのギャップ分析の論点D-1)により3つの主体を分けず、1つの主体を検査・staging・prodで共有する(`check-secrets.ts`の`CHECK_SECRETS_IDENTITY`と資源一覧`staging.json`・`prod.json`の`infisical.identityId`に同じIDを記入済み)。共有の主体のOIDCの縛りは、表の3行のsubjectと`job_workflow_ref`のいずれでもログインできるようにする。`ci-deploy-prod`は作らない。
+- 共有により開発者が受け入れた危険: 検査のワークフローがどのブランチのPRでも同じ主体でログインでき、Viewerがプロジェクト全体に効くため、prodのシークレットを登録した後は、任意のブランチのPRの検査のジョブ(ワークフローを書き換えたものを含む)からprodのシークレットを読める。prodへのマージに人間の承認を求める保護はシークレットの読み取りには効かない。見直しの条件は、環境ごとの権限が使える料金プランへの変更か、prodの主体を分ける決定で、そのときは表のとおり主体を分けて記入先のIDを改める(launch-readinessの検証の記録の「受け入れた危険」、`project-values.md`の主体の表の注記)。
 - アクセストークンの有効期限は、検査30分・デプロイ60分を目安に主体に設定する。
 
 ### 初回の準備(開発者の手作業)

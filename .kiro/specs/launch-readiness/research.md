@@ -401,8 +401,8 @@
 | HIBP         | 3秒の時間切れ。失敗は`unavailable`でパスワードを受け付ける(fail-open、再試行なし)                                                                                                          | `warning`                                          | `hibp-pwned-password-checker.worker.test.ts`                                                         |
 | DISIFY       | 3秒の時間切れ。失敗は`undetermined`として保存し、遅延の再確認のメッセージと4:21の`identity-auth.disposable-recheck-sweep`が後で確かめる。デプロイ先では`DISIFY_API_KEY`が必須(2026-11-03)  | `warning`                                          | `disify-client.worker.test.ts`・`disposable-email-check.unit.test.ts`                                |
 
-- Stripeの認証の失敗(鍵の誤り)はSentryへ送られないため、要件6.5の「通知されない障害」の指摘の候補になる。
-- 縮退の起動の差し替え(`DegradedOverrides`)は、ローカルでは`MODERATION_PROVIDER`が`stub`、`KEYWORD_EXTRACTOR`が`disabled`で、Rekognitionと自然言語APIは既に呼ばれない。ローカルで止めて確かめられるのは、Stripe・メール(Mailpitの宛先)・HIBP・DISIFYの鍵か宛先になる。
+- Stripeの認証の失敗(鍵の誤り)はSentryへ送られないため、要件6.5の「通知されない障害」の指摘の候補になる。実装の後の確認(タスク7.5)では、想定外の例外としてSentryへ届くが、決済の障害として区別されず、決済の開始と価格の照会が縮退の案内にならなかった。
+- 縮退の起動の差し替え(`DegradedOverrides`)は、ローカルの既定では`MODERATION_PROVIDER`が`stub`、`KEYWORD_EXTRACTOR`が`disabled`で、Rekognitionと自然言語APIは呼ばれない。実装では、この2つは既定を外して実サービスへ無効な鍵で向けることで止める(`--var`で`MODERATION_PROVIDER`・`KEYWORD_EXTRACTOR`と鍵を渡す)。ローカルで止めて確かめられるのは、Rekognition・GCP NL・Stripe・メール(Mailpitの宛先)・DISIFYの5つで、HIBPは差し替えの手段が無く対応表だけで確かめる。Stripeは無効な鍵だと401が恒久的な拒否(`StripeRejectedError`)になり縮退の案内にならないため、鍵を起動の環境から外して「鍵が未設定」の縮退にする。
 
 ### 実装の方法の選択肢
 
