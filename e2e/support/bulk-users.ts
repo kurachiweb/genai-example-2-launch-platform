@@ -25,6 +25,7 @@ import {
   parsePasswordHashLookup,
   passwordHashLookupSql,
 } from './bulk-users-sql.ts';
+import { BULK_BOT_TOKEN } from './bot-token.ts';
 import { CONNECTING_IP_HEADER } from './client-ip.ts';
 import { fixtureId, ID_RANDOM_BYTES } from './directory-fixture-sql.ts';
 import { executeLocalD1, type LocalD1Row } from './local-d1.ts';
@@ -36,9 +37,6 @@ export interface BulkUser {
   // 全員が共有する。実行ごとに乱数から作り、ソースへ値を書かない
   readonly password: string;
 }
-
-// Turnstileのテスト用のサイトキーのウィジェットが発行するダミーのトークンで、テスト用の秘密鍵の検証を通る
-export const BULK_BOT_TOKEN = 'XXXX.DUMMY.TOKEN.XXXX';
 
 const SUFFIX_BYTES = 4;
 

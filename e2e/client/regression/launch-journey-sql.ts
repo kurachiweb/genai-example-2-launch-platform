@@ -1,4 +1,4 @@
-import { sqlStringLiteral } from '../../support/local-d1.ts';
+import { sqlStringLiteral } from '../../../apps/api/scripts/admin/sql-string-literal.ts';
 
 const MINUTE_MS = 60_000;
 

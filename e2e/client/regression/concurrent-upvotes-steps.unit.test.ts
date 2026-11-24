@@ -1,11 +1,22 @@
 import { describe, expect, test } from 'bun:test';
 
+import type { APIRequestContext } from '@playwright/test';
+
+import {
+  ClientQualifierBoardDocument,
+  ClientUpvoteDocument,
+} from '../../../apps/client/src/graphql/generated/graphql.ts';
+import { GRAPHQL_RELAY_PATH } from '../../../apps/frontend-lib/server/relay/relay-contract.ts';
+import { documentIdOf } from '../../../apps/frontend-lib/utilities/graphql/persisted-document.ts';
+import { BULK_BOT_TOKEN } from '../../support/bot-token.ts';
 import {
   entryOfProduct,
   formatUpvoteReport,
   parseQualifierBoardBody,
   parseUpvoteBody,
+  readQualifierMatch,
   tallyUpvotes,
+  upvoteConcurrently,
   type UpvoteObservation,
 } from './concurrent-upvotes-steps.ts';
 
@@ -188,6 +199,177 @@ describe('parseQualifierBoardBody', () => {
 
   test('JSONでない本文は未定義を返す', () => {
     expect(parseQualifierBoardBody('not json', 'a')).toBeUndefined();
+  });
+});
+
+interface FakeResponse {
+  readonly status: number;
+  readonly text: string;
+}
+
+interface RecordedPost {
+  readonly url: string;
+  readonly options: {
+    readonly headers: Readonly<Record<string, string>>;
+    readonly data: {
+      readonly documentId: string;
+      readonly variables: unknown;
+    };
+  };
+}
+
+const fakeContext = (
+  respond: () => Promise<FakeResponse>,
+): { readonly context: APIRequestContext; readonly posts: RecordedPost[] } => {
+  const posts: RecordedPost[] = [];
+  const context = {
+    post: async (url: string, options: RecordedPost['options']) => {
+      posts.push({ url, options });
+      const { status, text } = await respond();
+      return {
+        status: () => status,
+        ok: () => status >= 200 && status < 300,
+        text: () => Promise.resolve(text),
+      };
+    },
+  } as unknown as APIRequestContext;
+  return { context, posts };
+};
+
+const respondWith = (response: FakeResponse) => () => Promise.resolve(response);
+
+describe('upvoteConcurrently', () => {
+  test('全ての文脈からUpvoteの操作をbot判定のトークン付きで中継の経路へ送り、応答ごとの観測を返す', async () => {
+    const accepted = fakeContext(
+      respondWith({ status: 200, text: upvotedBody(TARGET_ENTRY_ID) }),
+    );
+    const limited = fakeContext(
+      respondWith({
+        status: 200,
+        text: JSON.stringify({
+          errors: [{ extensions: { code: 'RATE_LIMITED' } }],
+        }),
+      }),
+    );
+
+    const { observations, elapsedMs } = await upvoteConcurrently(
+      [accepted.context, limited.context],
+      { matchId: 'MATCH-1', entryId: TARGET_ENTRY_ID },
+    );
+
+    expect(observations).toMatchObject([
+      { status: 200, errorCodes: [], upvotedEntryId: TARGET_ENTRY_ID },
+      { status: 200, errorCodes: ['RATE_LIMITED'], upvotedEntryId: null },
+    ]);
+    expect(elapsedMs).toBeGreaterThanOrEqual(0);
+    const [post] = accepted.posts;
+    expect(post?.url).toBe(GRAPHQL_RELAY_PATH);
+    expect(post?.options.headers['cf-turnstile-response']).toBe(BULK_BOT_TOKEN);
+    expect(post?.options.data).toEqual({
+      documentId: documentIdOf(ClientUpvoteDocument),
+      variables: { input: { matchId: 'MATCH-1', entryId: TARGET_ENTRY_ID } },
+    });
+  });
+
+  test('前の応答を待たずに全ての要求を送り出す', async () => {
+    const pending: (() => void)[] = [];
+    const respond = () =>
+      new Promise<FakeResponse>((resolve) => {
+        pending.push(() => {
+          resolve({ status: 200, text: upvotedBody(TARGET_ENTRY_ID) });
+        });
+      });
+    const first = fakeContext(respond);
+    const second = fakeContext(respond);
+
+    const running = upvoteConcurrently([first.context, second.context], {
+      matchId: 'MATCH-1',
+      entryId: TARGET_ENTRY_ID,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(pending).toHaveLength(2);
+    for (const release of pending) release();
+
+    expect((await running).observations).toHaveLength(2);
+  });
+
+  test('送信の失敗は例外にせず、状態コード0と通信の失敗のコードの観測にする', async () => {
+    const failing = fakeContext(() =>
+      Promise.reject(new Error('socket\n  hang up')),
+    );
+
+    const { observations } = await upvoteConcurrently([failing.context], {
+      matchId: 'MATCH-1',
+      entryId: TARGET_ENTRY_ID,
+    });
+
+    expect(observations).toMatchObject([
+      {
+        status: 0,
+        errorCodes: ['NETWORK_ERROR: socket hang up'],
+        upvotedEntryId: null,
+      },
+    ]);
+  });
+
+  test('長い失敗の説明は160文字までにして観測に残す', async () => {
+    const failing = fakeContext(() =>
+      Promise.reject(new Error('x'.repeat(200))),
+    );
+
+    const { observations } = await upvoteConcurrently([failing.context], {
+      matchId: 'MATCH-1',
+      entryId: TARGET_ENTRY_ID,
+    });
+
+    expect(observations[0]?.errorCodes[0]).toBe(
+      `NETWORK_ERROR: ${'x'.repeat(160)}`,
+    );
+  });
+});
+
+describe('readQualifierMatch', () => {
+  test('当日の予選の照会を中継の経路へ送り、プロダクトの側を含むマッチを返す', async () => {
+    const { context, posts } = fakeContext(
+      respondWith({ status: 200, text: boardBody }),
+    );
+
+    const match = await readQualifierMatch(context, 'a');
+
+    expect(match.id).toBe('MATCH-1');
+    expect(posts[0]?.url).toBe(GRAPHQL_RELAY_PATH);
+    expect(posts[0]?.options.data).toEqual({
+      documentId: documentIdOf(ClientQualifierBoardDocument),
+      variables: {},
+    });
+  });
+
+  test('プロダクトを含むマッチが無ければ、状態コードと本文を添えて例外にする', async () => {
+    const { context } = fakeContext(
+      respondWith({ status: 200, text: boardBody }),
+    );
+
+    const failure = await readQualifierMatch(context, 'missing').catch(
+      (error: unknown) => error,
+    );
+
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toContain(
+      'プロダクトmissingのマッチを取得できません: 状態コード200',
+    );
+  });
+
+  test('失敗の状態コードの応答は、マッチを含んでも例外にする', async () => {
+    const { context } = fakeContext(
+      respondWith({ status: 503, text: boardBody }),
+    );
+
+    const failure = await readQualifierMatch(context, 'a').catch(
+      (error: unknown) => error,
+    );
+
+    expect(failure).toBeInstanceOf(Error);
+    expect((failure as Error).message).toContain('状態コード503');
   });
 });
 

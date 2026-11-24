@@ -154,6 +154,55 @@ describe('scanPage', () => {
     expect(await scanPage(page, CONTEXT)).toEqual([]);
   });
 
+  test('ページの中では終わりのある動きが終わるのを待ってから、文書全体を検査の設定で検査する', async () => {
+    const events: string[] = [];
+    let finishFinite: () => void = () => undefined;
+    const finite = {
+      effect: { getComputedTiming: () => ({ endTime: 300 }) },
+      finished: new Promise<void>((resolve) => {
+        finishFinite = () => {
+          events.push('finite-finished');
+          resolve();
+        };
+      }),
+    };
+    const infinite = {
+      effect: { getComputedTiming: () => ({ endTime: Infinity }) },
+      finished: new Promise<void>(() => undefined),
+    };
+    const fakeDocument = { getAnimations: () => [finite, infinite] };
+    const fakeAxe = {
+      run: (target: unknown, options: unknown) => {
+        events.push('axe-run');
+        expect(target).toBe(fakeDocument);
+        expect(options).toEqual({
+          runOnly: { type: 'tag', values: [...WCAG22_AA_TAGS] },
+        });
+        return Promise.resolve(emptyResults([]));
+      },
+    };
+    const page = {
+      evaluate: (script: unknown, argument?: unknown) =>
+        typeof script === 'function'
+          ? Promise.resolve((script as (options: unknown) => unknown)(argument))
+          : Promise.resolve(),
+    } as unknown as Page;
+    Object.assign(globalThis, { document: fakeDocument, axe: fakeAxe });
+
+    try {
+      const scanning = scanPage(page, CONTEXT);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(events).toEqual([]);
+      finishFinite();
+
+      expect(await scanning).toEqual([]);
+      expect(events).toEqual(['finite-finished', 'axe-run']);
+    } finally {
+      Reflect.deleteProperty(globalThis, 'document');
+      Reflect.deleteProperty(globalThis, 'axe');
+    }
+  });
+
   test('検査の実行が失敗したら握りつぶさず経路と状態を添えて例外にする', async () => {
     const { page } = fakePage(new Error('boom'));
 

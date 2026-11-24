@@ -6,7 +6,7 @@ import {
 } from '../../../apps/client/src/graphql/generated/graphql.ts';
 import { GRAPHQL_RELAY_PATH } from '../../../apps/frontend-lib/server/relay/relay-contract.ts';
 import { documentIdOf } from '../../../apps/frontend-lib/utilities/graphql/persisted-document.ts';
-import { BULK_BOT_TOKEN } from '../../support/bulk-users.ts';
+import { BULK_BOT_TOKEN } from '../../support/bot-token.ts';
 
 export interface UpvoteObservation {
   readonly status: number;
