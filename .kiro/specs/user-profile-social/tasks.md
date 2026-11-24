@@ -249,6 +249,13 @@
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たす
   - _Requirements: 12.9, 13.1, 13.2_
 
+- [x] 11. launch-readinessの検証の指摘の修正
+
+- [x] 11.1 フォローとフォロー解除の相手のハンドルを境界で検証する(launch-readinessのF-4、NFR-SECUR-012)
+  - `followUser`・`unfollowUser`を`withValidatedArgs(FOLLOW_TARGET_ARGS)`で包み、`checkHandleFormat(USER_HANDLE_RULE)`の長さ・形式・空の違反は、利用者の状態の確認・bot判定・ユースケースを通さず`validation_error`(詳細の欄は`handle`)で拒否する。規則は`profile/inputs.ts`の既存のハンドルの規則を再利用する
+  - `follow-resolvers.validation.worker.test.ts`で、規則に合わないハンドルの相手が実在してもフォローの記録・解除をしないことを確かめる。design.mdの操作の表の誤りの欄に`validation_error`を加える
+  - _Requirements: 9.1, 9.2, 9.4_
+
 ## Implementation Notes
 
 - 1.1: 規則は`apps/common-lib/handles/handle-rules.ts`(`checkHandleFormat`・`toHandleKey`(A〜Zだけ小文字化しNOCASEと同じ)・`isReservedHandle`・`IMPERSONATION_RESERVED_HANDLES`)・`profile/profile-input-rules.ts`(`USER_HANDLE_RULE`・`checkHeadline`・`checkWebsiteName`・`PROFILE_WEBSITES_MAX`・`BIO_MAX_GRAPHEMES`・`USER_AVATAR_PURPOSE`・`USER_AVATAR_MAX_BYTES`)・`url/external-url.ts`(`checkExternalUrl`・`externalUrlHost`)。`checkExternalUrl`は前後の空白を除いて判定するので、保存する値も呼び出し側で`trimWhiteSpace`する。`//`付きの値の途中の空白・制御文字は`not-absolute`。`checkHeadline`等の違反は`forbidden-characters`と`too-long`の2種で、画面の文言は出し分ける。`externalUrlHost`はIDNをpunycodeのまま返す。
@@ -287,3 +294,4 @@
 - 10.2: E2Eは`e2e/client/follow.e2e.test.ts`、手順は`e2e/client/follow-steps.ts`(`followFromProfile`・`unfollowFromProfile`・`expectFollowing`・`expectNotFollowing`・`expectFollowerCount`・`openFollowList(page, account, direction)`・`expectOwnProfileWithoutFollowButton`)。フォローのボタンはラベルが楽観的に反転するので、押し直しは元のラベルのボタンが見えている時だけ上限付きの`click`で行う(上限の無いクリックは反転後に固まる)。
 - 10.3: 一括の検査(`bun run check`、`test:all:unit`・`worker`・`browser`の`--coverage`)と本specのE2Eが成功し、計測対象の追加・変更ファイルは行・関数80%以上(`handle-namespace.ts`・`profile-form-messages.ts`はテストを足して解消)。計測対象外は型だけ・生成物・テストの補助・3つのルート・`graphql/my-profile.ts`(`queryFn`がStartの文脈を要し単体で動かない。ブラウザの経路テストが通す)。全アプリ並列のブラウザテストでclientの`login-form`・`register-form`・`auth-routes`が15秒のタイムアウトで落ちることがある(負荷による一過性、本specの変更と無関係)。
 - 最終の検証(kiro-validate-impl)の修正: 未確認でフォロー中の利用者が解除できない不具合(要件9.2・9.5)を直し、`follow-unverified-button.tsx`を`FollowToggleButton`の`aria-disabled`の分岐へまとめた。不安定だったフォーカスの検査(`profile-actions-menu`・`profile-tabs`)を`expect.poll`にした。未使用の`MyProfileWebsiteView`を消した。E2Eに存在しない・形式違反のハンドルの状態404、ブラウザテストに未ログインの`/settings/profile`を足した。
+- 2026-11-24(launch-readinessのF-4): `followUser`・`unfollowUser`のハンドルを`FOLLOW_TARGET_ARGS`で検証する。順序は呼び出し元の制限→入力の検証→状態の確認→bot判定で、規則に合わない入力はbot判定のトークンを消費しない

@@ -133,3 +133,6 @@ export const HANDLE_AVAILABILITY_ARGS = z.object({
     .string()
     .max(USER_HANDLE_RULE.maxLength, INPUT_MESSAGES.handleTooLong),
 });
+
+// フォローとフォロー解除の相手は表示中のプロフィールのハンドルで、旧ハンドルも同じ規則を満たすため、規則に合わない値は画面の誤りとして拒否する
+export const FOLLOW_TARGET_ARGS = z.object({ handle });

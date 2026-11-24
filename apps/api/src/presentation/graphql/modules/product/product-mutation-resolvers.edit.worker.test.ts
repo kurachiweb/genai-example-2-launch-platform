@@ -42,6 +42,21 @@ const LOCK_STARTS_AT = fromBusinessDateTime(parseBusinessDate('2026-11-10'), {
   minute: 45,
 });
 
+// 規則に合わない値をハンドルに持つ自分のプロダクトを置き、検証を通り抜ければユースケースが見つけて書き込む状態にする
+const PRODUCT_HANDLE_VIOLATIONS = [
+  [
+    '51文字以上のハンドル',
+    'p'.repeat(51),
+    'ハンドルは50文字以内で入力してください。',
+  ],
+  [
+    '使えない文字を含むハンドル',
+    'product 1',
+    'ハンドルは英数字で始め、英数字・ハイフン・アンダースコアのみで入力してください。',
+  ],
+  ['空のハンドル', '', 'ハンドルを入力してください。'],
+] as const;
+
 installProductGraphQLTest();
 
 async function insertAlice(
@@ -335,6 +350,32 @@ describe('updateProduct', () => {
     expect(codesOf(response)).toEqual([code]);
     expect((await readProductRow(1))?.name).toBe('プロダクト1');
   });
+
+  test.each(PRODUCT_HANDLE_VIOLATIONS)(
+    '編集するプロダクトの%sは、bot判定と保存をせずvalidation_errorで拒否する',
+    async (_name, productHandle, message) => {
+      const calls = stubExternalServices();
+      const token = await insertAlice();
+      await insertOwnedProduct(
+        1,
+        ALICE,
+        { launchDate: '2026-11-20' },
+        { handle: productHandle },
+      );
+
+      const response = await update(token, {
+        productHandle,
+        fields: fixtureProductFields(1, { name: '変更されない' }),
+      });
+
+      expect(codesOf(response)).toEqual(['validation_error']);
+      expect(detailsOf(response)).toEqual([
+        expect.objectContaining({ field: 'input.productHandle', message }),
+      ]);
+      expect(calls.siteverifyTokens).toEqual([]);
+      expect((await readProductRow(1))?.name).toBe('プロダクト1');
+    },
+  );
 });
 
 describe('deleteProduct', () => {
@@ -448,4 +489,30 @@ describe('deleteProduct', () => {
     expect(codesOf(response)).toEqual([code]);
     expect((await readProductRow(1))?.deletedAt).toBeNull();
   });
+
+  test.each(PRODUCT_HANDLE_VIOLATIONS)(
+    '%sは、bot判定と削除をせずvalidation_errorで拒否する',
+    async (_name, productHandle, message) => {
+      const calls = stubExternalServices();
+      const token = await insertAlice();
+      await insertOwnedProduct(
+        1,
+        ALICE,
+        { launchDate: '2026-11-20' },
+        { handle: productHandle },
+      );
+
+      const response = await deleteProduct(
+        { productHandle, expectedVersion: 0 },
+        { sessionToken: token, botToken: DELETE_BOT_TOKEN },
+      );
+
+      expect(codesOf(response)).toEqual(['validation_error']);
+      expect(detailsOf(response)).toEqual([
+        expect.objectContaining({ field: 'productHandle', message }),
+      ]);
+      expect(calls.siteverifyTokens).toEqual([]);
+      expect((await readProductRow(1))?.deletedAt).toBeNull();
+    },
+  );
 });
