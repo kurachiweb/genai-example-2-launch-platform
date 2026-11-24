@@ -86,7 +86,7 @@ export function TournamentBracketPage({
             aria-label={BRACKET_SCROLL_REGION_LABEL}
             // eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- 列の中にリンクの無い表示(未来の枠など)だけが並ぶ場合も、キーボードで横にスクロールできるよう、横スクロールの領域自体をフォーカスできるようにする
             tabIndex={0}
-            className="relative hidden overflow-x-auto rounded-xl pb-2 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none md:block"
+            className="relative hidden overflow-x-auto rounded-xl pb-2 focus-visible:ring-3 focus-visible:ring-ring/50 md:block"
           >
             <div className="grid auto-cols-[minmax(17rem,1fr)] grid-flow-col gap-4">
               {rounds.map((round) => (

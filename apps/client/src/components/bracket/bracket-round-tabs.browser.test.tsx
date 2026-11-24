@@ -6,6 +6,8 @@ import { runAxe } from '../../../lib/test/a11y.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
+  outlineOf,
+  ringOutline,
 } from '../../../lib/test/computed-style.ts';
 import { pressKeyUntilFocusMoves } from '../../../lib/test/keyboard.ts';
 import { renderInMatchFrame } from '../match/match-testing.tsx';
@@ -117,6 +119,19 @@ describe('BracketRoundTabs', () => {
     await expect
       .element(page.getByRole('link', { name: 'Bracket Product 3' }))
       .toHaveFocus();
+  });
+
+  test('キーボードで移ったラウンドの内容のパネルのフォーカスを、リングの色の輪郭で示す', async () => {
+    await renderTabs(IN_PROGRESS_ROUNDS);
+
+    await userEvent.tab();
+    await expect.element(tab('準決勝')).toHaveFocus();
+    await userEvent.tab();
+
+    await expect.element(panel()).toHaveFocus();
+    await expect
+      .poll(() => outlineOf(panel().element()))
+      .toStrictEqual(ringOutline());
   });
 });
 

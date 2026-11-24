@@ -6,6 +6,8 @@ import { runAxe } from '../../../lib/test/a11y.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
+  outlineOf,
+  ringOutline,
 } from '../../../lib/test/computed-style.ts';
 import { renderInMatchFrame } from './match-testing.tsx';
 import { UpvoteButton } from './upvote-button.tsx';
@@ -90,6 +92,24 @@ describe('UpvoteButton', () => {
 
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  test.each([
+    ['Upvoteしていない', {}],
+    ['Upvote済みの', { pressed: true }],
+  ] as const)(
+    '%sボタンは、キーボードで移ったフォーカスをリングの色の輪郭で示す',
+    async (_label, options) => {
+      await renderButton(options);
+      const button = page.getByRole('button', { name: /Pitch Notes/u });
+
+      await userEvent.tab();
+
+      await expect.element(button).toHaveFocus();
+      await expect
+        .poll(() => outlineOf(button.element()))
+        .toStrictEqual(ringOutline());
+    },
+  );
 
   test('使えない間は押せない状態を伝え、フォーカスは残したまま理由を読み上げ用の説明とツールチップで示し、押しても呼ばない', async () => {
     const { onClick } = await renderButton({

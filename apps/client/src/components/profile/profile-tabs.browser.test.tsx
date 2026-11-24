@@ -593,6 +593,26 @@ describe('ProfileTabs', () => {
         expect(isOutlineClipped(trigger)).toBe(false);
       },
     );
+
+    test.each([
+      { name: 'PC', width: 1280 },
+      { name: 'モバイル', width: 375 },
+    ])(
+      '$name($width px)で、キーボードで移ったタブの内容のパネルのフォーカスをリングの色の輪郭で示し、切り取らない',
+      async ({ width }) => {
+        await page.viewport(width, 800);
+        await renderPublicProfilePage(publicProfileOf(), {
+          tabs: [LAUNCHES, UPVOTES],
+        });
+        await expect.element(tabList()).toBeVisible();
+        const panel = page.getByRole('tabpanel').element();
+
+        await tabUntilFocused(panel);
+
+        await expect.poll(() => outlineOf(panel)).toStrictEqual(ringOutline());
+        expect(isOutlineClipped(panel)).toBe(false);
+      },
+    );
   });
 
   describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {

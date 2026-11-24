@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 
 import '../../styles.css';
 import { runAxe } from '../../../lib/test/a11y.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
+  outlineOf,
+  ringOutline,
 } from '../../../lib/test/computed-style.ts';
 import type { MatchEntryView } from './match-card-model.ts';
 import { entryOf, productOf } from './match-fixtures.ts';
@@ -83,6 +85,18 @@ describe('ProductPanel', () => {
     await expect
       .element(page.getByRole('link', { name: 'Pitch Notes', exact: true }))
       .toHaveAttribute('href', '/p/pitch-notes');
+  });
+
+  test('名称のリンクは、キーボードで移ったフォーカスをリングの色の輪郭で示す', async () => {
+    await renderPanel();
+    const link = page.getByRole('link', { name: 'Pitch Notes', exact: true });
+
+    await userEvent.tab();
+
+    await expect.element(link).toHaveFocus();
+    await expect
+      .poll(() => outlineOf(link.element()))
+      .toStrictEqual(ringOutline());
   });
 
   test('掲載されていない他人のプロダクトは、名称をリンクにしない', async () => {

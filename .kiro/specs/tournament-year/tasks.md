@@ -489,6 +489,12 @@
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
   - _Requirements: 16.1_
 
+- [x] 9. launch-readinessの検証の指摘の修正
+
+- [x] 9.1 Yearのブラケットのページのフォーカスの輪郭を、Weekと共用の部品の修正で直す(launch-readinessのF-17)
+  - 共用の`tournament-bracket-page.tsx`・`bracket-round-tabs.tsx`の修正(tournament-weekの同じ指摘の修正)で、Yearのブラケットの横スクロールの領域とラウンドのタブのパネルも基底の輪郭を持つ。テストはtournament-weekと同じ
+  - _Requirements: 11.5_
+
 ## Implementation Notes
 
 - 開発者への依頼(1.1): Stripeの価格`year_tournament_entry`は開発者が2026-11-17に作成・税込化済みのため、新たな依頼は無い。
@@ -559,3 +565,4 @@
 - 8.5: `e2e/admin/year-final-date.e2e.test.ts`(最上位管理者の保存と監査ログ、`viewer`の参照だけ)と手順`e2e/admin/year-final-date-steps.ts`、候補の選び方`e2e/support/year-final-date-choice.ts`の`pickFinalDateChoice`(+単体テスト、既定の日に最も近い現在以外の候補で、実行のたびに既定の日とその前の日曜日を交互に選ぶ)。実行は`infisical --telemetry=false run --env dev --silent -- bunx playwright test e2e/admin/year-final-date.e2e.test.ts --project=admin`(api・event・admin(48045)を起動)。3回続けて成功。翌年の行は明示の設定のまま残る(後片付けしない。他のE2Eと組み合わせ決定に影響しないことをレビューで確認、READMEに記載)。
 - 8.6(2026-11-18): `bun run check`・全アプリの単体・Workers統合(api 467ファイル6835件・event 106/1292)・ブラウザ(clientは単独の再実行で208ファイル2986件)のテストがカバレッジ付きで成功。本specの変更ファイル(`c2b198d5..HEAD`、名前を変えた10件を含め200件)のうち計測の対象171件がすべて80%以上(最低は`tournament-board-fixtures.ts`の関数83.3%、テストの値以外では`board-resolvers.ts`のWorkers 86.7%)。対象外は型だけの`ports.ts`・`codegen.config.ts`・合成の登録・経路・テストとE2Eの補助。足したテスト: `year-bracket-reader.unit.test.ts`、`scheduled-trigger.unit.test.ts`(e2eの`addBusinessDays`とbackend-libの一致)、フィクスチャのファイルの単体テスト、`TournamentBracketPage`・`site-links`・`week-entry-messages`のテストの拡張、`BOARD_FIXTURE_ACCESS`等をフィクスチャからテストへ移した。本spec外の不安定なテスト(client `member-inquiry-form`(Browser connection was closed)・`comment-thread.mutations`(タイムアウト)、admin `legal-draft-form`)は単独の再実行で成功(スワップが満杯でメモリの逼迫が原因と推測)。
 - 機能全体の検証(2026-11-18、1回目はNO-GO)の修正: `YearFinalDateSave`に`previousYearVersion`・`nextYearVersion`(行が無い年は0)を足し、サービスは64週の検証の文脈と同じ`describe`の結果から渡す。`D1YearFinalDateWriter`の`stillChangeable`(監査ログのガードとUPDATEのWHEREで共有)に`COALESCE((SELECT final_date_version FROM year_tournaments WHERE year = 年±1), 0) = 読んだ版`の2条件を足した。隣の年の版が読んだ後に変われば`version_conflict`(凍結・変更期限なら`locked`を優先)。版0の行が作られただけなら保存できる。`backend/019`と`project-values.md`の記述も改めた。
+- 2026-11-24(launch-readinessのF-17): Yearのブラケットの輪郭はWeekと共用の部品の修正で直った

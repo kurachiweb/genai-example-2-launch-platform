@@ -6,6 +6,8 @@ import { runAxe } from '../../../lib/test/a11y.ts';
 import {
   applyColorScheme,
   COLOR_SCHEMES,
+  outlineOf,
+  ringOutline,
 } from '../../../lib/test/computed-style.ts';
 import { hasHorizontalScroll } from '../../../lib/test/overflow.ts';
 import {
@@ -241,6 +243,19 @@ describe('TournamentBracketPage の画面幅による切り替え', () => {
         scrollRegion().getByRole('link', { name: 'Bracket Product 3' }).first(),
       )
       .toHaveFocus();
+  });
+
+  test('キーボードで移った横スクロールの領域のフォーカスを、リングの色の輪郭で示す', async () => {
+    await renderPage(AWARDED_TOURNAMENT_BRACKET);
+    await expect.element(scrollRegion()).toBeVisible();
+
+    await userEvent.tab();
+    await userEvent.tab();
+
+    await expect.element(scrollRegion()).toHaveFocus();
+    await expect
+      .poll(() => outlineOf(scrollRegion().element()))
+      .toStrictEqual(ringOutline());
   });
 });
 

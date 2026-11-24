@@ -40,7 +40,7 @@ export function BracketRoundTabs({ rounds, className }: BracketRoundTabsProps) {
         <TabsContent
           key={round.round}
           value={valueOf(round.round)}
-          className="mt-4 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          className="mt-4 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <BracketRoundColumn round={round} />
         </TabsContent>

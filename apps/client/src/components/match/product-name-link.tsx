@@ -19,7 +19,7 @@ export function ProductNameLink({
   return (
     <PathLink
       href={productDetailHref(handle)}
-      className="rounded-sm text-inherit no-underline hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      className="rounded-sm text-inherit no-underline hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
     >
       {name}
     </PathLink>

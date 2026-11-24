@@ -55,7 +55,7 @@ export function UpvoteButton({
       aria-busy={pending ? true : undefined}
       onClick={handleClick}
       className={cn(
-        'group flex size-16 shrink-0 flex-col items-center justify-center rounded-xl border-2 transition-[background-color,border-color,transform,box-shadow] focus-visible:ring-3 focus-visible:ring-ring/60 focus-visible:outline-none',
+        'group flex size-16 shrink-0 flex-col items-center justify-center rounded-xl border-2 transition-[background-color,border-color,transform,box-shadow] focus-visible:ring-3 focus-visible:ring-ring/60',
         pressed
           ? 'border-primary bg-primary text-primary-foreground shadow-md shadow-primary/30'
           : 'border-primary/60 bg-card text-primary',

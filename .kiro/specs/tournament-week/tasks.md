@@ -426,6 +426,13 @@
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
   - _Requirements: 15.1_
 
+- [x] 9. launch-readinessの検証の指摘の修正
+
+- [x] 9.1 ブラケットの横スクロールの領域とラウンドのタブの内容のパネルのフォーカスの輪郭を直す(launch-readinessのF-17)
+  - `tournament-bracket-page.tsx`の横スクロールの`section`(`tabIndex=0`)と`bracket-round-tabs.tsx`の`TabsContent`から`focus-visible:outline-none`を外し、基底の輪郭とリングを重ねる。輪郭は`overflow`の枠と画面の端で切れないため、負の`outline-offset`の例外は使わない
+  - `tournament-bracket-page.browser.test.tsx`・`bracket-round-tabs.browser.test.tsx`で、Tabで移った領域とパネルの輪郭が`ringOutline()`と一致することを確かめる
+  - _Requirements: 9.5_
+
 ## Implementation Notes
 
 - 開発者への依頼(1.1): devとstagingが共用するStripeのsandboxに、`lookup_key`が`week_tournament_entry`の価格(参考$5、税込)を1回作成する(8.4のE2Eの前提。prodはlaunch-readiness)。
@@ -491,3 +498,4 @@
 - 全体検証(kiro-validate-impl、2026-11-17): Ultrasの免除の期間(勝利の確定から`min(now, 決済期限)`まで、空なら特典の判定を問い合わせない)が登録・決済の開始・組み合わせ決定・導線の照会の4か所に重複していたため、`core/week-tournament/week-entry-rules.ts`の`ultrasExemptionPeriodOf`にまとめた(振る舞いは不変)。夜の送り出しの前提の名前は`EVENING_BRACKET_PARTICIPANT`を読み込む形に、`WEEK_REFUND_REASONS`はcoreの規則の一覧を唯一の出どころにした。1.2の「`core/time`の`businessWeekOf`は本体から使われなくなった」は誤りで、`core/week-tournament/week-schedule.ts`が週の初日の判定に使う(`common-lib`の`weekStartOf`と二重、未統合)。8.4はStripeの価格が無いため保留のまま。
 - 実装後の追加修正(2026-11-17、開発者の決定): (1)受付中でもプロダクトを表示できない間は、参加費の導線のボタンと参加費を出したまま無効にし、決済の開始の拒否と同じ理由をGraphQLの`WeekEntryPanel.checkoutBlock`(`code`・`message`、文言は`WEEK_ENTRY_OFFER_REJECTION_MESSAGES`)で示す(要件10.11)。(2)トップページの決勝の区画の見出しにも共用の`WeekBracketLink`で「ブラケットを見る」を置く(要件8.5)。(3)ブラケットの進行の計画`bracket-progress-plan.ts`は`core/tournament/`へ移した(3.3の記録の`workers/tournament/`は旧パス)。(4)要件7.6の専用テスト`week-draw-service.listing.worker.test.ts`(期限切れ・喪失・補完の枠で、予選の勝利の記録・ディレクトリの掲載・既に授与した賞が変わらない)。(5)api・eventのapplication・domain層とcoreで`@sentry/*`の読み込みを静的解析で禁じた(coreは型だけ許す)。requirements.md 10.2は秒読みを自動更新がオンのプロダクト詳細だけに直し、design.mdを実装に合わせた。
 - 8.4(2026-11-17、開発者が価格`week_tournament_entry`を作成し税込に設定した後に完了。以前の「保留」の記述は解消): `e2e/client/week-tournament.e2e.test.ts`の「Weekトーナメントの参加費・組み合わせ・受賞」と手順`e2e/client/week-tournament-steps.ts`。利用者を画面で登録し、プロフィールの編集画面の初期ハンドルを(a)へ渡す。決済は既存の`checkout-steps.ts`を再利用し、参加費のボタンはハイドレーションの完了の手掛かりが無いため元の名前のボタンが見えている間だけ押し直す。決勝の区画は2つのプロダクトの対戦カードを持つものに絞り、その「ブラケットを見る」からブラケットのページへ移る。ローカルでは組み合わせ決定の予定のイベントの処理中に確定のイベントが重なるとD1の`SQLITE_BUSY`で失敗し、ローカルのQueueの再試行が約5分後まで届かないため、(d)`endWeekFinal`の最初で決勝のマッチの未処理のイベントが無くなるのを待つ(`finalPendingEventCountSql`)。修正後にファイル全体を3回続けて成功。実行のたびにsandboxに決済が1つ残る。
+- 2026-11-24(launch-readinessのF-17): ブラケットの横スクロールの領域とラウンドのタブのパネルは基底の輪郭とリングを重ねる。Yearのブラケットも同じ共用の部品で直る

@@ -4,7 +4,12 @@ import { page, userEvent } from 'vitest/browser';
 
 import '../src/styles.css';
 import { runAxe } from '../lib/test/a11y.ts';
-import { applyColorScheme, COLOR_SCHEMES } from '../lib/test/computed-style.ts';
+import {
+  applyColorScheme,
+  COLOR_SCHEMES,
+  outlineOf,
+  ringOutline,
+} from '../lib/test/computed-style.ts';
 import { emulateBrowserDisplay } from '../lib/test/display-emulation.ts';
 import type { DisplayPreferences } from '../lib/utilities/datetime/display-preferences.ts';
 import { GraphQLClientError } from '../lib/utilities/graphql/graphql-result.ts';
@@ -597,6 +602,22 @@ describe('フォロー一覧の経路', () => {
     await userEvent.click(loadMoreButton());
 
     await expect.poll(() => entries().elements()).toHaveLength(2);
+  });
+
+  test('キーボードで移ったタブの内容のパネルのフォーカスを、リングの色の輪郭で示す', async () => {
+    respondWith([]);
+    await renderFollows();
+    await expect
+      .element(panel().getByText('まだフォローしているユーザーはいません。'))
+      .toBeVisible();
+
+    followingTab().element().focus();
+    await userEvent.tab();
+
+    await expect.element(panel()).toHaveFocus();
+    await expect
+      .poll(() => outlineOf(panel().element()))
+      .toStrictEqual(ringOutline());
   });
 
   test('フォロー一覧のページのタイトルは「フォロー」で、検索エンジンに登録させない', () => {
