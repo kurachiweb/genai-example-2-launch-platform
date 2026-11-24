@@ -13,7 +13,8 @@ export interface FollowListItemProps {
   readonly direction: FollowListDirection;
 }
 
-// 続きを読み込んだ後に、加えた最初の項目へフォーカスを移せるよう、プログラムからだけフォーカスできるようにする。リンクの名前にニックネームが重ねて入らないよう、プロフィール画像は支援技術から隠す
+// 続きを読み込んだ後に、加えた最初の項目へフォーカスを移せるよう、プログラムからだけフォーカスできるようにする。リンクの名前にニックネームが重ねて入らないよう、プロフィール画像は支援技術から隠す。
+// 狭い画面や文字の拡大で名前が読めなくなるほど縮めないよう、名前に最小の幅を取れないときはフォローした日時を名前の下の行へ移す
 export function FollowListItem({ entry, direction }: FollowListItemProps) {
   return (
     <li tabIndex={-1} className="rounded-xl">
@@ -25,17 +26,19 @@ export function FollowListItem({ entry, direction }: FollowListItemProps) {
         <span aria-hidden="true" className="shrink-0">
           <UserAvatar user={entry} size={32} />
         </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate font-bold">{entry.nickname}</span>
-          <span className="truncate text-sm text-muted-foreground">
-            @{entry.handle}
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="flex min-w-0 flex-1 basis-40 flex-col">
+            <span className="truncate font-bold">{entry.nickname}</span>
+            <span className="truncate text-sm text-muted-foreground">
+              @{entry.handle}
+            </span>
           </span>
-        </span>
-        <span className="shrink-0 text-xs text-muted-foreground">
-          <span className="sr-only">
-            {FOLLOW_LIST_FOLLOWED_AT_LABELS[direction]}
-          </span>{' '}
-          <DateTime value={entry.followedAt} format="longDateTime" />
+          <span className="min-w-0 text-xs text-muted-foreground">
+            <span className="sr-only">
+              {FOLLOW_LIST_FOLLOWED_AT_LABELS[direction]}
+            </span>{' '}
+            <DateTime value={entry.followedAt} format="longDateTime" />
+          </span>
         </span>
       </Link>
     </li>

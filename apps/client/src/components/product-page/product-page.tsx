@@ -227,7 +227,7 @@ export function ProductPage({ sections, page, viewer }: ProductPageProps) {
         <aside
           aria-label={PRODUCT_PAGE_ASIDE_LABEL}
           data-product-page-aside=""
-          className="lg:col-start-2 lg:row-span-2 lg:row-start-1"
+          className="min-w-0 lg:col-start-2 lg:row-span-2 lg:row-start-1"
         >
           <div className="flex flex-col gap-4 lg:sticky lg:top-20">
             {slotsOf('aside')}

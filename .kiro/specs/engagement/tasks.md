@@ -281,6 +281,13 @@
   - 完了状態: すべての検査とテストが成功し、カバレッジの結果が閾値を満たし、報告に帯の値と照会の利用者が載っている
   - _Requirements: 14.5, 14.6, 15.1, 15.2_
 
+- [x] 10. launch-readinessの検証の指摘の修正
+
+- [x] 10.1 星の評価の入力と平均値の行を狭い幅で折り返す(launch-readinessのF-14、WCAG 1.4.10・1.4.4)
+  - 星の入力(`StarRatingInput`)を`flex-wrap`にして幅に5つが収まらないときは折り返し、評価欄の平均値の行(`RatingSummary`)も`flex-wrap`にして星の表示と評価数を数字の下へ移す
+  - `star-rating-input.browser.test.tsx`の折り返しと1行の2件、`rating-section.browser.test.tsx`の「幅320pxの画面で文字を1.5倍にしたとき」の2件、E2Eの`responsive-layout`の`/p/$handle`で確かめる。`frontend/015`と`service/design/002`に狭い幅の規則を書く
+  - _Requirements: 11.3, 11.5, 11.13_
+
 ## Implementation Notes
 
 - 1.1: 規則は`apps/common-lib/engagement/engagement-rules.ts`。本文は`markdownTextSchema(COMMENT_BODY_RULE)`(名前「コメント」)、評価の文言「評価は1〜5で選んでください。」は非公開の定数で`ratingScoreSchema`の文言として読む(clientのフォームで要るなら`ratingScoreSchema`を使う)。`commentIdScope(id)`は`c`+小文字のIDで入力のULIDを検証しない(7.xの呼び出し側は26文字のULIDを渡す。不正なら`idPrefixFor`が例外を投げる)。
@@ -328,3 +335,4 @@
 - 最終報告の後の追加の修正(2026-11-16、開発者の指示): (1)`COMMENT_ACTIONS`(`CommentAction`)と`PUBLIC_PROFILE_MENU_ITEMS`(`PublicProfileMenuItem`)の登録を、メニューの中に描く`Item`(`onSelect`)とメニューの外に描く`Dialog`(`open`・`onOpenChange`・`returnFocusRef`)に分け、メニュー側が開いている登録の`id`を持ち「削除」と同じ手順でフォーカスを受け渡す(content-reportingは`CommentReportDialog`・`UserReportDialog`を作る。同specの設計を直した)。(2)コメントのアバター・置き換え表示の印・スケルトンの丸を32pxにし、返信の罫線を`ml-[0.9375rem]`にした(モックアップも同じ値に直した)。(3)投稿欄のプレビューの`idScope`を`commentComposerIdScope(mode, targetId)`(`p`+ローンチ・`r`+返信先・`e`+編集するコメントのIDの小文字)で欄ごとに分けた(プロダクトの説明・自己紹介・adminの欄は1ページに1つのため`preview`のまま)。(4)採番したIDとカーソルの検証を、本specを含む全ての所で`core/ids/uppercase-ulid.ts`の`UPPERCASE_ULID_PATTERN`・`isUppercaseUlid`・`UPPERCASE_ULID_SOURCE`に揃え(GraphQLの引数は`z.ulid({ error, abort: true }).regex(UPPERCASE_ULID_PATTERN, error)`)、テストの固定のIDの接頭辞を正しいCrockford Base32に直した(例: `01JD0PROD`→`01JD0PR0D`)。(5)13.3・13.4の読み取り側と書き込みの拒否を`modules/engagement/engagement-visibility.worker.test.ts`で実際のD1で確かめた。(6)管理画面のコメントの状態は匿名化済みを削除より先に判定する(非公開化>匿名化済み>削除>投稿者が利用できない>表示中)。(7)期限超過の報告の文言をコードの判定に合わせ「期限までに匿名化できないおそれ」に、コメントの開閉の矢印をサポーターと同じ`transition-transform`に直し、他の相違点は文書を実装に合わせた(取消のローンチは`comment_target_not_found`、カーソルの形式、ログとSentry、`useViewer()`、ファイル構成、frontend/004〜008からfrontend/015の例外への参照、CLAUDE.mdの参照先、data-exportの研究メモのパス)。
 - 最終検証(2026-11-16、2回目): `kiro-validate-impl`はGO。追加の修正の後に、一括の検査(成功25件・失敗0件)、単体・ブラウザ・Workers統合テストの全体(`test:all:unit`・`test:all:browser`・`test:all:worker`)、本specのE2E(`--repeat-each 3`で6件)が成功し、実際のサーバーの起動も確かめた。E2Eの全体(client・admin)は81件中80件が成功し、残る1件(identity-authの`login-and-sessions.e2e.test.ts`の端末の管理)は並列実行の負荷によるローカルのworkerdの`Network connection lost.`で、単独では3回とも成功した。所見のうち、`coding/005`の「テストで固定するIDの値も大文字のULIDにする」を「この規則の検証を通す値」に絞り(検証を通らない単体テストの偽物などの値は対象外)、設計のファイル構成の注記に新しい登録のpropsの型を足した。
 - 最終検証の後の文書の整合(2026-11-16、開発者の指示): `frontend/015`の数を含む名前の表に、見える数と単位の前に語を補う「隠した前置き」の形(前例`win-summary.tsx`)を加えた。`coding/005`の採番したIDの検証の節を、形式を確かめる時の規則とし、存在の照合にだけ使う引数のIDは長さだけを確かめてよいこと(help・product・inquiry・payments・identity・profile・adminの入力の前例)と、正規表現が先頭の文字の範囲(0〜7)を確かめないこと(`z.ulid()`は確かめる)を明記した。directory-discoveryの設計の`DirectoryItemMetricSource`の注記(0も示す値なら0も返す)と`matchSupporters`のIDの検証(match-engineと同じスキーマ)を実装に合わせた。
+- 2026-11-24(launch-readinessのF-14): 320px幅で文字1.5倍のとき星の入力5つ(252px)が折り返せず列を押し広げていた。評価ありの状態はE2Eのデータに無いため、ブラウザテストで再現して直した

@@ -55,6 +55,8 @@ const NARROW = { width: 800, height: 900 } as const;
 
 const LAPTOP = { width: 1100, height: 900 } as const;
 
+const NARROWEST = { width: 320, height: 900 } as const;
+
 const UNEXPECTED_MESSAGE =
   'ページを表示できませんでした。時間をおいて再度お試しください。解決しない場合はお問い合わせください。';
 
@@ -65,6 +67,11 @@ const AWAITING = productLiveMatchOf({ awaitingChange: true, match: null });
 
 function NothingSection(): null {
   return null;
+}
+
+// 縮まない内容で、サイドバーの区画の最小の幅を列より広げる
+function WideSection() {
+  return <p className="w-[40rem]">サイドバーの広い区画</p>;
 }
 
 function ThrowingSection(): never {
@@ -194,6 +201,24 @@ describe('ProductPageの配置', () => {
     expect(aside.bottom).toBeLessThan(
       rectOf(sectionElement(textOf('test.main-10'))).top,
     );
+  });
+
+  test('1024px未満は、サイドバーの区画の内容が列より広くても、ヘッダーと本文の区画を画面の幅に収める', async () => {
+    await page.viewport(NARROWEST.width, NARROWEST.height);
+    await renderProductPage({
+      sections: [
+        registered('test.aside-wide', 'aside', 10, WideSection),
+        registered('test.main', 'main', 10),
+      ],
+    });
+    await expect.element(page.getByText(textOf('test.main'))).toBeVisible();
+
+    expect(rectOf(productHeader().element()).right).toBeLessThanOrEqual(
+      window.innerWidth,
+    );
+    expect(
+      rectOf(sectionElement(textOf('test.main'))).right,
+    ).toBeLessThanOrEqual(window.innerWidth);
   });
 
   test('ページ上部の区画を全幅で先頭に置き、本文はパンくず・未掲載の案内・ヘッダー・開催中のマッチ・本文の区画・ページ末尾の区画の順に、置き場所ごとにorderの順で並べる', async () => {
