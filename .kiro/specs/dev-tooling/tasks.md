@@ -333,6 +333,13 @@
   - _Depends: 5.3_
   - _Requirements: 6.13_
 
+- [x] 12. launch-readinessの検証の指摘の修正
+
+- [x] 12.1 `.betterleaksignore`の`bun.lock`のFingerprintを現在の検出の行へ直す(launch-readinessのF-3)
+  - api・client・adminの`bun.lock`の`@inquirer/password`の誤検知(`generic-password`)の3行を、現在の行(api 394・client 479・admin 478)へ直す
+  - `betterleaks dir --redact`で`bun.lock`の誤検知が出ないことと、作業ツリーの全体の走査で`bun.lock`の検出が0件であることを確かめる
+  - _Requirements: 3.4_
+
 ## Implementation Notes
 
 - 1.1: ルートは`@playwright/test`だけを直接宣言し、`playwright`・`playwright-core`は`@playwright/test`の完全固定により1.63.0へ推移的に決まる。主要パッケージ一覧の文書化(7.1・7.3)ではこの点を明記する。
@@ -413,3 +420,4 @@
 - 8.1後の機能検証(開発者判断済み): ルートの`tsconfig.json`を`include: ["**/*.ts"]`と、アプリ・品質ゲートの対象外・外部由来の`exclude`に変えた。TypeScriptの`**`はドットで始まるディレクトリに一致しない(実測)ため、`.github/`配下などにルート所有のTSを置く場合は`include`に明示する(infra-deliveryへの申し送り)。`tsconfig.unit.test.ts`が、`exclude`と単一定義の一致と、リポジトリにあるルート所有のTSがすべて型検査の対象に入っていることを確かめる。
 - 8.1後の機能検証: 書き写した値の一致テストを加えた(`bunfig.toml`の`coverageThreshold`・`coverageReporter`、`.gitignore`の共有ディレクトリの配置先、E2Eの既定URLのポート)。E2Eのポートは、compose.yamlの`ports`の行末コメント(利用者側フロントエンド・管理者側フロントエンド)で対象を識別するため、コメントの文言を変える場合は`e2e/support/targets.unit.test.ts`の`COMPOSE_PORT_LABELS`も直す。design.mdは、AppScriptContract(Bunの除外の書き写し)、VitestPresets(`CHROMIUM_PATH`の空文字)、構成図とComponentsの依存、Testing Strategyを実装に合わせた。
 - 承認後の改訂4の取り消し: 追加タスク12・12.1(両方のE2Eのコマンドの後のシークレットのファイルの削除)と要件6.14を取り消した。frontend-platformの13.1で、画面を持つアプリのビルドがシークレットのファイルを出力に含めず(共通部品の`excludeLocalSecretsFile()`)、ビルド後のプレビューが注入した値を`process.env`から受け取る形にしたため、両方のE2Eのコマンドに削除の段階は要らない。
+- 2026-11-24(launch-readinessのF-3): `.betterleaksignore`の`bun.lock`の行番号は、`bun.lock`を更新すると再びずれる。更新の時に登録し直すか、`.betterleaks.toml`の許可リストで`"@inquirer/password":`の行だけを除く形へ移すことを検討する

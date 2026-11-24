@@ -228,7 +228,7 @@ export class FlushSlotHandler implements MessageHandler<FlushNotificationSlotBod
       now,
       FLUSH_SLOT_DISPATCH_LIMIT,
     );
-    const counts = { emails: step.emails, skipped: step.skipped };
+    const counts = { sent: step.emails, skipped: step.skipped };
     if (step.more) {
       if (slot.phase === 'done') {
         await this.slots.advance(

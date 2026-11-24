@@ -351,6 +351,13 @@
   - _Depends: 11.2_
   - _Requirements: 16.4, 16.5_
 
+- [x] 13. launch-readinessの検証の指摘の修正
+
+- [x] 13.1 購入確認・自動返金の通知の依頼のログのメール種別が伏せ字に当たる不具合を直す(launch-readinessの相違の解消)
+  - `purchase-notifier.ts`のwarningのログの属性`emailKind`を、notificationsと同じ`mailKind`に変える。伏せ字の規則の部分一致`email`で`[REDACTED]`になり、メール種別が読めなかった
+  - `purchase-notifier.worker.test.ts`で、本物のロガーの設定で`mailKind`が読めることを確かめる。`project-values.md`の属性名を合わせる
+  - _Requirements: 11.3, 15.8_
+
 ## Implementation Notes
 
 - 1.1: 2026-11-06の開発者の判断で、StripeのキーをWranglerのルートの`secrets.required`にも加えた(apiは`STRIPE_API_KEY`、eventは`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`。`wrangler dev`は`secrets.required`のキーだけを`env`へ渡す)。Infisicalの`dev`へ登録すればローカルのapi・eventへ渡り、未登録ならWranglerの警告だけで起動し、環境の検証は任意のまま決済の機能だけが縮退する。`wrangler types`がキーを必須の型にするため、eventの`EventEnv`はStripeのキーを任意の型に戻している。`dev`の値は検査のE2E(CI)のWorkerにも渡るため、登録はclientのローカルの`STRIPE_PUBLISHABLE_KEY`の置き換えと合わせる
@@ -392,3 +399,4 @@
 - 11.3: 6つの場面(重複・順序・署名・期限切れ・二重決済(同時を含む)・返金の再試行と恒久的な失敗)のテストを確かめた。`test:all:unit`・`test:all:worker`・`test:all:browser`の`--coverage`が全て閾値を通る(本specのファイルで最も低いのは`purchase-reconciliation.ts`の行86.67%)
 - 12.2: 縮退の文言は`common-lib/payments/payments-unavailable-texts.ts`の`PAYMENTS_UNAVAILABLE_REASON`(画面の理由)と`PAYMENTS_UNAVAILABLE_MESSAGE`(APIの文言)。決済実装方針は`docs/GUIDES/service/features/004-payments.md`(返金ポリシーとの食い違いの申し送りを含む)
 - content-reportingの後の改善(2026-11-22、開発者の依頼): 保持期間の境界(UTCの暦で年数を引いた同じ時刻、2月29日は月末へ寄せる)の計算を共通の`apps/backend-lib/core/time/utc-calendar.ts`の`utcYearsBefore`へ移した。`paymentHistoryRetentionCutoff`はそれを呼ぶだけになり、振る舞いは変わらない
+- 2026-11-24(launch-readinessの相違の解消): `purchase-notifier`のwarningのログのメール種別の属性は`mailKind`(`emailKind`は伏せ字の部分一致`email`に当たる)

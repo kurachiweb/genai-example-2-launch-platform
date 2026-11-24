@@ -125,7 +125,7 @@ export class EmailPurchaseNotifier implements PurchaseNotifier {
     if (built.kind === 'incomplete') {
       this.logger.warn('メールの入力を組み立てられず、対象外にしました', {
         ...notice.target,
-        emailKind: notice.kind.name,
+        mailKind: notice.kind.name,
         reason: built.reason,
       });
       return (await notice.mark('skipped')) ? 'skipped' : 'not_pending';
@@ -140,7 +140,7 @@ export class EmailPurchaseNotifier implements PurchaseNotifier {
       // 依頼待ちの行は日次の確認が依頼し直す
       this.logger.warn('メールの送信を依頼できず、依頼待ちのまま残しました', {
         ...notice.target,
-        emailKind: notice.kind.name,
+        mailKind: notice.kind.name,
         error,
       });
       return 'failed';

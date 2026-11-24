@@ -111,7 +111,7 @@ const CLIENT_ROUTES: readonly RouteEntry[] = [
   client(
     '/legal/',
     ['empty', 'with-data'],
-    '公開の版が無ければ準備中の表示(empty)。with-dataは管理者の画面で法務文書を公開した状態で、`signInAsNewAdmin`のモデレーターが行う',
+    '公開の版が無ければ準備中の表示(empty)。with-dataは管理者の画面で法務文書を公開した状態で、公開できるのは最上位管理者だけのため`signInAsNewAdmin`の最上位管理者が行う',
   ),
   client(
     '/p/',
@@ -203,7 +203,7 @@ const CLIENT_ROUTES: readonly RouteEntry[] = [
   client(
     '/legal/revisions/$versionNumber',
     ['with-data', 'error'],
-    '管理者が公開した法務文書の版番号1を代表の値にする(`signInAsNewAdmin`のモデレーターが公開する)。errorは存在しない版番号を開く',
+    '管理者が公開した法務文書の版番号1を代表の値にする(`signInAsNewAdmin`の最上位管理者が公開する)。errorは存在しない版番号を開く',
   ),
   client(
     '/privacy/revisions/$versionNumber',
@@ -340,7 +340,7 @@ const ADMIN_ROUTES: readonly RouteEntry[] = [
   admin(
     '/settings/',
     ROLE_STATES,
-    `${ADMIN_SIGN_IN}。送信者情報と訴求の設定はモデレーター以上だけが編集できる(\`openSenderInfoSettings\`)`,
+    `${ADMIN_SIGN_IN}。送信者情報と訴求の設定は最上位管理者だけが編集でき、閲覧のみ・モデレーターには読み取りの表示になる(\`openSenderInfoSettings\`)`,
   ),
   admin(
     '/sponsorships/',
@@ -356,12 +356,12 @@ const ADMIN_ROUTES: readonly RouteEntry[] = [
   admin(
     '/legal-documents/$kind/',
     ['with-data', ...ROLE_STATES],
-    '種別(legal-notice・privacy・terms)の1つを代表の値にする。下書きの編集はモデレーター以上',
+    '種別(legal-notice・privacy・terms)の1つを代表の値にする。下書きの編集と公開は最上位管理者だけで、閲覧のみ・モデレーターには読み取りの表示になる',
   ),
   admin(
     '/legal-documents/$kind/revisions/$versionNumber',
     ['with-data'],
-    '種別の代表の値で公開した版番号1を代表の値にする(`signInAsNewAdmin`のモデレーターが公開する)',
+    '種別の代表の値で公開した版番号1を代表の値にする(`signInAsNewAdmin`の最上位管理者が公開する)',
   ),
 ];
 

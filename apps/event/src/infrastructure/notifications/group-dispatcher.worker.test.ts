@@ -9,6 +9,7 @@ import {
   NOTIFICATION_MATCH_RESULT_KIND,
 } from '../../../lib/core/email/kinds/notifications.ts';
 import { EmailSendError } from '../../../lib/core/email/ports.ts';
+import { REDACTED_FIELD_PATTERNS } from '../../../lib/core/logging/redaction.ts';
 import { awardPeriodLabel } from '../../../lib/core/notifications/notice-copy.ts';
 import {
   awardSlot,
@@ -695,6 +696,35 @@ describe('EmailGroupDispatcher.dispatchNext(送信の失敗)', () => {
       ]) {
         expect(written).not.toContain(secret);
       }
+    } finally {
+      logs.stop();
+    }
+  });
+
+  test('段の要約のログは伏せ字に当たらない名前で、まとめ・送ったメール・送らない扱いの件数を持つ', async () => {
+    const logs = captureLogs();
+    try {
+      const harness = createDispatcherHarness();
+      await seedEveningMatches();
+      await recordEvening(harness);
+
+      await harness.dispatcher.dispatchNext(EVENING.key, EVENING_NOW, LIMIT);
+
+      const summaries = logs.records
+        .filter(
+          ({ category }) =>
+            category.join('.') === 'event.notifications.dispatch',
+        )
+        .map(({ properties }) => properties);
+      expect(summaries).toStrictEqual([
+        { slot: EVENING.key, groups: 3, sent: 3, skipped: 0 },
+      ]);
+      const redactedNames = Object.keys(summaries[0] ?? {}).filter((name) =>
+        REDACTED_FIELD_PATTERNS.some((pattern) =>
+          typeof pattern === 'string' ? pattern === name : pattern.test(name),
+        ),
+      );
+      expect(redactedNames).toStrictEqual([]);
     } finally {
       logs.stop();
     }
