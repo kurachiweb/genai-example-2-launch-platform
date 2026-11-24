@@ -122,6 +122,22 @@ function isMarkedLastTabbableFocused(): boolean {
   return document.activeElement === host.__keyboardLast;
 }
 
+// Radix UIは、開いたダイアログの層が最上位になった後の描画でEscapeの受け付けを付け替える。フォーカスが中へ移ってから数ミリ秒の間は、Tabで通り過ぎたツールチップのように閉じる途中の層がEscapeを受け取って捨てる。人は開いたダイアログが見えてから押すため、ダイアログの開く動きと、閉じる途中の層の動きが終わってから押す
+function hasSettledLayerAnimations(dialog: Element): boolean {
+  return document.getAnimations().every((animation) => {
+    const target =
+      animation.effect instanceof KeyframeEffect
+        ? animation.effect.target
+        : null;
+    if (target === null) {
+      return true;
+    }
+    const settling =
+      target === dialog || target.getAttribute('data-state') === 'closed';
+    return !settling || animation.playState !== 'running';
+  });
+}
+
 export async function isHydrated(target: Locator): Promise<boolean> {
   return target.evaluate(carriesReactProps);
 }
@@ -354,6 +370,11 @@ export class KeyboardOperator {
     opener: Locator,
   ): Promise<void> {
     await this.expectFocusInside(dialog, name);
+    await expect
+      .poll(() => dialog.evaluate(hasSettledLayerAnimations), {
+        message: `${name}の開く動きと、閉じる途中の他の層の動きが終わる`,
+      })
+      .toBe(true);
     await this.#page.keyboard.press('Escape');
     await expect(dialog, `${name}が1回のEscapeで閉じる`).toHaveCount(0);
     await expect(opener, `${name}を閉じた後のフォーカス`).toBeFocused();
