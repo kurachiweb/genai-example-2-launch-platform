@@ -404,12 +404,12 @@ const config: Linter.Config[] = [
 
 単体テストでは、テストファイルの選択とカバレッジの分母の両方から配置先を外す。Bun 1.4.4では、コマンドラインの`--path-ignore-patterns`はテストファイルの選択にだけ効き、配置先のテストを実行しなくても、アプリのテストが読み込んだ配置先のファイルはカバレッジの分母に入る。分母から外す手段は設定ファイルの`coveragePathIgnorePatterns`だけであり、コマンドラインの指定は無い。
 
-1. アプリのディレクトリに単体テスト専用の設定ファイル`bunfig.unit.toml`を置く。ルートの`bunfig.toml`の内容をすべて書き写し、`coveragePathIgnorePatterns`にだけ配置先を加える。
+1. アプリのディレクトリに単体テスト専用の設定ファイル`bunfig.unit.toml`を置く。ルートの`bunfig.toml`の内容をすべて書き写し、`coveragePathIgnorePatterns`にだけ配置先を加える。ただし`coveragePathIgnorePatterns`のうち、ルートの実行でだけ意味を持つアプリのディレクトリの除外(`apps/**`)は書き写さない(「[分母からの除外](../testing/001-test-strategy.md#分母からの除外)」)。
 2. `test:unit`の`--config`でこのファイルを指定し、`--path-ignore-patterns`に配置先を加える。`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず置き換えるため、`pathIgnorePatterns`(他の種別のテストの除外)もすべて書き写す。
 
 ```toml
 [test]
-# ルートのbunfig.tomlのcoveragePathIgnorePatterns以外の項目をそのまま書き写す
+# ルートのbunfig.tomlのcoveragePathIgnorePatterns以外の項目をそのまま書き写す。coveragePathIgnorePatternsはapps/**を除いて書き写し、配置先を加える
 coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**", "<共有ディレクトリの配置先>/**"]
 ```
 
@@ -423,7 +423,7 @@ coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**", "<共有ディ�
 
 - 名前を`bunfig.toml`にしないのは、Bunが実行したディレクトリの`bunfig.toml`を`bun install`・`bun run`などでも自動で読むためである。`--config`で指定したときだけ読まれる名前にする。
 - 設定ファイルの`coverageDir`と`coveragePathIgnorePatterns`の相対パスは、設定ファイルの位置ではなく、テストを実行したディレクトリ(アプリのディレクトリ)を基準に解決される。
-- 書き写した内容がルートの`bunfig.toml`と(`coveragePathIgnorePatterns`に加えた配置先を除いて)一致し、`test:unit`が配置先をテストファイルの選択から外すことを、ルートの単体テストで確かめる。ルートの`bunfig.toml`を変えたときは、各アプリの`bunfig.unit.toml`も同じく変える。
+- 書き写した内容がルートの`bunfig.toml`と(`coveragePathIgnorePatterns`に加えた配置先と、書き写さない`apps/**`を除いて)一致し、`test:unit`が配置先をテストファイルの選択から外すことを、ルートの単体テストで確かめる。ルートの`bunfig.toml`を変えたときは、各アプリの`bunfig.unit.toml`も同じく変える。
 
 Vitestでは、既定の除外を失わないよう`configDefaults.exclude`を展開してから配置先を加える。次の例は除外の指定だけを示し、プリセットの取り込みなど他の設定を省いている。
 

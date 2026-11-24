@@ -10,6 +10,7 @@ import tseslint from 'typescript-eslint';
 
 import {
   GENERATED_CODE_PATTERNS,
+  ROOT_UNIT_COVERAGE_IGNORE_PATTERNS,
   TEST_FILE_PATTERNS,
 } from '../../config/test-patterns.ts';
 import {
@@ -593,11 +594,14 @@ describe('書き写した除外パターンと単一定義の一致', () => {
       expect(excludingUnitTests).toEqual([]);
     });
 
-    test('カバレッジ除外パターンが自動生成コードのパターンと一致する', async () => {
+    test('カバレッジ除外パターンが、自動生成コードのパターンとルートの実行だけで外すパターンに一致する', async () => {
       const { coveragePathIgnorePatterns } = await readBunTestConfig();
 
       expect(coveragePathIgnorePatterns.toSorted()).toEqual(
-        GENERATED_CODE_PATTERNS.toSorted(),
+        [
+          ...GENERATED_CODE_PATTERNS,
+          ...ROOT_UNIT_COVERAGE_IGNORE_PATTERNS,
+        ].toSorted(),
       );
     });
   });
@@ -652,7 +656,7 @@ describe('書き写した除外パターンと単一定義の一致', () => {
   });
 
   describe('検査担当でない利用側アプリの単体テスト', () => {
-    test('ルートのbunfig.tomlをカバレッジの除外だけ変えて書き写した設定を指定し、共有ディレクトリの配置先をカバレッジの分母から外す', async () => {
+    test('ルートのbunfig.tomlを、カバレッジの除外のうちルートの実行だけで外すパターンを共有ディレクトリの配置先に替えて書き写した設定を指定し、配置先をカバレッジの分母から外す', async () => {
       const {
         test: { coveragePathIgnorePatterns: rootCoverageIgnores, ...rootTest },
         ...rootRest
@@ -682,7 +686,10 @@ describe('書き写した除外パターンと単一定義の一致', () => {
           usesRootConfig: false,
           config: { ...rootRest, test: rootTest },
           coveragePathIgnorePatterns: [
-            ...rootCoverageIgnores,
+            ...rootCoverageIgnores.filter(
+              (pattern) =>
+                !ROOT_UNIT_COVERAGE_IGNORE_PATTERNS.includes(pattern),
+            ),
             ...mountDirs.map((dir) => `${dir}/**`),
           ].toSorted(),
         })),

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import {
   COVERAGE_THRESHOLD_PERCENT,
   GENERATED_CODE_PATTERNS,
+  ROOT_UNIT_COVERAGE_IGNORE_PATTERNS,
   TEST_FILE_PATTERNS,
   TEST_LIKE_FILE_PATTERN,
   type TestKind,
@@ -113,6 +114,33 @@ describe('GENERATED_CODE_PATTERNS', () => {
 
   test('型として変更不可の配列である', () => {
     expectTypeOf(GENERATED_CODE_PATTERNS).toEqualTypeOf<readonly string[]>();
+  });
+});
+
+describe('ROOT_UNIT_COVERAGE_IGNORE_PATTERNS', () => {
+  test('アプリのディレクトリ全体のパターンを持つ', () => {
+    expect(ROOT_UNIT_COVERAGE_IGNORE_PATTERNS).toEqual(['apps/**']);
+  });
+
+  test.each([
+    'apps/common-lib/text/text-safety.ts',
+    'apps/frontend-lib/test/a11y.ts',
+    'apps/client/common-lib/text/graphemes.ts',
+  ])('ルートのテストが読み込むアプリのソース%sに一致する', (path) => {
+    expect(matchesAny(ROOT_UNIT_COVERAGE_IGNORE_PATTERNS, path)).toBe(true);
+  });
+
+  test.each(['e2e/support/bulk-users.ts', 'scripts/tooling/run-all.ts'])(
+    'ルートが所有するソース%sに一致しない',
+    (path) => {
+      expect(matchesAny(ROOT_UNIT_COVERAGE_IGNORE_PATTERNS, path)).toBe(false);
+    },
+  );
+
+  test('型として変更不可の配列である', () => {
+    expectTypeOf(ROOT_UNIT_COVERAGE_IGNORE_PATTERNS).toEqualTypeOf<
+      readonly string[]
+    >();
   });
 });
 

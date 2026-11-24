@@ -18,4 +18,9 @@ export const GENERATED_CODE_PATTERNS: readonly string[] = [
   '**/generated/**',
 ];
 
+// ルートの単体テストが読み込んだアプリのソースは、各アプリの単体テストが網羅を確かめるため、ルートの実行の分母からだけ外す
+export const ROOT_UNIT_COVERAGE_IGNORE_PATTERNS: readonly string[] = [
+  'apps/**',
+];
+
 export const COVERAGE_THRESHOLD_PERCENT = 80 as const;

@@ -13,4 +13,5 @@ coverageReporter = ["text", "lcov"]
 coverageDir = "coverage/unit"
 
 # 自動生成コードはテストで網羅する対象ではないため分母から除外する
-coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**"]
+# ルートの単体テストが読み込んだアプリのソースは各アプリの単体テストが網羅を確かめるため、ルートの実行の分母から除外する。アプリのディレクトリで実行するときはパスがアプリからの相対になるため一致しない
+coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**", "apps/**"]
