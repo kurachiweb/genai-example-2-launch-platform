@@ -2,7 +2,7 @@ export type SecurityHeaderTarget = 'page' | 'non-page' | 'static-file';
 
 export interface HostedScriptTag {
   readonly source: string;
-  readonly defer: boolean;
+  readonly deferred: boolean;
   readonly nonce: string | undefined;
 }
 
@@ -313,6 +313,11 @@ const hostOf = (src: string): string | undefined => {
   }
 };
 
+// asyncがあると、deferやモジュールのスクリプトでも読み込みの直後に実行される
+const isDeferredScript = (tag: HtmlTag): boolean =>
+  !tag.attributes.has('async') &&
+  (tag.attributes.has('defer') || isModuleScript(tag));
+
 export function scriptTagsFromHost(
   html: string,
   host: string,
@@ -321,9 +326,22 @@ export function scriptTagsFromHost(
     .filter((tag) => hostOf(tag.attributes.get('src') ?? '') === host)
     .map((tag) => ({
       source: tag.source,
-      defer: tag.attributes.has('defer'),
+      deferred: isDeferredScript(tag),
       nonce: tag.attributes.get('nonce'),
     }));
+}
+
+// Cloudflareのゾーンの自動の挿入は、アプリの応答の後にエッジで、版付きのパスの計測スクリプトを差し込む。アプリが出す計測スクリプトのパスには版が無い
+const EDGE_BEACON_SRC_PATTERN =
+  /^https:\/\/static\.cloudflareinsights\.com\/beacon\.min\.js\/v[^/]+$/u;
+
+// アプリが出したHTMLだけを確かめられるよう、エッジが差し込んだ計測スクリプトの開始タグを取り除く
+export function withoutEdgeInjectedBeacons(html: string): string {
+  return scriptTagsOf(html)
+    .filter((tag) =>
+      EDGE_BEACON_SRC_PATTERN.test(tag.attributes.get('src') ?? ''),
+    )
+    .reduce((rest, tag) => rest.replace(tag.source, ''), html);
 }
 
 const CSP_VIOLATIONS_KEY = '__e2eCspViolations';

@@ -26,7 +26,7 @@
 | Q1  | 日時・数値のSSR時点とJavaScript読み込み後の表示 | SSRでは接続元から実行基盤が推定したタイムゾーンとブラウザが送る言語設定で整形し、読み込み後にブラウザの実際の設定と異なる場合だけ置き換える。新しいパッケージ・Cookieは使わない                                                                                                                                                                             |
 | Q2  | ダークモードとアニメーション演出の切り替え      | ダークモードだけ切り替え可能にする。切替は共通ヘッダーのボタン(管理者側も同じ)とし、選択はブラウザに保存し、初期値はOSの設定とする。共通ヘッダーの項目一覧に切替ボタンを追記する。アニメーションはOSの「視差効果を減らす」設定に従うだけとし、本specは切替UIを作らない。WCAG 2.2の達成基準2.2.2の停止手段は演出を持つspec(match-engineなど)が個別に用意する |
 | Q3  | 疎通確認の画面の公開範囲                        | ローカル環境とstagingだけで公開し、prodでは404にする                                                                                                                                                                                                                                                                                                        |
-| Q4  | Cloudflare Web Analyticsの計測対象              | 利用者側だけに組み込み、管理者側には組み込まない                                                                                                                                                                                                                                                                                                            |
+| Q4  | Cloudflare Web Analyticsの計測対象              | 利用者側だけに組み込み、管理者側には組み込まない。Cloudflareのゾーンの自動の挿入によりエッジで差し込まれる計測スクリプトは、アプリが組み込むものではないため、両方のページで許す(2026-11-25に追加)                                                                                                                                                          |
 | Q5  | UI部品と採用技術に付随するパッケージ            | モックアップと同じ構成を採用する(`radix-ui`・`class-variance-authority`・`clsx`・`tailwind-merge`・`tw-animate-css`・`lucide-react`・`sonner`・`@tailwindcss/vite`・`@vitejs/plugin-react`・`@hookform/resolvers`・`@graphql-typed-document-node/core`)                                                                                                     |
 | Q6  | bot判定のウィジェット部品                       | `@marsidev/react-turnstile` 1.6.1を採用する                                                                                                                                                                                                                                                                                                                 |
 | Q7  | 静的解析と整形のプラグイン                      | ESLint 10対応のフォークを含めて導入する(`@eslint-react/eslint-plugin`・`eslint-plugin-react-hooks`・`@tanstack/eslint-plugin-query`・`@tanstack/eslint-plugin-router`・`eslint-plugin-storybook`・`eslint-plugin-jsx-a11y-x`・`prettier-plugin-tailwindcss`)                                                                                                |
@@ -185,7 +185,7 @@
 
 #### Acceptance Criteria
 
-1. The 両フロントエンドサーバー shall 利用者側・管理者側・環境ごとに別々に、送信元IPアドレス単位で10秒あたり500回を上限として、Workerが受け付けるすべての要求を数える
+1. The 両フロントエンドサーバー shall 利用者側・管理者側・環境ごとに別々に、送信元IPアドレス単位で10秒あたり300回を上限として、Workerが受け付けるすべての要求を数える
 2. The 両フロントエンドサーバー shall 送信元IPアドレスとしてブラウザの接続元のIPアドレスを使い、特定できない場合は不明な送信元として1つにまとめて数える
 3. If 上限を超えた要求がページの要求である, then the 両フロントエンドサーバー shall 状態コード429・`Retry-After: 10`で、「操作が集中しています。しばらく待ってから再度お試しください。」を表示するエラー画面を返す
 4. If 上限を超えた要求がページの要求でない, then the 両フロントエンドサーバー shall APIサーバーへ中継せずに、状態コード429・`Retry-After: 10`と共通のエラー形式で応答する

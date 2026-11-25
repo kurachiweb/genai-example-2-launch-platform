@@ -97,7 +97,7 @@
 - Cloudflareのbot対策・チャレンジ(Turnstile・WAF等)により、本サービスのドメインへ次のCookieが設置され得る。不正アクセス防止に必須の措置で、同意バナーの対象外である([Cloudflareの一覧](https://developers.cloudflare.com/fundamentals/reference/policies-compliances/cloudflare-cookies/))
   - `__cf_bm`(bot判定用、無操作30分で失効)
   - `cf_clearance`(チャレンジ通過の記録用、有効期間はChallenge Passage設定に従う)
-- アクセス解析はCloudflare Web Analytics(SW-006、Cookie・個人識別子を使用しない)を用いる
+- アクセス解析はCloudflare Web Analytics(SW-006、Cookie・個人識別子を使用しない)を用いる。アプリが計測スクリプトを組み込むのは利用者側だけだが、Cloudflareのゾーンの自動の挿入により、利用者側・管理者側の全ページにゾーンの計測スクリプトも入る
 - 広告トラッキングとリターゲティングは行わず、広告・解析目的のサードパーティCookieも使わない
 - Stripe Payment Elementでカード入力欄を表示するiframeは、Stripeが設定するサードパーティCookieを扱う。決済に必須のため、同意バナーの対象外である
 

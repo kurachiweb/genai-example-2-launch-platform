@@ -67,7 +67,7 @@
     {
       "name": "IP_RATE_LIMITER",
       "namespace_id": "1002",
-      "simple": { "limit": 500, "period": 10 },
+      "simple": { "limit": 300, "period": 10 },
     },
   ],
   "images": { "binding": "IMAGES" },
@@ -166,7 +166,7 @@
         {
           "name": "IP_RATE_LIMITER",
           "namespace_id": "2002",
-          "simple": { "limit": 500, "period": 10 },
+          "simple": { "limit": 300, "period": 10 },
         },
       ],
       "images": { "binding": "IMAGES" },
@@ -273,7 +273,7 @@
         {
           "name": "IP_RATE_LIMITER",
           "namespace_id": "3002",
-          "simple": { "limit": 500, "period": 10 },
+          "simple": { "limit": 300, "period": 10 },
         },
       ],
       "images": { "binding": "IMAGES" },

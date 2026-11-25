@@ -14,6 +14,7 @@ import {
   scriptNonceOf,
   scriptTagsFromHost,
   staticScriptUrlsOf,
+  withoutEdgeInjectedBeacons,
 } from './security-assertions.ts';
 
 const NONCE = 'nB8YjDxI4/WguAZf7/HvfA==';
@@ -369,11 +370,11 @@ describe('findWorkerHeaderTraces', () => {
 });
 
 describe('scriptTagsFromHost', () => {
-  test('指定したホストから読み込むscript要素のdeferとnonceを返す', () => {
+  test('指定したホストから読み込むscript要素の、遅延して実行されるかとnonceを返す', () => {
     const html = [
       `<script nonce="${NONCE}">inline()</script>`,
       `<script src="https://static.cloudflareinsights.com/beacon.min.js" defer="" data-cf-beacon="{}" nonce="${NONCE}"></script>`,
-      '<script src="https://static.cloudflareinsights.com/other.js" async></script>',
+      '<script src="https://static.cloudflareinsights.com/other.js"></script>',
       '<script src="https://cloudflareinsights.com.example/beacon.min.js" defer></script>',
       '<script type="module" src="/assets/index.js"></script>',
     ].join('');
@@ -381,17 +382,37 @@ describe('scriptTagsFromHost', () => {
     expect(scriptTagsFromHost(html, 'static.cloudflareinsights.com')).toEqual([
       {
         source: `<script src="https://static.cloudflareinsights.com/beacon.min.js" defer="" data-cf-beacon="{}" nonce="${NONCE}">`,
-        defer: true,
+        deferred: true,
         nonce: NONCE,
       },
       {
-        source:
-          '<script src="https://static.cloudflareinsights.com/other.js" async>',
-        defer: false,
+        source: '<script src="https://static.cloudflareinsights.com/other.js">',
+        deferred: false,
         nonce: undefined,
       },
     ]);
   });
+
+  test.each([
+    ['defer', true],
+    ['type="module"', true],
+    ['type="module" defer', true],
+    ['async', false],
+    ['async defer', false],
+    ['type="module" async', false],
+    ['', false],
+  ])(
+    '属性が「%s」のscript要素は、遅延して実行されるかが%pである',
+    (attributes, deferred) => {
+      const html = `<script ${attributes} src="https://static.cloudflareinsights.com/beacon.min.js"></script>`;
+
+      expect(
+        scriptTagsFromHost(html, 'static.cloudflareinsights.com').map(
+          (script) => script.deferred,
+        ),
+      ).toEqual([deferred]);
+    },
+  );
 
   test('該当するscript要素が無ければ空の配列を返す', () => {
     expect(
@@ -400,6 +421,36 @@ describe('scriptTagsFromHost', () => {
         'static.cloudflareinsights.com',
       ),
     ).toEqual([]);
+  });
+});
+
+describe('withoutEdgeInjectedBeacons', () => {
+  const APP_BEACON = `<script src="https://static.cloudflareinsights.com/beacon.min.js" defer="" data-cf-beacon="{&quot;token&quot;:&quot;app&quot;}" nonce="${NONCE}"></script>`;
+  const EDGE_BEACON_TAG = `<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8Gbx+Bw==" nonce="${NONCE}" data-cf-beacon='{"version":"2024.11.0","token":"edge","r":1}' crossorigin="anonymous">`;
+
+  test('Cloudflareのエッジが差し込んだ計測スクリプトの開始タグを全て取り除く', () => {
+    const html = `<body><p>本文</p>${EDGE_BEACON_TAG}</script>${EDGE_BEACON_TAG}</script></body>`;
+
+    expect(withoutEdgeInjectedBeacons(html)).toBe(
+      '<body><p>本文</p></script></script></body>',
+    );
+  });
+
+  test('アプリが出す版の無いパスの計測スクリプトを残す', () => {
+    expect(
+      withoutEdgeInjectedBeacons(`${APP_BEACON}${EDGE_BEACON_TAG}</script>`),
+    ).toBe(`${APP_BEACON}</script>`);
+  });
+
+  test.each([
+    'https://static.cloudflareinsights.com/other.js/v1',
+    'https://static.cloudflareinsights.com.example/beacon.min.js/v1',
+    'http://static.cloudflareinsights.com/beacon.min.js/v1',
+    'https://static.cloudflareinsights.com/beacon.min.js/',
+  ])('エッジが差し込む形でないスクリプト(%s)を残す', (src) => {
+    const html = `<script type="module" src="${src}"></script>`;
+
+    expect(withoutEdgeInjectedBeacons(html)).toBe(html);
   });
 });
 

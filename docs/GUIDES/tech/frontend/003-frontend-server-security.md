@@ -377,7 +377,7 @@ import { StartClient } from '@tanstack/react-start/client';
 
 規約(上限・名前空間・キー・超過時の応答)は「[Worker単位のIP制限](../backend/003-rate-limiting-and-bot-verification.md#worker単位のip制限)」に従う。フロントエンドサーバーは、共通ライブラリの`createWorkerApp`を使わず、エントリの`checkIpRateLimit`で同じ値の制限を掛ける。
 
-- Wrangler設定のルートと`env.<環境種別>`のそれぞれに、`<IP制限のバインディング名>`の`ratelimits`(`simple: { limit: 500, period: 10 }`)を書き、`<IP制限の名前空間>`をアプリ・環境ごとに他のWorkerと重ならない値にする。
+- Wrangler設定のルートと`env.<環境種別>`のそれぞれに、`<IP制限のバインディング名>`の`ratelimits`(`simple: { limit: 300, period: 10 }`)を書き、`<IP制限の名前空間>`をアプリ・環境ごとに他のWorkerと重ならない値にする。
 - 判定はCSRFの検証・中継・描画より前に行い、Workerが受け付けるすべての要求(ページ・サーバー関数・中継)を数える。除外の経路は持たない。静的なファイルは数えない。
 - 超過したページの要求には429・`Retry-After: 10`の静的なエラー画面を、それ以外の要求には429・`Retry-After: 10`の共通のエラー形式(`rate_limit_exceeded`)を返し、上流へ中継しない。超過は経路(クエリを除く)を付けた警告のログに出す。
 

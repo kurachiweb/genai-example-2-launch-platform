@@ -1,5 +1,3 @@
-import { expect, test } from '@playwright/test';
-
 import { NOT_FOUND_TITLE } from '../../apps/frontend-lib/utilities/messages/state-messages.ts';
 import { SYSTEM_STATUS_TITLE } from '../../apps/frontend-lib/utilities/messages/system-status-messages.ts';
 import {
@@ -15,7 +13,10 @@ import {
   scriptNonceOf,
   scriptTagsFromHost,
   staticScriptUrlsOf,
+  withoutEdgeInjectedBeacons,
 } from '../support/security-assertions.ts';
+import { HTML_ACCEPT_HEADER } from '../support/security-baseline-checks.ts';
+import { expect, test } from '../support/smoke-test.ts';
 import {
   annotateSkippedCheck,
   browserResultRegion,
@@ -35,19 +36,21 @@ import {
 
 const RELAY_REQUEST_BODY = { query: '{ __typename }' };
 
-// 管理者側はアクセス解析を持たないため、計測スクリプトの配信元も送信先の許可も現れない
+// 管理者側のアプリはアクセス解析を持たないため、エッジが差し込む計測スクリプトを除き、計測スクリプトの配信元も送信先の許可も現れない
 const WEB_ANALYTICS_DOMAIN = 'cloudflareinsights.com';
 
 const NO_INDEX_ROBOTS_CONTENT = 'noindex, nofollow';
 
 test.describe('管理者側の疎通確認の画面', { tag: '@smoke' }, () => {
   test('応答にセキュリティヘッダーとnonce付きのCSPが付き、HTMLのすべてのスクリプトが同じnonceを持つ', async ({
-    page,
+    request,
   }) => {
-    const response = await page.goto(SYSTEM_STATUS_PATH);
+    const response = await request.get(SYSTEM_STATUS_PATH, {
+      headers: HTML_ACCEPT_HEADER,
+    });
 
-    expect(response?.status()).toBe(200);
-    const headers = (await response?.allHeaders()) ?? {};
+    expect(response.status()).toBe(200);
+    const headers = response.headers();
     expect(findSecurityHeaderProblems(headers, 'page')).toEqual([]);
     expect(headers['x-robots-tag']).toBe(NO_INDEX_ROBOTS_CONTENT);
     expect(headers['content-security-policy']).not.toContain(
@@ -55,7 +58,7 @@ test.describe('管理者側の疎通確認の画面', { tag: '@smoke' }, () => {
     );
     const nonce = scriptNonceOf(headers['content-security-policy'] ?? '');
     expect(nonce).toBeDefined();
-    const html = (await response?.text()) ?? '';
+    const html = await response.text();
     expect(html).toContain('<script');
     expect(findScriptTagsWithoutNonce(html, nonce ?? '')).toEqual([]);
   });
@@ -96,27 +99,36 @@ test.describe('管理者側の疎通確認の画面', { tag: '@smoke' }, () => {
     expect(await readCspViolations(page)).toEqual([]);
   });
 
-  test('エラートラッキング・bot判定のスクリプトを最初の描画を妨げない方法で読み込み、アクセス解析のスクリプトを持たない', async ({
+  test('エラートラッキング・bot判定のスクリプトを最初の描画を妨げない方法で読み込み、アプリがアクセス解析のスクリプトを出さない', async ({
     page,
   }) => {
     const response = await page.goto(SYSTEM_STATUS_PATH);
     const html = (await response?.text()) ?? '';
+    const nonce = scriptNonceOf(
+      (await response?.allHeaders())?.['content-security-policy'] ?? '',
+    );
     await page.waitForLoadState('load');
 
     expect(findParserBlockingScriptTags(html)).toEqual([]);
-    expect(scriptTagsFromHost(html, WEB_ANALYTICS_HOST)).toEqual([]);
-    expect(html).not.toContain(WEB_ANALYTICS_DOMAIN);
+    expect(withoutEdgeInjectedBeacons(html)).not.toContain(
+      WEB_ANALYTICS_DOMAIN,
+    );
+    for (const script of scriptTagsFromHost(html, WEB_ANALYTICS_HOST)) {
+      expect(script.deferred, script.source).toBe(true);
+      expect(script.nonce, script.source).toBe(nonce);
+    }
     expect(await readParserBlockingScriptSources(page)).toEqual([]);
   });
 
   test('ビルド後の対象でのみ、最初に読み込むスクリプトがSentryを静的に取り込まず、静的なファイルの応答にセキュリティヘッダーが付く', async ({
-    page,
     request,
   }) => {
-    const response = await page.goto(SYSTEM_STATUS_PATH);
-    const html = (await response?.text()) ?? '';
+    const response = await request.get(SYSTEM_STATUS_PATH, {
+      headers: HTML_ACCEPT_HEADER,
+    });
+    const html = await response.text();
 
-    const scriptUrls = staticScriptUrlsOf(html, page.url());
+    const scriptUrls = staticScriptUrlsOf(html, response.url());
     if (scriptUrls.length === 0) {
       annotateSkippedCheck(
         'ビルドの成果物のスクリプトが無い対象(開発サーバー)のため、Sentryの静的な取り込みと静的なファイルのヘッダーの確認を飛ばした',
@@ -159,13 +171,14 @@ test.describe('管理者側の疎通確認の画面', { tag: '@smoke' }, () => {
   });
 
   test('ビルド後の対象でのみ、ビルドの成果物のスクリプトとファビコンをWorkerを通さずに配信し、成果物のスクリプトを長期にキャッシュさせる', async ({
-    page,
     request,
   }) => {
-    const response = await page.goto(SYSTEM_STATUS_PATH);
-    const html = (await response?.text()) ?? '';
+    const response = await request.get(SYSTEM_STATUS_PATH, {
+      headers: HTML_ACCEPT_HEADER,
+    });
+    const html = await response.text();
 
-    const assetUrls = builtAssetScriptUrlsOf(html, page.url()).slice(0, 1);
+    const assetUrls = builtAssetScriptUrlsOf(html, response.url()).slice(0, 1);
     if (assetUrls.length === 0) {
       annotateSkippedCheck(
         'ビルドの成果物のスクリプトが無い対象(開発サーバー)のため、静的なファイルがWorkerを通らずに配信されることの確認を飛ばした',
