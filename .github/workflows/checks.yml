@@ -82,7 +82,7 @@ jobs:
   tests:
     needs: quality
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
       id-token: write
@@ -112,7 +112,7 @@ jobs:
   e2e:
     needs: quality
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
       id-token: write

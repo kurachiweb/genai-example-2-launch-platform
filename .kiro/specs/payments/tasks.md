@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: パッケージ・設定・共有の定義・テーブル・開発用の決済環境
+- [x] 1. 基盤: パッケージ・設定・共有の定義・テーブル・開発用の決済環境
 - [x] 1.1 Stripeの3パッケージを導入し、各Workerのシークレットと変数を宣言する
   - 前提: dev-tooling・backend-platform・api-gateway・email-delivery・frontend-platform・infra-delivery・content-processing・media-pipeline・identity-auth・admin-foundation・legal-pagesの全タスクが完了していること(層構成・GraphQL基盤・メール送信・画面の骨格・共有ディレクトリ・ユーザーライフサイクル・利用者の連絡先の照会(`UserContactDirectory`)・設定ページのシェル・`/legal`)。無ければ該当するタスクを保留して開発者へ報告する
   - `stripe` 23.1.0(api・event)・`@stripe/stripe-js` 10.2.1・`@stripe/react-stripe-js` 7.0.1(client)を完全固定で加える(2026-11-05に開発者が決定した版。公開から2週間の待ちを置かない)。より新しい版が出ていても、この版から変える場合は開発者へ確かめる
@@ -28,7 +28,7 @@
   - 完了状態: 単体テストが成功し、マイグレーションをローカルに適用でき、同じ`exclusivity_key`の`fulfilled`の行を2つ作れない
   - _Requirements: 1.1, 1.7, 2.4, 6.4, 12.5, 12.6, 12.10, 15.5_
 
-- [ ] 1.4 開発用sandboxの設定と検証の手順を書き、開発者の準備を確かめる
+- [x] 1.4 開発用sandboxの設定と検証の手順を書き、開発者の準備を確かめる
   - 運用手順書(`operations/004`)のうち、環境ごとのStripeの設定(制限付きキーの権限の表と、api用とevent用の制限付きキーをシークレット管理サービスのWorkerごとのフォルダへ別々に登録し、共通のフォルダには置かない手順(仮7)、`lookup_key`付きの価格と税込の設定、税の登録、Adaptive Pricingの無効化、決済手段の設定をカード・Apple Pay・Google Pay・LinkだけにしてKlarnaなどを切ること、不審請求の申し立ての設定の不服申し立て(異議申し立て)を既定の無効のままにすること(有効化する場合の利用資格・手数料・ダッシュボードでの対応)、Webhook endpointのAPI版と15種の購読、ローカルの`stripe listen`の転送と署名の秘密)と、決済手段の検証の手順の節を、本プロジェクト固有の値を含めずに先に書く
   - 開発者が行う作業(dev用のsandboxの作成、devのsandboxの公開キーの取得、apiの制限付きキーのInfisicalの`dev`の`/workers/api`への登録とeventの制限付きキーの`/workers/event`への登録(仮7)、`stripe listen`の署名の秘密のInfisicalの`dev`の`/`への登録、疎通確認用の価格`payments_smoke`(1ドル)の作成、決済手段と税の設定)を一覧にして報告する
   - 1.1で置いたclientのWrangler設定のローカルの`STRIPE_PUBLISHABLE_KEY`の仮の値を、開発者から受け取ったdevの公開キーで置き換え、`project-values.md`の変数の値の表の行に書き込む
@@ -37,7 +37,7 @@
   - Stripeの現行の文書で、Payment Element・Link・請求先住所の入力欄がCSPに求める許可先を確かめ、設計の許可先(`js.stripe.com`・`hooks.stripe.com`・`api.stripe.com`)との差と、ワイルドカードや別のホストが要るかを`research.md`に記録する。要るなら10.1の前に開発者へ報告する
   - CIのE2E(GitHubのランナー。`stripe listen`の転送が無い)で、`return_url`からの反映だけで決済の完了まで辿れるかを、ローカルで`stripe listen`を止めた状態の疎通確認の決済で確かめ、`research.md`に記録する
   - 完了状態: 手順書の節が整形の検査を通り、ローカルの公開キーと`project-values.md`の行が書き込まれ、開発者の準備の完了(または未完了で保留した旨)とCSPの許可先・転送の無い環境の確認の結果が作業の報告に記録され、オンボーディングにWorkerごとのフォルダへの登録の手順がある。開発者の準備が終わっていれば、Workerの指定付きで起動したapiとeventで疎通確認の決済を始められ、Workerの指定を付けずに起動すると`startSmokeCheckout`が`payments_unavailable`を返す(共通のフォルダの値が使われないことの確認)
-  - _Blocked: 開発者のdev用sandboxの準備待ち(devの公開キーでのローカルの`STRIPE_PUBLISHABLE_KEY`の置き換え、`stripe listen`を止めた状態の疎通確認の決済、Workerの指定付きの起動での疎通確認)。ローカルのルートの`secrets.required`へのStripeのキーの追加は2026-11-06に済んだ。手順書・オンボーディング・CSPの調査はresearch.mdとoperations/004に記録済み_
+  - 確認(2026-11-25): 公開キーの置き換え、`stripe listen`を止めた状態の疎通確認の決済の完了、Workerの指定付きの起動での決済の開始、指定なしの起動での`payments_unavailable`を確かめた(research.mdの「タスク1.4の調査」と「タスク11.2の検証」)。税の設定(本社の所在地と税の登録)は、開発者の判断で未完了のまま保留した
   - _Boundary: PaymentsTechDocs, オンボーディング(Workerごとのフォルダへの登録の手順だけ), clientのWrangler設定(ローカルの`STRIPE_PUBLISHABLE_KEY`の値だけ)_
   - _Depends: 1.1_
   - _Requirements: 15.1, 15.2, 15.6, 15.7_
@@ -248,7 +248,7 @@
   - 共通の束縛とそのモジュールをモジュールの一覧へ、返金の処理をメッセージの処理の一覧へ(再試行は最大5回)、2つの波及処理をユーザーライフサイクルの登録箇所へ(`order` 400・410、本specの400番台)加える
   - 先に、Workers統合テストで、DIから署名の検証・受け付け・返金の処理・波及処理を取り出せること、メッセージの処理と波及処理の登録の検証(名前・順序の重複)が成功することを確かめる
   - 完了状態: DIの統合テストと登録の検証が成功し、Workers統合テストで`PaymentRefunds.request`から送った`payments.refund-payment`が返金の処理で受信されること(Stripeは模擬)と、ローカル(1.4の準備の後)で`stripe listen`の転送からの通知が反映されることを確かめる
-  - 未実施: ローカルで`stripe listen`の転送からの通知が反映されることの確認は、1.4(開発者のsandboxの準備)の保留のため行っていない(ローカルのルートの`secrets.required`へのStripeのキーの追加は2026-11-06に済んだ)。Workers統合テストで、本物のWorkerのエントリへの署名付きの通知の反映と、返金のメッセージの受信は確かめた
+  - 確認(2026-11-25): ローカルで、`stripe listen`の転送からの`checkout.session.completed`がイベントサーバーで200になり反映されることを確かめた
   - _Depends: 1.4, 8.2, 8.3_
   - _Requirements: 8.5, 14.1_
 
@@ -284,7 +284,7 @@
   - ルートを作り、ページを検索エンジンの索引の対象外にする(clientの`buildSitePageHead`)。Payment Elementと請求先住所の入力欄を置き、現地通貨の表示を許可しない。`CheckoutElementsProvider`の中の状態は`useCheckoutElements()`で読む(`useCheckout()`は`@stripe/react-stripe-js` 7.0.1で非推奨で、静的解析の`no-deprecated`に反する)
   - 先のブラウザテストに、公開キーが無い環境(`PublicRuntimeConfig.stripePublishableKey`が`undefined`)でStripe.jsを読み込まず「決済を利用できない」を表示すること、Stripe.jsの読み込みの失敗と確定の想定外の失敗が`reportUnexpectedErrorInBrowser`へ送られ縮退の案内が出ることを加える
   - 完了状態: ブラウザテストが成功し、ローカル(1.4の準備の後)で、`startSmokeCheckout`(7.2で組み込み済み)を直接呼んで作った購入の決済画面が表示される
-  - 未実施: ローカル(1.4の準備の後)で、`startSmokeCheckout`で作った購入の決済画面が表示されることの確認は、1.4の保留のため行っていない。ブラウザテストでStripe.jsの部品を模擬して各状態を確かめた
+  - 確認(2026-11-25): ローカルで、`startSmokeCheckout`で作った購入の決済画面が表示され、CSPの違反が無いことを確かめた
   - _Boundary: CheckoutPage, CheckoutSummary, CheckoutConsent, CheckoutPaymentForm, CheckoutDeadline_
   - _Depends: 1.4, 9, 10.2_
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 4.10, 4.11, 4.13, 15.6_
@@ -309,20 +309,21 @@
   - _Depends: 9, 10.2_
   - _Requirements: 2.8, 12.1, 12.2, 12.3, 12.4_
 
-- [ ] 11. 端から端までの検証
+- [x] 11. 端から端までの検証
 - [x] 11.1 決済履歴と疎通確認の決済のE2Eテストを作る
   - 決済履歴のE2Eで、ログイン後の設定のナビゲーションの「決済履歴」から画面を開き、記録が無い表示を確かめる
   - 疎通確認の決済のE2Eで、決済履歴の画面の開始ボタン→決済画面の表示事項→同意→テストカードでの支払い→決済後のランディングの完了→決済履歴の記録→購入確認メール(Mailpit)を確かめ、ブラウザのCSPの違反が無いことを確かめる。Stripeのsandboxのキーが無い環境(`startSmokeCheckout`が`payments_unavailable`を返す)では、`test.skip`で理由(「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」)を示して終える。「対象0件の表示」の規約は実行するテストファイルが0件の時のもので、この用途には使わない。転送が無い環境(CI)で完了まで辿れるかは1.4の確認の結果に従う
   - 完了状態: ローカル(1.4の準備と`stripe listen`の転送あり)で2つのE2Eが成功する
-  - 未実施: 疎通確認の決済のE2Eの成功(1.4の準備と`stripe listen`の転送あり)は、1.4の保留のため確かめていない。この環境ではStripeのキーが無いため指定の理由で`test.skip`になることを確かめた。決済履歴のE2Eはローカルで成功した。Stripeの入力欄の枠と欄の名前(`checkout-steps.ts`)は未検証で、1.4の後に調整が要る可能性がある
+  - 確認(2026-11-25): ローカルで、`stripe listen`の転送ありで2つのE2Eが成功し、疎通確認の決済のE2Eは転送なしでも成功した。Stripeの入力欄の枠と欄の名前(`checkout-steps.ts`)は調整なしで動く
   - _Depends: 1.4, 8.4, 10.3, 10.4, 10.5_
   - _Requirements: 2.8, 4.1, 4.4, 4.5, 4.12, 5.2, 11.1, 12.1, 12.4, 16.1_
 
-- [ ] 11.2 決済手段の設定と即時の確定を、sandboxで検証して記録する
+- [x] 11.2 決済手段の設定と即時の確定を、sandboxで検証して記録する
   - 1.4で書いた手順に沿って、dev用のsandboxで、作成した決済セッションの決済手段の種類がカードとLinkだけであること、決済画面にカード・Apple Pay・Google Pay・Linkだけが出ること(Klarnaなどが出ないこと)、Linkのカードと即時銀行決済のテストで完了の通知の支払いの状態が「支払い済み」になること、決済履歴に資金源のグループが記録されることを確かめる
   - Stripeの模擬応答のテストに、検証で得た実際の応答の形との差があれば直す
   - 完了状態: 検証の結果(日付・確かめた項目・資金源のグループ)が`research.md`に記録され、想定と異なれば開発者へ報告されている
-  - _Blocked: 開発者のdev用sandboxの準備待ち(1.4と同じ)。検証の手順は`docs/GUIDES/tech/operations/004-payment-data-operations.md`の決済手段の検証の手順にある。決済手段の表示の確認はlocalhostを決済手段のドメインに登録できないためstagingで行う(1.4の調査)_
+  - 確認(2026-11-25): 結果はresearch.mdの「タスク11.2の検証」にある。Linkの即時銀行決済は、日本のアカウントでは提示されないため対象外とし、Linkのカードの検証だけで完了とした(開発者の判断)
+  - 引き継ぎ: Apple Pay・Google Payのボタンが実機の決済画面に出ることは、localhostを決済手段のドメインに登録できず確かめていない。Stripeが決済画面へ返す手段の一覧では2つとも有効である。stagingでの表示の確認は、launch-readinessのS-23(タスク7.11)が受け持つ
   - _Depends: 11.1_
   - _Requirements: 4.7, 7.2, 15.7, 16.2_
 
@@ -338,7 +339,7 @@
   - `external/007`(Stripeとの連携の規約)・`backend/009`(外部の通知の冪等な反映の規約)を作り、`operations/004`の残り(手動の返金、チャージバック、突合と返金の失敗の対処、鍵の更新、Webhook endpointのAPI版の更新、11.2の検証で分かった差)を書き足す。本プロジェクト固有の値を含めず、各ディレクトリの文書一覧へ行を加える
   - 主要パッケージの一覧にStripeの3パッケージを、tech-stack.mdの決済サービスの節に用途を、オンボーディングにローカルのWebhookの転送の手順を加える
   - 完了状態: 文書の整形の検査が成功し、文書にプロジェクト名・ドメイン・キーの名前が含まれない
-  - 未実施: `operations/004`の「11.2の検証で分かった差」の節は、11.2の保留(sandbox待ち)のため書いていない。11.2の後に書き足す
+  - 確認(2026-11-25): 11.2の検証で分かった差を、`operations/004`の決済手段の設定と決済手段の検証の手順に書き足した
   - _Boundary: PaymentsTechDocs_
   - _Depends: 11.2_
   - _Requirements: 15.7, 16.3_
@@ -400,3 +401,4 @@
 - 12.2: 縮退の文言は`common-lib/payments/payments-unavailable-texts.ts`の`PAYMENTS_UNAVAILABLE_REASON`(画面の理由)と`PAYMENTS_UNAVAILABLE_MESSAGE`(APIの文言)。決済実装方針は`docs/GUIDES/service/features/004-payments.md`(返金ポリシーとの食い違いの申し送りを含む)
 - content-reportingの後の改善(2026-11-22、開発者の依頼): 保持期間の境界(UTCの暦で年数を引いた同じ時刻、2月29日は月末へ寄せる)の計算を共通の`apps/backend-lib/core/time/utc-calendar.ts`の`utcYearsBefore`へ移した。`paymentHistoryRetentionCutoff`はそれを呼ぶだけになり、振る舞いは変わらない
 - 2026-11-24(launch-readinessの相違の解消): `purchase-notifier`のwarningのログのメール種別の属性は`mailKind`(`emailKind`は伏せ字の部分一致`email`に当たる)
+- 1.4・11.2(2026-11-25): 開発者の準備の後に、ローカルとdev用のsandboxで検証して完了とした。Linkの即時銀行決済は対象外(Stripeのアカウントが日本で、Linkの資金源はカードだけ)。検証の後も残るのは、税の設定(開発者が保留)と、stagingでのApple Pay・Google Payの表示(launch-readinessのS-23)である。dev用のsandboxの決済手段の設定は、カード・Apple Pay・Google Pay・Linkだけが有効である。登録済みのLinkの利用者は、保存したカードのCVCの確認をStripeの画面で済ませるまで`canConfirm`が偽で、支払うボタンが無効になる(Stripeの仕様)

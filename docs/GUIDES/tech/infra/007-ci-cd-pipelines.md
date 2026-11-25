@@ -41,12 +41,12 @@ GitHub Actionsで検査・デプロイ・リリースを行うときの、ワー
 
 手順を持つ全ジョブに`timeout-minutes`を付け、止まった子プロセス(待ち合わせ・ブラウザ・Wrangler)がランナーとOIDCのトークンの有効な時間を使い続けないようにする。再利用のワークフローを呼ぶジョブ(`uses`)は上限時間を持てないため、呼ばれる側のジョブに付ける。
 
-| ワークフロー         | ジョブと上限時間(分)                                                              |
-| -------------------- | --------------------------------------------------------------------------------- |
-| `checks.yml`         | `secret-scan` 15、`quality` 30、`tests` 60、`e2e` 60、`rehearsal` 30、`ci-gate` 5 |
-| `deploy.yml`         | `deploy` 60                                                                       |
-| `release-pr.yml`     | `release-pr` 10                                                                   |
-| `readiness-load.yml` | `plan` 5、`load` 45                                                               |
+| ワークフロー         | ジョブと上限時間(分)                                                                |
+| -------------------- | ----------------------------------------------------------------------------------- |
+| `checks.yml`         | `secret-scan` 15、`quality` 30、`tests` 120、`e2e` 120、`rehearsal` 30、`ci-gate` 5 |
+| `deploy.yml`         | `deploy` 60                                                                         |
+| `release-pr.yml`     | `release-pr` 10                                                                     |
+| `readiness-load.yml` | `plan` 5、`load` 45                                                                 |
 
 - 自動化の主体が作ったプルリクエストは、新しいワークフローを起動しない。リリースのプルリクエストの必須チェックは、同じheadのコミットへのpush(mainへのマージ、`hotfix/**`へのpush)の検査結果で満たす。
 - リリース・承認・hotfixの運用は「[デプロイ手順](../operations/001-deployment.md)」に従う。

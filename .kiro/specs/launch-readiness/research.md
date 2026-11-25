@@ -330,7 +330,7 @@
 
 ## 上流の実装の完了後のギャップ分析(2026-11-23、`/cc-sdd:kiro-validate-gap`)
 
-`/cc-sdd:kiro-validate-gap launch-readiness`で、承認済みの要件・設計・タスク(2026-10-24の作成と2026-10-30までの改訂)を、その後に実装された上流の実コードと突き合わせた。設計の時点で実装済みだったのはdev-toolingだけだったが、現在は上流の28specが全て実装済みである。未完了のサブタスクは、infra-deliveryの9.2(stagingの識別子の反映。値は2026-11-16に反映済みで、チェックが付いていないだけと見られる)と、paymentsの1.4・11.2(開発者のsandboxの準備と、stagingでの決済手段の表示の確認)だけである。本specのタスクは0/63で、本specのコード・文書は無い。`spec.json`の`ready_for_implementation`は、全specの中で本specだけが`false`のままである(3つの承認は`true`)。ステアリングは`roadmap.md`だけで、`product.md`・`tech.md`・`structure.md`は無いため、CLAUDE.mdと技術ドキュメントを代わりに参照した。
+`/cc-sdd:kiro-validate-gap launch-readiness`で、承認済みの要件・設計・タスク(2026-10-24の作成と2026-10-30までの改訂)を、その後に実装された上流の実コードと突き合わせた。設計の時点で実装済みだったのはdev-toolingだけだったが、現在は上流の28specが全て実装済みである。未完了のサブタスクは、infra-deliveryの9.2(stagingの識別子の反映。値は2026-11-16に反映済みで、チェックが付いていないだけと見られる。2026-11-23に完了にした)と、paymentsの1.4・11.2(開発者のsandboxの準備と、stagingでの決済手段の表示の確認)だけである(paymentsの2件は2026-11-25に完了した。stagingの実機でのApple Pay・Google Payの表示の確認だけが、本specのS-23に残る)。本specのタスクは0/63で、本specのコード・文書は無い。`spec.json`の`ready_for_implementation`は、全specの中で本specだけが`false`のままである(3つの承認は`true`)。ステアリングは`roadmap.md`だけで、`product.md`・`tech.md`・`structure.md`は無いため、CLAUDE.mdと技術ドキュメントを代わりに参照した。
 
 ### 分析の要約
 
@@ -385,7 +385,7 @@
 | H-7  | payments                         | `operations/004`(2026-11-05の追記)のライブモードの項目: Adaptive Pricingの無効化・prodの決済手段のドメインの登録・不審請求の申し立ての不服申し立ての無効のまま                                                                                                                               | C-06は「`operations/004`の本番の節」を参照するだけで、3つを挙げていない |
 | H-8  | data-export                      | stagingの計測に基づき、eventの`limits.cpu_ms`(または別のキュー)を開発者が決める(`data-export/design.md:1242`)                                                                                                                                                                                | S-14はCPU時間を計るが、決定を記録する項目が無い                         |
 | H-9  | data-export                      | 未完了のマルチパートアップロードは、R2の既定のライフサイクルの規則(7日)に頼る。IaCにライフサイクルの規則を足すと既定が置き換わる。実際のR2での`NoSuchUpload`(10024)の確認がstagingに残る                                                                                                     | 無い                                                                    |
-| H-10 | payments                         | 11.2(決済手段の表示)の一部はstagingでしか確かめられない                                                                                                                                                                                                                                      | stagingの開発者の作業(S-xx)に無い                                       |
+| H-10 | payments                         | 11.2(決済手段の表示)の一部はstagingでしか確かめられない(11.2は2026-11-25に完了し、残りはS-23の実機での表示だけ)                                                                                                                                                                              | stagingの開発者の作業(S-xx)に無い                                       |
 
 - media-pipelineの10.2の後のstagingの確認(prodの`ctx.cache`と削除・`exports`のデプロイ・中継の`Content-Length`・wasmを含む起動の時間・末尾がドットのホスト名)は、開発者への申し送りで本specの宛てではないが、stagingの検証の機会が同じため、検証の記録の参考の項目にできる。
 - inquiry-chat(実装済み)は本specへの申し送りを持たない。4:21のジョブ(`order` 300)は、日次タイムラインの表を実装の時点で写す方式で含まれる。
@@ -507,7 +507,7 @@
 - H-7: C-06とタスク8.3に、Adaptive Pricingの無効化・prodの決済手段のドメインの登録・不審請求の申し立ての不服申し立ての無効を加えた(D-5)。
 - H-8: チェックリストにA-10(eventの`limits.cpu_ms`の要否の決定)を加え、タスク7.11で記録する。
 - H-9: チェックリストにC-11(prodの`FILES_BUCKET`のライフサイクルの規則が既定のままであることの確認)を加え、タスク9.2で確かめる。
-- H-10: stagingの開発者の作業にS-23(決済手段の表示の確認)を加え、タスク7.11で依頼する。タスク1.6の写す範囲をS-01〜S-23に直した(S-22の追加の時に直されていなかった)。
+- H-10: stagingの開発者の作業にS-23(決済手段の表示の確認)を加え、タスク7.11で依頼する。paymentsの11.2は2026-11-25に完了し、S-23に残るのは、stagingの実機の決済画面にApple Pay・Google Payのボタンが出ることの確認である(決済手段の種類・3Dセキュア・Linkのカードはdev用のsandboxで確かめた。paymentsの`research.md`の「タスク11.2の検証」)。タスク1.6の写す範囲をS-01〜S-23に直した(S-22の追加の時に直されていなかった)。
 - 要件の改訂: 2.1と10.5(改訂2)・13.8の追加(改訂3)・13.7と16.2と17.2(改訂4)と、Boundary Contextの秘密でない設定値の記述とAdjacent expectationsの計測の割合。改訂は`requirements.md`の「承認後の改訂」の表に記録した。
 - タスクの数は63から64になった(7.16の追加)。8.6の`_Depends:_`に7.16を加えた。
 - `spec.json`の承認の状態と`ready_for_implementation`は変えていない。

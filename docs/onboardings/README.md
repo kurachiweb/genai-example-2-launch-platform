@@ -122,7 +122,7 @@
     - `dev`にはキーワード抽出の外部APIのキー(`GOOGLE_NL_API_KEY`)を登録しない。ローカル環境ではキーワード抽出が無効(`KEYWORD_EXTRACTOR`が`disabled`)で、イベントサーバーはキーを注入せずに起動する(「[キーワード抽出の外部API](#キーワード抽出の外部api)」)。
     - `dev`には画像判定サービスの資格情報(`REKOGNITION_ACCESS_KEY_ID`・`REKOGNITION_SECRET_ACCESS_KEY`)を登録しない。ローカル環境は代替の判定(`MODERATION_PROVIDER`が`stub`)で判定サービスを呼ばず、イベントサーバーはキーを注入せずに起動する(「[画像のアップロード・判定・配信](#画像のアップロード判定配信)」)。
     - `dev`には使い捨てメールアドレスの判定のAPIキー(`DISIFY_API_KEY`)を登録しない。ローカル環境の`secrets.required`に無く、APIサーバーとイベントサーバーはキーを注入せずに起動し、判定サービスを呼ばずに全てのメールアドレスを通常として扱う(「[使い捨てメールアドレスの判定のAPIキー](#使い捨てメールアドレスの判定のapiキー)」)。
-    - `dev`には、APIサーバーとイベントサーバーのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)もある。同じキー名でWorkerごとに異なる値が要るシークレットを置き、現時点では空である。決済を試す場合だけ、Stripeの制限付きキーを「[決済(Stripe)のキー](#決済stripeのキー)」の手順で登録する。各環境のフォルダとキーの一覧は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を参照する。
+    - `dev`には、APIサーバーとイベントサーバーのWorkerごとのフォルダ(`/workers/api`・`/workers/event`)もある。同じキー名でWorkerごとに異なる値が要るシークレットを置き、Stripeの制限付きキー(`STRIPE_API_KEY`)を登録してある。作り直すときは「[決済(Stripe)のキー](#決済stripeのキー)」の手順で登録する。各環境のフォルダとキーの一覧は「[Workerのシークレットのキーの一覧](project-values.md#workerのシークレットのキーの一覧)」を参照する。
 
 12. コンテナ内: ローカルDBの初期化(マイグレーション適用)
 
@@ -290,7 +290,7 @@ infisical --telemetry=false run --env dev -- bun run test:e2e --project admin # 
 利用者側の決済履歴(ログイン後に設定のナビゲーションの「決済履歴」から`/settings/billing`を開くと、その項目が現在の項目として示され、記録が無い表示が出て、Stripe.jsが読み込まれない)は`e2e/client/billing.e2e.test.ts`で、疎通確認の決済(決済履歴の「疎通確認の決済を始める」→決済画面の購入の内容が「お支払い情報」より上に出る→同意の無い間は「支払いを確定する」が押せない→テストカード`4242 4242 4242 4242`と請求先住所の入力と同意→決済後のランディングの完了の表示→同意の日時と版が購入の記録に保存される→決済履歴に「都度決済」「成功」の記録→Mailpitの件名「購入が完了しました」の購入確認メールに決済履歴へのリンクがある、決済画面と決済後のランディングでCSPの違反が出ない)は`e2e/client/checkout.e2e.test.ts`で確かめる。
 
 - 実行の前に、`apps/api`で`bun run db:migrate:local`を実行し、APIサーバー・イベントサーバー・利用者側をクイックスタートの手順13のとおり起動しておく。疎通確認の決済のE2Eはメールアドレスの確認を済ませるため、イベントサーバーが要る。
-- 疎通確認の決済のE2Eは、APIサーバーの`startSmokeCheckout`が`payments_unavailable`を返す環境(Stripeのsandboxのキーが無い環境)では、`test.skip`で「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」を示して飛ばす。Infisicalの`dev`にStripeのキーが無い間は、ローカルとCIでこのE2Eは飛ばされる。決済まで実行するには、dev用のsandboxのキーの登録と、利用者側の公開キーの置き換え(「[決済(Stripe)のキー](#決済stripeのキー)」、paymentsのspecのタスク1.4)が要る。
+- 疎通確認の決済のE2Eは、APIサーバーの`startSmokeCheckout`が`payments_unavailable`を返す環境(Stripeのsandboxのキーが無い環境)では、`test.skip`で「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」を示して飛ばす。APIサーバーをWorkerの指定を付けずに起動した場合も、キーが渡らないため飛ばされる。Infisicalの`dev`のキーと利用者側の公開キーは同じdev用のsandboxのもので、sandboxを作り直したときは両方を置き換える(「[決済(Stripe)のキー](#決済stripeのキー)」)。`stripe listen`の転送は無くても、決済後のランディングの反映だけで完了まで進む。
 - 決済画面の入力欄はStripeの埋め込み枠の中にあるため、手順(`e2e/client/checkout-steps.ts`)は入力欄の名前(`number`・`expiry`・`cvc`・`addressLine1`など)を持つStripeの枠を探して入力する。請求先住所は米国の住所で入力する。
 - 決済履歴と決済画面の手順は`e2e/client/billing-steps.ts`・`e2e/client/checkout-steps.ts`にある。同意の記録はローカルのD1(`e2e/support/local-d1.ts`)で、購入確認メールはMailpitで確かめるため、`@smoke`タグを付けない。
 

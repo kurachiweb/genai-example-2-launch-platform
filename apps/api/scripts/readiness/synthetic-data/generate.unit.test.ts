@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 
 import {
   DATASETS,
@@ -34,7 +35,14 @@ describe('parseGenerateArguments', () => {
   });
 
   test('既定の出力先はリポジトリのルートのtmp配下の絶対パスになる', () => {
-    expect(DEFAULT_OUT_DIR).toBe(resolve('/workspace/tmp/readiness/synthetic'));
+    const repoRoot = resolve(DEFAULT_OUT_DIR, '..', '..', '..');
+
+    expect(isAbsolute(DEFAULT_OUT_DIR)).toBe(true);
+    expect(relative(repoRoot, DEFAULT_OUT_DIR)).toBe(
+      join('tmp', 'readiness', 'synthetic'),
+    );
+    // チェックアウト先の絶対パスは実行環境で異なるため、ルートだけにあるファイルでルートを確かめる
+    expect(existsSync(join(repoRoot, 'compose.yaml'))).toBe(true);
   });
 
   test('全ての項目を指定でき、bunのスクリプトの区切りの--は無視する', () => {

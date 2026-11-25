@@ -334,7 +334,7 @@ apps/
 - `docs/GUIDES/tech/frontend/006-data-fetching.md` — 「変更」の節に、冪等で、画面への到達そのものが利用者の操作に当たる確定(外部の決済画面からの戻りの確定など)は、`loader`ではなく部品のマウント後の効果から`useMutation`で呼んでよいという例外と、処理中の間の呼び直しは部品の中のタイマーで行い変更の`retry: false`を変えないことを加える。
 - `docs/GUIDES/tech/frontend/005-shared-components.md` — 部品の一覧に`components/payments/`の分類(`MoneyText`と、その表示の用途。`docs/GUIDES/tech`の規則に従い、使う画面の名前などサービス固有の仕様は書かない)を加える。
 - `docs/GUIDES/tech/external/README.md`・`backend/README.md`・`operations/README.md` — 文書一覧の表に行を加える。
-- `docs/GUIDES/service/legal/004-legal-notice-outline.md` — 章5(支払方法・時期)に「クレジットカード・デビットカード、Apple Pay、Google Pay、Link(Linkでは登録したカードのほか、米国の銀行口座による即時銀行決済などが使える場合がある)」を記載する(Q2・仮1)。
+- `docs/GUIDES/service/legal/004-legal-notice-outline.md` — 章5(支払方法・時期)に「クレジットカード・デビットカード、Apple Pay、Google Pay、Link(Linkでは登録したカードで支払える)」を記載する(Q2・仮1)。
 - `docs/GUIDES/service/legal/003-privacy-policy-outline.md` — 「国外移転の記載事項」に`### Stripe(決済)`の項を、委託先の一覧の順(CloudflareとAWSの間)に加える(移転先: 米国。移転の根拠: DPFを主とし、DPFが無効になった場合はStripeのDPAに含まれるSCCに拠る。措置: 共通の行を参照)。委託先の一覧のStripeの行の「渡す情報」(現在は「メールアドレス、決済内容」)に仮名化IDと請求先住所(Stripeが直接取得)を加える。国外移転の共通の記載(Stripeを米国の移転先に挙げる文)は既にある。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — 「データの保存場所」の委託先ごとの箇条にStripeを加える。StripeのCookieとStripe側での保持は既に記載がある。「国外移転の記載事項」の節は003にだけあるため、001には置かない。
 - `docs/GUIDES/service/design/002-page-layouts.md` — URL構造に`/checkout/{購入ID}`(仮3)、決済前の最終確認画面に法的通知へのリンクはアンカー無しの`/legal`である旨(Q4)と請求先住所の入力欄、決済後のランディングの状態表示。
@@ -1857,8 +1857,8 @@ export interface MoneyTextProps {
 - E2E/UI Tests:
   - ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `CheckoutPage`の状態ごとの出し分け、同意が無い間の支払うボタンの無効、同意の記録の失敗で確定しない、`CheckoutSummary`の表示事項とアンカー無しの`/legal`へのリンク、`PaymentHistoryList`の続きの読み込みと0件、`MoneyText`のロケールと符号(4.1〜4.13、12.1〜12.3、13.5)。Stripe.jsは`CheckoutElementsProvider`の模擬で置き換える。
   - E2E(`e2e/client/billing.e2e.test.ts`): 決済履歴の画面の表示と、ナビゲーションの「決済履歴」の項目(12.1・12.4)。
-  - E2E(`e2e/client/checkout.e2e.test.ts`): 疎通確認用の購入種別で、決済画面の表示事項→同意→テストカード(`4242 4242 4242 4242`)での支払い→決済後のランディングの完了→決済履歴への記録、CSPの違反が出ないこと(2.8、4.\*、5.2、12.1)。Stripeのsandboxのキーと`stripe listen`の転送が要り、ローカルのD1(同意の記録)とMailpit(購入確認メール)を読むため、それらが揃うローカルの検証で実行し(stagingでは実行できない)、無い環境では飛ばす。「対象0件の表示」の規約は実行するテストファイルが0件の時のもので、個々のテストを環境で飛ばす仕組みではないため、テストの中で、APIサーバーのGraphQLで`startSmokeCheckout`が`payments_unavailable`を返す(キーが無い)ときは`test.skip`で理由(「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」)を示して終える。CIのE2E(`stripe listen`が無い)で`return_url`からの反映だけで完了まで辿れるかはタスク1.4の検証で確かめる。
-- 手動の検証(`operations/004`、タスクで記録): sandboxで作成した決済セッションの`payment_method_types`がカードとLinkだけであること、決済画面にカード・Apple Pay・Google Pay・Linkだけが出ること、Linkの即時銀行決済のテストで`payment_status = 'paid'`の完了通知が届くこと、決済履歴の`link_funding_source_group`の記録(Q2・仮1)。
+  - E2E(`e2e/client/checkout.e2e.test.ts`): 疎通確認用の購入種別で、決済画面の表示事項→同意→テストカード(`4242 4242 4242 4242`)での支払い→決済後のランディングの完了→決済履歴への記録、CSPの違反が出ないこと(2.8、4.\*、5.2、12.1)。Stripeのsandboxのキーが要り(`stripe listen`の転送は無くてもよい)、ローカルのD1(同意の記録)とMailpit(購入確認メール)を読むため、それらが揃うローカルの検証で実行し(stagingでは実行できない)、無い環境では飛ばす。「対象0件の表示」の規約は実行するテストファイルが0件の時のもので、個々のテストを環境で飛ばす仕組みではないため、テストの中で、APIサーバーのGraphQLで`startSmokeCheckout`が`payments_unavailable`を返す(キーが無い)ときは`test.skip`で理由(「Stripeのsandboxのキーが無い環境のため、決済のE2Eを飛ばします」)を示して終える。CIのE2E(`stripe listen`が無い)でも、`return_url`からの反映だけで完了まで辿れる(タスク1.4の検証で確かめた)。
+- 手動の検証(`operations/004`、タスクで記録): sandboxで作成した決済セッションの`payment_method_types`がカードとLinkだけであること、決済画面にカード・Apple Pay・Google Pay・Linkだけが出ること、Linkのカードのテストで`payment_status = 'paid'`の完了通知が届くこと、決済履歴の`link_funding_source_group`の記録(Q2・仮1)。Linkの即時銀行決済は、提示されるアカウント(米国の事業者)でだけ確かめる(2026-11-25に対象外とした)。
 
 ## Security Considerations
 
