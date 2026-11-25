@@ -57,7 +57,7 @@ describe('usersDataset', () => {
       user_follows: 10_000,
       notification_preferences: 10_000,
     });
-  });
+  }, 120_000);
 
   test('外部キーの順に、利用者・プロフィール・フォロー・受信設定の順で文を並べる', () => {
     const tables = smokeStatements().map((statement) => statement.table);

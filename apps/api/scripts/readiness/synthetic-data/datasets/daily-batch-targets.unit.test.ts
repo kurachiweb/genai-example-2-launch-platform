@@ -78,6 +78,8 @@ const JOB_830 = `(storage = 'images' AND ((location = 'images' AND ${HAS_REASON}
 
 let db: Database;
 
+let yearOneCounts: Record<string, number>;
+
 beforeAll(() => {
   db = createMigratedDatabase();
   for (const dataset of [
@@ -93,6 +95,12 @@ beforeAll(() => {
     }
   }
 });
+
+beforeAll(() => {
+  yearOneCounts = countRows(
+    dailyBatchTargetsDataset.generate(YEAR_ONE_PROFILE, context),
+  );
+}, 120_000);
 
 afterAll(() => {
   db.close();
@@ -140,11 +148,7 @@ describe('dailyBatchTargetsDataset', () => {
 
 describe('ファイルの記録(順序600・810・820・830)', () => {
   test('想定規模では利用者の全員に1件ずつと、保有者の居ない記録1,200件と、専用の行9件を作る', () => {
-    const counts = countRows(
-      dailyBatchTargetsDataset.generate(YEAR_ONE_PROFILE, context),
-    );
-
-    expect(counts['media_files']).toBe(
+    expect(yearOneCounts['media_files']).toBe(
       50_000 + 1_200 + 3 * DEDICATED_ROWS_PER_JOB,
     );
   });
@@ -340,16 +344,12 @@ describe('期限切れの認証情報(順序110・200)', () => {
   });
 
   test('想定規模では管理者の対象ごとの1回の上限(500件)を超えて残りが出る件数を作る', () => {
-    const counts = countRows(
-      dailyBatchTargetsDataset.generate(YEAR_ONE_PROFILE, context),
-    );
-
     for (const table of [
       'admin_sessions',
       'admin_auth_tokens',
       'admin_login_challenges',
     ]) {
-      expect(counts[table]).toBeGreaterThan(500);
+      expect(yearOneCounts[table]).toBeGreaterThan(500);
     }
   });
 });
@@ -398,20 +398,13 @@ describe('保持期間を過ぎた行(順序210・300・410)', () => {
   });
 
   test('想定規模では監査ログ・問い合わせ・決済履歴が、1回の上限(500件×20回=10,000件)を超えて残りが出る件数ある', () => {
-    const counts = countRows(
-      dailyBatchTargetsDataset.generate(YEAR_ONE_PROFILE, context),
-    );
-
-    expect(counts['guest_inquiries']).toBeGreaterThan(10_000);
-    expect(counts['payment_records']).toBeGreaterThan(10_000);
-    expect(counts['admin_audit_logs']).toBeGreaterThan(10_000);
+    expect(yearOneCounts['guest_inquiries']).toBeGreaterThan(10_000);
+    expect(yearOneCounts['payment_records']).toBeGreaterThan(10_000);
+    expect(yearOneCounts['admin_audit_logs']).toBeGreaterThan(10_000);
   });
 });
 
 describe('保持期間を過ぎた行と匿名化の対象(順序500・1400・1910・2010)', () => {
-  const yearOne = (): Record<string, number> =>
-    countRows(dailyBatchTargetsDataset.generate(YEAR_ONE_PROFILE, context));
-
   test('Ultrasの知らせは処理を終えてから30日以上経った行で、利用者の行を参照する', () => {
     expect(scalar('SELECT count(*) FROM ultras_notices')).toBeGreaterThan(0);
     expect(
@@ -461,19 +454,14 @@ describe('保持期間を過ぎた行と匿名化の対象(順序500・1400・19
   });
 
   test('想定規模では、日次の1回の上限を超えて残りが出る件数を作る', () => {
-    const counts = yearOne();
-
-    expect(counts['ultras_notices']).toBeGreaterThan(10_000);
-    expect(counts['moderation_actions']).toBeGreaterThan(5_000);
-    expect(counts['launch_comments']).toBeGreaterThan(5_000);
-    expect(counts['report_cases']).toBeGreaterThan(10_000);
+    expect(yearOneCounts['ultras_notices']).toBeGreaterThan(10_000);
+    expect(yearOneCounts['moderation_actions']).toBeGreaterThan(5_000);
+    expect(yearOneCounts['launch_comments']).toBeGreaterThan(5_000);
+    expect(yearOneCounts['report_cases']).toBeGreaterThan(10_000);
   });
 });
 
 describe('データベースの中で完結するジョブの対象(順序900・1100・1110・1600・2100)', () => {
-  const yearOne = (): Record<string, number> =>
-    countRows(dailyBatchTargetsDataset.generate(YEAR_ONE_PROFILE, context));
-
   test('メールの送信済みの記録は14日より前、抑止記録は期限切れか、1年より前で利用者に紐づかないもの', () => {
     expect(
       scalar(
@@ -501,7 +489,7 @@ describe('データベースの中で完結するジョブの対象(順序900・
   });
 
   test('想定規模では、利用者に紐づかない抑止記録が1日の上限(90件×20ページ=1,800件)を超える', () => {
-    expect(yearOne()['email_suppressions']).toBeGreaterThan(1_800);
+    expect(yearOneCounts['email_suppressions']).toBeGreaterThan(1_800);
   });
 
   test('滞ったマッチイベントは配信から1時間以上経った未完了で、確定のイベントが既にあるマッチを重ねない', () => {
@@ -544,10 +532,8 @@ describe('データベースの中で完結するジョブの対象(順序900・
   });
 
   test('想定規模では、滞ったイベントが1回の上限(100件)を超え、完了済みの古いイベントが1回の上限(5,000件)を超える', () => {
-    const counts = yearOne();
-
-    expect(counts['match_events']).toBeGreaterThan(5_000 + 100);
-    expect(counts['match_event_handler_runs']).toBeGreaterThan(5_000);
+    expect(yearOneCounts['match_events']).toBeGreaterThan(5_000 + 100);
+    expect(yearOneCounts['match_event_handler_runs']).toBeGreaterThan(5_000);
   });
 
   test('開始日を過ぎた未決済の広告の申込と、400日より前に終わった表示停止の区間を作る', () => {
@@ -564,10 +550,8 @@ describe('データベースの中で完結するジョブの対象(順序900・
   });
 
   test('想定規模では、未決済の申込が1回の上限(500件×20回)を超え、表示停止の区間が上限(500件)を超える', () => {
-    const counts = yearOne();
-
-    expect(counts['sponsorships']).toBeGreaterThan(10_000);
-    expect(counts['sponsorship_display_stops']).toBeGreaterThan(500);
+    expect(yearOneCounts['sponsorships']).toBeGreaterThan(10_000);
+    expect(yearOneCounts['sponsorship_display_stops']).toBeGreaterThan(500);
   });
 
   test('データエクスポートは、期限切れの完了だけを作り、作成中の記録(2110の失敗の確定がメールとwarningを起こす)は作らない', () => {
@@ -587,7 +571,7 @@ describe('データベースの中で完結するジョブの対象(順序900・
   });
 
   test('想定規模では、データエクスポートの期限切れが1回の上限(100件×10回=1,000件)を超える', () => {
-    expect(yearOne()['data_exports']).toBeGreaterThan(1_000);
+    expect(yearOneCounts['data_exports']).toBeGreaterThan(1_000);
   });
 });
 

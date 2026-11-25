@@ -5,7 +5,11 @@ import { createMigratedDatabase } from '../migrated-database.ts';
 import type { EntityContext } from '../entities.ts';
 import { SMOKE_PROFILE, YEAR_ONE_PROFILE } from '../scale-profile.ts';
 import type { DatasetContext } from '../sql-writer.ts';
-import { commentPlansOf, commentsDataset } from './comments.ts';
+import {
+  commentPlansOf,
+  commentsDataset,
+  type PlannedComment,
+} from './comments.ts';
 import { matchesDataset } from './matches.ts';
 import { productsDataset } from './products.ts';
 import { usersDataset } from './users.ts';
@@ -20,6 +24,8 @@ const entities = (profile: EntityContext['profile']): EntityContext => ({
 
 let db: Database;
 
+let yearOnePlans: readonly PlannedComment[];
+
 beforeAll(() => {
   db = createMigratedDatabase();
   for (const dataset of [
@@ -33,6 +39,10 @@ beforeAll(() => {
     }
   }
 });
+
+beforeAll(() => {
+  yearOnePlans = [...commentPlansOf(entities(YEAR_ONE_PROFILE))];
+}, 120_000);
 
 afterAll(() => {
   db.close();
@@ -60,21 +70,19 @@ describe('commentsDataset', () => {
   });
 
   test('想定規模ではコメントを20万件作り、1つのスレッドだけが500件の返信を持つ', () => {
-    const plans = [...commentPlansOf(entities(YEAR_ONE_PROFILE))];
-    const replies = [...repliesByRoot(plans).values()].toSorted(
+    const replies = [...repliesByRoot(yearOnePlans).values()].toSorted(
       (a, b) => b - a,
     );
 
-    expect(plans).toHaveLength(200_000);
+    expect(yearOnePlans).toHaveLength(200_000);
     expect(replies[0]).toBe(500);
     expect(replies[1]).toBeLessThanOrEqual(3);
-    expect(new Set(plans.map((plan) => plan.id)).size).toBe(200_000);
-  }, 120_000);
+    expect(new Set(yearOnePlans.map((plan) => plan.id)).size).toBe(200_000);
+  });
 
   test('想定規模の最大のスレッドは第2階層と第3階層の返信を持ち、返信は親より後に並ぶ', () => {
-    const plans = [...commentPlansOf(entities(YEAR_ONE_PROFILE))];
-    const [root] = plans;
-    const thread = plans.filter((plan) => plan.rootId === root?.id);
+    const [root] = yearOnePlans;
+    const thread = yearOnePlans.filter((plan) => plan.rootId === root?.id);
     const seen = new Set<string>();
 
     expect(thread).toHaveLength(501);
@@ -84,13 +92,13 @@ describe('commentsDataset', () => {
     expect(thread.filter((plan) => plan.depth === 3).length).toBeGreaterThan(
       100,
     );
-    const violations = plans.filter((plan) => {
+    const violations = yearOnePlans.filter((plan) => {
       const orphan = plan.parentId !== null && !seen.has(plan.parentId);
       seen.add(plan.id);
       return orphan || plan.depth < 1 || plan.depth > 3;
     });
     expect(violations).toEqual([]);
-  }, 120_000);
+  });
 
   test('検証用の規模では200件のコメントを作り、最大のスレッドの返信は1件で他は返信を持たない', () => {
     expect(scalar('SELECT count(*) FROM launch_comments')).toBe(200);

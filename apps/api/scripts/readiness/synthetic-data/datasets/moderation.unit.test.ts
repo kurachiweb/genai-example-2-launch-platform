@@ -36,6 +36,8 @@ const countRows = (
 
 let db: Database;
 
+let yearOneStatements: readonly SqlStatement[];
+
 beforeAll(() => {
   db = createMigratedDatabase();
   for (const dataset of [
@@ -50,6 +52,12 @@ beforeAll(() => {
     }
   }
 });
+
+beforeAll(() => {
+  yearOneStatements = [
+    ...moderationDataset.generate(YEAR_ONE_PROFILE, context),
+  ];
+}, 120_000);
 
 afterAll(() => {
   db.close();
@@ -69,9 +77,7 @@ describe('moderationDataset', () => {
   });
 
   test('想定規模で通報の案件5,000件・監査ログ10万件と管理者を作る', () => {
-    const counts = countRows(
-      moderationDataset.generate(YEAR_ONE_PROFILE, context),
-    );
+    const counts = countRows(yearOneStatements);
 
     expect(counts['admins']).toBe(ADMIN_COUNT);
     expect(counts['report_cases']).toBe(5_000);
@@ -126,7 +132,7 @@ describe('moderationDataset', () => {
 
   test('想定規模の案件の状態は未対応が最も多く、完了した案件が含まれる', () => {
     const counts = new Map<string, number>();
-    const rows = [...moderationDataset.generate(YEAR_ONE_PROFILE, context)]
+    const rows = yearOneStatements
       .filter((statement) => statement.table === 'report_cases')
       .map(
         (statement) =>
