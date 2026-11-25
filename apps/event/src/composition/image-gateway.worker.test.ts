@@ -16,6 +16,8 @@ import {
   pngOf,
   RED,
 } from '../infrastructure/media/wasm-moderation-image-renderer.fixtures.ts';
+// エントリのモジュールの読み込みは数秒かかり、最初の要求の中で読み込むとテストの時間切れに数えられるため、先に読み込む
+import '../index.ts';
 import { consumeIpRateLimit } from './testing/ip-rate-limit-quota.ts';
 
 // Workers統合テストの変数の画像配信のホスト名(専用のホスト)
@@ -31,7 +33,7 @@ const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;
 // 上限までの残りの1回を超えて送る回数。IP制限で数える要求なら2回目が上限を超える
 const REQUESTS_BEYOND_REMAINING = 2;
 
-// 最初の要求でエントリと画像の変換・復号のwasmを読み込むため、カバレッジの計測中は既定の5秒を超えることがある
+// 最初の要求で画像の変換・復号のwasmを読み込むため、カバレッジの計測中は既定の5秒を超えることがある
 const FIRST_DELIVERY_TIMEOUT_MILLISECONDS = 30_000;
 
 const SVG_ORIGINAL =
