@@ -295,8 +295,8 @@ describe('ワークフローのジョブの上限時間と起動条件', () => {
       {
         'secret-scan': 15,
         quality: 30,
-        tests: 60,
-        e2e: 60,
+        tests: 120,
+        e2e: 120,
         rehearsal: 30,
         'ci-gate': 5,
       },
