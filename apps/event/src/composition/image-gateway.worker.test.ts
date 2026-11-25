@@ -25,7 +25,7 @@ const IMAGES_ORIGIN = 'https://images.test.example';
 
 const EVENT_ORIGIN = 'https://event.launch.example';
 
-const IP_LIMIT = 500;
+const IP_LIMIT = 300;
 const PERIOD_MILLISECONDS = 10_000;
 const BURST_MARGIN_MILLISECONDS = 4_000;
 const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;

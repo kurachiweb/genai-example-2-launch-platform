@@ -103,7 +103,7 @@
 
 - 2026-11-19の時点で、本specが依存する上流spec(api-gateway・backend-platform・identity-auth・directory-discovery・product-launch・match-engine・engagement・user-profile-social・media-pipeline・tournament-week・tournament-year)は実装済みで、本specの部品は1つも無い。設計の前提と実装の食い違いはresearch.mdの「実装前のギャップ分析」で洗い出し、本書に反映した。
 - api-gatewayの公開REST: `createRestModule`が登録箇所`REST_ROUTES`(`apps/api/src/composition/rest-routes.ts`、2026-11-19の時点で空)の各関数に`OpenAPIHono`の子のアプリを渡し、`ApiKeyAuth`(Bearer)を登録し、`doc31`で`/openapi.json`、`OPTIONS /*`(204)を加えて`/v1`へマウントする。検証の失敗は`defaultHook`が`AppError(bad_request, validation_error)`にし、backend-platformの`onError`が400にする。外部経路の後処理がCORS(`*`・経路表のメソッド・`Authorization`、更新系は`Content-Type`)とセキュリティヘッダーを付ける。
-- apiのWorkerは全要求にWorker単位のIP制限(10秒500回)を掛ける。公開APIのIP単位の制限(1分60回)はその内側に本specが掛ける。
+- apiのWorkerは全要求にWorker単位のIP制限(10秒300回)を掛ける。公開APIのIP単位の制限(1分60回)はその内側に本specが掛ける。
 - 層の配置とテストの分担(`domain`・`application`はBunの単体テスト、`infrastructure`・`presentation`・`composition`はWorkers統合テスト)、`@inject`の明示はbackend-platformに従う。
 
 ### Architecture Pattern & Boundary Map

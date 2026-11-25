@@ -47,7 +47,7 @@ vi.mock('./composition/modules.ts', async (importOriginal) => {
 });
 
 const EVENT_ORIGIN = 'https://event.launch.example';
-const IP_LIMIT = 500;
+const IP_LIMIT = 300;
 // エントリを通した同時の要求は件数に対して急激に遅くなるため、同時に届く状況を作るのに足りる数に留める
 const CONCURRENT_ALLOWED_REQUESTS = 20;
 const ENTRY_LOAD_TIMEOUT_MILLISECONDS = 120_000;
@@ -209,7 +209,7 @@ describe('イベントサーバーのエントリ', () => {
   });
 
   test(
-    '同じIPからの501回目は429・Retry-After: 10になり、別のIPは影響を受けない',
+    '同じIPからの301回目は429・Retry-After: 10になり、別のIPは影響を受けない',
     async () => {
       await waitForFreshWindow();
       await consumeIpRateLimit('203.0.113.20', IP_LIMIT - 1);

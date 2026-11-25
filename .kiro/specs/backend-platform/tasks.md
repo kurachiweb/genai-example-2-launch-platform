@@ -204,7 +204,7 @@
   - キーの関数・期間・除外規則を受け取る汎用ミドルウェアを用意し、超過時は429・`Retry-After`・共通のエラー形式で応答する
   - 経路の接頭辞(任意でメソッド)とホスト名による除外規則の生成関数と、`CF-Connecting-IP`による既定のクライアントIPの解決を用意する
   - IP制限は`ip:<IP>`(不明なら`ip:unknown`)をキーに10秒の期間で数える
-  - 完了状態: 同じIPの501回目が429と`Retry-After: 10`になり、別のIPと除外に当たるリクエストは影響を受けず、差し替えたIPの解決結果で数えることをWorkers統合テストで確かめられる
+  - 完了状態: 同じIPの301回目が429と`Retry-After: 10`になり、別のIPと除外に当たるリクエストは影響を受けず、差し替えたIPの解決結果で数えることをWorkers統合テストで確かめられる
   - _Boundary: BindingRateLimit, IpRateLimit, ClientIp, RateLimitExclusions_
   - _Depends: 2.3_
   - _Requirements: 13.1, 13.2, 13.3, 13.4, 13.5, 13.7_
@@ -334,7 +334,7 @@
 - [x] 9. 検証
 - [x] 9.1 ローカル環境での起動・マイグレーション・定期実行・Queueの受け渡しを手順どおりに確かめる
   - 前提: 開発者がInfisicalの`dev`環境にハッシュ化のペッパーとbot判定のテスト用シークレットを登録済みであること。未登録なら登録手順を報告して止める
-  - オンボーディングの手順でマイグレーションを適用し、シークレットを実行時に注入して両サーバーを起動し、ヘルスチェックが200、同じIPからの501回目が429になることを確かめる
+  - オンボーディングの手順でマイグレーションを適用し、シークレットを実行時に注入して両サーバーを起動し、ヘルスチェックが200、同じIPからの301回目が429になることを確かめる
   - apiで定期実行を、E2Eの共有の補助を使う一時的なスクリプト(コミットしない)で業務日付と4:21を指定して起こし、登録0件の警告ログが出ることと、ローカルの定期実行の経路と時刻の引数が固定したWranglerの版で動くことを確かめる。経路か引数が食い違えば、補助と非同期処理の文書とオンボーディングを直す
   - apiから送ったメッセージがeventのconsumerへ届くかを確かめ、届かない場合は代わりの確認手順をオンボーディングと非同期処理の文書に反映する
   - 完了状態: 確かめた結果(Queueの受け渡しの可否と定期実行の経路の確認を含む)が記録され、オンボーディングの手順と実際の動作が一致している
@@ -379,7 +379,7 @@
 
 - [x] 11. frontend-platformの最終検証後の判断の反映(承認後の改訂9)
 - [x] 11.1 Worker単位のIP制限のキーをハッシュ化する
-  - 先に、`ip-rate-limit.worker.test.ts`へ、バインディングへ渡すキーが`hashRateLimitKey(createKeyedHasher(<テスト用のペッパー>), 'ip:<IP>')`の値で生のIPアドレスを含まないこと(不明な送信元は`ip:unknown`のハッシュ値)、`HASH_PEPPER`が無い環境では数えずに後続へ渡し`/health`が200・他の経路が環境の不備の500になること、同じIPの501回目の429と別のIPの独立が変わらないことを確かめる検査を足す。`binding-rate-limit.worker.test.ts`へ、`key`が環境を受け取りPromiseを返しても数え、`undefined`なら数えないことを確かめる検査を足す。あわせて、最初の要求の`KeyedHasher`(と`Promise<CryptoKey>`)を使い回す同時の複数の要求が、workerdの要求の文脈の制約で失敗・停止せずにすべて数えられることを確かめる検査を足す(確かめられなければ要求ごとに`KeyedHasher`を作る)
+  - 先に、`ip-rate-limit.worker.test.ts`へ、バインディングへ渡すキーが`hashRateLimitKey(createKeyedHasher(<テスト用のペッパー>), 'ip:<IP>')`の値で生のIPアドレスを含まないこと(不明な送信元は`ip:unknown`のハッシュ値)、`HASH_PEPPER`が無い環境では数えずに後続へ渡し`/health`が200・他の経路が環境の不備の500になること、同じIPの301回目の429と別のIPの独立が変わらないことを確かめる検査を足す。`binding-rate-limit.worker.test.ts`へ、`key`が環境を受け取りPromiseを返しても数え、`undefined`なら数えないことを確かめる検査を足す。あわせて、最初の要求の`KeyedHasher`(と`Promise<CryptoKey>`)を使い回す同時の複数の要求が、workerdの要求の文脈の制約で失敗・停止せずにすべて数えられることを確かめる検査を足す(確かめられなければ要求ごとに`KeyedHasher`を作る)
   - `bindingRateLimit`の`key`を`(request, clientIp, env)`で値かPromise(`undefined`は数えない)を返す形にし、`ipRateLimit`の型制約に`HASH_PEPPER`を加え、`createKeyedHasher(env.HASH_PEPPER)`と`hashRateLimitKey`でハッシュ化したキーを渡す。最後に使ったペッパーの値と`KeyedHasher`の組を1つだけ保持し、同じペッパーの間は使い回す
   - `security/002`の「ハッシュ化の対象」「レート制限のキー」に、Rate Limitingバインディングへ渡すキーも`hashRateLimitKey`でハッシュ化することと、ペッパーを使う全アプリが環境ごとに1つの値を共有することを書く。`backend/003`のWorker単位のIP制限の規約表のキーの行・共通ライブラリを使わないWorkerの作り方・`bindingRateLimit`の`key`の説明を直す
   - 完了状態: api・eventのWorkers統合テスト(既存のIP制限・汎用の制限・`createWorkerApp`の検査を含む)と一括検査が成功し、2つの技術ドキュメントの記述が実装と一致し、プロジェクト名と固有値を含まない

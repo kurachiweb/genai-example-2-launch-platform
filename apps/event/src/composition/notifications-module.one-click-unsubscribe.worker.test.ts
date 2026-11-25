@@ -49,7 +49,7 @@ const INVALID_BODY = 'このリンクは無効です。';
 
 const UNSUBSCRIBED_BODY = '配信を停止しました。';
 
-const IP_LIMIT = 500;
+const IP_LIMIT = 300;
 const PERIOD_MILLISECONDS = 10_000;
 const BURST_MARGIN_MILLISECONDS = 4_000;
 const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;
@@ -276,7 +276,7 @@ describe('POST /unsubscribe(ワンクリックの配信停止)', () => {
   });
 
   test(
-    '同じIPからの501回目もIP制限で429にならず、他の経路の回数にも数えられない',
+    '同じIPからの301回目もIP制限で429にならず、他の経路の回数にも数えられない',
     async () => {
       await waitForFreshWindow();
       const ip = freshIp();

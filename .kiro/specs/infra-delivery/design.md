@@ -1578,7 +1578,7 @@ export declare function planE2eStack(input: E2eStackPlanInput): E2eStackPlan;
 | `e2e/{client,admin}/system-status.e2e.test.ts` | 最上位の`test.describe`3つ(疎通確認の画面・存在しないページ・中継の経路)に`{ tag: '@smoke' }`を付ける | 実装時                      |
 
 - 上流の検査(backend-platform・frontend-platformの`wrangler-config.unit.test.ts`)は追加のキーを許すため、変更後も成功することを確かめる。食い違えば上流の検査の側へ管轄と公開URLの期待値を加える(再検証)。実装では、上流の検査に管轄と公開URLの期待値を加えて固定した。
-- `--grep @smoke --list`は到達確認2件と疎通確認23件の25件である。ローカルの開発サーバーに対して25件の成功を確かめた。stagingでのCSPの違反の検査と、IP単位のレート制限(10秒に500回)の下での25件の成功は、最初のstagingのデプロイで確かめる。
+- `--grep @smoke --list`は到達確認2件と疎通確認23件の25件である。ローカルの開発サーバーに対して25件の成功を確かめた。stagingでのCSPの違反の検査と、IP単位のレート制限(10秒に300回)の下での25件の成功は、最初のstagingのデプロイで確かめる。
 
 ### docs
 

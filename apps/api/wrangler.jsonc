@@ -61,7 +61,7 @@
     {
       "name": "IP_RATE_LIMITER",
       "namespace_id": "1001",
-      "simple": { "limit": 500, "period": 10 },
+      "simple": { "limit": 300, "period": 10 },
     },
     {
       "name": "PUBLIC_API_RATE_LIMITER",
@@ -129,7 +129,7 @@
         {
           "name": "IP_RATE_LIMITER",
           "namespace_id": "2001",
-          "simple": { "limit": 500, "period": 10 },
+          "simple": { "limit": 300, "period": 10 },
         },
         {
           "name": "PUBLIC_API_RATE_LIMITER",
@@ -204,7 +204,7 @@
         {
           "name": "IP_RATE_LIMITER",
           "namespace_id": "3001",
-          "simple": { "limit": 500, "period": 10 },
+          "simple": { "limit": 300, "period": 10 },
         },
         {
           "name": "PUBLIC_API_RATE_LIMITER",
