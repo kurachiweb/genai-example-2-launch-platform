@@ -412,7 +412,7 @@ test('トップページの見出しを表示する', async ({ page }) => {
 - タグは`test.describe`の第2引数に付ける。中の`test`と入れ子の`test.describe`は親のタグを引き継ぐため、タグを付けた`test.describe`の中には、条件を満たすテストだけを置く。
 
 ```typescript
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../support/smoke-test.ts';
 
 test.describe('トップページ', { tag: '@smoke' }, () => {
   test('見出しを表示する', async ({ page }) => {
@@ -428,6 +428,14 @@ test.describe('トップページ', { tag: '@smoke' }, () => {
   - テストの前提(準備や操作)がローカル専用のテストは、タグの無い別の`test.describe`へ分ける。
   - 前提はデプロイ先でも成り立ち、対象によって確かめられない項目が一部にあるだけのテストは、分けずにタグを付けたままにし、その項目だけを`annotateSkippedCheck`で飛ばしたことを残す。
 - タグを付けたテストを足したり外したりしたら、ローカルで`bun run test:e2e --grep @smoke`を実行して成功を確かめる。
+
+### デプロイ先への要求の数
+
+デプロイ先のゾーンにCloudflareのレート制限ルールがあると、Workerを通らない静的なファイルも含めて、送信元IPアドレス単位で要求の数が数えられる。超えた要求は、同じゾーンの別のホスト名宛てでも、Workerに届かずに429になる。失敗の再試行も要求を増やすため、`@smoke`のテストは次のとおり要求を増やさずに書く。
+
+- ページを開くテストは、`test`と`expect`を`e2e/support/smoke-test.ts`から読み込む。ブラウザの文脈はテストごとに空のキャッシュで始まり、ページを開くたびに全ての静的なファイルを取り直す。`smoke-test.ts`は、ハッシュ付きの名前の静的なファイル(`/assets/`の下で、`Cache-Control`に`immutable`を含む200の応答)を、同じワーカーの中で使い回す(`e2e/support/static-file-cache.ts`)。Cookieなどの状態は、テストごとに分かれたままである。
+- 応答のヘッダーとHTMLの文字列だけを確かめるテストは、ページを開かず、`request`に`HTML_ACCEPT_HEADER`(`e2e/support/security-baseline-checks.ts`)を付けて取得する。
+- 429の出どころは応答の形で見分ける。ゾーンのレート制限の429は、CloudflareのHTMLの画面で`Content-Security-Policy`を持たない。アプリのIP制限の429は、共通のエラー形式かアプリの静的なエラー画面で、アプリのセキュリティヘッダーを持つ。静的なファイルの429は、Workerを通らないため必ずゾーンの429である。
 
 ### `@smoke`以外のタグ
 

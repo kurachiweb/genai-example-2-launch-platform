@@ -713,6 +713,11 @@
   - `components/form/form-field.browser.test.tsx`で文書とTabの順序・名前と`labelId`・説明とエラーの関連付け・幅の狭い親での折り返し・axeの違反0件(ライト・ダーク)を確かめ、`AppForm`のカタログに`LabelAfterControl`・`LabelAfterControlError`を加える。design.mdと`frontend/004`・`frontend/005`に指定を書く
   - _Requirements: 8.1, 10.1, 10.6, 10.7_
 
+- [x] 14.2 stagingのスモークテストを、エッジが差し込む計測スクリプトとゾーンのレート制限の下で成功させる(launch-readinessのF-6・F-22)
+  - `scriptTagsFromHost`が`defer`に加えて`async`の無い`type="module"`も遅延とみなし、`withoutEdgeInjectedBeacons`でエッジが差し込んだ計測スクリプトを除いたHTMLを作る。管理者側は、除いたHTMLに計測スクリプトの配信元が無いことを確かめる
+  - `e2e/support/smoke-test.ts`・`static-file-cache.ts`で静的なファイルを同じワーカーの中で使い回し、応答のヘッダーとHTMLだけを確かめるテストはページを開かずに取得する
+  - _Requirements: 12.6, 13.6, 13.7, 14.2_
+
 ## Implementation Notes
 
 - 1.1(1.3・5.9・9.1への申し送り): `test:browser`は設定ファイルが無いとexit 1になるため、プリセット・ブラウザモード・Chromiumだけの最小の`vitest.browser.config.ts`を置いた。成果物の置き場所・共有Chromium(`browserOptionsPreset`・`resolveBrowserLaunchOptions`)・カバレッジの対象の絞り込みは1.3で加える。`@tanstack/react-router` 1.170.41を直接宣言した(`@tanstack/react-start` 1.168.60が完全固定する版と同じ)。`@tanstack/react-router-ssr-query`・`graphql`は未導入。`tsconfig.json`の`include`は`**/*.ts`・`**/*.tsx`で、TypeScriptの`**`はドットで始まるディレクトリに一致しないため、5.9で`.storybook/`を明示する。文書の相違: coding/001(59〜61行・94行)は全アプリの`tsconfig.json`が基底設定を`extends`すると定め、スクリプト契約の`test:browser`を「ブラウザテストを持つアプリ」に限るため、9.1で`coding/003`に加えて`coding/001`にも共通部品の例外を書く。
@@ -805,3 +810,4 @@
 - legal-pagesからの申し送りの対応(2026-11-05): サーバー側の描画で取得に失敗するとハイドレーションの後にエラーの文言が変わる(`ShallowErrorPlugin`が`GraphQLClientError`をメッセージだけの`Error`にするため)問題を、`start/graphql-client-error-adapter.ts`の`graphqlClientErrorAdapter`(`createSerializationAdapter`)を`createFrontendStartOptions`の`serializationAdapters`へ登録して直した。登録した変換は、サーバー側の描画(`router-core`の`ssr-server`)とサーバー関数(`getDefaultSerovalPlugins`)のどちらでも、ルーターの既定のプラグインより先に並ぶ。原因の例外とスタックは渡さない。これに合わせ、疎通確認の`loader`の回避策(`toSystemStatusLoaderData`・`fromSystemStatusLoaderData`)を外し、`GraphQLResult`をそのまま返すようにした。確認はlegal-pagesのE2E(サーバー側の描画のレート制限による500で、ハイドレーションの前後のエラーの文言が同じ)で行った
 - 共通部品の修正(user-profile-socialの10.1のE2Eで発見した不具合): `6ca5da82`とこの修正で、`DialogContent`・`SheetContent`・`PopoverContent`・`SelectContent`・`DropdownMenuContent`・`TooltipContent`が`submit`の伝播を止める(共通の`stopSubmitPropagation`)。ポータルの中のフォームの`submit`は外側の`<form>`へ伝わらないため、外側のフォームの送信をポータルの中から起こす使い方はできない
 - 2026-11-24(launch-readinessのF-8): `FormField`の`labelPlacement="end"`は入力欄をラベルより文書の先に置く。見た目の並びを`className`のグリッドの配置や`order`で入れ替えると、Tabと読み上げの順序が食い違う
+- 2026-11-25(launch-readinessのF-6・F-22): stagingのデプロイ後の確認の失敗9件と不安定3件の原因は2つだった。(1)ゾーンのWeb Analyticsの自動の挿入が、別のトークンの`type="module"`の計測スクリプトを両方のページへ差し込む。開発者の判断で、ゾーンの設定は変えず検査を緩めた(Q4)。(2)ゾーンのレート制限ルール(送信元IPアドレス単位、10秒、静的なファイルも数え、ホスト名をまたぐ)に当たり429になる。要求は`@smoke`の全体で975件から328件に減り(再試行なしの実測)、開発者がルールから`/assets/`を除く(launch-readinessのS-26)。

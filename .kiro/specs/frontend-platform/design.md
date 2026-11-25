@@ -2320,12 +2320,13 @@ export interface AdminLayoutProps {
   - ページを開いてから終わるまで`securitypolicyviolation`が1件も起きない(`addInitScript`で記録する)。
   - `/no-such-page`が404で、存在しないページの表示が出る。
   - `Sec-Fetch-Site: cross-site`を付けた`POST /_bff/graphql`が403`csrf_rejected`になる。
-  - アクセス解析のスクリプトがある時だけ`defer`とnonceを個別に確かめ、無ければ記録を残す(14.2)。Sentryの静的な取り込みが無いことと静的なファイルのセキュリティヘッダーは、ビルド後の対象(プレビュー・staging)でだけ確かめ、開発サーバーでは記録(`annotateSkippedCheck`)を残して飛ばす。
+  - アクセス解析のスクリプトがある時だけ、遅延して実行されること(`defer`か、`async`の無い`type="module"`)とnonceを個別に確かめ、アプリのものが無ければ記録を残す(14.2)。ゾーンの自動の挿入によりエッジで差し込まれる計測スクリプト(版付きのパス)は両方のページで許し、管理者側は`withoutEdgeInjectedBeacons`で除いたHTMLに計測スクリプトの配信元が無いことを確かめる(13.7)。Sentryの静的な取り込みが無いことと静的なファイルのセキュリティヘッダーは、ビルド後の対象(プレビュー・staging)でだけ確かめ、開発サーバーでは記録(`annotateSkippedCheck`)を残して飛ばす。
   - 静的なファイルがWorkerを通らないこと(第4回のR5.5、ビルド後の対象だけ): `static-file`の検査に加え、`/assets/*.js`(ページのHTMLが読み込むスクリプトの1つ)の`Cache-Control`が`immutable`を含み`no-store`を含まないこと、`/favicon.ico`の応答に`no-store`も`X-Robots-Tag`も無いこと(Workerが付ける項目が無い)を確かめる。
   - 初回表示の後に取得し直さないこと(第4回のR6.5の疎通確認の画面で確かめられる部分): `goto`の前から中継の経路(`/_bff/graphql`)への`POST`を記録し、ハイドレーションの後・「再確認」の前の件数が0で、画面を表示した時の結果の区画の見出しがサーバー側の描画の見出しのままであることを確かめる。ハイドレーションの完了は、再確認のボタンが操作できること(再クリックの補助と同じ合図)で待つ。
   - 管理者側のフッターが無いこと(第4回のR10.8、管理者側だけ): `/system/status`に`footer`要素と`contentinfo`のランドマークが0件であることを確かめる。
 - 両方の起動での実行(判断47): ルートのコマンド(dev-toolingの改訂2)が、client・adminを開発サーバーで起動してE2Eを実行し、止めてからビルドしてプレビューで起動してE2Eを実行する。APIサーバーは先に起動しておく(スモークテストはイベントサーバーを使わない)。開発サーバーでは上のビルド後の対象だけの確認は記録を残して飛ばす。
 - `e2e/support/security-assertions.ts`: ヘッダーの検査(`findSecurityHeaderProblems`、`page`・`non-page`・`static-file`(長期キャッシュのため`no-store`を求めない))、nonce、描画を妨げるスクリプト、CSPの違反の記録(`installCspViolationRecorder`・`readCspViolations`)の補助(両対象で共用)。
+- `e2e/support/smoke-test.ts`・`static-file-cache.ts`: ゾーンのレート制限に当たらないよう、ハッシュ付きの名前の静的なファイルを同じワーカーの中で使い回す`test`。
 - `e2e/support/system-status-page.ts`: 疎通確認の画面の経路・結果の検査・ブラウザからの再確認(`recheckFromBrowser`)・`annotateSkippedCheck`。テストは`apps/frontend-lib`の文言の定数をimportする。
 - 対象のURLは`E2E_CLIENT_URL`・`E2E_ADMIN_URL`だけで切り替わり、staging固有・localhost固有の値を持たない。開発サーバーではハイドレーションの完了の合図が無く最初の再確認のクリックが無視され得るため、再確認は再クリックで行う(テストの上限60秒・`toPass`40秒)。再確認の案内が表示されている間だけ押し直し、案内が消えた後(押した操作が効いた後)は押さず、案内の消失と中継の応答の到着の両方を待つ。応答の到着を合図に押し直すと、応答が遅い時に中継へ要求を重ねて送り、ハイドレーションの後の要求が0件であることの確認を誤らせるためである。開発サーバーは`--port 48044`・`--port 48045`を付けて起動する。
 
@@ -2512,7 +2513,7 @@ graph LR
 - 本specのタスクは、dev-tooling・backend-platform・api-gatewayの実装の完了を前提にする(apiのスキーマファイル・名前付きエントリポイント・許可リストの生成)。
 - 既存のデータは無い。データベースのテーブルは追加しない。
 - 新しいシークレットは`SENTRY_DSN`(staging・prod、launch-readinessが値を登録)である。`HASH_PEPPER`(全環境)はapi・eventと同じ値をInfisicalの環境ごとに1つ持ち、client・adminも同じ値を使う(ローカルは登録済みの`dev`の値、staging・prodのWorkerへの登録はinfra-delivery)。staging・prodの`TURNSTILE_SITE_KEY`・`WEB_ANALYTICS_TOKEN`は仮の値を置き、infra-deliveryが置き換える。
-- デプロイの順序(APIを先、フロントエンドを後)と、Cloudflare側のWeb Analyticsの自動の挿入を無効にしておくことは、infra-deliveryが行う。AIエージェントはデプロイを実行しない。
+- デプロイの順序(APIを先、フロントエンドを後)は、infra-deliveryが守る。ゾーンのWeb Analyticsの自動の挿入は無効にしない(Q4)。AIエージェントはデプロイを実行しない。
 
 ## 決定事項
 

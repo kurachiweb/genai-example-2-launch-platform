@@ -315,7 +315,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 - 計測スクリプトの配信元`https://static.cloudflareinsights.com`をCSPの`script-src`に、計測値の送信先`https://cloudflareinsights.com`を`connect-src`に、アクセス解析を入れるアプリの登録箇所で加える(「[許可先の登録](003-frontend-server-security.md#許可先の登録)」)。
 - 計測スクリプトは`defer`で最初の描画を妨げず、読み込みと送信の失敗はスクリプトの中で閉じて、画面の表示と操作へ伝わらない。
-- E2Eのスモークテストは、計測スクリプトがある時に`defer`とnonceを確かめる。トークンの無い環境では確認を飛ばして記録を残す。
+- Cloudflareのゾーンで計測スクリプトの自動の挿入が有効だと、アプリの応答の後に、エッジが別のトークンの計測スクリプトを全てのページへ差し込む。差し込まれる要素は、版付きのパスの`type="module"`のスクリプトで、応答のCSPと同じnonceを持ち、同じオリジンの`/cdn-cgi/rum`へ計測値を送る。アプリの`webAnalytics`とCSPの許可先では止められず、偽のアプリのページにも入る。止めるときは、ゾーンのConfiguration Rule(Disable RUM)で対象のホスト名だけを無効にする。`Cache-Control`の`no-transform`でも止まるが、エッジでの圧縮も止まるため使わない。
+- E2Eのスモークテストは、アプリの計測スクリプトとエッジが差し込んだ計測スクリプトの両方が、遅延して実行されること(`defer`か、`async`の無い`type="module"`)とnonceを確かめる。アプリの計測スクリプトが無い環境では記録を残す。`webAnalytics`が偽のアプリでは、エッジが差し込んだものを除いたHTML(`e2e/support/security-assertions.ts`の`withoutEdgeInjectedBeacons`)に計測スクリプトの配信元が現れないことを確かめる。
 
 ## アクセスログ
 
