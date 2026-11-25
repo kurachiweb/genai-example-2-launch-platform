@@ -18,3 +18,4 @@
 | [010-cc-sdd-discovery.md](010-cc-sdd-discovery.md)                             | `apps`ディレクトリの実装や`docs/GUIDES/tech`ディレクトリのドキュメント作成でサービスを完成させるため、cc-sddのdiscoveryで機能を洗い出す | Claude Opus最新版 |
 | [011-cc-sdd-spec-dependencies-table.md](011-cc-sdd-spec-dependencies-table.md) | cc-sddのspecと、それぞれが先に完成を要するspecを一覧表にする                                                                            | Claude Opus最新版 |
 | [012-report-env-secrets-table.md](012-report-env-secrets-table.md)             | Infisicalの各環境ごとに設定すべき環境シークレットと、その値の入手・生成方法を一覧表にする                                               | Claude Opus最新版 |
+| [013-cc-sdd-kiro-impl-nonstop.md](013-cc-sdd-kiro-impl-nonstop.md)             | `/cc-sdd:kiro-impl`の実行中に開発者へ質問せず、自律的に方針を選んでタスクを完了させる                                                   | Claude Opus最新版 |
