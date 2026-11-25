@@ -22,13 +22,13 @@ HonoとInversifyで作るCloudflare Workersのサーバーの4層の配置と合
 
 アプリの`src/`を4つの層と合成ルートに分ける。内側の層は外側の層を参照しない。
 
-| 位置                               | 置くもの                                                                                 | 依存してよいもの                                                                   |
-| ---------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `src/domain/`                      | エンティティ・値オブジェクト・ドメインの規則                                             | 共通ライブラリの`core`、実行環境に依存しないパッケージ(`zod`など)                  |
-| `src/application/`                 | ユースケースと、ユースケースが使うポート(リポジトリなどのインターフェース)・依存の識別子 | `domain`、共通ライブラリの`core`、テーブル定義と`drizzle-orm`(接続は作らない)      |
-| `src/infrastructure/`              | ポートの実装(D1・R2・Queue・外部APIへのアクセス)                                         | `domain`・`application`、共通ライブラリの`core`・`workers`、DBディレクトリ、`hono` |
-| `src/presentation/`                | Honoの経路の定義と、要求・応答の変換                                                     | 同上                                                                               |
-| `src/composition/`・`src/index.ts` | 合成ルート。モジュールの定義と登録箇所、環境の検証スキーマ、Workerのエントリ             | すべて                                                                             |
+| 位置                               | 置くもの                                                                                 | 依存してよいもの                                                                                                         |
+| ---------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `src/domain/`                      | エンティティ・値オブジェクト・ドメインの規則                                             | 共通ライブラリの`core`、実行環境に依存しないパッケージ(`zod`など)                                                        |
+| `src/application/`                 | ユースケースと、ユースケースが使うポート(リポジトリなどのインターフェース)・依存の識別子 | `domain`、共通ライブラリの`core`、実行環境に依存しないパッケージ(`zod`など)、テーブル定義と`drizzle-orm`(接続は作らない) |
+| `src/infrastructure/`              | ポートの実装(D1・R2・Queue・外部APIへのアクセス)                                         | `domain`・`application`、共通ライブラリの`core`・`workers`、DBディレクトリ、`hono`                                       |
+| `src/presentation/`                | Honoの経路の定義と、要求・応答の変換                                                     | 同上                                                                                                                     |
+| `src/composition/`・`src/index.ts` | 合成ルート。モジュールの定義と登録箇所、環境の検証スキーマ、Workerのエントリ             | すべて                                                                                                                   |
 
 - 共通ライブラリの`core`は純粋な部品と契約(共通エラー・依存の識別子・モジュールの契約・ハッシュ化・業務時刻など)、`workers`は実行環境の部品(HTTPアプリの組み立て・処理単位のコンテナ・ログとエラートラッキングの設定・レート制限・bot判定など)である。
 - 層のディレクトリは、最初のファイルを加えるときに作る。
@@ -84,6 +84,7 @@ graph LR
   - `core`の契約が返す形は、受け取る側が使う項目に絞る(秘密情報の項目を含めない)。提供する機能の中でそれ以外の項目が要るユースケースは、自分のストアで読み直す。
 - `application`はデータベースの接続・SQLの文・一括の書き込みを扱わない。文を返す契約や接続を引数に取る契約は`workers`に置き、`infrastructure`と`workers`だけが使う。`application`が複数の書き込みを1回の一括の書き込みで確定させたい場合は、書き込みの単位を表すポート(「利用者を退会させる」など)を`application`に定義し、文を組み立てて一括の書き込みを実行する実装を`infrastructure`に置く。
 - `workers`の部品(メッセージの送信など)を`application`で使う場合は、自前のポートの形で`core`の識別子(`PLATFORM_TYPES`など)から受け取る。厳密なレート制限のカウンタのように、型と補助の関数が`workers`にしか無い部品を使うクラスは`infrastructure`に置き、`application`はそのポートだけを受け取る。
+- エラートラッキングへの送信は、共通ライブラリの`workers`の部品と外側の層(`infrastructure`・`presentation`・合成ルート)だけが行う。`domain`・`application`はエラートラッキングのSDK(`@sentry/*`)を型だけのimportも含めて読み込まず、共通ライブラリの`core`は型だけのimportに限る。`application`が想定外の事態を知らせる場合は、知らせる内容を表すポートを`application`か`core`に定義し、SDKで送る実装を`infrastructure`か`workers`に置いて合成ルートで束縛する。
 - DBディレクトリは、テストのファイルを除き、`drizzle-orm`・`ulid`と自身のファイルだけを読み込む。DBディレクトリは依存方向の起点のため、他の共有ディレクトリ(共通ライブラリ・共用部品など)を読み込むことを依存方向の規則として禁じる。マイグレーションの生成ツールは配置元の位置でテーブル定義を読み込むため、配置先の名前が配置元のディレクトリと異なる共有ディレクトリ(共通ライブラリなど)への相対importは、配置元で解決もできない。
   - 静的解析で検出するのは「[位置ごとの禁止import](#位置ごとの禁止import)」の表の範囲(共通ライブラリの配置先・利用側アプリの`src`・`hono`・`cloudflare:*`・`sqliteTable`・`sqliteTableCreator`)だけである。共用部品の配置先やそれ以外のパッケージのimportは検出されないため、レビューで確かめる。
 
@@ -91,17 +92,17 @@ graph LR
 
 各アプリの`eslint.config.ts`に、ファイルの位置ごとの`no-restricted-imports`を置く。4層の規則は全アプリに置き、共通ライブラリとDBディレクトリの規則は検査担当のアプリにだけ置く。4層の規則は全アプリで同じ内容のため、ルートの`config/eslint/backend-layers.ts`の`createBackendLayerRules(<アプリ名>)`に1つだけ定義し、各アプリの`eslint.config.ts`から読み込む。アプリごとに変わるのは規則の名前の接頭辞だけである。検査担当でないアプリは、配置先を静的解析から外す(「[検査担当でないアプリでの共有ディレクトリの除外](../coding/001-javascript-typescript-conventions.md#検査担当でないアプリでの共有ディレクトリの除外)」)。
 
-| 対象のファイル                                                     | 禁止するimport                                                                                                                                                                                             |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/domain/**`                                                    | `**/application/**`・`**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`drizzle-orm*`・`cloudflare:*`・`**/<共通ライブラリの配置先>/workers/**`・`**/<DBディレクトリの配置先>/**` |
-| `src/application/**`                                               | `**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`cloudflare:*`・`**/<共通ライブラリの配置先>/workers/**`・`**/<DBディレクトリの配置先>/client*`                                 |
-| `src/infrastructure/**`・`src/presentation/**`                     | `**/composition/**`                                                                                                                                                                                        |
-| `<共通ライブラリの配置先>/core/**`(検査担当のみ)                   | `**/workers/**`・`cloudflare:*`・`**/<DBディレクトリの配置先>/**`・`drizzle-orm*`・`**/src/**`・`hono`(型だけのimportは許す)                                                                               |
-| `<共通ライブラリの配置先>/workers/**`(検査担当のみ)                | `**/src/**`                                                                                                                                                                                                |
-| `<DBディレクトリの配置先>/**`(検査担当のみ)                        | `**/<共通ライブラリの配置先>/**`・`**/src/**`・`hono`・`cloudflare:*`・`drizzle-orm/sqlite-core`の`sqliteTable`・`sqliteTableCreator`                                                                      |
-| `<DBディレクトリの配置先>/**/*.worker.test.{ts,tsx}`(検査担当のみ) | 上の行から`cloudflare:*`を除いたもの                                                                                                                                                                       |
+| 対象のファイル                                                     | 禁止するimport                                                                                                                                                                                                          |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/domain/**`                                                    | `**/application/**`・`**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`drizzle-orm*`・`cloudflare:*`・`**/<共通ライブラリの配置先>/workers/**`・`**/<DBディレクトリの配置先>/**`・`@sentry/*` |
+| `src/application/**`                                               | `**/infrastructure/**`・`**/presentation/**`・`**/composition/**`・`hono`・`cloudflare:*`・`**/<共通ライブラリの配置先>/workers/**`・`**/<DBディレクトリの配置先>/client*`・`@sentry/*`                                 |
+| `src/infrastructure/**`・`src/presentation/**`                     | `**/composition/**`                                                                                                                                                                                                     |
+| `<共通ライブラリの配置先>/core/**`(検査担当のみ)                   | `**/workers/**`・`cloudflare:*`・`**/<DBディレクトリの配置先>/**`・`drizzle-orm*`・`**/src/**`・`hono`(型だけのimportは許す)・`@sentry/*`(型だけのimportは許す)                                                         |
+| `<共通ライブラリの配置先>/workers/**`(検査担当のみ)                | `**/src/**`                                                                                                                                                                                                             |
+| `<DBディレクトリの配置先>/**`(検査担当のみ)                        | `**/<共通ライブラリの配置先>/**`・`**/src/**`・`hono`・`cloudflare:*`・`drizzle-orm/sqlite-core`の`sqliteTable`・`sqliteTableCreator`                                                                                   |
+| `<DBディレクトリの配置先>/**/*.worker.test.{ts,tsx}`(検査担当のみ) | 上の行から`cloudflare:*`を除いたもの                                                                                                                                                                                    |
 
-- 共通ライブラリの`core`の`hono`は、`@typescript-eslint/no-restricted-imports`の`allowTypeImports: true`で型だけのimport(`import type { Hono } from 'hono'`)を許す。モジュールの契約がHonoのアプリの型を参照するためである。型だけのimportは実行時に残らないため、`core`がHonoなしで動くことは変わらない。`workers`・`cloudflare:*`・DBディレクトリ・Drizzle ORMは型だけのimportも禁止する。
+- 共通ライブラリの`core`の`hono`と`@sentry/*`は、`@typescript-eslint/no-restricted-imports`の`allowTypeImports: true`で型だけのimport(`import type { Hono } from 'hono'`・`import type { ErrorEvent } from '@sentry/core'`)を許す。モジュールの契約がHonoのアプリの型を参照し、エラートラッキングの送信前の除去処理(「[個人情報と秘密情報の除去](../infra/004-logging-and-error-tracking.md#個人情報と秘密情報の除去)」)がイベントとスパンの型を参照するためである。型だけのimportは実行時に残らないため、`core`がHonoとエラートラッキングのSDKなしで動くことは変わらない。`domain`・`application`の`@sentry/*`は型だけのimportも禁止する。`workers`・`cloudflare:*`・DBディレクトリ・Drizzle ORMは型だけのimportも禁止する。
 - 共有ディレクトリ(共通ライブラリの`core`・`workers`とDBディレクトリ)は利用側アプリの`src`を読み込まない。共有ディレクトリは複数のアプリへ配置されるため、あるアプリの層や合成ルートに依存すると、他のアプリへ配置したときに解決できない。アプリ固有の型や値は、合成ルートから引数で渡す。
 - DBディレクトリのWorkers統合テストは、D1のバインディングをworkerdの実行環境(`cloudflare:workers`の`env`)から受け取るため、`cloudflare:*`だけを許す。
 - DBディレクトリでテーブルを`sqliteTable`で定義すると列名がスネークケースへ変換されないため、`snakeCase.table`を使う(「[命名規則](../db/001-drizzle-migrations-on-d1.md#命名規則)」)。
@@ -116,7 +117,7 @@ graph LR
 - `**/infrastructure/**`のような規則は、ディレクトリの中のファイルの指定に一致し、サブパスの無いディレクトリのimport(`'../infrastructure'`)には一致しない。importはディレクトリではなくファイルのパスで書く。
 - パターンはimportに書いた文字列と照合し、解決後のパスとは照合しない。同じ層の隣のディレクトリへの相対import(`'../<ディレクトリ>/<ファイル>'`)は層の名前を含まないため、`**/<層>/<ディレクトリ>/**`に一致しない。同じ層の中の特定のディレクトリを禁止する場合は、`'../<ディレクトリ>/**'`も加える。
 - `!`で始まる否定のパターンは、除外したディレクトリの下のファイルを含め直せない(`.gitignore`と同じく、親のディレクトリが除外されていると子は判定されない)。`['**/<機能>', '**/<機能>/**', '!../<機能>/<ファイル>']`は、親の`../<機能>`が`**/<機能>`に一致するため、その1ファイルも禁止のままになる。禁止したディレクトリの中の特定のファイルだけを許す場合は、`group`の代わりに`regex`で、否定先読み(`^(?!<許すファイルのパス>$)`)により許すファイルを除いた禁止の範囲を表し、許可例と違反例を単体テストで確かめる。
-- 同じファイルに当たる後の設定の`no-restricted-imports`は、前の設定のオプションを合わせずに置き換える。層の中の一部のディレクトリへ禁止を足す設定は、その層の4層の規則のパターンを含め直す。層ごとのパターンは`config/eslint/backend-layers.ts`の`BACKEND_LAYER_PATTERNS`(`domain`・`application`・`infrastructureAndPresentation`)として公開しているため、書き写さずに展開する。`@typescript-eslint/no-restricted-imports`は別の規則のため、`no-restricted-imports`のオプションを置き換えない。
+- 同じファイルに当たる後の設定の`no-restricted-imports`は、前の設定のオプションを合わせずに置き換える。層の中の一部のディレクトリへ禁止を足す設定は、その層の4層の規則のパターンを含め直す。層ごとのパターンは`config/eslint/backend-layers.ts`の`BACKEND_LAYER_PATTERNS`(`domain`・`application`・`infrastructureAndPresentation`)として公開しているため、書き写さずに展開する。エラートラッキングのSDKの禁止のパターンも`ERROR_TRACKING_RESTRICTION`として公開しており、`domain`・`application`のパターンに含まれる。`@typescript-eslint/no-restricted-imports`は別の規則のため、`no-restricted-imports`のオプションを置き換えない。
 
 ## 処理単位のコンテナ
 

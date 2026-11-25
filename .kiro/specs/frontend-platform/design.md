@@ -866,7 +866,7 @@ export declare function isServerFunctionCall(url: URL): boolean;
 ```typescript
 // server/http/ip-rate-limit.ts
 export declare const IP_RATE_LIMIT: {
-  readonly limit: 100;
+  readonly limit: 500;
   readonly periodSeconds: 10;
   readonly keyPrefix: 'ip:';
   readonly unknownClient: 'unknown';
@@ -893,7 +893,7 @@ export declare function hashRateLimitKey(
 ): Promise<string>; // 1つ以上の部品。base64url(パディング無し)の86文字
 ```
 
-- 上限と期間はWrangler設定の`ratelimits`(`simple: { limit: 100, period: 10 }`)で決まり、この定数は応答の`Retry-After`と設定の検査(`wrangler-config.unit.test.ts`)に使う。
+- 上限と期間はWrangler設定の`ratelimits`(`simple: { limit: 500, period: 10 }`)で決まり、この定数は応答の`Retry-After`と設定の検査(`wrangler-config.unit.test.ts`)に使う。
 - キー(5.7): `checkIpRateLimit`は`hashRateLimitKey(pepper, ipRateLimitKey(clientIp))`でハッシュ化した値だけをバインディングへ渡し、生のIPアドレスと`ip:<IP>`を渡さない。`CF-Connecting-IP`はIPv4・IPv6として検証し、不正なら`ip:unknown`をハッシュ化する。不明な送信元はすべて同じハッシュ値になり、上限を共有する(5.2)。Rate Limitingバインディングの`key`は公式文書で任意の文字列とされ、長さの上限の記載が無いため、ハッシュ値(86文字)をそのまま渡す。
 - `hashRateLimitKey`は、backend-libの`core/rate-limit/rate-limit-key.ts`の`hashRateLimitKey(createKeyedHasher(pepper), ...parts)`と同じ値を返す。HMAC-SHA512の鍵はペッパーをUTF-8にしたもの、入力は`rate-limit-key\u0000<JSON.stringify(parts)>`のUTF-8、出力はbase64url(パディング無し)である(security/002の「ハッシュ化の方法」「レート制限のキー」)。Web Crypto(`crypto.subtle`)だけを使い、`server/**`の読み込みの制限(`cloudflare:*`などを読まない)に収まる。共通部品はbackend-libのコードを読み込めないため、`utilities/observability/redaction-patterns.ts`と同じく写しとして置き、backend-platformが方式を変えたら合わせる(Revalidation Triggers)。部品が空なら値を含めない`RangeError`にする。
 - 鍵の読み込み(`crypto.subtle.importKey`)は要求ごとに行う。環境の検証が要求ごとに行われ、ペッパーをモジュールの状態に残さないためである。
@@ -2056,7 +2056,7 @@ export declare function applyServerFieldErrors<T extends FieldValues>(
   - 任意にする規則(判断31): 無効になり得る欄はスキーマで任意(`.optional()`)にする。値を除いた欄はスキーマで`undefined`として扱われ、任意の欄は検証を通るため、元のresolverの結果の`values`(変換を通った値。無効の欄は含まない)がそのまま`onSubmit`へ渡る。有効な間は`defaultValues`が全欄に値を入れるため、任意にしても値の検証は効く。無効になり得る欄を参照するオブジェクトの検証(`refine`・`superRefine`)は、その欄が無い場合を扱う。
   - 規則を守らないスキーマ(フォールバック): 元のresolverの結果の`errors`(入れ子の`FieldErrors`)から、`_names.disabled`の各名前の経路とその子の経路のエラーを除き、空になった親を除く(`errors.root`は除かない)。除いた後もエラーが残れば`{ values: {}, errors }`を返す。無効の欄にだけエラーが残っていた時は、スキーマを通らず出力の値が無いため、無効の欄を除いた入力の値の複製と空の`errors`を返し、送信を進める。この時に限り、無効でない欄の値もスキーマの変換を受けず、オブジェクトの`refine`・`superRefine`による項目をまたぐ検証(確認用の入力の一致など)も受けずに`onSubmit`へ渡る。このため、無効になり得る欄を任意にする規則は省けない。元の結果にエラーが無ければ元の結果を返す。
 - 入力欄を描かない値: `useAppForm`の`defaultValues`は型(`TInput & DefaultValues<TInput>`)でスキーマの入力の全欄を求め、サーバーの詳細は既定値に経路がある欄(親の経路を除く)に付く。このため、入力欄を描かない値(識別子・版の値など)や条件によって描かない欄をスキーマの入力(`TInput`)に含めると、その値へのエラーを利用者が直せず送信ボタンが無効のまま残る。画面はそうした値をスキーマの入力に含めず、`onSubmit`で加える。条件によって描かない欄は、描かない間はスキーマからも外す(条件ごとにスキーマを分ける、別のスキーマのフォームに分けるなど)。親の経路の扱いは欄をまとめた値だけが対象で、描かない値をオブジェクトにまとめてスキーマに含めても、その中の値の経路への詳細は欄に付くため、この制約は親の経路の扱いでは代えられない。
-- `FormField`はラベル・説明・エラーを`aria-describedby`・`aria-invalid`で入力欄に関連付け、エラーは文言とアイコンで示す(10.6)。子の関数へ渡す制御(`FormControlProps`)は`field`の値と`id`・`aria-invalid`・`aria-describedby`に加え、ラベルの要素の`id`を`labelId`として持つ。`labelId`は`Object.defineProperty`で列挙しない(non-enumerable)プロパティとして付け、`{...control}`の展開では写らず、DOMの属性に無い値が入力要素へ出力されない。`label`要素で名前を付けられない部品(`aria-labelledby`で名前を付ける部品。マークダウンの入力欄など)へは、`control.labelId`で読んで明示的に渡す。任意の`disabled?: boolean`を`useController({ control, name, disabled })`へ渡し、子へ渡す`field`の`disabled`で入力欄を無効にする(無効の欄の経路の判定に使う)。`disabled`が真になった時はその欄のエラーを消す(判断32)。必須の印は自動で付けず、必須の欄はラベルか説明の文言で示し`aria-required`を渡す。
+- `FormField`はラベル・説明・エラーを`aria-describedby`・`aria-invalid`で入力欄に関連付け、エラーは文言とアイコンで示す(10.6)。子の関数へ渡す制御(`FormControlProps`)は`field`の値と`id`・`aria-invalid`・`aria-describedby`に加え、ラベルの要素の`id`を`labelId`として持つ。`labelId`は`Object.defineProperty`で列挙しない(non-enumerable)プロパティとして付け、`{...control}`の展開では写らず、DOMの属性に無い値が入力要素へ出力されない。`label`要素で名前を付けられない部品(`aria-labelledby`で名前を付ける部品。マークダウンの入力欄など)へは、`control.labelId`で読んで明示的に渡す。任意の`disabled?: boolean`を`useController({ control, name, disabled })`へ渡し、子へ渡す`field`の`disabled`で入力欄を無効にする(無効の欄の経路の判定に使う)。`disabled`が真になった時はその欄のエラーを消す(判断32)。必須の印は自動で付けず、必須の欄はラベルか説明の文言で示し`aria-required`を渡す。任意の`labelPlacement?: 'top' | 'end'`(既定は`top`)で、`end`はチェックボックスのように入力欄の右にラベルを並べる欄のために、入力欄・ラベル・説明・エラーの順で文書に置き、2列のグリッドで並べる。見た目の並びを`className`のグリッドの配置や`order`で入れ替えると、Tabと読み上げの順序が見た目と食い違う(launch-readinessの指摘F-8)。
 - 既定値の予約された名前(判断41): `useAppForm`は`useState`の初期化で制御を作る時、`process.env.NODE_ENV !== 'production'`なら`reservedFieldNamePathsOf(defaultValues)`の経路が1つでもあれば、経路と名前を示す例外を投げる。欄のエラーの末端を`type`・`message`・`types`・`ref`のいずれかを持つオブジェクトで判定する(`revalidationTargetsOf`)ため、子の欄にこれらの名前を持つ値は値の経路ごと末端と扱われ、切り替えで描かれている子の欄のサーバーのエラーも置き換わるからである。最上位のキー(`type`という名前の欄)は末端の判定に影響しないため対象にしない。`process.env.NODE_ENV`はViteがビルド時に置き換え、Bun・Vitestでは`production`でないため、本番のバンドルでは判定が除かれる。本番のビルドの出力に判定が含まれないことは、`components/form/use-app-form-build.unit.test.ts`がNodeの子プロセスで`NODE_ENV`を渡さずにViteで`use-app-form.ts`を入口にビルドし、例外の文言が含まれないこと(開発時のビルドでは含まれること)で確かめる。Workerのバンドルでは`@cloudflare/vite-plugin`が`process.env.NODE_ENV`を置き換える。
 - 内部の値への依存(判断43): フォームの部品は、react-hook-formの内部の値(`control._names.disabled`・`control._names.array`・`control._fields`の`_f.mount`)と、公開されていない振る舞い(名前の配列を渡した`trigger`が全欄の検証から`isValid`を計算し直し渡した名前のエラーだけを置き換えること、resolverの`values`が`_formValues`そのものであること、`handleSubmit`が`_names.disabled`の値を外すこと、`useForm`が描画ごとに`control._options`を置き換えること、`cloneObject`が入れ子として複製する値、`@hookform/resolvers`の`toNestErrors`が一覧全体のエラーを入れ子にする条件、`setError`が欄のエラーに常に`ref`のキーを付け、種類も文言も持たない`setError(name, {})`も欄のエラーとして持つこと(型では`ref`は任意))に頼る。12.2の調査で、切り替えの時のエラーの読み取りは公開の`getErrors()`(購読も検証もしない)に置き換えた。無効の欄の判定(`_names.disabled`)と描画の状態(`_f.mount`・`_names.array`)は、それらを返す公開のAPIが無く、`FormField`の登録簿では`register`・`useController`の直接の利用やフォーム全体の`disabled`、描かなくなった無効の欄が`_names.disabled`に残ることと判定がずれるため残した。置き換えられない項目は`form-library-internals.unit.test.ts`(版の番人)に一覧として持ち、導入済みの版が確かめた版(react-hook-form 7.89.0・`@hookform/resolvers` 5.9.1)と異なると失敗させ、各項目の振る舞いをBunで動かせる範囲で確かめる。DOMを要する項目は既存のブラウザテストが確かめる。版を上げる手順は`coding/002`に書く。
 
@@ -2251,7 +2251,7 @@ export interface AdminLayoutProps {
 | `observability`                  | `enabled: true`・`logs.invocation_logs: false`(13.9)                                 | 同左                            |
 | `cache`                          | `enabled: false`                                                                     | 同左                            |
 | `services`                       | `API` → `genai-example-2-api`(envで`-staging`・`-prod`)、`entrypoint: ClientGateway` | `entrypoint: AdminGateway`      |
-| `ratelimits`                     | `IP_RATE_LIMITER`・`simple: { limit: 100, period: 10 }`・`namespace_id`は表          | 同左                            |
+| `ratelimits`                     | `IP_RATE_LIMITER`・`simple: { limit: 500, period: 10 }`・`namespace_id`は表          | 同左                            |
 | `vars`                           | 「Supporting References」の値                                                        | `WEB_ANALYTICS_TOKEN`を持たない |
 | `secrets.required`               | ルートは`HASH_PEPPER`、staging・prodは`HASH_PEPPER`・`SENTRY_DSN`                    | 同左                            |
 
@@ -2516,7 +2516,7 @@ graph LR
 
 ## 決定事項
 
-要件・技術文書と実装の食い違いについて、開発者が決めた契約である。第1回(判断1〜13)は最終検証の前、第2回(判断14〜36、24〜36は追加の判断)は最終検証のGOの後に2026-10-28に、第3回(判断37)と第4回(判断38〜48、最終報告の確認事項への回答)は2026-10-29に、第5回(判断49〜51、最終検証の指摘への回答)は2026-10-30に決めた。本文の該当箇所はこの契約で書いてあり、実装と文書への反映は、第1回はtasks.mdの10.1〜10.6、第2回は11.1〜11.10(判断29の`run-all.ts`の変更はdev-toolingの9.1)、第3回は11.11、第4回は12.1〜12.14(判断46のapiのテストはapi-gatewayの12.1、判断47のルートのコマンドはdev-toolingの10.1、判断44の申し送りはlegal-pagesの7.6・sponsorshipの10.5)、第5回は13.1〜13.3(判断51のルートのE2Eの設定はdev-toolingの11.1、判断50のstagingの確認はlaunch-readinessの7.9。判断49はビルドの出力から除く形に置き換えたため、ルートのコマンドを変えるdev-toolingの12.1は取り消した)で行う。
+要件・技術文書と実装の食い違いについて、開発者が決めた契約である。第1回(判断1〜13)は最終検証の前、第2回(判断14〜36、24〜36は追加の判断)は最終検証のGOの後に2026-10-28に、第3回(判断37)と第4回(判断38〜48、最終報告の確認事項への回答)は2026-10-29に、第5回(判断49〜51、最終検証の指摘への回答)は2026-10-30に決めた。本文の該当箇所はこの契約で書いてあり、実装と文書への反映は、第1回はtasks.mdの10.1〜10.6、第2回は11.1〜11.10(判断29の`run-all.ts`の変更はdev-toolingの9.1)、第3回は11.11、第4回は12.1〜12.14(判断46のapiのテストはapi-gatewayの12.1、判断47のルートのコマンドはdev-toolingの10.1、判断44の申し送りはlegal-pagesの7.6・sponsorshipの11.4)、第5回は13.1〜13.3(判断51のルートのE2Eの設定はdev-toolingの11.1、判断50のstagingの確認はlaunch-readinessの7.9。判断49はビルドの出力から除く形に置き換えたため、ルートのコマンドを変えるdev-toolingの12.1は取り消した)で行う。
 
 ### 中継が上流のJSONでない5xxを503にすること(要件2.10)
 
@@ -2777,7 +2777,7 @@ graph LR
 ### 未検証の要件の下流specへの申し送り(要件6.5・11.6・14.3・14.4、第4回の判断44)
 
 - 契約: 本specの疎通確認の画面は`loader`で`executeGraphQL`を直接呼び、TanStack Queryの`ensureQueryData`から`useSuspenseQuery`の流れ・取得の遅い区画のストリーミング・取得の失敗の500を使わないため、本specでは確認用の経路を置かずに、最初にこれらを使うページを作る下流specのE2Eに申し送る。R6.5のうち疎通確認の画面で確かめられる部分(ハイドレーションの後・再確認の前に中継への要求が0件、最初の見出しがSSRのまま)は本specのE2Eに足す(SmokeE2E)。
-- 申し送り先: ロードマップの順で最初に`loader`でTanStack Queryの取得を始めるページを作るのはlegal-pagesの公開ページ(`/terms`・`/privacy`・`/legal`と過去版。`legal-route-options.ts`の`legalDocumentLoader`が`context.queryClient`で取得し、部品は`frontend/006`の規約どおり同じ設定の`useSuspenseQuery`で読む)で、R6.5(初回表示の後に中継へ取得し直さない)・R14.4(サーバー側でページの描画より前に取得を始め、スクリプトを無効にしても本文がHTMLにある)・R11.6(取得の失敗の表示)をlegal-pagesの7.6に足した。取得の遅い区画を`Suspense`の中の`useSuspenseQuery`でストリーミングするのはsponsorshipの広告の区画(`useSponsoredPlacements`)が最初で、R14.3(区画の取得を待たずにページの主要な内容が先に届く)をsponsorshipの10.5に足した。match-engineのトップページ(`ensureQueryData`)とuser-profile-socialの公開プロフィール(`ensureQueryData`・タブのパネルの`Suspense`)はlegal-pagesより後のため、申し送り先にしない。
+- 申し送り先: ロードマップの順で最初に`loader`でTanStack Queryの取得を始めるページを作るのはlegal-pagesの公開ページ(`/terms`・`/privacy`・`/legal`と過去版。`legal-route-options.ts`の`legalDocumentLoader`が`context.queryClient`で取得し、部品は`frontend/006`の規約どおり同じ設定の`useSuspenseQuery`で読む)で、R6.5(初回表示の後に中継へ取得し直さない)・R14.4(サーバー側でページの描画より前に取得を始め、スクリプトを無効にしても本文がHTMLにある)・R11.6(取得の失敗の表示)をlegal-pagesの7.6に足した。取得の遅い区画を`Suspense`の中の`useSuspenseQuery`でストリーミングするのはsponsorshipの広告の区画(`useSponsoredPlacements`)が最初で、R14.3(区画の取得を待たずにページの主要な内容が先に届く)をsponsorshipの11.4に足した。match-engineのトップページ(`ensureQueryData`)とuser-profile-socialの公開プロフィール(`ensureQueryData`・タブのパネルの`Suspense`)はlegal-pagesより後のため、申し送り先にしない。
 - R11.6の注意: ブラウザ内の画面遷移での取得の失敗は、Playwrightの`page.route`で中継の経路への応答を想定外の失敗にして、レイアウトの中の想定外のエラーの表示を確かめられる。サーバー側の描画での取得の失敗の500は、APIサーバーを起動したままでは決定的に起こせない。また、部品の描画中の例外(`loader`の外の例外)がサーバー側の描画で状態コード500にならず、200のままエラーの表示を返す可能性がある(ストリーミングの描画では、応答を送り始めた後の例外で状態コードを変えられないため)。legal-pagesの7.6は、決定的に起こせない確認を飛ばした理由と、500にならない可能性の確認の結果を報告に書き、確かめられなかった部分をlaunch-readinessへ申し送る。
 - 影響の表: 「実装で確定した契約による発火と影響を受ける下流spec」の表に行を加える。
 

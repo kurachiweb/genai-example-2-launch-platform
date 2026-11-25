@@ -154,6 +154,36 @@ describe('RegisterForm', () => {
     await expect.element(agreement()).toBeChecked();
   });
 
+  test('同意の欄は、文書の順序とTabの順序がチェックボックス、利用規約、プライバシーポリシーの順になる', async () => {
+    await renderForm();
+    const checkbox = agreement().element();
+    const terms = form().getByRole('link', { name: '利用規約' }).element();
+    const privacy = form()
+      .getByRole('link', { name: 'プライバシーポリシー' })
+      .element();
+    const follows = (before: Element, after: Element) =>
+      (before.compareDocumentPosition(after) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+      0;
+
+    expect(follows(checkbox, terms)).toBe(true);
+    expect(follows(terms, privacy)).toBe(true);
+
+    checkbox.focus();
+    await userEvent.tab({ shift: true });
+    expect(
+      checkbox
+        .closest('[data-slot="form-field"]')
+        ?.contains(document.activeElement),
+    ).toBe(false);
+    await userEvent.tab();
+    await expect.element(agreement()).toHaveFocus();
+    await userEvent.tab();
+    await expect.element(terms).toHaveFocus();
+    await userEvent.tab();
+    await expect.element(privacy).toHaveFocus();
+  });
+
   test('bot判定は登録の操作名の非表示のウィジェットで行い、判定の枠を画面に出さない', async () => {
     await renderForm();
 

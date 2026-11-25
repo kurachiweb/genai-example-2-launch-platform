@@ -464,7 +464,7 @@ sequenceDiagram
 | 12.6        | 0に戻ったら記録を残さない                                     | RateLimitCounter                                                                                        | `deleteAll`                                                                                 | —                |
 | 12.7        | ハッシュ化済みキーだけを保持                                  | RateLimitKey・RateLimitCounterClient                                                                    | `HashedRateLimitKey`                                                                        | —                |
 | 12.8        | 429・再試行秒数・共通形式                                     | RateLimitCounterClient・ErrorHandler                                                                    | `assertWithinLimit`                                                                         | —                |
-| 13.1        | IP単位・Worker単位で10秒100回                                 | IpRateLimit・WranglerConfigs                                                                            | `IP_RATE_LIMITER`・ハッシュ化した`ip:<IP>`                                                  | HTTPリクエスト   |
+| 13.1        | IP単位・Worker単位で10秒500回                                 | IpRateLimit・WranglerConfigs                                                                            | `IP_RATE_LIMITER`・ハッシュ化した`ip:<IP>`                                                  | HTTPリクエスト   |
 | 13.2        | 超過で429                                                     | IpRateLimit・BindingRateLimit                                                                           | `rate_limit_exceeded`・`Retry-After: 10`                                                    | HTTPリクエスト   |
 | 13.3        | Webhook・配信停止・画像配信の除外                             | RateLimitExclusions・AppComposition                                                                     | `RateLimitExclusion`                                                                        | HTTPリクエスト   |
 | 13.4        | 経路・ホスト名での除外登録                                    | RateLimitExclusions                                                                                     | `excludePath`・`excludeHostname`                                                            | —                |
@@ -1724,7 +1724,7 @@ export declare const UNKNOWN_CLIENT_IP: 'unknown';
 | 項目             | 値                                                                                                                                                                                                  |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | バインディング名 | `IP_RATE_LIMITER`                                                                                                                                                                                   |
-| 上限             | `simple: { limit: 100, period: 10 }`                                                                                                                                                                |
+| 上限             | `simple: { limit: 500, period: 10 }`                                                                                                                                                                |
 | 名前空間         | Worker・環境ごとに別の`namespace_id`(値は`docs/onboardings/project-values.md`)                                                                                                                      |
 | キー             | `ip:<送信元IPアドレス>`(ブラウザから直接受けるWorkerは`CF-Connecting-IP`)、不明なら`ip:unknown`を、`HASH_PEPPER`を鍵とした`hashRateLimitKey`(用途`rate-limit-key`)でハッシュ化した値(承認後の改訂9) |
 | 対象             | Workerが受け付ける全HTTPリクエスト。除外は登録した経路・ホスト名だけ                                                                                                                                |
@@ -1842,7 +1842,7 @@ export declare function turnstileGuard(
 | Queues producer                        | `JOBS_QUEUE`                                                                                   | `JOBS_QUEUE`・`JOBS_DLQ`                                                                           |
 | Queues consumer                        | なし                                                                                           | 本体(`dead_letter_queue`付き)・デッドレター                                                        |
 | Durable Objects                        | `RATE_LIMIT_COUNTER`・`migrations` v1                                                          | なし                                                                                               |
-| `ratelimits`                           | `IP_RATE_LIMITER`(`limit: 100`・`period: 10`)                                                  | 同左(別の`namespace_id`)                                                                           |
+| `ratelimits`                           | `IP_RATE_LIMITER`(`limit: 500`・`period: 10`)                                                  | 同左(別の`namespace_id`)                                                                           |
 | Images                                 | なし                                                                                           | `IMAGES`                                                                                           |
 | `triggers.crons`                       | 登録ジョブから導いた式(初版は`[]`)                                                             | 書かない                                                                                           |
 | `vars`                                 | `LOG_LEVEL`・`SENTRY_ENVIRONMENT`・`SENTRY_TRACES_SAMPLE_RATE`・`TURNSTILE_EXPECTED_HOSTNAMES` | `LOG_LEVEL`・`SENTRY_ENVIRONMENT`・`SENTRY_TRACES_SAMPLE_RATE`・`JOBS_QUEUE_NAME`・`JOBS_DLQ_NAME` |
@@ -1859,7 +1859,7 @@ export declare function turnstileGuard(
   - `vars`・`secrets.required`に「シークレットの値」らしき項目が無く、必須キーが揃っている(7.4)。
   - apiの`cache.enabled`が`false`、両アプリの呼び出しログが無効(7.6・8.4)。
   - consumerの`max_retries`が`QUEUE_MAX_RETRIES`(6)と一致し、`DEFAULT_RETRY_POLICY.maxAttempts`がそれ以下で、`dead_letter_queue`が設定されている(11.7、承認後の改訂8)。
-  - `IP_RATE_LIMITER`が`limit: 100`・`period: 10`で、`namespace_id`がWorker・環境ごとに異なる(13.1)。
+  - `IP_RATE_LIMITER`が`limit: 500`・`period: 10`で、`namespace_id`がWorker・環境ごとに異なる(13.1)。
 - 設定の読み込みはWranglerの`unstable_readConfig`を使い、環境ごとの実効値で検査する。
 
 #### AppPackageScripts・VitestConfigs
@@ -2057,7 +2057,7 @@ TDDで進め、各部品のテストを先に書く。単体テスト(Bun)とWor
 - **Integration Tests**(Workers統合テスト、workerd)
   - `create-worker-app.worker.test.ts`: `/health`が環境の欠けた状態でも200と`no-store`を返す。未登録の経路が404、`AppError`と想定外の例外が共通のエラー形式になる。アクセスログに1件、クエリ文字列とIPを含まずに出る。相関IDが同じ処理の全ログに付く(4.5・4.6・5.6・6.1〜6.3・7.5・8.2・8.5)。
   - `invocation-container.worker.test.ts`: 2つの同時リクエストが別の`Database`・単一インスタンスを受け取る(5.2)。
-  - `ip-rate-limit.worker.test.ts`・`binding-rate-limit.worker.test.ts`: 同じIPの101回目が429・`Retry-After: 10`になり、別のIPは影響を受けない。除外規則に当たるリクエストは数えない。差し替えたリゾルバの値で数える(13.1〜13.5・13.7)。バインディングへ渡すキーが`hashRateLimitKey(createKeyedHasher(<テスト用のペッパー>), 'ip:<IP>')`の値で生のIPアドレスを含まず、`HASH_PEPPER`が無い環境では数えずに後続へ渡し、`/health`は200・他の経路は`envGuard`の500になる。`key`がPromiseを返す汎用の制限も数える(13.8、承認後の改訂9)。
+  - `ip-rate-limit.worker.test.ts`・`binding-rate-limit.worker.test.ts`: 同じIPの501回目が429・`Retry-After: 10`になり、別のIPは影響を受けない。除外規則に当たるリクエストは数えない。差し替えたリゾルバの値で数える(13.1〜13.5・13.7)。バインディングへ渡すキーが`hashRateLimitKey(createKeyedHasher(<テスト用のペッパー>), 'ip:<IP>')`の値で生のIPアドレスを含まず、`HASH_PEPPER`が無い環境では数えずに後続へ渡し、`/health`は200・他の経路は`envGuard`の500になる。`key`がPromiseを返す汎用の制限も数える(13.8、承認後の改訂9)。
   - `rate-limit-counter.worker.test.ts`: 並行した`hit`が正確に数えられ、`runDurableObjectAlarm`の後に記録が消え、`reset`で途中から0に戻る。拒否時に`assertWithinLimit`が429と残り秒数を返す(12.1〜12.8)。
   - `scheduled-dispatcher.worker.test.ts`: 2つのジョブのうち1つ目が失敗しても2つ目が実行され、未登録の式で警告だけになり、0件で成功する(8.6・10.3〜10.5・10.8)。差し替えた時計とトランスポートで、予算のある式の合計が予算を1ms超えると`warning`のログとSentryの`warning`(タグ`cron`、コンテキストの所要時間)が1回送られ、予算ちょうど・予算の無い式・失敗したジョブを含む予算以内の起動では送られず、要約に`totalDurationMs`が出る(10.9)。
   - `queue-consumer.worker.test.ts`・`dead-letter-consumer.worker.test.ts`: `createMessageBatch`で、成功の`ack`、失敗の`retry`と遅延、上限到達・未登録の種別・不正な本文でのデッドレター通知、`defer`の再送、1件の失敗が他に影響しないこと、デッドレターのログとSentryに本文が含まれないことを確かめる(11.1〜11.8)。ハンドラーの外の想定外の例外のエラーログとSentryのイベントに封筒のIDの相関ID(タグ`correlation_id`)が付き、後続のメッセージのイベントには後続のIDが付くこと、登録の`retry.maxAttempts`が`QUEUE_MAX_RETRIES`を超えると組み立て時に`RangeError`になることを確かめる(9.1、承認後の改訂8)。

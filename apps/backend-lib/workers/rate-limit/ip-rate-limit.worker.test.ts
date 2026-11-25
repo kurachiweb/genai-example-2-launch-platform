@@ -22,7 +22,7 @@ interface TestHonoEnv {
   Variables: { clientIp: string | undefined };
 }
 
-const IP_LIMIT = 100;
+const IP_LIMIT = 500;
 const PERIOD_MILLISECONDS = 10_000;
 const BURST_MARGIN_MILLISECONDS = 4_000;
 const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;
@@ -84,7 +84,7 @@ function createRecordingRateLimit(keys: string[]): RateLimit {
 
 describe('ipRateLimit(Rate Limitingバインディング)', () => {
   test(
-    '同じIPの101回目を429・Retry-After: 10・共通のエラー形式で止め、別のIPと除外に当たるリクエストは影響を受けない',
+    '同じIPの501回目を429・Retry-After: 10・共通のエラー形式で止め、別のIPと除外に当たるリクエストは影響を受けない',
     async () => {
       const app = createApp([excludePath('/webhooks/stripe', 'POST')]);
       await waitForFreshWindow();

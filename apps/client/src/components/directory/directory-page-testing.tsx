@@ -6,12 +6,14 @@ import { normalizeDirectoryQuery } from '../../../common-lib/directory/directory
 import { executeGraphQL } from '../../../lib/start/graphql/execute-graphql.ts';
 import { GraphQLClientError } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { renderPageRouter } from '../../../test/page-router.tsx';
+import { NO_SPONSORED_PLACEMENTS_RESULT } from '../../../test/sponsored-placements-stub.ts';
 import {
   ClientDirectoryCategoriesDocument,
   type ClientDirectoryCategoriesQuery,
   ClientDirectoryDocument,
   type ClientDirectoryQuery,
   type ClientDirectoryQueryVariables,
+  ClientSponsoredPlacementsDocument,
 } from '../../graphql/generated/graphql.ts';
 import { useViewer } from '../auth/use-viewer.ts';
 import { directoryItemOf } from './directory-item-fixtures.ts';
@@ -99,7 +101,7 @@ export const FAILURE = {
 
 type DirectoryResponder = (variables: ClientDirectoryQueryVariables) => unknown;
 
-// テストのファイルがexecuteGraphQLをvi.mockで偽にしてから使う
+// テストのファイルがexecuteGraphQLをvi.mockで偽にしてから使う。ディレクトリの経路は広告スペースの区画を描くため、広告の取得には0件を返す
 export const respond = (
   directory: DirectoryResponder,
   categories: () => unknown = () => CATEGORIES_RESULT,
@@ -113,6 +115,9 @@ export const respond = (
     }
     if (document === ClientDirectoryCategoriesDocument) {
       return Promise.resolve(categories());
+    }
+    if (document === ClientSponsoredPlacementsDocument) {
+      return Promise.resolve(NO_SPONSORED_PLACEMENTS_RESULT);
     }
     throw new Error('想定していない操作が実行されました。');
   }) as never);

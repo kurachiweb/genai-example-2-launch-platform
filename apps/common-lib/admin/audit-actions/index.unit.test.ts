@@ -2,11 +2,15 @@ import { describe, expect, test } from 'bun:test';
 
 import { createAuditActionCatalog } from '../audit-action.ts';
 import { ADMIN_FOUNDATION_AUDIT_ACTIONS } from './admin-foundation.ts';
+import { REPORTING_AUDIT_ACTIONS } from './content-reporting.ts';
 import { HELP_CENTER_AUDIT_ACTIONS } from './help-center.ts';
 import { AUDIT_ACTIONS } from './index.ts';
 import { INQUIRY_AUDIT_ACTIONS } from './inquiry-chat.ts';
 import { NOTIFICATION_AUDIT_ACTIONS } from './notifications.ts';
 import { PRODUCT_LAUNCH_AUDIT_ACTIONS } from './product-launch.ts';
+import { SPONSORSHIP_AUDIT_ACTIONS } from './sponsorship.ts';
+import { TOURNAMENT_YEAR_AUDIT_ACTIONS } from './tournament-year.ts';
+import { MODERATION_AUDIT_ACTIONS } from './ugc-moderation.ts';
 import { ULTRAS_AUDIT_ACTIONS } from './ultras-subscription.ts';
 
 describe('AUDIT_ACTIONS', () => {
@@ -14,7 +18,7 @@ describe('AUDIT_ACTIONS', () => {
     expect(() => createAuditActionCatalog(AUDIT_ACTIONS)).not.toThrow();
   });
 
-  test('admin-foundationの4種別・inquiry-chatの5種別・ultras-subscriptionの1種別・product-launchの3種別・help-centerの8種別・notificationsの1種別だけが載る', () => {
+  test('admin-foundationの4種別・inquiry-chatの5種別・ultras-subscriptionの1種別・product-launchの3種別・help-centerの8種別・notificationsの1種別・tournament-yearの1種別・sponsorshipの1種別・ugc-moderationの13種別・content-reportingの7種別だけが載る', () => {
     expect(AUDIT_ACTIONS.map((action) => action.name)).toEqual([
       'admin-account.invite',
       'admin-account.delete',
@@ -38,6 +42,28 @@ describe('AUDIT_ACTIONS', () => {
       'help-category.delete',
       'help-category.reorder',
       'notification-sender.update',
+      'year-final-date.update',
+      'sponsorship.terminate',
+      'user.suspend',
+      'user.unsuspend',
+      'user.administrative-withdraw',
+      'product.hide',
+      'product.unhide',
+      'comment.hide',
+      'comment.unhide',
+      'rating.invalidate',
+      'rating.revalidate',
+      'image.approve',
+      'image.quarantine',
+      'image.release',
+      'image.delete',
+      'report.status-change',
+      'report.resolve',
+      'report.reject',
+      'report.inquire',
+      'report-category.create',
+      'report-category.rename',
+      'report-category.delete',
     ]);
   });
 
@@ -49,6 +75,10 @@ describe('AUDIT_ACTIONS', () => {
       ...PRODUCT_LAUNCH_AUDIT_ACTIONS,
       ...HELP_CENTER_AUDIT_ACTIONS,
       ...NOTIFICATION_AUDIT_ACTIONS,
+      ...TOURNAMENT_YEAR_AUDIT_ACTIONS,
+      ...SPONSORSHIP_AUDIT_ACTIONS,
+      ...MODERATION_AUDIT_ACTIONS,
+      ...REPORTING_AUDIT_ACTIONS,
     ].map((action) => [action.name, action]),
   )('登録した種別%sを名前で引ける', (name, action) => {
     expect(createAuditActionCatalog(AUDIT_ACTIONS).find(name)).toBe(action);

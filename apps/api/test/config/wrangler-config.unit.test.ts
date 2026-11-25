@@ -5,6 +5,7 @@ import {
   DEFAULT_RETRY_POLICY,
   QUEUE_MAX_RETRIES,
 } from '../../lib/core/messaging/retry-policy.ts';
+import { PUBLIC_API_IP_RATE_LIMIT } from '../../src/application/public-api/rate-limit-rules.ts';
 import {
   appPath,
   EMAIL_CONFIG_KEY_PATTERN,
@@ -124,6 +125,7 @@ interface ExpectedEnvironment {
   readonly databaseId: string;
   readonly r2Jurisdiction: string | undefined;
   readonly rateLimitNamespaceIds: Readonly<Record<AppName, string>>;
+  readonly publicApiRateLimitNamespaceId: string;
   readonly logLevel: string;
   readonly sentryEnvironment: string;
   readonly sentryTracesSampleRate: string;
@@ -134,6 +136,7 @@ interface ExpectedEnvironment {
   readonly clientSiteOrigin: string;
   readonly adminSiteOrigin: string;
   readonly eventSiteOrigin: string;
+  readonly imagesOrigin: string;
 }
 
 const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
@@ -145,6 +148,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     databaseId: '00000000-0000-4000-8000-000000000001',
     r2Jurisdiction: undefined,
     rateLimitNamespaceIds: { api: '1001', event: '1002' },
+    publicApiRateLimitNamespaceId: '1005',
     logLevel: 'debug',
     sentryEnvironment: 'local',
     sentryTracesSampleRate: '0',
@@ -155,6 +159,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     clientSiteOrigin: 'http://localhost:48044',
     adminSiteOrigin: 'http://localhost:48045',
     eventSiteOrigin: 'http://localhost:48043',
+    imagesOrigin: 'http://localhost:48043',
   },
   {
     label: 'staging',
@@ -164,6 +169,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     databaseId: '0e2adedf-a072-4e5f-a00b-6e2cb04c4bdf',
     r2Jurisdiction: 'us',
     rateLimitNamespaceIds: { api: '2001', event: '2002' },
+    publicApiRateLimitNamespaceId: '2005',
     logLevel: 'info',
     sentryEnvironment: 'staging',
     sentryTracesSampleRate: '1',
@@ -176,6 +182,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       'https://genai-example-2-client-staging.lab.kurachiweb.com',
     adminSiteOrigin: 'https://genai-example-2-admin-staging.lab.kurachiweb.com',
     eventSiteOrigin: 'https://genai-example-2-event-staging.lab.kurachiweb.com',
+    imagesOrigin: 'https://genai-example-2-images-staging.lab.kurachiweb.com',
   },
   {
     label: 'prod',
@@ -185,6 +192,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     databaseId: '00000000-0000-0000-0000-000000000000',
     r2Jurisdiction: 'us',
     rateLimitNamespaceIds: { api: '3001', event: '3002' },
+    publicApiRateLimitNamespaceId: '3005',
     logLevel: 'info',
     sentryEnvironment: 'prod',
     sentryTracesSampleRate: '0.1',
@@ -196,6 +204,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
     clientSiteOrigin: 'https://genai-example-2-client.lab.kurachiweb.com',
     adminSiteOrigin: 'https://genai-example-2-admin.lab.kurachiweb.com',
     eventSiteOrigin: 'https://genai-example-2-event.lab.kurachiweb.com',
+    imagesOrigin: 'https://genai-example-2-images.lab.kurachiweb.com',
   },
 ];
 
@@ -252,6 +261,12 @@ function findRateLimiter(config: EffectiveConfig) {
   return config.ratelimits.find((entry) => entry.name === 'IP_RATE_LIMITER');
 }
 
+function findPublicApiRateLimiter(config: EffectiveConfig) {
+  return config.ratelimits.find(
+    (entry) => entry.name === 'PUBLIC_API_RATE_LIMITER',
+  );
+}
+
 describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env) => {
   const api = readEffectiveConfig('api', env.wranglerEnv);
   const event = readEffectiveConfig('event', env.wranglerEnv);
@@ -265,14 +280,18 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     expect(event.main).toBe(appPath('event', 'src', 'index.ts'));
   });
 
-  test('両アプリが同じ名前のD1・R2・IP制限のバインディングを持つ', () => {
+  test('両アプリが同じ名前のD1・R2・IP制限のバインディングを持ち、公開APIのIP制限はapiだけが持つ', () => {
     for (const config of [api, event]) {
       expect(bindingNames(config.d1_databases)).toEqual(['DB']);
       expect(bindingNames(config.r2_buckets)).toEqual(R2_BINDINGS);
-      expect(config.ratelimits.map((entry) => entry.name)).toEqual([
-        'IP_RATE_LIMITER',
-      ]);
     }
+    expect(api.ratelimits.map((entry) => entry.name)).toEqual([
+      'IP_RATE_LIMITER',
+      'PUBLIC_API_RATE_LIMITER',
+    ]);
+    expect(event.ratelimits.map((entry) => entry.name)).toEqual([
+      'IP_RATE_LIMITER',
+    ]);
   });
 
   test('Queueの送信はapiが本体だけ、eventが本体とデッドレターを持つ', () => {
@@ -383,7 +402,18 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
       APP_ENVIRONMENT: env.appEnvironment,
       CLIENT_SITE_ORIGIN: env.clientSiteOrigin,
       ADMIN_SITE_ORIGIN: env.adminSiteOrigin,
+      IMAGES_ORIGIN: env.imagesOrigin,
     });
+  });
+
+  test('apiの画像配信のオリジンは、ローカルはhttp、デプロイ先はhttpsで、パスと末尾のスラッシュを持たない', () => {
+    const imagesOrigin = z.string().parse(api.vars['IMAGES_ORIGIN']);
+    const url = new URL(imagesOrigin);
+
+    expect(url.origin).toBe(imagesOrigin);
+    expect(url.protocol).toBe(
+      env.wranglerEnv === undefined ? 'http:' : 'https:',
+    );
   });
 
   test('eventのメール・キーワード抽出・メディア・決済以外の変数はシークレットを含まず、環境ごとの値とQueue名と利用者側とイベントサーバーのオリジンを持つ', () => {
@@ -459,15 +489,27 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     expect(consumer?.dead_letter_queue).toBeUndefined();
   });
 
-  test('IP制限は10秒あたり100回で、Workerごとの名前空間を使う', () => {
+  test('IP制限は10秒あたり500回で、Workerごとの名前空間を使う', () => {
     for (const app of APP_NAMES) {
       const config = app === 'api' ? api : event;
       expect(findRateLimiter(config)).toEqual({
         name: 'IP_RATE_LIMITER',
         namespace_id: env.rateLimitNamespaceIds[app],
-        simple: { limit: 100, period: 10 },
+        simple: { limit: 500, period: 10 },
       });
     }
+  });
+
+  test('公開APIのIP制限は仕様書と超過の応答が使う定数の上限と期間で、apiの環境ごとの名前空間を使う', () => {
+    expect(findPublicApiRateLimiter(api)).toEqual({
+      name: 'PUBLIC_API_RATE_LIMITER',
+      namespace_id: env.publicApiRateLimitNamespaceId,
+      simple: {
+        limit: PUBLIC_API_IP_RATE_LIMIT.limit,
+        period: PUBLIC_API_IP_RATE_LIMIT.periodSeconds,
+      },
+    });
+    expect(findPublicApiRateLimiter(event)).toBeUndefined();
   });
 
   test('apiだけが厳密カウンタとログイン試行の記録のDurable Objectを束縛し、SQLiteを使うクラスとして移行する', () => {
@@ -502,5 +544,30 @@ describe('Wrangler設定の環境をまたぐ整合', () => {
     expect(new Set(namespaceIds).size).toBe(
       EXPECTED_ENVIRONMENTS.length * APP_NAMES.length,
     );
+  });
+
+  test('公開APIのIP制限の名前空間が環境ごとに異なり、どのWorkerのIP制限の名前空間とも重ならない', () => {
+    const ipNamespaceIds = EXPECTED_ENVIRONMENTS.flatMap((env) =>
+      APP_NAMES.map(
+        (app) =>
+          findRateLimiter(readEffectiveConfig(app, env.wranglerEnv))
+            ?.namespace_id,
+      ),
+    );
+    const publicApiNamespaceIds = EXPECTED_ENVIRONMENTS.map(
+      (env) =>
+        findPublicApiRateLimiter(readEffectiveConfig('api', env.wranglerEnv))
+          ?.namespace_id,
+    );
+
+    expect(publicApiNamespaceIds).toEqual(
+      EXPECTED_ENVIRONMENTS.map((env) => env.publicApiRateLimitNamespaceId),
+    );
+    expect(new Set(publicApiNamespaceIds).size).toBe(
+      EXPECTED_ENVIRONMENTS.length,
+    );
+    for (const namespaceId of publicApiNamespaceIds) {
+      expect(ipNamespaceIds).not.toContain(namespaceId);
+    }
   });
 });

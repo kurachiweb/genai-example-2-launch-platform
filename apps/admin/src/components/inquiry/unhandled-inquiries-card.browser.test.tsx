@@ -15,10 +15,12 @@ import {
   type UnhandledCountHandler,
 } from '../../../test/admin-inquiries-fixtures.ts';
 import { adminWithRole } from '../../../test/admin-viewer-fixtures.ts';
+import { respondWeeklyStatistics } from '../../../test/moderation-statistics-fixtures.ts';
 import {
   type PageRootRoute,
   renderPageRouter,
 } from '../../../test/page-router.tsx';
+import { respondReportSummaries } from '../../../test/reporting-summary-fixtures.ts';
 import { DASHBOARD_CARDS } from '../../composition/dashboard-cards.ts';
 import {
   adminUnhandledInquiryCountQueryOptions,
@@ -28,6 +30,8 @@ import { AdminUnhandledInquiryCountDocument } from '../../graphql/generated/grap
 import { Route as AuthenticatedRoute } from '../../routes/_authenticated/route.tsx';
 import { Route as DashboardRoute } from '../../routes/_authenticated/index.tsx';
 import { Route as InquiriesRoute } from '../../routes/_authenticated/inquiries/index.tsx';
+import { WeeklyStatisticsCard } from '../moderation/statistics/weekly-statistics-card.tsx';
+import { UnhandledReportsCard } from '../reporting/dashboard/unhandled-reports-card.tsx';
 import { toAdminInquirySearch } from './admin-inquiry-search.ts';
 import { UnhandledInquiriesCard } from './unhandled-inquiries-card.tsx';
 
@@ -94,6 +98,8 @@ const renderDashboard = (unhandledCount: UnhandledCountHandler) => {
     role: 'VIEWER',
     unhandledCount,
   });
+  respondWeeklyStatistics(executeGraphQL);
+  respondReportSummaries(executeGraphQL);
   return renderPageRouter({
     path: '/',
     createRoutes,
@@ -111,13 +117,25 @@ afterEach(() => {
 });
 
 describe('ダッシュボードのカードの登録', () => {
-  test('未対応の問い合わせのカードを順序20・半分の幅で登録する', () => {
+  test('週ごとの統計のカードを順序10・全幅で、未対応の問い合わせのカードを順序20・半分の幅で、未対応の通報のカードを順序30・半分の幅で登録する', () => {
     expect(DASHBOARD_CARDS).toStrictEqual([
+      {
+        id: 'ugc-moderation.weekly-statistics',
+        order: 10,
+        width: 'full',
+        component: WeeklyStatisticsCard,
+      },
       {
         id: 'inquiry-chat.unhandled-inquiries',
         order: 20,
         width: 'half',
         component: UnhandledInquiriesCard,
+      },
+      {
+        id: 'content-reporting.unhandled-reports',
+        order: 30,
+        width: 'half',
+        component: UnhandledReportsCard,
       },
     ]);
     expect(Object.isFrozen(DASHBOARD_CARDS)).toBe(true);

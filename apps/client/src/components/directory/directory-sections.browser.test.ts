@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import {
   DIRECTORY_ITEM_METRICS,
@@ -6,8 +6,17 @@ import {
   DIRECTORY_PAGE_SECTIONS,
 } from '../../composition/directory-sections.ts';
 import { CommentCountMetric } from '../engagement/comment-count-metric.tsx';
+import { GoldListInsert } from '../sponsorship/gold-list-insert.tsx';
+import { GoldListPlacement } from '../sponsorship/gold-list-placement.tsx';
+import { LegendPlacement } from '../sponsorship/legend-placement.tsx';
+import { SilverPlacement } from '../sponsorship/silver-placement.tsx';
 import { DIRECTORY_PLACEMENTS } from './directory-section-order.ts';
 import type { DirectoryPlacement } from './directory-section-types.ts';
+
+// 実行の関数はサーバー専用の処理を読み込むため、登録箇所の部品を読み込むテストでは差し替える
+vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
+  executeGraphQL: vi.fn(),
+}));
 
 const SECTION_ID_PATTERN = /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/u;
 
@@ -17,9 +26,29 @@ const METRIC_KEY_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
 const PLACEMENTS: readonly DirectoryPlacement[] = DIRECTORY_PLACEMENTS;
 
 describe('ディレクトリの登録箇所', () => {
-  test('初版の区画と一覧の差し込みの登録箇所は空である', () => {
-    expect(DIRECTORY_PAGE_SECTIONS).toStrictEqual([]);
-    expect(DIRECTORY_LIST_INSERTS).toStrictEqual([]);
+  test('区画にはsponsorshipのLegend(ページ上部の10)・Gold(横の列の10)・Silver(ページ末尾の10)を、一覧の差し込みにはGoldの差し込み(10、2件ごと)を登録する', () => {
+    expect(
+      DIRECTORY_PAGE_SECTIONS.map(({ id, placement, order }) => ({
+        id,
+        placement,
+        order,
+      })),
+    ).toStrictEqual([
+      { id: 'sponsorship.legend', placement: 'banner', order: 10 },
+      { id: 'sponsorship.gold', placement: 'aside', order: 10 },
+      { id: 'sponsorship.silver', placement: 'bottom', order: 10 },
+    ]);
+    expect(
+      DIRECTORY_PAGE_SECTIONS.map(({ component }) => component),
+    ).toStrictEqual([LegendPlacement, GoldListPlacement, SilverPlacement]);
+    expect(
+      DIRECTORY_LIST_INSERTS.map(({ id, order, every }) => ({
+        id,
+        order,
+        every,
+      })),
+    ).toStrictEqual([{ id: 'sponsorship.gold-insert', order: 10, every: 2 }]);
+    expect(DIRECTORY_LIST_INSERTS[0]?.component).toBe(GoldListInsert);
   });
 
   test('項目の値にはengagementのコメント数(10)を、APIサーバーの供給元の登録と同じkeyで登録する', () => {

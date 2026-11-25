@@ -13,9 +13,21 @@ export interface EmailSendBody {
   readonly input: unknown;
   readonly deadline?: string;
   readonly headers?: ExtraHeaders;
+  readonly idempotencyKey?: string;
 }
 
 export const MAX_EMAIL_SEND_BODY_BYTES = 65_536;
+
+export const MAX_EMAIL_IDEMPOTENCY_KEY_LENGTH = 128;
+
+const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9_.:-]+$/;
+
+export function isValidEmailIdempotencyKey(key: string): boolean {
+  return (
+    key.length <= MAX_EMAIL_IDEMPOTENCY_KEY_LENGTH &&
+    IDEMPOTENCY_KEY_PATTERN.test(key)
+  );
+}
 
 const textEncoder = new TextEncoder();
 
@@ -39,6 +51,7 @@ const emailSendBodySchema = z
       .record(z.string(), z.string())
       .refine((headers) => validateExtraHeaders(headers).ok)
       .optional(),
+    idempotencyKey: z.string().refine(isValidEmailIdempotencyKey).optional(),
   })
   .refine(isWithinEmailSendBodyLimit);
 

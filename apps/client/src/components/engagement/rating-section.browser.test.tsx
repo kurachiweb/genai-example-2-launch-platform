@@ -10,6 +10,10 @@ import {
   applyColorScheme,
   COLOR_SCHEMES,
 } from '../../../lib/test/computed-style.ts';
+import {
+  elementsOverflowingContainer,
+  hasHorizontalScroll,
+} from '../../../lib/test/overflow.ts';
 import { GraphQLClientError } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { OWN_PRODUCT_RATING_MESSAGE } from '../../../common-lib/engagement/engagement-rules.ts';
 import {
@@ -37,6 +41,13 @@ vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
 }));
 
 const VIEW = productPageViewOf();
+
+const NARROWEST = { width: 320, height: 900 } as const;
+
+// ブラウザテストの既定の画面の大きさ
+const DEFAULT_VIEWPORT = { width: 414, height: 896 } as const;
+
+const ENLARGED_FONT_SIZE = '150%';
 
 const PRODUCT_ID = VIEW.id;
 
@@ -538,6 +549,34 @@ describe('RatingSection', () => {
       expect(callsOf(ClientProductRatingDocument)).toHaveLength(1);
     });
     await expect.element(heading()).not.toBeInTheDocument();
+  });
+
+  describe('幅320pxの画面で文字を1.5倍にしたとき', () => {
+    beforeEach(async () => {
+      await page.viewport(NARROWEST.width, NARROWEST.height);
+      document.documentElement.style.fontSize = ENLARGED_FONT_SIZE;
+    });
+
+    afterEach(async () => {
+      document.documentElement.style.fontSize = '';
+      await page.viewport(DEFAULT_VIEWPORT.width, DEFAULT_VIEWPORT.height);
+    });
+
+    test.each<[string, RenderOptions]>([
+      ['評価がある', { rating: ratingOf({ viewerScore: 4 }) }],
+      ['評価が0件の', { rating: EMPTY_RATING }],
+    ])(
+      '%s評価欄の平均値・星・評価数・星の入力が区画からはみ出さない',
+      async (_label, options) => {
+        await renderSection(options);
+        await expect.element(ownRating()).toBeInTheDocument();
+
+        expect(elementsOverflowingContainer(section().element())).toStrictEqual(
+          [],
+        );
+        expect(hasHorizontalScroll()).toBe(false);
+      },
+    );
   });
 
   describe.each(COLOR_SCHEMES)('配色が%sのとき', (scheme) => {

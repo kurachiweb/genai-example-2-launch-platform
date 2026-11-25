@@ -5,6 +5,8 @@ import {
   PUBLIC_PROFILE_MENU_ITEMS,
   PUBLIC_PROFILE_TABS,
 } from '../../composition/public-profile-sections.ts';
+import { UserReportDialog } from '../reporting/user-report-dialog.tsx';
+import { UserReportMenuItem } from '../reporting/user-report-menu-item.tsx';
 import { LaunchHistoryCount } from '../launch-history/launch-history-count.tsx';
 import { LaunchHistoryPanel } from '../launch-history/launch-history-panel.tsx';
 import { ProfileAwardBadges } from '../launch-history/profile-award-badges.tsx';
@@ -18,7 +20,7 @@ vi.mock('../../../lib/start/graphql/execute-graphql.ts', () => ({
 }));
 
 describe('公開プロフィールの区画の登録箇所', () => {
-  test('タブにはproduct-launchのローンチ履歴とmatch-engineのUpvote履歴を、受賞バッジにはproduct-launchの受賞バッジを登録し、「…」メニューの項目の登録箇所は空である', () => {
+  test('タブにはproduct-launchのローンチ履歴とmatch-engineのUpvote履歴を、受賞バッジにはproduct-launchの受賞バッジを、「…」メニューの項目にはcontent-reportingの通報を登録する', () => {
     expect(PUBLIC_PROFILE_TABS).toStrictEqual([
       {
         id: 'launches',
@@ -42,7 +44,14 @@ describe('公開プロフィールの区画の登録箇所', () => {
         Section: ProfileAwardBadges,
       },
     ]);
-    expect(PUBLIC_PROFILE_MENU_ITEMS).toStrictEqual([]);
+    expect(PUBLIC_PROFILE_MENU_ITEMS).toStrictEqual([
+      {
+        id: 'content-reporting.user-report',
+        order: 10,
+        Item: UserReportMenuItem,
+        Dialog: UserReportDialog,
+      },
+    ]);
   });
 
   test('ローンチ履歴はorderが最小のため既定のタブになる', () => {

@@ -1,0 +1,95 @@
+# APIサーバーの深さの上限はフラグメントの展開を段に数えるため、YearBoardRoundFields・Match・MatchByeの項目を展開せずに直接書く。結果の型がフラグメントの型と一致することはyear-tournament.unit.test.tsが確かめる
+query ClientYearTournamentBoard($date: String!) {
+  yearTournamentBoard(date: $date) {
+    date
+    serverTime
+    rounds {
+      tournament {
+        year
+        label
+        firstRoundDate
+        finalDate
+        status
+        awarded
+      }
+      round
+      roundName
+      final
+      finalDate
+      matches {
+        id
+        kind
+        round
+        stage
+        phase
+        decision
+        endedEarly
+        viewerRestriction
+        viewerUpvotedEntryId
+        entries {
+          id
+          colorIndex
+          isViewerOwn
+          upvoteCount
+          result
+          product {
+            handle
+            name
+            tagline
+            websiteUrl
+            listed
+            category {
+              id
+              name
+              handle
+            }
+            logo {
+              id
+              objectKey
+              fallbackFormat
+              width
+              height
+            }
+          }
+        }
+      }
+      byes {
+        reason
+        match {
+          id
+          kind
+          round
+          stage
+          endedEarly
+        }
+        entry {
+          id
+          colorIndex
+          isViewerOwn
+          upvoteCount
+          result
+          product {
+            handle
+            name
+            tagline
+            websiteUrl
+            listed
+            category {
+              id
+              name
+              handle
+            }
+            logo {
+              id
+              objectKey
+              fallbackFormat
+              width
+              height
+            }
+          }
+        }
+      }
+      bracketPath
+    }
+  }
+}

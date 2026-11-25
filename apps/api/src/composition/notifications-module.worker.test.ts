@@ -213,28 +213,44 @@ describe('APIサーバーの通知の束縛', () => {
     ).not.toThrow();
   });
 
-  test('束縛から取り出した部品が、前提の無い登録口で夜の枠を開くと期限と直ちの送り出しを処理単位のQueueへ送り、入口は登録の無い名前を拒否する', async () => {
+  test('束縛から取り出した部品が、Week・Yearトーナメントの夜の処理を前提に夜の枠を開くと期限の送り出しを処理単位のQueueへ送り、入口は登録の無い名前を拒否し、前提の全ての準備の完了で直ちの送り出しを送る', async () => {
     const { queue, sent } = createRecordingQueue();
     const container = createContainer('scheduled', queue);
     const date = parseBusinessDate('2026-11-20');
     const slot = eveningSlot(date);
+    const gate = container.get<EveningDispatchGate>(
+      NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate,
+    );
 
     await expect(
       container
         .get<EveningSlotOpener>(NOTIFICATIONS_PLATFORM_TYPES.EveningSlotOpener)
         .open(date, slot.dueAt),
-    ).resolves.toEqual({ requested: true });
+    ).resolves.toEqual({ requested: false });
     await expect(
-      container
-        .get<EveningDispatchGate>(
-          NOTIFICATIONS_PLATFORM_TYPES.EveningDispatchGate,
-        )
-        .markReady({
-          participant: 'tournament-week.evening-bracket',
-          date,
-          at: slot.dueAt,
-        }),
+      gate.markReady({
+        participant: 'tournament-cup.evening-bracket',
+        date,
+        at: slot.dueAt,
+      }),
     ).rejects.toMatchObject({ reason: 'unknown-participant' });
+    await expect(
+      gate.markReady({
+        participant: 'tournament-week.evening-bracket',
+        date,
+        at: slot.dueAt,
+      }),
+    ).resolves.toEqual({
+      kind: 'waiting',
+      missing: ['tournament-year.evening-bracket'],
+    });
+    await expect(
+      gate.markReady({
+        participant: 'tournament-year.evening-bracket',
+        date,
+        at: slot.dueAt,
+      }),
+    ).resolves.toEqual({ kind: 'dispatch-requested' });
 
     expect(sent).toEqual([
       {

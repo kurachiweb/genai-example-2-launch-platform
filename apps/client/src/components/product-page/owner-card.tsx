@@ -1,6 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { InfoIcon, PencilIcon, RocketIcon } from 'lucide-react';
-import { type ComponentType, type ReactNode, useId } from 'react';
+import {
+  type ComponentType,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useState,
+} from 'react';
 
 import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { RecoverableSlot } from '../../../lib/components/state/recoverable-slot.tsx';
@@ -36,10 +43,12 @@ import {
 import {
   type RelaunchReservation,
   relaunchReservationOf,
+  withActionReport,
 } from './owner-card-model.ts';
 import { orderProductOwnerActions } from './product-page-section-order.ts';
 import type {
   ProductOwnerAction,
+  ProductOwnerActionContext,
   ProductPageContext,
 } from './product-page-section-types.ts';
 
@@ -53,7 +62,48 @@ export interface OwnerCardProps extends ProductPageContext {
 const OWNER_ACTION_SLOT_CLASS =
   'has-[>[data-product-owner-action-rendered]]:contents';
 
+type ReportActionAutoUpdating = (actionId: string, active: boolean) => void;
+
+interface OwnerActionSlotProps {
+  readonly action: ProductOwnerAction;
+  readonly context: Omit<ProductOwnerActionContext, 'reportAutoUpdating'>;
+  readonly onReport: ReportActionAutoUpdating;
+}
+
 const NOTE_CLASS = 'flex gap-1.5 text-xs text-muted-foreground';
+
+// 操作のエラーの境界の内側に置き、境界が例外を捕まえて操作を外した時と区画から操作が外れた時に、その操作の申告を消す
+function AutoUpdatingReportScope({ onEnd }: { readonly onEnd: () => void }) {
+  useEffect(() => onEnd, [onEnd]);
+  return null;
+}
+
+function OwnerActionSlot({
+  action: { id, component: Action },
+  context,
+  onReport,
+}: OwnerActionSlotProps) {
+  const reportAutoUpdating = useCallback(
+    (active: boolean) => {
+      onReport(id, active);
+    },
+    [onReport, id],
+  );
+  const endReport = useCallback(() => {
+    onReport(id, false);
+  }, [onReport, id]);
+  return (
+    <RecoverableSlot
+      className={OWNER_ACTION_SLOT_CLASS}
+      contactAvailable={CLIENT_PROFILE.contactAvailable}
+      contactHref={CONTACT_HREF}
+    >
+      <AutoUpdatingReportScope onEnd={endReport} />
+      <Action {...context} reportAutoUpdating={reportAutoUpdating} />
+      <span hidden data-product-owner-action-rendered="" />
+    </RecoverableSlot>
+  );
+}
 
 const NOTE_ICON = (
   <InfoIcon aria-hidden="true" className="mt-px size-3.5 shrink-0" />
@@ -91,15 +141,33 @@ const reservationNoteOf = (reservation: RelaunchReservation): ReactNode => {
   }
 };
 
-// 投稿者本人にだけ、直近のローンチの結果の要約と編集・次回のローンチの予約への導線を描く。予約と編集の可否は保存の時点にproduct-launchが判定し直すため、ここの判定は案内に留める
+// 投稿者本人にだけ、直近のローンチの結果の要約と編集・次回のローンチの予約への導線を描く。予約と編集の可否は保存の時点にproduct-launchが判定し直すため、ここの判定は案内に留める。
+// 登録された操作のどれかが毎秒の更新などを申告している間は、この区画としてページへ申告する
 export function OwnerCard({
   product,
   viewer,
   page,
+  autoRefresh,
+  reportAutoUpdating,
   ownerActions,
 }: OwnerCardProps) {
   const titleId = useId();
   const noteId = useId();
+  const [actionReports, setActionReports] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const onActionReport = useCallback<ReportActionAutoUpdating>(
+    (actionId, active) => {
+      setActionReports((current) =>
+        withActionReport(current, actionId, active),
+      );
+    },
+    [],
+  );
+  const autoUpdating = actionReports.size > 0;
+  useEffect(() => {
+    reportAutoUpdating(autoUpdating);
+  }, [autoUpdating, reportAutoUpdating]);
   const signedInViewer = useViewer();
   const { data, isError } = useQuery({
     ...productOwnerStatusQueryOptions(signedInViewer, product.handle),
@@ -128,7 +196,7 @@ export function OwnerCard({
         );
   const headline = page.launches[0]?.summary.label;
   const actions = orderProductOwnerActions(ownerActions);
-  const actionContext = { product, viewer };
+  const actionContext = { product, viewer, autoRefresh };
   const describedBy = note === null ? undefined : noteId;
   const editHref = myProductEditHref(product.handle);
 
@@ -155,16 +223,13 @@ export function OwnerCard({
           {headline !== undefined && (
             <p className="text-base font-extrabold">{headline}</p>
           )}
-          {actions.map(({ id, component: Action }) => (
-            <RecoverableSlot
-              key={id}
-              className={OWNER_ACTION_SLOT_CLASS}
-              contactAvailable={CLIENT_PROFILE.contactAvailable}
-              contactHref={CONTACT_HREF}
-            >
-              <Action {...actionContext} />
-              <span hidden data-product-owner-action-rendered="" />
-            </RecoverableSlot>
+          {actions.map((action) => (
+            <OwnerActionSlot
+              key={action.id}
+              action={action}
+              context={actionContext}
+              onReport={onActionReport}
+            />
           ))}
         </CardContent>
       )}

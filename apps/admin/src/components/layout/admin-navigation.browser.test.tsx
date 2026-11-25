@@ -117,7 +117,14 @@ describe('AdminNavigation', () => {
       await expect.element(navigation()).toBeVisible();
       expect(linkLabels(navigation().element())).toStrictEqual([
         'ダッシュボード',
+        'ユーザー',
+        'プロダクト',
+        'コメント',
+        '評価',
+        '画像モデレーション',
+        '通報',
         '問い合わせ',
+        'スポンサー広告',
         'ヘルプ記事',
         'カテゴリ',
         '法務文書',
@@ -130,6 +137,14 @@ describe('AdminNavigation', () => {
 
     test.each([
       ['/', 'ダッシュボード'],
+      ['/users?status=suspended', 'ユーザー'],
+      ['/products/01ARZ3NDEKTSV4RRFFQ69G5FAV', 'プロダクト'],
+      ['/comments', 'コメント'],
+      ['/ratings', '評価'],
+      ['/media-moderation', '画像モデレーション'],
+      ['/reports', '通報'],
+      ['/reports?status=OPEN&target=PRODUCT', '通報'],
+      ['/reports/01ARZ3NDEKTSV4RRFFQ69G5FAV', '通報'],
       ['/accounts', '管理者アカウント'],
       ['/accounts?status=invited', '管理者アカウント'],
       ['/account', '自分のアカウント'],
@@ -202,7 +217,14 @@ describe('AdminNavigation', () => {
       await expect.element(sheetNavigation).toBeVisible();
       expect(linkLabels(sheetNavigation.element())).toStrictEqual([
         'ダッシュボード',
+        'ユーザー',
+        'プロダクト',
+        'コメント',
+        '評価',
+        '画像モデレーション',
+        '通報',
         '問い合わせ',
+        'スポンサー広告',
         'ヘルプ記事',
         'カテゴリ',
         '法務文書',

@@ -15,11 +15,14 @@ import type {
   MyProductSection,
   ProductDeleteNotice,
 } from '../src/components/product/product-section-types.ts';
+import type { WeekEntryPanelView } from '../src/components/week-tournament/week-entry-model.ts';
 import {
   ClientDeleteProductDocument,
   ClientMyProductDocument,
   type ClientMyProductQuery,
   ClientMyProductsDocument,
+  ClientMyWeekEntryDocument,
+  ClientMyYearEntryDocument,
   ClientProductCategoriesDocument,
   type ClientProductCategoriesQuery,
   ClientProductHandleAvailabilityDocument,
@@ -161,6 +164,8 @@ export interface Responders {
   readonly update?: () => Promise<unknown>;
   readonly remove?: () => Promise<unknown>;
   readonly categories?: () => Promise<unknown>;
+  // 登録された参加費の導線と削除の注意書きが読むWeekトーナメントの参加の枠
+  readonly weekEntry?: WeekEntryPanelView | null;
 }
 
 // テストのファイルがvi.mockで差し替えた実行の関数を、取得の応答を決めるために読む
@@ -174,6 +179,7 @@ export const respond = ({
   update = () => ok({ updateProduct: PRODUCT }),
   remove = () => ok({ deleteProduct: true }),
   categories = () => ok(CATEGORIES),
+  weekEntry = null,
 }: Responders = {}) => {
   executeGraphQL.mockImplementation((document: unknown, variables: unknown) => {
     if (document === ClientMyProductDocument) {
@@ -190,6 +196,12 @@ export const respond = ({
     }
     if (document === ClientDeleteProductDocument) {
       return remove();
+    }
+    if (document === ClientMyWeekEntryDocument) {
+      return ok({ myWeekEntry: weekEntry });
+    }
+    if (document === ClientMyYearEntryDocument) {
+      return ok({ myYearEntry: null });
     }
     if (document === ClientMyProductsDocument) {
       return ok({

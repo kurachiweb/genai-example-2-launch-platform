@@ -1,6 +1,7 @@
 import { inject, injectable } from 'inversify';
 
 import { getAppLogger } from '../../../../lib/core/logging/app-logger.ts';
+import { utcYearsBefore } from '../../../../lib/core/time/utc-calendar.ts';
 import { PAYMENTS_TYPES } from '../../../../lib/core/payments/identifiers.ts';
 import type { PaymentRecordStore } from '../../../../lib/core/payments/ports.ts';
 import type {
@@ -27,22 +28,8 @@ export const PAYMENT_HISTORY_RETENTION_JOB_DEFINITION: ScheduledJobDefinition =
 
 const logger = getAppLogger(['api', 'payments', 'history-retention']);
 
-// UTCの暦で7年前の同じ時刻。同じ日が無い2月29日は月末へ寄せ、7年に満たない記録を消さない
 export function paymentHistoryRetentionCutoff(scheduledTime: Date): Date {
-  const year = scheduledTime.getUTCFullYear() - PAYMENT_HISTORY_RETENTION_YEARS;
-  const month = scheduledTime.getUTCMonth();
-  const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  return new Date(
-    Date.UTC(
-      year,
-      month,
-      Math.min(scheduledTime.getUTCDate(), lastDayOfMonth),
-      scheduledTime.getUTCHours(),
-      scheduledTime.getUTCMinutes(),
-      scheduledTime.getUTCSeconds(),
-      scheduledTime.getUTCMilliseconds(),
-    ),
-  );
+  return utcYearsBefore(scheduledTime, PAYMENT_HISTORY_RETENTION_YEARS);
 }
 
 @injectable()

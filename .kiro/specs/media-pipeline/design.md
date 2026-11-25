@@ -226,6 +226,8 @@ apps/
 │       ├── media-eraser.ts                        # 物理削除(全バケット→パージの依頼→記録の削除)
 │       ├── media-files-service.ts                 # MediaFilesの実装(紐付け・論理削除・即時削除・保有者単位の削除・保有者の識別子の列挙・取得・内容)
 │       ├── media-quarantine-service.ts            # MediaQuarantineの実装(理由の追加・解除と移動の依頼・一覧)
+│       ├── media-moderation-control.ts            # MediaModerationControl(呼び出し側の文を受け取る隔離理由の付け外しと削除の依頼。ugc-moderationのタスク2.5が加えた。2026-11-20に開発者が決定)
+│       ├── quarantine-relocation.ts               # MediaQuarantineServiceとMediaModerationControlが共有する、隔離理由の変更後の保存先の判定(needsRelocation: 理由の付け外しの後の保存先と移動の要否。同名のテストは無く、2つの実装のWorkers統合テストで確かめる。ugc-moderationのタスク2.5が加えた。2026-11-20)
 │       └── media-platform-module.ts               # 両アプリ共通の束縛(createMediaPlatformModule(appName))
 ├── api/
 │   ├── src/application/session/session-view.ts    # SessionView(api-gatewayの契約。identity-authの2.3が追記する。実装時に無ければ5.1が同じ形で置く。R3-1)
@@ -237,7 +239,7 @@ apps/
 │   ├── src/infrastructure/media/
 │   │   ├── allow-all-uploader-eligibility.ts      # 既定のアップロードの可否(全許可)
 │   │   ├── owner-only-file-read-policy.ts         # 既定の閲覧の可否(アップロードした主体だけ)
-│   │   └── deny-all-admin-media-review-policy.ts  # 既定の管理者の画像確認(全拒否)
+│   │   └── deny-all-admin-media-review-policy.ts  # 既定の管理者の画像確認(全拒否)。ugc-moderationのタスク3.7が束縛を差し替えて単体テストとともに削除した(2026-11-20に開発者が決定)
 │   ├── src/presentation/media/                    # apiのWorkers統合テスト(各ファイルに同名の*.worker.test.ts)
 │   │   ├── upload-route.ts                        # POST /internal/media/uploads/:purpose
 │   │   └── file-content-route.ts                  # GET /internal/media/files/:fileId
@@ -251,7 +253,7 @@ apps/
 │   │   ├── upload-purposes.ts                     # UPLOAD_PURPOSES(用途の登録箇所。初版は空)
 │   │   ├── file-read-policies.ts                  # FILE_READ_POLICIES(用途ごとの閲覧の可否の登録箇所。初版は空)
 │   │   ├── uploader-eligibility.ts                # UploaderEligibilityの束縛(初版は全許可。identity-authがAccountGuardの判定に差し替える)
-│   │   └── media-review-policy.ts                 # AdminMediaReviewPolicyの束縛(初版は全拒否。ugc-moderationが差し替える)
+│   │   └── media-review-policy.ts                 # AdminMediaReviewPolicyの束縛(初版は全拒否。ugc-moderationのタスク3.7がAdminRoleMediaReviewPolicyへ差し替えた)
 │   └── test/config/media-wrangler-config.unit.test.ts  # eventのメディアの設定(キャッシュ・変数・シークレット)の検査
 ├── event/
 │   ├── src/application/media/                     # Bunの単体テスト(各ファイルに同名の*.unit.test.ts)
@@ -545,7 +547,7 @@ sequenceDiagram
 | 12.1, 12.8              | 同一オリジンの順次配信                       | MediaRelayRoutes・FileContentRoute                                  | `FILE_DOWNLOAD_RELAY_ROUTE`・`GET /internal/media/files/:fileId` | —            |
 | 12.2, 12.3, 12.4        | 用途の方針・401・404                         | FileAccessAuthorizer・OwnerOnlyFileReadPolicy                       | `FileReadPolicy`                                                 | —            |
 | 12.5                    | 配信のヘッダー                               | FileContentRoute・FileName                                          | `attachmentDisposition`                                          | —            |
-| 12.6, 12.7              | 管理者の画像確認                             | FileAccessAuthorizer・DenyAllAdminMediaReviewPolicy                 | `AdminMediaReviewPolicy`                                         | —            |
+| 12.6, 12.7              | 管理者の画像確認                             | FileAccessAuthorizer・DenyAllAdminMediaReviewPolicy(注記1)          | `AdminMediaReviewPolicy`                                         | —            |
 | 12.9                    | ダウンロードのリンクの部品                   | PrivateFileLink                                                     | `downloadPathOf`                                                 | —            |
 | 13.1, 13.2              | 即時の物理削除と削除待ち                     | MediaFilesService・MediaEraser                                      | `MediaFiles.eraseNow`                                            | 隔離・復元   |
 | 13.3, 13.4              | 論理削除と、その間の扱い                     | MediaFilesService・D1MediaFileStore                                 | `MediaFiles.markDeleted`                                         | —            |
@@ -573,6 +575,8 @@ sequenceDiagram
 | 17.4                    | 技術ドキュメント                             | ImageModerationDoc・ImageDeliveryDoc・FileUploadSecurityDoc         | `external/003`・`infra/008`・`security/005`                      | —            |
 | 17.5                    | サービス仕様の整合                           | ServiceDocsAlignment                                                | 画像バリアント仕様・日次タイムラインほか                         | —            |
 | 17.6, 17.7              | tech-stack・固有の値・オンボーディング       | ProjectDocsUpdate                                                   | `tech-stack.md`・`project-values.md`・`README.md`                | —            |
+
+- 注記1: ugc-moderationのタスク3.7が`AdminMediaReviewPolicy`の束縛を、有効な管理者の主体にだけ画像用の用途を許す`AdminRoleMediaReviewPolicy`(`apps/api/src/application/moderation/admin-role-media-review-policy.ts`)へ差し替え、使われなくなった`DenyAllAdminMediaReviewPolicy`と同名の単体テストを削除した。あわせてugc-moderationのタスク2.5が、呼び出し側の文を受け取る`MediaModerationControl`(`apps/backend-lib/workers/media/media-moderation-control.ts`、識別子`MEDIA_TYPES.MediaModerationControl`)を加えた。既存の`MediaQuarantine`・`MediaFiles`の形と振る舞いは変えていない(2026-11-20に開発者が決定)。
 
 ## Components and Interfaces
 
@@ -1376,7 +1380,7 @@ export interface FileAccessAuthorizer {
 ```
 
 - ファイル用の用途: 登録された用途の方針、無ければ`OwnerOnlyFileReadPolicy`(主体の種類と識別子が保有者と一致)で判定する(12.2)。
-- 画像用の用途: 呼び出し元が管理者側で、主体が管理者の場合だけ`AdminMediaReviewPolicy`で判定する。既定の`DenyAllAdminMediaReviewPolicy`は常に拒否する(12.6・12.7)。利用者側からの画像の要求は拒否する。
+- 画像用の用途: 呼び出し元が管理者側で、主体が管理者の場合だけ`AdminMediaReviewPolicy`で判定する。既定の`DenyAllAdminMediaReviewPolicy`は常に拒否する(12.6・12.7)。利用者側からの画像の要求は拒否する。ugc-moderationのタスク3.7が束縛を`AdminRoleMediaReviewPolicy`(有効な管理者の主体にだけ画像用の用途を許す)へ差し替え、全拒否の実装を削除した(Requirements Traceabilityの注記1)。
 - 登録箇所(`composition/file-read-policies.ts`)の用途名は、用途の登録表に存在しファイル用であることを起動時の組み立てで検査する。
 
 #### MediaDailyJobs
@@ -2087,7 +2091,7 @@ erDiagram
 
 - 受付: 形式は申告ではなく内容で判定し、拡張子は使わない。オブジェクトキーは128ビットの乱数で、クライアントの指定を受け付けない。上書きは条件付きの書き込みで拒否する。SVG 1.0・1.1の標準の文書型宣言(内部サブセット無し)の他にDOCTYPE・ENTITYを含むSVGは受け付けず、外部のDTDを読まず、`processEntities: false`で実体を展開しない。ファイル名から双方向の制御文字を除く(改訂3)。
 - 配信: ユーザーの画像は認証Cookieの届かない別のサブドメインから配信する(NFR-SECUR-042)。SVGは`sandbox`付きのCSPで配信し、`<img>`からだけ参照する。非公開ファイルは`attachment`・`nosniff`・`no-store`で返し、利用者側からは画像用バケットのファイルを返さない。
-- 認可: 拒否と不存在を区別せず404にする。管理者の画像確認は既定で全拒否とし、ugc-moderationの実装でだけ開く。
+- 認可: 拒否と不存在を区別せず404にする。管理者の画像確認は既定で全拒否とし、ugc-moderationの実装でだけ開く(ugc-moderationのタスク3.7が有効な管理者の判定へ差し替えて全拒否を削除した。Requirements Traceabilityの注記1)。
 - 停止中の利用者: 停止では既存のセッションが消えないため、利用者側のアップロードは受付の前に`UploaderEligibility`で判定し、identity-authの束縛で停止中の利用者を拒否する(FR-USER-026、1.8・1.9)。既定の全許可は、identity-authの実装前にログインが成立しないため穴にならない。
 - 判定サービス: 資格情報は`rekognition:DetectModerationLabels`だけを許す専用のIAMユーザーで、シークレットとして注入し、ログ・Sentryに出さない。送るのは判定用画像だけで、ファイル名・主体を送らない。AWSのAIサービスのオプトアウトを有効にする(開発者の作業)。EU域内の利用者の画像を米国へ送る移転の根拠は、DPFを主とし、無効になった場合はAWSのDPAに含まれるSCCに拠る(プライバシーポリシーの大枠のAWSの項。N-1)。
 - メタデータ: 編集ダイアログの経路ではブラウザの作り直しでExifが消える。直接送られたJPEGのメタデータは配信の`jpg`出力に残り得る(決定Q1の残存リスク、research.md)。

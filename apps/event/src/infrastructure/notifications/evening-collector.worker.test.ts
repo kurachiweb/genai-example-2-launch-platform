@@ -2,7 +2,7 @@ import { applyD1Migrations, type D1Migration } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import { beforeAll, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { qualifierWindow } from '../../../lib/core/match/match-model.ts';
+import { matchWindow } from '../../../lib/core/match/match-model.ts';
 import type { MatchDirectory } from '../../../lib/core/match/ports.ts';
 import {
   eveningSlot,
@@ -49,7 +49,7 @@ import { EveningCollector } from './evening-collector.ts';
 const testEnv = env as Env & { readonly TEST_MIGRATIONS: D1Migration[] };
 
 const NEXT_DAY = parseBusinessDate('2026-11-21');
-const NEXT_DAY_WINDOW = qualifierWindow(NEXT_DAY);
+const NEXT_DAY_WINDOW = matchWindow(NEXT_DAY);
 const NOW = fromBusinessDateTime(MATCH_DAY, { hour: 23, minute: 46 });
 const SLOT = eveningSlot(MATCH_DAY);
 

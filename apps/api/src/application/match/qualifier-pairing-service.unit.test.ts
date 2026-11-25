@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
 
-import { qualifierWindow } from '../../../lib/core/match/match-model.ts';
+import { matchWindow } from '../../../lib/core/match/match-model.ts';
 import type { ScheduledLaunch } from '../../../lib/core/product/ports.ts';
 import {
   QUALIFIER_PAIRING_READ_LIMIT,
@@ -112,7 +112,7 @@ describe('StoreQualifierPairingService.pair', () => {
 
     await service.pair(PAIRING_DATE);
 
-    const window = qualifierWindow(PAIRING_DATE);
+    const window = matchWindow(PAIRING_DATE);
     const entryOf = (launch: ScheduledLaunch) => ({
       launchId: launch.launchId,
       productId: launch.productId,

@@ -26,6 +26,10 @@ const MIGRATIONS_DIR = join(
 
 const ULID_PATTERN = /^[0-9A-HJKMNP-TV-Z]{26}$/u;
 
+// 登録の時に作る仮名化IDと同じ、小文字のバージョン4のUUID
+const PSEUDONYMOUS_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+
 const OTHER_CATEGORY_ID = '01JD0000000000000000000000';
 
 const BUSINESS_DATE = '2026-11-11';
@@ -359,6 +363,21 @@ describe('planListedProducts・listedProductsInsertSql', () => {
         upvote_count: 0,
       },
     ]);
+  });
+
+  test('投稿者の仮名化IDを、監査ログが利用者を指す識別子と同じUUIDの形で、計画ごとに別の値で作り、利用者の行に保存する', () => {
+    const fixture = plan();
+    const other = plan();
+    db.run(listedProductsInsertSql(fixture));
+
+    expect(fixture.owner.pseudonymousId).toMatch(PSEUDONYMOUS_ID_PATTERN);
+    expect(other.owner.pseudonymousId).toMatch(PSEUDONYMOUS_ID_PATTERN);
+    expect(other.owner.pseudonymousId).not.toBe(fixture.owner.pseudonymousId);
+    expect(
+      queryRows(
+        `SELECT pseudonymous_id FROM users WHERE id = '${fixture.owner.id}'`,
+      ),
+    ).toStrictEqual([{ pseudonymous_id: fixture.owner.pseudonymousId }]);
   });
 
   test('プロダクトの索引文書と掲載の記録は作らない', () => {

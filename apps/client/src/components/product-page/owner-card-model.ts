@@ -37,3 +37,17 @@ export const relaunchReservationOf = (
       };
   }
 };
+
+// 毎秒の更新などを申告している操作のidの集合。状態が変わらなければ同じ集合を返し、描き直しを起こさない
+export const withActionReport = (
+  reports: ReadonlySet<string>,
+  actionId: string,
+  active: boolean,
+): ReadonlySet<string> => {
+  if (reports.has(actionId) === active) {
+    return reports;
+  }
+  return active
+    ? new Set([...reports, actionId])
+    : new Set([...reports].filter((id) => id !== actionId));
+};

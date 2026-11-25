@@ -14,9 +14,11 @@ import {
   createUlidGenerator,
   type IdGenerator,
 } from '../../core/ids/id-generator.ts';
+import { getAppLogger } from '../../core/logging/app-logger.ts';
 import { MESSAGE_CONTRACTS } from '../../core/messaging/contracts/index.ts';
 import { type Clock, systemClock } from '../../core/time/clock.ts';
 import type { PlatformEnv } from '../env/platform-env.ts';
+import { configuredAppName } from '../logging/configure-logging.ts';
 import {
   createMessagePublisher,
   type MessagePublisher,
@@ -26,6 +28,17 @@ export interface InvocationScope<E extends PlatformEnv> {
   readonly env: E;
   readonly executionCtx: ExecutionContext;
   readonly info: InvocationScopeInfo;
+}
+
+function logDatabaseRetry(error: unknown, delayMs: number): void {
+  const appName = configuredAppName();
+  if (appName === undefined) {
+    return;
+  }
+  getAppLogger([appName, 'platform', 'database']).info(
+    'D1の一時的な失敗のため、同じ文をやり直します',
+    { error, delayMs },
+  );
 }
 
 function bindPlatform<E extends PlatformEnv>(
@@ -40,7 +53,7 @@ function bindPlatform<E extends PlatformEnv>(
   container.bind<Clock>(PLATFORM_TYPES.Clock).toConstantValue(systemClock);
   container
     .bind<Database>(PLATFORM_TYPES.Database)
-    .toDynamicValue(() => createDatabase(env.DB))
+    .toDynamicValue(() => createDatabase(env.DB, { onRetry: logDatabaseRetry }))
     .inSingletonScope();
   container
     .bind<IdGenerator>(PLATFORM_TYPES.IdGenerator)

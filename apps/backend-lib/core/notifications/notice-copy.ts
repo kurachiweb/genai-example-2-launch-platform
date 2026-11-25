@@ -1,4 +1,10 @@
 import { NOTIFICATION_TOPIC_COPY } from '../../../common-lib/notifications/notification-topics.ts';
+import { roundLabel } from '../../../common-lib/tournament/round-name.ts';
+import {
+  formatWeekPeriodLabel,
+  parseIsoWeek,
+} from '../../../common-lib/tournament/week-period.ts';
+import { parseTournamentYear } from '../../../common-lib/tournament/year-period.ts';
 import type { SuppressionReason } from '../email/suppression-policy.ts';
 import type {
   EntryResult,
@@ -6,7 +12,6 @@ import type {
   MatchKind,
   MatchStage,
 } from '../match/match-model.ts';
-import { businessWeekOf, parseBusinessDate } from '../time/business-time.ts';
 import type { AwardKind } from './notification-event-contract.ts';
 
 export type ResultOutcome = 'won' | 'lost' | 'no_votes' | 'bye';
@@ -47,12 +52,6 @@ const TOURNAMENT_NAMES: Readonly<
   Record<Exclude<MatchKind, 'qualifier'>, string>
 > = Object.freeze({ week: 'Week', year: 'Year' });
 
-const STAGE_NAMES: Readonly<Record<MatchStage, string>> = Object.freeze({
-  quarterfinal: '準々決勝',
-  semifinal: '準決勝',
-  final: '決勝',
-});
-
 const AWARD_NAMES: Readonly<Record<AwardKind, string>> = Object.freeze({
   product_of_the_week: 'Product of the Week',
   product_of_the_year: 'Product of the Year',
@@ -68,10 +67,7 @@ const SUPPRESSION_REASON_NAMES: Readonly<
 
 const RESULT_SUBJECT_PREFIX = 'フルタイム: ';
 const KICKOFF_CHEER = 'がキックオフします⚽️応援しましょう！';
-const WEEK_PERIOD_PATTERN = /^(?<year>\d{4})-W(?<week>\d{2})$/u;
-const YEAR_PERIOD_PATTERN = /^\d{4}$/u;
-const DAYS_PER_WEEK = 7;
-const ISO_DATE_LENGTH = 10;
+const WEEK_PERIOD_PATTERN = /^\d{4}-W\d{2}$/u;
 
 const countFormat = new Intl.NumberFormat('ja-JP');
 
@@ -96,15 +92,13 @@ export function resultOutcomeOf(
 }
 
 export function roundName({ round, stage }: RoundNameInput): string {
-  if (stage !== null) {
-    return STAGE_NAMES[stage];
-  }
-  if (round === null || !Number.isInteger(round) || round < 1) {
+  const label = roundLabel({ round, stage });
+  if (label === null) {
     throw new RangeError(
       `ラウンドは1以上の整数か段で指定してください: ${String(round)}`,
     );
   }
-  return `${String(round)}回戦`;
+  return label;
 }
 
 // 種別の印は表記規則の例外として、種別名とラウンド名を半角スペースで区切る
@@ -185,48 +179,30 @@ export function awardSubject(productName: string, award: AwardKind): string {
   return `${productName}が${awardName(award)}を受賞`;
 }
 
-const monthDayOf = (date: string): string => {
-  const [, month = '', day = ''] = date.split('-');
-  return `${String(Number(month))}/${String(Number(day))}`;
-};
-
-const isoDateAfter = (date: string, days: number): string => {
-  const [year = '', month = '', day = ''] = date.split('-');
-  return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day) + days))
-    .toISOString()
-    .slice(0, ISO_DATE_LENGTH);
-};
-
 const weekPeriodLabel = (period: string): string => {
-  const groups = WEEK_PERIOD_PATTERN.exec(period)?.groups;
-  if (groups?.year === undefined || groups.week === undefined) {
+  if (!WEEK_PERIOD_PATTERN.test(period)) {
     throw new RangeError(
       `Weekの期間はISO週(YYYY-Www)で指定してください: ${period}`,
     );
   }
-  const isoYear = Number(groups.year);
-  const isoWeek = Number(groups.week);
-  // 1月4日は必ずその年の第1週に入るため、その週の月曜日から週の数だけ進める
-  const firstMonday = businessWeekOf(
-    parseBusinessDate(`${groups.year}-01-04`),
-  ).start;
-  const week = businessWeekOf(
-    parseBusinessDate(isoDateAfter(firstMonday, (isoWeek - 1) * DAYS_PER_WEEK)),
-  );
-  if (isoWeek < 1 || week.isoYear !== isoYear || week.isoWeek !== isoWeek) {
+  const week = parseIsoWeek(period);
+  if (week === undefined) {
     throw new RangeError(`存在しないISO週です: ${period}`);
   }
-  return `${String(isoYear)}年第${String(isoWeek)}週(${monthDayOf(week.start)}〜${monthDayOf(week.end)})`;
+  return formatWeekPeriodLabel(week.weekStart);
 };
 
 export function awardPeriodLabel(award: AwardKind, period: string): string {
   if (award === 'product_of_the_week') {
     return weekPeriodLabel(period);
   }
-  if (!YEAR_PERIOD_PATTERN.test(period)) {
-    throw new RangeError(`Yearの期間は年(YYYY)で指定してください: ${period}`);
+  const year = parseTournamentYear(period);
+  if (year === undefined) {
+    throw new RangeError(
+      `Yearの期間は1年以後の年(YYYY)で指定してください: ${period}`,
+    );
   }
-  return `${String(Number(period))}年`;
+  return `${String(year)}年`;
 }
 
 export function suppressionReasonOf(

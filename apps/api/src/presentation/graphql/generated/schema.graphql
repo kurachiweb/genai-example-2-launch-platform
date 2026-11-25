@@ -26,6 +26,58 @@ enum AdminAccountStatus {
   INVITED
 }
 
+"""管理画面のプロダクトのカテゴリ"""
+type AdminCategoryRef {
+  id: ID!
+  name: String!
+}
+
+"""管理画面のコメント"""
+type AdminComment {
+  """匿名化・退会済みの投稿者はnull"""
+  author: AdminUserSummary
+  createdAt: DateTime!
+
+  """マークダウンとして描画しない本文の先頭"""
+  excerpt: String!
+  id: ID!
+
+  """非公開化中で、非公開化の措置の記録が残っているコメントだけが持つ"""
+  latestHide: ModerationNote
+  launchId: ID!
+
+  """ローンチの回。取消は0、論理削除済みのプロダクトなどでローンチを読めなければnull"""
+  launchNumber: Int
+  productId: ID!
+
+  """論理削除済みのプロダクトはnull"""
+  productName: String
+  state: AdminCommentState!
+}
+
+type AdminCommentConnection {
+  nodes: [AdminComment!]!
+  pageInfo: PageInfo!
+}
+
+"""コメントの一覧の絞り込み。投稿日時はpostedFromを含みpostedBeforeを含まない"""
+input AdminCommentFilter {
+  authorHandle: String
+  postedBefore: DateTime
+  postedFrom: DateTime
+  productHandle: String
+  state: AdminCommentState
+}
+
+"""管理画面のコメントの状態"""
+enum AdminCommentState {
+  ANONYMIZED
+  AUTHOR_UNAVAILABLE
+  DELETED
+  HIDDEN
+  SHOWN
+}
+
 """メールのリンクによる確定の結果"""
 type AdminConfirmationResult {
   """確定の操作をした端末が同じ管理者としてログイン中なら、入れ替えた後の管理者"""
@@ -66,6 +118,16 @@ type AdminHelpArticleRow {
   status: HelpArticleStatus!
   title: String!
   updatedAt: DateTime!
+}
+
+"""隔離画像の保有者。kindはuserかadmin"""
+type AdminImageOwner {
+  handle: String
+  id: ID!
+  kind: String!
+
+  """表示名を引けない保有者はnull"""
+  nickname: String
 }
 
 """管理画面の問い合わせの詳細"""
@@ -146,6 +208,17 @@ type AdminInquirySummary {
   withdrawn: Boolean!
 }
 
+"""プロダクトのローンチ"""
+type AdminLaunch {
+  id: ID!
+
+  """業務日付"""
+  launchDate: String!
+  matches: [AdminMatchResult!]!
+  number: Int!
+  status: String!
+}
+
 """管理画面の編集の対象の法務文書"""
 type AdminLegalDocument {
   """下書きが無ければnull"""
@@ -200,6 +273,183 @@ type AdminLegalRevision {
   versionNumber: Int!
 }
 
+"""ローンチのマッチ結果"""
+type AdminMatchResult {
+  """決着の仕方(votes・last_upvote・no_votes・bye・walkover・both_forfeited)。未確定はnull"""
+  decision: String
+  id: ID!
+  kind: String!
+
+  """業務日付"""
+  matchDate: String!
+
+  """不戦勝・表示できない相手はnull"""
+  opponentName: String
+
+  """照会の時点の進み具合(scheduled・live・tallying・finished)"""
+  phase: String!
+
+  """未確定はnull"""
+  result: String
+  round: Int
+  stage: String
+  upvoteCount: Int!
+}
+
+"""管理画面で表示する画像のファイル"""
+type AdminMediaFile {
+  id: ID!
+
+  """変換配信の画像。隔離中・削除待ち・保存未完了の画像はobjectKeyが空"""
+  image: MediaImage!
+
+  """管理者側のサイトと同じオリジンの中継の経路。隔離中の画像を表示する"""
+  path: String!
+  quarantineReasons: [QuarantineReason!]!
+  quarantined: Boolean!
+}
+
+"""プロダクトの未完了の案件"""
+type AdminOpenReportCaseRef {
+  id: ID!
+  status: ReportCaseStatus!
+}
+
+"""管理画面のプロダクト"""
+type AdminProduct {
+  category: AdminCategoryRef!
+  handle: String!
+  id: ID!
+
+  """業務日付。ローンチが無ければnull"""
+  latestLaunchDate: String
+  latestLaunchState: AdminProductLaunchState
+  logo: AdminMediaFile
+  name: String!
+
+  """退会済みの投稿者はnull"""
+  owner: AdminUserSummary
+  visibility: AdminProductVisibility!
+}
+
+type AdminProductConnection {
+  nodes: [AdminProduct!]!
+  pageInfo: PageInfo!
+}
+
+"""管理画面のプロダクトの詳細"""
+type AdminProductDetail {
+  descriptionMarkdown: String!
+  hiddenAt: DateTime
+
+  """非公開化中で、非公開化の措置の記録が残っているプロダクトだけが持つ"""
+  latestHide: ModerationNote
+
+  """ローンチ日の新しい順"""
+  launches: [AdminLaunch!]!
+  product: AdminProduct!
+  ratingSummary: AdminRatingSummary!
+  screenshots: [AdminMediaFile!]!
+  tagline: String!
+  websiteUrl: String!
+}
+
+"""プロダクトの一覧の絞り込み。指定した条件を全て満たすプロダクトを返す"""
+input AdminProductFilter {
+  categoryId: ID
+  handle: String
+  launchState: AdminProductLaunchState
+  name: String
+  ownerHandle: String
+  visibility: AdminProductVisibility
+}
+
+"""プロダクトの最新のローンチの状態"""
+enum AdminProductLaunchState {
+  CANCELED
+  IN_PROGRESS
+  LOST
+  SCHEDULED
+  WON
+}
+
+"""プロダクトへの通報の件数と未完了の案件"""
+type AdminProductReportSummary {
+  openCase: AdminOpenReportCaseRef
+  reportCount: Int!
+}
+
+"""プロダクトの公開状態"""
+enum AdminProductVisibility {
+  HIDDEN
+  OWNER_SUSPENDED
+  VISIBLE
+}
+
+"""隔離画像"""
+type AdminQuarantinedImage {
+  file: AdminMediaFile!
+
+  """自動判定の検出内容"""
+  findings: [String!]!
+
+  """システムが保有する画像はnull"""
+  owner: AdminImageOwner
+
+  """画像の用途"""
+  purpose: String!
+  quarantinedAt: DateTime!
+}
+
+"""隔離画像の一覧の1ページ。続きが無ければnextCursorはnull"""
+type AdminQuarantinedImagePage {
+  items: [AdminQuarantinedImage!]!
+  nextCursor: String
+}
+
+"""管理画面の評価"""
+type AdminRating {
+  createdAt: DateTime!
+  id: ID!
+
+  """無効化中で、無効化の措置の記録が残っている評価だけが持つ"""
+  latestInvalidation: ModerationNote
+  productId: ID!
+
+  """論理削除済みのプロダクトはnull"""
+  productName: String
+
+  """退会済みの評価者はnull"""
+  rater: AdminUserSummary
+  score: Int!
+  state: AdminRatingState!
+  updatedAt: DateTime!
+}
+
+type AdminRatingConnection {
+  nodes: [AdminRating!]!
+  pageInfo: PageInfo!
+}
+
+"""評価の一覧の絞り込み"""
+input AdminRatingFilter {
+  productHandle: String
+  raterHandle: String
+  state: AdminRatingState
+}
+
+"""管理画面の評価の状態"""
+enum AdminRatingState {
+  INVALIDATED
+  VALID
+}
+
+"""有効な評価の平均と件数"""
+type AdminRatingSummary {
+  average: Float
+  count: Int!
+}
+
 """重要な操作の本人確認"""
 input AdminReAuthenticationInput {
   """本人確認に使う現在のパスワード"""
@@ -210,6 +460,138 @@ input AdminReAuthenticationInput {
 """この応答でだけ見せるリカバリコード"""
 type AdminRecoveryCodeSet {
   codes: [String!]!
+}
+
+"""案件の通報"""
+type AdminReport {
+  """カテゴリの現在の名前"""
+  categoryName: String!
+  id: ID!
+  reason: String!
+  reportedAt: DateTime!
+  reporter: AdminReporter!
+}
+
+"""通報の案件"""
+type AdminReportCase {
+  categoryCounts: [AdminReportCategoryCount!]!
+  firstReportedAt: DateTime!
+  id: ID!
+  infringement: Boolean!
+  lastReportedAt: DateTime!
+
+  """退会で論理削除した通報を除く件数"""
+  reportCount: Int!
+
+  """権利侵害の案件だけ"""
+  responseTime: AdminReportResponseTime
+  status: ReportCaseStatus!
+  target: AdminReportTarget!
+}
+
+"""通報の案件の一覧"""
+type AdminReportCaseConnection {
+  nodes: [AdminReportCase!]!
+  pageInfo: PageInfo!
+}
+
+"""通報の案件の詳細"""
+type AdminReportCaseDetail {
+  case: AdminReportCase!
+  closedAt: DateTime
+  closingReason: String
+
+  """権利侵害の対応中の案件で、投稿者の宛先と利用者側のURLがあれば真"""
+  inquiryAvailable: Boolean!
+  lastInquiry: AdminReportInquiry
+
+  """受付日時の昇順"""
+  reports: [AdminReport!]!
+  resolution: ReportResolution
+  statusChangedAt: DateTime!
+}
+
+"""通報の案件の一覧の絞り込み"""
+input AdminReportCaseFilter {
+  """そのカテゴリの通報を含む案件"""
+  categoryId: ID
+  reportedBefore: DateTime
+
+  """その期間に受け付けた通報を含む案件。開始は含み、終了は含まない"""
+  reportedFrom: DateTime
+  status: ReportCaseStatus
+  targetKind: ReportTargetKind
+}
+
+"""管理画面の通報カテゴリ"""
+type AdminReportCategory {
+  id: ID!
+  infringement: Boolean!
+  name: String!
+
+  """紐付く通報の件数。退会で論理削除した通報を含む"""
+  reportCount: Int!
+  systemDefault: Boolean!
+}
+
+"""案件のカテゴリごとの通報の件数"""
+type AdminReportCategoryCount {
+  categoryId: ID!
+  count: Int!
+
+  """カテゴリの現在の名前"""
+  name: String!
+}
+
+"""最後に送った権利侵害の照会"""
+type AdminReportInquiry {
+  deadline: DateTime!
+  message: String!
+
+  """対応中で回答の期限を過ぎていれば真"""
+  overdue: Boolean!
+  sentAt: DateTime!
+}
+
+"""権利侵害の案件の対応期間"""
+type AdminReportResponseTime {
+  alerts: [ResponseTimeAlert!]!
+  completedAt: DateTime
+
+  """完了の日時が得られない完了した案件はnull"""
+  elapsedSeconds: Int
+  startedAt: DateTime!
+}
+
+"""管理画面の通報の対象"""
+type AdminReportTarget {
+  """退会・削除・物理削除で読めない対象と、対象への参照を消した案件はfalse"""
+  available: Boolean!
+  detached: Boolean!
+
+  """コメントの本文の抜粋"""
+  excerpt: String
+  handle: String
+
+  """対象への参照を消した案件はnull"""
+  id: ID
+  kind: ReportTargetKind!
+
+  """ユーザーはニックネーム、プロダクトは名称"""
+  label: String
+  productHandle: String
+  productId: ID
+  productName: String
+}
+
+"""通報の申出者。kindはmember(ログイン中の利用者)かguest(未ログインと停止中の利用者)"""
+type AdminReporter {
+  handle: String
+
+  """連絡先メールアドレスは返さず、有無だけを返す"""
+  hasContact: Boolean!
+  kind: String!
+  nickname: String
 }
 
 """管理者のロール"""
@@ -232,6 +614,83 @@ type AdminSecondFactorRequired {
   expiresAt: DateTime!
 }
 
+"""管理画面の申込の一覧の1件"""
+type AdminSponsorship {
+  """支払った金額。未決済はnull"""
+  amountPaid: Money
+
+  """申込者のニックネーム。照会できなければnull"""
+  applicantNickname: String
+  createdAt: DateTime!
+  days: Int!
+
+  """掲載終了日(業務日付のYYYY-MM-DD)"""
+  endsOn: String!
+  id: ID!
+  productDeleted: Boolean!
+
+  """論理削除済みのプロダクトはnull"""
+  productHandle: String
+
+  """論理削除済みのプロダクトはnull"""
+  productName: String
+
+  """決済を探すための購入のID。未決済はnull"""
+  purchaseId: ID
+
+  """掲載開始日(業務日付のYYYY-MM-DD)"""
+  startsOn: String!
+  status: SponsorshipStatus!
+
+  """掲載予定・掲載中(表示停止中を含む)なら真"""
+  terminable: Boolean!
+  tier: SponsorshipTier!
+}
+
+"""管理画面の申込の一覧"""
+type AdminSponsorshipConnection {
+  nodes: [AdminSponsorship!]!
+  pageInfo: PageInfo!
+}
+
+"""管理画面の一覧の絞り込み。省略した条件は絞り込まない"""
+input AdminSponsorshipFilter {
+  status: AdminSponsorshipStatusFilter
+  tier: SponsorshipTier
+}
+
+"""管理画面の一覧の掲載状況の絞り込み。表示停止中は掲載予定・掲載中に含む"""
+enum AdminSponsorshipStatusFilter {
+  ACTIVE
+  ENDED
+  PENDING_PAYMENT
+  SCHEDULED
+  TERMINATED
+}
+
+"""週ごとの統計の1週。未確定の週は集計中の今週か、集計が止まって確定していない週"""
+type AdminStatisticsWeek {
+  finalized: Boolean!
+
+  """週の期間の純収益"""
+  netRevenue: Money!
+
+  """週の終わり(集計中の週は集計の時点)のプロダクトの総数"""
+  products: Int!
+
+  """週の期間の予選の実施数"""
+  qualifierMatches: Int!
+
+  """週の期間のUpvote数"""
+  upvotes: Int!
+
+  """週の終わり(集計中の週は集計の時点)の利用者の総数"""
+  users: Int!
+
+  """週の開始日(月曜日の業務日付)"""
+  weekStart: String!
+}
+
 """認証アプリへ登録する多要素認証の設定"""
 type AdminTotpSetup {
   expiresAt: DateTime!
@@ -239,6 +698,59 @@ type AdminTotpSetup {
 
   """認証アプリへ手入力するためのbase32"""
   secret: String!
+}
+
+"""未対応の案件の件数"""
+type AdminUnhandledReportSummary {
+  infringementOpen: Int!
+  open: Int!
+}
+
+"""管理画面の利用者。メールアドレスは返さない"""
+type AdminUser {
+  avatar: AdminMediaFile
+  disposableEmail: DisposableEmailCheck!
+  handle: String!
+  id: ID!
+
+  """停止中で、停止の措置の記録が残っている利用者だけが持つ"""
+  latestSuspension: ModerationNote
+  nickname: String!
+  registeredAt: DateTime!
+  status: AdminUserStatus!
+  suspendedAt: DateTime
+}
+
+type AdminUserConnection {
+  nodes: [AdminUser!]!
+  pageInfo: PageInfo!
+}
+
+"""ユーザーの一覧の絞り込み。指定した条件を全て満たす利用者を返す"""
+input AdminUserFilter {
+  """大文字小文字を区別しない完全一致"""
+  email: String
+
+  """大文字小文字を区別しない部分一致"""
+  handle: String
+
+  """大文字小文字を区別しない部分一致"""
+  nickname: String
+  status: AdminUserStatus
+}
+
+"""管理画面の利用者の停止状態"""
+enum AdminUserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+"""管理画面の一覧に添える利用者の表示"""
+type AdminUserSummary {
+  handle: String!
+  id: ID!
+  nickname: String!
+  suspended: Boolean!
 }
 
 """ログイン中の管理者"""
@@ -253,6 +765,83 @@ type AdminViewer {
   remainingRecoveryCodes: Int!
   role: AdminRole!
   title: String
+}
+
+"""週ごとの統計。weeksは週の古い順で、最後の週が未確定なら集計中の今週"""
+type AdminWeeklyStatistics {
+  """週が無ければnull"""
+  lastComputedAt: DateTime
+  weeks: [AdminStatisticsWeek!]!
+}
+
+"""代理の退会の入力"""
+input AdministrativeWithdrawalInput {
+  reason: String!
+  userId: ID!
+}
+
+"""APIキー。平文とハッシュは持たない"""
+type ApiKey {
+  createdAt: DateTime!
+  id: ID!
+  name: String!
+  scopes: ApiKeyScopes!
+}
+
+type ApiKeyConnection {
+  nodes: [ApiKey!]!
+  pageInfo: PageInfo!
+}
+
+input ApiKeyInput {
+  """前後の空白を除いて1〜50文字"""
+  name: String!
+  scopes: ApiKeyScopesInput!
+}
+
+"""読み取りだけの機能の権限"""
+enum ApiKeyReadLevel {
+  NONE
+  READ
+}
+
+"""機能ごとの権限スコープ"""
+type ApiKeyScopes {
+  comments: ApiKeyReadLevel!
+  launches: ApiKeyReadLevel!
+  productDescriptions: ApiKeyWriteLevel!
+  products: ApiKeyReadLevel!
+  profile: ApiKeyWriteLevel!
+  ratings: ApiKeyReadLevel!
+  upvotes: ApiKeyReadLevel!
+}
+
+input ApiKeyScopesInput {
+  comments: ApiKeyReadLevel!
+  launches: ApiKeyReadLevel!
+  productDescriptions: ApiKeyWriteLevel!
+  products: ApiKeyReadLevel!
+  profile: ApiKeyWriteLevel!
+  ratings: ApiKeyReadLevel!
+  upvotes: ApiKeyReadLevel!
+}
+
+"""書き込みもできる機能の権限"""
+enum ApiKeyWriteLevel {
+  NONE
+  READ
+  READ_WRITE
+}
+
+"""スポンサー広告の申込"""
+input ApplySponsorshipInput {
+  """掲載終了日(業務日付のYYYY-MM-DD)"""
+  endsOn: String!
+  productId: ID!
+
+  """掲載開始日(業務日付のYYYY-MM-DD)"""
+  startsOn: String!
+  tier: SponsorshipTier!
 }
 
 """監査ログの詳細の1項目"""
@@ -305,6 +894,52 @@ type AuditOperator {
 
   """削除済みの管理者ではnull"""
   nickname: String
+}
+
+"""ブラケットの1つの位置"""
+type BracketNode {
+  """マッチの予定を作っていない位置はnull"""
+  match: Match
+
+  """ラウンドの中の位置(1から)"""
+  position: Int!
+
+  """2つの側の枠"""
+  slots: [BracketSlot!]!
+}
+
+"""ブラケットのラウンド。WeekとYearのどちらのブラケットも同じ型で返す"""
+type BracketRound {
+  """実施日(業務日付のYYYY-MM-DD)。予定の前は見込みの日"""
+  date: String!
+
+  """ラウンド名"""
+  name: String!
+
+  """位置の昇順。両方の側が空と確定した位置は含めない"""
+  nodes: [BracketNode!]!
+
+  """ラウンドの番号(1回戦が1)"""
+  round: Int!
+}
+
+"""ブラケットのマッチの側の枠"""
+type BracketSlot {
+  """未来の枠の表記(「シード1」「1回戦第3試合の勝者」)"""
+  feedLabel: String
+
+  """抽選番号。未確定の枠はnull"""
+  participantNo: Int
+
+  """表示できない(非公開化・論理削除・投稿者の退会や停止)・未来の枠はnull"""
+  product: MatchProduct
+
+  """確定の前はnull"""
+  result: MatchEntryResult
+
+  """シードなら抽選番号"""
+  seed: Int
+  upvoteCount: Int
 }
 
 """不戦勝の理由。ABSENTは対戦相手なし、FORFEITはマッチ直前の相手の該当、EARLYはマッチ中の即時の終了"""
@@ -417,6 +1052,50 @@ type ConfirmationResult {
 input CreateHelpArticleInput {
   fields: HelpArticleFields!
   reason: String
+}
+
+"""データエクスポートの要求。ZIPの実体は持たず、ダウンロードの経路を指す"""
+type DataExport {
+  """ZIPのバイト数。4GiB未満の整数で、GraphQLのIntが32ビットのためFloatで返す。完了と期限切れだけが持つ"""
+  byteSize: Float
+
+  """生成の完了日時。完了と期限切れだけが持つ"""
+  completedAt: DateTime
+
+  """ダウンロードの内部の経路。完了で有効期限の前のときだけ持つ"""
+  downloadPath: String
+
+  """ZIPの有効期限。完了と期限切れだけが持つ"""
+  expiresAt: DateTime
+
+  """失敗の日時。失敗だけが持つ"""
+  failedAt: DateTime
+  failureKind: DataExportFailureKind
+
+  """ZIPのファイル名。完了と期限切れだけが持つ"""
+  fileName: String
+  id: ID!
+  requestedAt: DateTime!
+  status: DataExportStatus!
+}
+
+type DataExportConnection {
+  nodes: [DataExport!]!
+  pageInfo: PageInfo!
+}
+
+"""失敗の種類。TOO_LARGEは生成物の上限を超えたことを表す"""
+enum DataExportFailureKind {
+  ERROR
+  TOO_LARGE
+}
+
+"""要求の表示の状態。作成中は受け付けと生成中をまとめる"""
+enum DataExportStatus {
+  EXPIRED
+  FAILED
+  PENDING
+  READY
 }
 
 """UTCのRFC 3339形式の日時"""
@@ -562,6 +1241,14 @@ input DiscardLegalDocumentDraftInput {
   kind: LegalDocumentKind!
 }
 
+"""使い捨てメールアドレスの判定結果。UNVERIFIEDはメールアドレスの確認を済ませていない利用者"""
+enum DisposableEmailCheck {
+  DISPOSABLE
+  REGULAR
+  UNDETERMINED
+  UNVERIFIED
+}
+
 """フォロー一覧の1行。followedAtはフォローした日時"""
 type FollowEntry {
   followedAt: DateTime!
@@ -685,6 +1372,12 @@ type HelpSearchHit {
   title: String!
 }
 
+"""権利侵害の照会の結果"""
+type InfringementInquiryOutcome {
+  deadline: DateTime!
+  sentAt: DateTime!
+}
+
 """問い合わせのカテゴリ"""
 type InquiryCategory {
   id: ID!
@@ -758,6 +1451,14 @@ enum InquiryStatus {
   OPEN
   REJECTED
   RESOLVED
+}
+
+"""発行・再発行の結果"""
+type IssuedApiKey {
+  apiKey: ApiKey!
+
+  """平文のAPIキー。この応答でだけ返し、再び読めない"""
+  plainKey: String!
 }
 
 type LaunchComment {
@@ -1130,6 +1831,17 @@ type MemberInquirySummary {
   status: InquiryStatus!
 }
 
+"""最新の措置の理由と日時。理由は措置の記録から読み、任意の操作で理由が無ければnull"""
+type ModerationNote {
+  occurredAt: DateTime!
+  reason: String
+}
+
+"""措置の結果。既に同じ状態ならchangedは偽"""
+type ModerationOutcome {
+  changed: Boolean!
+}
+
 """金額"""
 type Money {
   """最小通貨単位の整数"""
@@ -1151,6 +1863,12 @@ type Mutation {
   """この端末のログアウト"""
   adminLogout: Boolean!
 
+  """申込を未決済で記録し、決済を始めて決済画面の経路に使う購入のIDを返す"""
+  applySponsorship(input: ApplySponsorshipInput!): CheckoutStart!
+
+  """自動判定の隔離理由を外す公開承認"""
+  approveQuarantinedImage(fileId: ID!, reason: String): ModerationOutcome!
+
   """閲覧者のプロダクトへの評価を物理削除する。評価が無くても成功する"""
   cancelProductRating(productId: ID!): ProductRating!
 
@@ -1169,6 +1887,9 @@ type Mutation {
 
   """対応ステータスの変更。変更後の詳細を返す。モデレーター以上"""
   changeInquiryStatus(inquiryId: ID!, reason: String, status: InquiryStatus!): AdminInquiry!
+
+  """案件の対応ステータスの手での変更"""
+  changeReportCaseStatus(from: ReportCaseStatus!, id: ID!, reason: String, to: ReportCaseStatus!): ReportCaseOutcome!
 
   """招待の完了の2段階目。認証コードで有効化し、ログインする"""
   completeAdminInvitation(token: String!, totpCode: String!): AdminRecoveryCodeSet!
@@ -1205,6 +1926,9 @@ type Mutation {
   """モデレーター以上の管理者がプロダクトカテゴリを追加する"""
   createProductCategory(input: ProductCategoryInput!, reason: String): ProductCategory!
 
+  """通報カテゴリの追加"""
+  createReportCategory(name: String!, reason: String): AdminReportCategory!
+
   """
   Customer Portalのセッションの作成。加入したことがある本人のStripe Customerにセッションを作り、移動先のURLを返す。戻り先はプラン管理画面
   """
@@ -1212,6 +1936,9 @@ type Mutation {
 
   """管理者の削除"""
   deleteAdmin(id: ID!, reason: String): Boolean!
+
+  """自分のAPIキーを削除し、削除したキーのIDを返す。停止中の利用者も削除できる"""
+  deleteApiKey(id: ID!): ID!
 
   """自分の表示できるコメントを置き換え表示にし、返信は残す"""
   deleteComment(commentId: ID!): LaunchComment!
@@ -1227,6 +1954,12 @@ type Mutation {
   """モデレーター以上の管理者がプロダクトの紐付かないプロダクトカテゴリを削除する。標準カテゴリは削除できない"""
   deleteProductCategory(id: ID!, reason: String): Boolean!
 
+  """隔離画像の削除"""
+  deleteQuarantinedImage(fileId: ID!, reason: String): ModerationOutcome!
+
+  """通報カテゴリの削除。紐付く通報は「その他」へ付け替える"""
+  deleteReportCategory(id: ID!, reason: String): ReportCategoryDeletion!
+
   """多要素認証の無効化"""
   disableTotp(input: ReAuthenticationInput!): Boolean!
 
@@ -1239,8 +1972,20 @@ type Mutation {
   """メールアドレスが確認済みの利用者がフォローする。すでにフォロー済みでも成功する"""
   followUser(handle: String!): FollowState!
 
+  """コメントの非公開化"""
+  hideComment(id: ID!, reason: String!): ModerationOutcome!
+
+  """プロダクトの非公開化"""
+  hideProduct(id: ID!, reason: String!): ModerationOutcome!
+
+  """評価の無効化"""
+  invalidateRating(id: ID!, reason: String!): ModerationOutcome!
+
   """閲覧のみのロールで招待し、招待のメールを送る"""
   inviteAdmin(email: String!, reason: String): AdminAccount!
+
+  """新しいAPIキーを発行する。発行は再発行と合わせて利用者ごとに1時間3回まで"""
+  issueApiKey(input: ApiKeyInput!): IssuedApiKey!
 
   """メールアドレスとパスワードによるログイン"""
   login(input: LoginInput!): LoginResult!
@@ -1256,6 +2001,9 @@ type Mutation {
 
   """下書きの公開。最上位管理者"""
   publishLegalDocument(input: PublishLegalDocumentInput!): AdminLegalDocument!
+
+  """画像の個別の隔離"""
+  quarantineImage(fileId: ID!, reason: String): ModerationOutcome!
 
   """閲覧者のプロダクトへの評価を保存し、評価済みなら上書きする"""
   rateProduct(productId: ID!, score: Int!): ProductRating!
@@ -1274,10 +2022,22 @@ type Mutation {
 
   """利用者の登録"""
   registerUser(input: RegisterUserInput!): Viewer!
+
+  """自分のAPIキーと同じ名前と権限スコープの新しいキーを追加で発行する。元のキーは残す"""
+  reissueApiKey(id: ID!): IssuedApiKey!
+
+  """案件の却下"""
+  rejectReportCase(id: ID!, reason: String!): ReportCaseOutcome!
+
+  """管理者操作の隔離理由を外す隔離の解除"""
+  releaseQuarantinedImage(fileId: ID!, reason: String): ModerationOutcome!
   renameHelpCategory(id: ID!, name: String!): HelpCategory!
 
   """カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上"""
   renameInquiryCategory(id: ID!, name: String!, reason: String): InquiryCategory!
+
+  """通報カテゴリの名前の変更"""
+  renameReportCategory(id: ID!, name: String!, reason: String): AdminReportCategory!
 
   """ピン留めの群に続けてそれ以外の群の順でカテゴリの全記事のIDを渡す"""
   reorderHelpArticles(categoryId: ID!, orderedIds: [ID!]!): [AdminHelpArticleRow!]!
@@ -1293,6 +2053,9 @@ type Mutation {
 
   """パスワードリセットの要求。管理者の有無と状態を問わず同じ結果を返す"""
   requestAdminPasswordReset(email: String!): Boolean!
+
+  """データエクスポートを要求する。ZIPの生成は非同期で、要求は利用者ごとに24時間に3回まで。作成中の要求があっても受け付ける"""
+  requestDataExport: DataExport!
 
   """メールアドレス変更の要求"""
   requestEmailChange(input: RequestEmailChangeInput!): Boolean!
@@ -1319,6 +2082,18 @@ type Mutation {
   """パスワードリセットの確定"""
   resetPassword(input: ResetPasswordInput!): Boolean!
 
+  """措置による対応済"""
+  resolveReportCaseWithMeasure(id: ID!, reason: String!): ReportCaseOutcome!
+
+  """措置なしの対応済"""
+  resolveReportCaseWithoutMeasure(id: ID!, reason: String!): ReportCaseOutcome!
+
+  """本人の開始日前の未決済の申込の決済を始め直す"""
+  resumeSponsorshipCheckout(id: ID!): CheckoutStart!
+
+  """評価の無効化の取り消し"""
+  revalidateRating(id: ID!, reason: String!): ModerationOutcome!
+
   """操作している端末以外のセッションの一括の失効。失効させた件数を返す"""
   revokeOtherSessions: Int!
 
@@ -1327,6 +2102,9 @@ type Mutation {
 
   """下書きの保存。最上位管理者"""
   saveLegalDocumentDraft(input: SaveLegalDocumentDraftInput!): AdminLegalDocument!
+
+  """権利侵害の案件の投稿者への照会"""
+  sendInfringementInquiry(id: ID!, message: String!, reason: String): InfringementInquiryOutcome!
 
   """招待の完了の1段階目。ニックネームとパスワードを仮に保存し、多要素認証の設定を始める"""
   startAdminInvitation(
@@ -1349,17 +2127,48 @@ type Mutation {
   """Ultrasの加入の開始。加入できるかを確かめて購入を作り、決済画面の経路に使う購入のIDを返す"""
   startUltrasCheckout: CheckoutStart!
 
+  """
+  Weekトーナメントの参加費の決済の開始。本人の受付中の枠に購入を作り、決済画面の経路に使う購入のIDを返す。受付期限の後はcheckout_closed
+  """
+  startWeekTournamentCheckout(launchId: ID!): CheckoutStart!
+
+  """
+  Yearトーナメントの参加費の決済の開始。本人の受付中の枠に購入を作り、決済画面の経路に使う購入のIDを返す。受付期限の後はcheckout_closed
+  """
+  startYearTournamentCheckout(launchId: ID!): CheckoutStart!
+
   """未ログイン(停止中の利用者を含む)の問い合わせの送信"""
   submitGuestInquiry(input: GuestInquiryInput!): Boolean!
 
   """停止していないログイン中の利用者の問い合わせの送信"""
   submitMemberInquiry(input: MemberInquiryInput!): MemberInquiry!
 
+  """ユーザー・プロダクト・コメントの通報"""
+  submitReport(input: SubmitReportInput!): SubmitReportPayload!
+
+  """利用者の停止"""
+  suspendUser(id: ID!, reason: String!): ModerationOutcome!
+
+  """理由(500文字以内)を付けて広告を強制終了し、未掲載日数分と表示停止日数分の返金を依頼する。モデレーター以上の管理者"""
+  terminateSponsorship(id: ID!, reason: String!): SponsorshipTerminationResult!
+
   """停止中でない利用者がフォローを解除する。フォローしていなくても成功する"""
   unfollowUser(handle: String!): FollowState!
 
+  """コメントの復元"""
+  unhideComment(id: ID!, reason: String!): ModerationOutcome!
+
+  """プロダクトの復元"""
+  unhideProduct(id: ID!, reason: String!): ModerationOutcome!
+
+  """利用者の停止解除"""
+  unsuspendUser(id: ID!, reason: String!): ModerationOutcome!
+
   """プロフィールの更新。avatarFileIdの省略は画像を取り除く"""
   updateAdminProfile(avatarFileId: ID, id: ID!, nickname: String!, title: String): AdminAccount!
+
+  """自分のAPIキーの名前と権限スコープを変える。キーの文字列は変えない"""
+  updateApiKey(id: ID!, input: ApiKeyInput!): ApiKey!
 
   """本文と、それに添えた評価を1回の書き込みで保存する"""
   updateComment(input: UpdateCommentInput!): CommentMutationResult!
@@ -1384,6 +2193,11 @@ type Mutation {
   updateUltrasPromotionSetting(input: UpdateUltrasPromotionSettingInput!): UltrasPromotionSetting!
 
   """
+  決勝実施日の保存。最上位管理者だけが行え、監査ログと一体で確定する。選べない日付はvalidation_error(details[0].codeに理由)、変更期限の後・組み合わせ決定の開始の後はfinal_date_locked、版の不一致はversion_conflict
+  """
+  updateYearFinalDate(input: UpdateYearFinalDateInput!): YearFinalDateSetting!
+
+  """
   メールアドレスが確認済みの利用者がマッチ中のマッチの一方の側にUpvoteする。もう一方の側にUpvote済みなら付け替え、同じ側なら何も変えない。更新後のマッチを返す
   """
   upvote(input: UpvoteInput!): Match!
@@ -1393,6 +2207,9 @@ type Mutation {
 
   """退会"""
   withdraw(input: ReAuthenticationInput!): Boolean!
+
+  """最上位管理者による代理の退会"""
+  withdrawUserByAdministrator(input: AdministrativeWithdrawalInput!): ModerationOutcome!
 }
 
 """自分のプロダクトの編集用の情報"""
@@ -1453,6 +2270,49 @@ type MyProfile {
   previousHandle: String
   suspended: Boolean!
   websites: [ProfileWebsite!]!
+}
+
+"""自分の広告一覧の1件"""
+type MySponsorship {
+  """支払った金額。未決済はnull"""
+  amountPaid: Money
+
+  """未決済で開始日が今日以降なら真。決済を再開できる"""
+  canResume: Boolean!
+  createdAt: DateTime!
+
+  """開始日と終了日を含む日数"""
+  days: Int!
+
+  """表示停止の日数分の返金。精算前・無ければnull"""
+  displayStopRefund: SponsorshipRefund
+
+  """掲載終了日(業務日付のYYYY-MM-DD)"""
+  endsOn: String!
+  id: ID!
+
+  """論理削除済みのプロダクトはnull"""
+  product: SponsorshipProduct
+
+  """掲載開始日(業務日付のYYYY-MM-DD)"""
+  startsOn: String!
+  status: SponsorshipStatus!
+
+  """強制終了日(業務日付のYYYY-MM-DD)。強制終了していなければnull"""
+  terminatedOn: String
+  terminationReason: String
+
+  """強制終了の未掲載日数分の返金。無ければnull"""
+  terminationRefund: SponsorshipRefund
+  tier: SponsorshipTier!
+}
+
+"""自分の広告一覧"""
+type MySponsorshipConnection {
+  """次の基準時刻の0:00。掲載予定から掲載中・掲載中から終了への切り替わりで取り直す"""
+  nextDayStartsAt: DateTime!
+  nodes: [MySponsorship!]!
+  pageInfo: PageInfo!
 }
 
 """通知種別ごとの受信可否"""
@@ -1957,9 +2817,23 @@ enum QualifierOutcome {
   WON
 }
 
+"""画像の隔離理由"""
+enum QuarantineReason {
+  ADMIN_ACTION
+  AUTO
+  PRODUCT_HIDDEN
+  USER_SUSPENDED
+}
+
 type Query {
+  """本人のプロダクトの掲載中・掲載予定の広告の件数。本人のプロダクトでなければ0"""
+  activeSponsorshipCount(productHandle: String!): Int!
+
   """招待中を含む全管理者を登録の新しい順に返す"""
   adminAccounts: [AdminAccount!]!
+
+  """コメントの一覧(投稿日時の新しい順)。firstは1〜50"""
+  adminComments(after: String, filter: AdminCommentFilter, first: Int!): AdminCommentConnection!
 
   """見つからなければnull"""
   adminHelpArticle(id: ID!): AdminHelpArticle
@@ -1988,14 +2862,56 @@ type Query {
   """管理画面の法務文書の一覧。閲覧のみ以上の管理者"""
   adminLegalDocuments: [AdminLegalDocumentSummary!]!
 
+  """プロダクトの一覧の絞り込みのカテゴリの選択肢"""
+  adminModerationCategoryOptions: [AdminCategoryRef!]!
+
+  """プロダクトの詳細。存在しない・論理削除済みはnull"""
+  adminProduct(id: ID!): AdminProductDetail
+
   """管理者向けのプロダクトカテゴリの一覧。productCategoriesと同じ順"""
   adminProductCategories: [ProductCategory!]!
+
+  """プロダクトの評価の一覧(更新日時の新しい順)。firstは1〜50"""
+  adminProductRatings(after: String, first: Int!, productId: ID!): AdminRatingConnection!
+
+  """プロダクトへの通報の件数と未完了の案件"""
+  adminProductReportSummary(productId: ID!): AdminProductReportSummary!
+
+  """論理削除されていないプロダクトの一覧(登録日時の新しい順)。firstは1〜50"""
+  adminProducts(after: String, filter: AdminProductFilter, first: Int!): AdminProductConnection!
+
+  """隔離理由ごとの隔離画像の一覧(隔離された日時の新しい順に50件ずつ)"""
+  adminQuarantinedImages(after: String, reason: QuarantineReason!): AdminQuarantinedImagePage!
+
+  """評価の一覧(更新日時の新しい順)。firstは1〜50"""
+  adminRatings(after: String, filter: AdminRatingFilter, first: Int!): AdminRatingConnection!
+
+  """通報の案件の詳細。無ければnull"""
+  adminReportCase(id: ID!): AdminReportCaseDetail
+
+  """通報の案件の一覧。最後の受付日時の新しい順"""
+  adminReportCases(after: String, filter: AdminReportCaseFilter, first: Int!): AdminReportCaseConnection!
+
+  """管理画面の通報カテゴリ"""
+  adminReportCategories: [AdminReportCategory!]!
+
+  """退会者を除く申込の新しい順(1〜50件)。閲覧のみ以上の管理者"""
+  adminSponsorships(after: String, filter: AdminSponsorshipFilter, first: Int!): AdminSponsorshipConnection!
 
   """退会済みを除く「未対応」のログインと未ログインの問い合わせの合計件数。閲覧のみ以上"""
   adminUnhandledInquiryCount: Int!
 
+  """未対応の案件の件数"""
+  adminUnhandledReportSummary: AdminUnhandledReportSummary!
+
+  """退会していない利用者の一覧(登録日時の新しい順)。firstは1〜50"""
+  adminUsers(after: String, filter: AdminUserFilter, first: Int!): AdminUserConnection!
+
   """ログイン中の管理者。未ログイン・無効なセッションではnull"""
   adminViewer: AdminViewer
+
+  """直近26週と集計中の今週の統計。表示のたびに集計し直さず、定期実行が保存した値を返す"""
+  adminWeeklyStatistics: AdminWeeklyStatistics!
 
   """監査ログの検索。変更・削除の操作は無い"""
   auditLogs(after: String, filter: AuditLogFilterInput): AuditLogPage!
@@ -2055,6 +2971,12 @@ type Query {
   """本人の問い合わせのチャット。本人の問い合わせでなければnull"""
   memberInquiry(id: ID!): MemberInquiry
 
+  """自分のAPIキーの発行の新しい順の一覧。停止中の利用者も読める"""
+  myApiKeys(after: String, first: Int = 50): ApiKeyConnection!
+
+  """自分のデータエクスポートの要求の新しい順の一覧。期限切れ・失敗を含む退会までの全ての要求を読め、停止中の利用者も読める"""
+  myDataExports(after: String, first: Int = 20): DataExportConnection!
+
   """ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20"""
   myFollowers(after: String, first: Int!): FollowEntryConnection!
 
@@ -2075,6 +2997,15 @@ type Query {
 
   """ログイン中の端末の一覧"""
   mySessions: [UserSessionSummary!]!
+
+  """ログイン中の利用者の申込の新しい順(1〜20件)"""
+  mySponsorships(after: String, first: Int!): MySponsorshipConnection!
+
+  """投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull"""
+  myWeekEntry(productHandle: String!): WeekEntryPanel
+
+  """投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull"""
+  myYearEntry(productHandle: String!): YearEntryPanel
 
   """登録画面で選べるローンチ日"""
   newProductLaunchWindow: LaunchDateWindow!
@@ -2114,6 +3045,11 @@ type Query {
   productRating(productId: ID!): ProductRating
 
   """
+  プロダクト詳細ページのトロフィー。Yearを先頭に、同じ種類は受賞の新しい順に並べる。詳細ページを閲覧できなければnull。ログインを求めない
+  """
+  productTrophies(productHandle: String!): [Trophy!]
+
+  """
   公開プロフィールの受賞バッジ。launchHistoryと同じ対象のプロダクトの受賞を、Yearを先頭に種類ごとにまとめて返す。ラベルの先頭に受賞したプロダクトの名称を付ける。利用者を表示できなければnull
   """
   profileAwards(userHandle: String!): [ProductAward!]
@@ -2123,6 +3059,25 @@ type Query {
 
   """トップページの当日の予選。開始済みの予選を対戦カードと不戦勝に分けて返す。ログインを求めない"""
   qualifierBoard: QualifierBoard!
+
+  """通報のフォームで選べるカテゴリ"""
+  reportCategories: [ReportCategory!]!
+
+  """掲載中の広告。ログインを求めない"""
+  sponsoredPlacements: SponsoredPlacements!
+
+  """料金ページのスポンサー広告の価格と申込の対象。ログインを求めない"""
+  sponsorshipOffer: SponsorshipOffer!
+
+  """
+  申込の対象のプロダクトとティアの掲載期間の選べる範囲。対象外はsponsorship_product_ineligible、形式の違う開始日はvalidation_error
+  """
+  sponsorshipPeriodWindow(productId: ID!, startsOn: String, tier: SponsorshipTier!): SponsorshipPeriodWindow!
+
+  """
+  強制終了の未掲載日数・返金目安額・表示停止日数・表示停止の返金額。モデレーター以上の管理者。強制終了できなければsponsorship_not_terminable
+  """
+  sponsorshipTerminationPreview(id: ID!): SponsorshipTerminationPreview!
 
   """APIサーバーの時刻とデータベースへの到達可否"""
   systemStatus: SystemStatus!
@@ -2146,6 +3101,21 @@ type Query {
 
   """ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull"""
   viewerUltras: ViewerUltras
+
+  """Weekトーナメントのブラケット。週(YYYY-Www)が不正・組み合わせを決定していなければnull。ログインを求めない"""
+  weekBracket(week: String!): WeekBracket
+
+  """トップページのWeekトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない"""
+  weekTournamentBoard(date: String!): WeekTournamentBoard!
+
+  """Yearトーナメントのブラケット。年(4桁)が不正・行が無い・組み合わせを決定していなければnull。ログインを求めない"""
+  yearBracket(year: String!): YearBracket
+
+  """現在の年と翌年の決勝実施日の設定。管理者側の呼び出し元から、全てのロールの管理者が照会できる"""
+  yearFinalDateSettings: YearFinalDateSettings!
+
+  """トップページのYearトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない"""
+  yearTournamentBoard(date: String!): YearTournamentBoard!
 }
 
 """重要な操作の本人確認"""
@@ -2185,6 +3155,49 @@ type RelaunchBlockView {
   releaseAt: DateTime
 }
 
+"""案件の操作の結果"""
+type ReportCaseOutcome {
+  status: ReportCaseStatus!
+}
+
+"""通報の案件の対応ステータス"""
+enum ReportCaseStatus {
+  IN_PROGRESS
+  OPEN
+  REJECTED
+  RESOLVED
+}
+
+"""通報のフォームで選べるカテゴリ"""
+type ReportCategory {
+  id: ID!
+
+  """権利侵害のカテゴリ。未ログインと停止中の利用者には連絡先メールアドレスを求める"""
+  infringement: Boolean!
+  name: String!
+}
+
+"""通報カテゴリの削除の結果"""
+type ReportCategoryDeletion {
+  """「その他」へ付け替えた通報の件数"""
+  reassignedCount: Int!
+}
+
+"""対応済の案件の措置。NONEは措置なしの対応済"""
+enum ReportResolution {
+  COMMENT_HIDE
+  NONE
+  PRODUCT_HIDE
+  USER_SUSPEND
+}
+
+"""通報の対象の種類"""
+enum ReportTargetKind {
+  COMMENT
+  PRODUCT
+  USER
+}
+
 input RequestEmailChangeInput {
   newEmail: String!
   reAuthentication: ReAuthenticationInput!
@@ -2204,6 +3217,12 @@ enum ResendVerificationResult {
 input ResetPasswordInput {
   newPassword: String!
   token: String!
+}
+
+"""権利侵害の案件の対応期間の目標の超過"""
+enum ResponseTimeAlert {
+  DECISION_OVERDUE
+  START_OVERDUE
 }
 
 """下書きの保存"""
@@ -2226,6 +3245,201 @@ type SecondFactorRequired {
   expiresAt: DateTime!
 }
 
+"""申込の対象のプロダクト"""
+type SponsorableProduct {
+  handle: String!
+  id: ID!
+  logo: MediaImage
+  name: String!
+}
+
+"""広告スペースに表示する広告"""
+type SponsoredAd {
+  """申込のID"""
+  id: ID!
+  logo: MediaImage
+  productName: String!
+
+  """Silverはnull"""
+  tagline: String
+  tier: SponsorshipTier!
+
+  """外部WebサイトURL。検証を通らなければnull"""
+  websiteUrl: String
+}
+
+"""ティアごとの広告。同じティアの中は照会ごとに無作為の順"""
+type SponsoredPlacements {
+  gold: [SponsoredAd!]!
+  legend: [SponsoredAd!]!
+  silver: [SponsoredAd!]!
+}
+
+"""選べない日の範囲(両端を含む業務日付のYYYY-MM-DD)"""
+type SponsorshipDateRange {
+  from: String!
+  reason: SponsorshipDateUnavailableReason!
+  to: String!
+}
+
+"""選べない理由。範囲の外の日の理由(今日より前・365日後より後・開始日より前・366日を超える)は画面が範囲の種類から決める"""
+enum SponsorshipDateUnavailableReason {
+  OVERLAP
+}
+
+"""選べる業務日付。earliestからlatestまでのうちunavailableの範囲を除く日を選べる"""
+type SponsorshipDateWindow {
+  earliest: String!
+  latest: String!
+  unavailable: [SponsorshipDateRange!]!
+}
+
+"""料金ページのスポンサー広告の区画"""
+type SponsorshipOffer {
+  """閲覧者の申込の対象のプロダクトの名称の順。未ログインはnull"""
+  eligibleProducts: [SponsorableProduct!]
+
+  """Legend・Gold・Silverの順"""
+  tiers: [SponsorshipTierOffer!]!
+}
+
+"""掲載期間の選べる範囲"""
+type SponsorshipPeriodWindow {
+  """業務日付の今日(YYYY-MM-DD)"""
+  businessToday: String!
+
+  """終了日の選べる範囲。startsOnを渡さない、またはstartsOnが選べない日ならnull"""
+  end: SponsorshipDateWindow
+
+  """次の基準時刻の0:00。画面はこの時点で取り直す"""
+  nextDayStartsAt: DateTime!
+
+  """開始日の選べる範囲"""
+  start: SponsorshipDateWindow!
+}
+
+"""自分の広告の対象のプロダクト"""
+type SponsorshipProduct {
+  handle: String!
+
+  """プロダクトのページを表示できる"""
+  listed: Boolean!
+  logo: MediaImage
+  name: String!
+}
+
+"""日割りで依頼した返金"""
+type SponsorshipRefund {
+  """依頼した額。残りの全額で依頼したときはnull"""
+  amount: Money
+  days: Int!
+  status: SponsorshipRefundStatus!
+}
+
+"""依頼した返金の状態。REQUESTEDは依頼済み、ALREADY_REFUNDEDは返金できる残りが無く返金済み、REJECTEDは拒否"""
+enum SponsorshipRefundStatus {
+  ALREADY_REFUNDED
+  REJECTED
+  REQUESTED
+}
+
+"""掲載状況。PAUSEDはプロダクトの非公開化か投稿者の停止による表示停止中"""
+enum SponsorshipStatus {
+  ACTIVE
+  ENDED
+  PAUSED
+  PENDING_PAYMENT
+  SCHEDULED
+  TERMINATED
+}
+
+"""強制終了の確認に示す日数と金額"""
+type SponsorshipTerminationPreview {
+  amountPaid: Money!
+
+  """掲載期間の日数"""
+  days: Int!
+
+  """申込のID"""
+  id: ID!
+
+  """未掲載日数分の返金目安額"""
+  refundEstimate: Money!
+
+  """表示停止日数分の返金額"""
+  stopRefundAmount: Money!
+
+  """強制終了日より前の表示停止日数"""
+  stoppedDays: Int!
+
+  """強制終了日と掲載開始日の遅い方から掲載終了日までの日数"""
+  unexposedDays: Int!
+}
+
+"""強制終了の確定の結果"""
+type SponsorshipTerminationResult {
+  amountPaid: Money!
+  days: Int!
+
+  """申込のID"""
+  id: ID!
+
+  """決済を探すための購入のID"""
+  purchaseId: ID!
+  refundEstimate: Money!
+  stopRefundAmount: Money!
+
+  """実際に依頼した額。残りの全額で依頼したとき・依頼しなかったときはnull"""
+  stopRefundRequested: Money
+
+  """表示停止日数分の返金の状態。返金額が0ならnull"""
+  stopRefundStatus: SponsorshipRefundStatus
+  stoppedDays: Int!
+
+  """強制終了日(業務日付のYYYY-MM-DD)"""
+  terminatedOn: String!
+
+  """実際に依頼した額。残りの全額で依頼したとき・依頼しなかったときはnull"""
+  terminationRefundRequested: Money
+
+  """未掲載日数分の返金の状態。返金額が0ならnull"""
+  terminationRefundStatus: SponsorshipRefundStatus
+  unexposedDays: Int!
+}
+
+"""スポンサー広告のティア"""
+enum SponsorshipTier {
+  GOLD
+  LEGEND
+  SILVER
+}
+
+"""ティアごとの1日あたりの税込の価格"""
+type SponsorshipTierOffer {
+  tier: SponsorshipTier!
+
+  """決済サービスから取得できなければnull"""
+  unitPrice: Money
+}
+
+"""通報の入力"""
+input SubmitReportInput {
+  categoryId: ID!
+
+  """未ログインと停止中の利用者の権利侵害の通報だけで使い、他では捨てる"""
+  contactEmail: String
+  reason: String!
+  targetKind: ReportTargetKind!
+
+  """ユーザーはハンドル、プロダクトとコメントはID"""
+  targetRef: String!
+}
+
+"""通報の受け付けの結果"""
+type SubmitReportPayload {
+  accepted: Boolean!
+}
+
 type SupporterConnection {
   """Upvoteの日時の早い順"""
   nodes: [UserSummary!]!
@@ -2244,6 +3458,27 @@ type TotpSetup {
 
   """認証アプリへ手入力するためのbase32"""
   secret: String!
+}
+
+"""プロダクトの受賞"""
+type Trophy {
+  awardedAt: DateTime!
+
+  """ブラケットのページの経路。無ければnull"""
+  bracketPath: String
+  kind: TrophyKind!
+
+  """受賞の期間(「2026-W37」「2026」)"""
+  period: String!
+
+  """期間の表記(「2026年第37週(9/7〜9/13)」「2026年」)"""
+  periodLabel: String!
+}
+
+"""トロフィーの種類"""
+enum TrophyKind {
+  WEEK
+  YEAR
 }
 
 """料金ページが表示するUltrasの料金と受付の状態"""
@@ -2382,6 +3617,21 @@ input UpdateUltrasPromotionSettingInput {
   reason: String
 }
 
+"""決勝実施日の保存の入力"""
+input UpdateYearFinalDateInput {
+  """照会で読み取った版"""
+  expectedVersion: Int!
+
+  """決勝実施日(業務日付のYYYY-MM-DD)"""
+  finalDate: String!
+
+  """監査ログに残す理由(500文字以内、任意)"""
+  reason: String
+
+  """対象年(現在の年か翌年)"""
+  year: Int!
+}
+
 """Upvote履歴の実施日ごとの件数"""
 type UpvoteDateTotal {
   """読み込み済みの項目の数ではなく、その日の表示できる項目の総数"""
@@ -2482,4 +3732,398 @@ type ViewerUltras {
 
   """加入したことが無ければnull"""
   plan: UltrasPlan
+}
+
+"""Weekトーナメントのブラケットのページ"""
+type WeekBracket {
+  """受賞したプロダクト。受賞なし・終了の前・表示できなければnull"""
+  champion: MatchProduct
+  participantCount: Int!
+
+  """ラウンドの昇順。参加0・1は空"""
+  rounds: [BracketRound!]!
+  seedCount: Int!
+  tournament: WeekTournamentSummary!
+}
+
+"""受付中で受付期限の前でも決済を始められない理由。文言は決済の開始の拒否と同じ"""
+type WeekEntryCheckoutBlock {
+  """決済の開始が拒否で返すエラーコード(week_entry_product_unavailable)"""
+  code: String!
+  message: String!
+}
+
+"""
+参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、LATE_ENTRYは組み合わせ決定の後に確定した予選の勝利
+"""
+enum WeekEntryCloseReason {
+  DEADLINE
+  DELETED
+  HIDDEN_OR_SUSPENDED
+  LATE_ENTRY
+  WITHDRAWN
+}
+
+"""投稿者本人の参加費の導線"""
+type WeekEntryPanel {
+  """決済の開始の受付期限(23:00)"""
+  acceptUntil: DateTime!
+
+  """組み合わせに入りブラケットを作った枠だけ。ブラケットのページの経路(/tournaments/week/<ISO週>)"""
+  bracketPath: String
+
+  """決済を始められる枠のうち、プロダクトを表示できない(非公開化・投稿者の停止)間だけ値がある。参加費とultrasGuideはそのまま返す"""
+  checkoutBlock: WeekEntryCheckoutBlock
+
+  """終わった枠だけ"""
+  closeReason: WeekEntryCloseReason
+
+  """決済期限"""
+  deadlineAt: DateTime!
+
+  """組み合わせ決定の日時(23:45)"""
+  drawAt: DateTime!
+
+  """Ultrasの特典により参加費を免除する"""
+  exempt: Boolean!
+
+  """参加費(税込のUSD)。決済を始められない枠と、決済サービスに到達できず照会できないときはnull"""
+  fee: Money
+
+  """決済の開始に渡すローンチのID"""
+  launchId: ID!
+
+  """組み合わせに入った枠だけ"""
+  progress: WeekEntryProgress
+
+  """照会の時点のサーバーの時刻。秒読みを合わせるのに使う"""
+  serverTime: DateTime!
+  status: WeekEntryStatus!
+
+  """決済を始められる枠で、投稿者がUltrasの特典を受けていない。Ultrasの導線を表示するかは画面が機能フラグで決める"""
+  ultrasGuide: Boolean!
+
+  """ISO週(YYYY-Www)"""
+  week: String!
+
+  """週の表記(「2026年第37週(9/7〜9/13)」)"""
+  weekLabel: String!
+}
+
+"""組み合わせに入った枠の進行"""
+type WeekEntryProgress {
+  """敗退しておらず、優勝もしていない"""
+  alive: Boolean!
+
+  """Product of the Weekを受賞した"""
+  champion: Boolean!
+
+  """敗退したラウンド名。敗退していなければnull"""
+  eliminatedRoundName: String
+}
+
+"""
+Weekトーナメントの参加の枠の状態。AWAITING_PAYMENTは参加費の支払い待ち、ENTITLEDは参加資格を得た、DRAWNは組み合わせに入った、EXPIREDは期限切れ、FORFEITEDは資格の喪失、EXCLUDEDは組み合わせ決定での除外
+"""
+enum WeekEntryStatus {
+  AWAITING_PAYMENT
+  DRAWN
+  ENTITLED
+  EXCLUDED
+  EXPIRED
+  FORFEITED
+}
+
+"""トップページのWeekトーナメントの区画"""
+type WeekTournamentBoard {
+  """業務日付(YYYY-MM-DD)"""
+  date: String!
+
+  """1回戦の日の昇順。その日にマッチが無ければ空"""
+  rounds: [WeekTournamentRoundBoard!]!
+
+  """照会の時点のサーバーの時刻。カウントダウンを合わせるのに使う"""
+  serverTime: DateTime!
+}
+
+"""トップページの区画の1行。トーナメントとラウンドごとに、その日のマッチを対戦カードと不戦勝に分ける"""
+type WeekTournamentRoundBoard {
+  """ブラケットのページの経路(/tournaments/week/<ISO週>)"""
+  bracketPath: String!
+
+  """不戦勝。ブラケットの位置の順。両者の不戦敗のマッチは含めない"""
+  byes: [MatchBye!]!
+
+  """決勝のラウンド"""
+  final: Boolean!
+
+  """対戦カード。ブラケットの位置の順"""
+  matches: [Match!]!
+
+  """ラウンドの番号(1回戦が1)"""
+  round: Int!
+
+  """ラウンド名(「1回戦」「準決勝」など)"""
+  roundName: String!
+  tournament: WeekTournamentSummary!
+}
+
+"""
+Weekトーナメントの状態。OPENは参加の受付中、DRAWINGは組み合わせの決定中、IN_PROGRESSは開催中、FINISHEDは終了
+"""
+enum WeekTournamentStatus {
+  DRAWING
+  FINISHED
+  IN_PROGRESS
+  OPEN
+}
+
+"""Weekトーナメントの見出しの情報"""
+type WeekTournamentSummary {
+  """賞を授与すれば真、受賞なしで終了すれば偽、終了の前はnull"""
+  awarded: Boolean
+
+  """決勝の実施日(業務日付のYYYY-MM-DD)。遅れがあれば見込みの日。組み合わせの決定の前と参加0・1はnull"""
+  finalDate: String
+
+  """1回戦の実施日(業務日付のYYYY-MM-DD)。組み合わせの決定の前はnull"""
+  firstRoundDate: String
+
+  """週の表記(「2026年第37週(9/7〜9/13)」)"""
+  label: String!
+  status: WeekTournamentStatus!
+
+  """ISO週(YYYY-Www)"""
+  week: String!
+}
+
+"""Yearトーナメントのブラケットのページ"""
+type YearBracket {
+  """受賞したプロダクト。受賞なし・終了の前・表示できなければnull"""
+  champion: MatchProduct
+  participantCount: Int!
+
+  """ラウンドの昇順。参加0・1は空"""
+  rounds: [BracketRound!]!
+  seedCount: Int!
+  tournament: YearTournamentSummary!
+}
+
+"""
+参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、OVER_CAPACITYは参加数の上限による除外、LATE_ENTRYは組み合わせ決定の後に確定したWeek優勝
+"""
+enum YearEntryCloseReason {
+  DEADLINE
+  DELETED
+  HIDDEN_OR_SUSPENDED
+  LATE_ENTRY
+  OVER_CAPACITY
+  WITHDRAWN
+}
+
+"""投稿者本人の参加費の導線"""
+type YearEntryPanel {
+  """決済の開始の受付期限(23:00)"""
+  acceptUntil: DateTime!
+
+  """組み合わせに入りブラケットを作った枠だけ。ブラケットのページの経路(/tournaments/year/<年>)"""
+  bracketPath: String
+
+  """終わった枠だけ"""
+  closeReason: YearEntryCloseReason
+
+  """決済期限"""
+  deadlineAt: DateTime!
+
+  """組み合わせ決定の日時(23:45)"""
+  drawAt: DateTime!
+
+  """Ultrasの特典により参加費を免除する"""
+  exempt: Boolean!
+
+  """参加費(税込のUSD)。決済を始められない枠と、決済サービスに到達できず照会できないときはnull"""
+  fee: Money
+
+  """対象年の決勝の実施日(業務日付のYYYY-MM-DD)"""
+  finalDate: String!
+
+  """決済の開始に渡すローンチのID"""
+  launchId: ID!
+
+  """組み合わせに入った枠だけ"""
+  progress: YearEntryProgress
+
+  """支払った参加費が自動の全額返金の対象(返金の依頼の前か依頼中)"""
+  refundable: Boolean!
+
+  """照会の時点のサーバーの時刻。秒読みを合わせるのに使う"""
+  serverTime: DateTime!
+  status: YearEntryStatus!
+
+  """Week優勝の週の表記(「2026年第47週(11/16〜11/22)」)"""
+  weekLabel: String!
+
+  """対象年"""
+  year: Int!
+
+  """対象年の表記(「2027年」)"""
+  yearLabel: String!
+}
+
+"""組み合わせに入った枠の進行"""
+type YearEntryProgress {
+  """敗退しておらず、優勝もしていない"""
+  alive: Boolean!
+
+  """Product of the Yearを受賞した"""
+  champion: Boolean!
+
+  """敗退したラウンド名。敗退していなければnull"""
+  eliminatedRoundName: String
+}
+
+"""
+Yearトーナメントの参加の枠の状態。AWAITING_PAYMENTは参加費の支払い待ち、ENTITLEDは参加資格を得た、DRAWNは組み合わせに入った、EXPIREDは期限切れ、FORFEITEDは資格の喪失、EXCLUDEDは組み合わせ決定での除外
+"""
+enum YearEntryStatus {
+  AWAITING_PAYMENT
+  DRAWN
+  ENTITLED
+  EXCLUDED
+  EXPIRED
+  FORFEITED
+}
+
+"""対象年の決勝実施日の設定"""
+type YearFinalDateSetting {
+  """決済の開始の受付期限(23:00)"""
+  acceptUntil: DateTime!
+
+  """変更期限(決勝実施日の7日前の0:00)"""
+  changeLockAt: DateTime!
+
+  """変更期限の前で組み合わせ決定が始まっていない。閲覧者のロールは含めない"""
+  changeable: Boolean!
+
+  """選べる決勝実施日(業務日付のYYYY-MM-DD)の昇順。変更できなければ空"""
+  choices: [String!]!
+
+  """決済期限(23:35)"""
+  deadlineAt: DateTime!
+
+  """組み合わせ決定の日時(23:45)"""
+  drawAt: DateTime!
+
+  """実効の決勝実施日(業務日付のYYYY-MM-DD)"""
+  finalDate: String!
+
+  """翌年の実効の決勝実施日"""
+  nextYearFinalDate: String
+
+  """翌年が未設定で、その既定の日がこの年の決勝実施日の64週間後以降になるとき、翌年の既定の日"""
+  nextYearGapWarningDate: String
+  nextYearSource: YearFinalDateSource
+
+  """前年の決勝実施日。前年を開催しない(設定済みと扱わない)ならnull"""
+  previousYearFinalDate: String
+  source: YearFinalDateSource!
+
+  """最後に変更した日時。未設定はnull"""
+  updatedAt: DateTime
+
+  """最後に変更した管理者。未設定はnull"""
+  updatedBy: YearFinalDateUpdater
+
+  """保存に渡す版。未設定は0"""
+  version: Int!
+
+  """対象年"""
+  year: Int!
+}
+
+"""管理画面のYearトーナメントの決勝実施日の区画"""
+type YearFinalDateSettings {
+  """照会の時点のサーバーの時刻"""
+  serverTime: DateTime!
+
+  """現在の年と翌年の順"""
+  settings: [YearFinalDateSetting!]!
+}
+
+"""決勝実施日の決まり方。EXPLICITは最上位管理者が設定した日、DEFAULTは対象年5月の最終日曜日"""
+enum YearFinalDateSource {
+  DEFAULT
+  EXPLICIT
+}
+
+"""決勝実施日を最後に変更した管理者"""
+type YearFinalDateUpdater {
+  """削除済み・招待中の管理者はnull"""
+  nickname: String
+}
+
+"""トップページのYearトーナメントの区画"""
+type YearTournamentBoard {
+  """業務日付(YYYY-MM-DD)"""
+  date: String!
+
+  """年の昇順。その日にマッチが無ければ空"""
+  rounds: [YearTournamentRoundBoard!]!
+
+  """照会の時点のサーバーの時刻。カウントダウンを合わせるのに使う"""
+  serverTime: DateTime!
+}
+
+"""トップページの区画の1行。年とラウンドごとに、その日のマッチを対戦カードと不戦勝に分ける"""
+type YearTournamentRoundBoard {
+  """ブラケットのページの経路(/tournaments/year/<年>)"""
+  bracketPath: String!
+
+  """不戦勝。ブラケットの位置の順。両者の不戦敗のマッチは含めない"""
+  byes: [MatchBye!]!
+
+  """決勝のラウンド"""
+  final: Boolean!
+
+  """決勝の実施日(業務日付のYYYY-MM-DD)。遅れがあれば見込みの日"""
+  finalDate: String!
+
+  """対戦カード。ブラケットの位置の順"""
+  matches: [Match!]!
+
+  """ラウンドの番号(1回戦が1)"""
+  round: Int!
+
+  """ラウンド名(「1回戦」「準決勝」など)"""
+  roundName: String!
+  tournament: YearTournamentSummary!
+}
+
+"""
+Yearトーナメントの状態。OPENは参加の受付中、DRAWINGは組み合わせの決定中、IN_PROGRESSは開催中、FINISHEDは終了
+"""
+enum YearTournamentStatus {
+  DRAWING
+  FINISHED
+  IN_PROGRESS
+  OPEN
+}
+
+"""Yearトーナメントの見出しの情報"""
+type YearTournamentSummary {
+  """賞を授与すれば真、受賞なしで終了すれば偽、終了の前はnull。受賞したプロダクトが表示できなくなっても真のまま"""
+  awarded: Boolean
+
+  """設定した決勝の実施日(業務日付のYYYY-MM-DD)"""
+  finalDate: String!
+
+  """組み合わせの決定で記録した1回戦の実施日(業務日付のYYYY-MM-DD)。組み合わせの決定の前と参加0・1はnull"""
+  firstRoundDate: String
+
+  """対象年の表記(「2027年」)"""
+  label: String!
+  status: YearTournamentStatus!
+
+  """対象年"""
+  year: Int!
 }

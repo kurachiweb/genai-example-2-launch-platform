@@ -1,0 +1,5 @@
+mutation ClientSubmitReport($input: SubmitReportInput!) {
+  submitReport(input: $input) {
+    accepted
+  }
+}

@@ -1,5 +1,7 @@
 import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
+import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
+import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import type { ProductLifecycleSyncRegistration } from '../infrastructure/product/product-lifecycle-sync-handler.ts';
 
 // プロダクトの削除・非公開化・復元と同じ一括の書き込みで自分のデータを変える機能が、登録をここへ追記する
@@ -14,5 +16,20 @@ export const PRODUCT_LIFECYCLE_SYNC_HANDLERS: readonly ProductLifecycleSyncRegis
       name: 'directory-discovery.product-index-removal',
       events: ['deleted', 'hidden'],
       handler: DIRECTORY_TYPES.ProductIndexRemovalSyncHandler,
+    },
+    {
+      name: 'sponsorship.product-deletion',
+      events: ['deleted'],
+      handler: SPONSORSHIP_TYPES.ProductDeletionSyncHandler,
+    },
+    {
+      name: 'sponsorship.product-display-stop',
+      events: ['hidden', 'unhidden'],
+      handler: SPONSORSHIP_TYPES.ProductDisplayStopSyncHandler,
+    },
+    {
+      name: 'ugc-moderation.product-moderation-record',
+      events: ['hidden', 'unhidden'],
+      handler: MODERATION_TYPES.ProductModerationRecordSyncHandler,
     },
   ];

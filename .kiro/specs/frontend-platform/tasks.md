@@ -65,7 +65,7 @@
 
 - [x] 3.2 (P) 接続元IP・ページの要求・サーバー関数の呼び出しの判定と、Worker単位のIP制限の判定を作る
   - 先に、接続元IPのIPv4・IPv6の解釈と不正値の拒否、ページの要求の判定(メソッドと受け付ける形式)、サーバー関数の呼び出しの判定、キーの形式(不明な送信元は1つのキー)、偽のバインディングでの許可と超過(`Retry-After`は10秒)、バインディングの例外時の通過と警告を確かめる単体テストを書く
-  - 上限と期間の定数はbackend-platformの規約(10秒あたり100回)と同じ値にする
+  - 上限と期間の定数はbackend-platformの規約(10秒あたり500回)と同じ値にする
   - 完了状態: 単体テストが成功し、キーにIPアドレス以外の値(Cookie・経路)が含まれない
   - _Boundary: ClientIp, PageRequest, IpRateLimit_
   - _Requirements: 2.3, 5.1, 5.2, 5.3, 5.4, 5.5_
@@ -668,7 +668,7 @@
   - _Requirements: 1.1, 1.3, 12.6, 12.7, 15.3, 15.8_
 
 - [x] 12.14 下流specへの申し送りを確かめ、全体の検査とカバレッジを確かめる
-  - 判断44の申し送り(legal-pagesの7.6、sponsorshipの10.5)と、判断42・47のinfra-deliveryの改訂3、判断46のapi-gatewayの12.1、判断47のdev-toolingの10.1が各specのtasks.mdとdesign.mdにあることを確かめ、本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の第4回の行の「該当箇所」を実際の位置に合わせる
+  - 判断44の申し送り(legal-pagesの7.6、sponsorshipの11.4)と、判断42・47のinfra-deliveryの改訂3、判断46のapi-gatewayの12.1、判断47のdev-toolingの10.1が各specのtasks.mdとdesign.mdにあることを確かめ、本specのdesign.mdの「実装で確定した契約による発火と影響を受ける下流spec」の表の第4回の行の「該当箇所」を実際の位置に合わせる
   - 共通部品・client・adminの単体テストとブラウザテストをカバレッジ付きで実行し、ファイルごとの行と関数の80%以上を確かめ、ルートの一括検査(`bun run check`)を実行する
   - 完了状態: 一括検査とカバレッジ付きのテストが成功し、表の該当箇所が下流specの実際の位置を指す
   - _Depends: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9, 12.10, 12.11, 12.12, 12.13_
@@ -705,6 +705,13 @@
   - _Depends: 13.1, 13.2_
   - _Boundary: 下流specの設計_
   - _Requirements: 15.1, 15.2_
+
+- [x] 14. launch-readinessの検証の指摘の修正
+
+- [x] 14.1 `FormField`にラベルの位置の指定を加える(launch-readinessのF-8)
+  - 任意の`labelPlacement?: 'top' | 'end'`(既定は`top`)を加え、`end`では入力欄・ラベル・説明・エラーの順に文書へ置き、2列のグリッドで入力欄の右にラベルを並べる。説明・エラー・`aria-describedby`・`labelId`の関連付けは変えない
+  - `components/form/form-field.browser.test.tsx`で文書とTabの順序・名前と`labelId`・説明とエラーの関連付け・幅の狭い親での折り返し・axeの違反0件(ライト・ダーク)を確かめ、`AppForm`のカタログに`LabelAfterControl`・`LabelAfterControlError`を加える。design.mdと`frontend/004`・`frontend/005`に指定を書く
+  - _Requirements: 8.1, 10.1, 10.6, 10.7_
 
 ## Implementation Notes
 
@@ -797,3 +804,4 @@
 - 13.x(開発者の手動の確認): 注入の下のビルドの後に`apps/{client,admin}/dist/server`にシークレットのファイルが無いこと(と、13.1より前のビルドの残りが無いこと)を、開発者が手動で確かめた。
 - legal-pagesからの申し送りの対応(2026-11-05): サーバー側の描画で取得に失敗するとハイドレーションの後にエラーの文言が変わる(`ShallowErrorPlugin`が`GraphQLClientError`をメッセージだけの`Error`にするため)問題を、`start/graphql-client-error-adapter.ts`の`graphqlClientErrorAdapter`(`createSerializationAdapter`)を`createFrontendStartOptions`の`serializationAdapters`へ登録して直した。登録した変換は、サーバー側の描画(`router-core`の`ssr-server`)とサーバー関数(`getDefaultSerovalPlugins`)のどちらでも、ルーターの既定のプラグインより先に並ぶ。原因の例外とスタックは渡さない。これに合わせ、疎通確認の`loader`の回避策(`toSystemStatusLoaderData`・`fromSystemStatusLoaderData`)を外し、`GraphQLResult`をそのまま返すようにした。確認はlegal-pagesのE2E(サーバー側の描画のレート制限による500で、ハイドレーションの前後のエラーの文言が同じ)で行った
 - 共通部品の修正(user-profile-socialの10.1のE2Eで発見した不具合): `6ca5da82`とこの修正で、`DialogContent`・`SheetContent`・`PopoverContent`・`SelectContent`・`DropdownMenuContent`・`TooltipContent`が`submit`の伝播を止める(共通の`stopSubmitPropagation`)。ポータルの中のフォームの`submit`は外側の`<form>`へ伝わらないため、外側のフォームの送信をポータルの中から起こす使い方はできない
+- 2026-11-24(launch-readinessのF-8): `FormField`の`labelPlacement="end"`は入力欄をラベルより文書の先に置く。見た目の並びを`className`のグリッドの配置や`order`で入れ替えると、Tabと読み上げの順序が食い違う

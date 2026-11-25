@@ -21,6 +21,7 @@ import {
   GraphQLClientError,
 } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
+import { invalidateAuditLogQueries } from '../../graphql/admin-audit-logs.ts';
 import {
   adminInquiryQueryOptions,
   GRAPHQL_INQUIRY_STATUS_OF,
@@ -170,7 +171,10 @@ export function InquiryStatusControl({
           );
           setSelected(undefined);
           notify.success(STATUS_CHANGED_MESSAGE);
-          await markInquirySummariesStale(queryClient);
+          await Promise.all([
+            markInquirySummariesStale(queryClient),
+            invalidateAuditLogQueries(queryClient),
+          ]);
         }}
         failureMessageOf={failureMessageOf}
         returnFocusRef={selectRef}

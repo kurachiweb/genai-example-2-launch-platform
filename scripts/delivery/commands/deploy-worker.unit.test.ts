@@ -1,28 +1,42 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { CommandRunner, CommandSpec } from '../adapters/command-runner.ts';
-import {
-  DEPLOY_ENVIRONMENTS,
-  type DeployEnvironment,
-  WORKER_KEYS,
-  type WorkerKey,
-} from '../catalog/resource-catalog.ts';
-import type { SecretEntry } from '../core/secret-scope.ts';
+import type { CommandSpec } from '../adapters/command-runner.ts';
+import { DEPLOY_ENVIRONMENTS } from '../catalog/resource-catalog.ts';
 import { commandLineOf } from '../test-fixtures/command-runner.ts';
 import {
-  CATALOG_HOST,
-  createFakeSecretSource,
-  createRecordingGithub,
-  folderKeyOf,
-  infisicalRepoTexts,
-} from '../test-fixtures/infisical.ts';
-import { rejectionMessageOf } from '../test-fixtures/rejection.ts';
-import {
+  API_FOLDER,
+  BUNDLED_SCRIPT_ARGS,
+  CLIENT_VERSION_ID,
+  CLOUDFLARE_CHILD_ENV,
+  CLOUDFLARE_FOLDER,
+  CLOUDFLARE_TOKEN,
+  EVENT_FOLDER,
+  EXPECTED_SECRETS,
   FAKE_REPO_ROOT,
-  createFakeDeps,
-  createFakeRepoFiles,
-} from '../test-fixtures/repo-files.ts';
-import { ACCOUNT_ID, PROJECT_ID } from '../test-fixtures/resource-catalog.ts';
+  GITHUB_ENV,
+  PREVIOUS_SHA,
+  SHA,
+  SHARED_FOLDER,
+  VERSION_ID,
+  type RunOptions,
+  bundleLineOf,
+  bundledDeployLineOf,
+  deployArgsOf,
+  exportOf,
+  foldersOf,
+  maskedBefore,
+  removeMapsLineOf,
+  runWith,
+  secretsVisibleInArgsOf,
+  shownSecretsOf,
+  statusStdoutOf,
+  stepOf,
+  textsOf,
+  viewStdoutOf,
+} from '../test-fixtures/deploy-worker.ts';
+import { folderKeyOf } from '../test-fixtures/infisical.ts';
+import { rejectionMessageOf } from '../test-fixtures/rejection.ts';
+import { ACCOUNT_ID } from '../test-fixtures/resource-catalog.ts';
 import { command } from './deploy-worker.ts';
 import {
   EXIT_FAILURE,
@@ -30,294 +44,13 @@ import {
   UsageError,
 } from './shared/delivery-command.ts';
 
-const SHA = '0123456789abcdef0123456789abcdef01234567';
-const RUN_URL = 'https://github.example/example/launch/actions/runs/42';
-const GITHUB_ENV: Readonly<Record<string, string>> = {
-  INFISICAL_TOKEN: 'fake-access-token',
-  GITHUB_SHA: SHA,
-  GITHUB_SERVER_URL: 'https://github.example',
-  GITHUB_REPOSITORY: 'example/launch',
-  GITHUB_RUN_ID: '42',
-};
-
-const VERSION_ID = '01234567-89ab-4cde-8f01-23456789abcd';
-const DEPLOY_STDOUT = [
-  'Total Upload: 512.34 KiB / gzip: 120.11 KiB',
-  'Worker Startup Time: 23 ms',
-  'Your Worker has access to the following bindings:',
-  'env.APP_ENVIRONMENT ("staging")      Environment Variable',
-  'Uploaded app-worker (5.12 sec)',
-  `Current Version ID: ${VERSION_ID}`,
-  '',
-].join('\n');
-
-const CLOUDFLARE_TOKEN = 'fake-cloudflare-api-token';
-const CLOUDFLARE_CHILD_ENV = {
-  CLOUDFLARE_API_TOKEN: CLOUDFLARE_TOKEN,
-  CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
-};
-
-const CLOUDFLARE_FOLDER: readonly SecretEntry[] = [
-  { key: 'CLOUDFLARE_API_TOKEN', value: CLOUDFLARE_TOKEN },
-];
-
-const SHARED_FOLDER: readonly SecretEntry[] = [
-  { key: 'HASH_PEPPER', value: 'fake-shared-pepper' },
-  { key: 'SENTRY_DSN', value: 'fake-shared-sentry-dsn' },
-  { key: 'STRIPE_API_KEY', value: 'fake-shared-stripe-key' },
-  { key: 'DISIFY_API_KEY', value: 'fake-shared-disify-key' },
-  { key: 'PRIVATE_KEY', value: 'fake-key-line-1\nfake-key-line-2' },
-  { key: 'UNDECLARED_SECRET', value: 'fake-undeclared-value' },
-];
-
-const API_FOLDER: readonly SecretEntry[] = [
-  { key: 'STRIPE_API_KEY', value: 'fake-api-stripe-key' },
-  { key: 'SENTRY_DSN', value: 'fake-api-sentry-dsn' },
-];
-
-const EVENT_FOLDER: readonly SecretEntry[] = [
-  { key: 'STRIPE_API_KEY', value: 'fake-event-stripe-key' },
-  { key: 'EMAIL_SMOKE_TOKEN', value: 'fake-event-smoke-token' },
-];
-
-const foldersOf = (
-  env: DeployEnvironment,
-  overrides: Readonly<Record<string, readonly SecretEntry[] | undefined>> = {},
-): Record<string, readonly SecretEntry[]> =>
-  Object.fromEntries(
-    Object.entries({
-      [folderKeyOf(env, '/ci/cloudflare')]: CLOUDFLARE_FOLDER,
-      [folderKeyOf(env, '/')]: SHARED_FOLDER,
-      [folderKeyOf(env, '/workers/api')]: API_FOLDER,
-      [folderKeyOf(env, '/workers/event')]: EVENT_FOLDER,
-      ...overrides,
-    }).filter(
-      (entry): entry is [string, readonly SecretEntry[]] =>
-        entry[1] !== undefined,
-    ),
-  );
-
-const WORKER_SECRET_VALUES: readonly string[] = [
-  ...SHARED_FOLDER,
-  ...API_FOLDER,
-  ...EVENT_FOLDER,
-].flatMap(({ value }) => value.split('\n'));
-
-const ALL_SECRET_VALUES: readonly string[] = [
-  CLOUDFLARE_TOKEN,
-  ...WORKER_SECRET_VALUES,
-];
-
-const REQUIRED_SECRETS: Readonly<Record<WorkerKey, readonly string[]>> = {
-  api: ['HASH_PEPPER', 'SENTRY_DSN', 'STRIPE_API_KEY'],
-  event: ['HASH_PEPPER', 'PRIVATE_KEY', 'STRIPE_API_KEY'],
-  client: ['HASH_PEPPER', 'SENTRY_DSN'],
-  admin: ['HASH_PEPPER'],
-};
-
-const EXPECTED_SECRETS: Readonly<
-  Record<WorkerKey, Readonly<Record<string, string>>>
-> = {
-  api: {
-    HASH_PEPPER: 'fake-shared-pepper',
-    SENTRY_DSN: 'fake-api-sentry-dsn',
-    STRIPE_API_KEY: 'fake-api-stripe-key',
-  },
-  event: {
-    HASH_PEPPER: 'fake-shared-pepper',
-    PRIVATE_KEY: 'fake-key-line-1\nfake-key-line-2',
-    STRIPE_API_KEY: 'fake-event-stripe-key',
-    EMAIL_SMOKE_TOKEN: 'fake-event-smoke-token',
-  },
-  client: {
-    HASH_PEPPER: 'fake-shared-pepper',
-    SENTRY_DSN: 'fake-shared-sentry-dsn',
-  },
-  admin: { HASH_PEPPER: 'fake-shared-pepper' },
-};
-
-const wranglerJsoncOf = (
-  worker: WorkerKey,
-  required: readonly string[] = REQUIRED_SECRETS[worker],
-): string => {
-  const section = JSON.stringify({ secrets: { required } });
-  return `{
-  "name": "app-${worker}",
-  // ローカルの必須のシークレットは環境ごとの節に引き継がれない
-  "secrets": { "required": ["LOCAL_ONLY_SECRET"] },
-  "env": { "staging": ${section}, "prod": ${section} },
-}
-`;
-};
-
-const textsOf = (
-  required: Partial<Record<WorkerKey, readonly string[]>> = {},
-): Record<string, string> => ({
-  ...infisicalRepoTexts(),
-  ...Object.fromEntries(
-    WORKER_KEYS.map((worker) => [
-      `apps/${worker}/wrangler.jsonc`,
-      wranglerJsoncOf(worker, required[worker]),
-    ]),
-  ),
-});
-
-const PREVIOUS_SHA = '89abcdef0123456789abcdef0123456789abcdef';
-const CLIENT_VERSION_ID = '00000000-0000-4000-8000-000000000001';
-
-const statusStdoutOf = (
-  versions: readonly {
-    readonly version_id: string;
-    readonly percentage: number;
-  }[],
-): string =>
-  `${JSON.stringify(
-    {
-      id: '00000000-0000-4000-8000-000000000002',
-      created_on: '2026-10-29T00:00:00.000000Z',
-      source: 'wrangler',
-      strategy: 'percentage',
-      author_email: 'ci@launch.example',
-      versions,
-    },
-    null,
-    2,
-  )}\n`;
-
-const STATUS_STDOUT = statusStdoutOf([
-  { version_id: CLIENT_VERSION_ID, percentage: 100 },
-]);
-
-const viewStdoutOf = (annotations: Readonly<Record<string, string>>): string =>
-  `${JSON.stringify(
-    {
-      id: CLIENT_VERSION_ID,
-      number: 3,
-      metadata: { created_on: '2026-10-29T00:00:00.000000Z' },
-      annotations,
-    },
-    null,
-    2,
-  )}\n`;
-
-const VIEW_STDOUT = viewStdoutOf({
-  'workers/tag': PREVIOUS_SHA,
-  'workers/message': `${PREVIOUS_SHA} ${RUN_URL}`,
-});
-
-type Step = 'build' | 'deploy' | 'status' | 'view' | 'git' | 'allowlist';
-
-const stepOf = (spec: CommandSpec): Step | undefined => {
-  if (spec.command === 'git') return 'git';
-  const line = spec.args.join(' ');
-  if (line === 'run build') return 'build';
-  if (line.startsWith('run graphql:allowlist')) return 'allowlist';
-  if (line.startsWith('x wrangler deployments status')) return 'status';
-  if (line.startsWith('x wrangler versions view')) return 'view';
-  return spec.args.includes('deploy') ? 'deploy' : undefined;
-};
-
-interface RunOptions {
-  readonly env?: Readonly<Record<string, string>>;
-  readonly folders?: Readonly<Record<string, readonly SecretEntry[]>>;
-  readonly texts?: Readonly<Record<string, string>>;
-  readonly failAt?: Step;
-  readonly deployStdout?: string;
-  readonly statusStdout?: string;
-  readonly viewStdout?: string;
-}
-
-const runWith = async (
-  args: readonly string[],
-  {
-    env = GITHUB_ENV,
-    folders = foldersOf('staging'),
-    texts = textsOf(),
-    failAt,
-    deployStdout = DEPLOY_STDOUT,
-    statusStdout = STATUS_STDOUT,
-    viewStdout = VIEW_STDOUT,
-  }: RunOptions = {},
-) => {
-  const timeline: string[] = [];
-  const calls: CommandSpec[] = [];
-  const stdoutOf: Partial<Record<Step, string>> = {
-    deploy: deployStdout,
-    status: statusStdout,
-    view: viewStdout,
-  };
-  const runner: CommandRunner = {
-    run: (spec) => {
-      calls.push(spec);
-      timeline.push(`run:${commandLineOf(spec)}`);
-      const step = stepOf(spec);
-      const failed = failAt !== undefined && step === failAt;
-      return Promise.resolve({
-        code: failed ? 1 : 0,
-        stdout: failed || step === undefined ? '' : (stdoutOf[step] ?? ''),
-        stderr: failed ? `✘ [ERROR] ${failAt}の失敗の診断\n` : '',
-      });
-    },
-    start: () => {
-      throw new Error('常駐の起動は使わない');
-    },
-  };
-  const fake = createFakeDeps(createFakeRepoFiles(texts));
-  const code = await command.run(args, {
-    ...fake.deps,
-    env,
-    runner,
-    github: createRecordingGithub(timeline),
-    secrets: createFakeSecretSource({ timeline, folders }),
-  });
-  const summaries = timeline
-    .filter((event) => event.startsWith('summary:'))
-    .map((event) => event.slice('summary:'.length));
-  const shown = [fake.stdout.text(), fake.stderr.text(), ...summaries].join(
-    '\n',
-  );
-  return { ...fake, code, timeline, calls, shown, summaries };
-};
-
-const exportOf = (env: DeployEnvironment, folder: string): string =>
-  `export:${PROJECT_ID}:${env}:${folder}:${CATALOG_HOST}`;
-
-const deployArgsOf = (envArgs: readonly string[]): readonly string[] => [
-  'x',
-  'wrangler',
-  'deploy',
-  ...envArgs,
-  '--tag',
-  SHA,
-  '--message',
-  `${SHA} ${RUN_URL}`,
-  '--secrets-file',
-  '/dev/stdin',
-];
-
 const expectNoSecretShown = (shown: string): void => {
-  for (const value of ALL_SECRET_VALUES) expect(shown).not.toContain(value);
+  expect(shownSecretsOf(shown)).toEqual([]);
 };
 
 const expectSecretsOnlyInStdin = (calls: readonly CommandSpec[]): void => {
-  for (const spec of calls) {
-    const visible = [
-      ...spec.args,
-      ...Object.entries(spec.env ?? {})
-        .filter(([key]) => key !== 'CLOUDFLARE_API_TOKEN')
-        .flat(),
-    ].join('\n');
-    for (const value of WORKER_SECRET_VALUES) {
-      expect(visible).not.toContain(value);
-    }
-  }
+  expect(secretsVisibleInArgsOf(calls)).toEqual([]);
 };
-
-const maskedBefore = (timeline: readonly string[], index: number) =>
-  timeline
-    .slice(0, index)
-    .filter((event) => event.startsWith('mask:'))
-    .map((event) => event.slice('mask:'.length));
 
 describe('deploy-worker', () => {
   test('名前と説明を持つ', () => {
@@ -340,6 +73,7 @@ describe('deploy-worker', () => {
             exportOf(env, '/ci/cloudflare'),
             exportOf(env, '/'),
             exportOf(env, `/workers/${app}`),
+            exportOf(env, '/ci/sentry'),
           ],
         );
         const deploys = calls.filter((spec) => stepOf(spec) === 'deploy');
@@ -347,7 +81,9 @@ describe('deploy-worker', () => {
         expect(calls.at(-1)).toBe(deploys[0]);
         const [deploy] = deploys;
         expect(deploy?.command).toBe('bun');
-        expect(deploy?.args).toEqual(deployArgsOf(['--env', env]));
+        expect(deploy?.args).toEqual(
+          deployArgsOf(['--env', env], BUNDLED_SCRIPT_ARGS),
+        );
         expect(deploy?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/${app}`);
         expect(deploy?.env).toEqual(CLOUDFLARE_CHILD_ENV);
         expect(deploy?.output).toBe('capture');
@@ -367,13 +103,18 @@ describe('deploy-worker', () => {
 
         expect(code).toBe(EXIT_SUCCESS);
         expect(timeline.filter((event) => event.startsWith('export:'))).toEqual(
-          [exportOf(env, '/ci/cloudflare'), exportOf(env, '/')],
+          [
+            exportOf(env, '/ci/cloudflare'),
+            exportOf(env, '/'),
+            exportOf(env, '/ci/sentry'),
+          ],
         );
         expect(calls.map((spec) => commandLineOf(spec))).toEqual([
           'bun run build',
+          removeMapsLineOf(app),
           ['bun', ...deployArgsOf([])].join(' '),
         ]);
-        const [build, deploy] = calls;
+        const [build, , deploy] = calls;
         expect(build?.cwd).toBe(`${FAKE_REPO_ROOT}/apps/${app}`);
         expect(build?.env).toEqual({
           CLOUDFLARE_ENV: env,
@@ -402,7 +143,8 @@ describe('deploy-worker', () => {
         `bun x wrangler versions view ${CLIENT_VERSION_ID} --name app-client-${env} --json`,
         `git cat-file -e ${PREVIOUS_SHA}^{commit}`,
         `bun run graphql:allowlist --previous-ref ${PREVIOUS_SHA}`,
-        ['bun', ...deployArgsOf(['--env', env])].join(' '),
+        bundleLineOf(env),
+        bundledDeployLineOf(env),
       ]);
       const [status, view, git, allowlist] = calls;
       for (const spec of [status, view]) {
@@ -432,13 +174,20 @@ describe('deploy-worker', () => {
       expect(
         calls
           .map((spec) => stepOf(spec))
-          .filter((step) => step !== 'build' && step !== 'deploy'),
+          .filter(
+            (step) =>
+              step !== 'build' &&
+              step !== 'bundle' &&
+              step !== 'remove-maps' &&
+              step !== 'deploy',
+          ),
       ).toEqual([]);
     },
   );
 
   const NO_PREVIOUS_ALLOWLIST = 'bun run graphql:allowlist';
-  const API_DEPLOY = ['bun', ...deployArgsOf(['--env', 'staging'])].join(' ');
+  const API_BUNDLE = bundleLineOf('staging');
+  const API_DEPLOY = bundledDeployLineOf('staging');
   const STATUS_LINE =
     'bun x wrangler deployments status --name app-client-staging --json';
   const VIEW_LINE = `bun x wrangler versions view ${CLIENT_VERSION_ID} --name app-client-staging --json`;
@@ -500,6 +249,7 @@ describe('deploy-worker', () => {
       expect(calls.map((spec) => commandLineOf(spec))).toEqual([
         ...reads,
         NO_PREVIOUS_ALLOWLIST,
+        API_BUNDLE,
         API_DEPLOY,
       ]);
       expect(stderr.text()).toContain('警告');
@@ -566,7 +316,7 @@ describe('deploy-worker', () => {
     expect(code).toBe(EXIT_SUCCESS);
     expect(stdout.text()).toContain('Worker Startup Time: 23 ms');
     expect(stdout.text()).toContain(
-      '$ (apps/api) bun x wrangler deploy --env staging',
+      '$ (apps/api) bun x wrangler deploy .wrangler/sourcemaps/index.js --no-bundle --env staging',
     );
     expect(summaries).toHaveLength(1);
     const [summary] = summaries;
@@ -636,7 +386,8 @@ describe('deploy-worker', () => {
     );
 
     expect(code).toBe(EXIT_SUCCESS);
-    const secrets = JSON.parse(calls[0]?.stdin ?? '') as Record<string, string>;
+    const deploy = calls.find((spec) => stepOf(spec) === 'deploy');
+    const secrets = JSON.parse(deploy?.stdin ?? '') as Record<string, string>;
     expect(Object.keys(secrets).toSorted()).toEqual([
       'HASH_PEPPER',
       'PRIVATE_KEY',

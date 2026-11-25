@@ -1,6 +1,11 @@
 import { configureSync, type LogRecord, resetSync } from '@logtape/logtape';
+import { redactByField } from '@logtape/redaction';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
+import {
+  REDACTED,
+  REDACTED_FIELD_PATTERNS,
+} from '../../../lib/core/logging/redaction.ts';
 import type { MessageMeta } from '../../../lib/core/messaging/message-contract.ts';
 import {
   awardSlot,
@@ -281,7 +286,12 @@ beforeEach(() => {
   records = [];
   configureSync({
     reset: true,
-    sinks: { capture: (record) => records.push(record) },
+    sinks: {
+      capture: redactByField((record) => records.push(record), {
+        fieldPatterns: REDACTED_FIELD_PATTERNS,
+        action: () => REDACTED,
+      }),
+    },
     loggers: [
       { category: ['event'], sinks: ['capture'], lowestLevel: 'debug' },
       { category: ['logtape', 'meta'], sinks: [], lowestLevel: 'warning' },
@@ -766,7 +776,7 @@ describe('FlushSlotHandler.handle', () => {
     });
   });
 
-  test('ログは送り出しの分類で、枠のキー・段・件数だけを属性に持つ', async () => {
+  test('ログは送り出しの分類で、伏せ字に当たらない名前の枠のキー・段・件数だけを属性に持つ', async () => {
     const harness = createHarness();
     harness.store.put(EVENING, {
       phase: 'sending',
@@ -787,7 +797,7 @@ describe('FlushSlotHandler.handle', () => {
         expect([
           'slot',
           'phase',
-          'emails',
+          'sent',
           'skipped',
           'delaySeconds',
           'pendingKickoffs',
@@ -797,7 +807,7 @@ describe('FlushSlotHandler.handle', () => {
     expect(flushRecords.at(-1)?.properties).toStrictEqual({
       slot: EVENING.key,
       phase: 'done',
-      emails: 2,
+      sent: 2,
       skipped: 1,
     });
   });

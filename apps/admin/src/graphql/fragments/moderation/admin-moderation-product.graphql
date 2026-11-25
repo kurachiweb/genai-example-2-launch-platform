@@ -1,0 +1,29 @@
+fragment AdminModerationProduct on AdminProduct {
+  id
+  handle
+  name
+  # 入れ子の深さの上限に収めるため、ロゴはAdminModerationMediaFileのフラグメントを入れ子にせず同じ項目を直接選ぶ
+  logo {
+    id
+    path
+    image {
+      id
+      objectKey
+      fallbackFormat
+      width
+      height
+    }
+    quarantined
+    quarantineReasons
+  }
+  owner {
+    ...AdminModerationUserSummary
+  }
+  category {
+    id
+    name
+  }
+  latestLaunchDate
+  latestLaunchState
+  visibility
+}

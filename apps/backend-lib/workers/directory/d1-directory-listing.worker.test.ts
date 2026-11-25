@@ -13,7 +13,7 @@ import type {
   DirectoryListingPage,
   DirectoryListingQuery,
 } from '../../core/directory/ports.ts';
-import { qualifierWindow } from '../../core/match/match-model.ts';
+import { matchWindow } from '../../core/match/match-model.ts';
 import {
   parseBusinessDate,
   toBusinessDateTime,
@@ -203,9 +203,9 @@ describe('掲載の条件', () => {
         kind: 'week',
         round: 1,
         matchDate: '2026-11-22',
-        startedAt: qualifierWindow(parseBusinessDate('2026-11-22')).startsAt,
-        startsAt: qualifierWindow(parseBusinessDate('2026-11-22')).startsAt,
-        endsAt: qualifierWindow(parseBusinessDate('2026-11-22')).endsAt,
+        startedAt: matchWindow(parseBusinessDate('2026-11-22')).startsAt,
+        startsAt: matchWindow(parseBusinessDate('2026-11-22')).startsAt,
+        endsAt: matchWindow(parseBusinessDate('2026-11-22')).endsAt,
         decidedAt: qualifierDecidedAt('2026-11-22'),
         decision: 'votes',
       },
@@ -286,7 +286,7 @@ describe('基準勝利', () => {
   });
 
   test('予選の勝利の後にトーナメントで勝利しても、予選の勝利を基準勝利にする', async () => {
-    const tournamentWindow = qualifierWindow(parseBusinessDate('2026-11-22'));
+    const tournamentWindow = matchWindow(parseBusinessDate('2026-11-22'));
     await insertMatch({
       index: 3,
       columns: {
@@ -408,9 +408,7 @@ describe('基準時刻の日付の切り替わり', () => {
 
   test('基準時刻の0時の直前に確定した勝利は前日、0時に始まった勝利は当日の実施日として期間を判定する', async () => {
     const decidedBefore = qualifierDecidedAt('2026-11-19');
-    const startedAfter = qualifierWindow(
-      parseBusinessDate('2026-11-20'),
-    ).startsAt;
+    const startedAfter = matchWindow(parseBusinessDate('2026-11-20')).startsAt;
     expect(toBusinessDateTime(decidedBefore)).toMatchObject({
       date: '2026-11-19',
       hour: 23,

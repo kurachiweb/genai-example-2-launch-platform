@@ -575,6 +575,43 @@ jobs: {}
     ]);
   });
 
+  test('W9: 複合アクションのk6の版の不一致と欠落を違反として返す', () => {
+    expect(
+      checkWorkflowPolicy(
+        inputOf(
+          {},
+          replaceOnce(
+            SETUP_ACTION_YAML,
+            'K6_VERSION: 2.3.0',
+            'K6_VERSION: 2.2.0',
+          ),
+        ),
+      ),
+    ).toEqual([
+      violation(
+        'W9',
+        SETUP_ACTION_FILE,
+        'runs.steps[6].env.K6_VERSION',
+        '2.2.0',
+        '2.3.0',
+      ),
+    ]);
+    expect(
+      checkWorkflowPolicy(
+        inputOf(
+          {},
+          replaceOnce(
+            SETUP_ACTION_YAML,
+            'K6_VERSION: 2.3.0',
+            'K6_RELEASE: 2.3.0',
+          ),
+        ),
+      ),
+    ).toEqual([
+      violation('W9', SETUP_ACTION_FILE, 'runs.steps', '', 'k6 2.3.0'),
+    ]);
+  });
+
   test('W9: ワークフローの環境変数とrunのツールの版の不一致を違反として返す', () => {
     expect(
       violationsWith(CHECKS_FILE, (yaml) =>

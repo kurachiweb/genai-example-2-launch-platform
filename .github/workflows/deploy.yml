@@ -53,6 +53,7 @@ jobs:
         run: bun scripts/delivery/cli.ts reconcile-ids --env "$DEPLOY_ENVIRONMENT"
       - id: migrate
         run: bun scripts/delivery/cli.ts migrate --env "$DEPLOY_ENVIRONMENT"
+      # deploy-workerは、各Workerのビルドの後・デプロイの前にソースマップをアップロードする。埋め込んだ出力をデプロイするため、別の手順に分けない
       # clientのビルドがclientのディレクトリに残す転送先の設定は直前のリリースの特定を妨げるため、apiはclientより先にデプロイする
       - id: deploy-api
         run: bun scripts/delivery/cli.ts deploy-worker --env "$DEPLOY_ENVIRONMENT" --app api

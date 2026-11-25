@@ -1,3 +1,4 @@
+import { verifiedExternalUrl } from '../../../../../common-lib/url/external-url.ts';
 import type { ProductSummaryRecord } from '../../../../../lib/core/product/ports.ts';
 import type { LiveMatchView } from '../../../../application/directory/live-match-reader.ts';
 import type {
@@ -25,7 +26,6 @@ import {
   toProductAward,
   toProductLaunch,
 } from '../product/mappers.ts';
-import { verifiedWebsiteUrl } from './mappers.ts';
 
 export type ProductPageOpponentKindValue =
   'NONE' | 'PRIVATE' | 'UNLISTED' | 'LISTED';
@@ -161,7 +161,7 @@ export const toProductPage = (view: ProductPageView): ProductPageModel => ({
   name: view.product.name,
   tagline: view.product.tagline,
   categoryId: view.product.category.id,
-  websiteUrl: verifiedWebsiteUrl(view.product.websiteUrl),
+  websiteUrl: verifiedExternalUrl(view.product.websiteUrl) ?? '',
   logoFileId: view.product.logoFileId,
   description: view.detail.descriptionMarkdown,
   screenshots: view.detail.screenshotFileIds.map((fileId) => ({ fileId })),

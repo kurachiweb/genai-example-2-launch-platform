@@ -143,3 +143,228 @@ describe('GRAPHQL_SCHEMA_MODULES(コメントと評価)', () => {
     );
   });
 });
+
+describe('GRAPHQL_SCHEMA_MODULES(Weekトーナメント)', () => {
+  test('トップページの区画・ブラケット・参加費の導線・トロフィーの照会と決済の開始の操作、Yearと共用するブラケットの型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+
+    expect(String(query?.['weekTournamentBoard']?.type)).toBe(
+      'WeekTournamentBoard!',
+    );
+    expect(String(query?.['weekBracket']?.type)).toBe('WeekBracket');
+    expect(String(query?.['productTrophies']?.type)).toBe('[Trophy!]');
+    expect(String(query?.['myWeekEntry']?.type)).toBe('WeekEntryPanel');
+    expect(
+      String(
+        schema.getMutationType()?.getFields()['startWeekTournamentCheckout']
+          ?.type,
+      ),
+    ).toBe('CheckoutStart!');
+    expect(String(schema.getType('BracketRound'))).toBe('BracketRound');
+    expect(String(schema.getType('BracketNode'))).toBe('BracketNode');
+    expect(String(schema.getType('BracketSlot'))).toBe('BracketSlot');
+  });
+});
+
+describe('GRAPHQL_SCHEMA_MODULES(Yearトーナメント)', () => {
+  test('トップページの区画とブラケットの照会がスキーマに含まれ、ブラケットのラウンドはWeekと共用の型を返す', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const bracket = schema.getType('YearBracket') as unknown as {
+      getFields(): Record<string, { type: unknown }>;
+    };
+
+    expect(String(query?.['yearTournamentBoard']?.type)).toBe(
+      'YearTournamentBoard!',
+    );
+    expect(String(query?.['yearBracket']?.type)).toBe('YearBracket');
+    expect(String(bracket.getFields()['rounds']?.type)).toBe(
+      '[BracketRound!]!',
+    );
+    expect(String(schema.getType('YearTournamentSummary'))).toBe(
+      'YearTournamentSummary',
+    );
+  });
+});
+
+describe('GRAPHQL_SCHEMA_MODULES(スポンサー広告)', () => {
+  test('利用者側の料金・掲載期間の選べる範囲・広告・自分の一覧・削除の確認の件数の照会と、申込・決済の再開の操作がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['sponsorshipOffer']?.type)).toBe('SponsorshipOffer!');
+    expect(String(query?.['sponsorshipPeriodWindow']?.type)).toBe(
+      'SponsorshipPeriodWindow!',
+    );
+    expect(String(query?.['sponsoredPlacements']?.type)).toBe(
+      'SponsoredPlacements!',
+    );
+    expect(String(query?.['mySponsorships']?.type)).toBe(
+      'MySponsorshipConnection!',
+    );
+    expect(String(query?.['activeSponsorshipCount']?.type)).toBe('Int!');
+    expect(String(mutation?.['applySponsorship']?.type)).toBe('CheckoutStart!');
+    expect(String(mutation?.['resumeSponsorshipCheckout']?.type)).toBe(
+      'CheckoutStart!',
+    );
+  });
+
+  test('管理者側の申込の一覧・強制終了の照会の照会と、強制終了の操作がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['adminSponsorships']?.type)).toBe(
+      'AdminSponsorshipConnection!',
+    );
+    expect(String(query?.['sponsorshipTerminationPreview']?.type)).toBe(
+      'SponsorshipTerminationPreview!',
+    );
+    expect(String(mutation?.['terminateSponsorship']?.type)).toBe(
+      'SponsorshipTerminationResult!',
+    );
+  });
+});
+
+describe('GRAPHQL_SCHEMA_MODULES(APIキー)', () => {
+  test('利用者側のAPIキーの一覧の照会と、発行・編集・再発行・削除の操作がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['myApiKeys']?.type)).toBe('ApiKeyConnection!');
+    expect(String(mutation?.['issueApiKey']?.type)).toBe('IssuedApiKey!');
+    expect(String(mutation?.['updateApiKey']?.type)).toBe('ApiKey!');
+    expect(String(mutation?.['reissueApiKey']?.type)).toBe('IssuedApiKey!');
+    expect(String(mutation?.['deleteApiKey']?.type)).toBe('ID!');
+  });
+});
+
+describe('GRAPHQL_SCHEMA_MODULES(UGC管理の措置の群)', () => {
+  test('管理者側の一覧・詳細の照会と13種の措置の操作と、措置の群の列挙型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['adminUsers']?.type)).toBe('AdminUserConnection!');
+    expect(String(query?.['adminProducts']?.type)).toBe(
+      'AdminProductConnection!',
+    );
+    expect(String(query?.['adminProduct']?.type)).toBe('AdminProductDetail');
+    expect(String(query?.['adminModerationCategoryOptions']?.type)).toBe(
+      '[AdminCategoryRef!]!',
+    );
+    expect(String(query?.['adminProductRatings']?.type)).toBe(
+      'AdminRatingConnection!',
+    );
+    expect(String(query?.['adminComments']?.type)).toBe(
+      'AdminCommentConnection!',
+    );
+    expect(String(query?.['adminRatings']?.type)).toBe(
+      'AdminRatingConnection!',
+    );
+    expect(String(query?.['adminQuarantinedImages']?.type)).toBe(
+      'AdminQuarantinedImagePage!',
+    );
+    expect(
+      [
+        'suspendUser',
+        'unsuspendUser',
+        'withdrawUserByAdministrator',
+        'hideProduct',
+        'unhideProduct',
+        'hideComment',
+        'unhideComment',
+        'invalidateRating',
+        'revalidateRating',
+        'approveQuarantinedImage',
+        'quarantineImage',
+        'releaseQuarantinedImage',
+        'deleteQuarantinedImage',
+      ].map((name) => String(mutation?.[name]?.type)),
+    ).toEqual(Array.from({ length: 13 }, () => 'ModerationOutcome!'));
+    expect(String(schema.getType('QuarantineReason'))).toBe('QuarantineReason');
+    expect(String(schema.getType('AdminCommentState'))).toBe(
+      'AdminCommentState',
+    );
+  });
+});
+
+describe('GRAPHQL_SCHEMA_MODULES(通報)', () => {
+  test('通報のモジュールを1つだけ登録し、利用者側の通報と管理画面の案件・カテゴリ・件数の照会と操作の型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(
+      GRAPHQL_SCHEMA_MODULES.filter(({ name }) => name === 'reporting'),
+    ).toHaveLength(1);
+    expect(String(query?.['reportCategories']?.type)).toBe(
+      '[ReportCategory!]!',
+    );
+    expect(String(query?.['adminReportCases']?.type)).toBe(
+      'AdminReportCaseConnection!',
+    );
+    expect(String(query?.['adminReportCase']?.type)).toBe(
+      'AdminReportCaseDetail',
+    );
+    expect(String(query?.['adminUnhandledReportSummary']?.type)).toBe(
+      'AdminUnhandledReportSummary!',
+    );
+    expect(String(query?.['adminProductReportSummary']?.type)).toBe(
+      'AdminProductReportSummary!',
+    );
+    expect(String(query?.['adminReportCategories']?.type)).toBe(
+      '[AdminReportCategory!]!',
+    );
+    expect(String(mutation?.['submitReport']?.type)).toBe(
+      'SubmitReportPayload!',
+    );
+    expect(
+      [
+        'changeReportCaseStatus',
+        'resolveReportCaseWithMeasure',
+        'resolveReportCaseWithoutMeasure',
+        'rejectReportCase',
+      ].map((name) => String(mutation?.[name]?.type)),
+    ).toEqual(Array.from({ length: 4 }, () => 'ReportCaseOutcome!'));
+    expect(String(mutation?.['sendInfringementInquiry']?.type)).toBe(
+      'InfringementInquiryOutcome!',
+    );
+    expect(
+      ['createReportCategory', 'renameReportCategory'].map((name) =>
+        String(mutation?.[name]?.type),
+      ),
+    ).toEqual(['AdminReportCategory!', 'AdminReportCategory!']);
+    expect(String(mutation?.['deleteReportCategory']?.type)).toBe(
+      'ReportCategoryDeletion!',
+    );
+  });
+});
+
+describe('GRAPHQL_SCHEMA_MODULES(データエクスポート)', () => {
+  test('自分の要求の一覧と要求の操作と、状態・失敗の種類の列挙型がスキーマに含まれる', () => {
+    const schema = composeGatewaySchema(GRAPHQL_SCHEMA_MODULES);
+
+    const query = schema.getQueryType()?.getFields();
+    const mutation = schema.getMutationType()?.getFields();
+
+    expect(String(query?.['myDataExports']?.type)).toBe(
+      'DataExportConnection!',
+    );
+    expect(String(mutation?.['requestDataExport']?.type)).toBe('DataExport!');
+    expect(String(schema.getType('DataExportStatus'))).toBe('DataExportStatus');
+    expect(String(schema.getType('DataExportFailureKind'))).toBe(
+      'DataExportFailureKind',
+    );
+  });
+});

@@ -6,26 +6,26 @@ Cloudflare Workersで動かすTanStack Startのフロントエンドサーバー
 
 起動の構成は「[Cloudflare Workers上のTanStack Startの起動](002-tanstack-start-on-workers.md)」、APIサーバー側の内部経路とセッションの指示は「[内部経路とセキュリティヘッダー](../backend/006-internal-gateway.md)」と「[GraphQL通信](../coding/004-graphql-communication.md)」に従う。フロントエンドサーバーは利用者側と管理者側の2つで、同じ共通部品を使い、違いを登録箇所(アプリの`src/composition/`)の値に限る。部品の置き場所は、共通部品の配置先からのパスで示す。
 
-| 部品                                                                                                              | 置き場所(共通部品内)                           | 役割                                                                                     |
-| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `createFrontendServerEntry`                                                                                       | `server/entry/create-frontend-server-entry.ts` | 処理の順序を合成したWorkerの入口                                                         |
-| `FrontendAppProfile`                                                                                              | `server/entry/app-profile.ts`                  | 呼び出し元の種類・Cookieの名前・検索除外・アクセス解析の有無・問い合わせの導線の有無     |
-| `validateFrontendEnv`                                                                                             | `server/env/frontend-env.ts`                   | 環境の検証                                                                               |
-| `checkIpRateLimit`・`IP_RATE_LIMIT`                                                                               | `server/http/ip-rate-limit.ts`                 | Worker単位のIP制限                                                                       |
-| `hashRateLimitKey`・`RATE_LIMIT_KEY_PURPOSE`                                                                      | `server/http/rate-limit-key-hash.ts`           | IP制限のキーのハッシュ化                                                                 |
-| `resolveClientIp`                                                                                                 | `server/http/client-ip.ts`                     | 接続元のIPアドレスの解決                                                                 |
-| `requiresCsrfCheck`・`verifyCsrf`                                                                                 | `server/http/csrf.ts`                          | CSRFの検証の対象と判定                                                                   |
-| `isPageRequest`・`isServerFunctionCall`                                                                           | `server/http/page-request.ts`                  | ページの要求とサーバー関数の呼び出しの判定                                               |
-| `generateNonce`                                                                                                   | `server/http/nonce.ts`                         | 要求ごとのnonce                                                                          |
-| `SecurityPolicySources`・`mergeSecurityPolicySources`・`buildPageContentSecurityPolicy`・`buildPermissionsPolicy` | `server/http/security-policy.ts`               | 許可先の合成とCSP・Permissions-Policyの組み立て                                          |
-| `applySecurityHeaders`・`BASE_SECURITY_HEADERS`                                                                   | `server/http/security-headers.ts`              | セキュリティヘッダー・`no-store`・検索除外の付与                                         |
-| `errorEnvelopeResponse`・`renderStaticErrorPage`                                                                  | `server/http/error-responses.ts`               | 共通のエラー形式の応答と静的なエラー画面                                                 |
-| `defineRelayRoute`・`findRelayRoute`・`relayToApi`・`GRAPHQL_RELAY_ROUTE`                                         | `server/relay/relay-route.ts`                  | 中継の経路の定義と実行                                                                   |
-| `buildRelayHeaders`                                                                                               | `server/relay/relay-headers.ts`                | 中継する要求の項目の組み立て                                                             |
-| `toBrowserResponse`・`buildSessionSetCookie`                                                                      | `server/relay/session-cookie.ts`               | セッションの指示のCookieへの変換                                                         |
-| `relay-contract.ts`の定数                                                                                         | `server/relay/relay-contract.ts`               | APIサーバーとの契約の値の写し                                                            |
-| `createFrontendStartOptions`                                                                                      | `start/start-options.ts`                       | TanStack Startのグローバルのミドルウェアと、サーバーからブラウザへの例外の受け渡しの変換 |
-| `createFrontendLintConfig`                                                                                        | `config/frontend-lint.ts`                      | 画面を持つアプリの静的解析の規則                                                         |
+| 部品                                                                                                              | 置き場所(共通部品内)                           | 役割                                                                                                                    |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `createFrontendServerEntry`                                                                                       | `server/entry/create-frontend-server-entry.ts` | 処理の順序を合成したWorkerの入口                                                                                        |
+| `FrontendAppProfile`                                                                                              | `server/entry/app-profile.ts`                  | 呼び出し元の種類・Cookieの名前・検索除外・アクセス解析の有無・問い合わせの導線の有無・決済の有無・公開APIの仕様書の有無 |
+| `validateFrontendEnv`                                                                                             | `server/env/frontend-env.ts`                   | 環境の検証                                                                                                              |
+| `checkIpRateLimit`・`IP_RATE_LIMIT`                                                                               | `server/http/ip-rate-limit.ts`                 | Worker単位のIP制限                                                                                                      |
+| `hashRateLimitKey`・`RATE_LIMIT_KEY_PURPOSE`                                                                      | `server/http/rate-limit-key-hash.ts`           | IP制限のキーのハッシュ化                                                                                                |
+| `resolveClientIp`                                                                                                 | `server/http/client-ip.ts`                     | 接続元のIPアドレスの解決                                                                                                |
+| `requiresCsrfCheck`・`verifyCsrf`                                                                                 | `server/http/csrf.ts`                          | CSRFの検証の対象と判定                                                                                                  |
+| `isPageRequest`・`isServerFunctionCall`                                                                           | `server/http/page-request.ts`                  | ページの要求とサーバー関数の呼び出しの判定                                                                              |
+| `generateNonce`                                                                                                   | `server/http/nonce.ts`                         | 要求ごとのnonce                                                                                                         |
+| `SecurityPolicySources`・`mergeSecurityPolicySources`・`buildPageContentSecurityPolicy`・`buildPermissionsPolicy` | `server/http/security-policy.ts`               | 許可先の合成とCSP・Permissions-Policyの組み立て                                                                         |
+| `applySecurityHeaders`・`BASE_SECURITY_HEADERS`                                                                   | `server/http/security-headers.ts`              | セキュリティヘッダー・`no-store`・検索除外の付与                                                                        |
+| `errorEnvelopeResponse`・`renderStaticErrorPage`                                                                  | `server/http/error-responses.ts`               | 共通のエラー形式の応答と静的なエラー画面                                                                                |
+| `defineRelayRoute`・`findRelayRoute`・`relayToApi`・`GRAPHQL_RELAY_ROUTE`                                         | `server/relay/relay-route.ts`                  | 中継の経路の定義と実行                                                                                                  |
+| `buildRelayHeaders`                                                                                               | `server/relay/relay-headers.ts`                | 中継する要求の項目の組み立て                                                                                            |
+| `toBrowserResponse`・`buildSessionSetCookie`                                                                      | `server/relay/session-cookie.ts`               | セッションの指示のCookieへの変換                                                                                        |
+| `relay-contract.ts`の定数                                                                                         | `server/relay/relay-contract.ts`               | APIサーバーとの契約の値の写し                                                                                           |
+| `createFrontendStartOptions`                                                                                      | `start/start-options.ts`                       | TanStack Startのグローバルのミドルウェアと、サーバーからブラウザへの例外の受け渡しの変換                                |
+| `createFrontendLintConfig`                                                                                        | `config/frontend-lint.ts`                      | 画面を持つアプリの静的解析の規則                                                                                        |
 
 | 用語                                                                           | 意味                                                                                                                  |
 | ------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
@@ -267,11 +267,11 @@ HTMLのページの応答には、要求ごとに`generateNonce`(16バイトの�
 
 CSPとPermissions-Policyの許可先は、次の3つを`mergeSecurityPolicySources`で合成する。後続の機能がサードパーティの機能(決済など)を加える時は、共通の処理を変えずに、登録箇所の`src/composition/security-policy.ts`へ追記する。
 
-| 出どころ                                 | 内容                                                                                                                                                        |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BASE_SECURITY_POLICY_SOURCES`           | 両アプリ共通。bot判定(Cloudflare Turnstile)の`https://challenges.cloudflare.com`を`script-src`・`frame-src`に加える                                         |
-| 登録箇所の`SecurityPolicySources`        | アプリ固有の許可先                                                                                                                                          |
-| 環境の値(`runtimeSecurityPolicySources`) | `<画像配信のオリジンの変数>`の値を`img-src`に、`<エラートラッキングのDSNのシークレットのキー>`のURLのオリジンを`connect-src`に加える。DSNが無ければ加えない |
+| 出どころ                                 | 内容                                                                                                                                                                                                                      |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BASE_SECURITY_POLICY_SOURCES`           | 両アプリ共通。bot判定(Cloudflare Turnstile)の`https://challenges.cloudflare.com`を`script-src`・`frame-src`に加える                                                                                                       |
+| 登録箇所の`SecurityPolicySources`        | アプリ固有の許可先                                                                                                                                                                                                        |
+| 環境の値(`runtimeSecurityPolicySources`) | `<画像配信のオリジンの変数>`の値を`img-src`に、`<エラートラッキングのDSNのシークレットのキー>`のURLのオリジンと`<公開APIのオリジンの変数>`の値を`connect-src`に加える。DSN・公開APIのオリジンが無ければ、それぞれ加えない |
 
 ```typescript
 import type { SecurityPolicySources } from '<共通部品の配置先>/server/http/security-policy.ts';
@@ -292,6 +292,7 @@ export const APP_SECURITY_POLICY: SecurityPolicySources = Object.freeze({
 
 - 同じ値は1つにまとめる。形式に合わない値や未知の機能名は例外になり、エントリではすべての要求が500になる。登録箇所の単体テストで、`mergeSecurityPolicySources(BASE_SECURITY_POLICY_SOURCES, <登録箇所の許可先>)`が例外にならないことを確かめる。
 - 環境の値が許可先の形式に合わない場合は、不備のある変数の名前だけをログへ出して500にする(値は出さない)。環境の検証は`http`・`https`のオリジンなら通すため、ポート付きの`https`や`localhost`以外の`http`はここで不備になる。
+- `<公開APIのオリジンの変数>`は任意の変数で、環境の検証が許可先の形(`ORIGIN_PATTERN`)まで確かめ、形に合わない値は環境の検証の失敗(キー名だけを報告)にする。このため、`connect-src`の許可先の不備は`<エラートラッキングのDSNのシークレットのキー>`に由来するものに限られ、エントリは1つの欄に1つの変数の対応で不備の変数の名前を出せる。許可先は値の有無だけで決まり、アプリのプロファイルを見ないため、公開APIへ接続しないアプリの設定には値を置かない。
 - 例の`static.cloudflareinsights.com`・`cloudflareinsights.com`は、Cloudflare Web Analyticsの計測スクリプトの配信元と計測値の送信先である。アクセス解析を入れるアプリだけが登録する。
 
 ### 実行時のコード生成を試すライブラリ
@@ -376,7 +377,7 @@ import { StartClient } from '@tanstack/react-start/client';
 
 規約(上限・名前空間・キー・超過時の応答)は「[Worker単位のIP制限](../backend/003-rate-limiting-and-bot-verification.md#worker単位のip制限)」に従う。フロントエンドサーバーは、共通ライブラリの`createWorkerApp`を使わず、エントリの`checkIpRateLimit`で同じ値の制限を掛ける。
 
-- Wrangler設定のルートと`env.<環境種別>`のそれぞれに、`<IP制限のバインディング名>`の`ratelimits`(`simple: { limit: 100, period: 10 }`)を書き、`<IP制限の名前空間>`をアプリ・環境ごとに他のWorkerと重ならない値にする。
+- Wrangler設定のルートと`env.<環境種別>`のそれぞれに、`<IP制限のバインディング名>`の`ratelimits`(`simple: { limit: 500, period: 10 }`)を書き、`<IP制限の名前空間>`をアプリ・環境ごとに他のWorkerと重ならない値にする。
 - 判定はCSRFの検証・中継・描画より前に行い、Workerが受け付けるすべての要求(ページ・サーバー関数・中継)を数える。除外の経路は持たない。静的なファイルは数えない。
 - 超過したページの要求には429・`Retry-After: 10`の静的なエラー画面を、それ以外の要求には429・`Retry-After: 10`の共通のエラー形式(`rate_limit_exceeded`)を返し、上流へ中継しない。超過は経路(クエリを除く)を付けた警告のログに出す。
 

@@ -57,9 +57,9 @@ const recordingLogger = (): RecordingLogger => {
 };
 
 describe('IP_RATE_LIMIT', () => {
-  test('backend-platformの規約と同じ10秒あたり100回・ip:の接頭辞・unknownを持つ', () => {
+  test('backend-platformの規約と同じ10秒あたり500回・ip:の接頭辞・unknownを持つ', () => {
     expect(IP_RATE_LIMIT).toEqual({
-      limit: 100,
+      limit: 500,
       periodSeconds: 10,
       keyPrefix: 'ip:',
       unknownClient: 'unknown',

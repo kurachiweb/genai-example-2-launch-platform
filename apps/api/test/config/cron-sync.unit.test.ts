@@ -39,6 +39,7 @@ const REDISPATCH_RUN_AT = { hour: 16, minute: 21 } as const;
 const RECONCILIATION_RUN_AT = { hour: 23, minute: 40 } as const;
 const PAIRING_RUN_AT = { hour: 23, minute: 45 } as const;
 const KICKOFF_RUN_AT = { hour: 0, minute: 0 } as const;
+const SPONSORSHIP_NOTICES_RUN_AT = { hour: 0, minute: 7 } as const;
 const MATCH_RUN_BUDGET_MS = 300_000;
 
 const IDENTITY_DAILY_JOBS = [
@@ -157,6 +158,16 @@ describe('マッチの日次の処理の起動時刻の登録', () => {
   );
 });
 
+describe('スポンサー広告の通知の起動時刻の登録', () => {
+  test.each(WRANGLER_ENVIRONMENTS)(
+    '定期実行の定義($label)に、0:07の式7 8 * * *がある',
+    ({ wranglerEnv }) => {
+      expect(toUtcCronExpression(SPONSORSHIP_NOTICES_RUN_AT)).toBe('7 8 * * *');
+      expect(readTriggerCrons(wranglerEnv)).toContain('7 8 * * *');
+    },
+  );
+});
+
 describe('起動時刻ごとの時間の予算の登録', () => {
   test('4:21の1回の起動の予算が、式21 12 * * *で300,000msとして引ける', () => {
     const cron = toUtcCronExpression(DAILY_RUN_AT);
@@ -178,10 +189,13 @@ describe('起動時刻ごとの時間の予算の登録', () => {
     expect(exceedsRunBudget(budget, DAILY_RUN_BUDGET_MS + 1)).toBe(true);
   });
 
-  test('16:21の起動には予算を置かない', () => {
+  test.each([
+    ['16:21', REDISPATCH_RUN_AT],
+    ['0:07', SPONSORSHIP_NOTICES_RUN_AT],
+  ])('%sの起動には予算を置かない', (_label, at) => {
     expect(
       createRunBudgetTable(SCHEDULED_RUN_BUDGETS).budgetFor(
-        toUtcCronExpression(REDISPATCH_RUN_AT),
+        toUtcCronExpression(at),
       ),
     ).toBeUndefined();
   });

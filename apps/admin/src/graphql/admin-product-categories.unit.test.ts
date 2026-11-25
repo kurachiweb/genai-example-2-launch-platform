@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { QueryClient } from '@tanstack/react-query';
 
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
+import { auditLogsQueryOptions } from './admin-audit-logs.ts';
 import {
   adminProductCategoriesQueryOptions,
   invalidateProductCategoryQueries,
@@ -48,20 +49,22 @@ describe('toAdminProductCategoryItems', () => {
 });
 
 describe('invalidateProductCategoryQueries', () => {
-  test('プロダクトカテゴリの一覧の取得を無効にし、他の取得は残す', async () => {
+  test('プロダクトカテゴリの一覧と、操作を記録した監査ログの検索の取得を無効にし、他の取得は残す', async () => {
     const queryClient = new QueryClient();
     const categoriesKey = adminProductCategoriesQueryOptions().queryKey;
+    const auditLogsKey = auditLogsQueryOptions({}).queryKey;
     const otherKeys = [
       [documentIdOf(AdminInquiryCategoriesDocument), {}],
       [documentIdOf(AdminViewerDocument), {}],
     ];
-    for (const key of [categoriesKey, ...otherKeys]) {
+    for (const key of [categoriesKey, auditLogsKey, ...otherKeys]) {
       queryClient.setQueryData(key, {});
     }
 
     await invalidateProductCategoryQueries(queryClient);
 
     expect(queryClient.getQueryState(categoriesKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(auditLogsKey)?.isInvalidated).toBe(true);
     for (const key of otherKeys) {
       expect(queryClient.getQueryState(key)?.isInvalidated).toBe(false);
     }

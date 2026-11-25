@@ -14,4 +14,6 @@ export interface FrontendAppProfile {
   readonly contactAvailable: boolean;
   // 決済の画面を持つかどうか。持たないアプリには決済の公開キーを渡さない
   readonly payments: boolean;
+  // 公開APIの仕様書の画面を持つかどうか。持たないアプリには公開APIのオリジンを渡さない
+  readonly publicApiDocs: boolean;
 }

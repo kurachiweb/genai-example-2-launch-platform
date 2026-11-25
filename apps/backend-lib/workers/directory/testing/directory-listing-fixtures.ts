@@ -4,7 +4,7 @@ import type {
   EntryResult,
   MatchDecision,
 } from '../../../core/match/match-model.ts';
-import { qualifierWindow } from '../../../core/match/match-model.ts';
+import { matchWindow } from '../../../core/match/match-model.ts';
 import { buildIndexDocument } from '../../../core/search/index-document.ts';
 import { selectKeywords } from '../../../core/search/keyword-selection.ts';
 import { parseBusinessDate } from '../../../core/time/business-time.ts';
@@ -46,8 +46,7 @@ export function qualifierLaunchOf(match: number, position = 0): number {
 
 export function qualifierDecidedAt(date: string): Date {
   return new Date(
-    qualifierWindow(parseBusinessDate(date)).endsAt.getTime() +
-      DECISION_DELAY_MS,
+    matchWindow(parseBusinessDate(date)).endsAt.getTime() + DECISION_DELAY_MS,
   );
 }
 
@@ -77,7 +76,7 @@ export async function insertQualifiers(
   );
   await insertMatches(
     fixtures.map((fixture) => {
-      const window = qualifierWindow(parseBusinessDate(fixture.date));
+      const window = matchWindow(parseBusinessDate(fixture.date));
       const decided = fixture.sides.every((side) => side.result !== null);
       return {
         index: fixture.match,

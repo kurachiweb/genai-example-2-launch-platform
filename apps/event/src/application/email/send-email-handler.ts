@@ -15,6 +15,7 @@ import { EMAIL_TYPES } from '../../../lib/core/email/identifiers.ts';
 import type {
   AlertThrottle,
   SenderInfoProvider,
+  SendIdempotency,
   SendRecordStore,
   SuppressionList,
 } from '../../../lib/core/email/ports.ts';
@@ -62,6 +63,7 @@ interface HandlingContext {
   readonly startedAt: Date;
   readonly kindName: string;
   readonly category: EmailCategory | undefined;
+  readonly idempotency: SendIdempotency | undefined;
 }
 
 // 宛先・件名・本文・入力・URLを出さないよう、ログの属性はこの識別子と結果の値だけで組む
@@ -95,6 +97,12 @@ function identityOf(context: HandlingContext): LogIdentity {
       : { kindCategory: context.category }),
     requestId: context.requestId,
   };
+}
+
+function idempotencyOf(body: EmailSendBody): SendIdempotency | undefined {
+  return body.idempotencyKey === undefined
+    ? undefined
+    : { kind: body.kind, key: body.idempotencyKey };
 }
 
 function parseDeadline(deadline: string | undefined): Date | undefined {
@@ -137,8 +145,9 @@ export class SendEmailHandler implements MessageHandler<EmailSendBody> {
       startedAt,
       kindName: body.kind,
       category: kind?.category,
+      idempotency: idempotencyOf(body),
     };
-    if (await this.sendRecords.hasSent(meta.id)) {
+    if (await this.sendRecords.hasSent(meta.id, context.idempotency)) {
       return this.finish(context, 'duplicate');
     }
     const preSend = decideBeforeSend(parseDeadline(body.deadline), startedAt);
@@ -242,6 +251,7 @@ export class SendEmailHandler implements MessageHandler<EmailSendBody> {
         context.requestId,
         context.kindName,
         this.clock.now(),
+        context.idempotency?.key,
       );
     } catch (error) {
       logger.error('送信済みの記録に失敗しました', {

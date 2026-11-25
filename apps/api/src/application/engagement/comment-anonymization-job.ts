@@ -10,10 +10,10 @@ import type {
   ScheduledJobHandler,
 } from '../../../lib/core/scheduling/cron-registry.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
   type BusinessTimeOfDay,
   fromBusinessDateTime,
-  toBusinessDateTime,
 } from '../../../lib/core/time/business-time.ts';
 import type { Clock } from '../../../lib/core/time/clock.ts';
 import { ENGAGEMENT_TYPES } from './engagement-types.ts';
@@ -38,18 +38,12 @@ const ANONYMIZE_BEFORE_BUSINESS_DAYS = 12;
 // 前日の実行で匿名化されるはずだった行が残っていれば、期限までに匿名化できないおそれがある
 const OVERDUE_BEFORE_BUSINESS_DAYS = ANONYMIZE_BEFORE_BUSINESS_DAYS + 1;
 
-const MILLISECONDS_PER_DAY = 86_400_000;
 const START_OF_DAY: BusinessTimeOfDay = Object.freeze({ hour: 0, minute: 0 });
 
 const logger = getAppLogger(['api', 'application', 'engagement']);
 
-// 業務時刻は固定のオフセットで夏時間が無いため、0:00から日数分のミリ秒を引いた時点の業務日付が日数前の日になる
 function startOfBusinessDaysBefore(date: BusinessDate, days: number): Date {
-  const startOfDay = fromBusinessDateTime(date, START_OF_DAY);
-  const earlier = toBusinessDateTime(
-    new Date(startOfDay.getTime() - days * MILLISECONDS_PER_DAY),
-  ).date;
-  return fromBusinessDateTime(earlier, START_OF_DAY);
+  return fromBusinessDateTime(addBusinessDays(date, -days), START_OF_DAY);
 }
 
 interface AnonymizationSummary {

@@ -2,9 +2,13 @@ import { DIRECTORY_TYPES } from '../application/directory/directory-types.ts';
 import { ENGAGEMENT_TYPES } from '../application/engagement/engagement-types.ts';
 import { INQUIRY_TYPES } from '../application/inquiry/inquiry-types.ts';
 import { MATCH_TYPES } from '../application/match/match-types.ts';
+import { MODERATION_TYPES } from '../application/moderation/moderation-types.ts';
 import { NOTIFICATIONS_TYPES } from '../application/notifications/notifications-types.ts';
 import { PRODUCT_TYPES } from '../application/product/product-types.ts';
 import { PROFILE_TYPES } from '../application/profile/profile-types.ts';
+import { PUBLIC_API_TYPES } from '../application/public-api/public-api-types.ts';
+import { REPORTING_TYPES } from '../application/reporting/reporting-types.ts';
+import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
 import type { UserLifecycleSyncRegistration } from '../infrastructure/identity/user-lifecycle-sync-handler.ts';
 
 // 利用者の退会・停止・停止解除と同じ一括の書き込みで自分のデータを変える機能が、登録をここへ追記する
@@ -49,5 +53,30 @@ export const USER_LIFECYCLE_SYNC_HANDLERS: readonly UserLifecycleSyncRegistratio
       name: 'engagement.withdrawal',
       events: ['withdrawn'],
       handler: ENGAGEMENT_TYPES.EngagementWithdrawalSyncHandler,
+    },
+    {
+      name: 'sponsorship.account-withdrawal',
+      events: ['withdrawn'],
+      handler: SPONSORSHIP_TYPES.AccountWithdrawalSyncHandler,
+    },
+    {
+      name: 'sponsorship.account-display-stop',
+      events: ['suspended', 'unsuspended'],
+      handler: SPONSORSHIP_TYPES.AccountDisplayStopSyncHandler,
+    },
+    {
+      name: 'public-api.api-key-erasure',
+      events: ['withdrawn'],
+      handler: PUBLIC_API_TYPES.ApiKeyErasureSyncHandler,
+    },
+    {
+      name: 'ugc-moderation.user-moderation-record',
+      events: ['suspended', 'unsuspended', 'withdrawn'],
+      handler: MODERATION_TYPES.UserModerationRecordSyncHandler,
+    },
+    {
+      name: 'content-reporting.reporter-withdrawal',
+      events: ['withdrawn'],
+      handler: REPORTING_TYPES.ReporterWithdrawalSyncHandler,
     },
   ];

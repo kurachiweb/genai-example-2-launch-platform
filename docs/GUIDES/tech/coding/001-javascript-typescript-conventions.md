@@ -146,6 +146,17 @@ Workersの実行環境で動くアプリは、次の差分を加える。
 - `types`: Workers統合テストの`cloudflare:test`モジュールの型を加える。
 - `include`: アプリ直下の`*.ts`により、`wrangler types`が出力する`worker-configuration.d.ts`(実行時の型と環境の型)も含まれる。
 
+#### 型検査の分割
+
+テストの多いアプリは、`tsconfig.json`の全体を1つのプログラムで検査すると、Node.jsの既定のヒープの上限(約2GB)を超えて型検査が落ちる。テストの`expect`の型や問い合わせの組み立ての型は、期待する値の型ごとに全メンバーが具体化されるため、テストのファイルの数に比例して記憶域を使う。そうしたアプリは、型検査を複数のプログラムに分ける。
+
+- `tsconfig.json`は分けずに残す。エディタと型情報付きの静的解析は、引き続き`tsconfig.json`のプロジェクトを使う。
+- 分けた設定は`tsconfig.typecheck.<名前>.json`に置き、`./tsconfig.json`を`extends`で継承して`include`・`exclude`だけを変える(例: テスト以外のファイル・単体テスト・Workers統合テスト)。コンパイラオプションは`tsconfig.json`と同じになる。
+- 宣言ファイル以外のファイルは、どれか1つの設定にだけ入れる。宣言ファイル(大域の型の宣言)は、すべての設定に入れる(`**/*.d.ts`)。
+- `typecheck`のスクリプトは、分けた設定を名前の順に`tsc -p <設定> && …`で1つずつ実行する。分けた分だけ共通の型定義を読み直すため、合計の時間は延びる。
+- ルートの`config/typecheck-programs.unit.test.ts`が、分けたアプリごとに、スクリプトが全ての設定を検査すること、コンパイラオプションが同じこと、ファイルの漏れと重なりが無いことを確かめる。分けるアプリを足すときは、このテストの対象の一覧に加える。
+- 各プログラムの記憶域は`tsc -p <設定> --extendedDiagnostics`の`Memory used`で確かめ、上限に近づいた設定はさらに分ける。
+
 #### 依存パッケージがDOMの型を読み込む場合
 
 `lib`からDOMを外しても、依存パッケージの型宣言が`/// <reference lib="dom" />`を含むと、そのパッケージを読み込んだ時点でDOMの型がプログラム全体に加わる。Workersの型と食い違い、依存パッケージと無関係なファイルで型エラーになる(例: `new Request()`の型が`Request<unknown, IncomingRequestCfProperties>`に代入できない、`Uint8Array`が`crypto.subtle`の`BufferSource`に代入できない)。
@@ -320,7 +331,7 @@ export default config;
 | スクリプト         | 定義するアプリ                                             | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `lint`             | 全アプリ                                                   | `bun --bun eslint .`                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `typecheck`        | 全アプリ                                                   | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める)                                                                                                                                                                                                                                                                                                                                                                                   |
+| `typecheck`        | 全アプリ                                                   | `tsc -p tsconfig.json`(共有ディレクトリの配置先を`include`に含める。分けたアプリは「[型検査の分割](#型検査の分割)」)                                                                                                                                                                                                                                                                                                                                  |
 | `cf-typegen:check` | Wranglerで型を生成するアプリ                               | 実行時の型を生成するアプリは`wrangler types --check`(生成済みの`worker-configuration.d.ts`が設定と食い違えば失敗する)。実行時の型を生成せず環境の型だけを照合に使うアプリ(画面を持つアプリ)は`wrangler types --include-runtime=false --check && tsc -p tsconfig.worker-env.json`(生成物の食い違いに加え、生成した環境の型と環境の検証スキーマの型の照合が通らなければ失敗する。「[環境の型](../frontend/002-tanstack-start-on-workers.md#環境の型)」) |
 | `graphql:check`    | GraphQLのサーバー、またはGraphQLの操作の生成物を持つアプリ | GraphQLの生成物の検査。サーバーを持つアプリはスキーマファイル・リゾルバの型・許可リストを、操作の生成物を持つアプリは操作の型・文書・操作の一覧を検査する(定義と食い違えば、再実行すべき生成コマンドを表示して失敗する)                                                                                                                                                                                                                               |
 | `test:unit`        | 全アプリ                                                   | `bun test --config=../../bunfig.toml --pass-with-no-tests unit.test`                                                                                                                                                                                                                                                                                                                                                                                  |
@@ -393,12 +404,12 @@ const config: Linter.Config[] = [
 
 単体テストでは、テストファイルの選択とカバレッジの分母の両方から配置先を外す。Bun 1.4.4では、コマンドラインの`--path-ignore-patterns`はテストファイルの選択にだけ効き、配置先のテストを実行しなくても、アプリのテストが読み込んだ配置先のファイルはカバレッジの分母に入る。分母から外す手段は設定ファイルの`coveragePathIgnorePatterns`だけであり、コマンドラインの指定は無い。
 
-1. アプリのディレクトリに単体テスト専用の設定ファイル`bunfig.unit.toml`を置く。ルートの`bunfig.toml`の内容をすべて書き写し、`coveragePathIgnorePatterns`にだけ配置先を加える。
+1. アプリのディレクトリに単体テスト専用の設定ファイル`bunfig.unit.toml`を置く。ルートの`bunfig.toml`の内容をすべて書き写し、`coveragePathIgnorePatterns`にだけ配置先を加える。ただし`coveragePathIgnorePatterns`のうち、ルートの実行でだけ意味を持つアプリのディレクトリの除外(`apps/**`)は書き写さない(「[分母からの除外](../testing/001-test-strategy.md#分母からの除外)」)。
 2. `test:unit`の`--config`でこのファイルを指定し、`--path-ignore-patterns`に配置先を加える。`--path-ignore-patterns`は`bunfig.toml`の`pathIgnorePatterns`に追加されず置き換えるため、`pathIgnorePatterns`(他の種別のテストの除外)もすべて書き写す。
 
 ```toml
 [test]
-# ルートのbunfig.tomlのcoveragePathIgnorePatterns以外の項目をそのまま書き写す
+# ルートのbunfig.tomlのcoveragePathIgnorePatterns以外の項目をそのまま書き写す。coveragePathIgnorePatternsはapps/**を除いて書き写し、配置先を加える
 coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**", "<共有ディレクトリの配置先>/**"]
 ```
 
@@ -412,7 +423,7 @@ coveragePathIgnorePatterns = ["**/*.gen.ts", "**/generated/**", "<共有ディ�
 
 - 名前を`bunfig.toml`にしないのは、Bunが実行したディレクトリの`bunfig.toml`を`bun install`・`bun run`などでも自動で読むためである。`--config`で指定したときだけ読まれる名前にする。
 - 設定ファイルの`coverageDir`と`coveragePathIgnorePatterns`の相対パスは、設定ファイルの位置ではなく、テストを実行したディレクトリ(アプリのディレクトリ)を基準に解決される。
-- 書き写した内容がルートの`bunfig.toml`と(`coveragePathIgnorePatterns`に加えた配置先を除いて)一致し、`test:unit`が配置先をテストファイルの選択から外すことを、ルートの単体テストで確かめる。ルートの`bunfig.toml`を変えたときは、各アプリの`bunfig.unit.toml`も同じく変える。
+- 書き写した内容がルートの`bunfig.toml`と(`coveragePathIgnorePatterns`に加えた配置先と、書き写さない`apps/**`を除いて)一致し、`test:unit`が配置先をテストファイルの選択から外すことを、ルートの単体テストで確かめる。ルートの`bunfig.toml`を変えたときは、各アプリの`bunfig.unit.toml`も同じく変える。
 
 Vitestでは、既定の除外を失わないよう`configDefaults.exclude`を展開してから配置先を加える。次の例は除外の指定だけを示し、プリセットの取り込みなど他の設定を省いている。
 
@@ -458,7 +469,7 @@ export default defineConfig({
 | `bun run format`       | ルート         | リポジトリ全体を整形して書き換える                                                           |
 | `bun run format:check` | ルート         | 整形が必要なファイルを`[warn] <リポジトリからの相対パス>`の形で表示し、あれば失敗する        |
 | `bun run lint`         | ルート・アプリ | 実行したディレクトリの設定で静的解析を行う。ルートではルートが所有するファイルだけを検査する |
-| `bun run typecheck`    | ルート・アプリ | `tsc -p tsconfig.json`で型検査を行う                                                         |
+| `bun run typecheck`    | ルート・アプリ | `tsc -p tsconfig.json`(分けたアプリは分けた設定)で型検査を行う                               |
 | `bun run check`        | ルート         | 一括検査(後述)                                                                               |
 
 - 自動修正できる静的解析の違反は、アプリのディレクトリで`bun --bun eslint --fix <ファイル>`を実行して直す。整形の違反は`bun run format`で直す。

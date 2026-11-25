@@ -217,7 +217,7 @@ export class EmailGroupDispatcher implements GroupDispatcher {
     logger.info('通知のまとめを処理しました', {
       slot: slotKey,
       groups: groups.length,
-      emails: step.emails,
+      sent: step.emails,
       skipped,
     });
     return { emails: step.emails, skipped, more };

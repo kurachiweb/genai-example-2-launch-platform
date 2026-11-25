@@ -1,0 +1,22 @@
+mutation AdminUpdateYearFinalDate($input: UpdateYearFinalDateInput!) {
+  updateYearFinalDate(input: $input) {
+    year
+    finalDate
+    source
+    acceptUntil
+    deadlineAt
+    drawAt
+    changeLockAt
+    changeable
+    choices
+    previousYearFinalDate
+    nextYearFinalDate
+    nextYearSource
+    nextYearGapWarningDate
+    version
+    updatedAt
+    updatedBy {
+      nickname
+    }
+  }
+}

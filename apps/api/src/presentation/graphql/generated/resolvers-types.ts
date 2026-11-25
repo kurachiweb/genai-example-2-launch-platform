@@ -9,6 +9,9 @@ import type { MatchSource, MatchEntrySource, MatchProductSource, UpvoteHistoryIt
 import type { DirectoryItemModel } from '../modules/directory/mappers.ts';
 import type { ProductPageModel, ProductPageRedirectModel, ProductPageScreenshotModel, ProductPageOpponentModel, ProductLiveMatchModel } from '../modules/directory/product-page-mappers.ts';
 import type { LaunchCommentModel } from '../modules/engagement/engagement-views.ts';
+import type { WeekTournamentRoundBoardModel, BracketRoundSource, BracketNodeSource, BracketSlotSource } from '../modules/week-tournament/mappers.ts';
+import type { YearTournamentRoundBoardModel } from '../modules/year-tournament/mappers.ts';
+import type { SponsorableProductModel, SponsoredAdModel, SponsorshipProductModel } from '../modules/sponsorship/sponsorship-views.ts';
 import type { HelpArticleAuthorSource } from '../modules/help/author-fields.ts';
 import type { GraphQLContext } from '../graphql-context.ts';
 export type Maybe<T> = T | null;
@@ -52,6 +55,56 @@ export type AdminAccountStatus =
   | 'INVITATION_EXPIRED'
   | 'INVITED';
 
+/** 管理画面のプロダクトのカテゴリ */
+export type AdminCategoryRef = {
+  __typename?: 'AdminCategoryRef';
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+};
+
+/** 管理画面のコメント */
+export type AdminComment = {
+  __typename?: 'AdminComment';
+  /** 匿名化・退会済みの投稿者はnull */
+  author?: Maybe<AdminUserSummary>;
+  createdAt: Scalars['DateTime']['output'];
+  /** マークダウンとして描画しない本文の先頭 */
+  excerpt: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 非公開化中で、非公開化の措置の記録が残っているコメントだけが持つ */
+  latestHide?: Maybe<ModerationNote>;
+  launchId: Scalars['ID']['output'];
+  /** ローンチの回。取消は0、論理削除済みのプロダクトなどでローンチを読めなければnull */
+  launchNumber?: Maybe<Scalars['Int']['output']>;
+  productId: Scalars['ID']['output'];
+  /** 論理削除済みのプロダクトはnull */
+  productName?: Maybe<Scalars['String']['output']>;
+  state: AdminCommentState;
+};
+
+export type AdminCommentConnection = {
+  __typename?: 'AdminCommentConnection';
+  nodes: Array<AdminComment>;
+  pageInfo: PageInfo;
+};
+
+/** コメントの一覧の絞り込み。投稿日時はpostedFromを含みpostedBeforeを含まない */
+export type AdminCommentFilter = {
+  authorHandle?: InputMaybe<Scalars['String']['input']>;
+  postedBefore?: InputMaybe<Scalars['DateTime']['input']>;
+  postedFrom?: InputMaybe<Scalars['DateTime']['input']>;
+  productHandle?: InputMaybe<Scalars['String']['input']>;
+  state?: InputMaybe<AdminCommentState>;
+};
+
+/** 管理画面のコメントの状態 */
+export type AdminCommentState =
+  | 'ANONYMIZED'
+  | 'AUTHOR_UNAVAILABLE'
+  | 'DELETED'
+  | 'HIDDEN'
+  | 'SHOWN';
+
 /** メールのリンクによる確定の結果 */
 export type AdminConfirmationResult = {
   __typename?: 'AdminConfirmationResult';
@@ -93,6 +146,16 @@ export type AdminHelpArticleRow = {
   status: HelpArticleStatus;
   title: Scalars['String']['output'];
   updatedAt: Scalars['DateTime']['output'];
+};
+
+/** 隔離画像の保有者。kindはuserかadmin */
+export type AdminImageOwner = {
+  __typename?: 'AdminImageOwner';
+  handle?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  kind: Scalars['String']['output'];
+  /** 表示名を引けない保有者はnull */
+  nickname?: Maybe<Scalars['String']['output']>;
 };
 
 /** 管理画面の問い合わせの詳細 */
@@ -173,6 +236,17 @@ export type AdminInquirySummary = {
   withdrawn: Scalars['Boolean']['output'];
 };
 
+/** プロダクトのローンチ */
+export type AdminLaunch = {
+  __typename?: 'AdminLaunch';
+  id: Scalars['ID']['output'];
+  /** 業務日付 */
+  launchDate: Scalars['String']['output'];
+  matches: Array<AdminMatchResult>;
+  number: Scalars['Int']['output'];
+  status: Scalars['String']['output'];
+};
+
 /** 管理画面の編集の対象の法務文書 */
 export type AdminLegalDocument = {
   __typename?: 'AdminLegalDocument';
@@ -227,6 +301,176 @@ export type AdminLegalRevision = {
   versionNumber: Scalars['Int']['output'];
 };
 
+/** ローンチのマッチ結果 */
+export type AdminMatchResult = {
+  __typename?: 'AdminMatchResult';
+  /** 決着の仕方(votes・last_upvote・no_votes・bye・walkover・both_forfeited)。未確定はnull */
+  decision?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  kind: Scalars['String']['output'];
+  /** 業務日付 */
+  matchDate: Scalars['String']['output'];
+  /** 不戦勝・表示できない相手はnull */
+  opponentName?: Maybe<Scalars['String']['output']>;
+  /** 照会の時点の進み具合(scheduled・live・tallying・finished) */
+  phase: Scalars['String']['output'];
+  /** 未確定はnull */
+  result?: Maybe<Scalars['String']['output']>;
+  round?: Maybe<Scalars['Int']['output']>;
+  stage?: Maybe<Scalars['String']['output']>;
+  upvoteCount: Scalars['Int']['output'];
+};
+
+/** 管理画面で表示する画像のファイル */
+export type AdminMediaFile = {
+  __typename?: 'AdminMediaFile';
+  id: Scalars['ID']['output'];
+  /** 変換配信の画像。隔離中・削除待ち・保存未完了の画像はobjectKeyが空 */
+  image: MediaImage;
+  /** 管理者側のサイトと同じオリジンの中継の経路。隔離中の画像を表示する */
+  path: Scalars['String']['output'];
+  quarantineReasons: Array<QuarantineReason>;
+  quarantined: Scalars['Boolean']['output'];
+};
+
+/** プロダクトの未完了の案件 */
+export type AdminOpenReportCaseRef = {
+  __typename?: 'AdminOpenReportCaseRef';
+  id: Scalars['ID']['output'];
+  status: ReportCaseStatus;
+};
+
+/** 管理画面のプロダクト */
+export type AdminProduct = {
+  __typename?: 'AdminProduct';
+  category: AdminCategoryRef;
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 業務日付。ローンチが無ければnull */
+  latestLaunchDate?: Maybe<Scalars['String']['output']>;
+  latestLaunchState?: Maybe<AdminProductLaunchState>;
+  logo?: Maybe<AdminMediaFile>;
+  name: Scalars['String']['output'];
+  /** 退会済みの投稿者はnull */
+  owner?: Maybe<AdminUserSummary>;
+  visibility: AdminProductVisibility;
+};
+
+export type AdminProductConnection = {
+  __typename?: 'AdminProductConnection';
+  nodes: Array<AdminProduct>;
+  pageInfo: PageInfo;
+};
+
+/** 管理画面のプロダクトの詳細 */
+export type AdminProductDetail = {
+  __typename?: 'AdminProductDetail';
+  descriptionMarkdown: Scalars['String']['output'];
+  hiddenAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 非公開化中で、非公開化の措置の記録が残っているプロダクトだけが持つ */
+  latestHide?: Maybe<ModerationNote>;
+  /** ローンチ日の新しい順 */
+  launches: Array<AdminLaunch>;
+  product: AdminProduct;
+  ratingSummary: AdminRatingSummary;
+  screenshots: Array<AdminMediaFile>;
+  tagline: Scalars['String']['output'];
+  websiteUrl: Scalars['String']['output'];
+};
+
+/** プロダクトの一覧の絞り込み。指定した条件を全て満たすプロダクトを返す */
+export type AdminProductFilter = {
+  categoryId?: InputMaybe<Scalars['ID']['input']>;
+  handle?: InputMaybe<Scalars['String']['input']>;
+  launchState?: InputMaybe<AdminProductLaunchState>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  ownerHandle?: InputMaybe<Scalars['String']['input']>;
+  visibility?: InputMaybe<AdminProductVisibility>;
+};
+
+/** プロダクトの最新のローンチの状態 */
+export type AdminProductLaunchState =
+  | 'CANCELED'
+  | 'IN_PROGRESS'
+  | 'LOST'
+  | 'SCHEDULED'
+  | 'WON';
+
+/** プロダクトへの通報の件数と未完了の案件 */
+export type AdminProductReportSummary = {
+  __typename?: 'AdminProductReportSummary';
+  openCase?: Maybe<AdminOpenReportCaseRef>;
+  reportCount: Scalars['Int']['output'];
+};
+
+/** プロダクトの公開状態 */
+export type AdminProductVisibility =
+  | 'HIDDEN'
+  | 'OWNER_SUSPENDED'
+  | 'VISIBLE';
+
+/** 隔離画像 */
+export type AdminQuarantinedImage = {
+  __typename?: 'AdminQuarantinedImage';
+  file: AdminMediaFile;
+  /** 自動判定の検出内容 */
+  findings: Array<Scalars['String']['output']>;
+  /** システムが保有する画像はnull */
+  owner?: Maybe<AdminImageOwner>;
+  /** 画像の用途 */
+  purpose: Scalars['String']['output'];
+  quarantinedAt: Scalars['DateTime']['output'];
+};
+
+/** 隔離画像の一覧の1ページ。続きが無ければnextCursorはnull */
+export type AdminQuarantinedImagePage = {
+  __typename?: 'AdminQuarantinedImagePage';
+  items: Array<AdminQuarantinedImage>;
+  nextCursor?: Maybe<Scalars['String']['output']>;
+};
+
+/** 管理画面の評価 */
+export type AdminRating = {
+  __typename?: 'AdminRating';
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  /** 無効化中で、無効化の措置の記録が残っている評価だけが持つ */
+  latestInvalidation?: Maybe<ModerationNote>;
+  productId: Scalars['ID']['output'];
+  /** 論理削除済みのプロダクトはnull */
+  productName?: Maybe<Scalars['String']['output']>;
+  /** 退会済みの評価者はnull */
+  rater?: Maybe<AdminUserSummary>;
+  score: Scalars['Int']['output'];
+  state: AdminRatingState;
+  updatedAt: Scalars['DateTime']['output'];
+};
+
+export type AdminRatingConnection = {
+  __typename?: 'AdminRatingConnection';
+  nodes: Array<AdminRating>;
+  pageInfo: PageInfo;
+};
+
+/** 評価の一覧の絞り込み */
+export type AdminRatingFilter = {
+  productHandle?: InputMaybe<Scalars['String']['input']>;
+  raterHandle?: InputMaybe<Scalars['String']['input']>;
+  state?: InputMaybe<AdminRatingState>;
+};
+
+/** 管理画面の評価の状態 */
+export type AdminRatingState =
+  | 'INVALIDATED'
+  | 'VALID';
+
+/** 有効な評価の平均と件数 */
+export type AdminRatingSummary = {
+  __typename?: 'AdminRatingSummary';
+  average?: Maybe<Scalars['Float']['output']>;
+  count: Scalars['Int']['output'];
+};
+
 /** 重要な操作の本人確認 */
 export type AdminReAuthenticationInput = {
   /** 本人確認に使う現在のパスワード */
@@ -238,6 +482,135 @@ export type AdminReAuthenticationInput = {
 export type AdminRecoveryCodeSet = {
   __typename?: 'AdminRecoveryCodeSet';
   codes: Array<Scalars['String']['output']>;
+};
+
+/** 案件の通報 */
+export type AdminReport = {
+  __typename?: 'AdminReport';
+  /** カテゴリの現在の名前 */
+  categoryName: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  reason: Scalars['String']['output'];
+  reportedAt: Scalars['DateTime']['output'];
+  reporter: AdminReporter;
+};
+
+/** 通報の案件 */
+export type AdminReportCase = {
+  __typename?: 'AdminReportCase';
+  categoryCounts: Array<AdminReportCategoryCount>;
+  firstReportedAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  infringement: Scalars['Boolean']['output'];
+  lastReportedAt: Scalars['DateTime']['output'];
+  /** 退会で論理削除した通報を除く件数 */
+  reportCount: Scalars['Int']['output'];
+  /** 権利侵害の案件だけ */
+  responseTime?: Maybe<AdminReportResponseTime>;
+  status: ReportCaseStatus;
+  target: AdminReportTarget;
+};
+
+/** 通報の案件の一覧 */
+export type AdminReportCaseConnection = {
+  __typename?: 'AdminReportCaseConnection';
+  nodes: Array<AdminReportCase>;
+  pageInfo: PageInfo;
+};
+
+/** 通報の案件の詳細 */
+export type AdminReportCaseDetail = {
+  __typename?: 'AdminReportCaseDetail';
+  case: AdminReportCase;
+  closedAt?: Maybe<Scalars['DateTime']['output']>;
+  closingReason?: Maybe<Scalars['String']['output']>;
+  /** 権利侵害の対応中の案件で、投稿者の宛先と利用者側のURLがあれば真 */
+  inquiryAvailable: Scalars['Boolean']['output'];
+  lastInquiry?: Maybe<AdminReportInquiry>;
+  /** 受付日時の昇順 */
+  reports: Array<AdminReport>;
+  resolution?: Maybe<ReportResolution>;
+  statusChangedAt: Scalars['DateTime']['output'];
+};
+
+/** 通報の案件の一覧の絞り込み */
+export type AdminReportCaseFilter = {
+  /** そのカテゴリの通報を含む案件 */
+  categoryId?: InputMaybe<Scalars['ID']['input']>;
+  reportedBefore?: InputMaybe<Scalars['DateTime']['input']>;
+  /** その期間に受け付けた通報を含む案件。開始は含み、終了は含まない */
+  reportedFrom?: InputMaybe<Scalars['DateTime']['input']>;
+  status?: InputMaybe<ReportCaseStatus>;
+  targetKind?: InputMaybe<ReportTargetKind>;
+};
+
+/** 管理画面の通報カテゴリ */
+export type AdminReportCategory = {
+  __typename?: 'AdminReportCategory';
+  id: Scalars['ID']['output'];
+  infringement: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  /** 紐付く通報の件数。退会で論理削除した通報を含む */
+  reportCount: Scalars['Int']['output'];
+  systemDefault: Scalars['Boolean']['output'];
+};
+
+/** 案件のカテゴリごとの通報の件数 */
+export type AdminReportCategoryCount = {
+  __typename?: 'AdminReportCategoryCount';
+  categoryId: Scalars['ID']['output'];
+  count: Scalars['Int']['output'];
+  /** カテゴリの現在の名前 */
+  name: Scalars['String']['output'];
+};
+
+/** 最後に送った権利侵害の照会 */
+export type AdminReportInquiry = {
+  __typename?: 'AdminReportInquiry';
+  deadline: Scalars['DateTime']['output'];
+  message: Scalars['String']['output'];
+  /** 対応中で回答の期限を過ぎていれば真 */
+  overdue: Scalars['Boolean']['output'];
+  sentAt: Scalars['DateTime']['output'];
+};
+
+/** 権利侵害の案件の対応期間 */
+export type AdminReportResponseTime = {
+  __typename?: 'AdminReportResponseTime';
+  alerts: Array<ResponseTimeAlert>;
+  completedAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 完了の日時が得られない完了した案件はnull */
+  elapsedSeconds?: Maybe<Scalars['Int']['output']>;
+  startedAt: Scalars['DateTime']['output'];
+};
+
+/** 管理画面の通報の対象 */
+export type AdminReportTarget = {
+  __typename?: 'AdminReportTarget';
+  /** 退会・削除・物理削除で読めない対象と、対象への参照を消した案件はfalse */
+  available: Scalars['Boolean']['output'];
+  detached: Scalars['Boolean']['output'];
+  /** コメントの本文の抜粋 */
+  excerpt?: Maybe<Scalars['String']['output']>;
+  handle?: Maybe<Scalars['String']['output']>;
+  /** 対象への参照を消した案件はnull */
+  id?: Maybe<Scalars['ID']['output']>;
+  kind: ReportTargetKind;
+  /** ユーザーはニックネーム、プロダクトは名称 */
+  label?: Maybe<Scalars['String']['output']>;
+  productHandle?: Maybe<Scalars['String']['output']>;
+  productId?: Maybe<Scalars['ID']['output']>;
+  productName?: Maybe<Scalars['String']['output']>;
+};
+
+/** 通報の申出者。kindはmember(ログイン中の利用者)かguest(未ログインと停止中の利用者) */
+export type AdminReporter = {
+  __typename?: 'AdminReporter';
+  handle?: Maybe<Scalars['String']['output']>;
+  /** 連絡先メールアドレスは返さず、有無だけを返す */
+  hasContact: Scalars['Boolean']['output'];
+  kind: Scalars['String']['output'];
+  nickname?: Maybe<Scalars['String']['output']>;
 };
 
 /** 管理者のロール */
@@ -260,6 +633,72 @@ export type AdminSecondFactorRequired = {
   expiresAt: Scalars['DateTime']['output'];
 };
 
+/** 管理画面の申込の一覧の1件 */
+export type AdminSponsorship = {
+  __typename?: 'AdminSponsorship';
+  /** 支払った金額。未決済はnull */
+  amountPaid?: Maybe<Money>;
+  /** 申込者のニックネーム。照会できなければnull */
+  applicantNickname?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTime']['output'];
+  days: Scalars['Int']['output'];
+  /** 掲載終了日(業務日付のYYYY-MM-DD) */
+  endsOn: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  productDeleted: Scalars['Boolean']['output'];
+  /** 論理削除済みのプロダクトはnull */
+  productHandle?: Maybe<Scalars['String']['output']>;
+  /** 論理削除済みのプロダクトはnull */
+  productName?: Maybe<Scalars['String']['output']>;
+  /** 決済を探すための購入のID。未決済はnull */
+  purchaseId?: Maybe<Scalars['ID']['output']>;
+  /** 掲載開始日(業務日付のYYYY-MM-DD) */
+  startsOn: Scalars['String']['output'];
+  status: SponsorshipStatus;
+  /** 掲載予定・掲載中(表示停止中を含む)なら真 */
+  terminable: Scalars['Boolean']['output'];
+  tier: SponsorshipTier;
+};
+
+/** 管理画面の申込の一覧 */
+export type AdminSponsorshipConnection = {
+  __typename?: 'AdminSponsorshipConnection';
+  nodes: Array<AdminSponsorship>;
+  pageInfo: PageInfo;
+};
+
+/** 管理画面の一覧の絞り込み。省略した条件は絞り込まない */
+export type AdminSponsorshipFilter = {
+  status?: InputMaybe<AdminSponsorshipStatusFilter>;
+  tier?: InputMaybe<SponsorshipTier>;
+};
+
+/** 管理画面の一覧の掲載状況の絞り込み。表示停止中は掲載予定・掲載中に含む */
+export type AdminSponsorshipStatusFilter =
+  | 'ACTIVE'
+  | 'ENDED'
+  | 'PENDING_PAYMENT'
+  | 'SCHEDULED'
+  | 'TERMINATED';
+
+/** 週ごとの統計の1週。未確定の週は集計中の今週か、集計が止まって確定していない週 */
+export type AdminStatisticsWeek = {
+  __typename?: 'AdminStatisticsWeek';
+  finalized: Scalars['Boolean']['output'];
+  /** 週の期間の純収益 */
+  netRevenue: Money;
+  /** 週の終わり(集計中の週は集計の時点)のプロダクトの総数 */
+  products: Scalars['Int']['output'];
+  /** 週の期間の予選の実施数 */
+  qualifierMatches: Scalars['Int']['output'];
+  /** 週の期間のUpvote数 */
+  upvotes: Scalars['Int']['output'];
+  /** 週の終わり(集計中の週は集計の時点)の利用者の総数 */
+  users: Scalars['Int']['output'];
+  /** 週の開始日(月曜日の業務日付) */
+  weekStart: Scalars['String']['output'];
+};
+
 /** 認証アプリへ登録する多要素認証の設定 */
 export type AdminTotpSetup = {
   __typename?: 'AdminTotpSetup';
@@ -267,6 +706,59 @@ export type AdminTotpSetup = {
   otpauthUri: Scalars['String']['output'];
   /** 認証アプリへ手入力するためのbase32 */
   secret: Scalars['String']['output'];
+};
+
+/** 未対応の案件の件数 */
+export type AdminUnhandledReportSummary = {
+  __typename?: 'AdminUnhandledReportSummary';
+  infringementOpen: Scalars['Int']['output'];
+  open: Scalars['Int']['output'];
+};
+
+/** 管理画面の利用者。メールアドレスは返さない */
+export type AdminUser = {
+  __typename?: 'AdminUser';
+  avatar?: Maybe<AdminMediaFile>;
+  disposableEmail: DisposableEmailCheck;
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 停止中で、停止の措置の記録が残っている利用者だけが持つ */
+  latestSuspension?: Maybe<ModerationNote>;
+  nickname: Scalars['String']['output'];
+  registeredAt: Scalars['DateTime']['output'];
+  status: AdminUserStatus;
+  suspendedAt?: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type AdminUserConnection = {
+  __typename?: 'AdminUserConnection';
+  nodes: Array<AdminUser>;
+  pageInfo: PageInfo;
+};
+
+/** ユーザーの一覧の絞り込み。指定した条件を全て満たす利用者を返す */
+export type AdminUserFilter = {
+  /** 大文字小文字を区別しない完全一致 */
+  email?: InputMaybe<Scalars['String']['input']>;
+  /** 大文字小文字を区別しない部分一致 */
+  handle?: InputMaybe<Scalars['String']['input']>;
+  /** 大文字小文字を区別しない部分一致 */
+  nickname?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<AdminUserStatus>;
+};
+
+/** 管理画面の利用者の停止状態 */
+export type AdminUserStatus =
+  | 'ACTIVE'
+  | 'SUSPENDED';
+
+/** 管理画面の一覧に添える利用者の表示 */
+export type AdminUserSummary = {
+  __typename?: 'AdminUserSummary';
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  nickname: Scalars['String']['output'];
+  suspended: Scalars['Boolean']['output'];
 };
 
 /** ログイン中の管理者 */
@@ -281,6 +773,84 @@ export type AdminViewer = {
   remainingRecoveryCodes: Scalars['Int']['output'];
   role: AdminRole;
   title?: Maybe<Scalars['String']['output']>;
+};
+
+/** 週ごとの統計。weeksは週の古い順で、最後の週が未確定なら集計中の今週 */
+export type AdminWeeklyStatistics = {
+  __typename?: 'AdminWeeklyStatistics';
+  /** 週が無ければnull */
+  lastComputedAt?: Maybe<Scalars['DateTime']['output']>;
+  weeks: Array<AdminStatisticsWeek>;
+};
+
+/** 代理の退会の入力 */
+export type AdministrativeWithdrawalInput = {
+  reason: Scalars['String']['input'];
+  userId: Scalars['ID']['input'];
+};
+
+/** APIキー。平文とハッシュは持たない */
+export type ApiKey = {
+  __typename?: 'ApiKey';
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  scopes: ApiKeyScopes;
+};
+
+export type ApiKeyConnection = {
+  __typename?: 'ApiKeyConnection';
+  nodes: Array<ApiKey>;
+  pageInfo: PageInfo;
+};
+
+export type ApiKeyInput = {
+  /** 前後の空白を除いて1〜50文字 */
+  name: Scalars['String']['input'];
+  scopes: ApiKeyScopesInput;
+};
+
+/** 読み取りだけの機能の権限 */
+export type ApiKeyReadLevel =
+  | 'NONE'
+  | 'READ';
+
+/** 機能ごとの権限スコープ */
+export type ApiKeyScopes = {
+  __typename?: 'ApiKeyScopes';
+  comments: ApiKeyReadLevel;
+  launches: ApiKeyReadLevel;
+  productDescriptions: ApiKeyWriteLevel;
+  products: ApiKeyReadLevel;
+  profile: ApiKeyWriteLevel;
+  ratings: ApiKeyReadLevel;
+  upvotes: ApiKeyReadLevel;
+};
+
+export type ApiKeyScopesInput = {
+  comments: ApiKeyReadLevel;
+  launches: ApiKeyReadLevel;
+  productDescriptions: ApiKeyWriteLevel;
+  products: ApiKeyReadLevel;
+  profile: ApiKeyWriteLevel;
+  ratings: ApiKeyReadLevel;
+  upvotes: ApiKeyReadLevel;
+};
+
+/** 書き込みもできる機能の権限 */
+export type ApiKeyWriteLevel =
+  | 'NONE'
+  | 'READ'
+  | 'READ_WRITE';
+
+/** スポンサー広告の申込 */
+export type ApplySponsorshipInput = {
+  /** 掲載終了日(業務日付のYYYY-MM-DD) */
+  endsOn: Scalars['String']['input'];
+  productId: Scalars['ID']['input'];
+  /** 掲載開始日(業務日付のYYYY-MM-DD) */
+  startsOn: Scalars['String']['input'];
+  tier: SponsorshipTier;
 };
 
 /** 監査ログの詳細の1項目 */
@@ -331,6 +901,46 @@ export type AuditOperator = {
   id: Scalars['ID']['output'];
   /** 削除済みの管理者ではnull */
   nickname?: Maybe<Scalars['String']['output']>;
+};
+
+/** ブラケットの1つの位置 */
+export type BracketNode = {
+  __typename?: 'BracketNode';
+  /** マッチの予定を作っていない位置はnull */
+  match?: Maybe<Match>;
+  /** ラウンドの中の位置(1から) */
+  position: Scalars['Int']['output'];
+  /** 2つの側の枠 */
+  slots: Array<BracketSlot>;
+};
+
+/** ブラケットのラウンド。WeekとYearのどちらのブラケットも同じ型で返す */
+export type BracketRound = {
+  __typename?: 'BracketRound';
+  /** 実施日(業務日付のYYYY-MM-DD)。予定の前は見込みの日 */
+  date: Scalars['String']['output'];
+  /** ラウンド名 */
+  name: Scalars['String']['output'];
+  /** 位置の昇順。両方の側が空と確定した位置は含めない */
+  nodes: Array<BracketNode>;
+  /** ラウンドの番号(1回戦が1) */
+  round: Scalars['Int']['output'];
+};
+
+/** ブラケットのマッチの側の枠 */
+export type BracketSlot = {
+  __typename?: 'BracketSlot';
+  /** 未来の枠の表記(「シード1」「1回戦第3試合の勝者」) */
+  feedLabel?: Maybe<Scalars['String']['output']>;
+  /** 抽選番号。未確定の枠はnull */
+  participantNo?: Maybe<Scalars['Int']['output']>;
+  /** 表示できない(非公開化・論理削除・投稿者の退会や停止)・未来の枠はnull */
+  product?: Maybe<MatchProduct>;
+  /** 確定の前はnull */
+  result?: Maybe<MatchEntryResult>;
+  /** シードなら抽選番号 */
+  seed?: Maybe<Scalars['Int']['output']>;
+  upvoteCount?: Maybe<Scalars['Int']['output']>;
 };
 
 /** 不戦勝の理由。ABSENTは対戦相手なし、FORFEITはマッチ直前の相手の該当、EARLYはマッチ中の即時の終了 */
@@ -434,6 +1044,45 @@ export type CreateHelpArticleInput = {
   fields: HelpArticleFields;
   reason?: InputMaybe<Scalars['String']['input']>;
 };
+
+/** データエクスポートの要求。ZIPの実体は持たず、ダウンロードの経路を指す */
+export type DataExport = {
+  __typename?: 'DataExport';
+  /** ZIPのバイト数。4GiB未満の整数で、GraphQLのIntが32ビットのためFloatで返す。完了と期限切れだけが持つ */
+  byteSize?: Maybe<Scalars['Float']['output']>;
+  /** 生成の完了日時。完了と期限切れだけが持つ */
+  completedAt?: Maybe<Scalars['DateTime']['output']>;
+  /** ダウンロードの内部の経路。完了で有効期限の前のときだけ持つ */
+  downloadPath?: Maybe<Scalars['String']['output']>;
+  /** ZIPの有効期限。完了と期限切れだけが持つ */
+  expiresAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 失敗の日時。失敗だけが持つ */
+  failedAt?: Maybe<Scalars['DateTime']['output']>;
+  failureKind?: Maybe<DataExportFailureKind>;
+  /** ZIPのファイル名。完了と期限切れだけが持つ */
+  fileName?: Maybe<Scalars['String']['output']>;
+  id: Scalars['ID']['output'];
+  requestedAt: Scalars['DateTime']['output'];
+  status: DataExportStatus;
+};
+
+export type DataExportConnection = {
+  __typename?: 'DataExportConnection';
+  nodes: Array<DataExport>;
+  pageInfo: PageInfo;
+};
+
+/** 失敗の種類。TOO_LARGEは生成物の上限を超えたことを表す */
+export type DataExportFailureKind =
+  | 'ERROR'
+  | 'TOO_LARGE';
+
+/** 要求の表示の状態。作成中は受け付けと生成中をまとめる */
+export type DataExportStatus =
+  | 'EXPIRED'
+  | 'FAILED'
+  | 'PENDING'
+  | 'READY';
 
 export type DeleteHelpArticlePayload = {
   __typename?: 'DeleteHelpArticlePayload';
@@ -562,6 +1211,13 @@ export type DiscardLegalDocumentDraftInput = {
   kind: LegalDocumentKind;
 };
 
+/** 使い捨てメールアドレスの判定結果。UNVERIFIEDはメールアドレスの確認を済ませていない利用者 */
+export type DisposableEmailCheck =
+  | 'DISPOSABLE'
+  | 'REGULAR'
+  | 'UNDETERMINED'
+  | 'UNVERIFIED';
+
 /** フォロー一覧の1行。followedAtはフォローした日時 */
 export type FollowEntry = {
   __typename?: 'FollowEntry';
@@ -689,6 +1345,13 @@ export type HelpSearchHit = {
   title: Scalars['String']['output'];
 };
 
+/** 権利侵害の照会の結果 */
+export type InfringementInquiryOutcome = {
+  __typename?: 'InfringementInquiryOutcome';
+  deadline: Scalars['DateTime']['output'];
+  sentAt: Scalars['DateTime']['output'];
+};
+
 /** 問い合わせのカテゴリ */
 export type InquiryCategory = {
   __typename?: 'InquiryCategory';
@@ -760,6 +1423,14 @@ export type InquiryStatus =
   | 'OPEN'
   | 'REJECTED'
   | 'RESOLVED';
+
+/** 発行・再発行の結果 */
+export type IssuedApiKey = {
+  __typename?: 'IssuedApiKey';
+  apiKey: ApiKey;
+  /** 平文のAPIキー。この応答でだけ返し、再び読めない */
+  plainKey: Scalars['String']['output'];
+};
 
 export type LaunchComment = {
   __typename?: 'LaunchComment';
@@ -1106,6 +1777,19 @@ export type MemberInquirySummary = {
   status: InquiryStatus;
 };
 
+/** 最新の措置の理由と日時。理由は措置の記録から読み、任意の操作で理由が無ければnull */
+export type ModerationNote = {
+  __typename?: 'ModerationNote';
+  occurredAt: Scalars['DateTime']['output'];
+  reason?: Maybe<Scalars['String']['output']>;
+};
+
+/** 措置の結果。既に同じ状態ならchangedは偽 */
+export type ModerationOutcome = {
+  __typename?: 'ModerationOutcome';
+  changed: Scalars['Boolean']['output'];
+};
+
 /** 金額 */
 export type Money = {
   __typename?: 'Money';
@@ -1121,6 +1805,10 @@ export type Mutation = {
   adminLogin: AdminSecondFactorRequired;
   /** この端末のログアウト */
   adminLogout: Scalars['Boolean']['output'];
+  /** 申込を未決済で記録し、決済を始めて決済画面の経路に使う購入のIDを返す */
+  applySponsorship: CheckoutStart;
+  /** 自動判定の隔離理由を外す公開承認 */
+  approveQuarantinedImage: ModerationOutcome;
   /** 閲覧者のプロダクトへの評価を物理削除する。評価が無くても成功する */
   cancelProductRating: ProductRating;
   /** メールアドレスが確認済みの利用者がマッチ中のマッチのUpvoteを取り消す。Upvoteしていなくても成功する。更新後のマッチを返す */
@@ -1131,6 +1819,8 @@ export type Mutation = {
   changeAdminRole: AdminAccount;
   /** 対応ステータスの変更。変更後の詳細を返す。モデレーター以上 */
   changeInquiryStatus: AdminInquiry;
+  /** 案件の対応ステータスの手での変更 */
+  changeReportCaseStatus: ReportCaseOutcome;
   /** 招待の完了の2段階目。認証コードで有効化し、ログインする */
   completeAdminInvitation: AdminRecoveryCodeSet;
   /** 認証コードかリカバリコードによるログインの完了 */
@@ -1155,10 +1845,14 @@ export type Mutation = {
   createInquiryCategory: InquiryCategory;
   /** モデレーター以上の管理者がプロダクトカテゴリを追加する */
   createProductCategory: ProductCategory;
+  /** 通報カテゴリの追加 */
+  createReportCategory: AdminReportCategory;
   /** Customer Portalのセッションの作成。加入したことがある本人のStripe Customerにセッションを作り、移動先のURLを返す。戻り先はプラン管理画面 */
   createUltrasPortalSession: UltrasPortalSession;
   /** 管理者の削除 */
   deleteAdmin: Scalars['Boolean']['output'];
+  /** 自分のAPIキーを削除し、削除したキーのIDを返す。停止中の利用者も削除できる */
+  deleteApiKey: Scalars['ID']['output'];
   /** 自分の表示できるコメントを置き換え表示にし、返信は残す */
   deleteComment: LaunchComment;
   deleteHelpArticle: DeleteHelpArticlePayload;
@@ -1169,6 +1863,10 @@ export type Mutation = {
   deleteProduct: Scalars['Boolean']['output'];
   /** モデレーター以上の管理者がプロダクトの紐付かないプロダクトカテゴリを削除する。標準カテゴリは削除できない */
   deleteProductCategory: Scalars['Boolean']['output'];
+  /** 隔離画像の削除 */
+  deleteQuarantinedImage: ModerationOutcome;
+  /** 通報カテゴリの削除。紐付く通報は「その他」へ付け替える */
+  deleteReportCategory: ReportCategoryDeletion;
   /** 多要素認証の無効化 */
   disableTotp: Scalars['Boolean']['output'];
   /** 下書きの破棄。最上位管理者 */
@@ -1177,8 +1875,16 @@ export type Mutation = {
   enableTotp: RecoveryCodeSet;
   /** メールアドレスが確認済みの利用者がフォローする。すでにフォロー済みでも成功する */
   followUser: FollowState;
+  /** コメントの非公開化 */
+  hideComment: ModerationOutcome;
+  /** プロダクトの非公開化 */
+  hideProduct: ModerationOutcome;
+  /** 評価の無効化 */
+  invalidateRating: ModerationOutcome;
   /** 閲覧のみのロールで招待し、招待のメールを送る */
   inviteAdmin: AdminAccount;
+  /** 新しいAPIキーを発行する。発行は再発行と合わせて利用者ごとに1時間3回まで */
+  issueApiKey: IssuedApiKey;
   /** メールアドレスとパスワードによるログイン */
   login: LoginResult;
   /** この端末のログアウト */
@@ -1189,6 +1895,8 @@ export type Mutation = {
   postInquiryMessage: InquiryMessage;
   /** 下書きの公開。最上位管理者 */
   publishLegalDocument: AdminLegalDocument;
+  /** 画像の個別の隔離 */
+  quarantineImage: ModerationOutcome;
   /** 閲覧者のプロダクトへの評価を保存し、評価済みなら上書きする */
   rateProduct: ProductRating;
   /** 支払いの確定の前の同意の記録。支払える状態の本人の購入だけに記録し、同じ購入の再記録は最新の日時で上書きする */
@@ -1201,9 +1909,17 @@ export type Mutation = {
   registerProduct: MyProduct;
   /** 利用者の登録 */
   registerUser: Viewer;
+  /** 自分のAPIキーと同じ名前と権限スコープの新しいキーを追加で発行する。元のキーは残す */
+  reissueApiKey: IssuedApiKey;
+  /** 案件の却下 */
+  rejectReportCase: ReportCaseOutcome;
+  /** 管理者操作の隔離理由を外す隔離の解除 */
+  releaseQuarantinedImage: ModerationOutcome;
   renameHelpCategory: HelpCategory;
   /** カテゴリの名前の変更。標準カテゴリは変更できない。モデレーター以上 */
   renameInquiryCategory: InquiryCategory;
+  /** 通報カテゴリの名前の変更 */
+  renameReportCategory: AdminReportCategory;
   /** ピン留めの群に続けてそれ以外の群の順でカテゴリの全記事のIDを渡す */
   reorderHelpArticles: Array<AdminHelpArticleRow>;
   /** 全カテゴリのIDを並べたい順で渡す */
@@ -1214,6 +1930,8 @@ export type Mutation = {
   requestAdminEmailChange: Scalars['Boolean']['output'];
   /** パスワードリセットの要求。管理者の有無と状態を問わず同じ結果を返す */
   requestAdminPasswordReset: Scalars['Boolean']['output'];
+  /** データエクスポートを要求する。ZIPの生成は非同期で、要求は利用者ごとに24時間に3回まで。作成中の要求があっても受け付ける */
+  requestDataExport: DataExport;
   /** メールアドレス変更の要求 */
   requestEmailChange: Scalars['Boolean']['output'];
   /** パスワード変更の要求 */
@@ -1228,12 +1946,22 @@ export type Mutation = {
   resetAdminPassword: Scalars['Boolean']['output'];
   /** パスワードリセットの確定 */
   resetPassword: Scalars['Boolean']['output'];
+  /** 措置による対応済 */
+  resolveReportCaseWithMeasure: ReportCaseOutcome;
+  /** 措置なしの対応済 */
+  resolveReportCaseWithoutMeasure: ReportCaseOutcome;
+  /** 本人の開始日前の未決済の申込の決済を始め直す */
+  resumeSponsorshipCheckout: CheckoutStart;
+  /** 評価の無効化の取り消し */
+  revalidateRating: ModerationOutcome;
   /** 操作している端末以外のセッションの一括の失効。失効させた件数を返す */
   revokeOtherSessions: Scalars['Int']['output'];
   /** セッションの個別の失効 */
   revokeSession: Scalars['Boolean']['output'];
   /** 下書きの保存。最上位管理者 */
   saveLegalDocumentDraft: AdminLegalDocument;
+  /** 権利侵害の案件の投稿者への照会 */
+  sendInfringementInquiry: InfringementInquiryOutcome;
   /** 招待の完了の1段階目。ニックネームとパスワードを仮に保存し、多要素認証の設定を始める */
   startAdminInvitation: AdminTotpSetup;
   /** 多要素認証の再設定の開始。完了まで現在の設定が有効なまま残る */
@@ -1244,14 +1972,32 @@ export type Mutation = {
   startTotpSetup: TotpSetup;
   /** Ultrasの加入の開始。加入できるかを確かめて購入を作り、決済画面の経路に使う購入のIDを返す */
   startUltrasCheckout: CheckoutStart;
+  /** Weekトーナメントの参加費の決済の開始。本人の受付中の枠に購入を作り、決済画面の経路に使う購入のIDを返す。受付期限の後はcheckout_closed */
+  startWeekTournamentCheckout: CheckoutStart;
+  /** Yearトーナメントの参加費の決済の開始。本人の受付中の枠に購入を作り、決済画面の経路に使う購入のIDを返す。受付期限の後はcheckout_closed */
+  startYearTournamentCheckout: CheckoutStart;
   /** 未ログイン(停止中の利用者を含む)の問い合わせの送信 */
   submitGuestInquiry: Scalars['Boolean']['output'];
   /** 停止していないログイン中の利用者の問い合わせの送信 */
   submitMemberInquiry: MemberInquiry;
+  /** ユーザー・プロダクト・コメントの通報 */
+  submitReport: SubmitReportPayload;
+  /** 利用者の停止 */
+  suspendUser: ModerationOutcome;
+  /** 理由(500文字以内)を付けて広告を強制終了し、未掲載日数分と表示停止日数分の返金を依頼する。モデレーター以上の管理者 */
+  terminateSponsorship: SponsorshipTerminationResult;
   /** 停止中でない利用者がフォローを解除する。フォローしていなくても成功する */
   unfollowUser: FollowState;
+  /** コメントの復元 */
+  unhideComment: ModerationOutcome;
+  /** プロダクトの復元 */
+  unhideProduct: ModerationOutcome;
+  /** 利用者の停止解除 */
+  unsuspendUser: ModerationOutcome;
   /** プロフィールの更新。avatarFileIdの省略は画像を取り除く */
   updateAdminProfile: AdminAccount;
+  /** 自分のAPIキーの名前と権限スコープを変える。キーの文字列は変えない */
+  updateApiKey: ApiKey;
   /** 本文と、それに添えた評価を1回の書き込みで保存する */
   updateComment: CommentMutationResult;
   updateHelpArticle: AdminHelpArticle;
@@ -1267,18 +2013,33 @@ export type Mutation = {
   updateProductCategory: ProductCategory;
   /** 機能フラグの変更。読み取った版と一致するときだけ保存して監査ログに記録し、変更後の設定を返す。最上位管理者 */
   updateUltrasPromotionSetting: UltrasPromotionSetting;
+  /** 決勝実施日の保存。最上位管理者だけが行え、監査ログと一体で確定する。選べない日付はvalidation_error(details[0].codeに理由)、変更期限の後・組み合わせ決定の開始の後はfinal_date_locked、版の不一致はversion_conflict */
+  updateYearFinalDate: YearFinalDateSetting;
   /** メールアドレスが確認済みの利用者がマッチ中のマッチの一方の側にUpvoteする。もう一方の側にUpvote済みなら付け替え、同じ側なら何も変えない。更新後のマッチを返す */
   upvote: Match;
   /** メールアドレスの確認の確定 */
   verifyEmail: Scalars['Boolean']['output'];
   /** 退会 */
   withdraw: Scalars['Boolean']['output'];
+  /** 最上位管理者による代理の退会 */
+  withdrawUserByAdministrator: ModerationOutcome;
 };
 
 
 export type MutationAdminLoginArgs = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
+};
+
+
+export type MutationApplySponsorshipArgs = {
+  input: ApplySponsorshipInput;
+};
+
+
+export type MutationApproveQuarantinedImageArgs = {
+  fileId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1309,6 +2070,14 @@ export type MutationChangeInquiryStatusArgs = {
   inquiryId: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
   status: InquiryStatus;
+};
+
+
+export type MutationChangeReportCaseStatusArgs = {
+  from: ReportCaseStatus;
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+  to: ReportCaseStatus;
 };
 
 
@@ -1381,9 +2150,20 @@ export type MutationCreateProductCategoryArgs = {
 };
 
 
+export type MutationCreateReportCategoryArgs = {
+  name: Scalars['String']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDeleteAdminArgs = {
   id: Scalars['ID']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeleteApiKeyArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -1421,6 +2201,18 @@ export type MutationDeleteProductCategoryArgs = {
 };
 
 
+export type MutationDeleteQuarantinedImageArgs = {
+  fileId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeleteReportCategoryArgs = {
+  id: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDisableTotpArgs = {
   input: ReAuthenticationInput;
 };
@@ -1441,9 +2233,32 @@ export type MutationFollowUserArgs = {
 };
 
 
+export type MutationHideCommentArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationHideProductArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationInvalidateRatingArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
 export type MutationInviteAdminArgs = {
   email: Scalars['String']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationIssueApiKeyArgs = {
+  input: ApiKeyInput;
 };
 
 
@@ -1465,6 +2280,12 @@ export type MutationPostInquiryMessageArgs = {
 
 export type MutationPublishLegalDocumentArgs = {
   input: PublishLegalDocumentInput;
+};
+
+
+export type MutationQuarantineImageArgs = {
+  fileId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1499,6 +2320,23 @@ export type MutationRegisterUserArgs = {
 };
 
 
+export type MutationReissueApiKeyArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationRejectReportCaseArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationReleaseQuarantinedImageArgs = {
+  fileId: Scalars['ID']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationRenameHelpCategoryArgs = {
   id: Scalars['ID']['input'];
   name: Scalars['String']['input'];
@@ -1506,6 +2344,13 @@ export type MutationRenameHelpCategoryArgs = {
 
 
 export type MutationRenameInquiryCategoryArgs = {
+  id: Scalars['ID']['input'];
+  name: Scalars['String']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationRenameReportCategoryArgs = {
   id: Scalars['ID']['input'];
   name: Scalars['String']['input'];
   reason?: InputMaybe<Scalars['String']['input']>;
@@ -1573,6 +2418,29 @@ export type MutationResetPasswordArgs = {
 };
 
 
+export type MutationResolveReportCaseWithMeasureArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationResolveReportCaseWithoutMeasureArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationResumeSponsorshipCheckoutArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationRevalidateRatingArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
 export type MutationRevokeSessionArgs = {
   id: Scalars['ID']['input'];
 };
@@ -1580,6 +2448,13 @@ export type MutationRevokeSessionArgs = {
 
 export type MutationSaveLegalDocumentDraftArgs = {
   input: SaveLegalDocumentDraftInput;
+};
+
+
+export type MutationSendInfringementInquiryArgs = {
+  id: Scalars['ID']['input'];
+  message: Scalars['String']['input'];
+  reason?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1600,6 +2475,16 @@ export type MutationStartTotpSetupArgs = {
 };
 
 
+export type MutationStartWeekTournamentCheckoutArgs = {
+  launchId: Scalars['ID']['input'];
+};
+
+
+export type MutationStartYearTournamentCheckoutArgs = {
+  launchId: Scalars['ID']['input'];
+};
+
+
 export type MutationSubmitGuestInquiryArgs = {
   input: GuestInquiryInput;
 };
@@ -1610,8 +2495,43 @@ export type MutationSubmitMemberInquiryArgs = {
 };
 
 
+export type MutationSubmitReportArgs = {
+  input: SubmitReportInput;
+};
+
+
+export type MutationSuspendUserArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationTerminateSponsorshipArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
 export type MutationUnfollowUserArgs = {
   handle: Scalars['String']['input'];
+};
+
+
+export type MutationUnhideCommentArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationUnhideProductArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
+};
+
+
+export type MutationUnsuspendUserArgs = {
+  id: Scalars['ID']['input'];
+  reason: Scalars['String']['input'];
 };
 
 
@@ -1620,6 +2540,12 @@ export type MutationUpdateAdminProfileArgs = {
   id: Scalars['ID']['input'];
   nickname: Scalars['String']['input'];
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationUpdateApiKeyArgs = {
+  id: Scalars['ID']['input'];
+  input: ApiKeyInput;
 };
 
 
@@ -1665,6 +2591,11 @@ export type MutationUpdateUltrasPromotionSettingArgs = {
 };
 
 
+export type MutationUpdateYearFinalDateArgs = {
+  input: UpdateYearFinalDateInput;
+};
+
+
 export type MutationUpvoteArgs = {
   input: UpvoteInput;
 };
@@ -1677,6 +2608,11 @@ export type MutationVerifyEmailArgs = {
 
 export type MutationWithdrawArgs = {
   input: ReAuthenticationInput;
+};
+
+
+export type MutationWithdrawUserByAdministratorArgs = {
+  input: AdministrativeWithdrawalInput;
 };
 
 /** 自分のプロダクトの編集用の情報 */
@@ -1732,6 +2668,43 @@ export type MyProfile = {
   previousHandle?: Maybe<Scalars['String']['output']>;
   suspended: Scalars['Boolean']['output'];
   websites: Array<ProfileWebsite>;
+};
+
+/** 自分の広告一覧の1件 */
+export type MySponsorship = {
+  __typename?: 'MySponsorship';
+  /** 支払った金額。未決済はnull */
+  amountPaid?: Maybe<Money>;
+  /** 未決済で開始日が今日以降なら真。決済を再開できる */
+  canResume: Scalars['Boolean']['output'];
+  createdAt: Scalars['DateTime']['output'];
+  /** 開始日と終了日を含む日数 */
+  days: Scalars['Int']['output'];
+  /** 表示停止の日数分の返金。精算前・無ければnull */
+  displayStopRefund?: Maybe<SponsorshipRefund>;
+  /** 掲載終了日(業務日付のYYYY-MM-DD) */
+  endsOn: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** 論理削除済みのプロダクトはnull */
+  product?: Maybe<SponsorshipProduct>;
+  /** 掲載開始日(業務日付のYYYY-MM-DD) */
+  startsOn: Scalars['String']['output'];
+  status: SponsorshipStatus;
+  /** 強制終了日(業務日付のYYYY-MM-DD)。強制終了していなければnull */
+  terminatedOn?: Maybe<Scalars['String']['output']>;
+  terminationReason?: Maybe<Scalars['String']['output']>;
+  /** 強制終了の未掲載日数分の返金。無ければnull */
+  terminationRefund?: Maybe<SponsorshipRefund>;
+  tier: SponsorshipTier;
+};
+
+/** 自分の広告一覧 */
+export type MySponsorshipConnection = {
+  __typename?: 'MySponsorshipConnection';
+  /** 次の基準時刻の0:00。掲載予定から掲載中・掲載中から終了への切り替わりで取り直す */
+  nextDayStartsAt: Scalars['DateTime']['output'];
+  nodes: Array<MySponsorship>;
+  pageInfo: PageInfo;
 };
 
 /** 通知種別ごとの受信可否 */
@@ -2190,10 +3163,21 @@ export type QualifierOutcome =
   | 'LOST'
   | 'WON';
 
+/** 画像の隔離理由 */
+export type QuarantineReason =
+  | 'ADMIN_ACTION'
+  | 'AUTO'
+  | 'PRODUCT_HIDDEN'
+  | 'USER_SUSPENDED';
+
 export type Query = {
   __typename?: 'Query';
+  /** 本人のプロダクトの掲載中・掲載予定の広告の件数。本人のプロダクトでなければ0 */
+  activeSponsorshipCount: Scalars['Int']['output'];
   /** 招待中を含む全管理者を登録の新しい順に返す */
   adminAccounts: Array<AdminAccount>;
+  /** コメントの一覧(投稿日時の新しい順)。firstは1〜50 */
+  adminComments: AdminCommentConnection;
   /** 見つからなければnull */
   adminHelpArticle?: Maybe<AdminHelpArticle>;
   /** 下書きを含む全件を更新日時の新しい順で返す */
@@ -2212,12 +3196,40 @@ export type Query = {
   adminLegalDocumentVersion?: Maybe<AdminLegalDocumentVersion>;
   /** 管理画面の法務文書の一覧。閲覧のみ以上の管理者 */
   adminLegalDocuments: Array<AdminLegalDocumentSummary>;
+  /** プロダクトの一覧の絞り込みのカテゴリの選択肢 */
+  adminModerationCategoryOptions: Array<AdminCategoryRef>;
+  /** プロダクトの詳細。存在しない・論理削除済みはnull */
+  adminProduct?: Maybe<AdminProductDetail>;
   /** 管理者向けのプロダクトカテゴリの一覧。productCategoriesと同じ順 */
   adminProductCategories: Array<ProductCategory>;
+  /** プロダクトの評価の一覧(更新日時の新しい順)。firstは1〜50 */
+  adminProductRatings: AdminRatingConnection;
+  /** プロダクトへの通報の件数と未完了の案件 */
+  adminProductReportSummary: AdminProductReportSummary;
+  /** 論理削除されていないプロダクトの一覧(登録日時の新しい順)。firstは1〜50 */
+  adminProducts: AdminProductConnection;
+  /** 隔離理由ごとの隔離画像の一覧(隔離された日時の新しい順に50件ずつ) */
+  adminQuarantinedImages: AdminQuarantinedImagePage;
+  /** 評価の一覧(更新日時の新しい順)。firstは1〜50 */
+  adminRatings: AdminRatingConnection;
+  /** 通報の案件の詳細。無ければnull */
+  adminReportCase?: Maybe<AdminReportCaseDetail>;
+  /** 通報の案件の一覧。最後の受付日時の新しい順 */
+  adminReportCases: AdminReportCaseConnection;
+  /** 管理画面の通報カテゴリ */
+  adminReportCategories: Array<AdminReportCategory>;
+  /** 退会者を除く申込の新しい順(1〜50件)。閲覧のみ以上の管理者 */
+  adminSponsorships: AdminSponsorshipConnection;
   /** 退会済みを除く「未対応」のログインと未ログインの問い合わせの合計件数。閲覧のみ以上 */
   adminUnhandledInquiryCount: Scalars['Int']['output'];
+  /** 未対応の案件の件数 */
+  adminUnhandledReportSummary: AdminUnhandledReportSummary;
+  /** 退会していない利用者の一覧(登録日時の新しい順)。firstは1〜50 */
+  adminUsers: AdminUserConnection;
   /** ログイン中の管理者。未ログイン・無効なセッションではnull */
   adminViewer?: Maybe<AdminViewer>;
+  /** 直近26週と集計中の今週の統計。表示のたびに集計し直さず、定期実行が保存した値を返す */
+  adminWeeklyStatistics: AdminWeeklyStatistics;
   /** 監査ログの検索。変更・削除の操作は無い */
   auditLogs: AuditLogPage;
   /** 本人の購入の決済画面の表示事項。他人・存在しない購入はcheckout_not_found */
@@ -2254,6 +3266,10 @@ export type Query = {
   matchSupporters?: Maybe<SupporterConnection>;
   /** 本人の問い合わせのチャット。本人の問い合わせでなければnull */
   memberInquiry?: Maybe<MemberInquiry>;
+  /** 自分のAPIキーの発行の新しい順の一覧。停止中の利用者も読める */
+  myApiKeys: ApiKeyConnection;
+  /** 自分のデータエクスポートの要求の新しい順の一覧。期限切れ・失敗を含む退会までの全ての要求を読め、停止中の利用者も読める */
+  myDataExports: DataExportConnection;
   /** ログイン中の利用者(停止中を含む)をフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20 */
   myFollowers: FollowEntryConnection;
   /** ログイン中の利用者(停止中を含む)がフォローしている、停止中でない利用者を新しい順に返す。firstは1〜20 */
@@ -2268,6 +3284,12 @@ export type Query = {
   myProfile: MyProfile;
   /** ログイン中の端末の一覧 */
   mySessions: Array<UserSessionSummary>;
+  /** ログイン中の利用者の申込の新しい順(1〜20件) */
+  mySponsorships: MySponsorshipConnection;
+  /** 投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull */
+  myWeekEntry?: Maybe<WeekEntryPanel>;
+  /** 投稿者本人のプロダクトの直近のローンチの参加の枠。未ログインはunauthenticated、本人のプロダクトでない・枠が無ければnull */
+  myYearEntry?: Maybe<YearEntryPanel>;
   /** 登録画面で選べるローンチ日 */
   newProductLaunchWindow: LaunchDateWindow;
   /** 通知メールの送信者情報の現在の値と最後の変更。閲覧のみ以上の管理者 */
@@ -2290,12 +3312,24 @@ export type Query = {
   productPage?: Maybe<ProductPageResult>;
   /** プロダクトの評価欄の値。閲覧できないプロダクトはnull */
   productRating?: Maybe<ProductRating>;
+  /** プロダクト詳細ページのトロフィー。Yearを先頭に、同じ種類は受賞の新しい順に並べる。詳細ページを閲覧できなければnull。ログインを求めない */
+  productTrophies?: Maybe<Array<Trophy>>;
   /** 公開プロフィールの受賞バッジ。launchHistoryと同じ対象のプロダクトの受賞を、Yearを先頭に種類ごとにまとめて返す。ラベルの先頭に受賞したプロダクトの名称を付ける。利用者を表示できなければnull */
   profileAwards?: Maybe<Array<ProductAward>>;
   /** 見つからない・表示できないハンドルではnull(404)。旧ハンドルは転送先を返す */
   publicProfile?: Maybe<PublicProfileResult>;
   /** トップページの当日の予選。開始済みの予選を対戦カードと不戦勝に分けて返す。ログインを求めない */
   qualifierBoard: QualifierBoard;
+  /** 通報のフォームで選べるカテゴリ */
+  reportCategories: Array<ReportCategory>;
+  /** 掲載中の広告。ログインを求めない */
+  sponsoredPlacements: SponsoredPlacements;
+  /** 料金ページのスポンサー広告の価格と申込の対象。ログインを求めない */
+  sponsorshipOffer: SponsorshipOffer;
+  /** 申込の対象のプロダクトとティアの掲載期間の選べる範囲。対象外はsponsorship_product_ineligible、形式の違う開始日はvalidation_error */
+  sponsorshipPeriodWindow: SponsorshipPeriodWindow;
+  /** 強制終了の未掲載日数・返金目安額・表示停止日数・表示停止の返金額。モデレーター以上の管理者。強制終了できなければsponsorship_not_terminable */
+  sponsorshipTerminationPreview: SponsorshipTerminationPreview;
   /** APIサーバーの時刻とデータベースへの到達可否 */
   systemStatus: SystemStatus;
   /** Ultrasの月額の価格と新規の加入の受付の状態。ログイン不要 */
@@ -2310,6 +3344,28 @@ export type Query = {
   viewerNotificationSettings: NotificationSettings;
   /** ログイン中の利用者のUltrasの加入状態と特典の有無。未ログインはnull */
   viewerUltras?: Maybe<ViewerUltras>;
+  /** Weekトーナメントのブラケット。週(YYYY-Www)が不正・組み合わせを決定していなければnull。ログインを求めない */
+  weekBracket?: Maybe<WeekBracket>;
+  /** トップページのWeekトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない */
+  weekTournamentBoard: WeekTournamentBoard;
+  /** Yearトーナメントのブラケット。年(4桁)が不正・行が無い・組み合わせを決定していなければnull。ログインを求めない */
+  yearBracket?: Maybe<YearBracket>;
+  /** 現在の年と翌年の決勝実施日の設定。管理者側の呼び出し元から、全てのロールの管理者が照会できる */
+  yearFinalDateSettings: YearFinalDateSettings;
+  /** トップページのYearトーナメントの区画。指定した業務日付(YYYY-MM-DD)のトーナメントのマッチを返す。ログインを求めない */
+  yearTournamentBoard: YearTournamentBoard;
+};
+
+
+export type QueryActiveSponsorshipCountArgs = {
+  productHandle: Scalars['String']['input'];
+};
+
+
+export type QueryAdminCommentsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminCommentFilter>;
+  first: Scalars['Int']['input'];
 };
 
 
@@ -2337,6 +3393,69 @@ export type QueryAdminLegalDocumentArgs = {
 export type QueryAdminLegalDocumentVersionArgs = {
   kind: LegalDocumentKind;
   versionNumber: Scalars['Int']['input'];
+};
+
+
+export type QueryAdminProductArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryAdminProductRatingsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first: Scalars['Int']['input'];
+  productId: Scalars['ID']['input'];
+};
+
+
+export type QueryAdminProductReportSummaryArgs = {
+  productId: Scalars['ID']['input'];
+};
+
+
+export type QueryAdminProductsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminProductFilter>;
+  first: Scalars['Int']['input'];
+};
+
+
+export type QueryAdminQuarantinedImagesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  reason: QuarantineReason;
+};
+
+
+export type QueryAdminRatingsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminRatingFilter>;
+  first: Scalars['Int']['input'];
+};
+
+
+export type QueryAdminReportCaseArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type QueryAdminReportCasesArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminReportCaseFilter>;
+  first: Scalars['Int']['input'];
+};
+
+
+export type QueryAdminSponsorshipsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminSponsorshipFilter>;
+  first: Scalars['Int']['input'];
+};
+
+
+export type QueryAdminUsersArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  filter?: InputMaybe<AdminUserFilter>;
+  first: Scalars['Int']['input'];
 };
 
 
@@ -2421,6 +3540,18 @@ export type QueryMemberInquiryArgs = {
 };
 
 
+export type QueryMyApiKeysArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryMyDataExportsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryMyFollowersArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first: Scalars['Int']['input'];
@@ -2446,6 +3577,22 @@ export type QueryMyProductArgs = {
 export type QueryMyProductsArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first: Scalars['Int']['input'];
+};
+
+
+export type QueryMySponsorshipsArgs = {
+  after?: InputMaybe<Scalars['String']['input']>;
+  first: Scalars['Int']['input'];
+};
+
+
+export type QueryMyWeekEntryArgs = {
+  productHandle: Scalars['String']['input'];
+};
+
+
+export type QueryMyYearEntryArgs = {
+  productHandle: Scalars['String']['input'];
 };
 
 
@@ -2486,6 +3633,11 @@ export type QueryProductRatingArgs = {
 };
 
 
+export type QueryProductTrophiesArgs = {
+  productHandle: Scalars['String']['input'];
+};
+
+
 export type QueryProfileAwardsArgs = {
   userHandle: Scalars['String']['input'];
 };
@@ -2496,10 +3648,42 @@ export type QueryPublicProfileArgs = {
 };
 
 
+export type QuerySponsorshipPeriodWindowArgs = {
+  productId: Scalars['ID']['input'];
+  startsOn?: InputMaybe<Scalars['String']['input']>;
+  tier: SponsorshipTier;
+};
+
+
+export type QuerySponsorshipTerminationPreviewArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type QueryUpvoteHistoryArgs = {
   after?: InputMaybe<Scalars['String']['input']>;
   first: Scalars['Int']['input'];
   userHandle: Scalars['String']['input'];
+};
+
+
+export type QueryWeekBracketArgs = {
+  week: Scalars['String']['input'];
+};
+
+
+export type QueryWeekTournamentBoardArgs = {
+  date: Scalars['String']['input'];
+};
+
+
+export type QueryYearBracketArgs = {
+  year: Scalars['String']['input'];
+};
+
+
+export type QueryYearTournamentBoardArgs = {
+  date: Scalars['String']['input'];
 };
 
 /** 重要な操作の本人確認 */
@@ -2538,6 +3722,48 @@ export type RelaunchBlockView = {
   releaseAt?: Maybe<Scalars['DateTime']['output']>;
 };
 
+/** 案件の操作の結果 */
+export type ReportCaseOutcome = {
+  __typename?: 'ReportCaseOutcome';
+  status: ReportCaseStatus;
+};
+
+/** 通報の案件の対応ステータス */
+export type ReportCaseStatus =
+  | 'IN_PROGRESS'
+  | 'OPEN'
+  | 'REJECTED'
+  | 'RESOLVED';
+
+/** 通報のフォームで選べるカテゴリ */
+export type ReportCategory = {
+  __typename?: 'ReportCategory';
+  id: Scalars['ID']['output'];
+  /** 権利侵害のカテゴリ。未ログインと停止中の利用者には連絡先メールアドレスを求める */
+  infringement: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+};
+
+/** 通報カテゴリの削除の結果 */
+export type ReportCategoryDeletion = {
+  __typename?: 'ReportCategoryDeletion';
+  /** 「その他」へ付け替えた通報の件数 */
+  reassignedCount: Scalars['Int']['output'];
+};
+
+/** 対応済の案件の措置。NONEは措置なしの対応済 */
+export type ReportResolution =
+  | 'COMMENT_HIDE'
+  | 'NONE'
+  | 'PRODUCT_HIDE'
+  | 'USER_SUSPEND';
+
+/** 通報の対象の種類 */
+export type ReportTargetKind =
+  | 'COMMENT'
+  | 'PRODUCT'
+  | 'USER';
+
 export type RequestEmailChangeInput = {
   newEmail: Scalars['String']['input'];
   reAuthentication: ReAuthenticationInput;
@@ -2558,6 +3784,11 @@ export type ResetPasswordInput = {
   token: Scalars['String']['input'];
 };
 
+/** 権利侵害の案件の対応期間の目標の超過 */
+export type ResponseTimeAlert =
+  | 'DECISION_OVERDUE'
+  | 'START_OVERDUE';
+
 /** 下書きの保存 */
 export type SaveLegalDocumentDraftInput = {
   body: Scalars['String']['input'];
@@ -2577,6 +3808,187 @@ export type SecondFactorRequired = {
   /** 第2要素の段階の要求と組にする値 */
   challenge: Scalars['String']['output'];
   expiresAt: Scalars['DateTime']['output'];
+};
+
+/** 申込の対象のプロダクト */
+export type SponsorableProduct = {
+  __typename?: 'SponsorableProduct';
+  handle: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  logo?: Maybe<MediaImage>;
+  name: Scalars['String']['output'];
+};
+
+/** 広告スペースに表示する広告 */
+export type SponsoredAd = {
+  __typename?: 'SponsoredAd';
+  /** 申込のID */
+  id: Scalars['ID']['output'];
+  logo?: Maybe<MediaImage>;
+  productName: Scalars['String']['output'];
+  /** Silverはnull */
+  tagline?: Maybe<Scalars['String']['output']>;
+  tier: SponsorshipTier;
+  /** 外部WebサイトURL。検証を通らなければnull */
+  websiteUrl?: Maybe<Scalars['String']['output']>;
+};
+
+/** ティアごとの広告。同じティアの中は照会ごとに無作為の順 */
+export type SponsoredPlacements = {
+  __typename?: 'SponsoredPlacements';
+  gold: Array<SponsoredAd>;
+  legend: Array<SponsoredAd>;
+  silver: Array<SponsoredAd>;
+};
+
+/** 選べない日の範囲(両端を含む業務日付のYYYY-MM-DD) */
+export type SponsorshipDateRange = {
+  __typename?: 'SponsorshipDateRange';
+  from: Scalars['String']['output'];
+  reason: SponsorshipDateUnavailableReason;
+  to: Scalars['String']['output'];
+};
+
+/** 選べない理由。範囲の外の日の理由(今日より前・365日後より後・開始日より前・366日を超える)は画面が範囲の種類から決める */
+export type SponsorshipDateUnavailableReason =
+  | 'OVERLAP';
+
+/** 選べる業務日付。earliestからlatestまでのうちunavailableの範囲を除く日を選べる */
+export type SponsorshipDateWindow = {
+  __typename?: 'SponsorshipDateWindow';
+  earliest: Scalars['String']['output'];
+  latest: Scalars['String']['output'];
+  unavailable: Array<SponsorshipDateRange>;
+};
+
+/** 料金ページのスポンサー広告の区画 */
+export type SponsorshipOffer = {
+  __typename?: 'SponsorshipOffer';
+  /** 閲覧者の申込の対象のプロダクトの名称の順。未ログインはnull */
+  eligibleProducts?: Maybe<Array<SponsorableProduct>>;
+  /** Legend・Gold・Silverの順 */
+  tiers: Array<SponsorshipTierOffer>;
+};
+
+/** 掲載期間の選べる範囲 */
+export type SponsorshipPeriodWindow = {
+  __typename?: 'SponsorshipPeriodWindow';
+  /** 業務日付の今日(YYYY-MM-DD) */
+  businessToday: Scalars['String']['output'];
+  /** 終了日の選べる範囲。startsOnを渡さない、またはstartsOnが選べない日ならnull */
+  end?: Maybe<SponsorshipDateWindow>;
+  /** 次の基準時刻の0:00。画面はこの時点で取り直す */
+  nextDayStartsAt: Scalars['DateTime']['output'];
+  /** 開始日の選べる範囲 */
+  start: SponsorshipDateWindow;
+};
+
+/** 自分の広告の対象のプロダクト */
+export type SponsorshipProduct = {
+  __typename?: 'SponsorshipProduct';
+  handle: Scalars['String']['output'];
+  /** プロダクトのページを表示できる */
+  listed: Scalars['Boolean']['output'];
+  logo?: Maybe<MediaImage>;
+  name: Scalars['String']['output'];
+};
+
+/** 日割りで依頼した返金 */
+export type SponsorshipRefund = {
+  __typename?: 'SponsorshipRefund';
+  /** 依頼した額。残りの全額で依頼したときはnull */
+  amount?: Maybe<Money>;
+  days: Scalars['Int']['output'];
+  status: SponsorshipRefundStatus;
+};
+
+/** 依頼した返金の状態。REQUESTEDは依頼済み、ALREADY_REFUNDEDは返金できる残りが無く返金済み、REJECTEDは拒否 */
+export type SponsorshipRefundStatus =
+  | 'ALREADY_REFUNDED'
+  | 'REJECTED'
+  | 'REQUESTED';
+
+/** 掲載状況。PAUSEDはプロダクトの非公開化か投稿者の停止による表示停止中 */
+export type SponsorshipStatus =
+  | 'ACTIVE'
+  | 'ENDED'
+  | 'PAUSED'
+  | 'PENDING_PAYMENT'
+  | 'SCHEDULED'
+  | 'TERMINATED';
+
+/** 強制終了の確認に示す日数と金額 */
+export type SponsorshipTerminationPreview = {
+  __typename?: 'SponsorshipTerminationPreview';
+  amountPaid: Money;
+  /** 掲載期間の日数 */
+  days: Scalars['Int']['output'];
+  /** 申込のID */
+  id: Scalars['ID']['output'];
+  /** 未掲載日数分の返金目安額 */
+  refundEstimate: Money;
+  /** 表示停止日数分の返金額 */
+  stopRefundAmount: Money;
+  /** 強制終了日より前の表示停止日数 */
+  stoppedDays: Scalars['Int']['output'];
+  /** 強制終了日と掲載開始日の遅い方から掲載終了日までの日数 */
+  unexposedDays: Scalars['Int']['output'];
+};
+
+/** 強制終了の確定の結果 */
+export type SponsorshipTerminationResult = {
+  __typename?: 'SponsorshipTerminationResult';
+  amountPaid: Money;
+  days: Scalars['Int']['output'];
+  /** 申込のID */
+  id: Scalars['ID']['output'];
+  /** 決済を探すための購入のID */
+  purchaseId: Scalars['ID']['output'];
+  refundEstimate: Money;
+  stopRefundAmount: Money;
+  /** 実際に依頼した額。残りの全額で依頼したとき・依頼しなかったときはnull */
+  stopRefundRequested?: Maybe<Money>;
+  /** 表示停止日数分の返金の状態。返金額が0ならnull */
+  stopRefundStatus?: Maybe<SponsorshipRefundStatus>;
+  stoppedDays: Scalars['Int']['output'];
+  /** 強制終了日(業務日付のYYYY-MM-DD) */
+  terminatedOn: Scalars['String']['output'];
+  /** 実際に依頼した額。残りの全額で依頼したとき・依頼しなかったときはnull */
+  terminationRefundRequested?: Maybe<Money>;
+  /** 未掲載日数分の返金の状態。返金額が0ならnull */
+  terminationRefundStatus?: Maybe<SponsorshipRefundStatus>;
+  unexposedDays: Scalars['Int']['output'];
+};
+
+/** スポンサー広告のティア */
+export type SponsorshipTier =
+  | 'GOLD'
+  | 'LEGEND'
+  | 'SILVER';
+
+/** ティアごとの1日あたりの税込の価格 */
+export type SponsorshipTierOffer = {
+  __typename?: 'SponsorshipTierOffer';
+  tier: SponsorshipTier;
+  /** 決済サービスから取得できなければnull */
+  unitPrice?: Maybe<Money>;
+};
+
+/** 通報の入力 */
+export type SubmitReportInput = {
+  categoryId: Scalars['ID']['input'];
+  /** 未ログインと停止中の利用者の権利侵害の通報だけで使い、他では捨てる */
+  contactEmail?: InputMaybe<Scalars['String']['input']>;
+  reason: Scalars['String']['input'];
+  targetKind: ReportTargetKind;
+  /** ユーザーはハンドル、プロダクトとコメントはID */
+  targetRef: Scalars['String']['input'];
+};
+
+/** 通報の受け付けの結果 */
+export type SubmitReportPayload = {
+  __typename?: 'SubmitReportPayload';
+  accepted: Scalars['Boolean']['output'];
 };
 
 export type SupporterConnection = {
@@ -2600,6 +4012,24 @@ export type TotpSetup = {
   /** 認証アプリへ手入力するためのbase32 */
   secret: Scalars['String']['output'];
 };
+
+/** プロダクトの受賞 */
+export type Trophy = {
+  __typename?: 'Trophy';
+  awardedAt: Scalars['DateTime']['output'];
+  /** ブラケットのページの経路。無ければnull */
+  bracketPath?: Maybe<Scalars['String']['output']>;
+  kind: TrophyKind;
+  /** 受賞の期間(「2026-W37」「2026」) */
+  period: Scalars['String']['output'];
+  /** 期間の表記(「2026年第37週(9/7〜9/13)」「2026年」) */
+  periodLabel: Scalars['String']['output'];
+};
+
+/** トロフィーの種類 */
+export type TrophyKind =
+  | 'WEEK'
+  | 'YEAR';
 
 /** 料金ページが表示するUltrasの料金と受付の状態 */
 export type UltrasOffer = {
@@ -2721,6 +4151,18 @@ export type UpdateUltrasPromotionSettingInput = {
   reason?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** 決勝実施日の保存の入力 */
+export type UpdateYearFinalDateInput = {
+  /** 照会で読み取った版 */
+  expectedVersion: Scalars['Int']['input'];
+  /** 決勝実施日(業務日付のYYYY-MM-DD) */
+  finalDate: Scalars['String']['input'];
+  /** 監査ログに残す理由(500文字以内、任意) */
+  reason?: InputMaybe<Scalars['String']['input']>;
+  /** 対象年(現在の年か翌年) */
+  year: Scalars['Int']['input'];
+};
+
 /** Upvote履歴の実施日ごとの件数 */
 export type UpvoteDateTotal = {
   __typename?: 'UpvoteDateTotal';
@@ -2817,6 +4259,327 @@ export type ViewerUltras = {
   entitled: Scalars['Boolean']['output'];
   /** 加入したことが無ければnull */
   plan?: Maybe<UltrasPlan>;
+};
+
+/** Weekトーナメントのブラケットのページ */
+export type WeekBracket = {
+  __typename?: 'WeekBracket';
+  /** 受賞したプロダクト。受賞なし・終了の前・表示できなければnull */
+  champion?: Maybe<MatchProduct>;
+  participantCount: Scalars['Int']['output'];
+  /** ラウンドの昇順。参加0・1は空 */
+  rounds: Array<BracketRound>;
+  seedCount: Scalars['Int']['output'];
+  tournament: WeekTournamentSummary;
+};
+
+/** 受付中で受付期限の前でも決済を始められない理由。文言は決済の開始の拒否と同じ */
+export type WeekEntryCheckoutBlock = {
+  __typename?: 'WeekEntryCheckoutBlock';
+  /** 決済の開始が拒否で返すエラーコード(week_entry_product_unavailable) */
+  code: Scalars['String']['output'];
+  message: Scalars['String']['output'];
+};
+
+/** 参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、LATE_ENTRYは組み合わせ決定の後に確定した予選の勝利 */
+export type WeekEntryCloseReason =
+  | 'DEADLINE'
+  | 'DELETED'
+  | 'HIDDEN_OR_SUSPENDED'
+  | 'LATE_ENTRY'
+  | 'WITHDRAWN';
+
+/** 投稿者本人の参加費の導線 */
+export type WeekEntryPanel = {
+  __typename?: 'WeekEntryPanel';
+  /** 決済の開始の受付期限(23:00) */
+  acceptUntil: Scalars['DateTime']['output'];
+  /** 組み合わせに入りブラケットを作った枠だけ。ブラケットのページの経路(/tournaments/week/<ISO週>) */
+  bracketPath?: Maybe<Scalars['String']['output']>;
+  /** 決済を始められる枠のうち、プロダクトを表示できない(非公開化・投稿者の停止)間だけ値がある。参加費とultrasGuideはそのまま返す */
+  checkoutBlock?: Maybe<WeekEntryCheckoutBlock>;
+  /** 終わった枠だけ */
+  closeReason?: Maybe<WeekEntryCloseReason>;
+  /** 決済期限 */
+  deadlineAt: Scalars['DateTime']['output'];
+  /** 組み合わせ決定の日時(23:45) */
+  drawAt: Scalars['DateTime']['output'];
+  /** Ultrasの特典により参加費を免除する */
+  exempt: Scalars['Boolean']['output'];
+  /** 参加費(税込のUSD)。決済を始められない枠と、決済サービスに到達できず照会できないときはnull */
+  fee?: Maybe<Money>;
+  /** 決済の開始に渡すローンチのID */
+  launchId: Scalars['ID']['output'];
+  /** 組み合わせに入った枠だけ */
+  progress?: Maybe<WeekEntryProgress>;
+  /** 照会の時点のサーバーの時刻。秒読みを合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+  status: WeekEntryStatus;
+  /** 決済を始められる枠で、投稿者がUltrasの特典を受けていない。Ultrasの導線を表示するかは画面が機能フラグで決める */
+  ultrasGuide: Scalars['Boolean']['output'];
+  /** ISO週(YYYY-Www) */
+  week: Scalars['String']['output'];
+  /** 週の表記(「2026年第37週(9/7〜9/13)」) */
+  weekLabel: Scalars['String']['output'];
+};
+
+/** 組み合わせに入った枠の進行 */
+export type WeekEntryProgress = {
+  __typename?: 'WeekEntryProgress';
+  /** 敗退しておらず、優勝もしていない */
+  alive: Scalars['Boolean']['output'];
+  /** Product of the Weekを受賞した */
+  champion: Scalars['Boolean']['output'];
+  /** 敗退したラウンド名。敗退していなければnull */
+  eliminatedRoundName?: Maybe<Scalars['String']['output']>;
+};
+
+/** Weekトーナメントの参加の枠の状態。AWAITING_PAYMENTは参加費の支払い待ち、ENTITLEDは参加資格を得た、DRAWNは組み合わせに入った、EXPIREDは期限切れ、FORFEITEDは資格の喪失、EXCLUDEDは組み合わせ決定での除外 */
+export type WeekEntryStatus =
+  | 'AWAITING_PAYMENT'
+  | 'DRAWN'
+  | 'ENTITLED'
+  | 'EXCLUDED'
+  | 'EXPIRED'
+  | 'FORFEITED';
+
+/** トップページのWeekトーナメントの区画 */
+export type WeekTournamentBoard = {
+  __typename?: 'WeekTournamentBoard';
+  /** 業務日付(YYYY-MM-DD) */
+  date: Scalars['String']['output'];
+  /** 1回戦の日の昇順。その日にマッチが無ければ空 */
+  rounds: Array<WeekTournamentRoundBoard>;
+  /** 照会の時点のサーバーの時刻。カウントダウンを合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+};
+
+/** トップページの区画の1行。トーナメントとラウンドごとに、その日のマッチを対戦カードと不戦勝に分ける */
+export type WeekTournamentRoundBoard = {
+  __typename?: 'WeekTournamentRoundBoard';
+  /** ブラケットのページの経路(/tournaments/week/<ISO週>) */
+  bracketPath: Scalars['String']['output'];
+  /** 不戦勝。ブラケットの位置の順。両者の不戦敗のマッチは含めない */
+  byes: Array<MatchBye>;
+  /** 決勝のラウンド */
+  final: Scalars['Boolean']['output'];
+  /** 対戦カード。ブラケットの位置の順 */
+  matches: Array<Match>;
+  /** ラウンドの番号(1回戦が1) */
+  round: Scalars['Int']['output'];
+  /** ラウンド名(「1回戦」「準決勝」など) */
+  roundName: Scalars['String']['output'];
+  tournament: WeekTournamentSummary;
+};
+
+/** Weekトーナメントの状態。OPENは参加の受付中、DRAWINGは組み合わせの決定中、IN_PROGRESSは開催中、FINISHEDは終了 */
+export type WeekTournamentStatus =
+  | 'DRAWING'
+  | 'FINISHED'
+  | 'IN_PROGRESS'
+  | 'OPEN';
+
+/** Weekトーナメントの見出しの情報 */
+export type WeekTournamentSummary = {
+  __typename?: 'WeekTournamentSummary';
+  /** 賞を授与すれば真、受賞なしで終了すれば偽、終了の前はnull */
+  awarded?: Maybe<Scalars['Boolean']['output']>;
+  /** 決勝の実施日(業務日付のYYYY-MM-DD)。遅れがあれば見込みの日。組み合わせの決定の前と参加0・1はnull */
+  finalDate?: Maybe<Scalars['String']['output']>;
+  /** 1回戦の実施日(業務日付のYYYY-MM-DD)。組み合わせの決定の前はnull */
+  firstRoundDate?: Maybe<Scalars['String']['output']>;
+  /** 週の表記(「2026年第37週(9/7〜9/13)」) */
+  label: Scalars['String']['output'];
+  status: WeekTournamentStatus;
+  /** ISO週(YYYY-Www) */
+  week: Scalars['String']['output'];
+};
+
+/** Yearトーナメントのブラケットのページ */
+export type YearBracket = {
+  __typename?: 'YearBracket';
+  /** 受賞したプロダクト。受賞なし・終了の前・表示できなければnull */
+  champion?: Maybe<MatchProduct>;
+  participantCount: Scalars['Int']['output'];
+  /** ラウンドの昇順。参加0・1は空 */
+  rounds: Array<BracketRound>;
+  seedCount: Scalars['Int']['output'];
+  tournament: YearTournamentSummary;
+};
+
+/** 参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、OVER_CAPACITYは参加数の上限による除外、LATE_ENTRYは組み合わせ決定の後に確定したWeek優勝 */
+export type YearEntryCloseReason =
+  | 'DEADLINE'
+  | 'DELETED'
+  | 'HIDDEN_OR_SUSPENDED'
+  | 'LATE_ENTRY'
+  | 'OVER_CAPACITY'
+  | 'WITHDRAWN';
+
+/** 投稿者本人の参加費の導線 */
+export type YearEntryPanel = {
+  __typename?: 'YearEntryPanel';
+  /** 決済の開始の受付期限(23:00) */
+  acceptUntil: Scalars['DateTime']['output'];
+  /** 組み合わせに入りブラケットを作った枠だけ。ブラケットのページの経路(/tournaments/year/<年>) */
+  bracketPath?: Maybe<Scalars['String']['output']>;
+  /** 終わった枠だけ */
+  closeReason?: Maybe<YearEntryCloseReason>;
+  /** 決済期限 */
+  deadlineAt: Scalars['DateTime']['output'];
+  /** 組み合わせ決定の日時(23:45) */
+  drawAt: Scalars['DateTime']['output'];
+  /** Ultrasの特典により参加費を免除する */
+  exempt: Scalars['Boolean']['output'];
+  /** 参加費(税込のUSD)。決済を始められない枠と、決済サービスに到達できず照会できないときはnull */
+  fee?: Maybe<Money>;
+  /** 対象年の決勝の実施日(業務日付のYYYY-MM-DD) */
+  finalDate: Scalars['String']['output'];
+  /** 決済の開始に渡すローンチのID */
+  launchId: Scalars['ID']['output'];
+  /** 組み合わせに入った枠だけ */
+  progress?: Maybe<YearEntryProgress>;
+  /** 支払った参加費が自動の全額返金の対象(返金の依頼の前か依頼中) */
+  refundable: Scalars['Boolean']['output'];
+  /** 照会の時点のサーバーの時刻。秒読みを合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+  status: YearEntryStatus;
+  /** Week優勝の週の表記(「2026年第47週(11/16〜11/22)」) */
+  weekLabel: Scalars['String']['output'];
+  /** 対象年 */
+  year: Scalars['Int']['output'];
+  /** 対象年の表記(「2027年」) */
+  yearLabel: Scalars['String']['output'];
+};
+
+/** 組み合わせに入った枠の進行 */
+export type YearEntryProgress = {
+  __typename?: 'YearEntryProgress';
+  /** 敗退しておらず、優勝もしていない */
+  alive: Scalars['Boolean']['output'];
+  /** Product of the Yearを受賞した */
+  champion: Scalars['Boolean']['output'];
+  /** 敗退したラウンド名。敗退していなければnull */
+  eliminatedRoundName?: Maybe<Scalars['String']['output']>;
+};
+
+/** Yearトーナメントの参加の枠の状態。AWAITING_PAYMENTは参加費の支払い待ち、ENTITLEDは参加資格を得た、DRAWNは組み合わせに入った、EXPIREDは期限切れ、FORFEITEDは資格の喪失、EXCLUDEDは組み合わせ決定での除外 */
+export type YearEntryStatus =
+  | 'AWAITING_PAYMENT'
+  | 'DRAWN'
+  | 'ENTITLED'
+  | 'EXCLUDED'
+  | 'EXPIRED'
+  | 'FORFEITED';
+
+/** 対象年の決勝実施日の設定 */
+export type YearFinalDateSetting = {
+  __typename?: 'YearFinalDateSetting';
+  /** 決済の開始の受付期限(23:00) */
+  acceptUntil: Scalars['DateTime']['output'];
+  /** 変更期限(決勝実施日の7日前の0:00) */
+  changeLockAt: Scalars['DateTime']['output'];
+  /** 変更期限の前で組み合わせ決定が始まっていない。閲覧者のロールは含めない */
+  changeable: Scalars['Boolean']['output'];
+  /** 選べる決勝実施日(業務日付のYYYY-MM-DD)の昇順。変更できなければ空 */
+  choices: Array<Scalars['String']['output']>;
+  /** 決済期限(23:35) */
+  deadlineAt: Scalars['DateTime']['output'];
+  /** 組み合わせ決定の日時(23:45) */
+  drawAt: Scalars['DateTime']['output'];
+  /** 実効の決勝実施日(業務日付のYYYY-MM-DD) */
+  finalDate: Scalars['String']['output'];
+  /** 翌年の実効の決勝実施日 */
+  nextYearFinalDate?: Maybe<Scalars['String']['output']>;
+  /** 翌年が未設定で、その既定の日がこの年の決勝実施日の64週間後以降になるとき、翌年の既定の日 */
+  nextYearGapWarningDate?: Maybe<Scalars['String']['output']>;
+  nextYearSource?: Maybe<YearFinalDateSource>;
+  /** 前年の決勝実施日。前年を開催しない(設定済みと扱わない)ならnull */
+  previousYearFinalDate?: Maybe<Scalars['String']['output']>;
+  source: YearFinalDateSource;
+  /** 最後に変更した日時。未設定はnull */
+  updatedAt?: Maybe<Scalars['DateTime']['output']>;
+  /** 最後に変更した管理者。未設定はnull */
+  updatedBy?: Maybe<YearFinalDateUpdater>;
+  /** 保存に渡す版。未設定は0 */
+  version: Scalars['Int']['output'];
+  /** 対象年 */
+  year: Scalars['Int']['output'];
+};
+
+/** 管理画面のYearトーナメントの決勝実施日の区画 */
+export type YearFinalDateSettings = {
+  __typename?: 'YearFinalDateSettings';
+  /** 照会の時点のサーバーの時刻 */
+  serverTime: Scalars['DateTime']['output'];
+  /** 現在の年と翌年の順 */
+  settings: Array<YearFinalDateSetting>;
+};
+
+/** 決勝実施日の決まり方。EXPLICITは最上位管理者が設定した日、DEFAULTは対象年5月の最終日曜日 */
+export type YearFinalDateSource =
+  | 'DEFAULT'
+  | 'EXPLICIT';
+
+/** 決勝実施日を最後に変更した管理者 */
+export type YearFinalDateUpdater = {
+  __typename?: 'YearFinalDateUpdater';
+  /** 削除済み・招待中の管理者はnull */
+  nickname?: Maybe<Scalars['String']['output']>;
+};
+
+/** トップページのYearトーナメントの区画 */
+export type YearTournamentBoard = {
+  __typename?: 'YearTournamentBoard';
+  /** 業務日付(YYYY-MM-DD) */
+  date: Scalars['String']['output'];
+  /** 年の昇順。その日にマッチが無ければ空 */
+  rounds: Array<YearTournamentRoundBoard>;
+  /** 照会の時点のサーバーの時刻。カウントダウンを合わせるのに使う */
+  serverTime: Scalars['DateTime']['output'];
+};
+
+/** トップページの区画の1行。年とラウンドごとに、その日のマッチを対戦カードと不戦勝に分ける */
+export type YearTournamentRoundBoard = {
+  __typename?: 'YearTournamentRoundBoard';
+  /** ブラケットのページの経路(/tournaments/year/<年>) */
+  bracketPath: Scalars['String']['output'];
+  /** 不戦勝。ブラケットの位置の順。両者の不戦敗のマッチは含めない */
+  byes: Array<MatchBye>;
+  /** 決勝のラウンド */
+  final: Scalars['Boolean']['output'];
+  /** 決勝の実施日(業務日付のYYYY-MM-DD)。遅れがあれば見込みの日 */
+  finalDate: Scalars['String']['output'];
+  /** 対戦カード。ブラケットの位置の順 */
+  matches: Array<Match>;
+  /** ラウンドの番号(1回戦が1) */
+  round: Scalars['Int']['output'];
+  /** ラウンド名(「1回戦」「準決勝」など) */
+  roundName: Scalars['String']['output'];
+  tournament: YearTournamentSummary;
+};
+
+/** Yearトーナメントの状態。OPENは参加の受付中、DRAWINGは組み合わせの決定中、IN_PROGRESSは開催中、FINISHEDは終了 */
+export type YearTournamentStatus =
+  | 'DRAWING'
+  | 'FINISHED'
+  | 'IN_PROGRESS'
+  | 'OPEN';
+
+/** Yearトーナメントの見出しの情報 */
+export type YearTournamentSummary = {
+  __typename?: 'YearTournamentSummary';
+  /** 賞を授与すれば真、受賞なしで終了すれば偽、終了の前はnull。受賞したプロダクトが表示できなくなっても真のまま */
+  awarded?: Maybe<Scalars['Boolean']['output']>;
+  /** 設定した決勝の実施日(業務日付のYYYY-MM-DD) */
+  finalDate: Scalars['String']['output'];
+  /** 組み合わせの決定で記録した1回戦の実施日(業務日付のYYYY-MM-DD)。組み合わせの決定の前と参加0・1はnull */
+  firstRoundDate?: Maybe<Scalars['String']['output']>;
+  /** 対象年の表記(「2027年」) */
+  label: Scalars['String']['output'];
+  status: YearTournamentStatus;
+  /** 対象年 */
+  year: Scalars['Int']['output'];
 };
 
 
@@ -2918,9 +4681,15 @@ export type ResolversTypes = {
   AccountStatus: AccountStatus;
   AdminAccount: ResolverTypeWrapper<AdminAccountSource>;
   AdminAccountStatus: AdminAccountStatus;
+  AdminCategoryRef: ResolverTypeWrapper<AdminCategoryRef>;
+  AdminComment: ResolverTypeWrapper<AdminComment>;
+  AdminCommentConnection: ResolverTypeWrapper<AdminCommentConnection>;
+  AdminCommentFilter: AdminCommentFilter;
+  AdminCommentState: AdminCommentState;
   AdminConfirmationResult: ResolverTypeWrapper<Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['AdminViewer']> }>;
   AdminHelpArticle: ResolverTypeWrapper<Omit<AdminHelpArticle, 'creator'> & { creator?: Maybe<ResolversTypes['HelpArticleAuthor']> }>;
   AdminHelpArticleRow: ResolverTypeWrapper<Omit<AdminHelpArticleRow, 'creator'> & { creator?: Maybe<ResolversTypes['HelpArticleAuthor']> }>;
+  AdminImageOwner: ResolverTypeWrapper<AdminImageOwner>;
   AdminInquiry: ResolverTypeWrapper<AdminInquiryModel>;
   AdminInquiryCategory: ResolverTypeWrapper<AdminInquiryCategory>;
   AdminInquiryFilterInput: AdminInquiryFilterInput;
@@ -2928,24 +4697,77 @@ export type ResolversTypes = {
   AdminInquiryMember: ResolverTypeWrapper<AdminInquiryMemberModel>;
   AdminInquiryPage: ResolverTypeWrapper<Omit<AdminInquiryPage, 'entries'> & { entries: Array<ResolversTypes['AdminInquirySummary']> }>;
   AdminInquirySummary: ResolverTypeWrapper<AdminInquirySummaryModel>;
+  AdminLaunch: ResolverTypeWrapper<AdminLaunch>;
   AdminLegalDocument: ResolverTypeWrapper<AdminLegalDocument>;
   AdminLegalDocumentSummary: ResolverTypeWrapper<AdminLegalDocumentSummary>;
   AdminLegalDocumentVersion: ResolverTypeWrapper<AdminLegalDocumentVersion>;
   AdminLegalDraft: ResolverTypeWrapper<AdminLegalDraft>;
   AdminLegalRevision: ResolverTypeWrapper<AdminLegalRevision>;
+  AdminMatchResult: ResolverTypeWrapper<AdminMatchResult>;
+  AdminMediaFile: ResolverTypeWrapper<AdminMediaFile>;
+  AdminOpenReportCaseRef: ResolverTypeWrapper<AdminOpenReportCaseRef>;
+  AdminProduct: ResolverTypeWrapper<AdminProduct>;
+  AdminProductConnection: ResolverTypeWrapper<AdminProductConnection>;
+  AdminProductDetail: ResolverTypeWrapper<AdminProductDetail>;
+  AdminProductFilter: AdminProductFilter;
+  AdminProductLaunchState: AdminProductLaunchState;
+  AdminProductReportSummary: ResolverTypeWrapper<AdminProductReportSummary>;
+  AdminProductVisibility: AdminProductVisibility;
+  AdminQuarantinedImage: ResolverTypeWrapper<AdminQuarantinedImage>;
+  AdminQuarantinedImagePage: ResolverTypeWrapper<AdminQuarantinedImagePage>;
+  AdminRating: ResolverTypeWrapper<AdminRating>;
+  AdminRatingConnection: ResolverTypeWrapper<AdminRatingConnection>;
+  AdminRatingFilter: AdminRatingFilter;
+  AdminRatingState: AdminRatingState;
+  AdminRatingSummary: ResolverTypeWrapper<AdminRatingSummary>;
   AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: ResolverTypeWrapper<AdminRecoveryCodeSet>;
+  AdminReport: ResolverTypeWrapper<AdminReport>;
+  AdminReportCase: ResolverTypeWrapper<AdminReportCase>;
+  AdminReportCaseConnection: ResolverTypeWrapper<AdminReportCaseConnection>;
+  AdminReportCaseDetail: ResolverTypeWrapper<AdminReportCaseDetail>;
+  AdminReportCaseFilter: AdminReportCaseFilter;
+  AdminReportCategory: ResolverTypeWrapper<AdminReportCategory>;
+  AdminReportCategoryCount: ResolverTypeWrapper<AdminReportCategoryCount>;
+  AdminReportInquiry: ResolverTypeWrapper<AdminReportInquiry>;
+  AdminReportResponseTime: ResolverTypeWrapper<AdminReportResponseTime>;
+  AdminReportTarget: ResolverTypeWrapper<AdminReportTarget>;
+  AdminReporter: ResolverTypeWrapper<AdminReporter>;
   AdminRole: AdminRole;
   AdminSecondFactorInput: AdminSecondFactorInput;
   AdminSecondFactorRequired: ResolverTypeWrapper<AdminSecondFactorRequired>;
+  AdminSponsorship: ResolverTypeWrapper<AdminSponsorship>;
+  AdminSponsorshipConnection: ResolverTypeWrapper<AdminSponsorshipConnection>;
+  AdminSponsorshipFilter: AdminSponsorshipFilter;
+  AdminSponsorshipStatusFilter: AdminSponsorshipStatusFilter;
+  AdminStatisticsWeek: ResolverTypeWrapper<AdminStatisticsWeek>;
   AdminTotpSetup: ResolverTypeWrapper<AdminTotpSetup>;
+  AdminUnhandledReportSummary: ResolverTypeWrapper<AdminUnhandledReportSummary>;
+  AdminUser: ResolverTypeWrapper<AdminUser>;
+  AdminUserConnection: ResolverTypeWrapper<AdminUserConnection>;
+  AdminUserFilter: AdminUserFilter;
+  AdminUserStatus: AdminUserStatus;
+  AdminUserSummary: ResolverTypeWrapper<AdminUserSummary>;
   AdminViewer: ResolverTypeWrapper<AdminViewerSource>;
+  AdminWeeklyStatistics: ResolverTypeWrapper<AdminWeeklyStatistics>;
+  AdministrativeWithdrawalInput: AdministrativeWithdrawalInput;
+  ApiKey: ResolverTypeWrapper<ApiKey>;
+  ApiKeyConnection: ResolverTypeWrapper<ApiKeyConnection>;
+  ApiKeyInput: ApiKeyInput;
+  ApiKeyReadLevel: ApiKeyReadLevel;
+  ApiKeyScopes: ResolverTypeWrapper<ApiKeyScopes>;
+  ApiKeyScopesInput: ApiKeyScopesInput;
+  ApiKeyWriteLevel: ApiKeyWriteLevel;
+  ApplySponsorshipInput: ApplySponsorshipInput;
   AuditDetail: ResolverTypeWrapper<AuditDetail>;
   AuditLogEntry: ResolverTypeWrapper<AuditLogEntry>;
   AuditLogFilterInput: AuditLogFilterInput;
   AuditLogPage: ResolverTypeWrapper<AuditLogPage>;
   AuditOperator: ResolverTypeWrapper<AuditOperator>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
+  BracketNode: ResolverTypeWrapper<BracketNodeSource>;
+  BracketRound: ResolverTypeWrapper<BracketRoundSource>;
+  BracketSlot: ResolverTypeWrapper<BracketSlotSource>;
   ByeReason: ByeReason;
   Checkout: ResolverTypeWrapper<Checkout>;
   CheckoutRejectionReason: CheckoutRejectionReason;
@@ -2957,6 +4779,10 @@ export type ResolversTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: ResolverTypeWrapper<Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversTypes['Viewer']> }>;
   CreateHelpArticleInput: CreateHelpArticleInput;
+  DataExport: ResolverTypeWrapper<DataExport>;
+  DataExportConnection: ResolverTypeWrapper<DataExportConnection>;
+  DataExportFailureKind: DataExportFailureKind;
+  DataExportStatus: DataExportStatus;
   DateTime: ResolverTypeWrapper<Scalars['DateTime']['output']>;
   DeleteHelpArticlePayload: ResolverTypeWrapper<DeleteHelpArticlePayload>;
   DeleteHelpCategoryPayload: ResolverTypeWrapper<DeleteHelpCategoryPayload>;
@@ -2971,6 +4797,7 @@ export type ResolversTypes = {
   DirectoryWin: ResolverTypeWrapper<DirectoryWin>;
   DirectoryWinKind: DirectoryWinKind;
   DiscardLegalDocumentDraftInput: DiscardLegalDocumentDraftInput;
+  DisposableEmailCheck: DisposableEmailCheck;
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   FollowEntry: ResolverTypeWrapper<Omit<FollowEntry, 'user'> & { user: ResolversTypes['UserSummary'] }>;
   FollowEntryConnection: ResolverTypeWrapper<Omit<FollowEntryConnection, 'nodes'> & { nodes: Array<ResolversTypes['FollowEntry']> }>;
@@ -2990,6 +4817,7 @@ export type ResolversTypes = {
   HelpCenterCategory: ResolverTypeWrapper<HelpCenterCategory>;
   HelpSearchHit: ResolverTypeWrapper<HelpSearchHit>;
   ID: ResolverTypeWrapper<Scalars['ID']['output']>;
+  InfringementInquiryOutcome: ResolverTypeWrapper<InfringementInquiryOutcome>;
   InquiryCategory: ResolverTypeWrapper<InquiryCategory>;
   InquiryComposer: ResolverTypeWrapper<InquiryComposerModel>;
   InquiryKind: InquiryKind;
@@ -3000,6 +4828,7 @@ export type ResolversTypes = {
   InquirySender: InquirySender;
   InquiryStatus: InquiryStatus;
   Int: ResolverTypeWrapper<Scalars['Int']['output']>;
+  IssuedApiKey: ResolverTypeWrapper<IssuedApiKey>;
   LaunchComment: ResolverTypeWrapper<LaunchCommentModel>;
   LaunchCommentConnection: ResolverTypeWrapper<Omit<LaunchCommentConnection, 'nodes'> & { nodes: Array<ResolversTypes['LaunchCommentThread']> }>;
   LaunchCommentCount: ResolverTypeWrapper<LaunchCommentCount>;
@@ -3038,6 +4867,8 @@ export type ResolversTypes = {
   MemberInquiryInput: MemberInquiryInput;
   MemberInquiryPage: ResolverTypeWrapper<Omit<MemberInquiryPage, 'items'> & { items: Array<ResolversTypes['MemberInquirySummary']> }>;
   MemberInquirySummary: ResolverTypeWrapper<MemberInquirySummaryModel>;
+  ModerationNote: ResolverTypeWrapper<ModerationNote>;
+  ModerationOutcome: ResolverTypeWrapper<ModerationOutcome>;
   Money: ResolverTypeWrapper<Money>;
   Mutation: ResolverTypeWrapper<Record<PropertyKey, never>>;
   MyProduct: ResolverTypeWrapper<MyProductModel>;
@@ -3045,6 +4876,8 @@ export type ResolversTypes = {
   MyProductRedirect: ResolverTypeWrapper<MyProductRedirect>;
   MyProductResult: ResolverTypeWrapper<ResolversUnionTypes<ResolversTypes>['MyProductResult']>;
   MyProfile: ResolverTypeWrapper<MyProfileModel>;
+  MySponsorship: ResolverTypeWrapper<Omit<MySponsorship, 'product'> & { product?: Maybe<ResolversTypes['SponsorshipProduct']> }>;
+  MySponsorshipConnection: ResolverTypeWrapper<Omit<MySponsorshipConnection, 'nodes'> & { nodes: Array<ResolversTypes['MySponsorship']> }>;
   NotificationPreference: ResolverTypeWrapper<NotificationPreference>;
   NotificationSenderInfo: ResolverTypeWrapper<NotificationSenderInfo>;
   NotificationSenderInfoState: ResolverTypeWrapper<NotificationSenderInfoState>;
@@ -3090,23 +4923,51 @@ export type ResolversTypes = {
   QualifierBoard: ResolverTypeWrapper<Omit<QualifierBoard, 'byes' | 'matches'> & { byes: Array<ResolversTypes['MatchBye']>, matches: Array<ResolversTypes['Match']> }>;
   QualifierBoardPhase: QualifierBoardPhase;
   QualifierOutcome: QualifierOutcome;
+  QuarantineReason: QuarantineReason;
   Query: ResolverTypeWrapper<Record<PropertyKey, never>>;
   ReAuthenticationInput: ReAuthenticationInput;
   RecoveryCodeSet: ResolverTypeWrapper<RecoveryCodeSet>;
   RegisterProductInput: RegisterProductInput;
   RegisterUserInput: RegisterUserInput;
   RelaunchBlockView: ResolverTypeWrapper<RelaunchBlockView>;
+  ReportCaseOutcome: ResolverTypeWrapper<ReportCaseOutcome>;
+  ReportCaseStatus: ReportCaseStatus;
+  ReportCategory: ResolverTypeWrapper<ReportCategory>;
+  ReportCategoryDeletion: ResolverTypeWrapper<ReportCategoryDeletion>;
+  ReportResolution: ReportResolution;
+  ReportTargetKind: ReportTargetKind;
   RequestEmailChangeInput: RequestEmailChangeInput;
   RequestPasswordChangeInput: RequestPasswordChangeInput;
   ResendVerificationResult: ResendVerificationResult;
   ResetPasswordInput: ResetPasswordInput;
+  ResponseTimeAlert: ResponseTimeAlert;
   SaveLegalDocumentDraftInput: SaveLegalDocumentDraftInput;
   SecondFactorInput: SecondFactorInput;
   SecondFactorRequired: ResolverTypeWrapper<SecondFactorRequired>;
+  SponsorableProduct: ResolverTypeWrapper<SponsorableProductModel>;
+  SponsoredAd: ResolverTypeWrapper<SponsoredAdModel>;
+  SponsoredPlacements: ResolverTypeWrapper<Omit<SponsoredPlacements, 'gold' | 'legend' | 'silver'> & { gold: Array<ResolversTypes['SponsoredAd']>, legend: Array<ResolversTypes['SponsoredAd']>, silver: Array<ResolversTypes['SponsoredAd']> }>;
+  SponsorshipDateRange: ResolverTypeWrapper<SponsorshipDateRange>;
+  SponsorshipDateUnavailableReason: SponsorshipDateUnavailableReason;
+  SponsorshipDateWindow: ResolverTypeWrapper<SponsorshipDateWindow>;
+  SponsorshipOffer: ResolverTypeWrapper<Omit<SponsorshipOffer, 'eligibleProducts'> & { eligibleProducts?: Maybe<Array<ResolversTypes['SponsorableProduct']>> }>;
+  SponsorshipPeriodWindow: ResolverTypeWrapper<SponsorshipPeriodWindow>;
+  SponsorshipProduct: ResolverTypeWrapper<SponsorshipProductModel>;
+  SponsorshipRefund: ResolverTypeWrapper<SponsorshipRefund>;
+  SponsorshipRefundStatus: SponsorshipRefundStatus;
+  SponsorshipStatus: SponsorshipStatus;
+  SponsorshipTerminationPreview: ResolverTypeWrapper<SponsorshipTerminationPreview>;
+  SponsorshipTerminationResult: ResolverTypeWrapper<SponsorshipTerminationResult>;
+  SponsorshipTier: SponsorshipTier;
+  SponsorshipTierOffer: ResolverTypeWrapper<SponsorshipTierOffer>;
   String: ResolverTypeWrapper<Scalars['String']['output']>;
+  SubmitReportInput: SubmitReportInput;
+  SubmitReportPayload: ResolverTypeWrapper<SubmitReportPayload>;
   SupporterConnection: ResolverTypeWrapper<Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversTypes['UserSummary']> }>;
   SystemStatus: ResolverTypeWrapper<SystemStatus>;
   TotpSetup: ResolverTypeWrapper<TotpSetup>;
+  Trophy: ResolverTypeWrapper<Trophy>;
+  TrophyKind: TrophyKind;
   UltrasOffer: ResolverTypeWrapper<UltrasOffer>;
   UltrasPlan: ResolverTypeWrapper<UltrasPlan>;
   UltrasPlanStatus: UltrasPlanStatus;
@@ -3119,6 +4980,7 @@ export type ResolversTypes = {
   UpdateNotificationSenderInfoInput: UpdateNotificationSenderInfoInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
+  UpdateYearFinalDateInput: UpdateYearFinalDateInput;
   UpvoteDateTotal: ResolverTypeWrapper<UpvoteDateTotal>;
   UpvoteHistoryConnection: ResolverTypeWrapper<Omit<UpvoteHistoryConnection, 'nodes'> & { nodes: Array<ResolversTypes['UpvoteHistoryItem']> }>;
   UpvoteHistoryItem: ResolverTypeWrapper<UpvoteHistoryItemModel>;
@@ -3128,14 +4990,42 @@ export type ResolversTypes = {
   UserSummary: ResolverTypeWrapper<UserSummarySource>;
   Viewer: ResolverTypeWrapper<ViewerSource>;
   ViewerUltras: ResolverTypeWrapper<ViewerUltras>;
+  WeekBracket: ResolverTypeWrapper<Omit<WeekBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversTypes['MatchProduct']>, rounds: Array<ResolversTypes['BracketRound']> }>;
+  WeekEntryCheckoutBlock: ResolverTypeWrapper<WeekEntryCheckoutBlock>;
+  WeekEntryCloseReason: WeekEntryCloseReason;
+  WeekEntryPanel: ResolverTypeWrapper<WeekEntryPanel>;
+  WeekEntryProgress: ResolverTypeWrapper<WeekEntryProgress>;
+  WeekEntryStatus: WeekEntryStatus;
+  WeekTournamentBoard: ResolverTypeWrapper<Omit<WeekTournamentBoard, 'rounds'> & { rounds: Array<ResolversTypes['WeekTournamentRoundBoard']> }>;
+  WeekTournamentRoundBoard: ResolverTypeWrapper<WeekTournamentRoundBoardModel>;
+  WeekTournamentStatus: WeekTournamentStatus;
+  WeekTournamentSummary: ResolverTypeWrapper<WeekTournamentSummary>;
+  YearBracket: ResolverTypeWrapper<Omit<YearBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversTypes['MatchProduct']>, rounds: Array<ResolversTypes['BracketRound']> }>;
+  YearEntryCloseReason: YearEntryCloseReason;
+  YearEntryPanel: ResolverTypeWrapper<YearEntryPanel>;
+  YearEntryProgress: ResolverTypeWrapper<YearEntryProgress>;
+  YearEntryStatus: YearEntryStatus;
+  YearFinalDateSetting: ResolverTypeWrapper<YearFinalDateSetting>;
+  YearFinalDateSettings: ResolverTypeWrapper<YearFinalDateSettings>;
+  YearFinalDateSource: YearFinalDateSource;
+  YearFinalDateUpdater: ResolverTypeWrapper<YearFinalDateUpdater>;
+  YearTournamentBoard: ResolverTypeWrapper<Omit<YearTournamentBoard, 'rounds'> & { rounds: Array<ResolversTypes['YearTournamentRoundBoard']> }>;
+  YearTournamentRoundBoard: ResolverTypeWrapper<YearTournamentRoundBoardModel>;
+  YearTournamentStatus: YearTournamentStatus;
+  YearTournamentSummary: ResolverTypeWrapper<YearTournamentSummary>;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
 export type ResolversParentTypes = {
   AdminAccount: AdminAccountSource;
+  AdminCategoryRef: AdminCategoryRef;
+  AdminComment: AdminComment;
+  AdminCommentConnection: AdminCommentConnection;
+  AdminCommentFilter: AdminCommentFilter;
   AdminConfirmationResult: Omit<AdminConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['AdminViewer']> };
   AdminHelpArticle: Omit<AdminHelpArticle, 'creator'> & { creator?: Maybe<ResolversParentTypes['HelpArticleAuthor']> };
   AdminHelpArticleRow: Omit<AdminHelpArticleRow, 'creator'> & { creator?: Maybe<ResolversParentTypes['HelpArticleAuthor']> };
+  AdminImageOwner: AdminImageOwner;
   AdminInquiry: AdminInquiryModel;
   AdminInquiryCategory: AdminInquiryCategory;
   AdminInquiryFilterInput: AdminInquiryFilterInput;
@@ -3143,23 +5033,69 @@ export type ResolversParentTypes = {
   AdminInquiryMember: AdminInquiryMemberModel;
   AdminInquiryPage: Omit<AdminInquiryPage, 'entries'> & { entries: Array<ResolversParentTypes['AdminInquirySummary']> };
   AdminInquirySummary: AdminInquirySummaryModel;
+  AdminLaunch: AdminLaunch;
   AdminLegalDocument: AdminLegalDocument;
   AdminLegalDocumentSummary: AdminLegalDocumentSummary;
   AdminLegalDocumentVersion: AdminLegalDocumentVersion;
   AdminLegalDraft: AdminLegalDraft;
   AdminLegalRevision: AdminLegalRevision;
+  AdminMatchResult: AdminMatchResult;
+  AdminMediaFile: AdminMediaFile;
+  AdminOpenReportCaseRef: AdminOpenReportCaseRef;
+  AdminProduct: AdminProduct;
+  AdminProductConnection: AdminProductConnection;
+  AdminProductDetail: AdminProductDetail;
+  AdminProductFilter: AdminProductFilter;
+  AdminProductReportSummary: AdminProductReportSummary;
+  AdminQuarantinedImage: AdminQuarantinedImage;
+  AdminQuarantinedImagePage: AdminQuarantinedImagePage;
+  AdminRating: AdminRating;
+  AdminRatingConnection: AdminRatingConnection;
+  AdminRatingFilter: AdminRatingFilter;
+  AdminRatingSummary: AdminRatingSummary;
   AdminReAuthenticationInput: AdminReAuthenticationInput;
   AdminRecoveryCodeSet: AdminRecoveryCodeSet;
+  AdminReport: AdminReport;
+  AdminReportCase: AdminReportCase;
+  AdminReportCaseConnection: AdminReportCaseConnection;
+  AdminReportCaseDetail: AdminReportCaseDetail;
+  AdminReportCaseFilter: AdminReportCaseFilter;
+  AdminReportCategory: AdminReportCategory;
+  AdminReportCategoryCount: AdminReportCategoryCount;
+  AdminReportInquiry: AdminReportInquiry;
+  AdminReportResponseTime: AdminReportResponseTime;
+  AdminReportTarget: AdminReportTarget;
+  AdminReporter: AdminReporter;
   AdminSecondFactorInput: AdminSecondFactorInput;
   AdminSecondFactorRequired: AdminSecondFactorRequired;
+  AdminSponsorship: AdminSponsorship;
+  AdminSponsorshipConnection: AdminSponsorshipConnection;
+  AdminSponsorshipFilter: AdminSponsorshipFilter;
+  AdminStatisticsWeek: AdminStatisticsWeek;
   AdminTotpSetup: AdminTotpSetup;
+  AdminUnhandledReportSummary: AdminUnhandledReportSummary;
+  AdminUser: AdminUser;
+  AdminUserConnection: AdminUserConnection;
+  AdminUserFilter: AdminUserFilter;
+  AdminUserSummary: AdminUserSummary;
   AdminViewer: AdminViewerSource;
+  AdminWeeklyStatistics: AdminWeeklyStatistics;
+  AdministrativeWithdrawalInput: AdministrativeWithdrawalInput;
+  ApiKey: ApiKey;
+  ApiKeyConnection: ApiKeyConnection;
+  ApiKeyInput: ApiKeyInput;
+  ApiKeyScopes: ApiKeyScopes;
+  ApiKeyScopesInput: ApiKeyScopesInput;
+  ApplySponsorshipInput: ApplySponsorshipInput;
   AuditDetail: AuditDetail;
   AuditLogEntry: AuditLogEntry;
   AuditLogFilterInput: AuditLogFilterInput;
   AuditLogPage: AuditLogPage;
   AuditOperator: AuditOperator;
   Boolean: Scalars['Boolean']['output'];
+  BracketNode: BracketNodeSource;
+  BracketRound: BracketRoundSource;
+  BracketSlot: BracketSlotSource;
   Checkout: Checkout;
   CheckoutReturnResult: CheckoutReturnResult;
   CheckoutStart: CheckoutStart;
@@ -3168,6 +5104,8 @@ export type ResolversParentTypes = {
   CompleteSecondFactorLoginInput: CompleteSecondFactorLoginInput;
   ConfirmationResult: Omit<ConfirmationResult, 'viewer'> & { viewer?: Maybe<ResolversParentTypes['Viewer']> };
   CreateHelpArticleInput: CreateHelpArticleInput;
+  DataExport: DataExport;
+  DataExportConnection: DataExportConnection;
   DateTime: Scalars['DateTime']['output'];
   DeleteHelpArticlePayload: DeleteHelpArticlePayload;
   DeleteHelpCategoryPayload: DeleteHelpCategoryPayload;
@@ -3195,6 +5133,7 @@ export type ResolversParentTypes = {
   HelpCenterCategory: HelpCenterCategory;
   HelpSearchHit: HelpSearchHit;
   ID: Scalars['ID']['output'];
+  InfringementInquiryOutcome: InfringementInquiryOutcome;
   InquiryCategory: InquiryCategory;
   InquiryComposer: InquiryComposerModel;
   InquiryMessage: InquiryMessageModel;
@@ -3202,6 +5141,7 @@ export type ResolversParentTypes = {
   InquiryReplyAuthor: InquiryReplyAuthorModel;
   InquiryReplyResult: Omit<InquiryReplyResult, 'message'> & { message: ResolversParentTypes['InquiryMessage'] };
   Int: Scalars['Int']['output'];
+  IssuedApiKey: IssuedApiKey;
   LaunchComment: LaunchCommentModel;
   LaunchCommentConnection: Omit<LaunchCommentConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['LaunchCommentThread']> };
   LaunchCommentCount: LaunchCommentCount;
@@ -3229,6 +5169,8 @@ export type ResolversParentTypes = {
   MemberInquiryInput: MemberInquiryInput;
   MemberInquiryPage: Omit<MemberInquiryPage, 'items'> & { items: Array<ResolversParentTypes['MemberInquirySummary']> };
   MemberInquirySummary: MemberInquirySummaryModel;
+  ModerationNote: ModerationNote;
+  ModerationOutcome: ModerationOutcome;
   Money: Money;
   Mutation: Record<PropertyKey, never>;
   MyProduct: MyProductModel;
@@ -3236,6 +5178,8 @@ export type ResolversParentTypes = {
   MyProductRedirect: MyProductRedirect;
   MyProductResult: ResolversUnionTypes<ResolversParentTypes>['MyProductResult'];
   MyProfile: MyProfileModel;
+  MySponsorship: Omit<MySponsorship, 'product'> & { product?: Maybe<ResolversParentTypes['SponsorshipProduct']> };
+  MySponsorshipConnection: Omit<MySponsorshipConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['MySponsorship']> };
   NotificationPreference: NotificationPreference;
   NotificationSenderInfo: NotificationSenderInfo;
   NotificationSenderInfoState: NotificationSenderInfoState;
@@ -3278,16 +5222,34 @@ export type ResolversParentTypes = {
   RegisterProductInput: RegisterProductInput;
   RegisterUserInput: RegisterUserInput;
   RelaunchBlockView: RelaunchBlockView;
+  ReportCaseOutcome: ReportCaseOutcome;
+  ReportCategory: ReportCategory;
+  ReportCategoryDeletion: ReportCategoryDeletion;
   RequestEmailChangeInput: RequestEmailChangeInput;
   RequestPasswordChangeInput: RequestPasswordChangeInput;
   ResetPasswordInput: ResetPasswordInput;
   SaveLegalDocumentDraftInput: SaveLegalDocumentDraftInput;
   SecondFactorInput: SecondFactorInput;
   SecondFactorRequired: SecondFactorRequired;
+  SponsorableProduct: SponsorableProductModel;
+  SponsoredAd: SponsoredAdModel;
+  SponsoredPlacements: Omit<SponsoredPlacements, 'gold' | 'legend' | 'silver'> & { gold: Array<ResolversParentTypes['SponsoredAd']>, legend: Array<ResolversParentTypes['SponsoredAd']>, silver: Array<ResolversParentTypes['SponsoredAd']> };
+  SponsorshipDateRange: SponsorshipDateRange;
+  SponsorshipDateWindow: SponsorshipDateWindow;
+  SponsorshipOffer: Omit<SponsorshipOffer, 'eligibleProducts'> & { eligibleProducts?: Maybe<Array<ResolversParentTypes['SponsorableProduct']>> };
+  SponsorshipPeriodWindow: SponsorshipPeriodWindow;
+  SponsorshipProduct: SponsorshipProductModel;
+  SponsorshipRefund: SponsorshipRefund;
+  SponsorshipTerminationPreview: SponsorshipTerminationPreview;
+  SponsorshipTerminationResult: SponsorshipTerminationResult;
+  SponsorshipTierOffer: SponsorshipTierOffer;
   String: Scalars['String']['output'];
+  SubmitReportInput: SubmitReportInput;
+  SubmitReportPayload: SubmitReportPayload;
   SupporterConnection: Omit<SupporterConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['UserSummary']> };
   SystemStatus: SystemStatus;
   TotpSetup: TotpSetup;
+  Trophy: Trophy;
   UltrasOffer: UltrasOffer;
   UltrasPlan: UltrasPlan;
   UltrasPortalSession: UltrasPortalSession;
@@ -3299,6 +5261,7 @@ export type ResolversParentTypes = {
   UpdateNotificationSenderInfoInput: UpdateNotificationSenderInfoInput;
   UpdateProductInput: UpdateProductInput;
   UpdateUltrasPromotionSettingInput: UpdateUltrasPromotionSettingInput;
+  UpdateYearFinalDateInput: UpdateYearFinalDateInput;
   UpvoteDateTotal: UpvoteDateTotal;
   UpvoteHistoryConnection: Omit<UpvoteHistoryConnection, 'nodes'> & { nodes: Array<ResolversParentTypes['UpvoteHistoryItem']> };
   UpvoteHistoryItem: UpvoteHistoryItemModel;
@@ -3307,6 +5270,22 @@ export type ResolversParentTypes = {
   UserSummary: UserSummarySource;
   Viewer: ViewerSource;
   ViewerUltras: ViewerUltras;
+  WeekBracket: Omit<WeekBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversParentTypes['MatchProduct']>, rounds: Array<ResolversParentTypes['BracketRound']> };
+  WeekEntryCheckoutBlock: WeekEntryCheckoutBlock;
+  WeekEntryPanel: WeekEntryPanel;
+  WeekEntryProgress: WeekEntryProgress;
+  WeekTournamentBoard: Omit<WeekTournamentBoard, 'rounds'> & { rounds: Array<ResolversParentTypes['WeekTournamentRoundBoard']> };
+  WeekTournamentRoundBoard: WeekTournamentRoundBoardModel;
+  WeekTournamentSummary: WeekTournamentSummary;
+  YearBracket: Omit<YearBracket, 'champion' | 'rounds'> & { champion?: Maybe<ResolversParentTypes['MatchProduct']>, rounds: Array<ResolversParentTypes['BracketRound']> };
+  YearEntryPanel: YearEntryPanel;
+  YearEntryProgress: YearEntryProgress;
+  YearFinalDateSetting: YearFinalDateSetting;
+  YearFinalDateSettings: YearFinalDateSettings;
+  YearFinalDateUpdater: YearFinalDateUpdater;
+  YearTournamentBoard: Omit<YearTournamentBoard, 'rounds'> & { rounds: Array<ResolversParentTypes['YearTournamentRoundBoard']> };
+  YearTournamentRoundBoard: YearTournamentRoundBoardModel;
+  YearTournamentSummary: YearTournamentSummary;
 };
 
 export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminAccount'] = ResolversParentTypes['AdminAccount']> = {
@@ -3318,6 +5297,29 @@ export type AdminAccountResolvers<ContextType = GraphQLContext, ParentType exten
   role?: Resolver<ResolversTypes['AdminRole'], ParentType, ContextType>;
   status?: Resolver<ResolversTypes['AdminAccountStatus'], ParentType, ContextType>;
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminCategoryRefResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminCategoryRef'] = ResolversParentTypes['AdminCategoryRef']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminCommentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminComment'] = ResolversParentTypes['AdminComment']> = {
+  author?: Resolver<Maybe<ResolversTypes['AdminUserSummary']>, ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  excerpt?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  latestHide?: Resolver<Maybe<ResolversTypes['ModerationNote']>, ParentType, ContextType>;
+  launchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  launchNumber?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  productId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  productName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  state?: Resolver<ResolversTypes['AdminCommentState'], ParentType, ContextType>;
+};
+
+export type AdminCommentConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminCommentConnection'] = ResolversParentTypes['AdminCommentConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminComment']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
 };
 
 export type AdminConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminConfirmationResult'] = ResolversParentTypes['AdminConfirmationResult']> = {
@@ -3354,6 +5356,13 @@ export type AdminHelpArticleRowResolvers<ContextType = GraphQLContext, ParentTyp
   status?: Resolver<ResolversTypes['HelpArticleStatus'], ParentType, ContextType>;
   title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminImageOwnerResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminImageOwner'] = ResolversParentTypes['AdminImageOwner']> = {
+  handle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type AdminInquiryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminInquiry'] = ResolversParentTypes['AdminInquiry']> = {
@@ -3406,6 +5415,14 @@ export type AdminInquirySummaryResolvers<ContextType = GraphQLContext, ParentTyp
   withdrawn?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
+export type AdminLaunchResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLaunch'] = ResolversParentTypes['AdminLaunch']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  launchDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  matches?: Resolver<Array<ResolversTypes['AdminMatchResult']>, ParentType, ContextType>;
+  number?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type AdminLegalDocumentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminLegalDocument'] = ResolversParentTypes['AdminLegalDocument']> = {
   draft?: Resolver<Maybe<ResolversTypes['AdminLegalDraft']>, ParentType, ContextType>;
   kind?: Resolver<ResolversTypes['LegalDocumentKind'], ParentType, ContextType>;
@@ -3444,8 +5461,187 @@ export type AdminLegalRevisionResolvers<ContextType = GraphQLContext, ParentType
   versionNumber?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 };
 
+export type AdminMatchResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminMatchResult'] = ResolversParentTypes['AdminMatchResult']> = {
+  decision?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  matchDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  opponentName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  phase?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  result?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  stage?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  upvoteCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type AdminMediaFileResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminMediaFile'] = ResolversParentTypes['AdminMediaFile']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  image?: Resolver<ResolversTypes['MediaImage'], ParentType, ContextType>;
+  path?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  quarantineReasons?: Resolver<Array<ResolversTypes['QuarantineReason']>, ParentType, ContextType>;
+  quarantined?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type AdminOpenReportCaseRefResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminOpenReportCaseRef'] = ResolversParentTypes['AdminOpenReportCaseRef']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['ReportCaseStatus'], ParentType, ContextType>;
+};
+
+export type AdminProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminProduct'] = ResolversParentTypes['AdminProduct']> = {
+  category?: Resolver<ResolversTypes['AdminCategoryRef'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  latestLaunchDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  latestLaunchState?: Resolver<Maybe<ResolversTypes['AdminProductLaunchState']>, ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['AdminMediaFile']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<Maybe<ResolversTypes['AdminUserSummary']>, ParentType, ContextType>;
+  visibility?: Resolver<ResolversTypes['AdminProductVisibility'], ParentType, ContextType>;
+};
+
+export type AdminProductConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminProductConnection'] = ResolversParentTypes['AdminProductConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminProduct']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type AdminProductDetailResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminProductDetail'] = ResolversParentTypes['AdminProductDetail']> = {
+  descriptionMarkdown?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  hiddenAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  latestHide?: Resolver<Maybe<ResolversTypes['ModerationNote']>, ParentType, ContextType>;
+  launches?: Resolver<Array<ResolversTypes['AdminLaunch']>, ParentType, ContextType>;
+  product?: Resolver<ResolversTypes['AdminProduct'], ParentType, ContextType>;
+  ratingSummary?: Resolver<ResolversTypes['AdminRatingSummary'], ParentType, ContextType>;
+  screenshots?: Resolver<Array<ResolversTypes['AdminMediaFile']>, ParentType, ContextType>;
+  tagline?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  websiteUrl?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminProductReportSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminProductReportSummary'] = ResolversParentTypes['AdminProductReportSummary']> = {
+  openCase?: Resolver<Maybe<ResolversTypes['AdminOpenReportCaseRef']>, ParentType, ContextType>;
+  reportCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type AdminQuarantinedImageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminQuarantinedImage'] = ResolversParentTypes['AdminQuarantinedImage']> = {
+  file?: Resolver<ResolversTypes['AdminMediaFile'], ParentType, ContextType>;
+  findings?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  owner?: Resolver<Maybe<ResolversTypes['AdminImageOwner']>, ParentType, ContextType>;
+  purpose?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  quarantinedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminQuarantinedImagePageResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminQuarantinedImagePage'] = ResolversParentTypes['AdminQuarantinedImagePage']> = {
+  items?: Resolver<Array<ResolversTypes['AdminQuarantinedImage']>, ParentType, ContextType>;
+  nextCursor?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminRatingResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRating'] = ResolversParentTypes['AdminRating']> = {
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  latestInvalidation?: Resolver<Maybe<ResolversTypes['ModerationNote']>, ParentType, ContextType>;
+  productId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  productName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  rater?: Resolver<Maybe<ResolversTypes['AdminUserSummary']>, ParentType, ContextType>;
+  score?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  state?: Resolver<ResolversTypes['AdminRatingState'], ParentType, ContextType>;
+  updatedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminRatingConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRatingConnection'] = ResolversParentTypes['AdminRatingConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminRating']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type AdminRatingSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRatingSummary'] = ResolversParentTypes['AdminRatingSummary']> = {
+  average?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type AdminRecoveryCodeSetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminRecoveryCodeSet'] = ResolversParentTypes['AdminRecoveryCodeSet']> = {
   codes?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminReportResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReport'] = ResolversParentTypes['AdminReport']> = {
+  categoryName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reportedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  reporter?: Resolver<ResolversTypes['AdminReporter'], ParentType, ContextType>;
+};
+
+export type AdminReportCaseResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCase'] = ResolversParentTypes['AdminReportCase']> = {
+  categoryCounts?: Resolver<Array<ResolversTypes['AdminReportCategoryCount']>, ParentType, ContextType>;
+  firstReportedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  infringement?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  lastReportedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  reportCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  responseTime?: Resolver<Maybe<ResolversTypes['AdminReportResponseTime']>, ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['ReportCaseStatus'], ParentType, ContextType>;
+  target?: Resolver<ResolversTypes['AdminReportTarget'], ParentType, ContextType>;
+};
+
+export type AdminReportCaseConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCaseConnection'] = ResolversParentTypes['AdminReportCaseConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminReportCase']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type AdminReportCaseDetailResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCaseDetail'] = ResolversParentTypes['AdminReportCaseDetail']> = {
+  case?: Resolver<ResolversTypes['AdminReportCase'], ParentType, ContextType>;
+  closedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  closingReason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  inquiryAvailable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  lastInquiry?: Resolver<Maybe<ResolversTypes['AdminReportInquiry']>, ParentType, ContextType>;
+  reports?: Resolver<Array<ResolversTypes['AdminReport']>, ParentType, ContextType>;
+  resolution?: Resolver<Maybe<ResolversTypes['ReportResolution']>, ParentType, ContextType>;
+  statusChangedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminReportCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCategory'] = ResolversParentTypes['AdminReportCategory']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  infringement?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reportCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  systemDefault?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type AdminReportCategoryCountResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportCategoryCount'] = ResolversParentTypes['AdminReportCategoryCount']> = {
+  categoryId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  count?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminReportInquiryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportInquiry'] = ResolversParentTypes['AdminReportInquiry']> = {
+  deadline?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  overdue?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  sentAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminReportResponseTimeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportResponseTime'] = ResolversParentTypes['AdminReportResponseTime']> = {
+  alerts?: Resolver<Array<ResolversTypes['ResponseTimeAlert']>, ParentType, ContextType>;
+  completedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  elapsedSeconds?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  startedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type AdminReportTargetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReportTarget'] = ResolversParentTypes['AdminReportTarget']> = {
+  available?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  detached?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  excerpt?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  handle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['ReportTargetKind'], ParentType, ContextType>;
+  label?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  productHandle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  productId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  productName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminReporterResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminReporter'] = ResolversParentTypes['AdminReporter']> = {
+  handle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  hasContact?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
 };
 
 export type AdminSecondFactorRequiredResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminSecondFactorRequired'] = ResolversParentTypes['AdminSecondFactorRequired']> = {
@@ -3453,10 +5649,71 @@ export type AdminSecondFactorRequiredResolvers<ContextType = GraphQLContext, Par
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
 };
 
+export type AdminSponsorshipResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminSponsorship'] = ResolversParentTypes['AdminSponsorship']> = {
+  amountPaid?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  applicantNickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  endsOn?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  productDeleted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  productHandle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  productName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  purchaseId?: Resolver<Maybe<ResolversTypes['ID']>, ParentType, ContextType>;
+  startsOn?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['SponsorshipStatus'], ParentType, ContextType>;
+  terminable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  tier?: Resolver<ResolversTypes['SponsorshipTier'], ParentType, ContextType>;
+};
+
+export type AdminSponsorshipConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminSponsorshipConnection'] = ResolversParentTypes['AdminSponsorshipConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminSponsorship']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type AdminStatisticsWeekResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminStatisticsWeek'] = ResolversParentTypes['AdminStatisticsWeek']> = {
+  finalized?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  netRevenue?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  products?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  qualifierMatches?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  upvotes?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  users?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  weekStart?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
 export type AdminTotpSetupResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminTotpSetup'] = ResolversParentTypes['AdminTotpSetup']> = {
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   otpauthUri?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   secret?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type AdminUnhandledReportSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminUnhandledReportSummary'] = ResolversParentTypes['AdminUnhandledReportSummary']> = {
+  infringementOpen?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  open?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type AdminUserResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminUser'] = ResolversParentTypes['AdminUser']> = {
+  avatar?: Resolver<Maybe<ResolversTypes['AdminMediaFile']>, ParentType, ContextType>;
+  disposableEmail?: Resolver<ResolversTypes['DisposableEmailCheck'], ParentType, ContextType>;
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  latestSuspension?: Resolver<Maybe<ResolversTypes['ModerationNote']>, ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  registeredAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['AdminUserStatus'], ParentType, ContextType>;
+  suspendedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+};
+
+export type AdminUserConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminUserConnection'] = ResolversParentTypes['AdminUserConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['AdminUser']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type AdminUserSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminUserSummary'] = ResolversParentTypes['AdminUserSummary']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  nickname?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  suspended?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type AdminViewerResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminViewer'] = ResolversParentTypes['AdminViewer']> = {
@@ -3467,6 +5724,33 @@ export type AdminViewerResolvers<ContextType = GraphQLContext, ParentType extend
   remainingRecoveryCodes?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   role?: Resolver<ResolversTypes['AdminRole'], ParentType, ContextType>;
   title?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type AdminWeeklyStatisticsResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AdminWeeklyStatistics'] = ResolversParentTypes['AdminWeeklyStatistics']> = {
+  lastComputedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  weeks?: Resolver<Array<ResolversTypes['AdminStatisticsWeek']>, ParentType, ContextType>;
+};
+
+export type ApiKeyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ApiKey'] = ResolversParentTypes['ApiKey']> = {
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  scopes?: Resolver<ResolversTypes['ApiKeyScopes'], ParentType, ContextType>;
+};
+
+export type ApiKeyConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ApiKeyConnection'] = ResolversParentTypes['ApiKeyConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['ApiKey']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
+};
+
+export type ApiKeyScopesResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ApiKeyScopes'] = ResolversParentTypes['ApiKeyScopes']> = {
+  comments?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
+  launches?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
+  productDescriptions?: Resolver<ResolversTypes['ApiKeyWriteLevel'], ParentType, ContextType>;
+  products?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
+  profile?: Resolver<ResolversTypes['ApiKeyWriteLevel'], ParentType, ContextType>;
+  ratings?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
+  upvotes?: Resolver<ResolversTypes['ApiKeyReadLevel'], ParentType, ContextType>;
 };
 
 export type AuditDetailResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AuditDetail'] = ResolversParentTypes['AuditDetail']> = {
@@ -3494,6 +5778,28 @@ export type AuditLogPageResolvers<ContextType = GraphQLContext, ParentType exten
 export type AuditOperatorResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['AuditOperator'] = ResolversParentTypes['AuditOperator']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type BracketNodeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['BracketNode'] = ResolversParentTypes['BracketNode']> = {
+  match?: Resolver<Maybe<ResolversTypes['Match']>, ParentType, ContextType>;
+  position?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  slots?: Resolver<Array<ResolversTypes['BracketSlot']>, ParentType, ContextType>;
+};
+
+export type BracketRoundResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['BracketRound'] = ResolversParentTypes['BracketRound']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nodes?: Resolver<Array<ResolversTypes['BracketNode']>, ParentType, ContextType>;
+  round?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type BracketSlotResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['BracketSlot'] = ResolversParentTypes['BracketSlot']> = {
+  feedLabel?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  participantNo?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  product?: Resolver<Maybe<ResolversTypes['MatchProduct']>, ParentType, ContextType>;
+  result?: Resolver<Maybe<ResolversTypes['MatchEntryResult']>, ParentType, ContextType>;
+  seed?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  upvoteCount?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 };
 
 export type CheckoutResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Checkout'] = ResolversParentTypes['Checkout']> = {
@@ -3535,6 +5841,24 @@ export type CommentMutationResultResolvers<ContextType = GraphQLContext, ParentT
 
 export type ConfirmationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ConfirmationResult'] = ResolversParentTypes['ConfirmationResult']> = {
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
+};
+
+export type DataExportResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DataExport'] = ResolversParentTypes['DataExport']> = {
+  byteSize?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  completedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  downloadPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  expiresAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  failedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  failureKind?: Resolver<Maybe<ResolversTypes['DataExportFailureKind']>, ParentType, ContextType>;
+  fileName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  requestedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['DataExportStatus'], ParentType, ContextType>;
+};
+
+export type DataExportConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['DataExportConnection'] = ResolversParentTypes['DataExportConnection']> = {
+  nodes?: Resolver<Array<ResolversTypes['DataExport']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
 };
 
 export interface DateTimeScalarConfig extends GraphQLScalarTypeConfig<ResolversTypes['DateTime'], any> {
@@ -3674,6 +5998,11 @@ export type HelpSearchHitResolvers<ContextType = GraphQLContext, ParentType exte
   title?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
+export type InfringementInquiryOutcomeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InfringementInquiryOutcome'] = ResolversParentTypes['InfringementInquiryOutcome']> = {
+  deadline?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  sentAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
 export type InquiryCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryCategory'] = ResolversParentTypes['InquiryCategory']> = {
   id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -3703,6 +6032,11 @@ export type InquiryReplyAuthorResolvers<ContextType = GraphQLContext, ParentType
 export type InquiryReplyResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['InquiryReplyResult'] = ResolversParentTypes['InquiryReplyResult']> = {
   message?: Resolver<ResolversTypes['InquiryMessage'], ParentType, ContextType>;
   notificationQueued?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type IssuedApiKeyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['IssuedApiKey'] = ResolversParentTypes['IssuedApiKey']> = {
+  apiKey?: Resolver<ResolversTypes['ApiKey'], ParentType, ContextType>;
+  plainKey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type LaunchCommentResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['LaunchComment'] = ResolversParentTypes['LaunchComment']> = {
@@ -3890,6 +6224,15 @@ export type MemberInquirySummaryResolvers<ContextType = GraphQLContext, ParentTy
   status?: Resolver<ResolversTypes['InquiryStatus'], ParentType, ContextType>;
 };
 
+export type ModerationNoteResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ModerationNote'] = ResolversParentTypes['ModerationNote']> = {
+  occurredAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  reason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type ModerationOutcomeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ModerationOutcome'] = ResolversParentTypes['ModerationOutcome']> = {
+  changed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
 export type MoneyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Money'] = ResolversParentTypes['Money']> = {
   amount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   currency?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
@@ -3898,11 +6241,14 @@ export type MoneyResolvers<ContextType = GraphQLContext, ParentType extends Reso
 export type MutationResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Mutation'] = ResolversParentTypes['Mutation']> = {
   adminLogin?: Resolver<ResolversTypes['AdminSecondFactorRequired'], ParentType, ContextType, RequireFields<MutationAdminLoginArgs, 'email' | 'password'>>;
   adminLogout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  applySponsorship?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationApplySponsorshipArgs, 'input'>>;
+  approveQuarantinedImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationApproveQuarantinedImageArgs, 'fileId'>>;
   cancelProductRating?: Resolver<ResolversTypes['ProductRating'], ParentType, ContextType, RequireFields<MutationCancelProductRatingArgs, 'productId'>>;
   cancelUpvote?: Resolver<ResolversTypes['Match'], ParentType, ContextType, RequireFields<MutationCancelUpvoteArgs, 'matchId'>>;
   changeAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationChangeAdminPasswordArgs, 'newPassword' | 'reAuthentication'>>;
   changeAdminRole?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationChangeAdminRoleArgs, 'id' | 'role'>>;
   changeInquiryStatus?: Resolver<ResolversTypes['AdminInquiry'], ParentType, ContextType, RequireFields<MutationChangeInquiryStatusArgs, 'inquiryId' | 'status'>>;
+  changeReportCaseStatus?: Resolver<ResolversTypes['ReportCaseOutcome'], ParentType, ContextType, RequireFields<MutationChangeReportCaseStatusArgs, 'from' | 'id' | 'to'>>;
   completeAdminInvitation?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationCompleteAdminInvitationArgs, 'token' | 'totpCode'>>;
   completeAdminSecondFactorLogin?: Resolver<ResolversTypes['AdminViewer'], ParentType, ContextType, RequireFields<MutationCompleteAdminSecondFactorLoginArgs, 'challenge' | 'secondFactor'>>;
   completeAdminTotpReset?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationCompleteAdminTotpResetArgs, 'totpCode'>>;
@@ -3916,37 +6262,51 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   createHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationCreateHelpCategoryArgs, 'name'>>;
   createInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationCreateInquiryCategoryArgs, 'name'>>;
   createProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationCreateProductCategoryArgs, 'input'>>;
+  createReportCategory?: Resolver<ResolversTypes['AdminReportCategory'], ParentType, ContextType, RequireFields<MutationCreateReportCategoryArgs, 'name'>>;
   createUltrasPortalSession?: Resolver<ResolversTypes['UltrasPortalSession'], ParentType, ContextType>;
   deleteAdmin?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteAdminArgs, 'id'>>;
+  deleteApiKey?: Resolver<ResolversTypes['ID'], ParentType, ContextType, RequireFields<MutationDeleteApiKeyArgs, 'id'>>;
   deleteComment?: Resolver<ResolversTypes['LaunchComment'], ParentType, ContextType, RequireFields<MutationDeleteCommentArgs, 'commentId'>>;
   deleteHelpArticle?: Resolver<ResolversTypes['DeleteHelpArticlePayload'], ParentType, ContextType, RequireFields<MutationDeleteHelpArticleArgs, 'id'>>;
   deleteHelpCategory?: Resolver<ResolversTypes['DeleteHelpCategoryPayload'], ParentType, ContextType, RequireFields<MutationDeleteHelpCategoryArgs, 'id'>>;
   deleteInquiryCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteInquiryCategoryArgs, 'id'>>;
   deleteProduct?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductArgs, 'expectedVersion' | 'productHandle'>>;
   deleteProductCategory?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDeleteProductCategoryArgs, 'id'>>;
+  deleteQuarantinedImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationDeleteQuarantinedImageArgs, 'fileId'>>;
+  deleteReportCategory?: Resolver<ResolversTypes['ReportCategoryDeletion'], ParentType, ContextType, RequireFields<MutationDeleteReportCategoryArgs, 'id'>>;
   disableTotp?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationDisableTotpArgs, 'input'>>;
   discardLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationDiscardLegalDocumentDraftArgs, 'input'>>;
   enableTotp?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationEnableTotpArgs, 'totpCode'>>;
   followUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationFollowUserArgs, 'handle'>>;
+  hideComment?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationHideCommentArgs, 'id' | 'reason'>>;
+  hideProduct?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationHideProductArgs, 'id' | 'reason'>>;
+  invalidateRating?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationInvalidateRatingArgs, 'id' | 'reason'>>;
   inviteAdmin?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationInviteAdminArgs, 'email'>>;
+  issueApiKey?: Resolver<ResolversTypes['IssuedApiKey'], ParentType, ContextType, RequireFields<MutationIssueApiKeyArgs, 'input'>>;
   login?: Resolver<ResolversTypes['LoginResult'], ParentType, ContextType, RequireFields<MutationLoginArgs, 'input'>>;
   logout?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   postComment?: Resolver<ResolversTypes['CommentMutationResult'], ParentType, ContextType, RequireFields<MutationPostCommentArgs, 'input'>>;
   postInquiryMessage?: Resolver<ResolversTypes['InquiryMessage'], ParentType, ContextType, RequireFields<MutationPostInquiryMessageArgs, 'input' | 'inquiryId'>>;
   publishLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationPublishLegalDocumentArgs, 'input'>>;
+  quarantineImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationQuarantineImageArgs, 'fileId'>>;
   rateProduct?: Resolver<ResolversTypes['ProductRating'], ParentType, ContextType, RequireFields<MutationRateProductArgs, 'productId' | 'score'>>;
   recordCheckoutConsent?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<MutationRecordCheckoutConsentArgs, 'purchaseId'>>;
   regenerateAdminRecoveryCodes?: Resolver<ResolversTypes['AdminRecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateAdminRecoveryCodesArgs, 'reAuthentication'>>;
   regenerateRecoveryCodes?: Resolver<ResolversTypes['RecoveryCodeSet'], ParentType, ContextType, RequireFields<MutationRegenerateRecoveryCodesArgs, 'input'>>;
   registerProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationRegisterProductArgs, 'input'>>;
   registerUser?: Resolver<ResolversTypes['Viewer'], ParentType, ContextType, RequireFields<MutationRegisterUserArgs, 'input'>>;
+  reissueApiKey?: Resolver<ResolversTypes['IssuedApiKey'], ParentType, ContextType, RequireFields<MutationReissueApiKeyArgs, 'id'>>;
+  rejectReportCase?: Resolver<ResolversTypes['ReportCaseOutcome'], ParentType, ContextType, RequireFields<MutationRejectReportCaseArgs, 'id' | 'reason'>>;
+  releaseQuarantinedImage?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationReleaseQuarantinedImageArgs, 'fileId'>>;
   renameHelpCategory?: Resolver<ResolversTypes['HelpCategory'], ParentType, ContextType, RequireFields<MutationRenameHelpCategoryArgs, 'id' | 'name'>>;
   renameInquiryCategory?: Resolver<ResolversTypes['InquiryCategory'], ParentType, ContextType, RequireFields<MutationRenameInquiryCategoryArgs, 'id' | 'name'>>;
+  renameReportCategory?: Resolver<ResolversTypes['AdminReportCategory'], ParentType, ContextType, RequireFields<MutationRenameReportCategoryArgs, 'id' | 'name'>>;
   reorderHelpArticles?: Resolver<Array<ResolversTypes['AdminHelpArticleRow']>, ParentType, ContextType, RequireFields<MutationReorderHelpArticlesArgs, 'categoryId' | 'orderedIds'>>;
   reorderHelpCategories?: Resolver<Array<ResolversTypes['HelpCategory']>, ParentType, ContextType, RequireFields<MutationReorderHelpCategoriesArgs, 'orderedIds'>>;
   replyToInquiry?: Resolver<ResolversTypes['InquiryReplyResult'], ParentType, ContextType, RequireFields<MutationReplyToInquiryArgs, 'body' | 'inquiryId'>>;
   requestAdminEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminEmailChangeArgs, 'newEmail' | 'reAuthentication'>>;
   requestAdminPasswordReset?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestAdminPasswordResetArgs, 'email'>>;
+  requestDataExport?: Resolver<ResolversTypes['DataExport'], ParentType, ContextType>;
   requestEmailChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestEmailChangeArgs, 'input'>>;
   requestPasswordChange?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestPasswordChangeArgs, 'input'>>;
   requestPasswordReset?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRequestPasswordResetArgs, 'email'>>;
@@ -3954,18 +6314,32 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   resendVerificationEmail?: Resolver<ResolversTypes['ResendVerificationResult'], ParentType, ContextType>;
   resetAdminPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetAdminPasswordArgs, 'newPassword' | 'token'>>;
   resetPassword?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationResetPasswordArgs, 'input'>>;
+  resolveReportCaseWithMeasure?: Resolver<ResolversTypes['ReportCaseOutcome'], ParentType, ContextType, RequireFields<MutationResolveReportCaseWithMeasureArgs, 'id' | 'reason'>>;
+  resolveReportCaseWithoutMeasure?: Resolver<ResolversTypes['ReportCaseOutcome'], ParentType, ContextType, RequireFields<MutationResolveReportCaseWithoutMeasureArgs, 'id' | 'reason'>>;
+  resumeSponsorshipCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationResumeSponsorshipCheckoutArgs, 'id'>>;
+  revalidateRating?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationRevalidateRatingArgs, 'id' | 'reason'>>;
   revokeOtherSessions?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   revokeSession?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationRevokeSessionArgs, 'id'>>;
   saveLegalDocumentDraft?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<MutationSaveLegalDocumentDraftArgs, 'input'>>;
+  sendInfringementInquiry?: Resolver<ResolversTypes['InfringementInquiryOutcome'], ParentType, ContextType, RequireFields<MutationSendInfringementInquiryArgs, 'id' | 'message'>>;
   startAdminInvitation?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminInvitationArgs, 'nickname' | 'password' | 'token'>>;
   startAdminTotpReset?: Resolver<ResolversTypes['AdminTotpSetup'], ParentType, ContextType, RequireFields<MutationStartAdminTotpResetArgs, 'reAuthentication'>>;
   startSmokeCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
   startTotpSetup?: Resolver<ResolversTypes['TotpSetup'], ParentType, ContextType, RequireFields<MutationStartTotpSetupArgs, 'input'>>;
   startUltrasCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType>;
+  startWeekTournamentCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationStartWeekTournamentCheckoutArgs, 'launchId'>>;
+  startYearTournamentCheckout?: Resolver<ResolversTypes['CheckoutStart'], ParentType, ContextType, RequireFields<MutationStartYearTournamentCheckoutArgs, 'launchId'>>;
   submitGuestInquiry?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationSubmitGuestInquiryArgs, 'input'>>;
   submitMemberInquiry?: Resolver<ResolversTypes['MemberInquiry'], ParentType, ContextType, RequireFields<MutationSubmitMemberInquiryArgs, 'input'>>;
+  submitReport?: Resolver<ResolversTypes['SubmitReportPayload'], ParentType, ContextType, RequireFields<MutationSubmitReportArgs, 'input'>>;
+  suspendUser?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationSuspendUserArgs, 'id' | 'reason'>>;
+  terminateSponsorship?: Resolver<ResolversTypes['SponsorshipTerminationResult'], ParentType, ContextType, RequireFields<MutationTerminateSponsorshipArgs, 'id' | 'reason'>>;
   unfollowUser?: Resolver<ResolversTypes['FollowState'], ParentType, ContextType, RequireFields<MutationUnfollowUserArgs, 'handle'>>;
+  unhideComment?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationUnhideCommentArgs, 'id' | 'reason'>>;
+  unhideProduct?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationUnhideProductArgs, 'id' | 'reason'>>;
+  unsuspendUser?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationUnsuspendUserArgs, 'id' | 'reason'>>;
   updateAdminProfile?: Resolver<ResolversTypes['AdminAccount'], ParentType, ContextType, RequireFields<MutationUpdateAdminProfileArgs, 'id' | 'nickname'>>;
+  updateApiKey?: Resolver<ResolversTypes['ApiKey'], ParentType, ContextType, RequireFields<MutationUpdateApiKeyArgs, 'id' | 'input'>>;
   updateComment?: Resolver<ResolversTypes['CommentMutationResult'], ParentType, ContextType, RequireFields<MutationUpdateCommentArgs, 'input'>>;
   updateHelpArticle?: Resolver<ResolversTypes['AdminHelpArticle'], ParentType, ContextType, RequireFields<MutationUpdateHelpArticleArgs, 'input'>>;
   updateMyProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType, RequireFields<MutationUpdateMyProfileArgs, 'input'>>;
@@ -3974,9 +6348,11 @@ export type MutationResolvers<ContextType = GraphQLContext, ParentType extends R
   updateProduct?: Resolver<ResolversTypes['MyProduct'], ParentType, ContextType, RequireFields<MutationUpdateProductArgs, 'input'>>;
   updateProductCategory?: Resolver<ResolversTypes['ProductCategory'], ParentType, ContextType, RequireFields<MutationUpdateProductCategoryArgs, 'id' | 'input'>>;
   updateUltrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType, RequireFields<MutationUpdateUltrasPromotionSettingArgs, 'input'>>;
+  updateYearFinalDate?: Resolver<ResolversTypes['YearFinalDateSetting'], ParentType, ContextType, RequireFields<MutationUpdateYearFinalDateArgs, 'input'>>;
   upvote?: Resolver<ResolversTypes['Match'], ParentType, ContextType, RequireFields<MutationUpvoteArgs, 'input'>>;
   verifyEmail?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationVerifyEmailArgs, 'token'>>;
   withdraw?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType, RequireFields<MutationWithdrawArgs, 'input'>>;
+  withdrawUserByAdministrator?: Resolver<ResolversTypes['ModerationOutcome'], ParentType, ContextType, RequireFields<MutationWithdrawUserByAdministratorArgs, 'input'>>;
 };
 
 export type MyProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MyProduct'] = ResolversParentTypes['MyProduct']> = {
@@ -4021,6 +6397,29 @@ export type MyProfileResolvers<ContextType = GraphQLContext, ParentType extends 
   previousHandle?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   suspended?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   websites?: Resolver<Array<ResolversTypes['ProfileWebsite']>, ParentType, ContextType>;
+};
+
+export type MySponsorshipResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MySponsorship'] = ResolversParentTypes['MySponsorship']> = {
+  amountPaid?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  canResume?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  createdAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  displayStopRefund?: Resolver<Maybe<ResolversTypes['SponsorshipRefund']>, ParentType, ContextType>;
+  endsOn?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  product?: Resolver<Maybe<ResolversTypes['SponsorshipProduct']>, ParentType, ContextType>;
+  startsOn?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['SponsorshipStatus'], ParentType, ContextType>;
+  terminatedOn?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  terminationReason?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  terminationRefund?: Resolver<Maybe<ResolversTypes['SponsorshipRefund']>, ParentType, ContextType>;
+  tier?: Resolver<ResolversTypes['SponsorshipTier'], ParentType, ContextType>;
+};
+
+export type MySponsorshipConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['MySponsorshipConnection'] = ResolversParentTypes['MySponsorshipConnection']> = {
+  nextDayStartsAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  nodes?: Resolver<Array<ResolversTypes['MySponsorship']>, ParentType, ContextType>;
+  pageInfo?: Resolver<ResolversTypes['PageInfo'], ParentType, ContextType>;
 };
 
 export type NotificationPreferenceResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['NotificationPreference'] = ResolversParentTypes['NotificationPreference']> = {
@@ -4259,7 +6658,9 @@ export type QualifierBoardResolvers<ContextType = GraphQLContext, ParentType ext
 };
 
 export type QueryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Query'] = ResolversParentTypes['Query']> = {
+  activeSponsorshipCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType, RequireFields<QueryActiveSponsorshipCountArgs, 'productHandle'>>;
   adminAccounts?: Resolver<Array<ResolversTypes['AdminAccount']>, ParentType, ContextType>;
+  adminComments?: Resolver<ResolversTypes['AdminCommentConnection'], ParentType, ContextType, RequireFields<QueryAdminCommentsArgs, 'first'>>;
   adminHelpArticle?: Resolver<Maybe<ResolversTypes['AdminHelpArticle']>, ParentType, ContextType, RequireFields<QueryAdminHelpArticleArgs, 'id'>>;
   adminHelpArticles?: Resolver<Array<ResolversTypes['AdminHelpArticleRow']>, ParentType, ContextType>;
   adminHelpCategories?: Resolver<Array<ResolversTypes['HelpCategory']>, ParentType, ContextType>;
@@ -4269,9 +6670,23 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   adminLegalDocument?: Resolver<ResolversTypes['AdminLegalDocument'], ParentType, ContextType, RequireFields<QueryAdminLegalDocumentArgs, 'kind'>>;
   adminLegalDocumentVersion?: Resolver<Maybe<ResolversTypes['AdminLegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryAdminLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   adminLegalDocuments?: Resolver<Array<ResolversTypes['AdminLegalDocumentSummary']>, ParentType, ContextType>;
+  adminModerationCategoryOptions?: Resolver<Array<ResolversTypes['AdminCategoryRef']>, ParentType, ContextType>;
+  adminProduct?: Resolver<Maybe<ResolversTypes['AdminProductDetail']>, ParentType, ContextType, RequireFields<QueryAdminProductArgs, 'id'>>;
   adminProductCategories?: Resolver<Array<ResolversTypes['ProductCategory']>, ParentType, ContextType>;
+  adminProductRatings?: Resolver<ResolversTypes['AdminRatingConnection'], ParentType, ContextType, RequireFields<QueryAdminProductRatingsArgs, 'first' | 'productId'>>;
+  adminProductReportSummary?: Resolver<ResolversTypes['AdminProductReportSummary'], ParentType, ContextType, RequireFields<QueryAdminProductReportSummaryArgs, 'productId'>>;
+  adminProducts?: Resolver<ResolversTypes['AdminProductConnection'], ParentType, ContextType, RequireFields<QueryAdminProductsArgs, 'first'>>;
+  adminQuarantinedImages?: Resolver<ResolversTypes['AdminQuarantinedImagePage'], ParentType, ContextType, RequireFields<QueryAdminQuarantinedImagesArgs, 'reason'>>;
+  adminRatings?: Resolver<ResolversTypes['AdminRatingConnection'], ParentType, ContextType, RequireFields<QueryAdminRatingsArgs, 'first'>>;
+  adminReportCase?: Resolver<Maybe<ResolversTypes['AdminReportCaseDetail']>, ParentType, ContextType, RequireFields<QueryAdminReportCaseArgs, 'id'>>;
+  adminReportCases?: Resolver<ResolversTypes['AdminReportCaseConnection'], ParentType, ContextType, RequireFields<QueryAdminReportCasesArgs, 'first'>>;
+  adminReportCategories?: Resolver<Array<ResolversTypes['AdminReportCategory']>, ParentType, ContextType>;
+  adminSponsorships?: Resolver<ResolversTypes['AdminSponsorshipConnection'], ParentType, ContextType, RequireFields<QueryAdminSponsorshipsArgs, 'first'>>;
   adminUnhandledInquiryCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  adminUnhandledReportSummary?: Resolver<ResolversTypes['AdminUnhandledReportSummary'], ParentType, ContextType>;
+  adminUsers?: Resolver<ResolversTypes['AdminUserConnection'], ParentType, ContextType, RequireFields<QueryAdminUsersArgs, 'first'>>;
   adminViewer?: Resolver<Maybe<ResolversTypes['AdminViewer']>, ParentType, ContextType>;
+  adminWeeklyStatistics?: Resolver<ResolversTypes['AdminWeeklyStatistics'], ParentType, ContextType>;
   auditLogs?: Resolver<ResolversTypes['AuditLogPage'], ParentType, ContextType, Partial<QueryAuditLogsArgs>>;
   checkout?: Resolver<ResolversTypes['Checkout'], ParentType, ContextType, RequireFields<QueryCheckoutArgs, 'purchaseId'>>;
   directory?: Resolver<ResolversTypes['DirectoryPage'], ParentType, ContextType, RequireFields<QueryDirectoryArgs, 'input'>>;
@@ -4290,6 +6705,8 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   legalDocumentVersion?: Resolver<Maybe<ResolversTypes['LegalDocumentVersion']>, ParentType, ContextType, RequireFields<QueryLegalDocumentVersionArgs, 'kind' | 'versionNumber'>>;
   matchSupporters?: Resolver<Maybe<ResolversTypes['SupporterConnection']>, ParentType, ContextType, RequireFields<QueryMatchSupportersArgs, 'entryId' | 'first' | 'matchId' | 'productHandle'>>;
   memberInquiry?: Resolver<Maybe<ResolversTypes['MemberInquiry']>, ParentType, ContextType, RequireFields<QueryMemberInquiryArgs, 'id'>>;
+  myApiKeys?: Resolver<ResolversTypes['ApiKeyConnection'], ParentType, ContextType, RequireFields<QueryMyApiKeysArgs, 'first'>>;
+  myDataExports?: Resolver<ResolversTypes['DataExportConnection'], ParentType, ContextType, RequireFields<QueryMyDataExportsArgs, 'first'>>;
   myFollowers?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowersArgs, 'first'>>;
   myFollowing?: Resolver<ResolversTypes['FollowEntryConnection'], ParentType, ContextType, RequireFields<QueryMyFollowingArgs, 'first'>>;
   myInquiries?: Resolver<ResolversTypes['MemberInquiryPage'], ParentType, ContextType, Partial<QueryMyInquiriesArgs>>;
@@ -4297,6 +6714,9 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   myProducts?: Resolver<ResolversTypes['MyProductConnection'], ParentType, ContextType, RequireFields<QueryMyProductsArgs, 'first'>>;
   myProfile?: Resolver<ResolversTypes['MyProfile'], ParentType, ContextType>;
   mySessions?: Resolver<Array<ResolversTypes['UserSessionSummary']>, ParentType, ContextType>;
+  mySponsorships?: Resolver<ResolversTypes['MySponsorshipConnection'], ParentType, ContextType, RequireFields<QueryMySponsorshipsArgs, 'first'>>;
+  myWeekEntry?: Resolver<Maybe<ResolversTypes['WeekEntryPanel']>, ParentType, ContextType, RequireFields<QueryMyWeekEntryArgs, 'productHandle'>>;
+  myYearEntry?: Resolver<Maybe<ResolversTypes['YearEntryPanel']>, ParentType, ContextType, RequireFields<QueryMyYearEntryArgs, 'productHandle'>>;
   newProductLaunchWindow?: Resolver<ResolversTypes['LaunchDateWindow'], ParentType, ContextType>;
   notificationSenderInfo?: Resolver<ResolversTypes['NotificationSenderInfoState'], ParentType, ContextType>;
   notificationUnsubscribeLink?: Resolver<Maybe<ResolversTypes['NotificationUnsubscribeLink']>, ParentType, ContextType, RequireFields<QueryNotificationUnsubscribeLinkArgs, 'token'>>;
@@ -4308,9 +6728,15 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   productOwnerStatus?: Resolver<Maybe<ResolversTypes['ProductOwnerStatus']>, ParentType, ContextType, RequireFields<QueryProductOwnerStatusArgs, 'productHandle'>>;
   productPage?: Resolver<Maybe<ResolversTypes['ProductPageResult']>, ParentType, ContextType, RequireFields<QueryProductPageArgs, 'handle'>>;
   productRating?: Resolver<Maybe<ResolversTypes['ProductRating']>, ParentType, ContextType, RequireFields<QueryProductRatingArgs, 'productId'>>;
+  productTrophies?: Resolver<Maybe<Array<ResolversTypes['Trophy']>>, ParentType, ContextType, RequireFields<QueryProductTrophiesArgs, 'productHandle'>>;
   profileAwards?: Resolver<Maybe<Array<ResolversTypes['ProductAward']>>, ParentType, ContextType, RequireFields<QueryProfileAwardsArgs, 'userHandle'>>;
   publicProfile?: Resolver<Maybe<ResolversTypes['PublicProfileResult']>, ParentType, ContextType, RequireFields<QueryPublicProfileArgs, 'handle'>>;
   qualifierBoard?: Resolver<ResolversTypes['QualifierBoard'], ParentType, ContextType>;
+  reportCategories?: Resolver<Array<ResolversTypes['ReportCategory']>, ParentType, ContextType>;
+  sponsoredPlacements?: Resolver<ResolversTypes['SponsoredPlacements'], ParentType, ContextType>;
+  sponsorshipOffer?: Resolver<ResolversTypes['SponsorshipOffer'], ParentType, ContextType>;
+  sponsorshipPeriodWindow?: Resolver<ResolversTypes['SponsorshipPeriodWindow'], ParentType, ContextType, RequireFields<QuerySponsorshipPeriodWindowArgs, 'productId' | 'tier'>>;
+  sponsorshipTerminationPreview?: Resolver<ResolversTypes['SponsorshipTerminationPreview'], ParentType, ContextType, RequireFields<QuerySponsorshipTerminationPreviewArgs, 'id'>>;
   systemStatus?: Resolver<ResolversTypes['SystemStatus'], ParentType, ContextType>;
   ultrasOffer?: Resolver<ResolversTypes['UltrasOffer'], ParentType, ContextType>;
   ultrasPromotionSetting?: Resolver<ResolversTypes['UltrasPromotionSetting'], ParentType, ContextType>;
@@ -4318,6 +6744,11 @@ export type QueryResolvers<ContextType = GraphQLContext, ParentType extends Reso
   viewer?: Resolver<Maybe<ResolversTypes['Viewer']>, ParentType, ContextType>;
   viewerNotificationSettings?: Resolver<ResolversTypes['NotificationSettings'], ParentType, ContextType>;
   viewerUltras?: Resolver<Maybe<ResolversTypes['ViewerUltras']>, ParentType, ContextType>;
+  weekBracket?: Resolver<Maybe<ResolversTypes['WeekBracket']>, ParentType, ContextType, RequireFields<QueryWeekBracketArgs, 'week'>>;
+  weekTournamentBoard?: Resolver<ResolversTypes['WeekTournamentBoard'], ParentType, ContextType, RequireFields<QueryWeekTournamentBoardArgs, 'date'>>;
+  yearBracket?: Resolver<Maybe<ResolversTypes['YearBracket']>, ParentType, ContextType, RequireFields<QueryYearBracketArgs, 'year'>>;
+  yearFinalDateSettings?: Resolver<ResolversTypes['YearFinalDateSettings'], ParentType, ContextType>;
+  yearTournamentBoard?: Resolver<ResolversTypes['YearTournamentBoard'], ParentType, ContextType, RequireFields<QueryYearTournamentBoardArgs, 'date'>>;
 };
 
 export type RecoveryCodeSetResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['RecoveryCodeSet'] = ResolversParentTypes['RecoveryCodeSet']> = {
@@ -4330,10 +6761,118 @@ export type RelaunchBlockViewResolvers<ContextType = GraphQLContext, ParentType 
   releaseAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
 };
 
+export type ReportCaseOutcomeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ReportCaseOutcome'] = ResolversParentTypes['ReportCaseOutcome']> = {
+  status?: Resolver<ResolversTypes['ReportCaseStatus'], ParentType, ContextType>;
+};
+
+export type ReportCategoryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ReportCategory'] = ResolversParentTypes['ReportCategory']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  infringement?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type ReportCategoryDeletionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['ReportCategoryDeletion'] = ResolversParentTypes['ReportCategoryDeletion']> = {
+  reassignedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type SecondFactorRequiredResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SecondFactorRequired'] = ResolversParentTypes['SecondFactorRequired']> = {
   challenge?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type SponsorableProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorableProduct'] = ResolversParentTypes['SponsorableProduct']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type SponsoredAdResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsoredAd'] = ResolversParentTypes['SponsoredAd']> = {
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  productName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tagline?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  tier?: Resolver<ResolversTypes['SponsorshipTier'], ParentType, ContextType>;
+  websiteUrl?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type SponsoredPlacementsResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsoredPlacements'] = ResolversParentTypes['SponsoredPlacements']> = {
+  gold?: Resolver<Array<ResolversTypes['SponsoredAd']>, ParentType, ContextType>;
+  legend?: Resolver<Array<ResolversTypes['SponsoredAd']>, ParentType, ContextType>;
+  silver?: Resolver<Array<ResolversTypes['SponsoredAd']>, ParentType, ContextType>;
+};
+
+export type SponsorshipDateRangeResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipDateRange'] = ResolversParentTypes['SponsorshipDateRange']> = {
+  from?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reason?: Resolver<ResolversTypes['SponsorshipDateUnavailableReason'], ParentType, ContextType>;
+  to?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type SponsorshipDateWindowResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipDateWindow'] = ResolversParentTypes['SponsorshipDateWindow']> = {
+  earliest?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  latest?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  unavailable?: Resolver<Array<ResolversTypes['SponsorshipDateRange']>, ParentType, ContextType>;
+};
+
+export type SponsorshipOfferResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipOffer'] = ResolversParentTypes['SponsorshipOffer']> = {
+  eligibleProducts?: Resolver<Maybe<Array<ResolversTypes['SponsorableProduct']>>, ParentType, ContextType>;
+  tiers?: Resolver<Array<ResolversTypes['SponsorshipTierOffer']>, ParentType, ContextType>;
+};
+
+export type SponsorshipPeriodWindowResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipPeriodWindow'] = ResolversParentTypes['SponsorshipPeriodWindow']> = {
+  businessToday?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  end?: Resolver<Maybe<ResolversTypes['SponsorshipDateWindow']>, ParentType, ContextType>;
+  nextDayStartsAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  start?: Resolver<ResolversTypes['SponsorshipDateWindow'], ParentType, ContextType>;
+};
+
+export type SponsorshipProductResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipProduct'] = ResolversParentTypes['SponsorshipProduct']> = {
+  handle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  listed?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  logo?: Resolver<Maybe<ResolversTypes['MediaImage']>, ParentType, ContextType>;
+  name?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type SponsorshipRefundResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipRefund'] = ResolversParentTypes['SponsorshipRefund']> = {
+  amount?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['SponsorshipRefundStatus'], ParentType, ContextType>;
+};
+
+export type SponsorshipTerminationPreviewResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipTerminationPreview'] = ResolversParentTypes['SponsorshipTerminationPreview']> = {
+  amountPaid?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  refundEstimate?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  stopRefundAmount?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  stoppedDays?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  unexposedDays?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type SponsorshipTerminationResultResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipTerminationResult'] = ResolversParentTypes['SponsorshipTerminationResult']> = {
+  amountPaid?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  days?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  id?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  purchaseId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  refundEstimate?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  stopRefundAmount?: Resolver<ResolversTypes['Money'], ParentType, ContextType>;
+  stopRefundRequested?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  stopRefundStatus?: Resolver<Maybe<ResolversTypes['SponsorshipRefundStatus']>, ParentType, ContextType>;
+  stoppedDays?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  terminatedOn?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  terminationRefundRequested?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  terminationRefundStatus?: Resolver<Maybe<ResolversTypes['SponsorshipRefundStatus']>, ParentType, ContextType>;
+  unexposedDays?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type SponsorshipTierOfferResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SponsorshipTierOffer'] = ResolversParentTypes['SponsorshipTierOffer']> = {
+  tier?: Resolver<ResolversTypes['SponsorshipTier'], ParentType, ContextType>;
+  unitPrice?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+};
+
+export type SubmitReportPayloadResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SubmitReportPayload'] = ResolversParentTypes['SubmitReportPayload']> = {
+  accepted?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
 export type SupporterConnectionResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['SupporterConnection'] = ResolversParentTypes['SupporterConnection']> = {
@@ -4350,6 +6889,14 @@ export type TotpSetupResolvers<ContextType = GraphQLContext, ParentType extends 
   expiresAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
   otpauthUri?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   secret?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type TrophyResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['Trophy'] = ResolversParentTypes['Trophy']> = {
+  awardedAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  bracketPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['TrophyKind'], ParentType, ContextType>;
+  period?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  periodLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type UltrasOfferResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['UltrasOffer'] = ResolversParentTypes['UltrasOffer']> = {
@@ -4433,36 +6980,228 @@ export type ViewerUltrasResolvers<ContextType = GraphQLContext, ParentType exten
   plan?: Resolver<Maybe<ResolversTypes['UltrasPlan']>, ParentType, ContextType>;
 };
 
+export type WeekBracketResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekBracket'] = ResolversParentTypes['WeekBracket']> = {
+  champion?: Resolver<Maybe<ResolversTypes['MatchProduct']>, ParentType, ContextType>;
+  participantCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  rounds?: Resolver<Array<ResolversTypes['BracketRound']>, ParentType, ContextType>;
+  seedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  tournament?: Resolver<ResolversTypes['WeekTournamentSummary'], ParentType, ContextType>;
+};
+
+export type WeekEntryCheckoutBlockResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekEntryCheckoutBlock'] = ResolversParentTypes['WeekEntryCheckoutBlock']> = {
+  code?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  message?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type WeekEntryPanelResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekEntryPanel'] = ResolversParentTypes['WeekEntryPanel']> = {
+  acceptUntil?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  bracketPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  checkoutBlock?: Resolver<Maybe<ResolversTypes['WeekEntryCheckoutBlock']>, ParentType, ContextType>;
+  closeReason?: Resolver<Maybe<ResolversTypes['WeekEntryCloseReason']>, ParentType, ContextType>;
+  deadlineAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  drawAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  exempt?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  fee?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  launchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  progress?: Resolver<Maybe<ResolversTypes['WeekEntryProgress']>, ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['WeekEntryStatus'], ParentType, ContextType>;
+  ultrasGuide?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  week?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  weekLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type WeekEntryProgressResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekEntryProgress'] = ResolversParentTypes['WeekEntryProgress']> = {
+  alive?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  champion?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  eliminatedRoundName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type WeekTournamentBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekTournamentBoard'] = ResolversParentTypes['WeekTournamentBoard']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  rounds?: Resolver<Array<ResolversTypes['WeekTournamentRoundBoard']>, ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type WeekTournamentRoundBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekTournamentRoundBoard'] = ResolversParentTypes['WeekTournamentRoundBoard']> = {
+  bracketPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  byes?: Resolver<Array<ResolversTypes['MatchBye']>, ParentType, ContextType>;
+  final?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  matches?: Resolver<Array<ResolversTypes['Match']>, ParentType, ContextType>;
+  round?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  roundName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tournament?: Resolver<ResolversTypes['WeekTournamentSummary'], ParentType, ContextType>;
+};
+
+export type WeekTournamentSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['WeekTournamentSummary'] = ResolversParentTypes['WeekTournamentSummary']> = {
+  awarded?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  finalDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  firstRoundDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  label?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['WeekTournamentStatus'], ParentType, ContextType>;
+  week?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type YearBracketResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearBracket'] = ResolversParentTypes['YearBracket']> = {
+  champion?: Resolver<Maybe<ResolversTypes['MatchProduct']>, ParentType, ContextType>;
+  participantCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  rounds?: Resolver<Array<ResolversTypes['BracketRound']>, ParentType, ContextType>;
+  seedCount?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  tournament?: Resolver<ResolversTypes['YearTournamentSummary'], ParentType, ContextType>;
+};
+
+export type YearEntryPanelResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearEntryPanel'] = ResolversParentTypes['YearEntryPanel']> = {
+  acceptUntil?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  bracketPath?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  closeReason?: Resolver<Maybe<ResolversTypes['YearEntryCloseReason']>, ParentType, ContextType>;
+  deadlineAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  drawAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  exempt?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  fee?: Resolver<Maybe<ResolversTypes['Money']>, ParentType, ContextType>;
+  finalDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  launchId?: Resolver<ResolversTypes['ID'], ParentType, ContextType>;
+  progress?: Resolver<Maybe<ResolversTypes['YearEntryProgress']>, ParentType, ContextType>;
+  refundable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['YearEntryStatus'], ParentType, ContextType>;
+  weekLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  year?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  yearLabel?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type YearEntryProgressResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearEntryProgress'] = ResolversParentTypes['YearEntryProgress']> = {
+  alive?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  champion?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  eliminatedRoundName?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type YearFinalDateSettingResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearFinalDateSetting'] = ResolversParentTypes['YearFinalDateSetting']> = {
+  acceptUntil?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  changeLockAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  changeable?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  choices?: Resolver<Array<ResolversTypes['String']>, ParentType, ContextType>;
+  deadlineAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  drawAt?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  finalDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  nextYearFinalDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  nextYearGapWarningDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  nextYearSource?: Resolver<Maybe<ResolversTypes['YearFinalDateSource']>, ParentType, ContextType>;
+  previousYearFinalDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  source?: Resolver<ResolversTypes['YearFinalDateSource'], ParentType, ContextType>;
+  updatedAt?: Resolver<Maybe<ResolversTypes['DateTime']>, ParentType, ContextType>;
+  updatedBy?: Resolver<Maybe<ResolversTypes['YearFinalDateUpdater']>, ParentType, ContextType>;
+  version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  year?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
+export type YearFinalDateSettingsResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearFinalDateSettings'] = ResolversParentTypes['YearFinalDateSettings']> = {
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+  settings?: Resolver<Array<ResolversTypes['YearFinalDateSetting']>, ParentType, ContextType>;
+};
+
+export type YearFinalDateUpdaterResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearFinalDateUpdater'] = ResolversParentTypes['YearFinalDateUpdater']> = {
+  nickname?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+};
+
+export type YearTournamentBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearTournamentBoard'] = ResolversParentTypes['YearTournamentBoard']> = {
+  date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  rounds?: Resolver<Array<ResolversTypes['YearTournamentRoundBoard']>, ParentType, ContextType>;
+  serverTime?: Resolver<ResolversTypes['DateTime'], ParentType, ContextType>;
+};
+
+export type YearTournamentRoundBoardResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearTournamentRoundBoard'] = ResolversParentTypes['YearTournamentRoundBoard']> = {
+  bracketPath?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  byes?: Resolver<Array<ResolversTypes['MatchBye']>, ParentType, ContextType>;
+  final?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  finalDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  matches?: Resolver<Array<ResolversTypes['Match']>, ParentType, ContextType>;
+  round?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  roundName?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  tournament?: Resolver<ResolversTypes['YearTournamentSummary'], ParentType, ContextType>;
+};
+
+export type YearTournamentSummaryResolvers<ContextType = GraphQLContext, ParentType extends ResolversParentTypes['YearTournamentSummary'] = ResolversParentTypes['YearTournamentSummary']> = {
+  awarded?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  finalDate?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  firstRoundDate?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  label?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  status?: Resolver<ResolversTypes['YearTournamentStatus'], ParentType, ContextType>;
+  year?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+};
+
 export type Resolvers<ContextType = GraphQLContext> = {
   AdminAccount?: AdminAccountResolvers<ContextType>;
+  AdminCategoryRef?: AdminCategoryRefResolvers<ContextType>;
+  AdminComment?: AdminCommentResolvers<ContextType>;
+  AdminCommentConnection?: AdminCommentConnectionResolvers<ContextType>;
   AdminConfirmationResult?: AdminConfirmationResultResolvers<ContextType>;
   AdminHelpArticle?: AdminHelpArticleResolvers<ContextType>;
   AdminHelpArticleRow?: AdminHelpArticleRowResolvers<ContextType>;
+  AdminImageOwner?: AdminImageOwnerResolvers<ContextType>;
   AdminInquiry?: AdminInquiryResolvers<ContextType>;
   AdminInquiryCategory?: AdminInquiryCategoryResolvers<ContextType>;
   AdminInquiryGuest?: AdminInquiryGuestResolvers<ContextType>;
   AdminInquiryMember?: AdminInquiryMemberResolvers<ContextType>;
   AdminInquiryPage?: AdminInquiryPageResolvers<ContextType>;
   AdminInquirySummary?: AdminInquirySummaryResolvers<ContextType>;
+  AdminLaunch?: AdminLaunchResolvers<ContextType>;
   AdminLegalDocument?: AdminLegalDocumentResolvers<ContextType>;
   AdminLegalDocumentSummary?: AdminLegalDocumentSummaryResolvers<ContextType>;
   AdminLegalDocumentVersion?: AdminLegalDocumentVersionResolvers<ContextType>;
   AdminLegalDraft?: AdminLegalDraftResolvers<ContextType>;
   AdminLegalRevision?: AdminLegalRevisionResolvers<ContextType>;
+  AdminMatchResult?: AdminMatchResultResolvers<ContextType>;
+  AdminMediaFile?: AdminMediaFileResolvers<ContextType>;
+  AdminOpenReportCaseRef?: AdminOpenReportCaseRefResolvers<ContextType>;
+  AdminProduct?: AdminProductResolvers<ContextType>;
+  AdminProductConnection?: AdminProductConnectionResolvers<ContextType>;
+  AdminProductDetail?: AdminProductDetailResolvers<ContextType>;
+  AdminProductReportSummary?: AdminProductReportSummaryResolvers<ContextType>;
+  AdminQuarantinedImage?: AdminQuarantinedImageResolvers<ContextType>;
+  AdminQuarantinedImagePage?: AdminQuarantinedImagePageResolvers<ContextType>;
+  AdminRating?: AdminRatingResolvers<ContextType>;
+  AdminRatingConnection?: AdminRatingConnectionResolvers<ContextType>;
+  AdminRatingSummary?: AdminRatingSummaryResolvers<ContextType>;
   AdminRecoveryCodeSet?: AdminRecoveryCodeSetResolvers<ContextType>;
+  AdminReport?: AdminReportResolvers<ContextType>;
+  AdminReportCase?: AdminReportCaseResolvers<ContextType>;
+  AdminReportCaseConnection?: AdminReportCaseConnectionResolvers<ContextType>;
+  AdminReportCaseDetail?: AdminReportCaseDetailResolvers<ContextType>;
+  AdminReportCategory?: AdminReportCategoryResolvers<ContextType>;
+  AdminReportCategoryCount?: AdminReportCategoryCountResolvers<ContextType>;
+  AdminReportInquiry?: AdminReportInquiryResolvers<ContextType>;
+  AdminReportResponseTime?: AdminReportResponseTimeResolvers<ContextType>;
+  AdminReportTarget?: AdminReportTargetResolvers<ContextType>;
+  AdminReporter?: AdminReporterResolvers<ContextType>;
   AdminSecondFactorRequired?: AdminSecondFactorRequiredResolvers<ContextType>;
+  AdminSponsorship?: AdminSponsorshipResolvers<ContextType>;
+  AdminSponsorshipConnection?: AdminSponsorshipConnectionResolvers<ContextType>;
+  AdminStatisticsWeek?: AdminStatisticsWeekResolvers<ContextType>;
   AdminTotpSetup?: AdminTotpSetupResolvers<ContextType>;
+  AdminUnhandledReportSummary?: AdminUnhandledReportSummaryResolvers<ContextType>;
+  AdminUser?: AdminUserResolvers<ContextType>;
+  AdminUserConnection?: AdminUserConnectionResolvers<ContextType>;
+  AdminUserSummary?: AdminUserSummaryResolvers<ContextType>;
   AdminViewer?: AdminViewerResolvers<ContextType>;
+  AdminWeeklyStatistics?: AdminWeeklyStatisticsResolvers<ContextType>;
+  ApiKey?: ApiKeyResolvers<ContextType>;
+  ApiKeyConnection?: ApiKeyConnectionResolvers<ContextType>;
+  ApiKeyScopes?: ApiKeyScopesResolvers<ContextType>;
   AuditDetail?: AuditDetailResolvers<ContextType>;
   AuditLogEntry?: AuditLogEntryResolvers<ContextType>;
   AuditLogPage?: AuditLogPageResolvers<ContextType>;
   AuditOperator?: AuditOperatorResolvers<ContextType>;
+  BracketNode?: BracketNodeResolvers<ContextType>;
+  BracketRound?: BracketRoundResolvers<ContextType>;
+  BracketSlot?: BracketSlotResolvers<ContextType>;
   Checkout?: CheckoutResolvers<ContextType>;
   CheckoutReturnResult?: CheckoutReturnResultResolvers<ContextType>;
   CheckoutStart?: CheckoutStartResolvers<ContextType>;
   CheckoutSummary?: CheckoutSummaryResolvers<ContextType>;
   CommentMutationResult?: CommentMutationResultResolvers<ContextType>;
   ConfirmationResult?: ConfirmationResultResolvers<ContextType>;
+  DataExport?: DataExportResolvers<ContextType>;
+  DataExportConnection?: DataExportConnectionResolvers<ContextType>;
   DateTime?: GraphQLScalarType;
   DeleteHelpArticlePayload?: DeleteHelpArticlePayloadResolvers<ContextType>;
   DeleteHelpCategoryPayload?: DeleteHelpCategoryPayloadResolvers<ContextType>;
@@ -4484,11 +7223,13 @@ export type Resolvers<ContextType = GraphQLContext> = {
   HelpCategory?: HelpCategoryResolvers<ContextType>;
   HelpCenterCategory?: HelpCenterCategoryResolvers<ContextType>;
   HelpSearchHit?: HelpSearchHitResolvers<ContextType>;
+  InfringementInquiryOutcome?: InfringementInquiryOutcomeResolvers<ContextType>;
   InquiryCategory?: InquiryCategoryResolvers<ContextType>;
   InquiryComposer?: InquiryComposerResolvers<ContextType>;
   InquiryMessage?: InquiryMessageResolvers<ContextType>;
   InquiryReplyAuthor?: InquiryReplyAuthorResolvers<ContextType>;
   InquiryReplyResult?: InquiryReplyResultResolvers<ContextType>;
+  IssuedApiKey?: IssuedApiKeyResolvers<ContextType>;
   LaunchComment?: LaunchCommentResolvers<ContextType>;
   LaunchCommentConnection?: LaunchCommentConnectionResolvers<ContextType>;
   LaunchCommentCount?: LaunchCommentCountResolvers<ContextType>;
@@ -4514,6 +7255,8 @@ export type Resolvers<ContextType = GraphQLContext> = {
   MemberInquiry?: MemberInquiryResolvers<ContextType>;
   MemberInquiryPage?: MemberInquiryPageResolvers<ContextType>;
   MemberInquirySummary?: MemberInquirySummaryResolvers<ContextType>;
+  ModerationNote?: ModerationNoteResolvers<ContextType>;
+  ModerationOutcome?: ModerationOutcomeResolvers<ContextType>;
   Money?: MoneyResolvers<ContextType>;
   Mutation?: MutationResolvers<ContextType>;
   MyProduct?: MyProductResolvers<ContextType>;
@@ -4521,6 +7264,8 @@ export type Resolvers<ContextType = GraphQLContext> = {
   MyProductRedirect?: MyProductRedirectResolvers<ContextType>;
   MyProductResult?: MyProductResultResolvers<ContextType>;
   MyProfile?: MyProfileResolvers<ContextType>;
+  MySponsorship?: MySponsorshipResolvers<ContextType>;
+  MySponsorshipConnection?: MySponsorshipConnectionResolvers<ContextType>;
   NotificationPreference?: NotificationPreferenceResolvers<ContextType>;
   NotificationSenderInfo?: NotificationSenderInfoResolvers<ContextType>;
   NotificationSenderInfoState?: NotificationSenderInfoStateResolvers<ContextType>;
@@ -4555,10 +7300,27 @@ export type Resolvers<ContextType = GraphQLContext> = {
   Query?: QueryResolvers<ContextType>;
   RecoveryCodeSet?: RecoveryCodeSetResolvers<ContextType>;
   RelaunchBlockView?: RelaunchBlockViewResolvers<ContextType>;
+  ReportCaseOutcome?: ReportCaseOutcomeResolvers<ContextType>;
+  ReportCategory?: ReportCategoryResolvers<ContextType>;
+  ReportCategoryDeletion?: ReportCategoryDeletionResolvers<ContextType>;
   SecondFactorRequired?: SecondFactorRequiredResolvers<ContextType>;
+  SponsorableProduct?: SponsorableProductResolvers<ContextType>;
+  SponsoredAd?: SponsoredAdResolvers<ContextType>;
+  SponsoredPlacements?: SponsoredPlacementsResolvers<ContextType>;
+  SponsorshipDateRange?: SponsorshipDateRangeResolvers<ContextType>;
+  SponsorshipDateWindow?: SponsorshipDateWindowResolvers<ContextType>;
+  SponsorshipOffer?: SponsorshipOfferResolvers<ContextType>;
+  SponsorshipPeriodWindow?: SponsorshipPeriodWindowResolvers<ContextType>;
+  SponsorshipProduct?: SponsorshipProductResolvers<ContextType>;
+  SponsorshipRefund?: SponsorshipRefundResolvers<ContextType>;
+  SponsorshipTerminationPreview?: SponsorshipTerminationPreviewResolvers<ContextType>;
+  SponsorshipTerminationResult?: SponsorshipTerminationResultResolvers<ContextType>;
+  SponsorshipTierOffer?: SponsorshipTierOfferResolvers<ContextType>;
+  SubmitReportPayload?: SubmitReportPayloadResolvers<ContextType>;
   SupporterConnection?: SupporterConnectionResolvers<ContextType>;
   SystemStatus?: SystemStatusResolvers<ContextType>;
   TotpSetup?: TotpSetupResolvers<ContextType>;
+  Trophy?: TrophyResolvers<ContextType>;
   UltrasOffer?: UltrasOfferResolvers<ContextType>;
   UltrasPlan?: UltrasPlanResolvers<ContextType>;
   UltrasPortalSession?: UltrasPortalSessionResolvers<ContextType>;
@@ -4570,5 +7332,21 @@ export type Resolvers<ContextType = GraphQLContext> = {
   UserSummary?: UserSummaryResolvers<ContextType>;
   Viewer?: ViewerResolvers<ContextType>;
   ViewerUltras?: ViewerUltrasResolvers<ContextType>;
+  WeekBracket?: WeekBracketResolvers<ContextType>;
+  WeekEntryCheckoutBlock?: WeekEntryCheckoutBlockResolvers<ContextType>;
+  WeekEntryPanel?: WeekEntryPanelResolvers<ContextType>;
+  WeekEntryProgress?: WeekEntryProgressResolvers<ContextType>;
+  WeekTournamentBoard?: WeekTournamentBoardResolvers<ContextType>;
+  WeekTournamentRoundBoard?: WeekTournamentRoundBoardResolvers<ContextType>;
+  WeekTournamentSummary?: WeekTournamentSummaryResolvers<ContextType>;
+  YearBracket?: YearBracketResolvers<ContextType>;
+  YearEntryPanel?: YearEntryPanelResolvers<ContextType>;
+  YearEntryProgress?: YearEntryProgressResolvers<ContextType>;
+  YearFinalDateSetting?: YearFinalDateSettingResolvers<ContextType>;
+  YearFinalDateSettings?: YearFinalDateSettingsResolvers<ContextType>;
+  YearFinalDateUpdater?: YearFinalDateUpdaterResolvers<ContextType>;
+  YearTournamentBoard?: YearTournamentBoardResolvers<ContextType>;
+  YearTournamentRoundBoard?: YearTournamentRoundBoardResolvers<ContextType>;
+  YearTournamentSummary?: YearTournamentSummaryResolvers<ContextType>;
 };
 

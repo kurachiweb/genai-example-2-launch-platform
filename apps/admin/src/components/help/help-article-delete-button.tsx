@@ -14,6 +14,7 @@ import {
   GraphQLClientError,
 } from '../../../lib/utilities/graphql/graphql-result.ts';
 import { ADMIN_PROFILE } from '../../composition/app-profile.ts';
+import { invalidateAuditLogQueries } from '../../graphql/admin-audit-logs.ts';
 import { refreshHelpArticleQueriesAfterDelete } from '../../graphql/admin-help-articles.ts';
 import { AdminDeleteHelpArticleDocument } from '../../graphql/generated/graphql.ts';
 import {
@@ -89,7 +90,10 @@ export function HelpArticleDeleteButton({
             }
             throw error;
           }
-          await refreshHelpArticleQueriesAfterDelete(queryClient);
+          await Promise.all([
+            refreshHelpArticleQueriesAfterDelete(queryClient),
+            invalidateAuditLogQueries(queryClient),
+          ]);
           notify.success(HELP_ARTICLE_DELETED_MESSAGE);
           await navigate({ to: '/help-articles' });
         }}

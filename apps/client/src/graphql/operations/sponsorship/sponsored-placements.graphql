@@ -1,0 +1,13 @@
+query ClientSponsoredPlacements {
+  sponsoredPlacements {
+    legend {
+      ...SponsoredAdFields
+    }
+    gold {
+      ...SponsoredAdFields
+    }
+    silver {
+      ...SponsoredAdFields
+    }
+  }
+}

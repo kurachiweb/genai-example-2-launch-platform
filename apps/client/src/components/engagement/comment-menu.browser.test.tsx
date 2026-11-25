@@ -219,7 +219,7 @@ describe('CommentMenu', () => {
     expect(page.getByRole('dialog').query()).toBeNull();
   });
 
-  test('登録口を渡さなければ初版の空の登録口を使い、他者のコメントにはメニューを出さない', async () => {
+  test('登録口を渡さなければ登録箇所の操作を使い、他者のコメントのメニューに並べる', async () => {
     const onEdit = vi.fn();
     await renderInRouter(
       <CommentMenu
@@ -230,7 +230,11 @@ describe('CommentMenu', () => {
       />,
     );
 
-    await expect.element(trigger()).not.toBeInTheDocument();
+    await userEvent.click(trigger());
+
+    await expect
+      .element(page.getByRole('menuitem', { name: '通報' }))
+      .toBeVisible();
   });
 
   test('キーボードのEnterで開き、矢印キーで項目を移り、Escapeで閉じるとボタンへフォーカスが戻る', async () => {

@@ -71,6 +71,7 @@ const RUNTIME: AppRuntime = {
     },
     webAnalyticsToken: undefined,
     stripePublishableKey: undefined,
+    publicApiOrigin: undefined,
   },
   display: { timeZone: 'Asia/Tokyo', locale: 'ja-JP' },
 };

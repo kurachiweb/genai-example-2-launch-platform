@@ -1,0 +1,7 @@
+query ClientReportCategories {
+  reportCategories {
+    id
+    name
+    infringement
+  }
+}

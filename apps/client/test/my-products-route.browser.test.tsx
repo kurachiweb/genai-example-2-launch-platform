@@ -19,7 +19,14 @@ import type {
 } from '../src/components/product/product-section-types.ts';
 import { BOUNDARY_REFRESH_DELAY_MS } from '../src/components/time/use-boundary-refresh.ts';
 import {
+  serverTimeBeforeAcceptUntil,
+  weekEntryOf,
+} from '../src/components/week-tournament/week-entry-fixtures.ts';
+import type { WeekEntryPanelView } from '../src/components/week-tournament/week-entry-model.ts';
+import {
   ClientMyProductsDocument,
+  ClientMyWeekEntryDocument,
+  ClientMyYearEntryDocument,
   type ClientMyProductsQuery,
   type ClientMyProductsQueryVariables,
 } from '../src/graphql/generated/graphql.ts';
@@ -185,11 +192,27 @@ const productsFrom = (start: number, count: number): MyProductNode[] =>
 
 type Responder = (variables: ClientMyProductsQueryVariables) => unknown;
 
-const respond = (responder: Responder) => {
+// 登録されたWeekの参加費の導線の取得には、ハンドルごとの参加の枠(無ければnull)を返し、Yearの参加費の導線の取得には枠が無いことを返す
+const respond = (
+  responder: Responder,
+  weekEntries: Readonly<Record<string, WeekEntryPanelView>> = {},
+) => {
   executeGraphQL.mockImplementation(
     (document: unknown, variables: ClientMyProductsQueryVariables) => {
       if (document === ClientMyProductsDocument) {
         return Promise.resolve(responder(variables));
+      }
+      if (document === ClientMyWeekEntryDocument) {
+        const { productHandle } = variables as unknown as {
+          readonly productHandle: string;
+        };
+        return Promise.resolve({
+          ok: true,
+          data: { myWeekEntry: weekEntries[productHandle] ?? null },
+        });
+      }
+      if (document === ClientMyYearEntryDocument) {
+        return Promise.resolve({ ok: true, data: { myYearEntry: null } });
       }
       throw new Error('想定していない操作が実行されました。');
     },
@@ -515,6 +538,39 @@ describe('自分のプロダクトの経路', () => {
       )
       .toBeVisible();
     await expect.element(cardOf('Quiet Board')).toBeVisible();
+  });
+
+  test('Weekトーナメントの参加の枠があるプロダクトのカードの下にだけ参加費の導線を描き、受付期限まで48時間未満でも秒読みを出さない', async () => {
+    respond(() => productsResult([PITCH, QUIET]), {
+      'pitch-notes': weekEntryOf({
+        serverTime: serverTimeBeforeAcceptUntil(3_600_000),
+        ultrasGuide: false,
+      }),
+    });
+
+    await renderMyProducts();
+
+    const entryPanel = (index: number) =>
+      items()
+        .nth(index)
+        .getByRole('group', { name: 'Product of the Weekトーナメント' });
+    await expect.element(entryPanel(0)).toBeVisible();
+    await expect
+      .element(
+        entryPanel(0).getByRole('button', { name: /^Weekトーナメントに参加/u }),
+      )
+      .toBeVisible();
+    expect(main().getByRole('timer').elements()).toHaveLength(0);
+    await expect.element(cardOf('Quiet Board')).toBeVisible();
+    await expect
+      .poll(
+        () =>
+          executeGraphQL.mock.calls.filter(
+            ([document]) => document === ClientMyWeekEntryDocument,
+          ).length,
+      )
+      .toBe(2);
+    await expect.element(entryPanel(1)).not.toBeInTheDocument();
   });
 
   test('最初は20件を読み、「さらに読み込む」で続きを後ろに加えて、加えた最初のカードへフォーカスを移す', async () => {

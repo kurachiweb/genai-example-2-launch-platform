@@ -1,0 +1,23 @@
+query AdminUsers($filter: AdminUserFilter, $first: Int!, $after: String) {
+  adminUsers(filter: $filter, first: $first, after: $after) {
+    nodes {
+      id
+      handle
+      nickname
+      avatar {
+        ...AdminModerationMediaFile
+      }
+      registeredAt
+      disposableEmail
+      status
+      suspendedAt
+      latestSuspension {
+        ...AdminModerationNote
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

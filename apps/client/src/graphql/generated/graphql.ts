@@ -9,6 +9,43 @@ export type AccountStatus =
   | 'ACTIVE'
   | 'SUSPENDED';
 
+export type ApiKeyInput = {
+  /** 前後の空白を除いて1〜50文字 */
+  name: string;
+  scopes: ApiKeyScopesInput;
+};
+
+/** 読み取りだけの機能の権限 */
+export type ApiKeyReadLevel =
+  | 'NONE'
+  | 'READ';
+
+export type ApiKeyScopesInput = {
+  comments: ApiKeyReadLevel;
+  launches: ApiKeyReadLevel;
+  productDescriptions: ApiKeyWriteLevel;
+  products: ApiKeyReadLevel;
+  profile: ApiKeyWriteLevel;
+  ratings: ApiKeyReadLevel;
+  upvotes: ApiKeyReadLevel;
+};
+
+/** 書き込みもできる機能の権限 */
+export type ApiKeyWriteLevel =
+  | 'NONE'
+  | 'READ'
+  | 'READ_WRITE';
+
+/** スポンサー広告の申込 */
+export type ApplySponsorshipInput = {
+  /** 掲載終了日(業務日付のYYYY-MM-DD) */
+  endsOn: string;
+  productId: string | number;
+  /** 掲載開始日(業務日付のYYYY-MM-DD) */
+  startsOn: string;
+  tier: SponsorshipTier;
+};
+
 /** 不戦勝の理由。ABSENTは対戦相手なし、FORFEITはマッチ直前の相手の該当、EARLYはマッチ中の即時の終了 */
 export type ByeReason =
   | 'ABSENT'
@@ -43,6 +80,18 @@ export type CompleteSecondFactorLoginInput = {
   challenge: string;
   secondFactor: SecondFactorInput;
 };
+
+/** 失敗の種類。TOO_LARGEは生成物の上限を超えたことを表す */
+export type DataExportFailureKind =
+  | 'ERROR'
+  | 'TOO_LARGE';
+
+/** 要求の表示の状態。作成中は受け付けと生成中をまとめる */
+export type DataExportStatus =
+  | 'EXPIRED'
+  | 'FAILED'
+  | 'PENDING'
+  | 'READY';
 
 /** メールアドレスが配信の対象から除外されている理由 */
 export type DeliverySuppressionReason =
@@ -318,6 +367,12 @@ export type RegisterUserInput = {
   password: string;
 };
 
+/** 通報の対象の種類 */
+export type ReportTargetKind =
+  | 'COMMENT'
+  | 'PRODUCT'
+  | 'USER';
+
 export type RequestEmailChangeInput = {
   newEmail: string;
   reAuthentication: ReAuthenticationInput;
@@ -343,6 +398,47 @@ export type SecondFactorInput = {
   recoveryCode?: string | null | undefined;
   totpCode?: string | null | undefined;
 };
+
+/** 選べない理由。範囲の外の日の理由(今日より前・365日後より後・開始日より前・366日を超える)は画面が範囲の種類から決める */
+export type SponsorshipDateUnavailableReason =
+  | 'OVERLAP';
+
+/** 依頼した返金の状態。REQUESTEDは依頼済み、ALREADY_REFUNDEDは返金できる残りが無く返金済み、REJECTEDは拒否 */
+export type SponsorshipRefundStatus =
+  | 'ALREADY_REFUNDED'
+  | 'REJECTED'
+  | 'REQUESTED';
+
+/** 掲載状況。PAUSEDはプロダクトの非公開化か投稿者の停止による表示停止中 */
+export type SponsorshipStatus =
+  | 'ACTIVE'
+  | 'ENDED'
+  | 'PAUSED'
+  | 'PENDING_PAYMENT'
+  | 'SCHEDULED'
+  | 'TERMINATED';
+
+/** スポンサー広告のティア */
+export type SponsorshipTier =
+  | 'GOLD'
+  | 'LEGEND'
+  | 'SILVER';
+
+/** 通報の入力 */
+export type SubmitReportInput = {
+  categoryId: string | number;
+  /** 未ログインと停止中の利用者の権利侵害の通報だけで使い、他では捨てる */
+  contactEmail?: string | null | undefined;
+  reason: string;
+  targetKind: ReportTargetKind;
+  /** ユーザーはハンドル、プロダクトとコメントはID */
+  targetRef: string;
+};
+
+/** トロフィーの種類 */
+export type TrophyKind =
+  | 'WEEK'
+  | 'YEAR';
 
 /** Ultrasの加入状態 */
 export type UltrasPlanStatus =
@@ -406,6 +502,61 @@ export type UpvoteRestriction =
   | 'NOT_ACCEPTING'
   | 'OWN_MATCH';
 
+/** 参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、LATE_ENTRYは組み合わせ決定の後に確定した予選の勝利 */
+export type WeekEntryCloseReason =
+  | 'DEADLINE'
+  | 'DELETED'
+  | 'HIDDEN_OR_SUSPENDED'
+  | 'LATE_ENTRY'
+  | 'WITHDRAWN';
+
+/** Weekトーナメントの参加の枠の状態。AWAITING_PAYMENTは参加費の支払い待ち、ENTITLEDは参加資格を得た、DRAWNは組み合わせに入った、EXPIREDは期限切れ、FORFEITEDは資格の喪失、EXCLUDEDは組み合わせ決定での除外 */
+export type WeekEntryStatus =
+  | 'AWAITING_PAYMENT'
+  | 'DRAWN'
+  | 'ENTITLED'
+  | 'EXCLUDED'
+  | 'EXPIRED'
+  | 'FORFEITED';
+
+/** Weekトーナメントの状態。OPENは参加の受付中、DRAWINGは組み合わせの決定中、IN_PROGRESSは開催中、FINISHEDは終了 */
+export type WeekTournamentStatus =
+  | 'DRAWING'
+  | 'FINISHED'
+  | 'IN_PROGRESS'
+  | 'OPEN';
+
+/** 参加の枠が終わった理由。DEADLINEは決済期限切れ、DELETEDはプロダクトの削除、WITHDRAWNは投稿者の退会、HIDDEN_OR_SUSPENDEDは組み合わせ決定の時点の非公開化・停止、OVER_CAPACITYは参加数の上限による除外、LATE_ENTRYは組み合わせ決定の後に確定したWeek優勝 */
+export type YearEntryCloseReason =
+  | 'DEADLINE'
+  | 'DELETED'
+  | 'HIDDEN_OR_SUSPENDED'
+  | 'LATE_ENTRY'
+  | 'OVER_CAPACITY'
+  | 'WITHDRAWN';
+
+/** Yearトーナメントの参加の枠の状態。AWAITING_PAYMENTは参加費の支払い待ち、ENTITLEDは参加資格を得た、DRAWNは組み合わせに入った、EXPIREDは期限切れ、FORFEITEDは資格の喪失、EXCLUDEDは組み合わせ決定での除外 */
+export type YearEntryStatus =
+  | 'AWAITING_PAYMENT'
+  | 'DRAWN'
+  | 'ENTITLED'
+  | 'EXCLUDED'
+  | 'EXPIRED'
+  | 'FORFEITED';
+
+/** Yearトーナメントの状態。OPENは参加の受付中、DRAWINGは組み合わせの決定中、IN_PROGRESSは開催中、FINISHEDは終了 */
+export type YearTournamentStatus =
+  | 'DRAWING'
+  | 'FINISHED'
+  | 'IN_PROGRESS'
+  | 'OPEN';
+
+export type BracketMatchProductFieldsFragment = { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null };
+
+export type BracketRoundFieldsFragment = { round: number, name: string, date: string, nodes: Array<{ position: number, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, date: string, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean } | null, slots: Array<{ participantNo: number | null, seed: number | null, feedLabel: string | null, upvoteCount: number | null, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> }> };
+
+export type DataExportFieldsFragment = { id: string, status: DataExportStatus, failureKind: DataExportFailureKind | null, requestedAt: string, completedAt: string | null, expiresAt: string | null, failedAt: string | null, fileName: string | null, byteSize: number | null, downloadPath: string | null };
+
 export type LaunchCommentFragment = { id: string, parentId: string | null, depth: number, state: LaunchCommentState, body: string | null, createdAt: string | null, edited: boolean, byProductOwner: boolean, viewerIsAuthor: boolean, author: { handle: string, nickname: string, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
 
 export type ProductRatingFragment = { productId: string, average: number | null, count: number, viewerScore: number | null };
@@ -417,6 +568,27 @@ export type MatchFragment = { id: string, kind: MatchKind, round: number | null,
 export type NotificationSettingsFragment = { deliveryStatusAvailable: boolean, emailVerified: boolean, editable: boolean, preferences: Array<{ topic: NotificationTopic, enabled: boolean }>, suppression: { reason: DeliverySuppressionReason, until: string | null } | null };
 
 export type NotificationUnsubscribeLinkFragment = { topic: NotificationTopic, enabled: boolean };
+
+export type ApiKeyFieldsFragment = { id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } };
+
+export type SponsoredAdFieldsFragment = { id: string, tier: SponsorshipTier, productName: string, tagline: string | null, websiteUrl: string | null, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null };
+
+export type WeekBoardRoundFieldsFragment = { round: number, roundName: string, final: boolean, bracketPath: string, tournament: { week: string, label: string, firstRoundDate: string | null, finalDate: string | null, status: WeekTournamentStatus, awarded: boolean | null }, matches: Array<{ id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> }>, byes: Array<{ reason: ByeReason, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, endedEarly: boolean }, entry: { id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } }> };
+
+export type YearBoardRoundFieldsFragment = { round: number, roundName: string, final: boolean, finalDate: string, bracketPath: string, tournament: { year: number, label: string, firstRoundDate: string | null, finalDate: string, status: YearTournamentStatus, awarded: boolean | null }, matches: Array<{ id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> }>, byes: Array<{ reason: ByeReason, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, endedEarly: boolean }, entry: { id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } }> };
+
+export type ClientMyDataExportsQueryVariables = Exact<{
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientMyDataExportsQuery = { myDataExports: { nodes: Array<{ id: string, status: DataExportStatus, failureKind: DataExportFailureKind | null, requestedAt: string, completedAt: string | null, expiresAt: string | null, failedAt: string | null, fileName: string | null, byteSize: number | null, downloadPath: string | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type ClientRequestDataExportMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientRequestDataExportMutation = { requestDataExport: { id: string, status: DataExportStatus, failureKind: DataExportFailureKind | null, requestedAt: string, completedAt: string | null, expiresAt: string | null, failedAt: string | null, fileName: string | null, byteSize: number | null, downloadPath: string | null } };
 
 export type ClientDirectoryCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -983,6 +1155,103 @@ export type ClientUpdateMyProfileMutationVariables = Exact<{
 
 export type ClientUpdateMyProfileMutation = { updateMyProfile: { nickname: string, handle: string, previousHandle: string | null, headline: string | null, bio: string | null, suspended: boolean, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null, websites: Array<{ name: string | null, url: string }> } };
 
+export type ClientDeleteApiKeyMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type ClientDeleteApiKeyMutation = { deleteApiKey: string };
+
+export type ClientIssueApiKeyMutationVariables = Exact<{
+  input: ApiKeyInput;
+}>;
+
+
+export type ClientIssueApiKeyMutation = { issueApiKey: { plainKey: string, apiKey: { id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } } } };
+
+export type ClientMyApiKeysQueryVariables = Exact<{
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientMyApiKeysQuery = { myApiKeys: { nodes: Array<{ id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type ClientReissueApiKeyMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type ClientReissueApiKeyMutation = { reissueApiKey: { plainKey: string, apiKey: { id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } } } };
+
+export type ClientUpdateApiKeyMutationVariables = Exact<{
+  id: string | number;
+  input: ApiKeyInput;
+}>;
+
+
+export type ClientUpdateApiKeyMutation = { updateApiKey: { id: string, name: string, createdAt: string, scopes: { products: ApiKeyReadLevel, launches: ApiKeyReadLevel, upvotes: ApiKeyReadLevel, comments: ApiKeyReadLevel, ratings: ApiKeyReadLevel, profile: ApiKeyWriteLevel, productDescriptions: ApiKeyWriteLevel } } };
+
+export type ClientReportCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientReportCategoriesQuery = { reportCategories: Array<{ id: string, name: string, infringement: boolean }> };
+
+export type ClientSubmitReportMutationVariables = Exact<{
+  input: SubmitReportInput;
+}>;
+
+
+export type ClientSubmitReportMutation = { submitReport: { accepted: boolean } };
+
+export type ClientActiveSponsorshipCountQueryVariables = Exact<{
+  productHandle: string;
+}>;
+
+
+export type ClientActiveSponsorshipCountQuery = { activeSponsorshipCount: number };
+
+export type ClientApplySponsorshipMutationVariables = Exact<{
+  input: ApplySponsorshipInput;
+}>;
+
+
+export type ClientApplySponsorshipMutation = { applySponsorship: { purchaseId: string } };
+
+export type ClientMySponsorshipsQueryVariables = Exact<{
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type ClientMySponsorshipsQuery = { mySponsorships: { nextDayStartsAt: string, nodes: Array<{ id: string, tier: SponsorshipTier, startsOn: string, endsOn: string, days: number, status: SponsorshipStatus, terminatedOn: string | null, terminationReason: string | null, canResume: boolean, createdAt: string, product: { handle: string, name: string, listed: boolean, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null, amountPaid: { amount: number, currency: string } | null, terminationRefund: { days: number, status: SponsorshipRefundStatus, amount: { amount: number, currency: string } | null } | null, displayStopRefund: { days: number, status: SponsorshipRefundStatus, amount: { amount: number, currency: string } | null } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type ClientResumeSponsorshipCheckoutMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type ClientResumeSponsorshipCheckoutMutation = { resumeSponsorshipCheckout: { purchaseId: string } };
+
+export type ClientSponsoredPlacementsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientSponsoredPlacementsQuery = { sponsoredPlacements: { legend: Array<{ id: string, tier: SponsorshipTier, productName: string, tagline: string | null, websiteUrl: string | null, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }>, gold: Array<{ id: string, tier: SponsorshipTier, productName: string, tagline: string | null, websiteUrl: string | null, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }>, silver: Array<{ id: string, tier: SponsorshipTier, productName: string, tagline: string | null, websiteUrl: string | null, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }> } };
+
+export type ClientSponsorshipOfferQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ClientSponsorshipOfferQuery = { sponsorshipOffer: { tiers: Array<{ tier: SponsorshipTier, unitPrice: { amount: number, currency: string } | null }>, eligibleProducts: Array<{ id: string, handle: string, name: string, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null }> | null } };
+
+export type ClientSponsorshipPeriodWindowQueryVariables = Exact<{
+  productId: string | number;
+  tier: SponsorshipTier;
+  startsOn?: string | null | undefined;
+}>;
+
+
+export type ClientSponsorshipPeriodWindowQuery = { sponsorshipPeriodWindow: { businessToday: string, nextDayStartsAt: string, start: { earliest: string, latest: string, unavailable: Array<{ from: string, to: string, reason: SponsorshipDateUnavailableReason }> }, end: { earliest: string, latest: string, unavailable: Array<{ from: string, to: string, reason: SponsorshipDateUnavailableReason }> } | null } };
+
 export type ClientSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -1008,12 +1277,84 @@ export type ClientViewerUltrasQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type ClientViewerUltrasQuery = { viewerUltras: { entitled: boolean, canOpenPortal: boolean, plan: { status: UltrasPlanStatus, startedAt: string, currentPeriodEndsAt: string | null, canceledAt: string | null, benefitEndsAt: string | null } | null } | null };
 
+export type ClientMyWeekEntryQueryVariables = Exact<{
+  productHandle: string;
+}>;
+
+
+export type ClientMyWeekEntryQuery = { myWeekEntry: { launchId: string, week: string, weekLabel: string, status: WeekEntryStatus, closeReason: WeekEntryCloseReason | null, exempt: boolean, acceptUntil: string, deadlineAt: string, drawAt: string, serverTime: string, bracketPath: string | null, ultrasGuide: boolean, fee: { amount: number, currency: string } | null, progress: { alive: boolean, champion: boolean, eliminatedRoundName: string | null } | null, checkoutBlock: { message: string } | null } | null };
+
+export type ClientProductTrophiesQueryVariables = Exact<{
+  productHandle: string;
+}>;
+
+
+export type ClientProductTrophiesQuery = { productTrophies: Array<{ kind: TrophyKind, period: string, periodLabel: string, awardedAt: string, bracketPath: string | null }> | null };
+
+export type ClientStartWeekTournamentCheckoutMutationVariables = Exact<{
+  launchId: string | number;
+}>;
+
+
+export type ClientStartWeekTournamentCheckoutMutation = { startWeekTournamentCheckout: { purchaseId: string } };
+
+export type ClientWeekBracketQueryVariables = Exact<{
+  week: string;
+}>;
+
+
+export type ClientWeekBracketQuery = { weekBracket: { participantCount: number, seedCount: number, tournament: { week: string, label: string, firstRoundDate: string | null, finalDate: string | null, status: WeekTournamentStatus, awarded: boolean | null }, rounds: Array<{ round: number, name: string, date: string, nodes: Array<{ position: number, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, date: string, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean } | null, slots: Array<{ participantNo: number | null, seed: number | null, feedLabel: string | null, upvoteCount: number | null, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> }> }>, champion: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } | null };
+
+export type ClientWeekTournamentBoardQueryVariables = Exact<{
+  date: string;
+}>;
+
+
+export type ClientWeekTournamentBoardQuery = { weekTournamentBoard: { date: string, serverTime: string, rounds: Array<{ round: number, roundName: string, final: boolean, bracketPath: string, tournament: { week: string, label: string, firstRoundDate: string | null, finalDate: string | null, status: WeekTournamentStatus, awarded: boolean | null }, matches: Array<{ id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> }>, byes: Array<{ reason: ByeReason, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, endedEarly: boolean }, entry: { id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } }> }> } };
+
+export type ClientMyYearEntryQueryVariables = Exact<{
+  productHandle: string;
+}>;
+
+
+export type ClientMyYearEntryQuery = { myYearEntry: { launchId: string, year: number, yearLabel: string, weekLabel: string, finalDate: string, status: YearEntryStatus, closeReason: YearEntryCloseReason | null, exempt: boolean, refundable: boolean, acceptUntil: string, deadlineAt: string, drawAt: string, serverTime: string, bracketPath: string | null, fee: { amount: number, currency: string } | null, progress: { alive: boolean, champion: boolean, eliminatedRoundName: string | null } | null } | null };
+
+export type ClientStartYearTournamentCheckoutMutationVariables = Exact<{
+  launchId: string | number;
+}>;
+
+
+export type ClientStartYearTournamentCheckoutMutation = { startYearTournamentCheckout: { purchaseId: string } };
+
+export type ClientYearBracketQueryVariables = Exact<{
+  year: string;
+}>;
+
+
+export type ClientYearBracketQuery = { yearBracket: { participantCount: number, seedCount: number, tournament: { year: number, label: string, firstRoundDate: string | null, finalDate: string, status: YearTournamentStatus, awarded: boolean | null }, rounds: Array<{ round: number, name: string, date: string, nodes: Array<{ position: number, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, date: string, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean } | null, slots: Array<{ participantNo: number | null, seed: number | null, feedLabel: string | null, upvoteCount: number | null, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> }> }>, champion: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } | null };
+
+export type ClientYearTournamentBoardQueryVariables = Exact<{
+  date: string;
+}>;
+
+
+export type ClientYearTournamentBoardQuery = { yearTournamentBoard: { date: string, serverTime: string, rounds: Array<{ round: number, roundName: string, final: boolean, finalDate: string, bracketPath: string, tournament: { year: number, label: string, firstRoundDate: string | null, finalDate: string, status: YearTournamentStatus, awarded: boolean | null }, matches: Array<{ id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, phase: MatchPhase, decision: MatchDecision | null, endedEarly: boolean, viewerRestriction: UpvoteRestriction | null, viewerUpvotedEntryId: string | null, entries: Array<{ id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null }> }>, byes: Array<{ reason: ByeReason, match: { id: string, kind: MatchKind, round: number | null, stage: MatchStage | null, endedEarly: boolean }, entry: { id: string, colorIndex: number, isViewerOwn: boolean, upvoteCount: number, result: MatchEntryResult | null, product: { handle: string, name: string, tagline: string, websiteUrl: string, listed: boolean, category: { id: string, name: string, handle: string }, logo: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null } }> }> } };
+
+export const BracketMatchProductFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"BracketMatchProductFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchProduct"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}},{"kind":"Field","name":{"kind":"Name","value":"listed"}}]}}]} as unknown as DocumentNode<BracketMatchProductFieldsFragment, unknown>;
+export const BracketRoundFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"BracketRoundFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"BracketRound"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"nodes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"position"}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}}]}},{"kind":"Field","name":{"kind":"Name","value":"slots"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"participantNo"}},{"kind":"Field","name":{"kind":"Name","value":"seed"}},{"kind":"Field","name":{"kind":"Name","value":"feedLabel"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"BracketMatchProductFields"}}]}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"BracketMatchProductFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchProduct"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}},{"kind":"Field","name":{"kind":"Name","value":"listed"}}]}}]} as unknown as DocumentNode<BracketRoundFieldsFragment, unknown>;
+export const DataExportFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DataExportFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"DataExport"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"failureKind"}},{"kind":"Field","name":{"kind":"Name","value":"requestedAt"}},{"kind":"Field","name":{"kind":"Name","value":"completedAt"}},{"kind":"Field","name":{"kind":"Name","value":"expiresAt"}},{"kind":"Field","name":{"kind":"Name","value":"failedAt"}},{"kind":"Field","name":{"kind":"Name","value":"fileName"}},{"kind":"Field","name":{"kind":"Name","value":"byteSize"}},{"kind":"Field","name":{"kind":"Name","value":"downloadPath"}}]}}]} as unknown as DocumentNode<DataExportFieldsFragment, unknown>;
 export const LaunchCommentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"LaunchComment"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"LaunchComment"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"parentId"}},{"kind":"Field","name":{"kind":"Name","value":"depth"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"author"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"edited"}},{"kind":"Field","name":{"kind":"Name","value":"byProductOwner"}},{"kind":"Field","name":{"kind":"Name","value":"viewerIsAuthor"}}]}}]} as unknown as DocumentNode<LaunchCommentFragment, unknown>;
 export const ProductRatingFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ProductRating"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ProductRating"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"productId"}},{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"viewerScore"}}]}}]} as unknown as DocumentNode<ProductRatingFragment, unknown>;
-export const MatchByeFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MatchBye"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchBye"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}}]}},{"kind":"Field","name":{"kind":"Name","value":"entry"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchByeFragment, unknown>;
-export const MatchFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Match"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Match"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}},{"kind":"Field","name":{"kind":"Name","value":"viewerRestriction"}},{"kind":"Field","name":{"kind":"Name","value":"viewerUpvotedEntryId"}},{"kind":"Field","name":{"kind":"Name","value":"entries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchFragment, unknown>;
 export const NotificationSettingsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationSettings"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationSettings"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"preferences"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"topic"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}},{"kind":"Field","name":{"kind":"Name","value":"suppression"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"until"}}]}},{"kind":"Field","name":{"kind":"Name","value":"deliveryStatusAvailable"}},{"kind":"Field","name":{"kind":"Name","value":"emailVerified"}},{"kind":"Field","name":{"kind":"Name","value":"editable"}}]}}]} as unknown as DocumentNode<NotificationSettingsFragment, unknown>;
 export const NotificationUnsubscribeLinkFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"NotificationUnsubscribeLink"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"NotificationUnsubscribeLink"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"topic"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}}]} as unknown as DocumentNode<NotificationUnsubscribeLinkFragment, unknown>;
+export const ApiKeyFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ApiKeyFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ApiKey"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"scopes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"products"}},{"kind":"Field","name":{"kind":"Name","value":"launches"}},{"kind":"Field","name":{"kind":"Name","value":"upvotes"}},{"kind":"Field","name":{"kind":"Name","value":"comments"}},{"kind":"Field","name":{"kind":"Name","value":"ratings"}},{"kind":"Field","name":{"kind":"Name","value":"profile"}},{"kind":"Field","name":{"kind":"Name","value":"productDescriptions"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]} as unknown as DocumentNode<ApiKeyFieldsFragment, unknown>;
+export const SponsoredAdFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"SponsoredAdFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"SponsoredAd"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"tier"}},{"kind":"Field","name":{"kind":"Name","value":"productName"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}}]}}]} as unknown as DocumentNode<SponsoredAdFieldsFragment, unknown>;
+export const MatchFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Match"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Match"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}},{"kind":"Field","name":{"kind":"Name","value":"viewerRestriction"}},{"kind":"Field","name":{"kind":"Name","value":"viewerUpvotedEntryId"}},{"kind":"Field","name":{"kind":"Name","value":"entries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchFragment, unknown>;
+export const MatchByeFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MatchBye"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchBye"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}}]}},{"kind":"Field","name":{"kind":"Name","value":"entry"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MatchByeFragment, unknown>;
+export const WeekBoardRoundFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"WeekBoardRoundFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"WeekTournamentRoundBoard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"tournament"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"week"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"firstRoundDate"}},{"kind":"Field","name":{"kind":"Name","value":"finalDate"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"awarded"}}]}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"roundName"}},{"kind":"Field","name":{"kind":"Name","value":"final"}},{"kind":"Field","name":{"kind":"Name","value":"matches"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Match"}}]}},{"kind":"Field","name":{"kind":"Name","value":"byes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"MatchBye"}}]}},{"kind":"Field","name":{"kind":"Name","value":"bracketPath"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Match"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Match"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}},{"kind":"Field","name":{"kind":"Name","value":"viewerRestriction"}},{"kind":"Field","name":{"kind":"Name","value":"viewerUpvotedEntryId"}},{"kind":"Field","name":{"kind":"Name","value":"entries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MatchBye"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchBye"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}}]}},{"kind":"Field","name":{"kind":"Name","value":"entry"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<WeekBoardRoundFieldsFragment, unknown>;
+export const YearBoardRoundFieldsFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"YearBoardRoundFields"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"YearTournamentRoundBoard"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"tournament"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"year"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"firstRoundDate"}},{"kind":"Field","name":{"kind":"Name","value":"finalDate"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"awarded"}}]}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"roundName"}},{"kind":"Field","name":{"kind":"Name","value":"final"}},{"kind":"Field","name":{"kind":"Name","value":"finalDate"}},{"kind":"Field","name":{"kind":"Name","value":"matches"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Match"}}]}},{"kind":"Field","name":{"kind":"Name","value":"byes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"MatchBye"}}]}},{"kind":"Field","name":{"kind":"Name","value":"bracketPath"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Match"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Match"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"phase"}},{"kind":"Field","name":{"kind":"Name","value":"decision"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}},{"kind":"Field","name":{"kind":"Name","value":"viewerRestriction"}},{"kind":"Field","name":{"kind":"Name","value":"viewerUpvotedEntryId"}},{"kind":"Field","name":{"kind":"Name","value":"entries"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MatchBye"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MatchBye"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"match"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"round"}},{"kind":"Field","name":{"kind":"Name","value":"stage"}},{"kind":"Field","name":{"kind":"Name","value":"endedEarly"}}]}},{"kind":"Field","name":{"kind":"Name","value":"entry"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"colorIndex"}},{"kind":"Field","name":{"kind":"Name","value":"isViewerOwn"}},{"kind":"Field","name":{"kind":"Name","value":"upvoteCount"}},{"kind":"Field","name":{"kind":"Name","value":"result"}},{"kind":"Field","name":{"kind":"Name","value":"product"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"tagline"}},{"kind":"Field","name":{"kind":"Name","value":"websiteUrl"}},{"kind":"Field","name":{"kind":"Name","value":"listed"}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<YearBoardRoundFieldsFragment, unknown>;
+export const ClientMyDataExportsDocument = {"__meta__":{"hash":"sha256:8841071f85f778263a15020ed11709ffc8252faa981e7cb560fc201179433ff8"}} as unknown as DocumentNode<ClientMyDataExportsQuery, ClientMyDataExportsQueryVariables>;
+export const ClientRequestDataExportDocument = {"__meta__":{"hash":"sha256:ce469ae13589b8170e58aa6cac05fe349d973f0bd2ae9d752b4ccd678fbf4ad6"}} as unknown as DocumentNode<ClientRequestDataExportMutation, ClientRequestDataExportMutationVariables>;
 export const ClientDirectoryCategoriesDocument = {"__meta__":{"hash":"sha256:ec12184573e6602c07891ff6ede6a92821b6fcd270fcebf63b64d5182b182dee"}} as unknown as DocumentNode<ClientDirectoryCategoriesQuery, ClientDirectoryCategoriesQueryVariables>;
 export const ClientDirectoryDocument = {"__meta__":{"hash":"sha256:98bd712fadac35dcb09420e8fa1b2f5100282ec06528b10e80d28b9dd2e01a3e"}} as unknown as DocumentNode<ClientDirectoryQuery, ClientDirectoryQueryVariables>;
 export const ClientMatchSupportersDocument = {"__meta__":{"hash":"sha256:ad24d977e800104a12793e736bc255ea593215b0a7f5f361e25938fd49124c7c"}} as unknown as DocumentNode<ClientMatchSupportersQuery, ClientMatchSupportersQueryVariables>;
@@ -1094,8 +1435,31 @@ export const ClientMyProfileDocument = {"__meta__":{"hash":"sha256:2d8dcc4cbd827
 export const ClientPublicProfileDocument = {"__meta__":{"hash":"sha256:9e0a702a4409301cdc80cf6c15909853192438e5c412885781b39ca96fd1accb"}} as unknown as DocumentNode<ClientPublicProfileQuery, ClientPublicProfileQueryVariables>;
 export const ClientUnfollowUserDocument = {"__meta__":{"hash":"sha256:aa4354a0a4ef140b06a8ea4cae4d21d7494c10aed37765d81671355d708c922a"}} as unknown as DocumentNode<ClientUnfollowUserMutation, ClientUnfollowUserMutationVariables>;
 export const ClientUpdateMyProfileDocument = {"__meta__":{"hash":"sha256:b33ca7211146ea6c901810ca374cd5e6c8aaee313997e027dfe31e606d359d18"}} as unknown as DocumentNode<ClientUpdateMyProfileMutation, ClientUpdateMyProfileMutationVariables>;
+export const ClientDeleteApiKeyDocument = {"__meta__":{"hash":"sha256:fc7f97d2389a5744c2b45398cc379e5fc349693140915942088ab4706fba3bbc"}} as unknown as DocumentNode<ClientDeleteApiKeyMutation, ClientDeleteApiKeyMutationVariables>;
+export const ClientIssueApiKeyDocument = {"__meta__":{"hash":"sha256:187d7266e9f516044aaf3ab4cf1c1823fdaa99b58d8e9a969539198a7c7dbd37"}} as unknown as DocumentNode<ClientIssueApiKeyMutation, ClientIssueApiKeyMutationVariables>;
+export const ClientMyApiKeysDocument = {"__meta__":{"hash":"sha256:b324ab84bd16119c6bfa3d08db667345b687f9fc2130dd4b92ecbbc9f9ea3df3"}} as unknown as DocumentNode<ClientMyApiKeysQuery, ClientMyApiKeysQueryVariables>;
+export const ClientReissueApiKeyDocument = {"__meta__":{"hash":"sha256:98d44a501ad311be8df1936649810d2c8a57b4b832f529d4b44ac352d67450a2"}} as unknown as DocumentNode<ClientReissueApiKeyMutation, ClientReissueApiKeyMutationVariables>;
+export const ClientUpdateApiKeyDocument = {"__meta__":{"hash":"sha256:a1a7a272b6c10d36c321dd8b86ee3f56b827354699904686920bf0544a36d368"}} as unknown as DocumentNode<ClientUpdateApiKeyMutation, ClientUpdateApiKeyMutationVariables>;
+export const ClientReportCategoriesDocument = {"__meta__":{"hash":"sha256:1158b2bc0020409811de38f80c8c020f6dc9a503efdeba7fb317ad05f0ea34ca"}} as unknown as DocumentNode<ClientReportCategoriesQuery, ClientReportCategoriesQueryVariables>;
+export const ClientSubmitReportDocument = {"__meta__":{"hash":"sha256:83b08470d067348b445a7ef1f3bb659137ab7667a52e321631d7fd16ad8f728a"}} as unknown as DocumentNode<ClientSubmitReportMutation, ClientSubmitReportMutationVariables>;
+export const ClientActiveSponsorshipCountDocument = {"__meta__":{"hash":"sha256:0a2516737da8b90a8984914cd732dcae721492d0e95b31d024b507287e0b1f63"}} as unknown as DocumentNode<ClientActiveSponsorshipCountQuery, ClientActiveSponsorshipCountQueryVariables>;
+export const ClientApplySponsorshipDocument = {"__meta__":{"hash":"sha256:e24146897bb5af5be36bca1bb2d882b2d7c2975d7dad5abe5a6b332e2038c834"}} as unknown as DocumentNode<ClientApplySponsorshipMutation, ClientApplySponsorshipMutationVariables>;
+export const ClientMySponsorshipsDocument = {"__meta__":{"hash":"sha256:610d892aebd7cbf7524557c19588d9ad66d573f36c61c310280fca1973ad9492"}} as unknown as DocumentNode<ClientMySponsorshipsQuery, ClientMySponsorshipsQueryVariables>;
+export const ClientResumeSponsorshipCheckoutDocument = {"__meta__":{"hash":"sha256:d30082029d3b2e4131526b1492dcaa2ea66721f9778b741ce882103a4dd55c00"}} as unknown as DocumentNode<ClientResumeSponsorshipCheckoutMutation, ClientResumeSponsorshipCheckoutMutationVariables>;
+export const ClientSponsoredPlacementsDocument = {"__meta__":{"hash":"sha256:c31f5d5518df375d13a15ef6e39b275dd95b4ed755f32d2082b41c880d22d3a4"}} as unknown as DocumentNode<ClientSponsoredPlacementsQuery, ClientSponsoredPlacementsQueryVariables>;
+export const ClientSponsorshipOfferDocument = {"__meta__":{"hash":"sha256:4c01345f785d7848f38b0efe996d1761f201be79ed3535c96de66f461fd1fe70"}} as unknown as DocumentNode<ClientSponsorshipOfferQuery, ClientSponsorshipOfferQueryVariables>;
+export const ClientSponsorshipPeriodWindowDocument = {"__meta__":{"hash":"sha256:7d440519c6bed8c0c261d6d554df303895968ad85f4370ecb7e0ebb51b438131"}} as unknown as DocumentNode<ClientSponsorshipPeriodWindowQuery, ClientSponsorshipPeriodWindowQueryVariables>;
 export const ClientSystemStatusDocument = {"__meta__":{"hash":"sha256:090cc17cd5d52bd28071adebddfe430cda6b85b3a1d2cfa05b655fc784d4ca9e"}} as unknown as DocumentNode<ClientSystemStatusQuery, ClientSystemStatusQueryVariables>;
 export const ClientCreateUltrasPortalSessionDocument = {"__meta__":{"hash":"sha256:44f95f5ac6a34b577e87ec3fb6dbb20363fe8011c4c59f2b36028724f89262ab"}} as unknown as DocumentNode<ClientCreateUltrasPortalSessionMutation, ClientCreateUltrasPortalSessionMutationVariables>;
 export const ClientStartUltrasCheckoutDocument = {"__meta__":{"hash":"sha256:0a375f8e36296fbd5183b733275bf56caf25b57a4c1e8cc70d7a20c1332c810b"}} as unknown as DocumentNode<ClientStartUltrasCheckoutMutation, ClientStartUltrasCheckoutMutationVariables>;
 export const ClientUltrasOfferDocument = {"__meta__":{"hash":"sha256:ec8b30862af3edab7eb2b918ef55d266e4c8aae6e5838c65307b900746226507"}} as unknown as DocumentNode<ClientUltrasOfferQuery, ClientUltrasOfferQueryVariables>;
 export const ClientViewerUltrasDocument = {"__meta__":{"hash":"sha256:ec4d291e8aa98f0a09302d916b16f1734bf43689c87af4d47a2ad6674c7d76f1"}} as unknown as DocumentNode<ClientViewerUltrasQuery, ClientViewerUltrasQueryVariables>;
+export const ClientMyWeekEntryDocument = {"__meta__":{"hash":"sha256:db4c9ee72a517bbe6c198d3d1a2d1f31c969b2e23c999b0c067a2dae5c5ced9f"}} as unknown as DocumentNode<ClientMyWeekEntryQuery, ClientMyWeekEntryQueryVariables>;
+export const ClientProductTrophiesDocument = {"__meta__":{"hash":"sha256:019fe05a6be005d71e079e51e87d5c22903688d37807c8ac0efb9074a549f30b"}} as unknown as DocumentNode<ClientProductTrophiesQuery, ClientProductTrophiesQueryVariables>;
+export const ClientStartWeekTournamentCheckoutDocument = {"__meta__":{"hash":"sha256:4bcb0b568cade69790012fa22c2779a2fc21d671e8cafbeea073db1169167c34"}} as unknown as DocumentNode<ClientStartWeekTournamentCheckoutMutation, ClientStartWeekTournamentCheckoutMutationVariables>;
+export const ClientWeekBracketDocument = {"__meta__":{"hash":"sha256:91429c8085e24c2b28be957879af6e0d82fb44b52f984ace1f0b4e6ae30c3079"}} as unknown as DocumentNode<ClientWeekBracketQuery, ClientWeekBracketQueryVariables>;
+export const ClientWeekTournamentBoardDocument = {"__meta__":{"hash":"sha256:626395551063cf40bfa71c9f2e9b65edfce108a081f65bbe9f2f32d4f6714928"}} as unknown as DocumentNode<ClientWeekTournamentBoardQuery, ClientWeekTournamentBoardQueryVariables>;
+export const ClientMyYearEntryDocument = {"__meta__":{"hash":"sha256:47603b2438d56b9d9913be7abea3b3a2f7c02064f029d611e91a6864866dd0ee"}} as unknown as DocumentNode<ClientMyYearEntryQuery, ClientMyYearEntryQueryVariables>;
+export const ClientStartYearTournamentCheckoutDocument = {"__meta__":{"hash":"sha256:ce139e5b84d894c8334d859717d76f9e86bd2d8e80295250b630a611c4f3e7a9"}} as unknown as DocumentNode<ClientStartYearTournamentCheckoutMutation, ClientStartYearTournamentCheckoutMutationVariables>;
+export const ClientYearBracketDocument = {"__meta__":{"hash":"sha256:9958d2c8fcaa0d52d5379751889ed972f19f3f36e9bffdada2c34d78c50a6466"}} as unknown as DocumentNode<ClientYearBracketQuery, ClientYearBracketQueryVariables>;
+export const ClientYearTournamentBoardDocument = {"__meta__":{"hash":"sha256:1518385047e565e935efdc2af15b1424bfd528c89be0c3e686f4690c8b18534e"}} as unknown as DocumentNode<ClientYearTournamentBoardQuery, ClientYearTournamentBoardQueryVariables>;

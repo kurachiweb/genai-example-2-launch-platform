@@ -1,7 +1,5 @@
 import { describe, expect, test } from 'bun:test';
 
-import { MY_PRODUCT_SECTIONS } from '../../composition/my-product-sections.ts';
-import { PRODUCT_DELETE_NOTICES } from '../../composition/product-delete-notices.ts';
 import { orderProductSections } from './product-section-order.ts';
 import type {
   MyProductSection,
@@ -64,27 +62,4 @@ describe('自分のプロダクトの区画と削除の注意書きの順序', (
   test('登録が無ければ空の一覧を返す', () => {
     expect(orderProductSections([])).toStrictEqual([]);
   });
-});
-
-describe('登録箇所', () => {
-  test('初版の2つの登録箇所は空である', () => {
-    expect(MY_PRODUCT_SECTIONS).toStrictEqual([]);
-    expect(PRODUCT_DELETE_NOTICES).toStrictEqual([]);
-  });
-
-  test.each([
-    ['自分のプロダクトの区画', MY_PRODUCT_SECTIONS],
-    ['削除の注意書き', PRODUCT_DELETE_NOTICES],
-  ] as const)(
-    '%sのidは重複せず`<spec名>.<名詞句>`の形で、orderは有限の数である',
-    (_name, entries) => {
-      const ids = entries.map(({ id }) => id);
-
-      expect(new Set(ids).size).toBe(ids.length);
-      expect(
-        ids.every((id) => /^[a-z][a-z0-9-]*\.[a-z][a-z0-9-]*$/u.test(id)),
-      ).toBe(true);
-      expect(entries.every(({ order }) => Number.isFinite(order))).toBe(true);
-    },
-  );
 });

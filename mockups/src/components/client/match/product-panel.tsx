@@ -96,7 +96,7 @@ export function ProductPanel({
             <Link
               to="/client/p/$handle"
               params={{ handle: product.handle }}
-              className="text-inherit no-underline hover:underline focus-visible:rounded focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              className="text-inherit no-underline hover:underline focus-visible:rounded focus-visible:ring-3 focus-visible:ring-ring/50"
             >
               {product.name}
             </Link>

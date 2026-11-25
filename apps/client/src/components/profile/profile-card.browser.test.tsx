@@ -587,13 +587,25 @@ describe('ProfileCard', () => {
   });
 
   describe('登録箇所の既定', () => {
-    test('受賞バッジの区画と「…」メニューの項目が登録されていなければ、受賞バッジの枠も「…」ボタンも出さない', async () => {
+    test('受賞バッジの区画が登録されていなければ受賞バッジの枠を出さず、「…」メニューは既定の登録箇所の項目を並べる', async () => {
       await renderCard(publicProfileOf(), { badges: [] });
 
       await expect
         .element(page.getByRole('button', { name: 'フォロー' }))
         .toBeVisible();
       expect(documentElement('[data-slot="profile-badges"]')).toBeNull();
+      await userEvent.click(page.getByRole('button', { name: 'その他の操作' }));
+      await expect
+        .element(page.getByRole('menuitem', { name: 'このユーザーを通報' }))
+        .toBeVisible();
+    });
+
+    test('項目が登録されていなければ「…」ボタンを出さない', async () => {
+      await renderCard(publicProfileOf(), { badges: [], menuItems: [] });
+
+      await expect
+        .element(page.getByRole('button', { name: 'フォロー' }))
+        .toBeVisible();
       await expect
         .element(page.getByRole('button', { name: 'その他の操作' }))
         .not.toBeInTheDocument();

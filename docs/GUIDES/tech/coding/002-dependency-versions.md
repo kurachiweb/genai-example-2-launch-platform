@@ -1,6 +1,6 @@
 # 依存パッケージの版管理
 
-版を完全に固定すべき主要パッケージの一覧と、それらを追加・更新する手順を定める。
+版を完全に固定すべき主要パッケージの一覧と、それらを追加・更新する手順、及び導入時に外部へ送信するパッケージの止め方を定める。
 
 ## 前提
 
@@ -23,6 +23,7 @@
 | `@cloudflare/vite-plugin`                                                                                                                                                            | 1.53.0                                                            | 画面を持つアプリ                                             | `wrangler` 4.124.0を`dependencies`で完全固定し、同じ版以上の`wrangler`を相手依存に持つ。開発サーバーとビルドがWorkerの実行環境を同じ版で再現する。より新しい版は、`@cloudflare/vitest-pool-workers`が固定する`wrangler`より新しい版を固定するため上げない |
 | `drizzle-orm`・`drizzle-kit`                                                                                                                                                         | 1.0.0-rc.5(2つとも同一のプレリリース版)                           | DBスキーマ定義の共有ディレクトリと、それを使うアプリ         | 正式版が無くRCのまま。ORMとマイグレーション生成ツールの版ずれを防ぐ                                                                                                                                                                                       |
 | `@playwright/test`・`playwright`                                                                                                                                                     | 1.64.1                                                            | ルート(`playwright`はブラウザテストを持つアプリも)           | 共有のChromiumのリビジョンを決める。開発コンテナのOS依存パッケージの版と一致させる                                                                                                                                                                        |
+| `axe-core`                                                                                                                                                                           | 4.14.0                                                            | ルート・画面の共通部品・画面を持つアプリ                     | 規則の追加・判定の変更が版ごとに入る。ルートのE2Eの検査(ページへ注入)と、共通部品・アプリのブラウザテストの検査で版が食い違うと、同じ画面で違反の有無が変わる。ルートはPlaywrightのE2Eからページへ注入するため`@axe-core/playwright`は使わない            |
 | `hono`                                                                                                                                                                               | 4.13.14                                                           | バックエンドの共通ライブラリを使うアプリ                     | 共通ライブラリは配置先のアプリの依存パッケージで動き、検査担当のアプリの版でだけテストされる。版が食い違うと、テストしていない組み合わせで動く                                                                                                            |
 | `inversify`・`reflect-metadata`                                                                                                                                                      | 8.2.3・0.2.2                                                      | バックエンドの共通ライブラリを使うアプリ                     | `hono`と同じ理由。`reflect-metadata`はInversifyの内部パッケージの相手依存(`~0.2.2`)で、アプリで明示的に宣言して版を固定する                                                                                                                               |
 | `zod`                                                                                                                                                                                | 4.6.7                                                             | バックエンドの共通ライブラリ・共用部品を使うアプリと共用部品 | `hono`と同じ理由。環境とメッセージの本文の検証規則を、共通ライブラリとアプリのスキーマで組み合わせる。共用部品の入力の検証規則も、配置先のアプリのZodで動く                                                                                               |
@@ -51,7 +52,7 @@
 - Vitest系はテストの種別に応じて導入する。ブラウザテストを持つアプリは`vitest`・`@vitest/browser-playwright`・`@vitest/coverage-v8`・`playwright`を、Workers統合テストを持つアプリは`vitest`・`@vitest/coverage-istanbul`・`@cloudflare/vitest-pool-workers`・`wrangler`を導入する。
 - ルートは`@playwright/test`だけを直接宣言する。`@playwright/test`は`playwright`を、`playwright`は`playwright-core`を、それぞれ完全固定の`dependencies`で持つため、`playwright`・`playwright-core`は推移的に同じ版に決まる。ブラウザテストを持つアプリは、`@vitest/browser-playwright`が使う`playwright`を直接宣言し、同じ版にする。
 - 一覧に無いパッケージでも、共有ディレクトリのコードが実行時に使うものは、利用側アプリが共有ディレクトリ側と同じ版で宣言する。
-- バックエンドの共通ライブラリは`package.json`を持たず、使うパッケージ(`hono`・`inversify`・`reflect-metadata`・`zod`・`@logtape/logtape`・`@logtape/redaction`・`@sentry/cloudflare`・`@sentry/hono`・`ulid`・`drizzle-orm`・`image-size`・`fast-xml-parser`・`fast-xml-validator`・`stripe`)を、配置先の全アプリが同じ版で`dependencies`に宣言する。`@sentry/core`の型だけを使う場合も、`@sentry/core`は宣言せず`@sentry/cloudflare`・`@sentry/hono`が固定する版に任せる。
+- バックエンドの共通ライブラリは`package.json`を持たず、使うパッケージ(`hono`・`inversify`・`reflect-metadata`・`zod`・`@logtape/logtape`・`@logtape/redaction`・`@sentry/cloudflare`・`@sentry/hono`・`ulid`・`drizzle-orm`・`image-size`・`fast-xml-parser`・`fast-xml-validator`・`fflate`・`stripe`)を、配置先の全アプリが同じ版で`dependencies`に宣言する。`@sentry/core`の型だけを使う場合も、`@sentry/core`は宣言せず`@sentry/cloudflare`・`@sentry/hono`が固定する版に任せる。
 - GraphQLのクライアントを持つアプリ(画面を持つアプリ)は、`graphql`・`@graphql-codegen/cli`を、GraphQLのサーバーを持つアプリと同じ版で`devDependencies`に宣言する。クライアントの操作を、サーバーのスキーマの検証と同じ版の`graphql`で検証するためである。
 - 画面の共通部品は、型の出どころとして`graphql`を`devDependencies`に宣言する。宣言しないと、Bunが他のパッケージの相手依存として別の系列の`graphql`を入れる。
 
@@ -211,6 +212,20 @@
 
 3. `package.json`に`^`・`~`の付かない版が書かれ、`bun.lock`が更新されたことを確かめる。
 4. `package.json`と`bun.lock`を同じコミットに含める。
+
+## 導入時に外部へ送信するパッケージ
+
+依存の木に、導入の後の処理(`postinstall`)で依存の情報を外部の集計サービスへ送るパッケージ(`@scarf/scarf`)が入ることがある。このパッケージはBunの既定の信頼済みの一覧に含まれ、`trustedDependencies`に書かなくても導入のたびに実行される。
+
+- 追加したパッケージの依存の木にこのパッケージが入ったら(そのディレクトリの`bun.lock`に`"@scarf/scarf@`が現れたら)、そのディレクトリの`package.json`の最上位に次を書き、送信を止める。
+
+  ```json
+  {
+    "scarfSettings": { "enabled": false }
+  }
+  ```
+
+- ルートの単体テストで、導入先のディレクトリ(ルートと各アプリ)のうち`bun.lock`にこのパッケージを含むものが全て`scarfSettings.enabled`を`false`にしていることを確かめる。後から別のディレクトリへ同じ依存を入れた時の止め忘れを検出するためである。
 
 ## 全アプリの版をそろえる手順
 

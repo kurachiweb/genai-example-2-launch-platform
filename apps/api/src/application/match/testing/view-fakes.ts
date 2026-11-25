@@ -6,7 +6,7 @@ import type {
 import {
   deriveMatchPhase,
   type MatchKind,
-  qualifierWindow,
+  matchWindow,
 } from '../../../../lib/core/match/match-model.ts';
 import {
   type BusinessDate,
@@ -17,7 +17,7 @@ import type { MatchBoardStore, PairingStore } from '../ports.ts';
 
 export const VIEW_DATE: BusinessDate = parseBusinessDate('2027-03-03');
 
-export const VIEW_WINDOW = qualifierWindow(VIEW_DATE);
+export const VIEW_WINDOW = matchWindow(VIEW_DATE);
 
 // 業務時刻12:00
 export const VIEW_NOW = fromBusinessDateTime(VIEW_DATE, {

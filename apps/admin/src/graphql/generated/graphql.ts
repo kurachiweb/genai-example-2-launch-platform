@@ -10,6 +10,23 @@ export type AdminAccountStatus =
   | 'INVITATION_EXPIRED'
   | 'INVITED';
 
+/** コメントの一覧の絞り込み。投稿日時はpostedFromを含みpostedBeforeを含まない */
+export type AdminCommentFilter = {
+  authorHandle?: string | null | undefined;
+  postedBefore?: string | null | undefined;
+  postedFrom?: string | null | undefined;
+  productHandle?: string | null | undefined;
+  state?: AdminCommentState | null | undefined;
+};
+
+/** 管理画面のコメントの状態 */
+export type AdminCommentState =
+  | 'ANONYMIZED'
+  | 'AUTHOR_UNAVAILABLE'
+  | 'DELETED'
+  | 'HIDDEN'
+  | 'SHOWN';
+
 /** 管理画面の問い合わせの一覧の絞り込み */
 export type AdminInquiryFilterInput = {
   categoryId?: string | number | null | undefined;
@@ -21,11 +38,58 @@ export type AdminInquiryFilterInput = {
   status?: InquiryStatus | null | undefined;
 };
 
+/** プロダクトの一覧の絞り込み。指定した条件を全て満たすプロダクトを返す */
+export type AdminProductFilter = {
+  categoryId?: string | number | null | undefined;
+  handle?: string | null | undefined;
+  launchState?: AdminProductLaunchState | null | undefined;
+  name?: string | null | undefined;
+  ownerHandle?: string | null | undefined;
+  visibility?: AdminProductVisibility | null | undefined;
+};
+
+/** プロダクトの最新のローンチの状態 */
+export type AdminProductLaunchState =
+  | 'CANCELED'
+  | 'IN_PROGRESS'
+  | 'LOST'
+  | 'SCHEDULED'
+  | 'WON';
+
+/** プロダクトの公開状態 */
+export type AdminProductVisibility =
+  | 'HIDDEN'
+  | 'OWNER_SUSPENDED'
+  | 'VISIBLE';
+
+/** 評価の一覧の絞り込み */
+export type AdminRatingFilter = {
+  productHandle?: string | null | undefined;
+  raterHandle?: string | null | undefined;
+  state?: AdminRatingState | null | undefined;
+};
+
+/** 管理画面の評価の状態 */
+export type AdminRatingState =
+  | 'INVALIDATED'
+  | 'VALID';
+
 /** 重要な操作の本人確認 */
 export type AdminReAuthenticationInput = {
   /** 本人確認に使う現在のパスワード */
   currentPassword: string;
   secondFactor: AdminSecondFactorInput;
+};
+
+/** 通報の案件の一覧の絞り込み */
+export type AdminReportCaseFilter = {
+  /** そのカテゴリの通報を含む案件 */
+  categoryId?: string | number | null | undefined;
+  reportedBefore?: string | null | undefined;
+  /** その期間に受け付けた通報を含む案件。開始は含み、終了は含まない */
+  reportedFrom?: string | null | undefined;
+  status?: ReportCaseStatus | null | undefined;
+  targetKind?: ReportTargetKind | null | undefined;
 };
 
 /** 管理者のロール */
@@ -38,6 +102,42 @@ export type AdminRole =
 export type AdminSecondFactorInput = {
   recoveryCode?: string | null | undefined;
   totpCode?: string | null | undefined;
+};
+
+/** 管理画面の一覧の絞り込み。省略した条件は絞り込まない */
+export type AdminSponsorshipFilter = {
+  status?: AdminSponsorshipStatusFilter | null | undefined;
+  tier?: SponsorshipTier | null | undefined;
+};
+
+/** 管理画面の一覧の掲載状況の絞り込み。表示停止中は掲載予定・掲載中に含む */
+export type AdminSponsorshipStatusFilter =
+  | 'ACTIVE'
+  | 'ENDED'
+  | 'PENDING_PAYMENT'
+  | 'SCHEDULED'
+  | 'TERMINATED';
+
+/** ユーザーの一覧の絞り込み。指定した条件を全て満たす利用者を返す */
+export type AdminUserFilter = {
+  /** 大文字小文字を区別しない完全一致 */
+  email?: string | null | undefined;
+  /** 大文字小文字を区別しない部分一致 */
+  handle?: string | null | undefined;
+  /** 大文字小文字を区別しない部分一致 */
+  nickname?: string | null | undefined;
+  status?: AdminUserStatus | null | undefined;
+};
+
+/** 管理画面の利用者の停止状態 */
+export type AdminUserStatus =
+  | 'ACTIVE'
+  | 'SUSPENDED';
+
+/** 代理の退会の入力 */
+export type AdministrativeWithdrawalInput = {
+  reason: string;
+  userId: string | number;
 };
 
 /** 監査ログの絞り込みの条件。指定した条件をすべて満たすものだけを返す */
@@ -61,6 +161,13 @@ export type DiscardLegalDocumentDraftInput = {
   expectedStateVersion: number;
   kind: LegalDocumentKind;
 };
+
+/** 使い捨てメールアドレスの判定結果。UNVERIFIEDはメールアドレスの確認を済ませていない利用者 */
+export type DisposableEmailCheck =
+  | 'DISPOSABLE'
+  | 'REGULAR'
+  | 'UNDETERMINED'
+  | 'UNVERIFIED';
 
 export type HelpArticleFields = {
   body: string;
@@ -127,12 +234,65 @@ export type PublishLegalDocumentInput = {
   kind: LegalDocumentKind;
 };
 
+/** 画像の隔離理由 */
+export type QuarantineReason =
+  | 'ADMIN_ACTION'
+  | 'AUTO'
+  | 'PRODUCT_HIDDEN'
+  | 'USER_SUSPENDED';
+
+/** 通報の案件の対応ステータス */
+export type ReportCaseStatus =
+  | 'IN_PROGRESS'
+  | 'OPEN'
+  | 'REJECTED'
+  | 'RESOLVED';
+
+/** 対応済の案件の措置。NONEは措置なしの対応済 */
+export type ReportResolution =
+  | 'COMMENT_HIDE'
+  | 'NONE'
+  | 'PRODUCT_HIDE'
+  | 'USER_SUSPEND';
+
+/** 通報の対象の種類 */
+export type ReportTargetKind =
+  | 'COMMENT'
+  | 'PRODUCT'
+  | 'USER';
+
+/** 権利侵害の案件の対応期間の目標の超過 */
+export type ResponseTimeAlert =
+  | 'DECISION_OVERDUE'
+  | 'START_OVERDUE';
+
 /** 下書きの保存 */
 export type SaveLegalDocumentDraftInput = {
   body: string;
   expectedStateVersion: number;
   kind: LegalDocumentKind;
 };
+
+/** 依頼した返金の状態。REQUESTEDは依頼済み、ALREADY_REFUNDEDは返金できる残りが無く返金済み、REJECTEDは拒否 */
+export type SponsorshipRefundStatus =
+  | 'ALREADY_REFUNDED'
+  | 'REJECTED'
+  | 'REQUESTED';
+
+/** 掲載状況。PAUSEDはプロダクトの非公開化か投稿者の停止による表示停止中 */
+export type SponsorshipStatus =
+  | 'ACTIVE'
+  | 'ENDED'
+  | 'PAUSED'
+  | 'PENDING_PAYMENT'
+  | 'SCHEDULED'
+  | 'TERMINATED';
+
+/** スポンサー広告のティア */
+export type SponsorshipTier =
+  | 'GOLD'
+  | 'LEGEND'
+  | 'SILVER';
 
 export type UpdateHelpArticleInput = {
   expectedRevision: number;
@@ -161,11 +321,40 @@ export type UpdateUltrasPromotionSettingInput = {
   reason?: string | null | undefined;
 };
 
+/** 決勝実施日の保存の入力 */
+export type UpdateYearFinalDateInput = {
+  /** 照会で読み取った版 */
+  expectedVersion: number;
+  /** 決勝実施日(業務日付のYYYY-MM-DD) */
+  finalDate: string;
+  /** 監査ログに残す理由(500文字以内、任意) */
+  reason?: string | null | undefined;
+  /** 対象年(現在の年か翌年) */
+  year: number;
+};
+
+/** 決勝実施日の決まり方。EXPLICITは最上位管理者が設定した日、DEFAULTは対象年5月の最終日曜日 */
+export type YearFinalDateSource =
+  | 'DEFAULT'
+  | 'EXPLICIT';
+
 export type AdminHelpArticleRowFragment = { id: string, handle: string, title: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, sortOrder: number, creatorAdminId: string, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
 
 export type AdminHelpArticleFragment = { id: string, handle: string, previousHandle: string | null, title: string, subtitle: string, body: string, categoryId: string, categoryName: string, status: HelpArticleStatus, pinned: boolean, revision: number, createdAt: string, updatedAt: string, creator: { nickname: string, title: string | null, avatar: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } | null } | null };
 
 export type HelpCategoryFragment = { id: string, name: string, systemDefault: boolean, sortOrder: number, articleCount: number };
+
+export type AdminModerationMediaFileFragment = { id: string, path: string, quarantined: boolean, quarantineReasons: Array<QuarantineReason>, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } };
+
+export type AdminModerationNoteFragment = { reason: string | null, occurredAt: string };
+
+export type AdminModerationProductFragment = { id: string, handle: string, name: string, latestLaunchDate: string | null, latestLaunchState: AdminProductLaunchState | null, visibility: AdminProductVisibility, logo: { id: string, path: string, quarantined: boolean, quarantineReasons: Array<QuarantineReason>, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } } | null, owner: { id: string, handle: string, nickname: string, suspended: boolean } | null, category: { id: string, name: string } };
+
+export type AdminModerationRatingFragment = { id: string, productName: string | null, productId: string, score: number, createdAt: string, updatedAt: string, state: AdminRatingState, rater: { id: string, handle: string, nickname: string, suspended: boolean } | null, latestInvalidation: { reason: string | null, occurredAt: string } | null };
+
+export type AdminModerationUserSummaryFragment = { id: string, handle: string, nickname: string, suspended: boolean };
+
+export type AdminReportCaseSummaryFragment = { id: string, status: ReportCaseStatus, reportCount: number, firstReportedAt: string, lastReportedAt: string, infringement: boolean, target: { kind: ReportTargetKind, id: string | null, detached: boolean, available: boolean, handle: string | null, label: string | null, excerpt: string | null, productId: string | null, productName: string | null, productHandle: string | null }, categoryCounts: Array<{ categoryId: string, name: string, count: number }>, responseTime: { startedAt: string, completedAt: string | null, elapsedSeconds: number | null, alerts: Array<ResponseTimeAlert> } | null };
 
 export type AdminAccountsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -520,6 +709,179 @@ export type AdminSaveLegalDocumentDraftMutationVariables = Exact<{
 
 export type AdminSaveLegalDocumentDraftMutation = { saveLegalDocumentDraft: { kind: LegalDocumentKind, stateVersion: number, latestBody: string | null, draft: { body: string, savedAt: string, savedBy: { id: string, nickname: string | null } } | null, revisions: Array<{ versionNumber: number, publishedAt: string, changeSummary: string, publishedBy: { id: string, nickname: string | null } }> } };
 
+export type AdminApproveQuarantinedImageMutationVariables = Exact<{
+  fileId: string | number;
+  reason?: string | null | undefined;
+}>;
+
+
+export type AdminApproveQuarantinedImageMutation = { approveQuarantinedImage: { changed: boolean } };
+
+export type AdminCommentsQueryVariables = Exact<{
+  filter?: AdminCommentFilter | null | undefined;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminCommentsQuery = { adminComments: { nodes: Array<{ id: string, excerpt: string, productName: string | null, productId: string, launchId: string, launchNumber: number | null, createdAt: string, state: AdminCommentState, author: { id: string, handle: string, nickname: string, suspended: boolean } | null, latestHide: { reason: string | null, occurredAt: string } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type AdminDeleteQuarantinedImageMutationVariables = Exact<{
+  fileId: string | number;
+  reason?: string | null | undefined;
+}>;
+
+
+export type AdminDeleteQuarantinedImageMutation = { deleteQuarantinedImage: { changed: boolean } };
+
+export type AdminHideCommentMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminHideCommentMutation = { hideComment: { changed: boolean } };
+
+export type AdminHideProductMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminHideProductMutation = { hideProduct: { changed: boolean } };
+
+export type AdminInvalidateRatingMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminInvalidateRatingMutation = { invalidateRating: { changed: boolean } };
+
+export type AdminModerationCategoryOptionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminModerationCategoryOptionsQuery = { adminModerationCategoryOptions: Array<{ id: string, name: string }> };
+
+export type AdminProductRatingsQueryVariables = Exact<{
+  productId: string | number;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminProductRatingsQuery = { adminProductRatings: { nodes: Array<{ id: string, productName: string | null, productId: string, score: number, createdAt: string, updatedAt: string, state: AdminRatingState, rater: { id: string, handle: string, nickname: string, suspended: boolean } | null, latestInvalidation: { reason: string | null, occurredAt: string } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type AdminProductQueryVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type AdminProductQuery = { adminProduct: { tagline: string, descriptionMarkdown: string, websiteUrl: string, hiddenAt: string | null, product: { id: string, handle: string, name: string, latestLaunchDate: string | null, latestLaunchState: AdminProductLaunchState | null, visibility: AdminProductVisibility, logo: { id: string, path: string, quarantined: boolean, quarantineReasons: Array<QuarantineReason>, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } } | null, owner: { id: string, handle: string, nickname: string, suspended: boolean } | null, category: { id: string, name: string } }, screenshots: Array<{ id: string, path: string, quarantined: boolean, quarantineReasons: Array<QuarantineReason>, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } }>, latestHide: { reason: string | null, occurredAt: string } | null, ratingSummary: { average: number | null, count: number }, launches: Array<{ id: string, number: number, launchDate: string, status: string, matches: Array<{ id: string, kind: string, round: number | null, stage: string | null, matchDate: string, upvoteCount: number, result: string | null, phase: string, decision: string | null, opponentName: string | null }> }> } | null };
+
+export type AdminProductsQueryVariables = Exact<{
+  filter?: AdminProductFilter | null | undefined;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminProductsQuery = { adminProducts: { nodes: Array<{ id: string, handle: string, name: string, latestLaunchDate: string | null, latestLaunchState: AdminProductLaunchState | null, visibility: AdminProductVisibility, logo: { id: string, path: string, quarantined: boolean, quarantineReasons: Array<QuarantineReason>, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } } | null, owner: { id: string, handle: string, nickname: string, suspended: boolean } | null, category: { id: string, name: string } }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type AdminQuarantineImageMutationVariables = Exact<{
+  fileId: string | number;
+  reason?: string | null | undefined;
+}>;
+
+
+export type AdminQuarantineImageMutation = { quarantineImage: { changed: boolean } };
+
+export type AdminQuarantinedImagesQueryVariables = Exact<{
+  reason: QuarantineReason;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminQuarantinedImagesQuery = { adminQuarantinedImages: { nextCursor: string | null, items: Array<{ purpose: string, quarantinedAt: string, findings: Array<string>, file: { id: string, path: string, quarantined: boolean, quarantineReasons: Array<QuarantineReason>, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } }, owner: { kind: string, id: string, nickname: string | null, handle: string | null } | null }> } };
+
+export type AdminRatingsQueryVariables = Exact<{
+  filter?: AdminRatingFilter | null | undefined;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminRatingsQuery = { adminRatings: { nodes: Array<{ id: string, productName: string | null, productId: string, score: number, createdAt: string, updatedAt: string, state: AdminRatingState, rater: { id: string, handle: string, nickname: string, suspended: boolean } | null, latestInvalidation: { reason: string | null, occurredAt: string } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type AdminReleaseQuarantinedImageMutationVariables = Exact<{
+  fileId: string | number;
+  reason?: string | null | undefined;
+}>;
+
+
+export type AdminReleaseQuarantinedImageMutation = { releaseQuarantinedImage: { changed: boolean } };
+
+export type AdminRevalidateRatingMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminRevalidateRatingMutation = { revalidateRating: { changed: boolean } };
+
+export type AdminSuspendUserMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminSuspendUserMutation = { suspendUser: { changed: boolean } };
+
+export type AdminUnhideCommentMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminUnhideCommentMutation = { unhideComment: { changed: boolean } };
+
+export type AdminUnhideProductMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminUnhideProductMutation = { unhideProduct: { changed: boolean } };
+
+export type AdminUnsuspendUserMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminUnsuspendUserMutation = { unsuspendUser: { changed: boolean } };
+
+export type AdminUsersQueryVariables = Exact<{
+  filter?: AdminUserFilter | null | undefined;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminUsersQuery = { adminUsers: { nodes: Array<{ id: string, handle: string, nickname: string, registeredAt: string, disposableEmail: DisposableEmailCheck, status: AdminUserStatus, suspendedAt: string | null, avatar: { id: string, path: string, quarantined: boolean, quarantineReasons: Array<QuarantineReason>, image: { id: string, objectKey: string | null, fallbackFormat: MediaImageFallbackFormat, width: number | null, height: number | null } } | null, latestSuspension: { reason: string | null, occurredAt: string } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type AdminWeeklyStatisticsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminWeeklyStatisticsQuery = { adminWeeklyStatistics: { lastComputedAt: string | null, weeks: Array<{ weekStart: string, finalized: boolean, users: number, products: number, qualifierMatches: number, upvotes: number, netRevenue: { amount: number, currency: string } }> } };
+
+export type AdminWithdrawUserByAdministratorMutationVariables = Exact<{
+  input: AdministrativeWithdrawalInput;
+}>;
+
+
+export type AdminWithdrawUserByAdministratorMutation = { withdrawUserByAdministrator: { changed: boolean } };
+
 export type AdminNotificationSenderInfoQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -559,6 +921,128 @@ export type AdminUpdateProductCategoryMutationVariables = Exact<{
 
 export type AdminUpdateProductCategoryMutation = { updateProductCategory: { id: string } };
 
+export type AdminReportCaseQueryVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type AdminReportCaseQuery = { adminReportCase: { statusChangedAt: string, resolution: ReportResolution | null, closingReason: string | null, closedAt: string | null, inquiryAvailable: boolean, case: { id: string, status: ReportCaseStatus, reportCount: number, firstReportedAt: string, lastReportedAt: string, infringement: boolean, target: { kind: ReportTargetKind, id: string | null, detached: boolean, available: boolean, handle: string | null, label: string | null, excerpt: string | null, productId: string | null, productName: string | null, productHandle: string | null }, categoryCounts: Array<{ categoryId: string, name: string, count: number }>, responseTime: { startedAt: string, completedAt: string | null, elapsedSeconds: number | null, alerts: Array<ResponseTimeAlert> } | null }, lastInquiry: { sentAt: string, message: string, deadline: string, overdue: boolean } | null, reports: Array<{ id: string, categoryName: string, reason: string, reportedAt: string, reporter: { kind: string, nickname: string | null, handle: string | null, hasContact: boolean } }> } | null };
+
+export type AdminReportCasesQueryVariables = Exact<{
+  filter?: AdminReportCaseFilter | null | undefined;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminReportCasesQuery = { adminReportCases: { nodes: Array<{ id: string, status: ReportCaseStatus, reportCount: number, firstReportedAt: string, lastReportedAt: string, infringement: boolean, target: { kind: ReportTargetKind, id: string | null, detached: boolean, available: boolean, handle: string | null, label: string | null, excerpt: string | null, productId: string | null, productName: string | null, productHandle: string | null }, categoryCounts: Array<{ categoryId: string, name: string, count: number }>, responseTime: { startedAt: string, completedAt: string | null, elapsedSeconds: number | null, alerts: Array<ResponseTimeAlert> } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type AdminReportCategoriesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminReportCategoriesQuery = { adminReportCategories: Array<{ id: string, name: string, systemDefault: boolean, infringement: boolean, reportCount: number }> };
+
+export type AdminChangeReportCaseStatusMutationVariables = Exact<{
+  id: string | number;
+  from: ReportCaseStatus;
+  to: ReportCaseStatus;
+  reason?: string | null | undefined;
+}>;
+
+
+export type AdminChangeReportCaseStatusMutation = { changeReportCaseStatus: { status: ReportCaseStatus } };
+
+export type AdminCreateReportCategoryMutationVariables = Exact<{
+  name: string;
+}>;
+
+
+export type AdminCreateReportCategoryMutation = { createReportCategory: { id: string } };
+
+export type AdminDeleteReportCategoryMutationVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type AdminDeleteReportCategoryMutation = { deleteReportCategory: { reassignedCount: number } };
+
+export type AdminRejectReportCaseMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminRejectReportCaseMutation = { rejectReportCase: { status: ReportCaseStatus } };
+
+export type AdminRenameReportCategoryMutationVariables = Exact<{
+  id: string | number;
+  name: string;
+}>;
+
+
+export type AdminRenameReportCategoryMutation = { renameReportCategory: { id: string } };
+
+export type AdminResolveReportCaseWithMeasureMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminResolveReportCaseWithMeasureMutation = { resolveReportCaseWithMeasure: { status: ReportCaseStatus } };
+
+export type AdminResolveReportCaseWithoutMeasureMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminResolveReportCaseWithoutMeasureMutation = { resolveReportCaseWithoutMeasure: { status: ReportCaseStatus } };
+
+export type AdminSendInfringementInquiryMutationVariables = Exact<{
+  id: string | number;
+  message: string;
+  reason?: string | null | undefined;
+}>;
+
+
+export type AdminSendInfringementInquiryMutation = { sendInfringementInquiry: { sentAt: string, deadline: string } };
+
+export type AdminProductReportSummaryQueryVariables = Exact<{
+  productId: string | number;
+}>;
+
+
+export type AdminProductReportSummaryQuery = { adminProductReportSummary: { reportCount: number, openCase: { id: string, status: ReportCaseStatus } | null } };
+
+export type AdminUnhandledReportSummaryQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminUnhandledReportSummaryQuery = { adminUnhandledReportSummary: { open: number, infringementOpen: number } };
+
+export type AdminSponsorshipsQueryVariables = Exact<{
+  filter?: AdminSponsorshipFilter | null | undefined;
+  first: number;
+  after?: string | null | undefined;
+}>;
+
+
+export type AdminSponsorshipsQuery = { adminSponsorships: { nodes: Array<{ id: string, productName: string | null, productHandle: string | null, productDeleted: boolean, applicantNickname: string | null, tier: SponsorshipTier, startsOn: string, endsOn: string, days: number, status: SponsorshipStatus, terminable: boolean, purchaseId: string | null, createdAt: string, amountPaid: { amount: number, currency: string } | null }>, pageInfo: { hasNextPage: boolean, endCursor: string | null } } };
+
+export type AdminSponsorshipTerminationPreviewQueryVariables = Exact<{
+  id: string | number;
+}>;
+
+
+export type AdminSponsorshipTerminationPreviewQuery = { sponsorshipTerminationPreview: { id: string, days: number, unexposedDays: number, stoppedDays: number, amountPaid: { amount: number, currency: string }, refundEstimate: { amount: number, currency: string }, stopRefundAmount: { amount: number, currency: string } } };
+
+export type AdminTerminateSponsorshipMutationVariables = Exact<{
+  id: string | number;
+  reason: string;
+}>;
+
+
+export type AdminTerminateSponsorshipMutation = { terminateSponsorship: { id: string, days: number, unexposedDays: number, stoppedDays: number, terminatedOn: string, terminationRefundStatus: SponsorshipRefundStatus | null, stopRefundStatus: SponsorshipRefundStatus | null, purchaseId: string, amountPaid: { amount: number, currency: string }, refundEstimate: { amount: number, currency: string }, stopRefundAmount: { amount: number, currency: string }, terminationRefundRequested: { amount: number, currency: string } | null, stopRefundRequested: { amount: number, currency: string } | null } };
+
 export type AdminSystemStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -576,9 +1060,27 @@ export type AdminUpdateUltrasPromotionSettingMutationVariables = Exact<{
 
 export type AdminUpdateUltrasPromotionSettingMutation = { updateUltrasPromotionSetting: { enabled: boolean, updatedAt: string | null, updatedByNickname: string | null, version: number } };
 
+export type AdminUpdateYearFinalDateMutationVariables = Exact<{
+  input: UpdateYearFinalDateInput;
+}>;
+
+
+export type AdminUpdateYearFinalDateMutation = { updateYearFinalDate: { year: number, finalDate: string, source: YearFinalDateSource, acceptUntil: string, deadlineAt: string, drawAt: string, changeLockAt: string, changeable: boolean, choices: Array<string>, previousYearFinalDate: string | null, nextYearFinalDate: string | null, nextYearSource: YearFinalDateSource | null, nextYearGapWarningDate: string | null, version: number, updatedAt: string | null, updatedBy: { nickname: string | null } | null } };
+
+export type AdminYearFinalDateSettingsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type AdminYearFinalDateSettingsQuery = { yearFinalDateSettings: { serverTime: string, settings: Array<{ year: number, finalDate: string, source: YearFinalDateSource, acceptUntil: string, deadlineAt: string, drawAt: string, changeLockAt: string, changeable: boolean, choices: Array<string>, previousYearFinalDate: string | null, nextYearFinalDate: string | null, nextYearSource: YearFinalDateSource | null, nextYearGapWarningDate: string | null, version: number, updatedAt: string | null, updatedBy: { nickname: string | null } | null }> } };
+
 export const AdminHelpArticleRowFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminHelpArticleRow"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminHelpArticleRow"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"categoryName"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"pinned"}},{"kind":"Field","name":{"kind":"Name","value":"sortOrder"}},{"kind":"Field","name":{"kind":"Name","value":"creatorAdminId"}},{"kind":"Field","name":{"kind":"Name","value":"creator"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<AdminHelpArticleRowFragment, unknown>;
 export const AdminHelpArticleFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminHelpArticle"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminHelpArticle"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"previousHandle"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"subtitle"}},{"kind":"Field","name":{"kind":"Name","value":"body"}},{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"categoryName"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"pinned"}},{"kind":"Field","name":{"kind":"Name","value":"creator"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"avatar"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"revision"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]} as unknown as DocumentNode<AdminHelpArticleFragment, unknown>;
 export const HelpCategoryFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"HelpCategory"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"HelpCategory"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"systemDefault"}},{"kind":"Field","name":{"kind":"Name","value":"sortOrder"}},{"kind":"Field","name":{"kind":"Name","value":"articleCount"}}]}}]} as unknown as DocumentNode<HelpCategoryFragment, unknown>;
+export const AdminModerationMediaFileFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminModerationMediaFile"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminMediaFile"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"path"}},{"kind":"Field","name":{"kind":"Name","value":"image"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}},{"kind":"Field","name":{"kind":"Name","value":"quarantined"}},{"kind":"Field","name":{"kind":"Name","value":"quarantineReasons"}}]}}]} as unknown as DocumentNode<AdminModerationMediaFileFragment, unknown>;
+export const AdminModerationUserSummaryFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminModerationUserSummary"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminUserSummary"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"suspended"}}]}}]} as unknown as DocumentNode<AdminModerationUserSummaryFragment, unknown>;
+export const AdminModerationProductFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminModerationProduct"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminProduct"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"logo"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"path"}},{"kind":"Field","name":{"kind":"Name","value":"image"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"objectKey"}},{"kind":"Field","name":{"kind":"Name","value":"fallbackFormat"}},{"kind":"Field","name":{"kind":"Name","value":"width"}},{"kind":"Field","name":{"kind":"Name","value":"height"}}]}},{"kind":"Field","name":{"kind":"Name","value":"quarantined"}},{"kind":"Field","name":{"kind":"Name","value":"quarantineReasons"}}]}},{"kind":"Field","name":{"kind":"Name","value":"owner"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AdminModerationUserSummary"}}]}},{"kind":"Field","name":{"kind":"Name","value":"category"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"latestLaunchDate"}},{"kind":"Field","name":{"kind":"Name","value":"latestLaunchState"}},{"kind":"Field","name":{"kind":"Name","value":"visibility"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminModerationUserSummary"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminUserSummary"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"suspended"}}]}}]} as unknown as DocumentNode<AdminModerationProductFragment, unknown>;
+export const AdminModerationNoteFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminModerationNote"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ModerationNote"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"occurredAt"}}]}}]} as unknown as DocumentNode<AdminModerationNoteFragment, unknown>;
+export const AdminModerationRatingFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminModerationRating"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminRating"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"rater"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AdminModerationUserSummary"}}]}},{"kind":"Field","name":{"kind":"Name","value":"productName"}},{"kind":"Field","name":{"kind":"Name","value":"productId"}},{"kind":"Field","name":{"kind":"Name","value":"score"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"latestInvalidation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"AdminModerationNote"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminModerationUserSummary"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminUserSummary"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"nickname"}},{"kind":"Field","name":{"kind":"Name","value":"suspended"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminModerationNote"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ModerationNote"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"reason"}},{"kind":"Field","name":{"kind":"Name","value":"occurredAt"}}]}}]} as unknown as DocumentNode<AdminModerationRatingFragment, unknown>;
+export const AdminReportCaseSummaryFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"AdminReportCaseSummary"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"AdminReportCase"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"target"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"kind"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"detached"}},{"kind":"Field","name":{"kind":"Name","value":"available"}},{"kind":"Field","name":{"kind":"Name","value":"handle"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"excerpt"}},{"kind":"Field","name":{"kind":"Name","value":"productId"}},{"kind":"Field","name":{"kind":"Name","value":"productName"}},{"kind":"Field","name":{"kind":"Name","value":"productHandle"}}]}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"reportCount"}},{"kind":"Field","name":{"kind":"Name","value":"categoryCounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"categoryId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"firstReportedAt"}},{"kind":"Field","name":{"kind":"Name","value":"lastReportedAt"}},{"kind":"Field","name":{"kind":"Name","value":"infringement"}},{"kind":"Field","name":{"kind":"Name","value":"responseTime"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"completedAt"}},{"kind":"Field","name":{"kind":"Name","value":"elapsedSeconds"}},{"kind":"Field","name":{"kind":"Name","value":"alerts"}}]}}]}}]} as unknown as DocumentNode<AdminReportCaseSummaryFragment, unknown>;
 export const AdminAccountsDocument = {"__meta__":{"hash":"sha256:00f33554081a88503d14f773be600ba93677eb9075e14f59cc2ed39a06cbc377"}} as unknown as DocumentNode<AdminAccountsQuery, AdminAccountsQueryVariables>;
 export const AdminChangeRoleDocument = {"__meta__":{"hash":"sha256:f1f88bf3b8b20cf0bc4c9098f0f1c85d00b64194ca28a5b18014c203a7517871"}} as unknown as DocumentNode<AdminChangeRoleMutation, AdminChangeRoleMutationVariables>;
 export const AdminDeleteDocument = {"__meta__":{"hash":"sha256:29852b285441f9a321526e46f4d625ef1052e2f0b438cacdd40f7d4ca70daaaa"}} as unknown as DocumentNode<AdminDeleteMutation, AdminDeleteMutationVariables>;
@@ -628,12 +1130,52 @@ export const AdminLegalDocumentDocument = {"__meta__":{"hash":"sha256:42121f09a2
 export const AdminLegalDocumentsDocument = {"__meta__":{"hash":"sha256:2f5f703c05e4c378679abd43badd1cc30062941d402fc1ca4045ed4646c4b5c2"}} as unknown as DocumentNode<AdminLegalDocumentsQuery, AdminLegalDocumentsQueryVariables>;
 export const AdminPublishLegalDocumentDocument = {"__meta__":{"hash":"sha256:81c947606fe5b15c429d4107739c5f6696c874eebb73d163bce9f866986aa11c"}} as unknown as DocumentNode<AdminPublishLegalDocumentMutation, AdminPublishLegalDocumentMutationVariables>;
 export const AdminSaveLegalDocumentDraftDocument = {"__meta__":{"hash":"sha256:e0ae6b1245545720ebf463ace8663aaaf6b251a968c90992e6b0d4b0ff0b2085"}} as unknown as DocumentNode<AdminSaveLegalDocumentDraftMutation, AdminSaveLegalDocumentDraftMutationVariables>;
+export const AdminApproveQuarantinedImageDocument = {"__meta__":{"hash":"sha256:94c6812fdbd8558480dc2ac417b66e3045691a9a113dba1fe7f38b6d9068cdab"}} as unknown as DocumentNode<AdminApproveQuarantinedImageMutation, AdminApproveQuarantinedImageMutationVariables>;
+export const AdminCommentsDocument = {"__meta__":{"hash":"sha256:34c210fc9306c2ed52a64721cf2ccd3d1575eff8f75e8e9e77b0df410d167ddb"}} as unknown as DocumentNode<AdminCommentsQuery, AdminCommentsQueryVariables>;
+export const AdminDeleteQuarantinedImageDocument = {"__meta__":{"hash":"sha256:1597575db798a6f0591863d9617f34b202695e7e527161a53393b0dba4afddfe"}} as unknown as DocumentNode<AdminDeleteQuarantinedImageMutation, AdminDeleteQuarantinedImageMutationVariables>;
+export const AdminHideCommentDocument = {"__meta__":{"hash":"sha256:50013a15d49381edb067fc060a223a535d967e8681a6950fddee9b82e6853810"}} as unknown as DocumentNode<AdminHideCommentMutation, AdminHideCommentMutationVariables>;
+export const AdminHideProductDocument = {"__meta__":{"hash":"sha256:da97afdfe5b0cbb3812262e4b32ec4adecea3ca82f36567b1c82d3a82ff17e9e"}} as unknown as DocumentNode<AdminHideProductMutation, AdminHideProductMutationVariables>;
+export const AdminInvalidateRatingDocument = {"__meta__":{"hash":"sha256:221e85534733b2d7f292923907609b3d53bcca8bc2fe008cb65541e7b65958c9"}} as unknown as DocumentNode<AdminInvalidateRatingMutation, AdminInvalidateRatingMutationVariables>;
+export const AdminModerationCategoryOptionsDocument = {"__meta__":{"hash":"sha256:4783c18a56f0a6a9c75118d463f7896aa27e0d893cf935402246c74456dbbc94"}} as unknown as DocumentNode<AdminModerationCategoryOptionsQuery, AdminModerationCategoryOptionsQueryVariables>;
+export const AdminProductRatingsDocument = {"__meta__":{"hash":"sha256:e2acc61fdda5c731b2a95eb3a4b5d67c52b656c6370827e00f9932a4b83b7d4b"}} as unknown as DocumentNode<AdminProductRatingsQuery, AdminProductRatingsQueryVariables>;
+export const AdminProductDocument = {"__meta__":{"hash":"sha256:f3388f63eb1d4ff6ddca868a0079e9b53c73a231e37fd50cbc418a5016413732"}} as unknown as DocumentNode<AdminProductQuery, AdminProductQueryVariables>;
+export const AdminProductsDocument = {"__meta__":{"hash":"sha256:865c5c190b03d3838ee4e4fc3d56f33d3489efac2a0da80b19b483f90723ef0f"}} as unknown as DocumentNode<AdminProductsQuery, AdminProductsQueryVariables>;
+export const AdminQuarantineImageDocument = {"__meta__":{"hash":"sha256:49299da2602a188b9005a2e3f8e34816fbc24cb632ffeab172c4df720467e179"}} as unknown as DocumentNode<AdminQuarantineImageMutation, AdminQuarantineImageMutationVariables>;
+export const AdminQuarantinedImagesDocument = {"__meta__":{"hash":"sha256:007d4fa5e175dd06647bc65c9264369fb89e2f5465905bf3f966605ebbfdd527"}} as unknown as DocumentNode<AdminQuarantinedImagesQuery, AdminQuarantinedImagesQueryVariables>;
+export const AdminRatingsDocument = {"__meta__":{"hash":"sha256:973edbdc95b0bdb7a2ab7f67611de63520199022be5d68c6897c2017b6048a20"}} as unknown as DocumentNode<AdminRatingsQuery, AdminRatingsQueryVariables>;
+export const AdminReleaseQuarantinedImageDocument = {"__meta__":{"hash":"sha256:b12a9d64f0c28c98a6ce4037248c27a4ce8a6f744bb3768068218137b902ab5f"}} as unknown as DocumentNode<AdminReleaseQuarantinedImageMutation, AdminReleaseQuarantinedImageMutationVariables>;
+export const AdminRevalidateRatingDocument = {"__meta__":{"hash":"sha256:b63ae956b210ddbb8aff63fdb8bf1ae2594ed3ace9b14e2fdd8be167b3b28649"}} as unknown as DocumentNode<AdminRevalidateRatingMutation, AdminRevalidateRatingMutationVariables>;
+export const AdminSuspendUserDocument = {"__meta__":{"hash":"sha256:5fdd42b93a6bcc8b0ca3e2fc2b8f2c74d205835b76f4ea2a92832127dae55eb0"}} as unknown as DocumentNode<AdminSuspendUserMutation, AdminSuspendUserMutationVariables>;
+export const AdminUnhideCommentDocument = {"__meta__":{"hash":"sha256:fa239025763edbc0e3465873c33f433768b5a10f393e8ddd02ba0055f314b6d0"}} as unknown as DocumentNode<AdminUnhideCommentMutation, AdminUnhideCommentMutationVariables>;
+export const AdminUnhideProductDocument = {"__meta__":{"hash":"sha256:6b77403ab598196eaf89a2b868c2a91f5bb873cd0409273df5bb6fef67c9a5d9"}} as unknown as DocumentNode<AdminUnhideProductMutation, AdminUnhideProductMutationVariables>;
+export const AdminUnsuspendUserDocument = {"__meta__":{"hash":"sha256:0c44a6aa3d0c8e8b535890953ddbb700b0195f78d0fd190c2e8153e1e59b12e7"}} as unknown as DocumentNode<AdminUnsuspendUserMutation, AdminUnsuspendUserMutationVariables>;
+export const AdminUsersDocument = {"__meta__":{"hash":"sha256:75c68905b226d2d7e6df4d56c7837e0fea347a65a5780b2eb7bc3620d012d413"}} as unknown as DocumentNode<AdminUsersQuery, AdminUsersQueryVariables>;
+export const AdminWeeklyStatisticsDocument = {"__meta__":{"hash":"sha256:ec9c4ea0ca9170aafa933c74c306080a3faec16e5cb54029661bd3fa33888938"}} as unknown as DocumentNode<AdminWeeklyStatisticsQuery, AdminWeeklyStatisticsQueryVariables>;
+export const AdminWithdrawUserByAdministratorDocument = {"__meta__":{"hash":"sha256:d7446c7d501e4b294c6d206eec375b3dcdff717b0e4285f482c9340c31426846"}} as unknown as DocumentNode<AdminWithdrawUserByAdministratorMutation, AdminWithdrawUserByAdministratorMutationVariables>;
 export const AdminNotificationSenderInfoDocument = {"__meta__":{"hash":"sha256:d055b6e60c8152dac9299688ec506b92302c4be2ba07230a977ecd362787299f"}} as unknown as DocumentNode<AdminNotificationSenderInfoQuery, AdminNotificationSenderInfoQueryVariables>;
 export const AdminUpdateNotificationSenderInfoDocument = {"__meta__":{"hash":"sha256:897840cedcc642bf6bead9772339ff5763a1ce65bcbe9f78d1abf85e73e28fac"}} as unknown as DocumentNode<AdminUpdateNotificationSenderInfoMutation, AdminUpdateNotificationSenderInfoMutationVariables>;
 export const AdminProductCategoriesDocument = {"__meta__":{"hash":"sha256:da18b6862587d95df8093c5e6b74398899fa4d1420e5011466ca671aed9a19a5"}} as unknown as DocumentNode<AdminProductCategoriesQuery, AdminProductCategoriesQueryVariables>;
 export const AdminCreateProductCategoryDocument = {"__meta__":{"hash":"sha256:e0f1015c3d9281d12b8a93a04fd52222e396bcb9b5c7304e18297297605f5238"}} as unknown as DocumentNode<AdminCreateProductCategoryMutation, AdminCreateProductCategoryMutationVariables>;
 export const AdminDeleteProductCategoryDocument = {"__meta__":{"hash":"sha256:416fe8b1adab0808e5e87e5ef61f4de669a7058f9d0823a52190bfc290dc9904"}} as unknown as DocumentNode<AdminDeleteProductCategoryMutation, AdminDeleteProductCategoryMutationVariables>;
 export const AdminUpdateProductCategoryDocument = {"__meta__":{"hash":"sha256:be16568665cb19771f99ba5a2a07896166f243af3357d62ce762b520c267ca51"}} as unknown as DocumentNode<AdminUpdateProductCategoryMutation, AdminUpdateProductCategoryMutationVariables>;
+export const AdminReportCaseDocument = {"__meta__":{"hash":"sha256:258322b3a0d14e4467b52b03c6ce51fd57f1e45a4d67810f44c0e9bb2cee5612"}} as unknown as DocumentNode<AdminReportCaseQuery, AdminReportCaseQueryVariables>;
+export const AdminReportCasesDocument = {"__meta__":{"hash":"sha256:1190ca17d006db40468c604b311e36aad578f6e00bf26f38311ad36ec06455d2"}} as unknown as DocumentNode<AdminReportCasesQuery, AdminReportCasesQueryVariables>;
+export const AdminReportCategoriesDocument = {"__meta__":{"hash":"sha256:deb171e88771e900dce3cc9194fc3ea46a788a621d2eaf9a10330d6e06f7862e"}} as unknown as DocumentNode<AdminReportCategoriesQuery, AdminReportCategoriesQueryVariables>;
+export const AdminChangeReportCaseStatusDocument = {"__meta__":{"hash":"sha256:73f98634acfd2e87f66ebb0935af338ff839dca082a9852e609535fca97a3629"}} as unknown as DocumentNode<AdminChangeReportCaseStatusMutation, AdminChangeReportCaseStatusMutationVariables>;
+export const AdminCreateReportCategoryDocument = {"__meta__":{"hash":"sha256:4823f350204a693160a281bfe3c2b6d6078a40d8a6fd6c4366868440675a601a"}} as unknown as DocumentNode<AdminCreateReportCategoryMutation, AdminCreateReportCategoryMutationVariables>;
+export const AdminDeleteReportCategoryDocument = {"__meta__":{"hash":"sha256:6ab65a7d6d46e8d3b660c271d06244783644c55aee36312b588da4ae453c049e"}} as unknown as DocumentNode<AdminDeleteReportCategoryMutation, AdminDeleteReportCategoryMutationVariables>;
+export const AdminRejectReportCaseDocument = {"__meta__":{"hash":"sha256:160a4b793b8b81d3a4fc2f6c19c3821be9a316add8a2f0a98f97961fe9e8a36c"}} as unknown as DocumentNode<AdminRejectReportCaseMutation, AdminRejectReportCaseMutationVariables>;
+export const AdminRenameReportCategoryDocument = {"__meta__":{"hash":"sha256:e3d1e7cc2141c00ca4bb889f60ec57a6d67e7c44ad7dc1ae975f4a4f16cac386"}} as unknown as DocumentNode<AdminRenameReportCategoryMutation, AdminRenameReportCategoryMutationVariables>;
+export const AdminResolveReportCaseWithMeasureDocument = {"__meta__":{"hash":"sha256:c48b2093ac3e1086d238063a0333402ad41ec6c4ccc8f08f04457d6ea5f48ccc"}} as unknown as DocumentNode<AdminResolveReportCaseWithMeasureMutation, AdminResolveReportCaseWithMeasureMutationVariables>;
+export const AdminResolveReportCaseWithoutMeasureDocument = {"__meta__":{"hash":"sha256:bce6b38c09c2449a769124a9b6bd0f7911441499a6a6d5961c17263e350a8329"}} as unknown as DocumentNode<AdminResolveReportCaseWithoutMeasureMutation, AdminResolveReportCaseWithoutMeasureMutationVariables>;
+export const AdminSendInfringementInquiryDocument = {"__meta__":{"hash":"sha256:a500abb884ae8d2dc44d3eee7306f88d09d1ff9d5c1a310eb2434416abb58508"}} as unknown as DocumentNode<AdminSendInfringementInquiryMutation, AdminSendInfringementInquiryMutationVariables>;
+export const AdminProductReportSummaryDocument = {"__meta__":{"hash":"sha256:9db9c7b0938bf326210f5fb053cf7f3ee057e3847d3f82a0ee60b639151132b6"}} as unknown as DocumentNode<AdminProductReportSummaryQuery, AdminProductReportSummaryQueryVariables>;
+export const AdminUnhandledReportSummaryDocument = {"__meta__":{"hash":"sha256:b3732b362be9554233ad5a934f68a4a74ead28232c18506a57ae1ee4733ff133"}} as unknown as DocumentNode<AdminUnhandledReportSummaryQuery, AdminUnhandledReportSummaryQueryVariables>;
+export const AdminSponsorshipsDocument = {"__meta__":{"hash":"sha256:5900d001f11c79fe9980f749cb103cd8002a99f51ea7b95de168cac065e7b286"}} as unknown as DocumentNode<AdminSponsorshipsQuery, AdminSponsorshipsQueryVariables>;
+export const AdminSponsorshipTerminationPreviewDocument = {"__meta__":{"hash":"sha256:849b82ae23246d5e9acd510d1102cf83215fa61a4a48582fd8dd10dc8311fdc1"}} as unknown as DocumentNode<AdminSponsorshipTerminationPreviewQuery, AdminSponsorshipTerminationPreviewQueryVariables>;
+export const AdminTerminateSponsorshipDocument = {"__meta__":{"hash":"sha256:7d365ad65a441610a574b759038fad5f15363c13d3b511155e43bd48a9c24efd"}} as unknown as DocumentNode<AdminTerminateSponsorshipMutation, AdminTerminateSponsorshipMutationVariables>;
 export const AdminSystemStatusDocument = {"__meta__":{"hash":"sha256:cfd1cd38df39a20ba4d85b44cdc75b45715595ad92ef45f03d4bc5fd3146590c"}} as unknown as DocumentNode<AdminSystemStatusQuery, AdminSystemStatusQueryVariables>;
 export const AdminUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:2edd177a6140620bf171c97fd69c0c289130634ffcd31adf626abf21935f6c24"}} as unknown as DocumentNode<AdminUltrasPromotionSettingQuery, AdminUltrasPromotionSettingQueryVariables>;
 export const AdminUpdateUltrasPromotionSettingDocument = {"__meta__":{"hash":"sha256:0414939a189f0129ea30b0206151b9cc04ec191ecc0c8cafd7ec3e0ee57b270f"}} as unknown as DocumentNode<AdminUpdateUltrasPromotionSettingMutation, AdminUpdateUltrasPromotionSettingMutationVariables>;
+export const AdminUpdateYearFinalDateDocument = {"__meta__":{"hash":"sha256:5271a6772d537ccb6faa843e035b9a424e666d168f0b9584f416bc2a6998a30f"}} as unknown as DocumentNode<AdminUpdateYearFinalDateMutation, AdminUpdateYearFinalDateMutationVariables>;
+export const AdminYearFinalDateSettingsDocument = {"__meta__":{"hash":"sha256:459543dcdf5f207fc911ad17d4292649a096459a24f6a78c6f2eb12ab5ee94b2"}} as unknown as DocumentNode<AdminYearFinalDateSettingsQuery, AdminYearFinalDateSettingsQueryVariables>;

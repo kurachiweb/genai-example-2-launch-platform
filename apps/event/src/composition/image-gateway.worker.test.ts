@@ -16,16 +16,20 @@ import {
   pngOf,
   RED,
 } from '../infrastructure/media/wasm-moderation-image-renderer.fixtures.ts';
+import { consumeIpRateLimit } from './testing/ip-rate-limit-quota.ts';
 
 // Workers統合テストの変数の画像配信のホスト名(専用のホスト)
 const IMAGES_ORIGIN = 'https://images.test.example';
 
 const EVENT_ORIGIN = 'https://event.launch.example';
 
-const IP_LIMIT = 100;
+const IP_LIMIT = 500;
 const PERIOD_MILLISECONDS = 10_000;
 const BURST_MARGIN_MILLISECONDS = 4_000;
 const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;
+
+// 上限までの残りの1回を超えて送る回数。IP制限で数える要求なら2回目が上限を超える
+const REQUESTS_BEYOND_REMAINING = 2;
 
 // 最初の要求でエントリと画像の変換・復号のwasmを読み込むため、カバレッジの計測中は既定の5秒を超えることがある
 const FIRST_DELIVERY_TIMEOUT_MILLISECONDS = 30_000;
@@ -49,6 +53,20 @@ async function waitForFreshWindow(): Promise<void> {
   if (remaining < BURST_MARGIN_MILLISECONDS) {
     await scheduler.wait(remaining + 100);
   }
+}
+
+async function statusesOf(
+  url: string,
+  ip: string,
+  count: number,
+): Promise<number[]> {
+  const statuses: number[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const response = await exports.default.fetch(url, fromIp(ip));
+    await response.body?.cancel();
+    statuses.push(response.status);
+  }
+  return statuses;
 }
 
 describe('イベントサーバーの画像配信の関門', () => {
@@ -201,23 +219,21 @@ describe('イベントサーバーの画像配信の関門', () => {
     async () => {
       const ip = '203.0.113.49';
       await waitForFreshWindow();
-      const statuses: number[] = [];
-      for (let index = 0; index <= IP_LIMIT; index += 1) {
-        const response = await exports.default.fetch(
-          `${IMAGES_ORIGIN}/${objectKeyFor(8)}/square-sm.webp`,
-          fromIp(ip),
-        );
-        await response.body?.cancel();
-        statuses.push(response.status);
-      }
+      await consumeIpRateLimit(ip, IP_LIMIT - 1);
+      const statuses = await statusesOf(
+        `${IMAGES_ORIGIN}/${objectKeyFor(8)}/square-sm.webp`,
+        ip,
+        REQUESTS_BEYOND_REMAINING,
+      );
       const afterImages = await exports.default.fetch(
         `${EVENT_ORIGIN}/health`,
         fromIp(ip),
       );
       await afterImages.body?.cancel();
 
-      expect(statuses).toHaveLength(IP_LIMIT + 1);
-      expect(statuses.every((status) => status === 404)).toBe(true);
+      expect(statuses).toStrictEqual(
+        Array.from({ length: REQUESTS_BEYOND_REMAINING }, () => 404),
+      );
       expect(afterImages.status).toBe(200);
     },
     BURST_TEST_TIMEOUT_MILLISECONDS,
@@ -228,20 +244,14 @@ describe('イベントサーバーの画像配信の関門', () => {
     async () => {
       const ip = '203.0.113.50';
       await waitForFreshWindow();
-      const statuses: number[] = [];
-      for (let index = 0; index <= IP_LIMIT; index += 1) {
-        const response = await exports.default.fetch(
-          `${IMAGES_ORIGIN}/not-image`,
-          fromIp(ip),
-        );
-        await response.body?.cancel();
-        statuses.push(response.status);
-      }
+      await consumeIpRateLimit(ip, IP_LIMIT - 1);
+      const statuses = await statusesOf(
+        `${IMAGES_ORIGIN}/not-image`,
+        ip,
+        REQUESTS_BEYOND_REMAINING,
+      );
 
-      expect(
-        statuses.slice(0, IP_LIMIT).every((status) => status === 404),
-      ).toBe(true);
-      expect(statuses[IP_LIMIT]).toBe(429);
+      expect(statuses).toStrictEqual([404, 429]);
     },
     BURST_TEST_TIMEOUT_MILLISECONDS,
   );

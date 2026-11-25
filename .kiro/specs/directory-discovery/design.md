@@ -1211,9 +1211,8 @@ export interface ProductLaunchSection {
 export interface ProductOwnerAction {
   readonly id: string;
   readonly order: number;
-  readonly component: ComponentType<
-    Omit<ProductPageContext, 'page' | 'autoRefresh' | 'reportAutoUpdating'>
-  >;
+  // 投稿者本人向けの操作は残り時間の秒読みを持ち得るため、ページの自動更新の状態を受け取って申告する
+  readonly component: ComponentType<Omit<ProductPageContext, 'page'>>;
 }
 // composition/product-page-sections.ts
 export declare const PRODUCT_PAGE_SECTIONS: readonly ProductPageSection[];

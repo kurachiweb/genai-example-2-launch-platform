@@ -14,7 +14,7 @@ export const ENVIRONMENT_OF_SCOPE: Readonly<
 
 export type WorkerSecretFolder = '/workers/api' | '/workers/event';
 export type SecretFolder =
-  '/' | WorkerSecretFolder | '/ci/tofu' | '/ci/cloudflare';
+  '/' | WorkerSecretFolder | '/ci/tofu' | '/ci/cloudflare' | '/ci/sentry';
 
 export const SHARED_SECRET_FOLDER = '/';
 

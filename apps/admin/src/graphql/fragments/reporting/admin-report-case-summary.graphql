@@ -1,0 +1,31 @@
+fragment AdminReportCaseSummary on AdminReportCase {
+  id
+  target {
+    kind
+    id
+    detached
+    available
+    handle
+    label
+    excerpt
+    productId
+    productName
+    productHandle
+  }
+  status
+  reportCount
+  categoryCounts {
+    categoryId
+    name
+    count
+  }
+  firstReportedAt
+  lastReportedAt
+  infringement
+  responseTime {
+    startedAt
+    completedAt
+    elapsedSeconds
+    alerts
+  }
+}

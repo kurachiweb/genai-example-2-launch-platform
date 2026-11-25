@@ -46,6 +46,7 @@ import {
   T0,
   userIdOf,
 } from '../../lib/workers/product/testing/product-fixtures.ts';
+import { clearWeekTournamentRows } from '../../lib/workers/week-tournament/testing/week-tournament-fixtures.ts';
 import worker from '../index.ts';
 import { matchEventEnvelope } from './testing/match-event-queue.ts';
 
@@ -170,6 +171,7 @@ beforeEach(async () => {
   for (const method of ['debug', 'info', 'warn', 'error'] as const) {
     vi.spyOn(console, method).mockImplementation(() => {});
   }
+  await clearWeekTournamentRows();
   await clearDirectoryTables();
   await seedMatchPlatformSample();
 });
@@ -197,6 +199,10 @@ describe('予選の勝利の確定による掲載の記録の処理(directory-di
       {
         eventId: matchEventIdOf(EVENT),
         handlerName: 'match-engine.qualifier-outcome',
+      },
+      {
+        eventId: matchEventIdOf(EVENT),
+        handlerName: 'tournament-week.qualifier-entry',
       },
     ]);
     await expect(readMatchEvent(matchEventIdOf(EVENT))).resolves.toMatchObject({
@@ -288,6 +294,6 @@ describe('予選の勝利の確定による掲載の記録の処理(directory-di
     await expect(readDirectoryEntries()).resolves.toMatchObject([
       { productId: productIdOf(1), firstWonAt: DECIDED_AT },
     ]);
-    await expect(readHandlerRuns()).resolves.toHaveLength(2);
+    await expect(readHandlerRuns()).resolves.toHaveLength(3);
   });
 });

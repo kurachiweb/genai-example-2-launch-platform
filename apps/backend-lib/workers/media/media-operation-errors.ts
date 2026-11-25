@@ -13,6 +13,14 @@ export function storageUnavailable(): AppError {
   });
 }
 
+export function quarantineNotApplicable(): AppError {
+  return new AppError({
+    kind: 'bad_request',
+    code: 'quarantine_not_applicable',
+    message: '画像以外のファイルは隔離の対象にできません。',
+  });
+}
+
 export function isValidLimit(limit: number, max: number): boolean {
   return Number.isInteger(limit) && limit >= 1 && limit <= max;
 }

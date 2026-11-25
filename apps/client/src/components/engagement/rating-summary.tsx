@@ -69,7 +69,7 @@ export function RatingSummary({ average, count, invite }: RatingSummaryProps) {
     );
   }
   return (
-    <div className="flex items-end gap-3">
+    <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
       <p className="text-5xl leading-none font-extrabold tabular-nums">
         {AVERAGE_FORMAT.format(average)}
         <span className="sr-only">{RATING_OUT_OF_FIVE}</span>

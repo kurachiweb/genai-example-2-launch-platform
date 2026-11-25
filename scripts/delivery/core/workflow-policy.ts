@@ -58,6 +58,7 @@ const SETUP_ACTION_TOOLS: readonly ToolName[] = [
   'infisicalCli',
   'wranglerTool',
   'mailpit',
+  'k6',
 ];
 
 const PINNED_USES = /^[^@\s]+@[\da-f]{40}$/;

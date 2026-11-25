@@ -6,7 +6,7 @@
 
 **Users**: メールアドレスを確認済みの利用者(停止中を含む、仮1)が`/settings/export`で要求・確認・ダウンロードし、メールで完了と失敗を受け取る。運用者はログとエラートラッキングで生成の所要時間・大きさ・失敗を確かめる。
 
-**Impact**: D1に1テーブル(`data_exports`)を足す。`apps/common-lib/data-export`・`apps/backend-lib/core/data-export`(純粋な規則と、api・eventのapplication層が受け取る契約と識別子)・`workers/data-export`(D1・R2・メールの実装と、apiとeventの両方への束縛)を新設する。apiにスキーマモジュール`data-export`・内部RESTのダウンロードの経路・要求と照会のユースケース・ジョブ2つを、eventに生成と見張りのメッセージの処理・物理削除の処理1つ・メールのテンプレート2つを、clientに設定ページの区画・ナビゲーションの登録・中継の経路を足す。メッセージ種別2つ(`data-export.generate-archive`・`data-export.check-generation`)を加え、apiとeventに`fflate` 0.8.3を版固定で加える(tech-stack.mdに記載済み。`apps/backend-lib`の検査とテストはapiが行い(`config/workspace-layout.ts`の`checkedBy: 'api'`)、`workers/data-export`が`core/data-export`の書き込み先の型を読み込むため、apiでも解決できる必要がある)。評価の無効化の有無は、engagementがその仮5として`RatingExportRecord`に加える`invalidatedByAdmin`で受け取る(「上流への影響」、本specの仮2)。新しいシークレット・Cronの式・Durable Objectのクラス・R2のバケットは無い。
+**Impact**: D1に1テーブル(`data_exports`)を足す。`apps/common-lib/data-export`・`apps/backend-lib/core/data-export`(純粋な規則と、api・eventのapplication層が受け取る契約と識別子)・`workers/data-export`(D1・R2・メール・エラートラッキングの実装と、apiとeventの両方への束縛)を新設する。apiにスキーマモジュール`data-export`・内部RESTのダウンロードの経路・要求と照会のユースケース・ジョブ2つを、eventに生成と見張りのメッセージの処理・物理削除の処理1つ・メールのテンプレート2つを、clientに設定ページの区画・ナビゲーションの登録・中継の経路を足す。メッセージ種別2つ(`data-export.generate-archive`・`data-export.check-generation`)を加え、apiとeventに`fflate` 0.8.3を版固定で加える(tech-stack.mdに記載済み。`apps/backend-lib`の検査とテストはapiが行い(`config/workspace-layout.ts`の`checkedBy: 'api'`)、`workers/data-export`が`core/data-export`の書き込み先の型を読み込むため、apiでも解決できる必要がある)。評価の無効化の有無は、engagementがその仮5として`RatingExportRecord`に加える`invalidatedByAdmin`で受け取る(「上流への影響」、本specの仮2)。新しいシークレット・Cronの式・Durable Objectのクラス・R2のバケットは無い。
 
 ### Goals
 
@@ -29,8 +29,8 @@
 - 本specのデータ: `data_exports`(要求・状態・リース・アップロード中のID・ZIPのキーとファイル名と大きさ・完了と期限と失敗の日時・通知の状態)(`apps/db/schema/data-export/`)と、ファイル用非公開バケットの`data-exports/`で始まるキーのオブジェクト。
 - 共有定義(`apps/common-lib/data-export/`): 状態と失敗の種類と表示名、回数の上限・期間・有効期限の日数、ダウンロードの経路の接頭辞とパスの組み立て。
 - 純粋な規則(`apps/backend-lib/core/data-export/`): メッセージ種別2つと時間の定数、ZIPの上限と部分の大きさ、ZIP内のファイル名とZIPのファイル名の規則、スナップショットの型とZIP内のパスの計画、12のJSON・manifest・READMEの組み立て、部分の区切り、fflateを包む`ZipArchiveWriter`。メール種別`data-export.archive-ready`・`data-export.archive-failed`(`core/email/kinds/data-export.ts`)。
-- 共有部品の契約と識別子(`apps/backend-lib/core/data-export/`): api・eventのapplication層が受け取る契約`DataExportStore`・`ExportArchiveStorage`・`MultipartArchiveUpload`・`DataExportNotifier`・`DataExportTerminator`とその入出力の型(`DataExportRecord`・`ClaimResult`・`StoredArchive`・`StoredArchiveMeta`、`ports.ts`)と、DIの識別子`DATA_EXPORT_PLATFORM_TYPES`(`identifiers.ts`)。
-- 共有部品の実装(`apps/backend-lib/workers/data-export/`): `D1DataExportStore`・`R2ExportArchiveStorage`(R2のマルチパートを含む)・`EmailDataExportNotifier`・`StoreDataExportTerminator`と`DATA_EXPORT_PLATFORM_MODULE`。
+- 共有部品の契約と識別子(`apps/backend-lib/core/data-export/`): api・eventのapplication層が受け取る契約`DataExportStore`・`ExportArchiveStorage`・`MultipartArchiveUpload`・`DataExportNotifier`・`DataExportTerminator`・`DataExportIncidentReporter`とその入出力の型(`DataExportRecord`・`ClaimResult`・`StoredArchive`・`StoredArchiveMeta`・`DataExportIncident`、`ports.ts`)と、DIの識別子`DATA_EXPORT_PLATFORM_TYPES`(`identifiers.ts`)。
+- 共有部品の実装(`apps/backend-lib/workers/data-export/`): `D1DataExportStore`・`R2ExportArchiveStorage`(R2のマルチパートを含む)・`EmailDataExportNotifier`・`StoreDataExportTerminator`・`SentryDataExportIncidentReporter`と、アプリ名を受け取って共通のモジュールを返す`createDataExportPlatformModule(appName)`。
 - apiのスキーマモジュール`data-export`(`myDataExports`・`requestDataExport`)、`DataExportRequestService`・`DataExportReader`・`ArchiveDownloadService`、application層のポート`DataExportRequestLimits`・`DataExportMessagePublisher`とinfrastructure層の実装`CounterDataExportRequestLimits`、内部REST`GET /internal/data-exports/:exportId/archive`、ジョブ`data-export.archive-expiry`(4:21、2100)・`data-export.generation-recovery`(4:21、2110)、回数制限の規則`data-export-request`。
 - eventの`AccountSourceReader`・`ProductActivitySourceReader`・`CorrespondenceSourceReader`・`ExportFileResolver`・`ExportSnapshotCollector`・`ArchiveGenerationService`、メッセージの処理2つ、ユーザーの`withdrawn`・`purge_due`の処理`data-export.archive-erasure`(2100)、2つのメールのテンプレート。
 - clientの`/settings/export`の区画、`SETTINGS_NAV_ITEMS`の`/settings/export`(100)、中継の経路`/_bff/exports/*`。
@@ -48,11 +48,11 @@
 
 - backend-platform: `AppModule`・`PLATFORM_TYPES`(`Env`・`Database`・`Clock`・`IdGenerator`・`KeyedHasher`・`MessagePublisher`・`RateLimitCounterClient`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く)・`Database`・`PlatformEnv`の型・`ulidPrimaryKey`・`timestamps`・`BusinessTime`・`ScheduledJobDefinition`・`defineMessageContract`・`MessageContract`・`MESSAGE_CONTRACTS`・`MessageHandler`・`MessageHandlerRegistration`・`MessageMeta`・`hashRateLimitKey`・`CounterRule`。形を変えない。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めない(`config/eslint/backend-layers.ts`)。そのため`MessagePublisher`は、application層の自前のポート`DataExportMessagePublisher`の形で`PLATFORM_TYPES.MessagePublisher`から受け取る(media-pipelineの`MediaJobMessagePublisher`・identity-authの`IdentityMessagePublisher`と同じ形)。`RateLimitCounterClient`は、infrastructure層の`CounterDataExportRequestLimits`だけが使う(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。
 - api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`caller`)・`DateTime`・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`PageInfo`・`createInternalRoutesModule`・`InternalRoutes`・`InternalHonoEnv`(`c.var.session`)・`SessionView`・`CallerKind`。
-- identity-auth: `IDENTITY_TYPES.AccountGuard`(`requireUser`)・`IDENTITY_PLATFORM_TYPES.AccountExport`・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`users`テーブル(外部キーだけ)、clientの`SETTINGS_NAV_ITEMS`・`SettingsNavItem`・`_authenticated`の`viewer`、E2Eの`e2e/support/mailpit.ts`。
-- 出力用の部品(research.mdのResearch Logの表): `ULTRAS_TYPES.UltrasPlanExport`、`NOTIFICATIONS_PLATFORM_TYPES.NotificationSettingsExport`、`PUBLIC_API_PLATFORM_TYPES.ApiKeyExport`、`PROFILE_PLATFORM_TYPES.ProfileExport`・`FollowExport`、`PRODUCT_PLATFORM_TYPES.ProductExport`・`LaunchExport`・`ProductDirectory`(`findSummaries`)、`MATCH_PLATFORM_TYPES.MatchExport`・`UpvoteExport`、`WEEK_TOURNAMENT_TYPES.WeekAwardExport`、`YEAR_TOURNAMENT_TYPES.YearAwardExport`、`ENGAGEMENT_PLATFORM_TYPES.CommentExport`・`RatingExport`、`REPORTING_PLATFORM_TYPES.ReportExport`、`INQUIRY_EXPORT_TYPES.InquiryExport`、`SPONSORSHIP_PLATFORM_TYPES.SponsorshipExport`、`PAYMENTS_TYPES.PaymentHistoryExport`。各部品の契約と識別子は所有するspecの`apps/backend-lib/core/<ドメイン>`(`ports.ts`・`identifiers.ts`)にあり、本specはそこから読み込む(inquiry-chatの`InquiryExport`も契約と識別子は`core/inquiry`)。いずれもeventのアプリケーション層の3つの読み取りの部品(とその単体テスト・`apps/event/test/data-export/`の契約と結合のテスト)だけが読み込む。
+- identity-auth: `IDENTITY_PLATFORM_TYPES.AccountGuard`(`requireUser`。識別子は`core/identity/identifiers.ts`、束縛はapiの`composition/identity-module.ts`)・`IDENTITY_PLATFORM_TYPES.AccountExport`・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`users`テーブル(外部キーだけ)、clientの`SETTINGS_NAV_ITEMS`・`SettingsNavItem`・`_authenticated`の`viewer`、E2Eの`e2e/support/mailpit.ts`。
+- 出力用の部品(research.mdのResearch Logの表): `ULTRAS_TYPES.UltrasPlanExport`、`NOTIFICATIONS_PLATFORM_TYPES.NotificationSettingsExport`、`PUBLIC_API_PLATFORM_TYPES.ApiKeyExport`、`PROFILE_PLATFORM_TYPES.ProfileExport`・`FollowExport`、`PRODUCT_PLATFORM_TYPES.ProductExport`・`LaunchExport`・`ProductDirectory`(`findSummaries`)、`MATCH_PLATFORM_TYPES.MatchExport`・`UpvoteExport`、`WEEK_TOURNAMENT_TYPES.WeekAwardExport`、`YEAR_TOURNAMENT_TYPES.YearAwardExport`、`ENGAGEMENT_PLATFORM_TYPES.CommentExport`・`RatingExport`、`REPORTING_PLATFORM_TYPES.ReportExport`、`INQUIRY_EXPORT_TYPES.InquiryExport`、`SPONSORSHIP_PLATFORM_TYPES.SponsorshipExport`、`PAYMENTS_TYPES.PaymentHistoryExport`。各部品の契約と識別子は所有するspecの`apps/backend-lib/core/<ドメイン>`(`ports.ts`・`identifiers.ts`)にあり、本specはそこから読み込む(inquiry-chatの`InquiryExport`も契約と識別子は`core/inquiry`)。いずれもeventのアプリケーション層の3つの読み取りの部品(とその単体テスト・`apps/event/src/composition/data-export-upstream-exports.worker.test.ts`・`data-export-archive.worker.test.ts`の契約と結合のテスト)だけが読み込む。
 - media-pipeline: `MEDIA_TYPES.MediaFiles`(`findMany`・`openContent`)・`MediaFileView`・`attachmentDisposition`。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
-- frontend-platform: `RelayRoute`・`defineRelayRoute`・`relay-routes.ts`(`RELAY_ROUTES`)・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`notify`・`DateTime`・`EmptyState`・`PartialErrorState`・`LoadingSkeleton`・shadcn/uiの部品(ボタン・バッジ・カード)・`runAxe`、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`src/graphql/generated/graphql.ts`の生成物)。
+- frontend-platform: `RelayRoute`・`defineRelayRoute`・`relay-routes.ts`(`RELAY_ROUTES`)・`executeGraphQL`・`graphqlQueryOptions`・`GraphQLClientError`・`notify`・`DateTime`・`EmptyState`・`PartialErrorState`・`LoadingSkeleton`・`LIVE_REFRESH_QUERY_OPTIONS`・`LIVE_REFRESH_INTERVAL_MS`(`utilities/query/live-refresh.ts`)・shadcn/uiの部品(ボタン・バッジ・カード・`Switch`)・`runAxe`、GraphQLの操作の追加手順(`src/graphql/operations/**/*.graphql`・操作名の接頭辞`Client`・`src/graphql/generated/graphql.ts`の生成物)。
 - npmパッケージ: `zod`・`inversify`・`drizzle-orm`(上流で採用済み)と、`fflate` 0.8.3(apiとevent、tech-stack.mdに記載済み。ZIPを書くのはeventだけで、apiは`backend-lib`の型検査とテストのために依存する)。テストでは同パッケージの`unzipSync`を使う。
 
 ### Revalidation Triggers
@@ -60,29 +60,30 @@
 - `data_exports`の列と状態・通知の状態の値、オブジェクトのキーの接頭辞`data-exports/`(media-pipelineのキーは32文字の16進で衝突しない)。
 - メッセージ種別2つの名前と本文、ジョブ・処理の名前と`order`(4:21の2100・2110、`withdrawn`・`purge_due`の2100)。
 - 中継の経路`/_bff/exports/*`と内部RESTのパス、GraphQLの`DataExport`の形。
+- `FILES_BUCKET`の寿命の規則。本specは、異常終了で取り残した未完了のマルチパートアップロードの最後の受け皿を、R2のバケットの既定の規則(開始から7日で破棄)に任せる(D-4)。IaCで`FILES_BUCKET`に寿命の規則を加えると既定の規則が置き換わるため、未完了のマルチパートアップロードの破棄を含めることを確かめる。
 - ZIPの構造・JSONの項目・ファイル名の規則・`schemaVersion`(データエクスポートの文書)。
 - 上流の出力用の部品の形・並び・`undefined`と`null`の意味・束縛の範囲(各specのRevalidation Triggersの「エクスポートの部品の形」)、`MediaFiles.openContent`の対象、`AccountGuard.requireUser`の停止中の扱い、`UserContactDirectory`の停止中の扱い、`RateLimitCounterClient`・`MessagePublisher`の`delaySeconds`・`MessageMeta.attempts`の意味、`RelayRoute.timeoutMs`の効き方を変えたら、本specを確かめ直す。
-- `core/data-export`の契約(`DataExportStore`・`ExportArchiveStorage`・`MultipartArchiveUpload`・`DataExportNotifier`・`DataExportTerminator`)と`DATA_EXPORT_PLATFORM_TYPES`の置き場所、上流の出力用の部品の契約と識別子の置き場所(各specの`core/<ドメイン>`)。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(api・eventのapplication層が読み込むため)。
+- `core/data-export`の契約(`DataExportStore`・`ExportArchiveStorage`・`MultipartArchiveUpload`・`DataExportNotifier`・`DataExportTerminator`・`DataExportIncidentReporter`)と`DATA_EXPORT_PLATFORM_TYPES`の置き場所、上流の出力用の部品の契約と識別子の置き場所(各specの`core/<ドメイン>`)。application層が`**/lib/workers/**`を読み込めない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(api・eventのapplication層が読み込むため)。
 - 仮1〜仮5は2026-10-24に開発者が確定した(仮4は推奨と異なる「要求の記録を退会まで残す」)。決定を改める場合は、該当する規則(停止中の扱い・評価の無効化・`null`の規則・記録の保持と一覧・上限)を確かめ直す。
 
 ### 上流への影響
 
-| 上流spec          | 変更                                                                                                                                                                                                                                                                  | 影響と再検証                                                                                                                                                                                                              |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| engagement        | engagementの仮5(2026-10-24に開発者が確定)により提供される: `apps/backend-lib/core/engagement`の契約`RatingExportRecord`の`readonly invalidatedByAdmin: boolean;`と、評価の行の無効化の印から値を返す`RatingExport.listByUser`。本specは変更せず、提供された項目を使う | engagementの仮5として同specに取り込まれ、本specの仮2と対になる(どちらも2026-10-24に開発者が確定)。本specはタスク2で、イベントサーバーのコンテナから解決した`RatingExport`が無効化の有無を返すことを契約のテストで確かめる |
-| identity-auth     | clientの`composition/settings-navigation.ts`に1件(100)、eventの`composition/user-lifecycle-async-handlers.ts`に`data-export.archive-erasure`(`withdrawn`・`purge_due`、2100)                                                                                          | 契約どおり(設定ページの登録順、帯の値)                                                                                                                                                                                    |
-| backend-platform  | `core/messaging/contracts/index.ts`に2種別、eventの`message-handlers.ts`に2つの処理、apiの`scheduled-jobs.ts`に2件(4:21の式は上流で追加済み)、api・eventの`modules.ts`に`DATA_EXPORT_PLATFORM_MODULE`、apiに`DATA_EXPORT_MODULE`、eventに`EVENT_DATA_EXPORT_MODULE`   | 契約どおり                                                                                                                                                                                                                |
-| api-gateway       | apiの`composition/graphql-modules.ts`に`dataExportSchemaModule`、`internal-routes.ts`に1経路、APIサーバーの許可リスト(`apps/api/src/presentation/graphql/generated/allowlist.json`)の`graphql:allowlist`による再生成とclientの型の生成                                | 契約どおり                                                                                                                                                                                                                |
-| frontend-platform | clientの`composition/relay-routes.ts`に`DATA_EXPORT_DOWNLOAD_RELAY_ROUTE`                                                                                                                                                                                             | 契約どおり(2.14の追加の手順)                                                                                                                                                                                              |
-| email-delivery    | `core/email/kinds/index.ts`に2種別、eventの`infrastructure/email/templates/index.ts`に2テンプレート                                                                                                                                                                   | 契約どおり                                                                                                                                                                                                                |
+| 上流spec          | 変更                                                                                                                                                                                                                                                                                                | 影響と再検証                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| engagement        | engagementの仮5(2026-10-24に開発者が確定)により提供される: `apps/backend-lib/core/engagement`の契約`RatingExportRecord`の`readonly invalidatedByAdmin: boolean;`と、評価の行の無効化の印から値を返す`RatingExport.listByUser`。本specは変更せず、提供された項目を使う                               | engagementの仮5として同specに取り込まれ、本specの仮2と対になる(どちらも2026-10-24に開発者が確定)。本specはタスク2で、イベントサーバーのコンテナから解決した`RatingExport`が無効化の有無を返すことを契約のテストで確かめる                                                                                                                                                                                                                                                                                               |
+| identity-auth     | clientの`composition/settings-navigation.ts`に1件(100)、eventの`composition/user-lifecycle-async-handlers.ts`に`data-export.archive-erasure`(`withdrawn`・`purge_due`、2100)                                                                                                                        | 契約どおり(設定ページの登録順、帯の値)。`purge_due`の2100はugc-moderationの措置の記録の削除(1900)の後に動く。本specの処理は措置の記録と順序の依存を持たず、`users`の行はidentity-authの実行器が全ての処理の後に消すため外部キーの順序も保たれる。ugc-moderationの1900を全ドメインの物理削除の処理の末尾とする並びは、「identity-auth専用の10000番台より前」に緩める(D-1、2026-11-22に開発者が決定)。一覧と前後関係を固定する上流のテストの期待値とcontent-reportingの文書の文言は本specのタスクが改める(Modified Files) |
+| backend-platform  | `core/messaging/contracts/index.ts`に2種別、eventの`message-handlers.ts`に2つの処理、apiの`scheduled-jobs.ts`に2件(4:21の式は上流で追加済み)、api・eventの`modules.ts`に`createDataExportPlatformModule(appName)`(`'api'`・`'event'`)、apiに`DATA_EXPORT_MODULE`、eventに`EVENT_DATA_EXPORT_MODULE` | 契約どおり                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| api-gateway       | apiの`composition/graphql-modules.ts`に`dataExportSchemaModule`、`internal-routes.ts`に1経路、APIサーバーの許可リスト(`apps/api/src/presentation/graphql/generated/allowlist.json`)の`graphql:allowlist`による再生成とclientの型の生成                                                              | 契約どおり                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| frontend-platform | clientの`composition/relay-routes.ts`に`DATA_EXPORT_DOWNLOAD_RELAY_ROUTE`                                                                                                                                                                                                                           | 契約どおり(2.14の追加の手順)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| email-delivery    | `core/email/kinds/index.ts`に2種別、eventの`infrastructure/email/templates/index.ts`に2テンプレート                                                                                                                                                                                                 | 契約どおり                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
-- roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は2100・2110、波及処理は2100」になる。本specはroadmapを編集しないため、コントローラーへ報告する。
+- roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は2100・2110、波及処理は2100」で、表に記載済みである。帯の割り当ての段落には、本specの波及処理(2100)がugc-moderationの1900の後に動き、ugc-moderationの措置の記録の削除はidentity-auth専用の10000番台より前に並べばよい旨を2026-11-22に加えた(D-1)。
 
 ## Architecture
 
 ### Existing Architecture Analysis
 
-- 上流の27specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする。実装済みはdev-toolingだけである。
+- 上流の27specは設計・タスクとも承認済みで、2026-11-22の時点ですべて実装済みである(paymentsのsandboxでの手動の検証を除く)。本specのタスクはそれらの実装の完了を前提にする。
 - apiはクリーンアーキテクチャ(`domain`→`application`→`infrastructure`・`presentation`→`composition`)と処理単位のDIコンテナ、eventはQueueのconsumerが種別ごとの処理を呼び、`done`・`defer`・例外(再試行・DLQ)で結果を返す。
 - 各ドメインの出力用の部品は、契約と識別子が`apps/backend-lib/core/<ドメイン>`に、D1の実装が`apps/backend-lib/workers/<ドメイン>`に置かれ、`*_PLATFORM_MODULE`でapiとeventの両方に束縛される(inquiry-chatの`InquiryExport`だけはeventの`inquiry-module.ts`で束縛する)。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、application層が受け取る契約と識別子は`core`から読み込む(`docs/GUIDES/tech/backend/002`の「依存方向と静的解析」)。ファイルの読み出しはmedia-pipelineの`MediaFiles`、宛先はidentity-authの`UserContactDirectory`で行う。
 - ファイル用非公開バケット`FILES_BUCKET`はapi・eventの両方に束縛済みで、media-pipelineはエクスポートのZIPを扱わない(同specのOut of Boundary)。
@@ -118,6 +119,7 @@ graph TB
         Storage[export archive storage]
         Notifier[notifier]
         Terminator[terminator]
+        Reporter[incident reporter]
     end
     DomainParts[domain export parts]
     Media[media pipeline files]
@@ -160,6 +162,10 @@ graph TB
     Notifier --> Identity
     Notifier --> Email
     Storage --> R2
+    Jobs --> Reporter
+    DownloadRoute --> Reporter
+    GenerateHandler --> Reporter
+    Watchdog --> Reporter
     Identity --> Erasure
     Erasure --> Store
     Erasure --> Storage
@@ -168,13 +174,13 @@ graph TB
 
 **Architecture Integration**:
 
-- Selected pattern: クリーンアーキテクチャ。ZIPとJSONの規則は`core`の純粋な関数、要求の記録・ZIPの保存先・通知・失敗の確定は契約と識別子を`core/data-export`に、実装を`workers/data-export`(apiとeventの両方に束縛)に置き、要求と照会とダウンロードの認可はapiのアプリケーション層(回数制限はinfrastructure層の`CounterDataExportRequestLimits`)、データの収集とZIPの組み立てはeventのアプリケーション層、上流のデータは出力用の部品越しに読む。
+- Selected pattern: クリーンアーキテクチャ。ZIPとJSONの規則は`core`の純粋な関数、要求の記録・ZIPの保存先・通知・失敗の確定・エラートラッキングへの送信は契約と識別子を`core/data-export`に、実装を`workers/data-export`(apiとeventの両方に束縛)に置き、要求と照会とダウンロードの認可はapiのアプリケーション層(回数制限はinfrastructure層の`CounterDataExportRequestLimits`)、データの収集とZIPの組み立てはeventのアプリケーション層、上流のデータは出力用の部品越しに読む。
 - Domain/feature boundaries: 本specのテーブルは要求の記録だけで、エクスポートの中身はすべて上流の部品の値である。上流の部品の値は3つの読み取りの部品が本spec固有のスナップショットへ写し、それより内側は上流の型に依存しない。
 - Existing patterns preserved: 契約と識別子を`backend-lib/core/<ドメイン>`、実装と共有の束縛を`backend-lib/workers/<ドメイン>`に置く配置(identity-authの`core/identity`・media-pipelineの`core/media`と同じ)、`<spec名>.<名詞句>`の名前、帯の`order`、登録箇所への追記、ハッシュ化したキーの`RateLimitCounterClient.hit`(inquiry-chat・content-reportingの規約)、依頼待ちの通知と日次の送り直し(content-reporting・ugc-moderation)、同一オリジンの中継(media-pipelineの`FILE_DOWNLOAD_RELAY_ROUTE`と同じ形)、`attachmentDisposition`。
-- New components rationale: `ExportSnapshotCollector`と3つの読み取りの部品は19の部品(`AccountExport`とAllowed Dependenciesの出力用の部品の18)の注入を責務ごとに分け、上流の形の違いを写しに閉じ込めるため。`ZipArchiveWriter`と`PartChunker`はfflateとR2の制約(同期の出力・均一な部分)をメモリの上限の中で結ぶため。`DataExportTerminator`は生成の3回目の失敗・見張り・日次の受け皿の3経路が同じ失敗の確定と通知を行うため。
+- New components rationale: `ExportSnapshotCollector`と3つの読み取りの部品は19の部品(`AccountExport`とAllowed Dependenciesの出力用の部品の18)の注入を責務ごとに分け、上流の形の違いを写しに閉じ込めるため。`ZipArchiveWriter`と`PartChunker`はfflateとR2の制約(同期の出力・均一な部分)をメモリの上限の中で結ぶため。`DataExportTerminator`は生成の3回目の失敗・見張り・日次の受け皿の3経路が同じ失敗の確定と通知を行うため。`DataExportIncidentReporter`はapi・eventのapplication層が`@sentry/*`を読み込めず、両アプリの処理が同じ定型の通知を送るため。
 - Steering compliance: `@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・`transaction()`を使わない)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、ログに個人情報を含めない、環境の値は`env`バインディングから読む。
 
-**Dependency direction**: `apps/common-lib/data-export` → `backend-lib/core/data-export` → `backend-lib/workers/data-export` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`apps/db/schema/data-export`は`drizzle-orm`・backend-platformの共通カラム・identity-authの`users`(外部キー)だけを読み込み、`common-lib`を読み込まない(状態などの値はCHECKに直接書き、`common-lib/data-export`の定数との一致は`workers/data-export`のテストで確かめる)。`common-lib/data-export`は他のどの層も読み込まない。`core/data-export`は`common-lib/data-export`・`BusinessTime`・backend-platformの`defineMessageContract`・`MessageContract`・`zod`(メッセージの本文の検証)・email-deliveryの`defineEmailKind`(`core/email/kinds/data-export.ts`)・`fflate`だけを読み込み、`cloudflare:*`・`apps/db`・`workers`を読み込まない。`core/data-export/ports.ts`は`common-lib/data-export`の型と同じディレクトリの`ArchiveByteSink`だけを、`identifiers.ts`は何も読み込まない(R2・D1の型を契約に出さない)。`workers/data-export`は本specのテーブル・`common-lib/data-export`・`core/data-export`(契約・識別子と`core/email/kinds/data-export.ts`を含む)・`inversify`(`injectable`・`inject`・`ContainerModule`)・`drizzle-orm`・backend-platformの`PLATFORM_TYPES`と各識別子の型(`Database`・`PlatformEnv`など)・`AppModule`・`getAppLogger`・`captureEvent`・identity-authの`core/identity`の`IDENTITY_PLATFORM_TYPES`と`UserContactDirectory`・email-deliveryの`core/email`の`EMAIL_TYPES`と`EmailSender`・media-pipelineの`core/media`の`attachmentDisposition`だけを読み込む。api・eventの`application/data-export`は`core/data-export`の契約と識別子・上流の`core/<ドメイン>`の契約と識別子・backend-platformの`core`の部品だけを読み込み、`**/lib/workers/**`を型も含めて読み込まない(`MessagePublisher`は自前のポート`DataExportMessagePublisher`、回数制限はポート`DataExportRequestLimits`で受け取る)。`DataExportNotifier`は`PLATFORM_TYPES.Env`を本ファイルの中の型`PlatformEnv & { readonly CLIENT_SITE_ORIGIN: string }`として受け取る(`CLIENT_SITE_ORIGIN`はapiはidentity-auth、eventはpaymentsが変数として持つ)。上流の出力用の部品の型を読み込むのは、eventの`application/data-export/sources/`と、その隣の単体テストと、契約と結合のテスト(`apps/event/test/data-export/`)だけである。clientは`common-lib/data-export`とGraphQLの操作と上流の部品だけを読み込む。テストは、これらに加えてテストの実行環境(`cloudflare:test`・Vitest・Bunのテスト)と、データの用意のためのidentity-authの`users`テーブル・上流のテストの補助を読み込める。違反はレビューで誤りとして扱う。
+**Dependency direction**: `apps/common-lib/data-export` → `backend-lib/core/data-export` → `backend-lib/workers/data-export` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`apps/db/schema/data-export`は`drizzle-orm`・backend-platformの共通カラム・identity-authの`users`(外部キー)だけを読み込み、`common-lib`を読み込まない(状態などの値はCHECKに直接書き、`common-lib/data-export`の定数との一致は`workers/data-export`のテストで確かめる)。`common-lib/data-export`は他のどの層も読み込まない。`core/data-export`は`common-lib/data-export`・`BusinessTime`・backend-platformの`defineMessageContract`・`MessageContract`・`zod`(メッセージの本文の検証)・email-deliveryの`defineEmailKind`(`core/email/kinds/data-export.ts`)・`fflate`だけを読み込み、`cloudflare:*`・`apps/db`・`workers`を読み込まない。`core/data-export/ports.ts`は`common-lib/data-export`の型と同じディレクトリの`ArchiveByteSink`だけを、`identifiers.ts`は何も読み込まない(R2・D1の型を契約に出さない)。`workers/data-export`は本specのテーブル・`common-lib/data-export`・`core/data-export`(契約・識別子と`core/email/kinds/data-export.ts`を含む)・`inversify`(`injectable`・`inject`・`ContainerModule`)・`drizzle-orm`・backend-platformの`PLATFORM_TYPES`と各識別子の型(`Database`・`PlatformEnv`など)・`AppModule`・`getAppLogger`・`LoggingOptions`の型・identity-authの`core/identity`の`IDENTITY_PLATFORM_TYPES`と`UserContactDirectory`・email-deliveryの`core/email`の`EMAIL_TYPES`と`EmailSender`・media-pipelineの`core/media`の`attachmentDisposition`・`@sentry/cloudflare`(`SentryDataExportIncidentReporter`だけ)だけを読み込む。api・eventの`application/data-export`は`core/data-export`の契約と識別子・上流の`core/<ドメイン>`の契約と識別子・backend-platformの`core`の部品だけを読み込み、`**/lib/workers/**`を型も含めて読み込まない(`MessagePublisher`は自前のポート`DataExportMessagePublisher`、回数制限はポート`DataExportRequestLimits`で受け取る。エラートラッキングへの送信は`DataExportIncidentReporter`で受け取り、`@sentry/*`を読み込まない(`config/eslint/backend-layers.ts`の`ERROR_TRACKING_RESTRICTION`))。`DataExportNotifier`は`PLATFORM_TYPES.Env`を本ファイルの中の型`PlatformEnv & { readonly CLIENT_SITE_ORIGIN: string }`として受け取る(`CLIENT_SITE_ORIGIN`はapiはidentity-auth、eventはpaymentsが変数として持つ)。上流の出力用の部品の型を読み込むのは、eventの`application/data-export/sources/`と、その隣の単体テストと、契約と結合のテスト(`apps/event/src/composition/data-export-upstream-exports.worker.test.ts`・`data-export-archive.worker.test.ts`)だけである。clientは`common-lib/data-export`とGraphQLの操作と上流の部品だけを読み込む。テストは、これらに加えてテストの実行環境(`cloudflare:test`・Vitest・Bunのテスト)と、データの用意のためのidentity-authの`users`テーブル・上流のテストの補助を読み込める。違反はレビューで誤りとして扱う。
 
 ### Technology Stack
 
@@ -213,7 +219,7 @@ apps/
 │   │   │   └── build-export-documents.ts                    # 12のJSON・manifest・.mdの組み立てと直列化
 │   │   ├── part-chunker.ts                                  # 均一な大きさの部分への区切り
 │   │   ├── zip-archive-writer.ts                            # fflateの同期のZipを包む書き出し
-│   │   ├── ports.ts                                         # api・eventのapplication層が受け取る契約: DataExportStore・ExportArchiveStorage・MultipartArchiveUpload・DataExportNotifier・DataExportTerminatorと入出力の型(型だけ、テストなし)
+│   │   ├── ports.ts                                         # api・eventのapplication層が受け取る契約: DataExportStore・ExportArchiveStorage・MultipartArchiveUpload・DataExportNotifier・DataExportTerminator・DataExportIncidentReporterと入出力の型(型だけ、テストなし)
 │   │   └── identifiers.ts                                   # DATA_EXPORT_PLATFORM_TYPES(Symbol.for('data-export.<名前>')の凍結したオブジェクト、identifiers.unit.test.ts)
 │   ├── core/email/kinds/data-export.ts                      # 2つのメール種別(入力のzodスキーマ)
 │   └── workers/data-export/                                 # api・event共通の実装と束縛(Workers統合テスト)
@@ -221,7 +227,8 @@ apps/
 │       ├── r2-export-archive-storage.ts                     # R2ExportArchiveStorage(ExportArchiveStorageのR2の実装、マルチパートの書き込み先)
 │       ├── data-export-notifier.ts                          # EmailDataExportNotifier(完了・失敗のメールの依頼と通知の状態)
 │       ├── data-export-terminator.ts                        # StoreDataExportTerminator(失敗の確定・アップロードの破棄・通知)
-│       └── data-export-platform-module.ts                   # DATA_EXPORT_PLATFORM_MODULE
+│       ├── sentry-data-export-incident-reporter.ts          # SentryDataExportIncidentReporter(エラートラッキングへの定型の通知と元の例外)
+│       └── data-export-platform-module.ts                   # createDataExportPlatformModule(appName)
 ├── api/src/
 │   ├── application/data-export/                             # Bunの単体テスト
 │   │   ├── data-export-types.ts                             # DATA_EXPORT_TYPES(テストなし)
@@ -269,7 +276,9 @@ apps/
         ├── my-data-exports.graphql                          # ClientMyDataExports(myDataExports)
         └── request-data-export.graphql                      # ClientRequestDataExport(requestDataExport)
 e2e/
-└── client/data-export.e2e.test.ts
+└── client/                                                 # 平置き(D-3)
+    ├── data-export.e2e.test.ts
+    └── data-export-steps.ts                                 # 画面の操作の手順(要求・一覧の状態の待ち・ダウンロード)
 docs/
 ├── GUIDES/tech/backend/023-streaming-archive-exports.md
 └── GUIDES/tech/security/012-owner-scoped-generated-downloads.md
@@ -282,20 +291,30 @@ docs/
 - `apps/db/schema/index.ts`・`apps/db/migrations/<日時>_data_export/migration.sql` — 1テーブルの再エクスポートと生成したマイグレーション(CHECK・索引)。mainの最新を取り込んでから生成する。
 - `apps/backend-lib/core/messaging/contracts/index.ts` — 2種別。
 - `apps/backend-lib/core/email/kinds/index.ts`・`apps/event/src/infrastructure/email/templates/index.ts` — 2種別と2テンプレート。
-- `apps/event/test/data-export/upstream-export-bindings.worker.test.ts`(新規) — 上流の19の部品(`AccountExport`と出力用の部品の18)とファイルの照会(`MediaFiles`)がイベントサーバーのコンテナから解決でき、`RatingExport`がengagementの仮5の`invalidatedByAdmin`を返すことの契約のテスト。engagementのファイルは変更しない。
+- `apps/event/src/composition/data-export-upstream-exports.worker.test.ts`(新規。既存の同じ種類の契約のテスト(`reporting-platform.worker.test.ts`など)と同じ`src/composition`に置く。`apps/event/test/`には既存のテストが無い) — 上流の19の部品(`AccountExport`と出力用の部品の18)とファイルの照会(`MediaFiles`)がイベントサーバーのコンテナから解決でき、`RatingExport`がengagementの仮5の`invalidatedByAdmin`を返すことの契約のテスト。engagementのファイルは変更しない。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`internal-routes.ts`・`scheduled-jobs.ts` — モジュール・スキーマモジュール・内部REST・2つのジョブ。
+- 登録の一覧と前後関係を固定する上流のテスト — 本specの登録に合わせて期待値を改める(登録の`order`は変えない)。2026-11-22の時点で次のファイルが該当する。実装の直前に、`jobsFor(DAILY_CRON)`・「定期実行を終えました」の要約の`jobs`・`namesFor(`・`handlersFor(`・`readHandlerRuns`・`SETTINGS_NAV_ITEMS`で一覧や並びを確かめるテストを洗い出し直す。名前が実態と合わなくなるテストは、テスト名も改める。
+  - `apps/event/src/composition/user-lifecycle-async-handlers.unit.test.ts` — `withdrawn`の全件の一致に本specを加える。ugc-moderationのテストの「末尾に並ぶ」期待を「identity-auth専用の10000番台より前に並ぶ」へ緩めてテスト名を改め、sponsorshipのテスト(「全てのドメインの物理削除の処理の後」の名前を含む)の末尾3件の期待とcontent-reportingのテストの末尾2件の期待を、sponsorship・content-reporting・ugc-moderationの相対の順の期待へ改める(D-1)。
+  - `apps/event/src/composition/`の`purge_due`の全件を固定するWorkers統合テスト7つ(`match-module.purge.worker.test.ts`・`engagement-module.worker.test.ts`・`profile-module.worker.test.ts`・`payments-module.worker.test.ts`・`user-product-erasure.worker.test.ts`・`notifications-module.account-purge.worker.test.ts`・`ultras-module.worker.test.ts`)と、`withdrawn`の全件を固定する3つ(`payments-module.worker.test.ts`・`ultras-module.worker.test.ts`・`match-module.decision-follow-up.worker.test.ts`) — 末尾に`data-export.archive-erasure`を加える。
+  - `apps/event/src/composition/`の退会を実行して実行済みの処理を全件照合するWorkers統合テスト2つ(`identity-module.worker.test.ts`・`payments-lifecycle-handlers.worker.test.ts`) — 本specの処理の実行を加える。
+  - `apps/api/src/composition/reporting-module.worker.test.ts` — 4:21の保持期間の削除(2010)の次を、本specの期限切れの削除(2100)にし、テスト名の「キーワードの再抽出(2300)の前」を改める。
+  - `apps/api/src/composition/search-module.worker.test.ts` — 2か所の4:21の全件の固定(登録の並びと、4:21を実行した「定期実行を終えました」の要約の`jobs`)に本specの2つのジョブを加える。
+  - `apps/api/src/composition/search-module.reextraction.worker.test.ts` — 4:21を実行した要約の`jobs`の全件の固定に、本specの2つのジョブ(`result: 'succeeded'`)を加える。本specのジョブは、対象の無いテストの環境でも成功する。
+  - `apps/client/src/components/settings/settings-nav-order.unit.test.ts` — 登録の一覧と末尾の期待に`/settings/export`(100)を加え、テスト名の「APIキー(90)」「最後に並ぶ」を改める。
+- `.kiro/specs/content-reporting/design.md`・`tasks.md` — `purge_due`の1800の説明の「ugc-moderationの1900を全ドメインの物理削除の処理の後(末尾)に保つ」を、本specの2100を除く旨に改める(D-1)。
 - `apps/event/src/composition/modules.ts`・`message-handlers.ts`・`user-lifecycle-async-handlers.ts` — モジュール・2つの処理と再試行の方針・物理削除の処理。
 - `apps/api/package.json`・`apps/event/package.json`・各`bun.lock` — `fflate` 0.8.3を版固定で加える(apiは`backend-lib`の検査とテストのため)。
 - `apps/client/src/composition/settings-navigation.ts`・`relay-routes.ts` — ナビゲーションの1件と、`defineRelayRoute`で定義した中継の経路。
 - APIサーバーの許可リスト(`apps/api/src/presentation/graphql/generated/allowlist.json`、`graphql:allowlist`で再生成)と、APIサーバーのスキーマのファイル・clientの生成物(`src/graphql/generated/`、clientの`bun run graphql:generate`で再生成)。
 - `docs/GUIDES/tech/backend/README.md`・`security/README.md` — 文書一覧の行。
-- `docs/onboardings/project-values.md` — メッセージ種別・ジョブ・処理の名前と`order`、回数制限の規則の名前と値、メール種別、オブジェクトのキーの接頭辞、部分の大きさ・リース・見張りの遅延・再試行の回数、中継の経路と`timeoutMs`。
+- `docs/onboardings/project-values.md` — メッセージ種別・ジョブ・処理の名前と`order`、回数制限の規則の名前と値、メール種別、オブジェクトのキーの接頭辞、部分の大きさ・リース・見張りの遅延・再試行の回数、中継の経路と`timeoutMs`、ログのカテゴリ・レベル・属性とエラートラッキングへの定型の通知の種類(`infra/004`の「共通ライブラリの部品が使うカテゴリ」に従い、サービス固有の部品として機能の項に載せる)。
 - `docs/onboardings/tech-stack.md` — 「アーカイブ生成」のfflateに、同期のストリーミングのAPIだけを使う旨を追記する。
 - `docs/GUIDES/service/features/001-user-data-export.md` — `null`の規則(仮3)、`ratings.json`の`invalidatedByAdmin`を保つ旨(仮2)、プロダクトのディレクトリ名の衝突の連番、ZIPの上限(仮5)、項目の順(画像・添付が先)、生成と提供の流れ(見張り・停止中の利用者・要求の記録の保持)。
 - `docs/GUIDES/service/design/002-page-layouts.md` — `/settings/export`の構成と状態の表現。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 設定ページの文言と2つのメールの本文の要点。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に要求の記録の行(退会まで保持し、退会の時点で物理削除する。ZIPは生成完了から7日のまま、仮4)、利用者の権利の表に停止中も行使できる旨(仮1)。
 - `docs/GUIDES/service/overview/007-daily-timeline.md` — 4:21の表に`data-export.archive-expiry`(2100)・`data-export.generation-recovery`(2110)。
+- `docs/GUIDES/tech/infra/004-logging-and-error-tracking.md` — 送信の表に、非同期の生成が再試行の上限で失敗と確定した・見張りや日次の受け皿で失敗を確定した・期限を過ぎた生成物の削除に失敗した・生成物の実体が無い記録をダウンロードしようとした、の行を、ドメイン名を`<ドメイン>`として加える(依頼待ちの通知の送り直しの失敗は既存の行を使う)。
 - `CLAUDE.md` — 「技術規則の参照先」に「利用者のデータのアーカイブを生成・配信する前に: `backend/023`」。
 
 ## System Flows
@@ -363,7 +382,7 @@ sequenceDiagram
 ```
 
 - `claim`が`busy`(他の実行のリースが有効)なら処理は`defer`(1200秒)を返し、`finished`(完了・期限切れ・失敗)なら`done`を返す。
-- `claim`で得た記録に前の実行の`upload_id`が残っていれば(前の実行が異常終了した)、先に`abortUpload`する。`recordUpload`の前に異常終了したアップロードはR2が7日後に破棄する。
+- `claim`で得た記録に前の実行の`upload_id`が残っていれば(前の実行が異常終了した)、先に`abortUpload`する。`recordUpload`の前に異常終了したアップロードは、R2のバケットの既定の寿命の規則(未完了のマルチパートアップロードを開始から7日で破棄)が破棄する。`FILES_BUCKET`の寿命の規則はIaCで定めておらず、既定の規則が効く(D-4)。
 - 収集の結果が`undefined`(退会済み・物理削除済み)なら、`DataExportTerminator.fail`を通知なしで呼ぶ(要件3.7)。アップロードの`complete`の後、`markReady`の前にも`AccountSourceReader.exists`で確かめ、退会済みならZIPを削除して通知なしで失敗にする。
 - `ArchiveTooLargeError`ならアップロードを破棄し、`fail(too_large)`で通知して`done`(やり直さない、要件7.4)。それ以外の例外はアップロードを破棄してリースを外し、試行が3回未満なら投げ直し(backend-platformの再試行)、3回目なら`fail(error)`で通知して`done`にする。
 - `markReady`が実行の印の不一致(見張りが先に失敗を確定した、または退会の削除の処理が記録を消した)で更新されなければ、作ったZIPを削除して`done`を返す。`recordUpload`が同じ理由で更新されなければ、始めたアップロードを破棄して`superseded`を返す。
@@ -412,7 +431,7 @@ sequenceDiagram
 ### 削除と受け皿
 
 - `data-export.archive-expiry`(4:21・2100): ZIPだけを削除し、記録は削除しない(仮4)。`listExpired({ now, limit: 100 })`で期限を過ぎた完了を読み、オブジェクトを削除して(無くても成功)`markExpired`で期限切れにする。続けて`listFailedWithUpload({ limit: 100 })`で途中のアップロードが残る失敗を読み、アップロードを破棄して`clearUpload`する。それぞれ100件ずつ最大10回繰り返す(要件10.1・10.2・10.4・10.5)。
-- `data-export.generation-recovery`(4:21・2110): 要求から3時間を過ぎた作成中の要求に`DataExportTerminator.fail(error)`を、30分を過ぎた依頼待ちの通知に`DataExportNotifier.notify`を、それぞれ100件ずつ最大10回行う(要件3.6・8.6)。
+- `data-export.generation-recovery`(4:21・2110): 要求から3時間を過ぎた作成中の要求に`DataExportTerminator.fail(error)`を、完了・失敗の確定から1時間を過ぎた依頼待ちの通知に`DataExportNotifier.notify`を(確定の直後の通知の依頼と重ならないよう、content-reportingの送り直しと同じ1時間とする)、それぞれ100件ずつ最大10回行う(要件3.6・8.6)。
 - `data-export.archive-erasure`(ユーザーの`withdrawn`と`purge_due`・2100): その利用者の記録を100件読み、アップロードの破棄・オブジェクトの削除・記録の削除を行い、100件あれば`continue`を返す。退会の時点で記録を消し(仮4)、物理削除の時期の実行はその後に作られた記録や消し残しの受け皿である(要件10.3)。
 
 ## Requirements Traceability
@@ -465,39 +484,40 @@ sequenceDiagram
 | 10.1, 10.2, 10.4, 10.5 | ZIPの削除と期限切れ(仮4) | ArchiveExpiryJob、DataExportStore、ExportArchiveStorage                                         | `listExpired`・`markExpired`・`listFailedWithUpload`・`delete`                                         | 削除と受け皿   |
 | 10.3                   | 退会と物理削除の削除     | ArchiveErasureHandler                                                                           | `USER_LIFECYCLE_ASYNC_HANDLERS`(`withdrawn`・`purge_due`)                                              | 削除と受け皿   |
 | 11.1, 11.2, 11.7, 11.9 | 一覧と説明               | DataExportPanel、DataExportList、DataExportItem、DataExportStatusBadge                          | `myDataExports`                                                                                        | —              |
-| 11.3                   | 自動の取得し直し         | DataExportList                                                                                  | `refetchInterval`                                                                                      | —              |
+| 11.3                   | 自動の取得し直し         | DataExportList                                                                                  | `LIVE_REFRESH_QUERY_OPTIONS`・取得した値による判定・「自動更新」の`Switch`                             | —              |
 | 11.4, 11.5             | 二重の要求と誤り         | DataExportRequestButton、useRequestDataExport、DataExportErrors                                 | `requestDataExport`                                                                                    | —              |
 | 11.6                   | 取得の誤り               | DataExportList                                                                                  | `PartialErrorState`                                                                                    | —              |
 | 11.8                   | 失敗の案内               | DataExportItem                                                                                  | `failureKind`                                                                                          | —              |
-| 12.1, 12.2, 12.3       | ログと検知               | 全コンポーネント(ログの規約)、ArchiveGenerationService                                          | `getAppLogger`                                                                                         | —              |
+| 12.1, 12.2, 12.3       | ログと検知               | 全コンポーネント(ログの規約)、ArchiveGenerationService、DataExportIncidentReporter              | `getAppLogger`                                                                                         | —              |
 | 12.4, 12.5             | 帯と登録                 | ArchiveExpiryJob、GenerationRecoveryJob、ArchiveErasureHandler、EventDataExportModule           | `order` 2100・2110、`MessageHandlerRegistration.retry`                                                 | —              |
 | 13.1, 13.2, 13.3, 13.4 | テスト                   | Testing Strategy                                                                                | —                                                                                                      | —              |
 | 13.5, 13.6             | 文書                     | DataExportTechDocs、DataExportServiceSpecs                                                      | —                                                                                                      | —              |
 
 ## Components and Interfaces
 
-| Component                                                                                                                               | Domain/Layer                              | Intent                          | Req Coverage                           | Key Dependencies                                                                                                           | Contracts      |
-| --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| DataExportRules                                                                                                                         | common-lib                                | 状態・上限・パス                | 2.1, 3.8, 9.1, 11.1                    | なし                                                                                                                       | State          |
-| DataExportSchema                                                                                                                        | db                                        | `data_exports`                  | 3.5, 3.8, 7.5, 8.3                     | identity-authの`users`(外部キー)                                                                                           | State          |
-| DataExportMessages・ArchiveLimits・ArchiveNames                                                                                         | backend-lib/core                          | メッセージ・上限・ファイル名    | 3.1, 3.6, 4.6〜4.10, 7.4               | backend-platform (P0)                                                                                                      | Event, Service |
-| ExportSnapshot・ExportPlan・ExportDocuments                                                                                             | backend-lib/core                          | スナップショット・パス・JSON    | 4.1〜4.3, 4.7, 4.9, 4.11, 5.\*, 6.6    | ArchiveNames (P0)                                                                                                          | Service        |
-| PartChunker・ZipArchiveWriter                                                                                                           | backend-lib/core                          | 均一な部分とストリーミングのZIP | 3.2, 3.3, 4.4, 4.5, 7.4                | fflate (P0)                                                                                                                | Service        |
-| DataExportEmailKinds                                                                                                                    | backend-lib/core                          | 2つのメール種別                 | 8.1, 8.2, 8.8                          | email-delivery (P0)                                                                                                        | Event          |
-| DataExportStore                                                                                                                         | backend-lib/core(契約)・workers(D1の実装) | 要求の記録                      | 1.2, 3.5, 3.8, 7.5, 8.3, 10.\*         | D1 (P0)                                                                                                                    | State          |
-| ExportArchiveStorage                                                                                                                    | backend-lib/core(契約)・workers(R2の実装) | ZIPの保存・読み出し・削除       | 3.2, 3.3, 7.1〜7.3, 9.2, 10.5          | R2 (P0)、PartChunker (P0)                                                                                                  | Service        |
-| DataExportNotifier・DataExportTerminator                                                                                                | backend-lib/core(契約)・workers(実装)     | 通知と失敗の確定                | 3.4, 3.6, 8.\*                         | UserContactDirectory (P0)、EmailSender (P0)                                                                                | Service        |
-| DataExportRequestService・DataExportReader・ArchiveDownloadService                                                                      | api/application                           | 要求・一覧・認可                | 1.\*, 2.\*, 3.1, 9.3〜9.5              | AccountGuard (P0)、DataExportRequestLimits (P0)、DataExportMessagePublisher (P0)、`core/data-export`のDataExportStore (P0) | Service        |
-| CounterDataExportRequestLimits                                                                                                          | api/infrastructure                        | 24時間3回の回数制限             | 2.1, 2.2, 2.4, 2.5, 2.7                | RateLimitCounterClient (P0)                                                                                                | Service        |
-| ArchiveExpiryJob・GenerationRecoveryJob                                                                                                 | api/application/jobs                      | 期限の削除と受け皿              | 3.6, 8.6, 10.1, 10.2, 10.4, 10.5, 12.4 | `core/data-export`のDataExportStore・ExportArchiveStorage・DataExportTerminator・DataExportNotifier (P0)                   | Batch          |
-| DataExportSchemaModule・ArchiveDownloadRoute                                                                                            | api/presentation                          | GraphQLと内部REST               | 1.2, 1.7, 1.8, 9.2〜9.6                | api-gateway (P0)                                                                                                           | API            |
-| AccountSourceReader・ProductActivitySourceReader・CorrespondenceSourceReader                                                            | event/application                         | 部品の値の写し                  | 3.7, 5.\*, 6.1, 6.3, 6.4               | 上流の出力用の部品 (P0)                                                                                                    | Service        |
-| ExportFileResolver・ExportSnapshotCollector                                                                                             | event/application                         | ファイルの照会と収集            | 5.11, 5.12, 6.2                        | MediaFiles (P0)                                                                                                            | Service        |
-| ArchiveGenerationService・GenerateArchiveHandler・GenerationWatchdogHandler                                                             | event/application                         | 生成・再試行・見張り            | 3.\*, 6.5, 7.\*, 12.2                  | 上記 (P0)                                                                                                                  | Event          |
-| ArchiveErasureHandler                                                                                                                   | event/application                         | 退会と物理削除の時期の削除      | 10.3, 10.4                             | identity-auth (P0)                                                                                                         | Event          |
-| DataExportEmailTemplates                                                                                                                | event/infrastructure                      | 2つのメールの本文               | 8.1, 8.2, 8.7, 8.8                     | email-delivery (P0)                                                                                                        | —              |
-| DataExportPanel・DataExportRequestButton・DataExportList・DataExportItem・DataExportStatusBadge・useRequestDataExport・DataExportErrors | client                                    | 設定ページの区画                | 1.1, 1.3, 2.3, 9.1, 11.\*              | frontend-platform (P0)                                                                                                     | State          |
-| DataExportRelayRoute                                                                                                                    | client/composition                        | 中継の経路                      | 9.2                                    | frontend-platform (P0)                                                                                                     | API            |
+| Component                                                                                                                               | Domain/Layer                                  | Intent                          | Req Coverage                           | Key Dependencies                                                                                                                     | Contracts      |
+| --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
+| DataExportRules                                                                                                                         | common-lib                                    | 状態・上限・パス                | 2.1, 3.8, 9.1, 11.1                    | なし                                                                                                                                 | State          |
+| DataExportSchema                                                                                                                        | db                                            | `data_exports`                  | 3.5, 3.8, 7.5, 8.3                     | identity-authの`users`(外部キー)                                                                                                     | State          |
+| DataExportMessages・ArchiveLimits・ArchiveNames                                                                                         | backend-lib/core                              | メッセージ・上限・ファイル名    | 3.1, 3.6, 4.6〜4.10, 7.4               | backend-platform (P0)                                                                                                                | Event, Service |
+| ExportSnapshot・ExportPlan・ExportDocuments                                                                                             | backend-lib/core                              | スナップショット・パス・JSON    | 4.1〜4.3, 4.7, 4.9, 4.11, 5.\*, 6.6    | ArchiveNames (P0)                                                                                                                    | Service        |
+| PartChunker・ZipArchiveWriter                                                                                                           | backend-lib/core                              | 均一な部分とストリーミングのZIP | 3.2, 3.3, 4.4, 4.5, 7.4                | fflate (P0)                                                                                                                          | Service        |
+| DataExportEmailKinds                                                                                                                    | backend-lib/core                              | 2つのメール種別                 | 8.1, 8.2, 8.8                          | email-delivery (P0)                                                                                                                  | Event          |
+| DataExportStore                                                                                                                         | backend-lib/core(契約)・workers(D1の実装)     | 要求の記録                      | 1.2, 3.5, 3.8, 7.5, 8.3, 10.\*         | D1 (P0)                                                                                                                              | State          |
+| ExportArchiveStorage                                                                                                                    | backend-lib/core(契約)・workers(R2の実装)     | ZIPの保存・読み出し・削除       | 3.2, 3.3, 7.1〜7.3, 9.2, 10.5          | R2 (P0)、PartChunker (P0)                                                                                                            | Service        |
+| DataExportNotifier・DataExportTerminator                                                                                                | backend-lib/core(契約)・workers(実装)         | 通知と失敗の確定                | 3.4, 3.6, 8.\*                         | UserContactDirectory (P0)、EmailSender (P0)                                                                                          | Service        |
+| DataExportIncidentReporter                                                                                                              | backend-lib/core(契約)・workers(Sentryの実装) | エラートラッキングへの送信      | 12.3                                   | `@sentry/cloudflare` (P1)                                                                                                            | Service        |
+| DataExportRequestService・DataExportReader・ArchiveDownloadService                                                                      | api/application                               | 要求・一覧・認可                | 1.\*, 2.\*, 3.1, 9.3〜9.5              | AccountGuard (P0)、DataExportRequestLimits (P0)、DataExportMessagePublisher (P0)、`core/data-export`のDataExportStore (P0)           | Service        |
+| CounterDataExportRequestLimits                                                                                                          | api/infrastructure                            | 24時間3回の回数制限             | 2.1, 2.2, 2.4, 2.5, 2.7                | RateLimitCounterClient (P0)                                                                                                          | Service        |
+| ArchiveExpiryJob・GenerationRecoveryJob                                                                                                 | api/application/jobs                          | 期限の削除と受け皿              | 3.6, 8.6, 10.1, 10.2, 10.4, 10.5, 12.4 | `core/data-export`のDataExportStore・ExportArchiveStorage・DataExportTerminator・DataExportNotifier・DataExportIncidentReporter (P0) | Batch          |
+| DataExportSchemaModule・ArchiveDownloadRoute                                                                                            | api/presentation                              | GraphQLと内部REST               | 1.2, 1.7, 1.8, 9.2〜9.6                | api-gateway (P0)                                                                                                                     | API            |
+| AccountSourceReader・ProductActivitySourceReader・CorrespondenceSourceReader                                                            | event/application                             | 部品の値の写し                  | 3.7, 5.\*, 6.1, 6.3, 6.4               | 上流の出力用の部品 (P0)                                                                                                              | Service        |
+| ExportFileResolver・ExportSnapshotCollector                                                                                             | event/application                             | ファイルの照会と収集            | 5.11, 5.12, 6.2                        | MediaFiles (P0)                                                                                                                      | Service        |
+| ArchiveGenerationService・GenerateArchiveHandler・GenerationWatchdogHandler                                                             | event/application                             | 生成・再試行・見張り            | 3.\*, 6.5, 7.\*, 12.2                  | 上記 (P0)                                                                                                                            | Event          |
+| ArchiveErasureHandler                                                                                                                   | event/application                             | 退会と物理削除の時期の削除      | 10.3, 10.4                             | identity-auth (P0)                                                                                                                   | Event          |
+| DataExportEmailTemplates                                                                                                                | event/infrastructure                          | 2つのメールの本文               | 8.1, 8.2, 8.7, 8.8                     | email-delivery (P0)                                                                                                                  | —              |
+| DataExportPanel・DataExportRequestButton・DataExportList・DataExportItem・DataExportStatusBadge・useRequestDataExport・DataExportErrors | client                                        | 設定ページの区画                | 1.1, 1.3, 2.3, 9.1, 11.\*              | frontend-platform (P0)                                                                                                               | State          |
+| DataExportRelayRoute                                                                                                                    | client/composition                            | 中継の経路                      | 9.2                                    | frontend-platform (P0)                                                                                                               | API            |
 
 ### common-lib・db
 
@@ -760,7 +780,7 @@ export declare function createZipArchiveWriter(
 
 ### backend-lib/core(共有部品の契約と識別子)・workers(実装と束縛)
 
-- 置き場所: api・eventのapplication層が受け取るため、共有部品の契約(`DataExportStore`・`ExportArchiveStorage`・`MultipartArchiveUpload`・`DataExportNotifier`・`DataExportTerminator`)とその入出力の型は`apps/backend-lib/core/data-export/ports.ts`、識別子は`core/data-export/identifiers.ts`に置き、D1・R2・メールの実装と束縛だけを`apps/backend-lib/workers/data-export`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。契約はR2・D1の型(`R2HTTPMetadata`・`Database`など)を出さない。識別子は`Symbol.for('data-export.<名前>')`の凍結したオブジェクトで、`core/data-export/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。apiの`DATA_EXPORT_TYPES`・eventの`EVENT_DATA_EXPORT_TYPES`とは別の識別子にし、3つの識別子の集まりは同じ`data-export.`の接頭辞を使うため、メンバーの名前を重ねない。
+- 置き場所: api・eventのapplication層が受け取るため、共有部品の契約(`DataExportStore`・`ExportArchiveStorage`・`MultipartArchiveUpload`・`DataExportNotifier`・`DataExportTerminator`・`DataExportIncidentReporter`)とその入出力の型は`apps/backend-lib/core/data-export/ports.ts`、識別子は`core/data-export/identifiers.ts`に置き、D1・R2・メール・エラートラッキングの実装と束縛だけを`apps/backend-lib/workers/data-export`に置く(application層は`**/lib/workers/**`を型も含めて読み込めない)。契約はR2・D1の型(`R2HTTPMetadata`・`Database`など)を出さない。識別子は`Symbol.for('data-export.<名前>')`の凍結したオブジェクトで、`core/data-export/identifiers.unit.test.ts`で値と凍結を確かめる(`core/media/identifiers.ts`と同じ形)。apiの`DATA_EXPORT_TYPES`・eventの`EVENT_DATA_EXPORT_TYPES`とは別の識別子にし、3つの識別子の集まりは同じ`data-export.`の接頭辞を使うため、メンバーの名前を重ねない。
 
 ```typescript
 // core/data-export/identifiers.ts
@@ -769,9 +789,13 @@ export declare const DATA_EXPORT_PLATFORM_TYPES: {
   readonly ExportArchiveStorage: symbol;
   readonly DataExportNotifier: symbol;
   readonly DataExportTerminator: symbol;
+  readonly DataExportIncidentReporter: symbol;
 }; // Symbol.for('data-export.<名前>')
 // workers/data-export/data-export-platform-module.ts
-export declare const DATA_EXPORT_PLATFORM_MODULE: AppModule; // DataExportStore → D1DataExportStore、ExportArchiveStorage → R2ExportArchiveStorage、DataExportNotifier → EmailDataExportNotifier、DataExportTerminator → StoreDataExportTerminator
+// アプリ名はログのカテゴリの先頭になる(notificationsのcreateNotificationsPlatformModuleと同じ形)。ログを出す実装はtoDynamicValueで依存とアプリ名を受け取る
+export declare function createDataExportPlatformModule(
+  appName: LoggingOptions['appName'],
+): Omit<AppModule, 'routes'>; // DataExportStore → D1DataExportStore、ExportArchiveStorage → R2ExportArchiveStorage、DataExportNotifier → EmailDataExportNotifier、DataExportTerminator → StoreDataExportTerminator、DataExportIncidentReporter → SentryDataExportIncidentReporter
 ```
 
 #### DataExportStore
@@ -930,7 +954,7 @@ export declare class R2ExportArchiveStorage implements ExportArchiveStorage {
 ```typescript
 // core/data-export/ports.ts
 export interface DataExportNotifier {
-  notify(exportId: string): Promise<'requested' | 'skipped' | 'not_pending'>;
+  notify(exportId: string): Promise<'requested' | 'skipped' | 'not_pending'>; // 送信の冪等のキーは要求のID
 }
 export interface DataExportTerminator {
   fail(input: {
@@ -943,24 +967,64 @@ export interface DataExportTerminator {
 // workers/data-export/data-export-notifier.ts
 export declare class EmailDataExportNotifier implements DataExportNotifier {
   constructor(
-    store: DataExportStore, // @inject(DATA_EXPORT_PLATFORM_TYPES.DataExportStore)
-    contacts: UserContactDirectory, // @inject(IDENTITY_PLATFORM_TYPES.UserContactDirectory)
-    sender: EmailSender, // @inject(EMAIL_TYPES.EmailSender)
-    env: PlatformEnv & { readonly CLIENT_SITE_ORIGIN: string }, // @inject(PLATFORM_TYPES.Env)
+    store: DataExportStore, // context.get(DATA_EXPORT_PLATFORM_TYPES.DataExportStore)
+    contacts: UserContactDirectory, // context.get(IDENTITY_PLATFORM_TYPES.UserContactDirectory)
+    sender: EmailSender, // context.get(EMAIL_TYPES.EmailSender)
+    env: PlatformEnv & { readonly CLIENT_SITE_ORIGIN: string }, // context.get(PLATFORM_TYPES.Env)
+    appName: LoggingOptions['appName'], // モジュールの引数。ロガーのカテゴリは[appName, 'infrastructure', 'data-export']
   );
 }
 // workers/data-export/data-export-terminator.ts
 export declare class StoreDataExportTerminator implements DataExportTerminator {
   constructor(
-    store: DataExportStore, // @inject(DATA_EXPORT_PLATFORM_TYPES.DataExportStore)
-    storage: ExportArchiveStorage, // @inject(DATA_EXPORT_PLATFORM_TYPES.ExportArchiveStorage)
-    notifier: DataExportNotifier, // @inject(DATA_EXPORT_PLATFORM_TYPES.DataExportNotifier)
+    store: DataExportStore, // context.get(DATA_EXPORT_PLATFORM_TYPES.DataExportStore)
+    storage: ExportArchiveStorage, // context.get(DATA_EXPORT_PLATFORM_TYPES.ExportArchiveStorage)
+    notifier: DataExportNotifier, // context.get(DATA_EXPORT_PLATFORM_TYPES.DataExportNotifier)
+    appName: LoggingOptions['appName'], // モジュールの引数。ロガーのカテゴリは[appName, 'infrastructure', 'data-export']
   );
 }
 ```
 
-- `notify`: 記録の`notice_status`が`pending`でなければ`not_pending`。`UserContactDirectory.findContact(userId)`が`undefined`なら`advanceNotice(skipped)`と`info`のログ(要件8.5)。あれば完了・失敗に応じた種別で`EmailSender.send`し、成功後に`advanceNotice(requested)`。送信の失敗は例外のまま投げ、呼び出し元が日次の送り直しに任せる(要件8.6)。停止中の利用者にも送る(仮1)。
+- `notify`: 記録の`notice_status`が`pending`でなければ`not_pending`。`UserContactDirectory.findContact(userId)`が`undefined`なら`advanceNotice(skipped)`と`info`のログ(要件8.5)。あれば完了・失敗に応じた種別で、冪等のキー`idempotencyKey`に要求のIDを付けて`EmailSender.send`し、成功後に`advanceNotice(requested)`。送信の成功の後に通知の状態の前進が失敗して日次の送り直しで再び依頼しても、同じ種別で同じキーの2回目は送信の基盤が送らない(送信済みの記録の保持の14日の間)。完了と失敗は別の種別で、1つの要求はどちらか一方だけが確定するため、キーは要求のIDだけでよい(要件8.3・8.6。content-reporting・ugc-moderationの通知と同じ扱い)。送信の失敗は例外のまま投げ、呼び出し元が日次の送り直しに任せる(要件8.6)。停止中の利用者にも送る(仮1)。
 - `fail`: 記録を読み、`upload_id`があれば`abortUpload`(失敗は`warning`のログで続ける)、`markFailed`(`notice: notify ? 'pending' : 'skipped'`)。更新が無ければ`already_finished`。`notify`なら`DataExportNotifier.notify`を呼び、その失敗は`warning`のログに留める(日次の送り直しに任せる)。
+
+#### DataExportIncidentReporter
+
+```typescript
+// core/data-export/ports.ts
+export type DataExportIncident =
+  | {
+      readonly kind: 'generation-failed';
+      readonly exportId: string;
+      readonly attempts: number;
+      readonly error: unknown;
+    }
+  | {
+      readonly kind: 'generation-abandoned';
+      readonly exportId: string;
+      readonly by: 'watchdog' | 'recovery';
+    }
+  | {
+      readonly kind: 'archive-deletion-failed';
+      readonly job: string;
+      readonly count: number;
+    }
+  | { readonly kind: 'notice-redispatch-failed'; readonly count: number }
+  | { readonly kind: 'archive-missing'; readonly exportId: string };
+export interface DataExportIncidentReporter {
+  report(incident: DataExportIncident): void;
+}
+// workers/data-export/sentry-data-export-incident-reporter.ts
+export declare class SentryDataExportIncidentReporter implements DataExportIncidentReporter {
+  constructor(appName: LoggingOptions['appName']); // ロガーのカテゴリは[appName, 'infrastructure', 'data-export']
+}
+```
+
+- 置き場所: api・eventのapplication層は`@sentry/*`を読み込めない(`config/eslint/backend-layers.ts`の`ERROR_TRACKING_RESTRICTION`)。そのため契約を`core/data-export/ports.ts`、Sentryの実装を`workers/data-export`に置き、`createDataExportPlatformModule(appName)`で両アプリへ束縛する(notificationsの`NotificationIncidentReporter`と同じ形)。内部RESTの経路も同じ部品で送る。
+- `generation-failed`(`error`): 元の例外が`AppError`以外なら`captureException`で送る。`AppError`なら除去処理(`scrubEvent`)で捨てられる(`infra/004`)ため、`captureEvent`の定型の通知で送る。
+- その他は`captureEvent`の定型の通知(`infra/004`の「同じ文言を繰り返し送る通知」)で送る。レベルは`generation-abandoned`・`archive-missing`が`warning`、`archive-deletion-failed`・`notice-redispatch-failed`が`error`。
+- 定型の通知の形: 文言は`logentry`、指紋は`['data-export', <kind>]`、タグは`data_export_incident`(値は`kind`)と、ジョブの通知では`job`。要求のID(ULIDの形でなければ`unknown`)・件数・試行の回数は、コンテキスト`data_export_incident`に置く。
+- 同じ値を同じレベルのログにも残す。メールアドレス・ハンドル・ファイル名・オブジェクトのキーは送らない(要件12.1・12.3)。
 
 ### api
 
@@ -993,7 +1057,7 @@ export interface DataExportMessagePublisher {
   ): Promise<string>;
 }
 export interface DataExportRequestLimits {
-  consume(userId: string): Promise<void>; // 超過はAppError(rate_limited)と再試行の秒数
+  consume(userId: string): Promise<void>; // 超過はAppError(kind: rate_limited、code: rate_limit_exceeded)と再試行の秒数
 }
 // api/src/infrastructure/data-export/counter-data-export-request-limits.ts
 export declare const DATA_EXPORT_REQUEST_RULE: CounterRule; // { name: 'data-export-request', limit: 3, windowSeconds: 86400 }
@@ -1007,15 +1071,15 @@ export declare class CounterDataExportRequestLimits implements DataExportRequest
 ```
 
 - 置き場所: ポート`DataExportRequestLimits`・`DataExportMessagePublisher`はapplication層、実装`CounterDataExportRequestLimits`はinfrastructure層に置く。厳密カウンタのクライアント`RateLimitCounterClient`の型と`assertWithinLimit`が共通ライブラリの`workers`にあり、application層は読み込めないため(`backend/003`の「厳密カウンタを使うクラスはインフラ層に置く」)。`DATA_EXPORT_TYPES.DataExportRequestLimits`を`CounterDataExportRequestLimits`へ束縛し、`DataExportRequestService`はポートだけを受け取る。`DataExportMessagePublisher`は識別子を持たず、`@inject(PLATFORM_TYPES.MessagePublisher)`で受け取る(media-pipelineの`MediaJobMessagePublisher`と同じ)。`DataExportStore`の型は`core/data-export`から読み込み、`DATA_EXPORT_PLATFORM_TYPES`の識別子で受け取る。application層の各ファイルは`**/lib/workers/**`を読み込まない。
-- `consume`: `hashRateLimitKey(hasher, 'data-export', userId)`のキーで`DATA_EXPORT_REQUEST_RULE`の`hit`を行い、`assertWithinLimit`で超過を`rate_limited`(`retryAfterSeconds`)にする。
+- `consume`: `hashRateLimitKey(hasher, 'data-export', userId)`のキーで`DATA_EXPORT_REQUEST_RULE`の`hit`を行い、`RateLimitCounterClient`のメソッド`assertWithinLimit(decision, clock.now().getTime())`で超過を種類`rate_limited`・コード`rate_limit_exceeded`(`retryAfterSeconds`)の`AppError`にする。`hit`は再試行の秒数を返さず、`assertWithinLimit`がミリ秒の現在時刻から求める(前例はpublic-apiの`CounterPublicApiRateLimits`)。
 - `request`の順: `AccountGuard.requireUser`(停止中も通す、仮1)→`user.emailVerifiedAt`が無ければ`AppError({ kind: 'forbidden', code: 'email_not_verified' })`→`DataExportRequestLimits.consume(userId)`→`create`→`publish(DATA_EXPORT_GENERATE_MESSAGE)`(失敗なら`remove`して`AppError(unavailable)`)→`publish(DATA_EXPORT_WATCHDOG_MESSAGE, { delaySeconds: 7200 })`(失敗は`warning`)。
 - `listMine`・`authorize`は`requireUser`で本人に絞り、他人の記録を返さない。`listMine`は`DataExportStore.listByUserPage`で、期限切れ・失敗を含む退会までの全ての記録を20件ずつ返す(仮4)。`authorize`はULIDの形でないID・`findOwnedReady`が無いものを`not_found`にする。
 
 #### ArchiveExpiryJob・GenerationRecoveryJob
 
-- `data-export.archive-expiry`(`at` 4:21、`order` 2100): 「削除と受け皿」のとおり。オブジェクトの削除が失敗した記録は残し、`error`のログとSentryに送り、次の記録へ進む(再実行で同じ結果)。
-- `data-export.generation-recovery`(`at` 4:21、`order` 2110): 「削除と受け皿」のとおり。3回目以降も残る失敗はSentryに送る。
-- 依存: 2つのジョブはapplication層に置き、`DataExportStore`・`ExportArchiveStorage`・`DataExportTerminator`・`DataExportNotifier`を`core/data-export`の型と`DATA_EXPORT_PLATFORM_TYPES`の識別子で受け取る。`**/lib/workers/**`を読み込まない。
+- `data-export.archive-expiry`(`at` 4:21、`order` 2100): 「削除と受け皿」のとおり。オブジェクトの削除が失敗した記録は残して次の記録へ進み、失敗した件数を`DataExportIncidentReporter`の`archive-deletion-failed`(`error`)で送る(再実行で同じ結果)。
+- `data-export.generation-recovery`(`at` 4:21、`order` 2110): 「削除と受け皿」のとおり。受け皿による失敗の確定は1件ごとに`generation-abandoned`(`warning`、`by: 'recovery'`)、送り直しに失敗した依頼待ちの通知は件数を`notice-redispatch-failed`(`error`)で送る。
+- 依存: 2つのジョブはapplication層に置き、`DataExportStore`・`ExportArchiveStorage`・`DataExportTerminator`・`DataExportNotifier`・`DataExportIncidentReporter`を`core/data-export`の型と`DATA_EXPORT_PLATFORM_TYPES`の識別子で受け取る。`**/lib/workers/**`と`@sentry/*`を読み込まない。
 
 #### DataExportSchemaModule・ArchiveDownloadRoute
 
@@ -1054,8 +1118,8 @@ type Mutation {
 }
 ```
 
-- リゾルバの冒頭で`context.caller`が利用者側でなければ`forbidden`(要件1.8)。エラーコード: `unauthenticated`・`email_not_verified`(403)・`rate_limited`(429、`retryAfterSeconds`)・`unavailable`(503)。`byteSize`は4GiB未満の整数を`Float`で返す(GraphQLの`Int`は32ビット)。`myDataExports`はapi-gatewayのページングの規約に従う。引数は`CURSOR_PAGE_ARGS`を`first`の上限20に狭めたスキーマで`withValidatedArgs`により検証し、20を超える`first`は`validation_error`にする。`after`は`decodeCursor`で要求のIDへ戻し(不正なら`invalid_cursor`)、`DataExportReader.listMine`の最大`first + 1`件を`toConnection`(カーソルは`encodeCursor`)へ渡す。`EXPIRED`の項目は完了日時・有効期限・ファイル名・大きさを返し`downloadPath`を`null`にする(仮4)。
-- `GET /internal/data-exports/:exportId/archive`(`createInternalRoutesModule`に登録): 呼び出し元が利用者側でなければ404→`c.var.session`(サブアプリが渡す参照。api-gatewayの改訂3)で`authorize`→`ExportArchiveStorage.open`(無ければ`warning`のログと404)→200。応答のヘッダーは保存時のメタデータの写し`StoredArchiveMeta`(`Content-Type`・`Content-Disposition`・`Cache-Control`)に`Content-Length`(`size`)・`X-Content-Type-Options: nosniff`を加える(要件9.6)。経路はR2の型を扱わない。
+- リゾルバの冒頭で`context.caller`が利用者側でなければ`forbidden`(要件1.8)。エラーコード: `unauthenticated`・`email_not_verified`(403)・`rate_limit_exceeded`(429、`retryAfterSeconds`)・`unavailable`(503)。`byteSize`は4GiB未満の整数を`Float`で返す(GraphQLの`Int`は32ビット)。`myDataExports`はapi-gatewayのページングの規約に従う。引数は`CURSOR_PAGE_ARGS`を`first`の上限20に狭めたスキーマで`withValidatedArgs`により検証し、20を超える`first`は`validation_error`にする。`after`は`decodeCursor`で要求のIDへ戻し(不正なら`invalid_cursor`)、`DataExportReader.listMine`の最大`first + 1`件を`toConnection`(カーソルは`encodeCursor`)へ渡す。`EXPIRED`の項目は完了日時・有効期限・ファイル名・大きさを返し`downloadPath`を`null`にする(仮4)。
+- `GET /internal/data-exports/:exportId/archive`(`createInternalRoutesModule`に登録): 呼び出し元が利用者側でなければ404→`c.var.session`(サブアプリが渡す参照。api-gatewayの改訂3)で`authorize`→`ExportArchiveStorage.open`(無ければ`DataExportIncidentReporter`の`archive-missing`(`warning`)と404)→200。応答のヘッダーは保存時のメタデータの写し`StoredArchiveMeta`(`Content-Type`・`Content-Disposition`・`Cache-Control`)に`Content-Length`(`size`)・`X-Content-Type-Options: nosniff`を加える(要件9.6)。経路はR2の型を扱わない。
 
 | Method | Endpoint                                   | Request | Response                                                                                                                                                                         | Errors        |
 | ------ | ------------------------------------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -1071,7 +1135,7 @@ type Mutation {
 - `AccountSourceReader.read(userId, now)`: `AccountExport.find`(`undefined`なら`undefined`を返す)・`UltrasPlanExport.find(userId, now)`・`NotificationSettingsExport.find`・`ApiKeyExport.listByUser`・`ProfileExport.find`・`FollowExport.listFollowing`を呼び、スナップショットの`account`・`profile`・`follows`と`pseudonymousId`(スナップショットに入れない)を返す。`ProfileExport.find`が`undefined`なら退会済みとして`undefined`。
 - `ProductActivitySourceReader.read(userId, now)`: `ProductExport.listByUser`・`LaunchExport.listByUser`、ローンチのIDで`MatchExport.listForLaunches`・`WeekAwardExport.listForLaunches`・`YearAwardExport.listForLaunches`(IDは90件ずつ)、`CommentExport.listByUser`・`RatingExport.listByUser`・`UpvoteExport.listByUser`、自分のプロダクトに無いプロダクトのIDを`ProductDirectory.findSummaries(ids, 'not-deleted')`で引く。
 - `CorrespondenceSourceReader.read(userId, pseudonymousId, now)`: `ReportExport.listPage({ userId, after, limit: 20 })`と`InquiryExport.listPage(userId, after)`を`nextAfter`・`nextCursor`が`null`になるまで繰り返し、`SponsorshipExport.listByUser(userId, now)`・`PaymentHistoryExport.listAll(pseudonymousId)`を呼ぶ。inquiry-chatの文字列の日時は`Date`へ写す。
-- 3つとも部品の例外をそのまま投げる(要件6.5)。上流の型を読み込むのは、この3ファイルとその隣の単体テストと、`apps/event/test/data-export/`の契約と結合のテストだけである。
+- 3つとも部品の例外をそのまま投げる(要件6.5)。上流の型を読み込むのは、この3ファイルとその隣の単体テストと、`apps/event/src/composition/data-export-upstream-exports.worker.test.ts`・`data-export-archive.worker.test.ts`の契約と結合のテストだけである。
 
 #### ExportFileResolver・ExportSnapshotCollector
 
@@ -1092,8 +1156,8 @@ export interface ArchiveGenerationService {
 ```
 
 - 手順は「ZIPの生成」のとおり。画像・添付ファイルは`openContent`が`undefined`なら飛ばして`stored`に入れない。完了・失敗の時点で`info`のログに要求のID・バイト数・項目数・所要時間・試行回数を記録する(要件12.2)。
-- `GenerateArchiveHandler`(再試行の方針`GENERATION_RETRY_POLICY`): `busy`→`defer`(1200秒)、それ以外の結果→`done`。例外は`meta.attempts < 3`なら投げ直し、3回目なら`DataExportTerminator.fail(error, notify: true)`を呼んで`done`にし、エラーをSentryに送る(要件3.4)。
-- `GenerationWatchdogHandler`: 記録が作成中なら`DataExportTerminator.fail(error, notify: true)`(要件3.6)、それ以外は何もしない。どちらも`done`。
+- `GenerateArchiveHandler`(再試行の方針`GENERATION_RETRY_POLICY`): `busy`→`defer`(1200秒)、それ以外の結果→`done`。例外は`meta.attempts < 3`なら投げ直し、3回目なら`DataExportTerminator.fail(error, notify: true)`を呼んで`done`にし、元の例外を`DataExportIncidentReporter`の`generation-failed`で送る(要件3.4・12.3)。
+- `GenerationWatchdogHandler`: 記録が作成中なら`DataExportTerminator.fail(error, notify: true)`(要件3.6)を呼び、`failed`なら`generation-abandoned`(`warning`、`by: 'watchdog'`)を送る。それ以外は何もしない。どちらも`done`。
 
 #### ArchiveErasureHandler
 
@@ -1107,8 +1171,8 @@ export interface ArchiveGenerationService {
 
 - `/settings/export`(`routes/_authenticated/settings/export.tsx`)が`DataExportPanel`を表示する。`SETTINGS_NAV_ITEMS`に`{ to: '/settings/export', label: 'データエクスポート', order: 100 }`を加える。
 - `DataExportPanel`: 説明(含まれるデータの概要・24時間に3回・7日・メールで知らせる)、`viewer`のメールアドレスが未確認なら要求の操作を無効にして確認の案内(要件1.3)、`DataExportRequestButton`、`DataExportList`。
-- `useRequestDataExport`: `requestDataExport`を送り、成功で「エクスポートを受け付けました。準備ができたらメールでお知らせします。」を`notify`し`myDataExports`を無効化する。`DataExportErrors`が`rate_limited`(再試行の秒数から再び要求できる日時を求めて表示)・`email_not_verified`・通信の失敗を文言へ対応付ける(要件2.3・11.5)。送信中はボタンを無効にする(要件11.4)。
-- `DataExportList`: `myDataExports`を20件ずつ表示し、続きがあれば「さらに表示」で次のページを読み込む(`useInfiniteQuery`、仮4)。作成中が1件でもあれば読み込んだページを10秒ごとに取得し直す(`refetchInterval`、無くなれば止める)。取得の失敗は区画の中の`PartialErrorState`、0件は`EmptyState`(要件11.1・11.3・11.6・11.7)。
+- `useRequestDataExport`: `requestDataExport`を送り、成功で「エクスポートを受け付けました。準備ができたらメールでお知らせします。」を`notify`し`myDataExports`を無効化する。`DataExportErrors`がコード`rate_limit_exceeded`(再試行の秒数から再び要求できる日時を求めて表示)・`email_not_verified`・通信の失敗を文言へ対応付ける(要件2.3・11.5)。送信中はボタンを無効にする(要件11.4)。
+- `DataExportList`: `myDataExports`を20件ずつ表示し、続きがあれば「さらに表示」で次のページを読み込む(`useInfiniteQuery`、仮4)。作成中の要求はサーバーの非同期の処理の完了で状態が変わるため、規約`frontend/010`の「使う場面」の「サーバーの非同期の処理の完了で状態が変わる項目」の行に従う。作成中が1件でもある間は、読み込んだページを規約`frontend/010`の共通の値`LIVE_REFRESH_QUERY_OPTIONS`の間隔で取り直す(「取得した値による判定」の`refetchInterval`の関数で、作成中が無くなれば止める)。一覧の区画の見出しの近くに「自動更新」の`Switch`を置き、状態は`DataExportList`が持ってページを開くたびにオンから始め、切った間は`refetchInterval`だけを`false`にする。間隔の説明は`LIVE_REFRESH_INTERVAL_MS`から作って`aria-describedby`で関連付け、`Switch`は定期の取り直しがある間(作成中が1件以上)だけ描く(D-2、2026-11-22に開発者が決定)。取得の失敗は区画の中の`PartialErrorState`、0件は`EmptyState`(要件11.1・11.3・11.6・11.7)。
 - `DataExportItem`: 要求日時、`DataExportStatusBadge`(作成中・完了・期限切れ・失敗を文言で示し、色だけに頼らない)、完了は完了日時・有効期限・ファイル名・大きさ(1,024基数)と`<a href={downloadPath}>`(`download`属性は付けずサーバーの`Content-Disposition`に任せる)、失敗は失敗の日時と案内(`TOO_LARGE`は問い合わせへのリンク)。日時は`DateTime`(`<time datetime>`)(要件9.1・11.1・11.8・11.9)。 期限切れは完了日時・有効期限・ファイル名・大きさと「有効期限を過ぎたため削除しました」の案内を示し、ダウンロードのリンクを出さない(要件11.8、仮4)。
 - `DATA_EXPORT_DOWNLOAD_RELAY_ROUTE`: frontend-platformの`defineRelayRoute`で`path: '/_bff/exports/*'`、`methods: ['GET']`、`upstreamPath: /internal/data-exports/<exportId(百分率符号化)>/archive`、`timeoutMs: 900000`を定義し、凍結した経路にする(素のオブジェクトはclientの`composition.unit.test.ts`の凍結の検査を通らない)。clientの`RELAY_ROUTES`へ、末尾が`/*`の接頭辞の経路として完全一致の経路(`GRAPHQL_RELAY_ROUTE`など)より後に加え、adminの`relay-routes.ts`には加えない。
 - 中継は、上流の5xxで`Content-Type`が`application/json`・`application/*+json`でない応答を実行基盤が返した失敗とみなし、503`upstream_unavailable`(`Retry-After: 5`)に置き換える(frontend-platformの要件2.10の例外)。ZIPを返すダウンロードの経路も、503(R2の失敗)などの5xxは共通のエラー形式(JSON)で返す。時間切れは503`upstream_timeout`になる。
@@ -1131,15 +1195,15 @@ export interface ArchiveGenerationService {
 
 ### Error Strategy
 
-- 要求: `unauthenticated`(401)・`email_not_verified`(403)・`forbidden`(管理者側)・`rate_limited`(429)・`unavailable`(503、記録は残さない)。
+- 要求: `unauthenticated`(401)・`email_not_verified`(403)・`forbidden`(管理者側)・`rate_limit_exceeded`(429)・`unavailable`(503、記録は残さない)。
 - 生成: 一時的な失敗(D1・R2・上流の部品・メディアの読み出し)は例外で3回まで再試行し、途中のアップロードは破棄する。上限超過は再試行せず失敗。退会は通知なしで失敗。consumerの異常終了は見張り(2時間)と日次の受け皿(3時間)で失敗。
 - ダウンロード: 401・404(存在を明かさない)・503(R2の失敗)。
 - 削除: 1件の失敗は記録を残して次へ進み、次の実行で同じ処理をやり直す。
 
 ### Monitoring
 
-- ログのカテゴリは`['data-export', <処理>]`。属性は要求のID・件数・バイト数・所要時間・試行回数・結果だけで、メールアドレス・ハンドル・ニックネーム・ファイル名・JSONの内容・オブジェクトのキーに含まれない値を記録しない(要件12.1)。
-- Sentryへ送るもの: 生成の3回目の失敗、見張り・受け皿による失敗の確定(`warning`)、削除・送り直しの失敗(`error`)、オブジェクトの無い完了の記録へのダウンロード(`warning`)。
+- ログのカテゴリは`[<アプリ名>, <層>, 'data-export']`(`infra/004`のカテゴリの規則)。api・eventの各層の部品はそのアプリの名前に固定し、`workers/data-export`の部品は`createDataExportPlatformModule(appName)`の引数のアプリ名で組み立てる。アプリ名で始まらないカテゴリのログはエラーも出ずに捨てられる。属性は要求のID・件数・バイト数・所要時間・試行回数・結果だけで、メールアドレス・ハンドル・ニックネーム・ファイル名・JSONの内容・オブジェクトのキーに含まれない値を記録しない(要件12.1)。
+- Sentryへ送るもの: いずれも`DataExportIncidentReporter`で送る(api・eventのapplication層は`@sentry/*`を読み込めない)。生成の3回目の失敗(`generation-failed`、`error`)、見張り・受け皿による失敗の確定(`generation-abandoned`、`warning`)、期限切れの削除・送り直しの失敗(`archive-deletion-failed`・`notice-redispatch-failed`、`error`)、オブジェクトの無い完了の記録へのダウンロード(`archive-missing`、`warning`)。
 
 ## Testing Strategy
 
@@ -1148,20 +1212,21 @@ export interface ArchiveGenerationService {
   - `export-plan`・`documents/*`: 文書の各JSONの例と同じ入力から同じ項目名・値・順の出力、0件の空配列、隔離・記録の無い・読めなかったファイルの`null`と印、自分の論理削除済みのプロダクトの名称の補完と他人のプロダクトの`null`、未確定のマッチの`null`、`updatedAt`の補完、manifestの件数、`serializeJson`のLF・BOMなし、秘密情報と仮名化IDが出力に無いこと、プロダクトのディレクトリ名の衝突(要件4.1〜4.3・4.9〜4.11・5.\*)。
   - `part-chunker`: 10MiBちょうど・1バイト超・複数の部分をまたぐ断片で、最後以外の部分が全て同じ大きさになること(要件3.3・7.1)。
   - `zip-archive-writer`: メモリ上の書き込み先へ書いたZIPを`unzipSync`で展開でき、テキストが圧縮(方式8)で画像が格納(方式0)、非ASCIIの名前のビット11、上限の境界(項目数・バイト数を小さくした設定で上限ちょうどと1超え)(要件4.4・4.5・7.4)。
-  - `core/data-export/identifiers`: `DATA_EXPORT_PLATFORM_TYPES`の4つの値が`Symbol.for('data-export.<名前>')`であり、オブジェクトが凍結されていること。
+  - `core/data-export/identifiers`: `DATA_EXPORT_PLATFORM_TYPES`の5つの値が`Symbol.for('data-export.<名前>')`であり、オブジェクトが凍結されていること。
+  - `SentryDataExportIncidentReporter`(Workers統合テスト`sentry-data-export-incident-reporter.worker.test.ts`、notificationsの同名のテストと同じ種別): 出来事の種類ごとのレベル・指紋・タグ・コンテキスト、`AppError`以外の元の例外の`captureException`と`AppError`の定型の通知、ULIDの形でない要求のIDの`unknown`、メールアドレス・ハンドル・ファイル名を送らないこと(要件12.1・12.3)。
   - api・eventのアプリケーション層(`core/data-export`の契約の偽物と、偽の`DataExportRequestLimits`・`DataExportMessagePublisher`): 要求の処理の順と数えない拒否・送信の失敗での削除、ダウンロードの認可、生成の結果ごとの`done`・`defer`・3回目の失敗の確定、見張り、受け皿、物理削除の`continue`、通知の宛先(`undefined`で送らない)。
   - `data-export-errors`・中継の経路・共有定義。
 - **Integration Tests**(Workers):
   - `DataExportStore`: `claim`の競合(2つの実行で1つだけ`claimed`)、期限切れのリースの取り直し、`markReady`・`recordUpload`の実行の印の不一致、`markFailed`の最終の状態からの不更新、CHECK制約、一覧の並びと他人の除外、`listExpired`の境界、`markExpired`が完了だけを期限切れにして履歴の列を残すこと、`listByUserPage`の最大`limit + 1`件の区切りとIDより前からの続き、期限切れ・失敗の記録が削除されないこと(要件3.5・3.8・10.2・11.1)。
-  - `CounterDataExportRequestLimits`: 偽の厳密カウンタで、ハッシュ化した利用者のIDのキーで24時間3回を数え、4回目で`rate_limited`と再試行の秒数になること(要件2.1・2.2・2.4・2.7)。
+  - `CounterDataExportRequestLimits`: 偽の厳密カウンタで、ハッシュ化した利用者のIDのキーで24時間3回を数え、4回目でコード`rate_limit_exceeded`と再試行の秒数になること(要件2.1・2.2・2.4・2.7)。
   - `ExportArchiveStorage`: ローカルのR2で15MiBのZIPを書き、部分の大きさ・完了・保存のメタデータ・`open`の本文とメタデータの写し(`StoredArchiveMeta`)、`abortUpload`の後にオブジェクトが無いこと(要件7.1〜7.3)。
   - 生成の統合: 上流の部品の実装とローカルのD1・R2に、プロフィール画像・隔離されたロゴ・スクリーンショット2枚(同名)・日本語のファイル名の添付・論理削除済みのプロダクト・コメント・評価(無効化を含む)・通報・決済履歴を用意して生成し、ZIPを展開して、パスの一覧・12のJSONと文書の項目・圧縮の方式・UTF-8の印・メタデータ・manifestの件数が期待と一致することを確かめる(要件4.\*・5.\*・6.\*・13.3)。
   - 要求とダウンロード: GraphQLで3回の受け付けと4回目の429・`Retry-After`、Durable Objectのアラームで0に戻ること、未確認の403、停止中の受け付け、内部RESTの本人の200とヘッダー・他人と管理者側と期限切れの404・未ログインの401(要件1.\*・2.\*・9.\*)。
   - 再試行と遅延: 同じメッセージの重複で`defer`、3回目の失敗で失敗と依頼待ち、見張りによる失敗の後の完了でZIPが削除されること、退会済みの利用者で通知なし(要件3.4〜3.7・8.3)。
   - ジョブと処理: ZIPの削除と期限切れへの変更(記録は残る)とオブジェクトの無い記録、失敗に残るアップロードの破棄、受け皿の失敗の確定と送り直し、`withdrawn`・`purge_due`の記録とZIPの削除、各登録の`order`(要件8.6・10.\*・12.4)。
   - 上流の出力用の部品の束縛と契約: イベントサーバーのコンテナから19の部品(`AccountExport`と出力用の部品の18)と`MediaFiles`を解決でき、`RatingExport`が無効化した評価で`invalidatedByAdmin`を真で返す(engagementの仮5、要件5.6・6.1)。
-- **Browser Tests**(Vitest Browser Mode): `DataExportPanel`の未確認の案内と無効化、送信中の無効化、429の日時の表示、一覧の4つの状態(作成中・完了・期限切れ・失敗)と期限・大きさ・ダウンロードのリンク(期限切れには出さない)、20件ずつの表示と「さらに表示」、失敗の`TOO_LARGE`の案内、0件と取得の失敗、`runAxe`の違反0件(要件11.\*)。
-- **E2E Tests**(Playwright、ローカルのapi・event・clientとMailpit): 確認済みの利用者がプロフィールとプロダクトを用意して`/settings/export`で要求→一覧が作成中→完了のメールが届きリンクが`/settings/export`→一覧のダウンロードで`Content-Disposition`のファイル名と、本文がZIPの署名で始まり`manifest.json`と`products.json`の名前を含むこと→別の利用者で同じ`/_bff/exports/<id>`が404(要件13.4)。
+- **Browser Tests**(Vitest Browser Mode): `DataExportPanel`の未確認の案内と無効化、送信中の無効化、429の日時の表示、一覧の4つの状態(作成中・完了・期限切れ・失敗)と期限・大きさ・ダウンロードのリンク(期限切れには出さない)、20件ずつの表示と「さらに表示」、作成中がある間だけの定期の取り直しと「自動更新」の`Switch`(作成中が無ければ描かない・切ると取り直さない)、失敗の`TOO_LARGE`の案内、0件と取得の失敗、`runAxe`の違反0件(要件11.\*)。
+- **E2E Tests**(Playwright、ローカルのapi・event・clientとMailpit。`e2e/client/data-export.e2e.test.ts`に平置きし、画面の操作の手順は`e2e/client/data-export-steps.ts`に置く、D-3): 確認済みの利用者がプロフィールとプロダクトを用意して`/settings/export`で要求→一覧が作成中→完了のメールが届きリンクが`/settings/export`→一覧のダウンロードで`Content-Disposition`のファイル名と、本文がZIPの署名で始まり`manifest.json`と`products.json`の名前を含むこと→別の利用者で同じ`/_bff/exports/<id>`が404(要件13.4)。
 - **Performance**(staging、開発者の作業): 画像と添付の多い利用者(合計数百MB)の生成のCPU時間・メモリ・実時間をWorkers Logsで確かめ、技術ドキュメントに記録する。
 
 ## Security Considerations

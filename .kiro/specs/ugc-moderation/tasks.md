@@ -1,51 +1,54 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 措置の規則・措置の記録のテーブル・監査ログの操作種別・メール・サービス仕様
-- [ ] 1.1 措置の規則と表示名の共有定義を作る
+- [x] 1. 基盤: 措置の規則・措置の記録のテーブル・監査ログの操作種別・メール・サービス仕様
+- [x] 1.1 措置の規則と表示名の共有定義を作る
   - 前提: dev-tooling〜public-apiの25specの全タスクと、上流の改訂(identity-authの仮7(identity-authのタスク3.7)の`AdminUserDirectory`、product-launchの仮13(product-launchのタスク2.6)の`AdminProductDirectory`、engagementの仮6(engagementのタスク2.7、識別子はタスク2.1)の`AdminCommentDirectory`・`AdminRatingDirectory`、paymentsの仮7(paymentsのタスク5.5・5.7)の`PaymentRevenueReport`、backend-platformの改訂2のE2Eの`e2e/support/scheduled-trigger.ts`の`triggerScheduled`)が完了していること(admin-foundationの`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements`・`AUDIT_ACTIONS`・`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCardFrame`・管理画面の共通部品・E2Eの`admin-bootstrap.ts`・`local-d1.ts`、identity-authの`UserSuspension`・`AdministrativeWithdrawal`・ライフサイクルの同期と非同期の登録口・`UserContactDirectory`・E2Eの`mailpit.ts`、product-launchの`ProductVisibilityControl`・ライフサイクルの登録口・`ProductDirectory`・`ProductCategoryDirectory`、engagementの`CommentModerationControl`・`RatingModerationControl`・`CommentStore`・`RatingStore`、media-pipelineの`MediaQuarantine`・`MediaFiles`・`AdminMediaReviewPolicy`の束縛の置き場所・`/_bff/files/*`の中継、user-profile-socialの`UserProfileDirectory`と停止の画像の隔離の処理、match-engineの`MatchDirectory`、directory-discoveryのE2Eの`directory-fixtures.ts`、email-deliveryのメールの基盤)。無ければ該当するタスクを保留して開発者へ報告する
-  - 先に、単体テストで、13種の措置の対象の種類・理由の要否(画像の4つの操作だけ任意、停止・停止解除・代理の退会・非公開化・復元・コメントの非公開化と復元・無効化・無効化の取り消しは必須)・通知の要否(停止・非公開化・コメントの非公開化だけ依頼待ちで送り、代理の退会を含む他は送らない)・対応するライフサイクルの種類、理由の検証(空白だけ・500書記素と501書記素・画像の操作の理由の省略)、隔離理由と使い捨て判定の表示名が上流の値の一覧と一致することを確かめる(ローンチ状態の表示名の一致は4.2、コメントの状態の表示名の一致は4.3で確かめる)
-  - 完了状態: 単体テストが成功し、共有定義が他の層を読み込まない
+  - 先に、単体テストで、13種の措置の対象の種類・理由の要否(画像の4つの操作だけ任意、停止・停止解除・代理の退会・非公開化・復元・コメントの非公開化と復元・無効化・無効化の取り消しは必須)・通知の要否(停止・非公開化・コメントの非公開化だけ依頼待ちで送り、代理の退会を含む他は送らない)・対応するライフサイクルの種類、理由の検証(空白だけ・500書記素と501書記素・画像の操作の理由の省略)、隔離理由と使い捨て判定の表示名が写した値の一覧を網羅することを確かめる
+  - 上流の値(隔離理由・使い捨て判定・ローンチ状態・コメントの状態)は共有定義に写しとして持つ。common-libのテストは上流の`backend-lib/core`を読めないため、写しと上流の値の一致はルートの`config/ugc-moderation-contract-copies.unit.test.ts`で、ソースを読んで確かめる(`config/sponsorship-contract-copies.unit.test.ts`と同じ方式。ローンチ状態とコメントの状態の照合は4.2・4.3がこのファイルに加える)
+  - 完了状態: 単体テストと写しの照合のテストが成功し、共有定義が他の層を読み込まない
   - _Requirements: 4.9, 5.7, 5.9, 8.9, 9.10, 10.9, 12.9, 16.2_
 
-- [ ] 1.2 措置の記録のテーブルとマイグレーションを作る
-  - 1.1の措置の種類・対象の種類・通知の状態の値を制約に使う。週ごとの統計のテーブルは統計の群(7.2)が別のマイグレーションで作る
+- [x] 1.2 措置の記録のテーブルとマイグレーションを作る
+  - DBのテーブル定義は`drizzle-orm`・`ulid`と自身のファイルだけを読み込むため、1.1の措置の種類・対象の種類・通知の状態の値は写しとして持ち、CHECKは`inArray(...).inlineParams()`で値を埋め込む。写しと1.1の値の一致を`config/ugc-moderation-contract-copies.unit.test.ts`に加える。週ごとの統計のテーブルは統計の群(7.2)が別のマイグレーションで作る
   - 先に、テーブルの定義の単体テストで、措置の種類・対象の種類・通知の状態(送らない・依頼待ち・依頼済み・送らなかった)の値の制約、索引、他のspecのID(利用者・プロダクト・コメント・評価・画像・管理者・イベント)に外部キーが無いことを確かめる
+  - 同じく先に、マイグレーションの文とテーブル定義の照合(`schema/moderation/moderation-migration.unit.test.ts`)と、実際のD1での制約の検証(`apps/db/ugc-moderation-schema.worker.test.ts`)を書き、`schema/index.unit.test.ts`のテーブル名の一覧に加える
   - mainの最新を取り込んでからマイグレーションを生成し、ローカルに適用する
-  - 完了状態: 単体テストが成功し、マイグレーションをローカルのD1に適用できる
+  - 完了状態: 単体テスト・Workers統合テスト・写しの照合のテストが成功し、マイグレーションをローカルのD1に適用できる
   - _Requirements: 13.5_
 
-- [ ] 1.3 (P) 措置の監査ログの操作種別を加える
+- [x] 1.3 (P) 措置の監査ログの操作種別を加える
   - 先に、単体テストで、13種の名前(1.1の措置の種類と同じ)・表示名・対象の種類・理由の要否・詳細の鍵(すべて空)・対象の上限1と、全操作種別の集約の重複の検査を確かめる
-  - 本specの操作種別のファイルを作り、監査ログの操作種別の集約へ加える
+  - 本specの操作種別のファイルを作り、監査ログの操作種別の集約へ加える。集約の単体テスト(`audit-actions/index.unit.test.ts`)が全種別の名前を完全一致で列挙しているため、その期待値に13種を加える
   - 完了状態: 単体テストが成功し、集約の検査を通る
   - _Boundary: ModerationAuditActions_
   - _Depends: 1.1_
   - _Requirements: 11.13, 13.1, 13.2_
 
-- [ ] 1.4 (P) 措置の通知の3つのメール種別とテンプレートを作る
+- [x] 1.4 (P) 措置の通知の3つのメール種別とテンプレートを作る
   - 先に、単体テストで、入力のスキーマ(日時・URL・抜粋の上限は1.1の定数)、件名、停止の本文の固定の段落(表示されなくなること・マッチ予定の取り消し・Ultrasは期間末に解約し返金しないこと・広告の段落・トーナメントの組み合わせ決定の時点の自動返金・問い合わせで退会を依頼できること)、非公開化の段落(未開始のマッチ予定の取り消し・広告の段落・トーナメントの組み合わせ決定の時点で非公開化中なら参加費が自動で全額返金されること)、理由の改行を保ったプレーンテキストの差し込み(HTMLとして解釈しない)、日時のUTCの表記、問い合わせへのボタン、配信停止のリンクが無いこと、代理の退会のメール種別が無いことを確かめる
   - 広告の段落は、sponsorshipが文言規則へ載せる次の文と一字一句同じにし、単体テストで本文に完全に一致する文字列として含まれることを確かめる
     - 停止(`ugc-moderation.user-suspended`): 「停止中は、あなたのスポンサー広告は表示されません。掲載期間は延長されませんが、表示を停止した日数分(1日のうち一部でも停止した日を含みます)の広告料金を、各広告の掲載期間が終わった時点で日割りにより自動で返金します。掲載期間が終わる前に退会した場合や、プロダクトを削除した場合は返金されません。」
     - プロダクトの非公開化(`ugc-moderation.product-hidden`): 「このプロダクトのスポンサー広告は、公開を停止している間は表示されません。掲載期間は延長されませんが、表示を停止した日数分(1日のうち一部でも停止した日を含みます)の広告料金を、広告の掲載期間が終わった時点で日割りにより自動で返金します。掲載期間が終わる前に退会した場合や、プロダクトを削除した場合は返金されません。」
-  - メール種別の集約とテンプレートの集約へ加える
+  - メール種別の集約とテンプレートの集約へ同じタスクで対に加える(片方だけだとテンプレートの集約のWorkers統合テストが落ちる)
   - 完了状態: 単体テストと、種別とテンプレートの1対1の検査が成功する
   - _Boundary: ModerationEmailKinds, ModerationEmailTemplates_
   - _Depends: 1.1_
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [ ] 1.5 (P) ページ配置・文言規則・準拠方針・日次タイムラインとモデレーションの運用の文書に、措置の群の決定を先に書く
+- [x] 1.5 (P) ページ配置・文言規則・準拠方針・日次タイムラインとモデレーションの運用の文書に、措置の群の決定を先に書く
   - ページ配置: 管理者側のユーザー・プロダクト(一覧と詳細)・コメント・評価・画像モデレーションのページの構成、ユーザー一覧の代理の退会の操作(最上位管理者だけ)と、メニューごとの必要なロールの一覧の代理の退会の行(仮4)
   - 文言規則: 設計のSupporting Referencesに挙げたエラー・確認・成功・状態の文言(統計のカードの文言を除く)と、代理の退会の確認の注記(仮4・仮5)
   - 準拠方針: データ保持期間に措置の記録、モデレーションと透明性に代理の退会(最上位管理者がユーザー一覧から行い、本人の意思の確かめと完了の知らせは運営者がシステムの外のメールで行う)
   - 日次タイムライン: 4:21の表に`ugc-moderation.maintenance`(1910)
+  - ページ配置の5つのメニュー・代理の退会の行・カードの順序10は記載済みのため、状態の記述を改め、「…10項目は実装済み」の件数を本specの5件を足した数に直す
   - `features/006-content-moderation.md`: 措置の種類と波及の分担、通知の内容と返金の扱い(仮8、広告の日割り返金はsponsorshipの仮3)、代理の退会の手順(仮4・仮5)、画像の操作と隔離理由、措置の取り消しの理由の必須(仮9)。仮1〜仮9が2026-10-24に開発者により全て確定した旨を添える
   - 統計の群の決定(統計のカード・統計の定義・`ugc-moderation.weekly-statistics`・週ごとの統計の保持期間)は7.1が書く
   - 完了状態: 5つの文書が整形の検査を通り、6のタスクが参照する文言がすべて文言規則にある
   - _Boundary: `docs/GUIDES/service`の該当する5文書_
   - _Requirements: 16.6_
 
-- [ ] 2. 措置の記録の一体の確定と通知
-- [ ] 2.1 措置の記録のストアを作り、両アプリに束縛する
+- [x] 2. 措置の記録の一体の確定と通知
+- [x] 2.1 措置の記録のストアを作り、両アプリに束縛する
   - 先に、Workers統合テストで、記録の挿入の文、対象ごとの指定した種類の最新の1件、1時間以上前の依頼待ちの古い順、依頼待ちからの条件付きの状態の更新(2回目は変わらない)、利用者・プロダクト単位の削除と残りの有無、保持期間の削除を確かめる
   - 同じく先に、識別子`MODERATION_PLATFORM_TYPES`が`Symbol.for('moderation.<名前>')`の値を持ち凍結されていることを単体テストで確かめる(`core/media/identifiers.unit.test.ts`と同じ形)
   - 文を返さない契約(`NewModerationRecord`・`ModerationRecord`・`LatestModeration`・`ModerationRecordStore`)を純粋な部品(`apps/backend-lib/core/moderation/ports.ts`)に、識別子`MODERATION_PLATFORM_TYPES`を`core/moderation/identifiers.ts`に作る。記録の挿入の文を返す`ModerationRecordStatements`(apiのinfrastructure層だけが使う)とD1の実装`D1ModerationRecordStore`・束縛のモジュールは共有のWorkers向けの部品(`apps/backend-lib/workers/moderation`)に作る。api・eventのapplication層が契約と識別子を読み込むため、契約と識別子を`workers`に置かない
@@ -53,50 +56,62 @@
   - 完了状態: 単体テストとWorkers統合テストが成功し、api・eventの両方でストアを解決できる。`core/moderation`が`workers`・`apps/db`を読み込まない
   - _Requirements: 12.7, 12.8, 13.5, 13.6, 13.7_
 
-- [ ] 2.2 apiの識別子・ポート・保留中の措置・理由の検証を作る
-  - 設計の措置の群の全てのユースケース・照会・保守のジョブ・書き込みの単位のポート(`ModerationRecordWriter`・`EngagementModerationWriter`)とinfrastructure層の記録と監査ログの文の組み立て(`D1ModerationStatements`)・保留中の措置・2つの同期の処理のDIの識別子と、措置の入力と結果の型(値だけの参加`ModerationWriteParticipation`を含む)・書き込みの単位のポートと、2.3の参加者の解決の部品のDIの識別子を先に作る。application層のポートは文を返さず接続を受け取らない(呼び出し側の参加`participation`は種類と値だけで、中身を読まずに渡すだけ)。以後の3・4のタスクは本specのapiの識別子のファイルと登録箇所を変えない(登録は2.3と4.6だけが行う。統計の群の識別子とポートは7.4、その束縛と登録は7.6が加える)
-  - 先に、単体テストで、保留中の措置を1つの要求に1件だけ置けること、種類と対象が一致したときだけ取り出して空になること、取り出しの有無、破棄、理由の正規化(前後の空白)と要否・上限の検証の結果を確かめる
+- [x] 2.2 apiの識別子・ポート・保留中の措置・理由の検証を作る
+  - 設計の措置の群の全てのユースケース・照会・保守のジョブ・書き込みの単位のポート(`ImageModerationWriter`・`EngagementModerationWriter`)・定型の通知のポート(`ModerationIncidentReporter`。application層は`@sentry/*`を読めないため)とinfrastructure層の記録と監査ログの文の組み立て(`D1ModerationStatements`)・保留中の措置・2つの同期の処理のDIの識別子と、措置の入力と結果の型(値だけの参加`ModerationWriteParticipation`を含む)・書き込みの単位のポートと、2.3の参加者の解決の部品のDIの識別子を先に作る。application層のポートは文を返さず接続を受け取らない(呼び出し側の参加`participation`は種類と値だけで、中身を読まずに渡すだけ)。以後の3・4のタスクは本specのapiの識別子のファイルと登録箇所を変えない(登録は2.3と4.6だけが行う。統計の群の識別子とポートは7.4、その束縛と登録は7.6が加える)
+  - apiの識別子は`Symbol.for('moderation.api.<名前>')`にして凍結する(`Symbol.for`は全体で共有されるため、`core/moderation`の`moderation.<名前>`・eventの`moderation.event.<名前>`と分ける)。ユースケースが投げるエラーのコード・種類・文言は`application/moderation/moderation-errors.ts`に置く(表現層はこれを参照する)
+  - 先に、単体テストで、識別子の値と凍結、エラーのコード・種類・文言、保留中の措置を1つの要求に1件だけ置けること、種類と対象が一致したときだけ取り出して空になること、取り出しの有無、破棄、理由の正規化(前後の空白)と要否・上限の検証の結果を確かめる
   - 完了状態: 単体テストが成功し、型検査が通り、静的解析でapplication層に`**/lib/workers/**`の読み込みが無く、検索でapplication層に`BatchItem`の読み込みが無い(措置の記録の契約と識別子は`core/moderation`から読み込む)
   - _Requirements: 4.9, 13.4, 15.7_
 
-- [ ] 2.3 記録と監査ログの文、利用者とプロダクトの同期の処理を作り、apiのモジュールの骨格に束縛して登録する
-  - apiの本specのモジュールを作り、保留中の措置(処理単位で1つ)・記録と監査ログの文の組み立て(`D1ModerationStatements`。2.1の`ModerationRecordStatements`と`buildAuditLogStatements`を使う)・書き込みの単位の実装(`D1ModerationRecordWriter`・`ControlEngagementModerationWriter`)・2つの同期の処理をinfrastructure層に作って束縛し、apiの登録箇所へ加え、利用者とプロダクトの同期の処理の登録口へ`handler`(2.2の同期の処理の識別子)付きで追記する
+- [x] 2.3 記録と監査ログの文、利用者とプロダクトの同期の処理を作り、apiのモジュールの骨格に束縛して登録する
+  - apiの本specのモジュールを作り、保留中の措置(処理単位のコンテナの既定は`Transient`のため`inSingletonScope()`で束縛し、処理単位で1つにする)・定型の通知の実装(`SentryModerationIncidentReporter`。`captureEvent`の`logentry`・`fingerprint`・タグを単体テストで確かめる)・記録と監査ログの文の組み立て(`D1ModerationStatements`。2.1の`ModerationRecordStatements`と`buildAuditLogStatements`を使う)・書き込みの単位の実装(`ControlEngagementModerationWriter`。画像の`ControlImageModerationWriter`は2.5)・2つの同期の処理をinfrastructure層に作って束縛し、apiの登録箇所へ加え、利用者とプロダクトの同期の処理の登録口へ`handler`(2.2の同期の処理の識別子)付きで追記する
   - 書き込みの参加者の登録口を作る: 文を返す参加者の契約・登録の型・解決の部品`createModerationWriteParticipants`をinfrastructure層(`infrastructure/moderation/moderation-write-participant.ts`)に、登録の一覧`MODERATION_WRITE_PARTICIPANTS`(初版は空)をapiの`composition/moderation-write-participants.ts`に作り、解決の部品を処理単位で束縛する。同期の処理と`ControlEngagementModerationWriter`は、`participation`の種類で参加者を解決し、記録のIDを`context.actionId`として渡して、その文を記録と監査ログの文の後に並べる
   - 先に、単体テストで、解決の部品が種類の形式違反と重複で例外を投げること、`participation`が無いときに参加者を解決せず空を返すこと、登録の無い種類の内部エラー、登録した参加者へ値と`context`をそのまま渡すこと、登録の一覧の種類の形式と重複の検査を確かめる
   - 先に、Workers統合テストで、`ControlEngagementModerationWriter`がengagementの本物のコメントの非公開化・復元と評価の無効化・取り消しの操作口へ記録・監査ログ・参加者の文を渡し、状態の変更と同じ一括の書き込みで確定すること、上流の`unchanged`で記録・監査ログ・参加者の文が残らないことを確かめる
   - 先に、Workers統合テストで、テストの中で登録した試験用の参加者を使い、同期の処理の経路(停止・プロダクトの非公開化)と`ControlEngagementModerationWriter`の経路(コメントの非公開化・評価の無効化)のそれぞれで、参加者の文が同じ一括の書き込みで確定し`context.actionId`が記録のIDと一致すること、参加者の文の違反(NOT NULL制約)で上流の状態・イベント・記録・監査ログを含む全体が取り消されること、登録の無い種類で内部エラーになり何も書かれないことを確かめる
-  - 先に、Workers統合テストで、本物の停止・停止解除・代理の退会とプロダクトの非公開化・復元の確定を通して、保留中の措置がある要求では措置の記録(イベントのIDと日時)・監査ログ・参加者の文が状態の変更と同じ一括の書き込みで確定すること、版の競合・既に同じ状態では何も残らないこと、利用者本人の退会では記録が作られないこと、単独の一括の書き込みで記録と監査ログが確定すること、記録と監査ログにメールアドレス・検索文字列・パスワードなどの秘密情報が入らないことを確かめる
+  - 先に、Workers統合テストで、本物の停止・停止解除・代理の退会とプロダクトの非公開化・復元の確定を通して、保留中の措置がある要求では措置の記録(イベントのIDと日時)・監査ログ・参加者の文が状態の変更と同じ一括の書き込みで確定すること、版の競合・既に同じ状態では何も残らないこと、利用者本人の退会では記録が作られないこと、記録と監査ログにメールアドレス・検索文字列・パスワードなどの秘密情報が入らないことを確かめる
   - 同期の処理が処理単位のコンテナから解決されることを確かめ、解決されない場合は作業を止めて開発者へ報告する(代替案は上流の操作口への文の引数の追加)
   - 完了状態: Workers統合テストが成功し、登録口の検査を通る(参加者の登録の一覧の検査を含む)。application層に`**/lib/workers/**`・`BatchItem`の読み込みが無い
   - _Requirements: 4.4, 5.8, 8.4, 9.8, 10.6, 13.4, 13.8, 15.7_
 
-- [ ] 2.4 措置の通知を作る
-  - 先に、単体テストで、停止・非公開化・コメントの非公開化のそれぞれの入力(名称・抜粋の100書記素・理由・日時)、宛先が無いときの送らない記録、送信の成功の後だけ依頼済みにすること、依頼待ちでない記録(代理の退会などの送らない記録を含む)を送らないこと、送信の失敗で依頼待ちのまま例外を投げること、停止中の利用者にも送ることを確かめる
+- [x] 2.4 措置の通知を作る
+  - 先に、単体テストで、停止・非公開化・コメントの非公開化のそれぞれの入力(名称・抜粋の100書記素・理由・日時)、宛先が無いときの送らない記録、送信の成功の後だけ依頼済みにすること、依頼待ちでない記録(代理の退会などの送らない記録を含む)を送らないこと、送信の失敗で依頼待ちのまま例外を投げること、停止中の利用者にも送ること、問い合わせの導線が`<CLIENT_SITE_ORIGIN>/contact`であることを確かめる
+  - 問い合わせの経路の共通の定数は無いため、identity-authの`email-identity-mailer.ts`と同じく通知の部品の中の定数で組み立てる。送信の依頼に冪等のキーが無いため、依頼済みへの更新は送信の直後の1文の条件付きの更新にする(更新だけが失敗したときに送り直しで2回目の依頼になり得ることはresearch.mdのRisksに記録した)
   - 完了状態: 単体テストが成功する
   - _Requirements: 12.1, 12.2, 12.3, 12.6, 12.7, 12.8, 12.10_
 
-- [ ] 3. 措置のユースケース(本specの識別子のファイルと登録箇所を変えない。3.7はmedia-pipelineの束縛の置き場所だけを変える)
-- [ ] 3.1 利用者の停止と停止解除を作る
+- [x] 2.5 画像の隔離理由の変更と呼び出し側の文を一体で確定する媒体の操作口と、画像の書き込みの単位を作る
+  - media-pipelineの共有のWorkers向けの部品(`apps/backend-lib/workers/media/media-moderation-control.ts`)に、呼び出し側の文を受け取る`MediaModerationControl`(契約とD1の実装)を加え、識別子`MEDIA_TYPES.MediaModerationControl`を`core/media/identifiers.ts`に、束縛を`workers/media/media-platform-module.ts`に加える。既存の`MediaQuarantine`・`MediaFiles`の形と振る舞いは変えない(2026-11-20に開発者が決定したG1)
+  - 先に、Workers統合テストで、理由の追加・削除と削除待ちの印が呼び出し側の文と同じ一括の書き込みで確定すること、既に目的の状態では文を書かず`unchanged`を返すこと、同時の操作で状態の変更が効かなければ呼び出し側の文ごと取り消されること、対象が無い・削除待ちの`not-found`(削除待ちへの`requestErase`は`unchanged`)、画像用でない用途の`quarantine_not_applicable`、確定の後(`unchanged`を含む)に保存先が食い違えば移動を依頼すること、移動の依頼と即時の削除の失敗で`storage_unavailable`を投げつつ状態と文が残ることを確かめる
+  - 同じく先に、識別子の単体テスト(`core/media/identifiers.unit.test.ts`)と、media-platformのモジュールのWorkers統合テストに新しい識別子の解決を加える
+  - apiのinfrastructure層に`ControlImageModerationWriter`(記録と監査ログの文を`MediaModerationControl`へ渡す)を作り、2.3のapiの本specのモジュールへ束縛する。Workers統合テストで、本物の操作口を通して記録と監査ログが理由の変更・削除待ちの印と一体で確定し、`unchanged`で残らないことを確かめる
+  - 完了状態: 単体テストとWorkers統合テストが成功し、`MediaQuarantine`・`MediaFiles`の既存のテストが変更なしで通る。application層に`**/lib/workers/**`・`BatchItem`の読み込みが無い
+  - _Boundary: MediaModerationControl, ControlImageModerationWriter_
+  - _Depends: 2.3_
+  - _Requirements: 11.6, 11.7, 11.9, 11.11, 11.13, 13.4_
+
+- [x] 3. 措置のユースケース(本specの識別子のファイルと登録箇所を変えない。3.7はmedia-pipelineの束縛の置き場所だけを変える)
+- [x] 3.1 利用者の停止と停止解除を作る
   - 対象の確かめにはidentity-authの仮7の利用者の管理の照会を使う
-  - 先に、単体テストで、停止と停止解除の理由の必須と上限、退会済み・不在の拒否、既に同じ状態での変化なし(記録なし)、監査ログの対象が仮名化IDであること、保留中の措置を置いてから停止の操作口を呼ぶこと、変化なしでの保留の破棄、取り出し漏れのエラートラッキングへの通知、ログに識別子と件数だけを出しメールアドレス・ハンドル・ニックネーム・理由を出さないこと、競合の返却、停止の通知の依頼(例外を握る)と停止解除で通知しないこと、呼び出し側の参加の値(`participation`)を中身を読まずに保留中の措置へ渡すこと、結果の措置の記録のIDが保留中の措置の記録のIDであることを確かめる
+  - 先に、単体テストで、停止と停止解除の理由の必須と上限、退会済み・不在の拒否、既に同じ状態での変化なし(記録なし)、監査ログの対象が仮名化IDであること、保留中の措置を置いてから停止の操作口を呼ぶこと、変化なしでの保留の破棄、取り出し漏れのエラートラッキングへの通知、ログに識別子と件数だけを出しメールアドレス・ハンドル・ニックネーム・理由を出さないこと、競合の返却、一覧の読み取りの後に退会が重なったときの上流の`not_found`を`user_not_found`へ変えること、取り出し漏れを定型の通知のポート(`ModerationIncidentReporter`)へ送ること、停止の通知の依頼(例外を握る)と停止解除で通知しないこと、呼び出し側の参加の値(`participation`)を中身を読まずに保留中の措置へ渡すこと、結果の措置の記録のIDが保留中の措置の記録のIDであることを確かめる
   - 完了状態: 単体テストが成功する
   - _Requirements: 4.2, 4.3, 4.5, 4.6, 4.7, 4.8, 4.11, 15.1, 15.4, 15.7_
 
-- [ ] 3.2 (P) プロダクトの非公開化と復元を作る
+- [x] 3.2 (P) プロダクトの非公開化と復元を作る
   - 先に、単体テストで、非公開化と復元の理由の必須と上限、論理削除済み・不在の拒否、既に同じ状態の変化なし、記録の投稿者とプロダクト、保留中の措置と非公開化の操作口、呼び出し側の参加の値(`participation`)の受け渡し、非公開化だけの通知の依頼を確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: ProductModerationService_
   - _Depends: 2.2, 2.4_
   - _Requirements: 8.2, 8.3, 8.5, 8.6, 8.7, 8.8, 8.9, 15.7_
 
-- [ ] 3.3 (P) コメントの非公開化と復元を作る
+- [x] 3.3 (P) コメントの非公開化と復元を作る
   - 先に、単体テストで、非公開化と復元の理由の必須と上限、不在の拒否、既に同じ状態と上流の変化なしでの変化なし、書き込みの単位のポート(`EngagementModerationWriter`)への記録と監査ログと呼び出し側の参加の値(`participation`)の受け渡し、非公開化だけの通知の依頼を確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: CommentModerationService_
   - _Depends: 2.2, 2.4_
   - _Requirements: 9.6, 9.7, 9.8, 9.9, 9.10_
 
-- [ ] 3.4 (P) 評価の無効化と取り消しを作る
+- [x] 3.4 (P) 評価の無効化と取り消しを作る
   - 対象の確かめにはengagementの仮6の評価の管理の照会(engagementのタスク2.7)を使う
   - 先に、単体テストで、無効化と取り消しの理由の必須と上限、不在(取消済みを含む)の拒否、既に同じ状態と上流の変化なしでの変化なし、書き込みの単位のポート(`EngagementModerationWriter`)への記録と監査ログと呼び出し側の参加の値(`participation`)の受け渡し、通知しないことを確かめる
   - 完了状態: 単体テストが成功する
@@ -104,14 +119,14 @@
   - _Depends: 2.2_
   - _Requirements: 10.4, 10.5, 10.6, 10.7, 10.8, 10.9_
 
-- [ ] 3.5 (P) 画像の公開承認・個別の隔離・隔離の解除・削除を作る
-  - 先に、単体テストで、画像用の用途で削除待ちでないことの検査、公開承認は自動判定の理由、隔離の解除は管理者操作の理由、削除は隔離画像を求めること、個別の隔離の既に持つ場合の変化なし、非公開化・ユーザー停止の理由を外さないこと、任意の理由の上限、媒体の操作の後の書き込みの単位のポート(`ModerationRecordWriter`)による記録と監査ログの書き込み、削除済みの再実行の不在、参加の値が付いた呼び出しを上流を呼ばずに内部エラーにすること、通知しないことを確かめる
+- [x] 3.5 (P) 画像の公開承認・個別の隔離・隔離の解除・削除を作る
+  - 先に、単体テストで、画像用の用途でない・記録が無いときの`image_not_found`、削除待ちのファイルへの削除が変化なしで他の操作が`image_not_found`になること、公開承認は自動判定の理由、隔離の解除は管理者操作の理由、削除は隔離画像を求めること(満たさなければ`image_action_not_applicable`)、個別の隔離は既に持つときも書き込みの単位を呼び変化なしを返すこと、非公開化・ユーザー停止の理由を外さないこと、任意の理由の上限、書き込みの単位のポート(`ImageModerationWriter`)へ記録と監査ログを渡すこと、その結果の`unchanged`・`not-found`の変換、`storage_unavailable`をそのまま返すこと、参加の値が付いた呼び出しを上流を呼ばずに内部エラーにすること、通知しないことを確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: ImageModerationService_
   - _Depends: 2.2_
   - _Requirements: 11.6, 11.7, 11.9, 11.11, 11.12, 11.13, 11.14, 11.15_
 
-- [ ] 3.6 運営者による代理の退会を作る
+- [x] 3.6 運営者による代理の退会を作る
   - 対象の確かめにはidentity-authの仮7の利用者の管理の照会を使う。問い合わせは読まない
   - 先に、単体テストで、理由の必須と上限、退会済み・不在の`user_not_found`、停止中の利用者の受け付け、監査ログの対象が仮名化IDで詳細を持たないこと、記録の通知の状態が送らないであること、メールを送らないこと、競合の返却を確かめる
   - 先に、Workers統合テストで、本物の退会の確定と記録・監査ログの一体の確定、メールの送信の依頼が無いことを確かめる(ユースケースはテストの中で組み立て、2.3の束縛を使う)
@@ -119,15 +134,15 @@
   - _Depends: 2.3_
   - _Requirements: 5.5, 5.6, 5.7, 5.8, 5.9, 5.11, 5.13_
 
-- [ ] 3.7 隔離画像を閲覧できる管理者の判定を作り、束縛を差し替える
+- [x] 3.7 隔離画像を閲覧できる管理者の判定を作り、束縛を差し替える
   - 先に、単体テストで、管理者の主体で有効な管理者のときだけ画像用の用途を許し、利用者の主体・削除済みの管理者・ファイル用の用途を拒否することを確かめる
   - 先に、Workers統合テストで、管理者側の内部の配信経路から隔離画像を読め、利用者側・権限の無い主体では不存在と同じ応答になることを確かめる
-  - 媒体の閲覧の判定の束縛を差し替え、既定の全拒否を前提にした上流の単体テストの期待値を直す
+  - 媒体の閲覧の判定の束縛を差し替え、使われなくなる既定の全拒否(`apps/api/src/infrastructure/media/deny-all-admin-media-review-policy.ts`)と同名の単体テストを削除する(2026-11-20に開発者が決定)。全拒否を使っていた`default-file-access-policies.unit.test.ts`・`apps/api/src/presentation/media/file-content-route.worker.test.ts`は試験用の判定に置き換え、束縛の単体テスト`apps/api/test/config/media-registrations.unit.test.ts`の期待値を本specの判定に直す。`.kiro/specs/media-pipeline/design.md`の既定の全拒否の記述に、本specが差し替えて削除した旨と`MediaModerationControl`を加えた旨の注記を加える
   - 完了状態: 単体テストとWorkers統合テストが成功する
   - _Requirements: 11.3, 11.4_
 
-- [ ] 4. 措置の群の照会・保守のジョブ・束縛・GraphQL
-- [ ] 4.1 (P) ユーザー一覧の照会を作る
+- [x] 4. 措置の群の照会・保守のジョブ・束縛・GraphQL
+- [x] 4.1 (P) ユーザー一覧の照会を作る
   - 一覧はidentity-authの仮7の利用者の管理の照会を使う
   - 先に、単体テストで、プロフィール画像と隔離理由と停止の最新の理由のまとめた照会、メールアドレスの絞り込みで結果の仮名化ID(0件は対象なし)を検索文字列なしで記録してから返すこと、記録の失敗で結果を返さないこと、メールアドレスを返さないことを確かめる
   - 完了状態: 単体テストが成功する
@@ -135,120 +150,131 @@
   - _Depends: 2.1, 2.2_
   - _Requirements: 3.1, 3.2, 3.3, 3.5, 3.6, 3.9, 13.8, 15.6_
 
-- [ ] 4.2 (P) プロダクトの一覧と詳細とカテゴリの照会を作る
+- [x] 4.2 (P) プロダクトの一覧と詳細とカテゴリの照会を作る
   - 一覧はproduct-launchの仮13のプロダクトの管理の照会を使う
   - 先に、単体テストで、投稿者のハンドルの解決(無ければ空)、一覧の投稿者の表示名、詳細の情報・スクリーンショット・ローンチ履歴とマッチ結果と対戦相手・画像の隔離理由・評価の平均と件数・非公開化の最新の理由を各照会1回で組み立てること、論理削除済みの不在、カテゴリの選択肢を確かめる
-  - 先に、単体テストで、1.1のローンチ状態の表示名が上流の最新のローンチの状態の5値と一致することを確かめる(テストはこの照会のテストのファイルに置く)
+  - 先に、1.1のローンチ状態の表示名の写しが上流の最新のローンチの状態の5値と一致することを、`config/ugc-moderation-contract-copies.unit.test.ts`に加えて確かめる
+  - 上流の`listLaunches`・`listByLaunches`は`now`が必須のため、照会の時刻を渡す
   - 完了状態: 単体テストが成功する
   - _Boundary: AdminProductReader_
   - _Depends: 2.1, 2.2_
   - _Requirements: 6.1, 6.2, 6.3, 6.5, 6.6, 7.1, 7.2, 7.3, 7.4, 7.8, 15.6_
 
-- [ ] 4.3 (P) コメントと評価の一覧の照会を作る
+- [x] 4.3 (P) コメントと評価の一覧の照会を作る
   - 一覧はengagementの仮6のコメントと評価の管理の照会(engagementのタスク2.7)を使う
   - 先に、単体テストで、投稿者・プロダクト・評価者のハンドルの解決、表示名のまとめた照会、最新の措置の理由を確かめる
-  - 先に、単体テストで、1.1のコメントの状態の表示名が上流のコメントの状態の5値(非公開化・削除・匿名化・投稿者が不可視・表示中)と一致することを確かめる(テストはこの照会のテストのファイルに置く)
+  - 先に、1.1のコメントの状態の表示名の写しが上流のコメントの状態の5値(非公開化・削除・匿名化・投稿者が不可視・表示中)と一致することを、`config/ugc-moderation-contract-copies.unit.test.ts`に加えて確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: AdminCommentReader, AdminRatingReader_
   - _Depends: 2.1, 2.2_
   - _Requirements: 9.1, 9.2, 9.3, 10.1, 10.2_
 
-- [ ] 4.4 (P) 隔離画像の照会を作る
-  - 先に、単体テストで、隔離理由ごとの一覧と保有者(利用者・管理者)の表示名、用途と検出内容、続きのカーソルを確かめる
+- [x] 4.4 (P) 隔離画像の照会を作る
+  - 先に、単体テストで、隔離理由ごとの一覧と保有者(利用者・管理者)の表示名、保有者が`system`(IDなし)の画像で保有者が無いこと、用途と検出内容(`labels`・`svg`・`unprocessable`の3種の文字列化)、続きのカーソルを確かめる
   - 完了状態: 単体テストが成功する
   - _Boundary: QuarantinedImageReader_
   - _Depends: 2.2_
   - _Requirements: 11.1, 11.2_
 
-- [ ] 4.5 (P) 保守のジョブを作る
-  - 先に、単体テストで、1時間以上前の依頼待ちの通知の送り直しと失敗の件数の通知、3年を過ぎた記録の削除の繰り返しの上限を確かめる
+- [x] 4.5 (P) 保守のジョブを作る
+  - 先に、単体テストで、1時間以上前の依頼待ちの通知の送り直しと失敗の件数の定型の通知のポート(`ModerationIncidentReporter`)への送信、3年を過ぎた記録の削除の繰り返しの上限を確かめる
+  - ジョブの定義(`MODERATION_MAINTENANCE_JOB_DEFINITION`)はジョブのファイルに置く
   - 先に、Workers統合テストで、送り直しが依頼済みへ1回だけ進み、2回実行しても重ならないことを確かめる(ジョブと通知はテストの中で組み立てる)
   - 完了状態: 単体テストとWorkers統合テストが成功する
   - _Boundary: ModerationMaintenanceJob_
   - _Depends: 2.1, 2.4_
   - _Requirements: 12.8, 13.7, 15.5_
 
-- [ ] 4.6 apiの措置の群の束縛を完成させ、保守のジョブとスキーマモジュールの型を登録する
-  - 2.3のモジュールに措置の群の全てのユースケース・照会・通知・保守のジョブを束縛し、保守のジョブを定期実行の登録箇所へ加える
-  - スキーマモジュールの措置の群の型・入力の検証・エラーコードを作り(リゾルバは4.7・4.8、統計の型は7.6)、スキーマモジュールの登録箇所へ加える
+- [x] 4.6 apiの措置の群の束縛を完成させ、保守のジョブとスキーマモジュールの型を登録する
+  - 2.3のモジュールに措置の群の全てのユースケース・照会・通知・保守のジョブを束縛し、保守のジョブを定期実行の登録箇所へ加える。4:21のジョブの名前を完全一致で列挙する`apps/api/src/composition/search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts`の一覧に保守のジョブを加える
+  - スキーマモジュールの措置の群の型・入力の検証・エラーコードの写像・`resolver-support.ts`(`adminOnly`と、上流の`nextCursor`から`{ nodes, pageInfo }`を組み立てる部品)を作り(リゾルバは4.7・4.8、統計の型は7.6)、スキーマモジュールの登録箇所へ加える。件数は`CURSOR_PAGE_ARGS`(1〜100)を使わず1〜50の規則を`inputs.ts`に置き、`toConnection`は使わない。エラーの写像は2.2の`moderation-errors.ts`を参照する
+  - スキーマを変えた後に、apiで`bun run graphql:generate`を実行して`generated/schema.graphql`・`resolvers-types.ts`を作り直し、リゾルバの表を`satisfies Resolvers`で生成した型に合わせる
+  - 先に、単体テストで、`apps/api/test/config/ugc-moderation-scheduled-jobs.unit.test.ts`に保守のジョブの帯(1900番台)・前後の順・4:21の予算を確かめる(`sponsorship-scheduled-jobs.unit.test.ts`と同じ形。統計のジョブは7.6が加える)
   - 先に、Workers統合テストで、apiの要求と定期実行の経路で措置の群の全識別子が解決でき、4:21の`order`(1910)が他と重ならないことを確かめる
-  - 先に、単体テストで、入力の検証(件数・検索語・メールアドレス・理由の上限・期間の順)とエラーコードの形を確かめる
+  - 先に、単体テストで、入力の検証(件数・検索語・メールアドレス・理由の上限・期間の順・IDの引数の大文字のULIDの形式と存在しない対象と同じ文言)とエラーコードの形、`adminOnly`が入力の検証より前に管理者側以外の呼び出しを拒否すること、接続の組み立てを確かめる
   - 本specのapiのコードが上流のテーブル定義を読み込まず、上流の操作口と照会の識別子と型だけを使うことを、静的解析の読み込みの規則または検索で確かめる
-  - 完了状態: Workers統合テスト・単体テストと登録の検査が成功し、本specのapiのコードに上流のテーブル定義の読み込みが無く、application層に`**/lib/workers/**`・`**/infrastructure/**`・`BatchItem`の読み込みが無い
+  - 完了状態: Workers統合テスト・単体テストと登録の検査が成功し、apiの`graphql:check`が通り、本specのapiのコードに上流のテーブル定義の読み込みが無く、application層に`**/lib/workers/**`・`**/infrastructure/**`・`BatchItem`・`@sentry/*`の読み込みが無い
   - _Depends: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3, 4.4, 4.5_
   - _Requirements: 15.2, 15.3_
 
-- [ ] 4.7 利用者の照会と措置のリゾルバを作る
-  - 先に、Workers統合テストで、照会は閲覧のみ以上・停止と停止解除はモデレーター以上・代理の退会は最上位管理者だけの認可(モデレーターの代理の退会は拒否)、管理者側以外と未ログインの拒否、`adminUsers`の接続の形、`suspendUser`・`unsuspendUser`・`withdrawUserByAdministrator`の結果と各エラーコードを確かめる
+- [x] 4.7 利用者の照会と措置のリゾルバを作る
+  - 各リゾルバを`adminOnly`で包み、`session.principal()`(`Promise`)を待ってからユースケースへ渡す
+  - 先に、Workers統合テストで、照会は閲覧のみ以上・停止と停止解除はモデレーター以上・代理の退会は最上位管理者だけの認可(モデレーターの代理の退会は拒否)、管理者側以外と未ログインの拒否、`adminUsers`の接続の形、不正な`after`で上流の`invalid_cursor`と文言を変換せずに返すこと(2026-11-20に開発者が決定)、`suspendUser`・`unsuspendUser`・`withdrawUserByAdministrator`の結果と各エラーコードを確かめる
   - 完了状態: Workers統合テストが成功する
   - _Requirements: 3.4, 3.10, 4.10, 5.5, 5.10, 14.2, 14.3, 14.4_
 
-- [ ] 4.8 プロダクト・コメント・評価・画像のリゾルバを作る
-  - 先に、Workers統合テストで、`adminProducts`・`adminProduct`・`adminModerationCategoryOptions`・`adminProductRatings`・`adminComments`・`adminRatings`・`adminQuarantinedImages`の形と不在、非公開化・復元・コメント・評価・4つの画像の操作の認可・結果・エラーコード(復元・コメントの復元・評価の取り消しの理由が無いときの拒否を含む)、画像の`path`が同一オリジンの配信経路であることを確かめる
+- [x] 4.8 プロダクト・コメント・評価・画像のリゾルバを作る
+  - 各リゾルバを`adminOnly`で包む。画像以外への個別の隔離で上流が投げる`quarantine_not_applicable`は`image_not_found`へ変える
+  - 先に、Workers統合テストで、`adminProducts`・`adminProduct`・`adminModerationCategoryOptions`・`adminProductRatings`・`adminComments`・`adminRatings`・`adminQuarantinedImages`の形と不在、一覧の不正な`after`の`invalid_cursor`、非公開化・復元・コメント・評価・4つの画像の操作の認可・結果・エラーコード(復元・コメントの復元・評価の取り消しの理由が無いときの拒否を含む)、画像の`path`が同一オリジンの配信経路であること、画像の操作の確定の後の失敗の`storage_unavailable`を確かめる
   - 完了状態: Workers統合テストが成功する
   - _Requirements: 8.9, 8.10, 9.10, 10.9, 11.14, 14.2, 14.3_
 
-- [ ] 5. (P) 物理削除の時期の措置の記録の削除を作り、eventの登録口に加える
+- [x] 5. (P) 物理削除の時期の措置の記録の削除を作り、eventの登録口に加える
   - 先に、単体テストで、利用者とプロダクトの物理削除の時期に関わる記録を500件ずつ削除し、残りがあれば続きを返すことを確かめる
-  - 記録のストアは`core/moderation`の`ModerationRecordStore`を`MODERATION_PLATFORM_TYPES.ModerationRecordStore`で受け取る
+  - 記録のストアは`core/moderation`の`ModerationRecordStore`を`MODERATION_PLATFORM_TYPES.ModerationRecordStore`で受け取る。eventの識別子は`Symbol.for('moderation.event.<名前>')`にして凍結し、単体テストを置く
   - eventの本specのモジュールとユーザー・プロダクトのライフサイクルの非同期の登録口(`purge_due`、1900)へ加える
   - 完了状態: 単体テストと登録口の検査(同じ種類の`order`の重複なし)が成功し、静的解析でeventのapplication層に`**/lib/workers/**`の読み込みが無い
   - _Depends: 2.1_
   - _Requirements: 13.6, 15.2_
 
-- [ ] 6. 措置の群の管理画面
-- [ ] 6.1 措置の群のGraphQLの操作を書き、型と管理者側の許可リストを生成する
+- [x] 6. 措置の群の管理画面
+- [x] 6.1 措置の群のGraphQLの操作を書き、型と管理者側の許可リストを生成する
   - 措置の群の照会と13の措置の操作を、adminの`src/graphql/operations/moderation/`に1ファイル1操作の`.graphql`で書く(統計の操作は7.7)。操作名は`Admin`で始め、`graphql()`を呼ばない
-  - frontend-platformの「操作の追加手順」どおり、adminで`bun run graphql:generate`、apiで`bun run graphql:allowlist`を実行する。画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない
-  - 完了状態: 型の生成と型検査が成功し、adminとapiの`graphql:check`とadminの`codegen.unit.test.ts`(操作名の接頭辞)が通り、本specの操作が管理者側の許可リストにだけ載る
+  - frontend-platformの「操作の追加手順」どおり、adminで`bun run graphql:generate`、apiで`bun run graphql:allowlist`を実行する。`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型は、`src/graphql/admin-moderation-users.ts`・`admin-moderation-products.ts`・`admin-moderation-engagement.ts`・`admin-quarantined-images.ts`だけが読み、画面の型への変換と一覧のloaderの関数を持つ(`frontend/006`。部品は生成物の型に直接依存しない)。`gql.ts`・`index.ts`を読まない
+  - 先に、単体テストで、各変換の写像(null・空の配列・続きのカーソル)と一覧のloaderの関数(取得の失敗を`undefined`で握ること)を確かめる
+  - 完了状態: 型の生成と型検査と変換の単体テストが成功し、adminとapiの`graphql:check`とadminの`codegen.unit.test.ts`(操作名の接頭辞)が通り、本specの操作が管理者側の許可リストにだけ載る
   - _Depends: 4.7, 4.8_
   - _Requirements: 14.3_
 
-- [ ] 6.2 画面の共通部品を作る
-  - 検索パラメータ、措置の実行、措置の確認のダイアログ、同一オリジンの画像、最新の理由の表示、個別の隔離のボタン、評価の無効化と取り消しの操作を作る
+- [x] 6.2 画面の共通部品を作る
+  - 検索パラメータ、措置の実行、措置の確認のダイアログ、同一オリジンの画像、最新の理由の表示、個別の隔離のボタン、評価の無効化と取り消しの操作、文言のファイル(`moderation-messages.ts`)を作る
+  - 同一オリジンの画像の代わりの表示は`MediaPlaceholder`(`{ kind, placeholder, alt, size }`)を使う。隔離中の画像は`AdminAvatar`(画像の変換配信)では代わりの表示になるため、隔離画像と隔離の操作の対象は同一オリジンの画像の部品で表示する
+  - ブラウザテストは`apps/admin/test/page-router.tsx`の`renderInRouter`と`execute-graphql.ts`の`vi.mock`を使い、照会の結果のfixtureは`apps/admin/test/moderation-fixtures.ts`に置く(6.3〜6.8・7.8・7.9も同じ)
   - 検索パラメータのスキーマのZodの値は共通部品の`lib/utilities/validation/zod.ts`の`z`から読み、`zod`を直接読まない(静的解析の`frontend/zod-entry`)
-  - 先に、単体テストで、各ページの検索パラメータの解析(空は未指定・ページの位置)とGraphQLの絞り込みへの変換を確かめる
-  - 先に、ブラウザテストで、措置の確認のダイアログ(理由の要否と上限・個人情報の注記・監査ログに記録される旨・影響の一覧・失敗で理由の入力を保ち`ConfirmActionDialog`に渡した`failureMessageOf`の文言を`role="alert"`で示す・`GraphQLClientError`でない失敗で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言が出て問い合わせを促す文が出ない)、措置の実行の成功と変化なしの通知と照会の無効化、同一オリジンの画像の代わりの表示、最新の理由と日時の`<time datetime>`、個別の隔離のボタンと評価の操作がモデレーター以上だけに出ること、評価の取り消しで理由が必須であること、アクセシビリティの検査の違反が0件を確かめる
+  - 先に、単体テストで、各ページの検索パラメータの解析(空は未指定・ページの位置)とGraphQLの絞り込みへの変換、文言のファイルの文言が文言規則と一致することを確かめる
+  - 先に、ブラウザテストで、措置の確認のダイアログ(理由の要否と上限・個人情報の注記・監査ログに記録される旨・説明の文の中に措置の影響を示すこと(一覧の要素を置かない)・失敗で理由の入力を保ち`ConfirmActionDialog`に渡した`failureMessageOf`の文言を`role="alert"`で示す・`GraphQLClientError`でない失敗で`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`の文言が出て問い合わせを促す文が出ない)、措置の実行の成功と変化なしの通知と照会の無効化、同一オリジンの画像の代わりの表示、最新の理由と日時の`<time datetime>`、個別の隔離のボタンと評価の操作がモデレーター以上だけに出ること、評価の取り消しで理由が必須であること、アクセシビリティの検査の違反が0件を確かめる
+  - 6.3〜6.7のページは、ルート(`routes/_authenticated/<メニュー>/index.tsx`、詳細は`products/$productId.tsx`)に`validateSearch`・`loaderDeps`・`loader`(6.1の一覧のloaderの関数)・`head`(`buildAdminPageHead`)・`component`だけを置き、ページの部品は`components/pages/<名前>-page.tsx`に置く。一覧は`frontend/014`の形(`cause !== 'stay'`のときだけ待つ・`useQuery`の`placeholderData: keepPreviousData`・ページ送りは`cursor-trail.ts`)にする(前例は`routes/_authenticated/sponsorships/index.tsx`)
   - 管理者側のCSPの`img-src`が自身のオリジンを許すことを確かめ、許さなければ作業を止めてfrontend-platformの再検証として報告する
   - 完了状態: 単体テストとブラウザテストが成功し、ローカルで隔離画像が管理画面に表示される
   - _Requirements: 11.16, 13.3, 14.5, 14.6, 14.7, 14.8_
 
-- [ ] 6.3 (P) ユーザーのページを作る
-  - 先に、ブラウザテストで、絞り込み(ハンドル・ニックネーム・メールアドレス・停止状態)とURLの保持、メールアドレスの欄の近くの監査ログの注記、表の項目(プロフィール画像・ニックネーム・ハンドル・登録日時・使い捨て判定・停止日時と理由)、該当なし、モデレーター以上だけの停止・停止解除・プロフィール画像の隔離の操作と停止の確認の影響の一覧を確かめる
+- [x] 6.3 (P) ユーザーのページを作る
+  - 先に、ブラウザテストで、絞り込み(ハンドル・ニックネーム・メールアドレス・停止状態)とURLの保持、メールアドレスの欄の近くの監査ログの注記、表の項目(プロフィール画像・ニックネーム・ハンドル・登録日時・使い捨て判定・停止日時と理由)、該当なし、モデレーター以上だけの停止・停止解除・プロフィール画像の隔離の操作と停止の確認の説明の文に示す影響を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Boundary: UsersPage_
   - _Depends: 6.2_
   - _Requirements: 3.2, 3.3, 3.7, 3.8, 3.10, 4.1, 4.12, 11.10_
 
-- [ ] 6.4 (P) プロダクトの一覧のページを作る
-  - 先に、ブラウザテストで、絞り込み(名称・ハンドル・投稿者・カテゴリ・ローンチ状態・公開状態)とURLの保持、表の項目、該当なし、項目から詳細への移動を確かめる
+- [x] 6.4 (P) プロダクトの一覧のページを作る
+  - 先に、ブラウザテストで、絞り込み(名称・ハンドル・投稿者・カテゴリ・ローンチ状態・公開状態)とURLの保持、再読み込みの間に前の結果を表示し続けること、取得の失敗を一覧の中に示すこと、表の項目、該当なし、項目から詳細への移動を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Boundary: ProductsPage_
   - _Depends: 6.2_
   - _Requirements: 6.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 6.5 (P) プロダクトの詳細のページと区画の登録口を作る
-  - 先に、ブラウザテストで、情報と説明文の描画と外部URLの`rel`、画像(隔離画像を含む)と個別の隔離の操作、評価の一覧と無効化の操作、ローンチ履歴とマッチ結果、非公開化の日時と理由、モデレーター以上だけの非公開化・復元(どちらも理由が必須)と確認の影響の一覧、区画の登録口の空と失敗の分離、不在の表示を確かめる
+- [x] 6.5 (P) プロダクトの詳細のページと区画の登録口を作る
+  - 区画の登録口の項目は`{ id, order, title, component }`とし、型(`AdminProductDetailContext`を含む)は登録の一覧と同じ`composition/admin-product-detail-sections.ts`に置く(前例は`composition/inquiry-detail-actions.ts`)。区画は自分で取得するため、区画ごとに`RecoverableSlot`で包み、失敗の表示に`title`を見出しとして出す
+  - 先に、ブラウザテストで、情報と説明文の描画と外部URLの`rel`、画像(隔離画像を含む)と個別の隔離の操作、評価の一覧と無効化の操作、ローンチ履歴とマッチ結果、非公開化の日時と理由、モデレーター以上だけの非公開化・復元(どちらも理由が必須)と確認の説明の文に示す影響、区画の登録口の空と失敗の分離、不在の表示を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Boundary: ProductDetailView, AdminProductDetailSections_
   - _Depends: 6.2_
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 8.1, 8.11, 10.3, 11.10_
 
-- [ ] 6.6 (P) コメントと評価のページを作る
+- [x] 6.6 (P) コメントと評価のページを作る
   - 先に、ブラウザテストで、コメントの絞り込み(投稿者・プロダクト・期間・状態)とURLの保持、状態の表示、抜粋を文字列として表示すること、評価の絞り込みと表示、モデレーター以上だけの非公開化・復元・無効化・取り消しの操作(すべて理由が必須)を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Boundary: CommentsPage, RatingsPage_
   - _Depends: 6.2_
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.11, 10.1, 10.2, 10.3_
 
-- [ ] 6.7 (P) 画像モデレーションのページを作る
+- [x] 6.7 (P) 画像モデレーションのページを作る
   - 先に、ブラウザテストで、隔離理由のタブとURL、続きの読み込み、各項目の画像・用途・保有者・日時・全理由・検出内容、理由に応じた公開承認・公開拒否・隔離の解除・削除の操作(モデレーター以上だけ、理由は任意)、画像を表示できないときの代わりの表示を確かめる
   - 完了状態: ブラウザテストが成功する
   - _Boundary: MediaModerationPage_
   - _Depends: 6.2_
   - _Requirements: 11.1, 11.2, 11.5, 11.8, 11.16_
 
-- [ ] 6.8 ユーザー一覧の項目に代理の退会の操作を作る
+- [x] 6.8 ユーザー一覧の項目に代理の退会の操作を作る
   - ユーザーのページの表の各項目の操作に置く(6.3の表に加えるため、6.3の後に行う)
   - 先に、ブラウザテストで、最上位管理者にだけ操作が出てモデレーター・閲覧のみには出ないこと、確認のダイアログの対象の利用者(ニックネーム・ハンドル・停止状態)・取り消せない旨・本人の意思の確かめと完了の知らせはシステムの外のメールで行う旨の注記・理由の必須と上限、問い合わせの詳細の導線と本人の意思の確認欄が無いこと、監査ログに記録される旨と理由の欄の個人情報の注記を示すこと、失敗で理由の入力を保ったまま`failureMessageOf`(`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)の文言を示し問い合わせを促す文が出ないこと、成功で一覧から利用者が消えること、アクセシビリティの検査の違反が0件を確かめる
   - 完了状態: ブラウザテストが成功し、ローカルで最上位管理者のユーザー一覧に操作が表示される
@@ -256,15 +282,15 @@
   - _Depends: 6.3_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.10, 5.12, 13.3, 14.5_
 
-- [ ] 6.9 管理画面のメニューへ5ページを登録する
+- [x] 6.9 管理画面のメニューへ5ページを登録する
   - メニューの登録箇所へユーザー(20)・プロダクト(30)・コメント(40)・評価(50)・画像モデレーション(60)を加える
-  - 先に、ブラウザテストで、メニューの並びと現在のページの表示を確かめる
-  - 完了状態: ブラウザテストが成功し、ローカルで5ページへメニューから移動できる
+  - 先に、ブラウザテストで、メニューの並びと現在のページの表示を確かめる。`ADMIN_NAV_ITEMS`を全件一致で確かめる上流のテスト(`components/layout/admin-nav-order.unit.test.ts`・`admin-navigation.browser.test.tsx`)の期待値に5件を加える
+  - 完了状態: 単体テストとブラウザテストが成功し、ローカルで5ページへメニューから移動できる
   - _Depends: 6.3, 6.4, 6.5, 6.6, 6.7_
   - _Requirements: 14.1_
 
-- [ ] 7. 週ごとの統計(統計の群。措置の群の部品を読み込まない独立した継ぎ目)
-- [ ] 7.1 統計の群の決定をページ配置・文言規則・準拠方針・日次タイムライン・モデレーションの運用の文書に先に書く
+- [x] 7. 週ごとの統計(統計の群。措置の群の部品を読み込まない独立した継ぎ目)
+- [x] 7.1 統計の群の決定をページ配置・文言規則・準拠方針・日次タイムライン・モデレーションの運用の文書に先に書く
   - ページ配置: ダッシュボードの統計のカード(仮1・仮2)
   - 文言規則: 統計のカードの見出し・説明・「集計中」・集計が無い旨・取得の失敗の文言
   - 準拠方針: データ保持期間に週ごとの統計(無期限、個人を含まない集計値)
@@ -275,21 +301,24 @@
   - _Depends: 1.5_
   - _Requirements: 16.6_
 
-- [ ] 7.2 週ごとの統計のテーブルとマイグレーションを作る
+- [x] 7.2 週ごとの統計のテーブルとマイグレーションを作る
   - 措置の記録のマイグレーションとは別のマイグレーションとして生成する
-  - 先に、テーブルの定義の単体テストで、週の行の確定の値と件数の0以上の制約、週の開始日の主キー、他のspecのIDに外部キーが無いことを確かめる
+  - 主キーは他のテーブルと同じULIDにし、週の開始日に一意索引を張る(2026-11-20に開発者が決定したG4)
+  - 先に、テーブルの定義の単体テストで、週の行の確定の値と件数の0以上の制約、ULIDの主キーと週の開始日の一意索引、他のspecのIDに外部キーが無いことを確かめる
+  - 同じく先に、1.2のマイグレーションの照合のテストと実際のD1での制約の検証のテストに本テーブル(一意索引の重複の拒否を含む)を加え、`schema/index.unit.test.ts`のテーブル名の一覧に加える
   - mainの最新を取り込んでからマイグレーションを生成し、ローカルに適用する
-  - 完了状態: 単体テストが成功し、マイグレーションをローカルのD1に適用できる
+  - 完了状態: 単体テストとWorkers統合テストが成功し、マイグレーションをローカルのD1に適用できる
   - _Depends: 1.2_
   - _Requirements: 2.5, 2.6_
 
-- [ ] 7.3 (P) 統計の週の規則を作る
+- [x] 7.3 (P) 統計の週の規則を作る
+  - 週の計算はbackend-platformの`businessWeekOf`・`addBusinessDays`を使い、自前の暦の計算を持たない
   - 先に、単体テストで、月曜日0:00の前後と日曜日23:59の週、年をまたぐ週、前週、週の終わりの判定の境界、週の最後の日を確かめる
   - 完了状態: 単体テストが成功し、規則がD1を読み込まない
   - _Boundary: StatisticsWeek_
   - _Requirements: 1.5, 2.1, 2.5, 16.2_
 
-- [ ] 7.4 統計の群の識別子とポートを加え、週ごとの統計のストアを作る
+- [x] 7.4 統計の群の識別子とポートを加え、週ごとの統計のストアを作る
   - 本specのapiの識別子とポートのファイルへ、統計の群の識別子(週ごとの統計のストア・集計のジョブ・照会)と週ごとの統計のストアのポートを加える(措置の群の識別子を変えない)
   - 先に、Workers統合テストで、週の行のupsertが確定した週を書き換えないこと・2回実行して行が1つであること、確定の有無の照会、最近の行の古い順を確かめる
   - 完了状態: Workers統合テストが成功し、型検査が通る
@@ -297,56 +326,59 @@
   - _Depends: 2.2, 7.2_
   - _Requirements: 2.5, 2.6_
 
-- [ ] 7.5 週ごとの統計の集計のジョブと照会を作る
+- [x] 7.5 週ごとの統計の集計のジョブと照会を作る
   - 利用者数とプロダクト数はidentity-authの仮7・product-launchの仮13の時点の総数の照会、収益はpaymentsの仮7の期間ごとの純収益の照会(paymentsのタスク5.5・5.7、純収益の定義はpaymentsの要件12.10)、予選実施数とUpvote数はmatch-engineの日ごとの集計を使う
-  - 先に、単体テストで、前週が未確定なら週の終わりの時点で集計して確定し今週を実行時刻の時点で集計すること、5つの値の照会の入力(時点・期間・日付の範囲)と週の合計、照会の失敗のエラートラッキングへの通知と次の実行での集計し直し、照会が直近26週と今週を返すことを確かめる
+  - 先に、単体テストで、前週が未確定なら週の終わりの時点で集計して確定し今週を実行時刻の時点で集計すること、5つの値の照会の入力(時点・期間・日付の範囲)と週の合計、照会の失敗の定型の通知のポート(`ModerationIncidentReporter`の`statistics-failed`)への送信と次の実行での集計し直し、照会が直近26週と今週を返すことを確かめる
+  - ジョブの定義(`WEEKLY_STATISTICS_JOB_DEFINITION`)はジョブのファイルに置く
   - 完了状態: 単体テストが成功する
   - _Boundary: WeeklyStatisticsJob, WeeklyStatisticsReader_
   - _Depends: 7.3, 7.4_
   - _Requirements: 1.9, 2.1, 2.2, 2.3, 2.4, 2.7, 2.8, 15.5_
 
-- [ ] 7.6 統計の群を束縛し、集計のジョブと統計の照会のリゾルバを登録する
-  - 2.3のモジュールに週ごとの統計のストア・集計のジョブ・照会を束縛し、集計のジョブを定期実行の登録箇所へ加える
-  - スキーマモジュールに統計の型と`adminWeeklyStatistics`のリゾルバを加える
+- [x] 7.6 統計の群を束縛し、集計のジョブと統計の照会のリゾルバを登録する
+  - 2.3のモジュールに週ごとの統計のストア・集計のジョブ・照会を束縛し、集計のジョブを定期実行の登録箇所へ加える。4:21のジョブの名前を完全一致で列挙する`search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts`の一覧と、`apps/api/test/config/ugc-moderation-scheduled-jobs.unit.test.ts`に集計のジョブを加える
+  - スキーマモジュールに統計の型と`adminWeeklyStatistics`のリゾルバ(`adminOnly`で包む)を加え、apiで`bun run graphql:generate`を実行して生成物を作り直す
   - 先に、Workers統合テストで、apiの要求と定期実行の経路で統計の群の識別子が解決でき、4:21の`order`(1900)が他と重ならないこと、`adminWeeklyStatistics`の閲覧のみ以上の認可と管理者側以外・未ログインの拒否と返す形を確かめる
-  - 完了状態: Workers統合テストと登録の検査が成功する
+  - 完了状態: Workers統合テスト・単体テストと登録の検査が成功し、apiの`graphql:check`が通る
   - _Depends: 4.6, 7.5_
   - _Requirements: 1.9, 14.2, 14.3, 15.2_
 
-- [ ] 7.7 統計のGraphQLの操作を書き、型と管理者側の許可リストを生成する
+- [x] 7.7 統計のGraphQLの操作を書き、型と管理者側の許可リストを生成する
   - 統計の照会`AdminWeeklyStatistics`を、adminの`src/graphql/operations/moderation/weekly-statistics.graphql`に書き(`graphql()`を呼ばない)、adminで`bun run graphql:generate`、apiで`bun run graphql:allowlist`を実行する(frontend-platformの「操作の追加手順」)
-  - 完了状態: 型の生成と型検査が成功し、adminとapiの`graphql:check`とadminの`codegen.unit.test.ts`(操作名の接頭辞)が通り、統計の操作が管理者側の許可リストにだけ載る
+  - 生成物の型は`src/graphql/admin-weekly-statistics.ts`だけが読み、画面の型へ変える(`frontend/006`)。先に、単体テストで変換の写像を確かめる
+  - 完了状態: 型の生成と型検査と変換の単体テストが成功し、adminとapiの`graphql:check`とadminの`codegen.unit.test.ts`(操作名の接頭辞)が通り、統計の操作が管理者側の許可リストにだけ載る
   - _Depends: 6.1, 7.6_
   - _Requirements: 14.3_
 
-- [ ] 7.8 統計のカードと表を作り、ダッシュボードに登録する
+- [x] 7.8 統計のカードと表を作り、ダッシュボードに登録する
   - 先に、単体テストで、系列と前週からの増減、行の欠け、今週の扱いを確かめる
-  - 先に、ブラウザテストで、各指標の直近の確定した週の値と増減、表の見出しと週の開始日の`<time datetime>`と金額、今週の「集計中」、行が無いときの案内、取得の失敗がカードの中だけのエラーと再試行になり問い合わせの導線と問い合わせを促す文が出ないこと、ダッシュボードの先頭に全幅で並ぶことを確かめる
-  - ダッシュボードのカードの登録箇所へ`ugc-moderation.weekly-statistics`(10、全幅)を加える
+  - 先に、ブラウザテストで、各指標の直近の確定した週の値と増減、表の見出しと週の開始日(業務日付のため`formatBusinessDateWithWeekdayLabel`の表示と`<time dateTime={日付}>`)と金額、今週の「集計中」、行が無いときの案内、取得の失敗がカードの中だけのエラーと再試行になり問い合わせの導線と問い合わせを促す文が出ないこと、ダッシュボードの先頭に全幅で並ぶことを確かめる
+  - ダッシュボードのカードの登録箇所へ`ugc-moderation.weekly-statistics`(10、全幅)を加える。`DASHBOARD_CARDS`を全件一致で確かめる上流のテスト(`components/inquiry/unhandled-inquiries-card.browser.test.tsx`)の期待値に本カードを加える
   - 完了状態: 単体テストとブラウザテストが成功し、ローカルでダッシュボードに統計のカードが表示される
   - _Boundary: WeeklyStatisticsCard, WeeklyStatisticsTable, StatisticsSeries_
   - _Depends: 7.1, 7.7_
   - _Requirements: 1.1, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8_
 
-- [ ] 7.9 統計のグラフを描画し、統計のカードに組み込む
+- [x] 7.9 統計のグラフを描画し、統計のカードに組み込む
   - 管理者側に`recharts`を版を明示して完全に固定して加える(`bun add --exact recharts@<版>`。版は3.10.1、または実装時点で公開から2週間以上たつ3系の最新の安定版)。peerの`react-is`が無ければ、管理者側のReactと同じメジャーの版を同じく完全に固定して加える。`package.json`に`^`・`~`が無く`bun.lock`が更新されたことを確かめる
   - 管理者側の`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)に`recharts`を加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)
   - tech-stack.mdの「グラフ描画」の項は追加済みのため変えない。`coding/002-dependency-versions.md`の主要パッケージの一覧はアプリ間で版をそろえるパッケージだけを載せる規則のため、管理者側だけが使うRechartsは載せない
-  - shadcn/uiの`chart`の部品は管理者側の統計の部品のディレクトリに部分ごとのファイルへ分けて置き(1ファイル1コンポーネント)、フロントエンド共通ファイルには置かない(共有ディレクトリがRechartsを読み込まないため)
+  - shadcn/uiの`chart`の部品は写さず、Rechartsの部品を直接使う。線と軸の色は配色のトークンのCSSの変数を属性で渡し、`<style>`の注入(`dangerouslySetInnerHTML`)を使わない(管理者側の生のHTMLの例外の検査が0件を求めるため。2026-11-20に開発者が決定したG3)。Rechartsはフロントエンド共通ファイルに置かない(共有ディレクトリがRechartsを読み込まないため)
+  - Rechartsを読み込む部品(`weekly-statistics-line-charts.tsx`)は動的な`import()`で別のチャンクにし、`ClientOnly`の中で`React.lazy`と`Suspense`で読み込む。読み込み中と`ClientOnly`の`fallback`は同じ高さの空の枠にする(2026-11-20に開発者が決定)
   - グラフの部品を7.8の統計のカードの表の上に組み込み、表は同じ値のまま残す
-  - 先に、ブラウザテストで、5つの指標の週ごとのグラフと各グラフが直近26週と今週の値を持つこと、`ClientOnly`で包むこと(単体テストで、サーバー側の描画(`renderToString`)の結果がfallbackの同じ高さの枠の目印だけで`svg`を含まないこと、ブラウザテストで、クライアントの描画でグラフが出ること)、図が読み上げで表と重ならないこと、表がグラフと同じ値を示し続けること、アクセシビリティの検査の違反が0件を確かめる
-  - 完了状態: ブラウザテストと型検査が成功し、管理者側の`package.json`に範囲指定の無いRechartsの版があり、ローカルでダッシュボードの統計のカードにグラフが表示される
-  - _Boundary: WeeklyStatisticsChart, shadcn/uiのchartの部品(`components/moderation/statistics/chart/`), WeeklyStatisticsCardのグラフの配置, 管理者側の`package.json`・`bun.lock`のrecharts_
+  - 先に、ブラウザテストで、5つの指標の週ごとのグラフと各グラフが直近26週と今週の値を持つこと、`ClientOnly`で包み、サーバー側の描画(`renderToString`)の結果がfallbackの同じ高さの枠の目印だけで`svg`を含まないこと、遅延読み込みの後のクライアントの描画でグラフが出ること、読み込み中も同じ高さの枠を保つこと、図が読み上げで表と重ならないこと、表がグラフと同じ値を示し続けること、アクセシビリティの検査の違反が0件を確かめる
+  - 完了状態: ブラウザテストと型検査が成功し、管理者側の`package.json`に範囲指定の無いRechartsの版があり、管理者側のビルドの出力でRechartsがダッシュボードのルートのチャンクに含まれず別のチャンクにあり、ローカルでダッシュボードの統計のカードにグラフが表示され、生のHTMLの例外の検査が通る
+  - _Boundary: WeeklyStatisticsChart, WeeklyStatisticsLineCharts(`components/moderation/statistics/weekly-statistics-line-charts.tsx`), WeeklyStatisticsCardのグラフの配置, 管理者側の`package.json`・`bun.lock`のrecharts_
   - _Depends: 7.8_
   - _Requirements: 1.2_
 
-- [ ] 7.10 統計のE2Eシナリオを作る
-  - `weekly-statistics.e2e.test.ts`: `signInAsNewAdmin`の管理者で、backend-platformの改訂2の`triggerScheduled({ worker: 'api', businessDate, businessTime: '04:21' })`(`e2e/support/scheduled-trigger.ts`)で4:21のジョブを動かし、ダッシュボードの統計のカードの表に今週の行が出ることを確かめる。独自の起動の補助を作らない
+- [x] 7.10 統計のE2Eシナリオを作る
+  - `weekly-statistics.e2e.test.ts`: `e2e/admin/admin-test.ts`の`test`を使い、`signInAsNewAdmin`の管理者で、backend-platformの改訂2の`triggerScheduled({ worker: 'api', businessDate, businessTime: '04:21' })`(`e2e/support/scheduled-trigger.ts`)で4:21のジョブを動かし、ダッシュボードの統計のカードの表に今週の行が出ることを確かめる。独自の起動の補助を作らない
   - 完了状態: ローカルでE2Eが成功する
   - _Depends: 7.8_
   - _Requirements: 16.4_
 
-- [ ] 7.11 (P) 統計の群の技術ドキュメントとオンボーディングを書く
+- [x] 7.11 (P) 統計の群の技術ドキュメントとオンボーディングを書く
   - `db/008-weekly-aggregate-snapshots.md`を本プロジェクト固有の値を含めずに書き、READMEの文書一覧に加える
   - `docs/onboardings/project-values.md`に`ugc-moderation.weekly-statistics`の集計のジョブ(4:21、1900)とダッシュボードのカード(10、全幅)、統計の表示の週数を加える
   - 完了状態: 文書が整形の検査を通り、技術ドキュメントに本プロジェクト名と固有の値が無いことを検索で確かめる
@@ -354,50 +386,113 @@
   - _Depends: 7.6_
   - _Requirements: 16.5_
 
-- [ ] 8. 措置の群の統合・ドキュメント・E2Eと全体の検査
-- [ ] 8.1 措置の連鎖の統合テストを作る
+- [x] 8. 措置の群の統合・ドキュメント・E2Eと全体の検査
+- [x] 8.1 措置の連鎖の統合テストを作る
   - apiのWorkers統合テストの環境で行い、eventの非同期の処理の代わりに、上流が登録した処理の部品を直接呼ぶ(`apps/event`を読み込まない)
   - 先に、Workers統合テストで、停止で未開始のローンチが取り消され停止解除で戻らないこと、非公開化で未開始のローンチが取り消され画像の隔離理由が付き復元で外れること、隔離理由が2つある画像は片方の解除で戻らないこと、措置の記録と監査ログが残ることを確かめる
   - 完了状態: Workers統合テストが成功する
   - _Depends: 4.6_
   - _Requirements: 4.5, 4.6, 8.5, 8.6, 11.6, 11.12, 15.1, 16.3_
 
-- [ ] 8.2 措置の群の技術ドキュメントとオンボーディングを書く
-  - `backend/021-cross-aggregate-admin-action-records.md`・`frontend/020-admin-search-and-moderation-actions.md`を本プロジェクト固有の値を含めずに書き、各READMEの文書一覧に加える。`backend/021`には、後続の機能の記録を措置と同じ一括の書き込みに入れる形(application層は種類と値だけの参加を渡し、登録した参加者がinfrastructure層で文を返す)を含める
+- [x] 8.2 措置の群の技術ドキュメントとオンボーディングを書く
+  - `backend/021-cross-aggregate-admin-action-records.md`・`frontend/020-admin-search-and-moderation-actions.md`を本プロジェクト固有の値を含めずに書き、各READMEの文書一覧に加える。`backend/021`には、後続の機能の記録を措置と同じ一括の書き込みに入れる形(application層は種類と値だけの参加を渡し、登録した参加者がinfrastructure層で文を返す)と、呼び出し側の文を受け取れない操作口(状態を確定してから外部へ依頼する操作)に、状態の変更と呼び出し側の文を同じ一括の書き込みで確定する口を足して、後続の依頼の失敗の後の再実行で記録が欠けないようにする形(G1の画像の操作)を含める
   - `docs/onboardings/project-values.md`に措置の群の値(保守のジョブ・処理・同期の処理・メニューの登録の名前と`order`、メール種別、監査ログの操作種別、代理の退会の必要なロール。統計の群の値は7.11)を、`CLAUDE.md`の「技術規則の参照先」に`backend/021`の行を加える
+  - `docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の定型の通知の送信の表に、本specの`moderation_incident`の3つの理由(`moderation-record-missing`・`statistics-failed`・`notice-redispatch-failed`、指紋`['moderation', <理由>]`)の行を加える
   - 完了状態: 文書が整形の検査を通り、技術ドキュメントに本プロジェクト名と固有の値が無いことを検索で確かめる
   - _Depends: 7.11_
   - _Requirements: 15.4, 16.5_
 
-- [ ] 8.3 E2Eの補助を作る
+- [x] 8.3 E2Eの補助を作る
   - admin-foundationの`executeLocalD1`(文字列は`sqlStringLiteral`)とdirectory-discoveryの`directory-fixtures.ts`で、掲載中のプロダクトを持つ確認済みの利用者、そのプロダクトのローンチへのコメントと評価を作る補助を作る(定期実行の起動の補助は作らない)
-  - 完了状態: 補助の関数を順に呼ぶ空のE2Eが成功し、ローカルD1に対象ができる
+  - SQLを組み立てる純粋な関数は`e2e/support/moderation-fixture-sql.ts`に分けて単体テストを置き、`moderation-fixtures.ts`がそれを実行する(前例は`e2e/support/sponsorship-fixtures.ts`)
+  - 8.4〜8.6と7.10のE2Eは`e2e/admin/admin-test.ts`の`test`(送信元IPを分ける拡張)を使い、画面の操作の手順は`e2e/admin/<名前>-steps.ts`(`user-moderation-steps.ts`・`product-moderation-steps.ts`・`engagement-moderation-steps.ts`・`media-moderation-steps.ts`)に置く
+  - 完了状態: SQLの組み立ての単体テストと、補助の関数を順に呼ぶ空のE2Eが成功し、ローカルD1に対象ができる
   - _Depends: 4.6, 5_
   - _Requirements: 16.4_
 
-- [ ] 8.4 利用者とプロダクトの措置のE2Eシナリオを作る
+- [x] 8.4 利用者とプロダクトの措置のE2Eシナリオを作る
   - `signInAsNewAdmin`のモデレーターで、`/users`でハンドルを検索して停止→ディレクトリからその利用者のプロダクトが消える→Mailpitに停止の通知→監査ログの画面に「ユーザーの停止」→理由を入力した停止解除で戻る、を確かめる
   - プロダクトの詳細で非公開化→利用者側の詳細ページが他者に404→通知メール→理由を入力した復元で戻る、を確かめる
   - 完了状態: ローカルでE2Eが成功する
   - _Depends: 6.3, 6.4, 6.5, 6.9, 8.3_
   - _Requirements: 16.4_
 
-- [ ] 8.5 コメント・評価と画像の措置のE2Eシナリオを作る
+- [x] 8.5 コメント・評価と画像の措置のE2Eシナリオを作る
   - 補助で作ったコメントを非公開化して利用者側で削除の置き換えの表示、評価の無効化で平均が変わることを確かめる
   - 利用者が99×99のプロフィール画像を登録し(代替の判定で隔離)、画像モデレーションの自動判定のタブで画像が読み込まれて表示され、公開承認で一覧から消えることを確かめる
   - 完了状態: ローカルでE2Eが成功する
   - _Depends: 6.6, 6.7, 8.3_
   - _Requirements: 16.4_
 
-- [ ] 8.6 代理の退会のE2Eシナリオを作る
+- [x] 8.6 代理の退会のE2Eシナリオを作る
   - `signInAsNewAdmin`の最上位管理者で、登録した利用者を`/users`で検索し、理由を入力して代理の退会を行い、その利用者でログインできないこと、監査ログの画面に代理の退会の記録が出ること、退会の完了のメールが送られないことを確かめる。モデレーターのユーザー一覧には操作が出ないことを確かめる
   - 完了状態: ローカルでE2Eが成功する
   - _Depends: 6.8, 8.3_
   - _Requirements: 16.4_
 
-- [ ] 8.7 全体の検査とカバレッジを確かめ、作業を報告する
+- [x] 8.7 全体の検査とカバレッジを確かめ、作業を報告する
   - 整形・静的解析・型検査・4種のテストを全アプリで実行し、本specが変更したファイルのカバレッジが80%以上であることを確かめる
   - 前提にした上流の改訂(identity-authの仮7・product-launchの仮13・engagementの仮6・paymentsの仮7・backend-platformの改訂2)、仮1〜仮9が2026-10-24に開発者により全て確定した旨(仮4・仮5・仮9は推奨と異なる選択肢)、roadmapの帯の「使用中の値」(4:21は1900・1910、波及処理は1900)を作業の報告に記録する
   - 完了状態: 一括の検査と全テストが成功し、カバレッジの閾値を満たす
   - _Depends: 7.9, 7.10, 7.11, 8.1, 8.2, 8.4, 8.5, 8.6_
   - _Requirements: 16.1_
+
+## Implementation Notes
+
+- 1.1: 規則は`apps/common-lib/moderation/moderation-actions.ts`(`MODERATION_ACTION_DEFINITIONS`・`checkModerationReason`・`MODERATION_REASON_MESSAGES`・`MODERATION_TARGET_KINDS`・`MODERATION_NOTICE_STATUSES`・ライフサイクルの種類の写し)、表示名は`moderation-labels.ts`(上流の値の写し`QUARANTINE_REASONS`・`DISPOSABLE_EMAIL_JUDGEMENTS`・`ADMIN_LAUNCH_STATES`・`ADMIN_COMMENT_STATES`と`mediaPurposeLabel`)。`MODERATION_REASON_MAX`は`AUDIT_REASON_MAX`を参照する。使い捨て判定の写しは上流の型`DisposableEmailStatus`に本specの`unverified`(確認前)を加えた一覧として照合する。`check:contract-copies`への追加に伴い`scripts/tooling/run-all.unit.test.ts`の期待値も直した。13種の措置の表示名(「ユーザーの停止」など)は実装者が決めたため、1.5で文言規則に同じ語を載せる。利用者の状態・公開状態・評価の状態の表示名は未作成で、画面のタスクで必要なら加える
+- 1.2: `moderation_actions`(`apps/db/schema/moderation/moderation-actions.ts`、マイグレーション`20261120025459_ugc_moderation`)。`notice_status`は既定値を持たず、書き込む側が措置ごとに決める。索引・CHECKの名前は`api_keys`の前例(`<テーブル>_<列>_idx`・`_check`)。マイグレーションの照合のテストは`_ugc_moderation`で終わるディレクトリを探すため、7.2の統計のマイグレーションは`_ugc_moderation_statistics`のように別の接尾辞にする。D1の統合テストはapiのvitestで走る(`apps/api/db/ugc-moderation-schema.worker.test.ts`のバインド先)
+- 1.3: 操作種別は`apps/common-lib/admin/audit-actions/ugc-moderation.ts`の`MODERATION_AUDIT_ACTION_DEFINITIONS`(措置の種類をキーにしたRecord。ユースケースが措置の種類から監査ログの定義を引くため)と`MODERATION_AUDIT_ACTIONS`(一覧)。1.1の定義と表示名から組み立てて写しを持たない。上流の`apps/admin/src/components/pages/audit-logs-page.browser.test.tsx`が表示名を全件一致で比べるため13件を加えた(以後の操作種別の追加でも同様)。`project-values.md`の監査ログの操作種別の一覧への追加は8.2
+- 1.4: メール種別は`apps/backend-lib/core/email/kinds/ugc-moderation.ts`、テンプレートは`apps/event/src/infrastructure/email/templates/ugc-moderation/`(テストは他のテンプレートと同じWorkers統合テスト)。件名と広告の段落以外の本文(プレビュー・停止日時の行・固定の段落・問い合わせのボタン)は実装者が決めたため、1.5で文言規則に同じ文を載せる(本文は`moderation-notice-copy.ts`と各`*-email-body.tsx`)。日時は`formatUtcDateTime(…, { withYear: true })`。理由と抜粋は`ModerationMultilineText`で行に分け`<br />`でつなぐ。入力のスキーマは理由を前後の空白を除かずに500書記素で数えるため、2.4の通知は理由を正規化した値(2.2の正規化)で渡し、抜粋は`…`を含めて100書記素に切ってから渡す。決済中のセッションの失効を停止の通知に書くかはResearch Neededのまま書いていない
+- 1.5: 文言規則(`003-text-and-copy-rules.md`の「UGC管理の画面の文言」「措置の通知メールの本文」)・ページ配置(`002-page-layouts.md`の「UGC管理の共通の規則」と5ページ)・準拠方針・日次タイムライン・新規の`features/006-content-moderation.md`(と`features/README.md`の索引)を書いた。設計に文面の無い画面の文言(見出し・列見出し・絞り込みのラベル・空の一覧・トースト)と、URLのクエリのキー(users`handle・nickname・email・status`、products`name・handle・ownerHandle・category・launchState・visibility`、comments`authorHandle・productHandle・from・to・state`、ratings`productHandle・raterHandle・state`、media`reason`(既定は自動判定)、全一覧の位置は`after`)は実装者が決め、6のタスクはこれに従う。`account_state_conflict`の文言はdesign.mdのSupporting Referencesの「他の操作で状態が変わりました。最新の内容を読み込んでからやり直してください。」を載せた。design.md(1116行付近)は上流の`IDENTITY_ERRORS`をそのまま返すと書くが、上流の文言は「処理が重なりました。時間をおいて再度お試しください。」のため、3.1・3.6(または4.6のエラーの写像)で文言だけを本specの文に差し替える
+- 2.1: 契約`apps/backend-lib/core/moderation/ports.ts`・識別子`identifiers.ts`、文の契約とD1の実装と束縛は`workers/moderation/`(`D1ModerationRecordStore`は2つの識別子にそれぞれ`inSingletonScope()`で束縛、両アプリの`MODULES`の`ENGAGEMENT_PLATFORM_MODULE`の直後)。テストの補助`workers/moderation/testing/moderation-record-fixtures.ts`を後続のWorkers統合テストで使える。`listPendingNotices`は`occurredBefore`以下(`lte`、1時間以上前)、`eraseOccurredBefore`は未満(`lt`)。`latestFor`は1文の対象を「90件かつバインド変数100個以内」に分けて1回の`db.batch`で読み、同じ日時はIDの大きい方を最新とする。設計との相違: `eraseBySubjectUser`・`eraseByProduct`の残りの有無は「件数が上限に達したら」ではなく、同じ`db.batch`で削除の後に`LIMIT 1`で読む(engagementの前例。呼び出し側は`continue`/`done`だけで分岐するため影響なし)。`insertStatement`は対象の種類を`common-lib`の`MODERATION_ACTION_DEFINITIONS`から決め、`notice_requested_at`はnull、`markNotice`の`skipped`も`notice_requested_at`をnullのままにする
+- 2.2: `apps/api/src/application/moderation/`に`MODERATION_TYPES`(21個、`moderation-types.ts`)・`ports.ts`(型だけ。`ModerationIncidentContext`・`EngagementModerationChange`を名前付きで加えた)・`moderation-errors.ts`(`MODERATION_ERRORS`・`moderationError`。`account_state_conflict`は上流と同じコードで本specの文言、`product_not_found`・`comment_not_found`・`rating_not_found`は上流のエラーを参照、`storage_unavailable`・`invalid_cursor`は上流のものをそのまま返すため持たない)・`pending-moderation-record.ts`(`InMemoryPendingModerationRecord`。`set()`・`clear()`は取り出しの有無も戻し、二重の`set()`は通常の`Error`)・`moderation-reason.ts`(`normalizeModerationReason`、戻り値`string | null`、違反の詳細コードは`required`・`too_long`)。`AdminRoleMediaReviewPolicy`の識別子は作らず、3.7は`composition/media-review-policy.ts`の`FILE_ACCESS_TYPES.AdminMediaReviewPolicy`の束縛を差し替える。ユースケースのインターフェース(`UserModerationService`など)と入力の型は3.1〜3.6が各サービスのファイルで定義する。上流の`UserSuspension`・`AdministrativeWithdrawal`の競合は上流の文言のまま出るため、3.1・3.6は`moderationError('account_state_conflict')`へ変えるか、4.6の`errors.ts`がコードから`MODERATION_ERRORS`の文言を引く(どちらかで管理画面に本specの文言を出す)
+- 2.3: apiの`MODERATION_MODULE`(`composition/moderation-module.ts`、名前`moderation`、`MODULES`の`ENGAGEMENT_MODULE`の直後)。同期の処理は処理単位のコンテナから解決され、`inSingletonScope()`の保留中の措置は同じ要求の中だけで共有されることを確かめた(代替案は不要)。2つの同期の処理の共通の手順は設計に無い`infrastructure/moderation/pending-moderation-statements.ts`、参加者の文脈は`moderation-write-participant.ts`の`moderationWriteContextOf`。参加者は参加の都度処理単位のコンテナから解決し、登録の無い種類は通常の`Error`(「措置の書き込みの参加者に登録の無い種類です: "<kind>"」)。テストの補助`infrastructure/moderation/testing/moderation-write-fixtures.ts`(試験用の参加者は`admin_audit_logs`へ操作者`test-spec`の行を入れ、違反は`action`をNULLにする)。`SentryModerationIncidentReporter`のテストは前例に合わせWorkers統合テスト(タスクの文は単体テスト)。定型の通知の文言は実装者が決めた(`moderation-record-missing`「状態を変えた措置の記録と監査ログが、同期の処理で確定されませんでした」、`statistics-failed`「週ごとの統計の集計に失敗しました」、`notice-redispatch-failed`「措置の通知の送り直しに失敗したものがあります」)。8.2で`infra/004`の表に載せる。上流の`product-lifecycle-sync-handlers.worker.test.ts`の期待値に本specの行を加えた
+- 2.4: 通知は`apps/api/src/application/moderation/moderation-notifier.ts`の`EmailModerationNotifier`(インターフェース`ModerationNotifier`と`ModerationNoticeDispatch`も同じファイル。4.6で`MODERATION_TYPES.ModerationNotifier`へ束縛)。オリジンは`PLATFORM_TYPES.Env`を狭い型`{ CLIENT_SITE_ORIGIN }`で注入する(paymentsの前例)。停止の宛先は`findContact(record.targetId)`(設計の`subjectUserId`と同じ値)、非公開化はプロダクトの要約の`ownerUserId`、コメントは`CommentStore.findByIds`の投稿者。設計との相違: 宛先が無いときに加え、プロダクトの論理削除・コメントの不在・匿名化でも「送らなかった」にする(入力を作れず送り直しが成功しないため)。抜粋は`bodyMarkdown`の生の文字列を99書記素+`…`に切る(管理画面の200字の抜粋と同じく生の文字列)。送信の成功の後の依頼済みへの更新だけが失敗したときは、新しいログのカテゴリ`['api','application','moderation']`へ警告(`actionId`だけ)を出して投げ直す。8.2で`project-values.md`にこのカテゴリを加える
+- 2.5: `D1MediaModerationControl`(`apps/backend-lib/workers/media/media-moderation-control.ts`、`MEDIA_TYPES.MediaModerationControl`を`media-platform-module.ts`で処理単位に束縛)。取り消しの判定は一括の書き込みの先頭の検査の行(`INSERT INTO media_file_quarantine_reasons … SELECT <id>, NULL, … WHERE NOT (<条件>)`の`file_id`のNOT NULLの違反)で、違反の後は読み直して`unchanged`か`not-found`を返す。上流の`MediaQuarantineService`の内部の`reasonsAfter`・`needsRelocation`を`quarantine-relocation.ts`へ、`notApplicable`を`media-operation-errors.ts`の`quarantineNotApplicable`へ移して共有した(公開の形と振る舞いは不変)。`requestErase`の即時の削除は`changed`のときだけ試みる。ログのカテゴリ`['api','media','moderation-control']`を`project-values.md`に加えた。apiの`ControlImageModerationWriter`(`infrastructure/moderation/control-image-moderation-writer.ts`)は参加者の文を扱わない(参加の値の拒否は3.5)。テストの補助`workers/media/testing/media-moderation-control-fixtures.ts`
+- 3.1: `DefaultUserModerationService`(`application/moderation/user-moderation-service.ts`、インターフェース`UserModerationService`も同じファイル)。上流の競合は`moderationError('account_state_conflict')`(本specの文言)へ変える(design.mdの「そのまま返す」との相違)。上流の`not_found`は`user_not_found`へ、他の例外はそのまま投げ、全ての失敗の経路で保留中の措置を破棄する。設計との相違: 状態が変わったのに記録が取り出されなかったときは定型の通知へ送り、`{ changed: true, actionId: null }`を返し通知を依頼しない(存在しない記録のIDを返さないため)。この`changed: true`かつ`actionId: null`の組は`ModerationOutcome`の注記に無く、4.7以降のリゾルバと後続の呼び出し側が扱う必要がある。ログは`['api','application','moderation']`に`action`・`userId`・`operatorAdminId`・`actionId`・`result`だけを出す(メッセージ「利用者の措置を終えました」)。3.2〜3.6も同じ形にそろえる
+- 3.2: `DefaultProductModerationService`(`application/moderation/product-moderation-service.ts`、3.1と同じ形)。対象は`ProductDirectory.findSummaries([id], 'not-deleted')`の`hidden`で判定する(`AdminProductDirectory`にはIDの照会が無い)。監査ログの対象はプロダクトのID(設計に記載なし、実装者の決定)。保留中の措置の`subjectUserId`は所有者、`productId`と`targetId`はプロダクト。照会の後の論理削除で上流が投げる`product_not_found`は本specのエラー(同じコードと文言)へ変える
+- 3.3: `DefaultCommentModerationService`(`application/moderation/comment-moderation-service.ts`)。対象は設計どおり`CommentStore.findByIds`で、`hiddenAt`で同じ状態を判定する。投稿者が削除・匿名化したコメントも非公開化・復元できる(上流の`CommentModerationControl`に合わせた。匿名化済みは記録の`subjectUserId`をnullにし、通知は「送らなかった」になる)。書き込みの単位が記録と状態を一体で確定するため、保留中の措置と`ModerationIncidentReporter`は注入しない。上流の`comment_not_found`はそのまま返す(同じエラー)
+- 3.4: `DefaultRatingModerationService`(`application/moderation/rating-moderation-service.ts`)。対象は`AdminRatingDirectory.findByIds`(論理削除されていない行だけを返すため、取消済みは`rating_not_found`)、`invalidatedAt`で同じ状態を判定。注入は`AdminRatingDirectory`・`EngagementModerationWriter`・`AuditLogRecorder`・`IdGenerator`の4つだけ(保留中の措置・通知・定型の通知は持たない)。記録の`noticeStatus`は`'none'`固定、監査ログの対象は評価のID
+- 3.5: `DefaultImageModerationService`(`application/moderation/image-moderation-service.ts`)。対象は`MediaFiles.findMany`、画像用でない用途は`file.storage !== 'images'`で`image_not_found`(そのため書き込みの単位の`quarantine_not_applicable`はこの経路では通常起きない)。論理削除済み(`deletedAt`あり)のファイルは拒否しない(media-pipelineでは物理削除まで配信され、隔離画像の一覧にも出るため。要件11.14の「削除済み」は記録が無い・削除待ちと解釈)。記録の`subjectUserId`は保有者が`user`のときだけ、`productId`はnull、監査ログの対象は`[fileId]`。参加の値の検査を理由の検証より前に行う。`storage_unavailable`はログを足さずにそのまま投げる(上流の操作口が警告を出す)
+- 3.6: `DefaultAdministrativeWithdrawalService`(`application/moderation/administrative-withdrawal-service.ts`、3.1の形)。通知のポートを持たない(メールを送らない)。設計に無い`ModerationIncidentReporter`を注入し、記録が取り出されないときは3.1と同じく`{ changed: true, actionId: null }`。退会済みは照会で除かれるため変化なしの結果は無い。上流の`forbidden`(管理者でない呼び出し)はそのまま投げる。Workers統合テストは`apps/api/src/composition/moderation-module.administrative-withdrawal.worker.test.ts`(`PLATFORM_TYPES.MessagePublisher`を記録する実装に差し替え`email.send`が無いことを確かめる)。競合は単体テストだけで確かめる
+- 5: eventに`AccountRecordErasureHandler`・`ProductRecordErasureHandler`(`apps/event/src/application/moderation/`、500件ずつ)、識別子`EVENT_MODERATION_TYPES`(`event-moderation-types.ts`)、`EVENT_MODERATION_MODULE`(名前`event-moderation`、`MODULES`の`MODERATION_PLATFORM_MODULE`の直後)。登録口に`ugc-moderation.account-record-erasure`・`ugc-moderation.product-record-erasure`(`purge_due`、1900)。`purge_due`の一覧を全件一致で比べる上流のWorkers統合テスト9件の期待値に本specの行を加え、sponsorshipの「`purge_due`の最後に並ぶ」単体テストを「措置の記録の削除を除く…の後に並ぶ」(`slice(-2)`)に変えた(記録に外部キーが無いため最後でも物理削除を妨げない)。8.2で`project-values.md`の非同期の処理の一覧に2件を加える
+- 3.7: `AdminRoleMediaReviewPolicy`(`apps/api/src/application/moderation/admin-role-media-review-policy.ts`、管理者の主体・`storage === 'images'`・`AdminDirectory.findProfiles`に居る(ロール不問)ときだけ許す)を`composition/media-review-policy.ts`で`FILE_ACCESS_TYPES.AdminMediaReviewPolicy`へ束縛し、全拒否のクラスと単体テストを削除した。削除済み・招待中の管理者はHTTPでは`AdminSessionVerifier`が先に401を返すため、判定そのものはコンテナから解決して確かめた(`apps/api/src/composition/media-review-policy.worker.test.ts`)。design.mdの上流への影響の表は全拒否の置き場所を`application/media/file-access-policies.ts`と書くが、実際は`infrastructure/media/deny-all-admin-media-review-policy.ts`だった。media-pipelineのdesign.mdの4か所に注記(注記1)を加え、`docs/GUIDES/tech/security/005`の管理者側の画像の1文を「有効な管理者のアカウントのときだけ返す」に直した
+- 4.4: `DefaultQuarantinedImageReader`(`application/moderation/quarantined-image-reader.ts`)。`MediaQuarantine.listByReason`(`ADMIN_LIST_PAGE_SIZE`の50件)の順を保ち、保有者の表示名は利用者(`UserProfileDirectory.findSummaries(ids, 'including-withdrawn')`)と管理者(`AdminDirectory.findProfiles`)を重複を除いて1回ずつ、`system`は`owner: null`、物理削除済みの利用者・削除済みの管理者は名前null。用途は生の用途名を返し、画面(6.7)が`mediaPurposeLabel`で表示名にする。検出内容の文字列は文言規則の書式で、信頼度は切り捨て(`Math.floor`、実装者の決定。8.2で文言規則に注記してよい)。返すファイルは`{ id, quarantined, quarantineReasons }`だけで、`path`は4.8が`downloadPathOf(id)`で作る
+- 4.1: `DefaultAdminUserReader`(`application/moderation/admin-user-reader.ts`)。上流の`AdminUserDirectory.search`の後、プロフィール(`not-withdrawn`)→画像(`MediaFiles.findMany`)と停止の最新の理由(`latestFor(['user.suspend'])`)を各1回。メールアドレスの絞り込み(`filter.email !== undefined`、空文字の正規化は4.6の入力の検証)があれば、一覧を組み立てた後に`user.email-search`を表示する利用者の仮名化IDだけ(0件は対象なし)で記録してから返し、記録の失敗では結果を返さない。戻り値の型(`AdminUserView`など)は実装者が決めた: 利用者のIDは`userId`、画像は`{ fileId, quarantined, quarantineReasons }`で、4.6・4.7が`path`(`downloadPathOf`)とGraphQLの`AdminUser`の形への写像を作る。使い捨ての判定は`emailVerified`が偽なら`unverified`、真で判定nullなら`undetermined`
+- 7.3: `apps/backend-lib/core/moderation/statistics-week.ts`(`weekOf`・`previousWeek`・`weeksToCompute`(戻り値の型`StatisticsWeeksToCompute`)・`isWeekFinished`(`to <= now`)・`lastDayOf`、戻り値は凍結)。backend-platformの業務時刻の関数だけを使う。design.mdのFile Structure Planの注記は「表示の対象の週」もこのファイルとするが、契約に関数が無いため作らず、7.5の照会が`previousWeek`を繰り返して直近26週と今週を作る
+- 4.2: `DefaultAdminProductReader`(`application/moderation/admin-product-reader.ts`、テストの補助は800行の制限のため`application/moderation/testing/admin-product-reader-fakes.ts`)。`list`・`detail`は照会の時刻`now`を引数に取る(リゾルバが`clockOf(context).now()`を渡す)。設計との相違: 一覧のロゴのため設計の表に無い`MediaFiles.findMany`を1回加えた。詳細の`hiddenAt`は`AdminProductDirectory`にIDの照会が無く要約にも日時が無いため、非公開化中のときだけ`latestFor(['product.hide'])`の`occurredAt`を使う(通常は`hidden_at`と同じ値。3年を過ぎて記録が消えた後はnull)。ローンチ状態は上流の`toLaunchState`と同じ規則の`launchStateOf`で5値に写像し(上流の関数は`workers`の非公開の関数のため写しになる)、公開状態は上流の`toVisibility`と同じ規則。対戦相手の名前は`findSummaries(not-deleted)`、不戦勝・物理削除・論理削除はnull。不在の詳細はnullを返す。照合のテストに`ADMIN_LAUNCH_STATES`と上流の`AdminProductLaunchState`の一致を加えた
+- 4.5: `ModerationMaintenanceJob`と`MODERATION_MAINTENANCE_JOB_DEFINITION`(`application/moderation/jobs/moderation-maintenance-job.ts`、4:21・1910)。1時間以上前の依頼待ちを100件まで送り直し、1件の失敗は警告を出して数えて続け、失敗が1件以上なら`notice-redispatch-failed`(`job`・`count`)を送ってジョブは成功にする(投げ直すと同じ失敗を二重に通知するため)。一覧や削除そのものの失敗は投げ直し、`try/finally`で一覧の失敗でも削除を行う。保持期間はUTCの暦の3年(2/29は2/28へ寄せる、`moderationRecordRetentionCutoff`)で500件×最大10回。ログは件数だけ。Workers統合テスト`apps/api/src/composition/moderation-module.maintenance.worker.test.ts`はジョブと通知をテストの中で組み立てるため、4.6で束縛した後はコンテナから解決する形へ直してよい
+- 7.1: 統計の群を5文書(と`features/README.md`の索引)に書いた。設計に文面の無い文言は実装者が決め、7.8・7.9はこれに従う: カードの説明「直近26週と集計中の今週の運営状況の推移です。週は月曜日に始まり、値は毎日集計します。終わった週の値は変わりません。」(基準時刻の時差と集計時刻は画面に出さない)、収益の名前「合計収益(税込)」、直近の確定した週の見出し「<週の開始日>からの週」、増減「前週比+12」「前週比-3」「前週比±0」・金額「前週比+$12.34」「前週比±$0」、前週の行が無ければ「前週の値なし」、今週だけなら「終わった週の統計はまだありません。」、グラフの横軸「11/16」・金額の縦軸「$1,234」、表の見出し「週ごとの統計(直近26週と今週)」(新しい週が上、「集計中」は開始日の後)。既存の`MoneyText`は`$0.00`・`$9.00`と小数点以下を常に出し、デザイン原則(全て0なら省略)と食い違うため、7.8は独自の書式か`MoneyText`の変更が要る。`lastComputedAt`の表示の文言は定めていない。ジョブが止まり今週の間に作られた行が確定できないまま残る場合の`listRecent`の扱いを7.4・7.5で確かめる
+- 7.2: `moderation_weekly_statistics`(`apps/db/schema/moderation/moderation-weekly-statistics.ts`、マイグレーション`20261120061309_ugc_moderation_statistics`)。ULIDの主キー・`week_start`の一意索引(`moderation_weekly_statistics_week_start_unique`)・`finalized`は0/1のCHECKで既定値なし・4つの件数は0以上のCHECKで既定値なし・`net_revenue`は返金で負になり得るため符号のCHECKなし・`timestamps()`あり・外部キーなし。D1の統合テストで`onConflictDoUpdate({ target: weekStart, setWhere: finalized = false })`が確定した週を書き換えず`id`を保つことを確かめた(7.4のストアはこの形を使える)。マイグレーションの照合のテストは接尾辞を引数にして両方のマイグレーションを確かめる
+- 4.3: `DefaultAdminCommentReader`・`DefaultAdminRatingReader`(`application/moderation/admin-comment-reader.ts`・`admin-rating-reader.ts`、テストの補助`testing/admin-engagement-reader-fakes.ts`)。4.2と同じ形(ハンドルの解決で一致が無ければ上流を呼ばず空、表示名は利用者`not-withdrawn`・プロダクト`not-deleted`で各1回、最新の理由は非公開化中・無効化済みのものだけ)。設計との相違: 設計の照会の表に`adminProductRatings`の照会が無いため、`AdminRatingListFilter`に任意の`productId`を加えた(ハンドルと食い違えば空)。評価の状態は`invalidatedAt`から導く。戻り値の型は実装者が決めた(`commentId`・`ratingId`、`author`・`rater`は`{ userId, handle, nickname, suspended } | null`)ため、4.6〜4.8でGraphQLの`AdminComment`・`AdminRating`へ写す。照合のテストに`ADMIN_COMMENT_STATES`と上流の`AdminCommentState`の一致を加えた
+- 7.4: `MODERATION_TYPES`に`WeeklyStatisticsStore`・`WeeklyStatisticsJob`・`WeeklyStatisticsReader`、`ports.ts`に`WeeklyStatisticsRow`・`WeeklyStatisticsStore`を加え、`D1WeeklyStatisticsStore`(`infrastructure/moderation/d1-weekly-statistics-store.ts`、`PLATFORM_TYPES.Database`で注入)を作った。upsertは1文の`onConflictDoUpdate`(`setWhere: finalized = false`、`excluded."<列>"`)で、同じ週を1回の呼び出しに2行渡さない前提。`listRecent`は確定した週と最新の1週だけを新しい順に件数まで読み古い順で返し、追い越された未確定の週(ジョブが止まった週)は返さず件数にも数えない。7.5・7.8への申し送り: 最新の行が確定済みのときは`listRecent(27)`が確定した27週を返すため照会で26週に切るか決める。週に欠けがあり得るため、7.8の前週の有無は7日前に始まる行があるかで判定する(無ければ「前週の値なし」)
+- 7.5: `WeeklyStatisticsJob`と`WEEKLY_STATISTICS_JOB_DEFINITION`(`application/moderation/jobs/weekly-statistics-job.ts`、4:21・1900)、`DefaultWeeklyStatisticsReader`(`weekly-statistics-reader.ts`、`read()`が`{ weeks, lastComputedAt }`)。上流の照会は週の数によらず6回(収益1・利用者2・プロダクト2・`summarizeDaily`1)。今週の収益の期間の終わりは実行時刻(設計に記載なし)。上流の照会の失敗・結果の欠けでは何も保存せず、警告と`statistics-failed`(`{ job }`)を送ってジョブは成功で終わり、次の実行で前週を週の終わりの時点で集計し直す。自身のストアの失敗は投げ直す。照会は27行を読み、最新の行が確定済みなら新しい26週に切る(行で数え、暦の週で数えない)。`ModerationIncidentReporter`は措置の群と共有する。7.6の束縛には`AdminUserDirectory`・`AdminProductDirectory`・`MatchDirectory`・`PaymentRevenueReport`・`WeeklyStatisticsStore`・`ModerationIncidentReporter`の解決が要り、`apps/api/test/config/year-tournament-scheduled-jobs.unit.test.ts`の4:21の前後のジョブの期待値も直す。7.8への申し送り: 月曜日の実行が失敗すると前週の未確定の行が最新になり「集計中」と表示される(値は未確定なので誤りではない)
+- 4.6: `MODERATION_MODULE`に措置の群の13の識別子を束縛し、保守のジョブ(4:21・1910)を`SCHEDULED_JOBS`とsearchの2つのテストのジョブの一覧に加え、上流の`year-tournament-scheduled-jobs.unit.test.ts`の前後のジョブの期待値を1910へ直した。スキーマモジュール`apps/api/src/presentation/graphql/modules/moderation/`(`type-defs.ts`・`inputs.ts`・`errors.ts`・`resolver-support.ts`・空のリゾルバの表`user-`・`product-`・`engagement-`・`image-resolvers.ts`)を`graphql-modules.ts`の末尾に登録した。8つの照会と13の操作のルートのフィールドは`type-defs.ts`に宣言済みで、4.7・4.8はリゾルバの表だけを埋める(それまでは非nullのエラー。管理者側の許可リストにまだ載らないため利用者には届かない)。`resolver-support.ts`は`adminOnly`・`toModerationConnection`(`null`と`undefined`を続き無しとする)・`moderationOperatorOf(context, minimum)`・`clockOf`。`inputs.ts`はGraphQLの列挙と上流の値の写像の表(`ADMIN_USER_STATUSES`・`QUARANTINE_REASONS`など)を公開する。入力の検証の規則は実装者が決めた: 検索語は前後の空白を除いて100書記素、メールは254文字、空白だけは未指定、期間は`postedFrom < postedBefore`(`postedBefore`は排他的な境界のため、画面は終了日の翌日を渡す)、理由は上限だけを検証して生の入力を渡す、カーソルは検証せず上流の`invalid_cursor`に任せる、カテゴリIDの形式違反はproduct-launchの`category_not_found`の文言。`errors.ts`は`quarantine_not_applicable`→`image_not_found`、上流の文言のままの`account_state_conflict`を本specの文言へ写す。4.5・3.6のWorkersテストはコンテナから解決する形へ直した。設計のSDLの`AdminComment`にはローンチの回の番号が無く、管理画面の「ローンチ(第◯回)」の表示は4.8か6.6で決める
+- 8.3: SQLの組み立て`e2e/support/moderation-fixture-sql.ts`(bun:sqliteに実際のマイグレーションを適用する単体テストつき)、実行`moderation-fixtures.ts`の`createModerationTargets`(`createListedProducts({ count: 1 })`の掲載中のプロダクトと確認済みの投稿者、他の利用者のトップレベルのコメント1件、評価(既定は5と1の2件))と`readModerationTargetsState`(投稿者の状態・プロダクトとコメントの非公開の有無・有効な評価の件数と平均)。補助を順に呼ぶ空のE2Eは`e2e/admin/engagement-moderation.e2e.test.ts`の`describe('UGC管理の補助')`に残した(8.5が同じファイルに場面を足し、この区画を残すか決める)。対象の投稿者はパスワードが使えずログインできないため、8.6のログインの確認は`mailpit.ts`で画面から登録した利用者を使う。レビューの指摘でコメントの投稿者のニックネームを25書記素以内(「E2Eモデレーションの投稿者<接尾辞>」)に直した
+- 4.7: `user-resolvers.ts`(`adminUsers`は閲覧のみ以上、`suspendUser`・`unsuspendUser`はモデレーター以上、`withdrawUserByAdministrator`は最上位管理者だけ。`adminOnly`→`withValidatedArgs`→`requireAdmin`の順で、管理者側の呼び出しでは入力の検証がロールの確認より先)。上流の値→GraphQLの列挙の逆写像と`AdminMediaFile`(`path`は`downloadPathOf(fileId)`)の写像を`user-resolvers.ts`の中に持つ(4.8と重複すれば後で共有へ移す)。`toModerationConnection`の`nodes`が読み取り専用で生成型と合わないため`[...nodes]`で写した。`{ changed: true, actionId: null }`は`{ changed: true }`になる。代理の退会の理由の欠けは`withInputPath('input', …)`で`input.reason`。テストの補助`apps/api/test/support/moderation-user-graphql-operations.ts`(競合は上流の実装を包んで起こす`conflictAccountTransitions()`)
+- 4.8: `product-resolvers.ts`・`engagement-resolvers.ts`・`image-resolvers.ts`(7つの照会は閲覧のみ以上、10の操作はモデレーター以上)と共有の写像`content-views.ts`(`toAdminMediaFile`・`AdminUserSummary`・`ModerationNote`・列挙の逆写像・`toConnectionResult`)。設計との相違: 要件9.1とページ配置の「ローンチ(第◯回)」のため、SDLの`AdminComment`に`launchNumber: Int`(取り消したローンチは0、読めなければnull)を加え、4.3の`AdminCommentReader.list`が`now`を取り`ProductDirectory.listLaunches`をページで1回呼ぶようにした(design.mdのSDLと照会の表に無い)。`AdminLaunch.status`・`AdminMatchResult.kind`・`stage`・`result`の文字列のフィールドは上流の生の値(`won`・`qualifier`など)、`latestLaunchState`などの列挙は列挙名(`WON`)を返すため、6.5の画面は両方の形を扱う。4.7の`user-resolvers.ts`の写像と`content-views.ts`は重複しており、まとめる余地がある(`toModerationConnection`の`nodes`が読み取り専用で生成型と合わない件も共有の部品で直す余地がある)。テストの補助`apps/api/test/support/moderation-content-graphql-operations.ts`(時計は2026-11-25に固定、メッセージの発行を記録し指定の種類で失敗させられる)
+- 8.1: `apps/api/src/composition/moderation-module.cascade.worker.test.ts`(8件)。ローンチの取り消しはapi側の同期の処理(停止は`product-launch.launch-cancellation`、非公開化はプロダクトのライフサイクルの確定の文)で本物が動く。画像の隔離はevent側の処理(`OwnedImageQuarantineHandler`・`ProductImageQuarantineHandler`)が`apps/event`にあり読めないため、`MessagePublisher`を記録する実装に差し替え、発行されたライフサイクルのイベントをD1から読み直し、上流と同じ分岐で共有の`MediaQuarantine`(`addReasonForOwner`・`removeReasonForOwner`・`addReason`・`removeReason`)を呼ぶ。分岐はテストへの写しのため、event側の処理の変更はこのテストでは検知できない(構造上の制約)
+- 6.1: 21の操作(`apps/admin/src/graphql/operations/moderation/`)と5つの断片(`fragments/moderation/`)。生成物を読む変換の4ファイル(`admin-moderation-users.ts`・`-products.ts`・`-engagement.ts`・`admin-quarantined-images.ts`)と、生成物を読まない共通の変換`admin-moderation-shared.ts`(設計に無い。`toModerationPage`・`toAdminMediaFile`・`toModerationNote`・`toAdminUserSummary`・`moderationActionOptions`)。画面の型は列挙を上流の値(小文字、`moderation-labels.ts`で表示名にできる形)へ写し、ローンチの`status`は`state`に改名して`ADMIN_LAUNCH_STATES`で絞る(未知はnull)。マッチの`kind`・`stage`・`result`と画像の保有者の`kind`は生の文字列のまま。6.2以降への申し送り: 一覧のloaderの依存は上流の値の引数の型(`AdminModeration*ListArgs`、件数は`ADMIN_LIST_PAGE_SIZE`)で、検索パラメータからこの型を作る。措置は各ファイルの`*ModerationActionOptions(action)`(引数は共有定義の`ModerationAction`、`mutationFn({ variables: { targetId, reason } })`が`{ changed }`を返す)、無効化は`invalidateAdminModeration{User,Product,Engagement}Queries`・`invalidateAdminQuarantinedImageQueries`。プロダクトの一覧のloaderはカテゴリの選択肢の失敗も握る(問い合わせの前例と相違。6.4は絞り込みの中で失敗を示す)。詳細のloaderはnullとIDの形式の誤りで`notFound()`し、評価の一覧の最初のページも先に読む。評価と隔離画像は無限の照会。テストの補助`apps/admin/test/moderation-graphql-api.ts`。許可リストは管理者側に21件だけ
+- 7.6: `MODERATION_MODULE`に統計の3つを束縛し、集計のジョブ(4:21・1900)を保守のジョブ(1910)の直前に登録した(4:21は1700→1900→1910→2300)。`adminWeeklyStatistics`(閲覧のみ以上、引数なし)は`presentation/graphql/modules/moderation/statistics-resolvers.ts`。`netRevenue`はpaymentsのスキーマモジュールが宣言する共有の`Money`(`currency`は`usd`)を使うため、措置の群のスキーマモジュールだけではスキーマが組めない。4.7・4.8のテストの補助のゲートウェイに`paymentsSchemaModule`を加えた(本番の合成はpaymentsを含むので影響なし)。SDLの説明文は実装者が書いた。統計の操作は許可リストにまだ無く7.7が加える
+- 7.11: 技術文書`docs/GUIDES/tech/db/008-weekly-aggregate-snapshots.md`(本プロジェクト固有の値を含めない)と索引3つ(db/README・tech/README・ルートのREADME)、`project-values.md`の「## UGC管理」>「### 週ごとの統計」と定期実行(1900)・ダッシュボードのカードの行(7.8の登録を見越して統計のカード(10・全幅)を含む2件で書いた。7.8の後に一致を確かめる)。前例どおり親がCLAUDE.mdの「技術規則の参照先」にdb/008の行を、ディレクトリ構成のdb行に「週ごとの集計のスナップショット」を加えた。8.2は措置の群の値を「## UGC管理」の直下(統計の小見出しの前)に加える。実装者の判断で書いた推奨: 論理削除から物理削除までの猶予を集計の間隔(1日)より長くする(他の機能の物理削除の猶予との関係は未確認)、`excluded`の列を`sql.raw`で書く理由、ジョブが起動しない停止は通知されないこと。7.5の「上流の照会は6回」は前週が確定済みの日は4回
+- 6.2: 共通部品`apps/admin/src/components/moderation/`(`shared/moderation-search.ts`・`moderation-messages.ts`・`moderation-operations.ts`・`use-moderation-mutation.ts`・`moderation-action-dialog.tsx`・`admin-media-image.tsx`・`moderation-note.tsx`、`media/quarantine-image-button.tsx`、`ratings/rating-moderation-actions.tsx`)とテストの補助`apps/admin/test/moderation-fixtures.ts`・`moderation-render.tsx`。部品の名前は設計のファイル構成に従った(タスクの文の`ModerationConfirmDialog`・`SameOriginImage`は`ModerationActionDialog`・`AdminMediaImage`)。設計に無い`moderation-operations.ts`は公開拒否`image.reject`を`image.delete`で行う。レビューの指摘で読み上げの名前を「<対象>の<見えている文言>」の形にそろえ(WCAG 2.5.3)、全ての種類の名前が見えている文言を含むことを単体テストで確かめ、文言規則(003)の名前の例・信頼度の切り捨て・代理の退会の「既に退会済みです。」・2.5.3の規則を書き足した。6.3〜6.7への申し送り: 検索パラメータから一覧の引数を作る`*ListArgsOf(search)`(コメントは閲覧者のタイムゾーンが要る`commentModerationListArgsOf(search, timeZone)`、`load-audit-logs-page.ts`の`periodTimeZoneOf`と同じ選び方の包みが要る。プロダクトは`category`を`categoryId`へ)。長すぎる検索語は100書記素に切り詰める。画像の`reason`は`auto`を既定にしURLに出さない。空の任意の理由は`''`で送る(APIがnullにする)。措置の後は影響する一覧を全て無効化してからトーストを出す。検索語の上限100は管理者側に写した(common-libへ移す余地あり)。ブラウザのカバレッジの閾値は`moderation-search.ts`・`moderation-messages.ts`をページが読み込む6.3〜6.7まで下回る。隔離画像のローカルの表示の確認は6.7で行う
+- 7.7: 操作`apps/admin/src/graphql/operations/moderation/weekly-statistics.graphql`と変換`admin-weekly-statistics.ts`(`adminWeeklyStatisticsQueryOptions`・`toAdminWeeklyStatistics`、画面の型`AdminWeeklyStatisticsView`・`AdminStatisticsWeekView`)。週はAPIのとおり古い順で、並べ替え・切り詰めをしない。金額は`{ amount: MinorUnitAmount, currency: string }`のまま渡す(7.8が書式を決める)。カードは部品の中で`useQuery`するためloaderと無効化の関数は作らない(前例`UnhandledInquiriesCard`)。「集計中」と前週の有無の判定は7.8の`StatisticsSeries`。許可リストは管理者側に1件
+- 8.2: 技術文書`backend/021-cross-aggregate-admin-action-records.md`(参加の値と参加者の登録口、記録→監査ログ→参加者の文の順、G1の「状態と呼び出し側の文を確定してから外部へ依頼する」操作口の形。部品の名前は一般化し、本プロジェクトの名前との対応は`project-values.md`の表)と`frontend/020-admin-search-and-moderation-actions.md`、各README・索引、CLAUDE.mdの参照先(021と020の2行)とディレクトリ構成、`infra/004`の定型の通知の3つの理由の行(指紋は`['<ドメイン>', <理由>]`)、`project-values.md`の「## UGC管理」に措置の群の値(定期実行1910・ライフサイクルの登録・メール種別・監査ログの操作種別・識別子・上限・ログのカテゴリ)を加えた。003は親の指示で編集していない(6.2の修正で更新済み)。6.9のメニューの登録の後に、`project-values.md`の「管理者のアカウント」の「メニューの登録箇所」の行(現在10件)を15件に直す
+- 7.8: 統計のカード(`apps/admin/src/components/moderation/statistics/`: `statistics-series.ts`・`statistics-messages.ts`・`statistics-value-text.tsx`・`weekly-statistics-table.tsx`・`weekly-statistics-card.tsx`)を`DASHBOARD_CARDS`に`{ id: 'ugc-moderation.weekly-statistics', order: 10, width: 'full' }`で登録し、上流の`unhandled-inquiries-card.browser.test.tsx`の全件一致の期待値を2件に直した。設計との相違: (1)金額は共有の`MoneyText`(小数点以下を常に出す)を使わず`StatisticsValueText`(`trailingZeroDisplay: 'stripIfInteger'`、増減0は「±」)にした(デザイン原則の「小数点以下が全て0なら省略」と7.1の文言のため。共有部品を変えると他の画面の`$15.00`の期待値が変わる)。(2)文言は統計の群が措置の群に依存しないよう`statistics-messages.ts`に置いた(設計は共有の文言のファイル)。直近の確定した週は`finalized`の最新の行、前週は7日前に始まる行。表は`AdminDataTable`。カードの状態の組み立てを`UnhandledInquiriesCard`から写した(共通化の余地)。fixtureは`test/moderation-statistics-fixtures.ts`(`respondWeeklyStatistics`、7.9・7.10で使える)。`lastComputedAt`は文言が無いため表示しない。ローカルでapiとadminを起動し、4:21のジョブの後にダッシュボードの先頭に全幅で表示されることを確かめた。7.9はグラフをカードの直近の値の区画と表の間に置く
+- 6.3: ユーザーのページ(`routes/_authenticated/users/index.tsx`・`components/pages/users-page.tsx`・`components/moderation/users/{user-filters,user-table,user-status-cell,user-moderation-actions}.tsx`、テストは`users-page.browser.test.tsx`と`users-page-filters.browser.test.tsx`、補助は`test/moderation-users-fixtures.tsx`・`test/moderation-users-page.ts`)。6.1の`loadAdminModerationUsersPage`に`cause`を加え`cause !== 'stay'`のときだけ待つ(6.4はルートの中のloaderで扱い、形が分かれている)。設計・ページ配置との相違: 公開中のプロフィール画像も同一オリジンの配信経路(`AdminMediaImage`)で表示する(`AdminAvatar`に要る画像の配信の情報がGraphQLに無い。50件の一覧で原本を読む性能の懸念あり)。隔離中の画像に「隔離中」のバッジを付ける(003の隔離中の印は「隔離中」と隔離理由の組)。6.4のレビューの指摘をそろえ、ページ送りで見出しへフォーカスを移しルーターの`onRendered`の後にもう一度スクロールする形と、上限を超える検索語(ハンドル・ニックネーム)のエラーを加えた(メールは`maxLength=254`で対象外)。014の「上限に近づいたら文字数を示す」は6.3・6.4とも未実装。6.8は`user-table.tsx`の`actionsOf`に代理の退会の操作を加える
+- 6.4: プロダクトの一覧(`routes/_authenticated/products/index.tsx`・`components/pages/products-page.tsx`・`components/moderation/products/product-filters.tsx`・`product-table.tsx`、テストは`products-page.browser.test.tsx`と800行の制限のため分けた`products-page-input.browser.test.tsx`、fixtureは`test/moderation-products-fixtures.ts`)。`cause !== 'stay'`の扱いはルートの中のloader(6.3は変換のファイルのloaderの関数に`cause`を加えた。形が分かれている)。カテゴリの選択肢の失敗は絞り込みの中に`PartialErrorState`。レビューの指摘で、ページ送りで実際に移動するときだけ先にinertの外の一覧の見出しへフォーカスを移し区画をスクロールし(ルーターの`onRendered`でもう一度)、上限(100書記素)を超える検索語は適用せず欄の下にエラー(`MODERATION_SEARCH_TERM_TOO_LONG_MESSAGE`)を示すようにした(014・004)。ロゴは`alt=""`で隔離中のバッジを付ける。件数の読み上げは件数の欄が無いため対象外
+- 6.5: プロダクトの詳細(`routes/_authenticated/products/$productId.tsx`・`components/pages/product-detail-page.tsx`・`product-not-found-page.tsx`・`components/moderation/products/{product-detail-view,product-visibility-actions,product-images-panel,product-ratings-panel,product-launches-panel,admin-product-detail-sections-view}.tsx`・`match-result-labels.ts`・`use-appended-row-focus.ts`)と区画の登録口`composition/admin-product-detail-sections.ts`(`{ id, order, title, component }`、区画ごとに`RecoverableSlot`)。設計との相違: ルートに`notFoundComponent`を加えた(ページ配置の「見つからない旨と一覧への導線」のため)。レビューの指摘で「さらに読み込む」を`follow-list`の形(`aria-disabled`・`aria-busy`、加えた最初の行へフォーカス、続きと取り直しの失敗で行を残す)にした。マッチの「予定」「マッチ中」「両者敗北」は推定でなく正確にするため、親の決定でSDLの`AdminMatchResult`に`phase: String!`・`decision: String`を加え(design.mdのSDLと照会の表に無い相違)、4.2の照会・`content-views.ts`・`product.graphql`・adminの変換に通した(`scheduled`→予定、`live`・`tallying`→マッチ中、`lost`かつ`no_votes`・`both_forfeited`→両者敗北)。共有の`moderation-messages.ts`に`PRODUCT_NOT_FOUND_MESSAGE`・`productLogoAlt`・`productScreenshotAlt`・`NEW_TAB_NOTICE`を追記(6.4のコミットに含まれた)。説明文はマークダウンの表示部品で描く(`##`が区画のh3の後のh2になるが利用者側と同じ構成)
+- 6.6: コメントと評価のページ(`routes/_authenticated/comments/index.tsx`・`ratings/index.tsx`、`components/pages/comments-page.tsx`・`ratings-page.tsx`、`components/moderation/comments/`(`load-comments-page.ts`は閲覧者のタイムゾーンを選ぶ包み)・`ratings/rating-filters.tsx`・`rating-table.tsx`)。6.1のloaderに`cause`を加えた(6.3と同じ形)。評価の操作に任意の`returnFocusRef`を追加。ページ送りと絞り込みは`resetScroll: false`で移動し、移動の前に見出しへフォーカスと区画のスクロールを行う(ルーターは`resetScroll: false`では描画の後に先頭へ戻さないため`onRendered`のやり直しは不要。6.3・6.4の`beforePageMove`の形と異なり、014にこの形の記述が無い)。文言規則に無い文言: コメントのローンチの列の「取消」(0)・「—」(null)、読めないプロダクトの「—」、投稿日の期間の誤りは監査ログの`checkAuditPeriodInput`の文言を流用。状態の選択肢は003の表示名の順。ルートの生成物`routeTree.gen.ts`(6.3〜6.6のルート)をこのコミットに含めた
+- 6.8: 代理の退会の操作(`components/moderation/users/administrative-withdrawal-action.tsx`(行のボタン、`RoleGate minimum="super_admin"`)・`administrative-withdrawal-dialog.tsx`(表に1つ置く確認のダイアログ))を`user-table.tsx`の`actionsOf`に加えた。設計との相違: タスクの文の1つの部品を、ボタンと表の単位のダイアログに分けた(成功で行が消えてもダイアログが消えず、フォーカスが`<body>`へ落ちないため。前例`admins/admin-list.tsx`)。成功で一覧の見出しへ、取り消しで押したボタンへフォーカス。テストは800行の制限で`users-page-withdrawal.browser.test.tsx`に置いた。ローカルで最上位管理者には全行に操作が出て、モデレーターには出ないことを確かめた。文書とコードの相違(6.2〜6.8に共通): 002・003は`*_not_found`の失敗で「ダイアログに文言を示し一覧を取り直す」と書くが、`useModerationMutation`は成功のときだけ照会を無効化し、失敗では取り直さない(停止などのダイアログは行の中にあるため、無効化すると文言ごとダイアログが消える。直すにはダイアログを表の単位へ移す形と合わせる必要がある)
+- 7.9: recharts 3.10.1(3.11.0は公開から2週間未満のため除外)とpeerの`react-is` 19.3.1をadminに完全固定で加え、`PREBUNDLED_DEPENDENCIES`に`recharts`を加えた。グラフ(`weekly-statistics-chart.tsx`: `aria-hidden`→`ClientOnly`→`CatchBoundary`→`Suspense`→`React.lazy`、`weekly-statistics-line-charts.tsx`がRechartsを読む唯一の部品、読み込みは`load-weekly-statistics-line-charts.ts`、枠の大きさは`weekly-statistics-chart-layout.ts`、軸の書式は`statistics-chart-values.ts`)をカードの直近の値と表の間に置いた。`accessibilityLayer={false}`(Recharts 3の`role="application"`のフォーカスできる要素を出さないため)・`isAnimationActive={false}`・ツールチップなし。色は`var(--primary)`・`var(--muted-foreground)`・`var(--border)`を属性で渡す。実装者の追加: 読み込み・描画の失敗は空の枠を残して`reportUnexpectedErrorInBrowser`で報告する(親が006の「統計のグラフ」に1行加えた)。ビルドでRechartsは`weekly-statistics-line-charts-*.js`だけにありダッシュボードのチャンクに含まれない。ローカルで5つのグラフの表示を確かめた
+- 6.7: 画像モデレーションのページ(`routes/_authenticated/media-moderation/index.tsx`・`components/pages/media-moderation-page.tsx`・`components/moderation/media/{quarantine-reason-tabs,quarantined-image-list,quarantined-image-card,image-moderation-actions}.tsx`・`quarantined-image-view.ts`(理由ごとの操作と保有者の表示)・`use-appended-image-focus.ts`(6.5の`use-appended-row-focus.ts`とほぼ同じで共通化の余地))。6.1のloaderに`cause`を加えた。タブの切り替えは`resetScroll: false`で前の一覧を`inert`で残す。自動判定と管理者操作の両方を持つ画像は4つの操作。最初の取得の失敗は`PartialErrorState`(設計は`ErrorState`、006に従った)。削除済みの管理者の保有者は「表示できない利用者」(003に規定なし)。画像は`alt=""`。ローカルで隔離画像が配信経路から読み込まれ表示されることを確かめた(6.2の申し送り)。確認に使った試験用の行はローカルD1から親が削除した。ローカルR2の隔離のバケットのオブジェクト`fedcba9876543210f0e1d2c3b4a59687`の削除は許可で拒否されたため残っている
+- 7.10: `e2e/admin/weekly-statistics.e2e.test.ts`(手順`weekly-statistics-steps.ts`)。`triggerScheduled({ worker: 'api', businessDate, businessTime: '04:21' })`→モデレーターの`signInAsNewAdmin`→ダッシュボードの統計のカードの表に今週の行がちょうど1つ・`time[datetime=weekStart]`・「集計中」を確かめる。文言は`statistics-messages.ts`から読む。ローカルでapi(`--test-scheduled`)・event・adminを起動して成功した。既知の制約: ローカルD1に今週より後の週の未確定の行(将来の業務日付で4:21を動かした場合)があると`listRecent`が今週の行を返さず落ちる
+- 6.9: `apps/admin/src/composition/admin-navigation.ts`の`ADMIN_NAV_ITEMS`にユーザー(20)・プロダクト(30)・コメント(40)・評価(50)・画像モデレーション(60)を加えた(全ロールが参照できるため必要なロールは持たせない)。全件一致で確かめる上流のテスト2つに加え、`apps/admin/test/admin-shell.browser.test.tsx`の`MENU_ITEMS`も更新した。`project-values.md`の「メニューの登録箇所」の行を15件に直した。admin全体の`test:browser`(82ファイル1121件)が成功し、ローカルで閲覧のみの管理者が5ページへメニューから移動できることを確かめた
+- 8.6: `e2e/admin/administrative-withdrawal.e2e.test.ts`(手順`administrative-withdrawal-steps.ts`)。最上位管理者が画面から登録した利用者をメールアドレスで検索して代理の退会→別の文脈でログインできない→監査ログに1行→退会の確定から20秒間その利用者にメールが1通も届かない(退会の完了のメール種別は存在しないため「何も届かない」で確かめる。登録の確認メールの到着を先に待つ)。モデレーターには「停止」はあるが「代理の退会」が無い。8.4の`user-moderation-steps.ts`と似た補助(行の取り方・監査ログの行)を自分のファイルに持つ(まとめる余地あり)
+- 8.5: `e2e/admin/engagement-moderation.e2e.test.ts`(手順`engagement-moderation-steps.ts`): 補助のコメントの非公開化で利用者側に「このコメントは削除されました。」、評価(5と1)の1の無効化で平均が3.0(2件)→5.0(1件)。`e2e/admin/media-moderation.e2e.test.ts`(手順`media-moderation-steps.ts`): 利用者が画面から99×99のプロフィール画像を登録→代替の判定で隔離→自動判定のタブで原本が読み込まれる(幅99)→公開承認で一覧から消える。8.3の空の`describe('UGC管理の補助')`は場面が同じ確認を含むため削除した。管理画面はメニューでなく`page.goto`(検索パラメータ付き)で開く。ハイドレーション前の押下をダイアログが開くまで押し直す処理が手順のファイルに重複している(まとめる余地あり)
+- 8.4: `e2e/admin/user-moderation.e2e.test.ts`・`product-moderation.e2e.test.ts`(手順`user-moderation-steps.ts`・`product-moderation-steps.ts`)。停止(ハンドルで検索)→ディレクトリから消え利用者側の詳細が404→停止のメール→監査ログ「ユーザーの停止」→停止解除で戻る、プロダクトの非公開化→他者に404→メール→復元で戻る。E2Eで見つかった2つの問題を親の決定で根本から直した: (1)E2Eの補助`directory-fixture-sql.ts`の`planListedProducts`と`moderation-fixture-sql.ts`の`fixtureUserOf`が仮名化IDをULIDの形で作り、監査ログ(UUIDを要求)が利用者の措置を拒否していたため、本番と同じUUIDで作るようにした(`ModerationProduct`に所有者の仮名化ID・ニックネーム・ローンチの日付も加えた。週・年のトーナメントの補助はULIDのまま)。(2)措置の後に監査ログの照会が無効化されず`staleTime`の30秒は古い一覧が出たため、`use-moderation-mutation.ts`が状態を変えた(`changed`)ときだけ`invalidateAuditLogQueries`(`apps/admin/src/graphql/admin-audit-logs.ts`)も呼ぶようにし、`frontend/020`に書き足した(監査ログを残す他の管理操作は今も無効化しない)。レビューの指摘でルートの型検査の誤りを親が直した(乱数の仮名化IDを印に置き換えて比べる)
+- 8.7: `bun run check`・全アプリのunit・browser・worker(カバレッジ付き)・措置と統計のE2E 7件が成功した(clientのブラウザテストは既知のCDPの切断で毎回別のファイルが落ち、単独では全て成功。本specはclientを変えていない)。本specが変えた実装の169ファイルは行・関数とも80%以上。カバレッジの閾値のための修正: (1)`resolver-support.unit.test.ts`が`admin-guard.ts`を一部だけ読みapiの単体の閾値を落としたため、Workers統合テスト`resolver-support.worker.test.ts`へ移した(前例`admin-guard.worker.test.ts`)。(2)`errors.ts`のGraphQLの経路から到達しない分岐でWorkersの閾値を下回ったため、`testing/001`の「計測対象の指定」の仕組みを`apps/api/vitest.worker.config.ts`の`src/presentation`へ適用した(兄弟の単体テストのあるファイル21件をWorkersのカバレッジから外す。他の機能の18件も単体の閾値を満たす)。実装の記録をresearch.mdの末尾に書いた。roadmapの帯の使用中の値は既に一致。4:21の所要時間はローカルの小さなデータで統計11ミリ秒・保守3ミリ秒(本番の規模は未計測)
+- 機能全体の検証(2026-11-20、`kiro-validate-impl`): GO。全アプリのunit・worker・browser(clientの既知のCDPの切断による1ファイルの失敗は単独で成功、本specはclientを変えていない)・`bun run check`・apiのスモーク・adminのビルドが成功し、ローカルで4:21の`ugc-moderation.weekly-statistics`・`ugc-moderation.maintenance`が成功した。要件152件に実装とテストがある。部分対応: 2.1(ジョブが7日を超えて止まると、前週より前の終わった週は確定されず表示もされない。設計が前週と今週だけを集計する形に狭めたため)、12.8(送信の依頼の後の依頼済みへの更新だけの失敗で2回目の依頼になり得る。上流の送信の依頼に冪等のキーが無いため、Risksに記録済み)、16.2(ロールの判定は上流の`requireAdmin`に任せ、本specではWorkers統合テストで確かめる)。検証の指摘で、`{ changed: true, actionId: null }`の意味(参加者の文も確定していない)をugc-moderationとcontent-reportingの設計に書き、content-reportingの設計の「登録の無い種類は`AppError(internal)`」を実装どおり通常の`Error`に直し、サービス仕様の`*_not_found`の後の一覧の扱いと同一オリジンの画像の表示を実装に合わせ、実装時に加えた上流への影響を設計の表に記録し、マッチの値の写しの照合を加えた(eddeeec9)。content-reportingは実装の前にこの改訂を前提にする
+- 検証の後の修正(2026-11-20、開発者の決定に基づく): (1)要件2.1をコードで満たした(1ec902aa)。`weeksToCompute(now, finishedWeeks)`が表示の範囲(26週)の中で確定していない・行の無い終わった週を全て返し、ジョブが確定した週の開始日をストアの`findFinalizedWeekStarts(from)`で読んで全て集計する。upsertはD1のバインド変数の上限に合わせて8行ずつの文に分け1回の`db.batch()`で書く。上の7.3(`weeksToCompute`は前週と今週)・7.4(同じ週を2行渡さない1文のupsert)・7.5(上流の照会は6回、止まった週は確定されない)の記述はこの修正の前のもの。(2)要件12.8をメール基盤の冪等のキーで解消した(2f745844)。送信の要求に任意の`idempotencyKey`を加え、同じ種別で同じキーの送信済みの記録(`email_send_records`の`(kind, idempotency_key)`の一意索引、マイグレーション`20261120110505_email_idempotency`)があれば送らない。措置の通知は措置の記録のIDをキーにする。残る例外は同じキーの同時の処理と、依頼済みへの更新の失敗が14日以上続く場合(external/001・Risksに記載)。(3)要件16.2を単体テストで確かめた(d2f2f038)。`resolver-support.unit.test.ts`と`admin-guard.unit.test.ts`を置き、Workers統合テストも残した(上の8.7の(1)で単体テストをWorkersへ移した後、両方が併存する形になった)。2ファイルは`listUnitTestedSources`でWorkersのカバレッジから外れ単体で100%。(4)措置が対象の不在(本specの5つのコードだけで判定)で失敗したら影響する一覧を取り直す(405ee4dc)。行の確認のダイアログは表の側の`ModerationDialogHost`に置き、行が消えても外れない。詳細のページでは取り直しをダイアログを閉じるまで(閉じずに外れた時は外れるまで)遅らせ、プロダクトが消えれば`notFound()`を投げずに不在の表示に替えて不在の区画(名前付きの領域)へフォーカスを移す(指示した見出しでなく領域へ移すのは、共用の`EmptyState`の見出しがrefを受けないため。004の名前付きの領域に当たる)。002・003の`*_not_found`の行は当初の文言に戻した。(5)公開中の画像を変換配信で表示する(9ba9e092)。`AdminMediaFile.image: MediaImage!`(隔離中・削除待ち・保存未完了は`objectKey`がnull)を返し、`AdminMediaImage`は隔離理由が無く`objectKey`のある画像を`MediaPicture`で、他を同一オリジンの中継で表示する。002の3行を当初の文言に戻し、ユーザー一覧の行には実装どおり「隔離中」の印を書き足した。プロダクトのフラグメントはGraphQLの入れ子の深さの上限(8)のためロゴの項目を直接選ぶ。(6)監査ログを残す管理画面の全ての操作で、成功の後に監査ログの照会を無効にする(2733810d、tech/frontend/009に規則、上流の8つのspecのdesign.mdにも記載)。法定文書・プロフィールの編集・認証系は監査ログを残さないため対象外、`user.email-search`は照会のため無効にしない。(7)停止のメールにCheckout Sessionの失効を書かない(開発者の決定、research.mdのResearch Neededに記録)
+- content-reportingの後の修正(2026-11-22、開発者の依頼): `ModerationDialogHost`は対象の不在の失敗の後に閉じた時、開いた元の操作が残っていてもその操作へ戻さず一覧の見出しへ移していた(`frontend/020`と違う)。取り直しを閉じるまで遅らせた時(`deferTargetMissingRefresh`)だけ見出しへ移し、それ以外は開いた元の操作が残っていればそこへ戻すよう直した(content-reportingの`ReportCaseDialogHost`と同じ形)。`frontend/020`に失敗の後の移り先を明記した
+- content-reportingの後の改善(2026-11-22、開発者の依頼): 保持期間の境界(UTCの暦で年数を引いた同じ時刻、2月29日は月末へ寄せる)の計算を共通の`apps/backend-lib/core/time/utc-calendar.ts`の`utcYearsBefore`へ移した。`moderationRecordRetentionCutoff`はそれを呼ぶだけになり、振る舞いは変わらない

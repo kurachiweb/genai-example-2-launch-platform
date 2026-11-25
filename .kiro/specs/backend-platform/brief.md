@@ -81,5 +81,5 @@ APIサーバー(`apps/api`)とイベントサーバー(`apps/event`)には、全
   - Drizzle v1は正式版が出ておらずRCのまま。drizzle-ormとdrizzle-kitを同じRC版で完全固定し、CIで`wrangler d1 migrations list --local`による検出確認を行う
   - ulidxはメンテナンス縮小の計画がある(`ulid@3`への移行を候補として開発者に確認する)
   - Workers Cacheを有効にするとService Bindings経由の呼び出しも課金対象になるため、APIのWorkerでは無効にする
-- 要件の論点: FR-RLMIT-009の「Worker毎にIP単位で10秒100回」はStripe Webhookのバースト送信やNAT配下からの画像閲覧にも及ぶため、除外条件を要件フェーズで開発者に確認する
+- 要件の論点: FR-RLMIT-009の「Worker毎にIP単位で10秒500回」はStripe Webhookのバースト送信やNAT配下からの画像閲覧にも及ぶため、除外条件を要件フェーズで開発者に確認する
 - 新規パッケージ(`reflect-metadata`など)は候補を挙げて開発者に質問し、tech-stack.mdへ記載する

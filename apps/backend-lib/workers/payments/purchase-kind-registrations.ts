@@ -1,7 +1,10 @@
+import { SPONSORSHIP_PURCHASE_KIND_REGISTRATION } from '../sponsorship/sponsorship-registrations.ts';
 import {
   ULTRAS_PURCHASE_KIND_REGISTRATION,
   ULTRAS_SUBSCRIPTION_EVENT_SINK_REGISTRATION,
 } from '../ultras/ultras-registrations.ts';
+import { WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION } from '../week-tournament/week-tournament-registrations.ts';
+import { YEAR_TOURNAMENT_PURCHASE_KIND_REGISTRATION } from '../year-tournament/year-tournament-registrations.ts';
 import type {
   PurchaseKindRegistration,
   SubscriptionEventSinkRegistration,
@@ -13,6 +16,9 @@ export const PURCHASE_KIND_REGISTRATIONS: readonly PurchaseKindRegistration[] =
   Object.freeze([
     SMOKE_PURCHASE_REGISTRATION,
     ULTRAS_PURCHASE_KIND_REGISTRATION,
+    WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION,
+    YEAR_TOURNAMENT_PURCHASE_KIND_REGISTRATION,
+    SPONSORSHIP_PURCHASE_KIND_REGISTRATION,
   ]);
 
 // 定期課金の状態を受け取る後続specは、自分の受け取り口を<spec名>.<名詞句>の名前でここへ追記する

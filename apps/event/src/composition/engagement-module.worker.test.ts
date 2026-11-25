@@ -394,6 +394,10 @@ describe('コメントと評価の物理削除の時期の処理の登録', () =
       'match-engine.upvote-erasure',
       'notifications.account-purge',
       ACCOUNT_ERASURE_NAME,
+      'sponsorship.account-purge',
+      'content-reporting.user-report-erasure',
+      'ugc-moderation.account-record-erasure',
+      'data-export.archive-erasure',
     ]);
   });
 
@@ -419,6 +423,11 @@ describe('コメントと評価の物理削除の時期の処理の登録', () =
       'match-engine.entry-unlink',
       'directory-discovery.entry-erasure',
       PRODUCT_ERASURE_NAME,
+      'tournament-week.entry-unlink',
+      'sponsorship.product-purge',
+      'tournament-year.entry-unlink',
+      'content-reporting.product-report-erasure',
+      'ugc-moderation.product-record-erasure',
     ]);
   });
 

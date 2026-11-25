@@ -34,12 +34,13 @@ export interface ProductPageSection {
   readonly component: ComponentType<ProductPageContext>;
 }
 
-export type ProductOwnerActionContext = Omit<
-  ProductPageContext,
-  'page' | 'autoRefresh' | 'reportAutoUpdating'
->;
+// reportAutoUpdatingは操作ごとの申告で、投稿者本人向けの操作の区画がまとめてページへ申告し、操作の失敗とアンマウントで消す
+export type ProductOwnerActionContext = Omit<ProductPageContext, 'page'>;
 
-export interface ProductLaunchSectionContext extends ProductOwnerActionContext {
+export interface ProductLaunchSectionContext extends Omit<
+  ProductOwnerActionContext,
+  'autoRefresh' | 'reportAutoUpdating'
+> {
   readonly launch: {
     readonly id: string;
     // 取消を除いて古い順に1から数える回

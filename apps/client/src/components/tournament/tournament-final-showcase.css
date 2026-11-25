@@ -1,0 +1,95 @@
+/* 決勝の区画の演出。祖先にdata-auto-refresh="on"があり、視差効果を減らす設定でないときだけ動かす(属性の無いページでは既定で止まる) */
+
+/* cqh単位により紙吹雪自身ではなく演出の層の高さを基準に落とし、左右に揺らしながら下端まで届かせる */
+@keyframes tournament-final-confetti-fall {
+  0% {
+    transform: translate3d(0, -6cqh, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  25% {
+    transform: translate3d(var(--sway, 32px), 22cqh, 0) rotate(160deg);
+  }
+  50% {
+    transform: translate3d(calc(var(--sway, 32px) * -1), 50cqh, 0)
+      rotate(320deg);
+  }
+  75% {
+    transform: translate3d(var(--sway, 32px), 78cqh, 0) rotate(480deg);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 106cqh, 0) rotate(640deg);
+    opacity: 0;
+  }
+}
+
+@keyframes tournament-final-spotlight-sweep {
+  0%,
+  100% {
+    transform: rotate(-14deg);
+  }
+  50% {
+    transform: rotate(14deg);
+  }
+}
+
+@keyframes tournament-final-spotlight-sweep-reverse {
+  0%,
+  100% {
+    transform: rotate(14deg);
+  }
+  50% {
+    transform: rotate(-14deg);
+  }
+}
+
+[data-tournament-final-effects] {
+  container-type: size;
+}
+
+/* 演出が止まっている間、照明は真上を向いて留まり、宙に止まった紙吹雪は見せない */
+[data-tournament-final-spotlight] {
+  position: absolute;
+  bottom: -10%;
+  width: 22%;
+  height: 130%;
+  transform-origin: bottom center;
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, var(--gold) 45%, transparent),
+    transparent 80%
+  );
+  clip-path: polygon(42% 100%, 58% 100%, 100% 0, 0 0);
+  filter: blur(4px);
+}
+
+[data-tournament-final-confetti] {
+  position: absolute;
+  top: 0;
+  display: none;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-auto-refresh='on'] [data-tournament-final-spotlight] {
+    animation: tournament-final-spotlight-sweep 6s ease-in-out infinite;
+  }
+
+  [data-auto-refresh='on'] [data-tournament-final-spotlight='right'] {
+    animation-name: tournament-final-spotlight-sweep-reverse;
+  }
+
+  [data-auto-refresh='on'] [data-tournament-final-confetti] {
+    display: block;
+    animation: tournament-final-confetti-fall var(--fall-duration, 6s) linear
+      var(--fall-delay, 0s) infinite;
+    will-change: transform;
+  }
+}

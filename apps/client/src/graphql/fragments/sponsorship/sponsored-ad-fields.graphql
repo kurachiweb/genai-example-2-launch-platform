@@ -1,0 +1,14 @@
+fragment SponsoredAdFields on SponsoredAd {
+  id
+  tier
+  productName
+  tagline
+  logo {
+    id
+    objectKey
+    fallbackFormat
+    width
+    height
+  }
+  websiteUrl
+}

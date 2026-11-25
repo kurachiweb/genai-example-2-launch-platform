@@ -20,7 +20,21 @@ import {
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 
-vi.mock('../lib/start/graphql/execute-graphql.ts', () => ({ executeGraphQL }));
+vi.mock('../lib/start/graphql/execute-graphql.ts', async () => {
+  const { withoutWeekTournamentMatches } =
+    await import('./week-tournament-board-stub.ts');
+  const { withoutYearTournamentMatches } =
+    await import('./year-tournament-board-stub.ts');
+  const { withoutSponsoredPlacements } =
+    await import('./sponsored-placements-stub.ts');
+  return {
+    executeGraphQL: withoutSponsoredPlacements(
+      withoutYearTournamentMatches(
+        withoutWeekTournamentMatches(executeGraphQL),
+      ),
+    ),
+  };
+});
 
 vi.mock(
   '@marsidev/react-turnstile',

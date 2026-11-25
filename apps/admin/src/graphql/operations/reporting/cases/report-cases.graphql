@@ -1,0 +1,15 @@
+query AdminReportCases(
+  $filter: AdminReportCaseFilter
+  $first: Int!
+  $after: String
+) {
+  adminReportCases(filter: $filter, first: $first, after: $after) {
+    nodes {
+      ...AdminReportCaseSummary
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

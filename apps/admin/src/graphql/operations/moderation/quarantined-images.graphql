@@ -1,0 +1,19 @@
+query AdminQuarantinedImages($reason: QuarantineReason!, $after: String) {
+  adminQuarantinedImages(reason: $reason, after: $after) {
+    items {
+      file {
+        ...AdminModerationMediaFile
+      }
+      purpose
+      owner {
+        kind
+        id
+        nickname
+        handle
+      }
+      quarantinedAt
+      findings
+    }
+    nextCursor
+  }
+}

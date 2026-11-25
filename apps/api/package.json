@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "lint": "bun --bun eslint .",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.typecheck.main.json && tsc -p tsconfig.typecheck.unit.json && tsc -p tsconfig.typecheck.worker-rest.json && tsc -p tsconfig.typecheck.worker-src.json",
     "test:unit": "bun test --config=bunfig.unit.toml --pass-with-no-tests --path-ignore-patterns='common-lib/**' --path-ignore-patterns='**/*.browser.test.{ts,tsx}' --path-ignore-patterns='**/*.worker.test.{ts,tsx}' --path-ignore-patterns='**/*.e2e.test.ts' unit.test",
     "test:worker": "vitest run --config vitest.worker.config.ts",
     "dev": "wrangler dev --port 48042 --ip 0.0.0.0 --persist-to /workspace/.wrangler/state --test-scheduled",
@@ -16,6 +16,7 @@
     "db:migrate:local": "wrangler d1 migrations apply genai-example-2-dev --local --persist-to /workspace/.wrangler/state",
     "db:migrations:check": "bun ./scripts/check-migrations.ts",
     "admin:invite-super-admin": "bun ./scripts/admin/issue-super-admin-invitation.ts",
+    "readiness:synthetic-data": "bun ./scripts/readiness/synthetic-data/generate.ts",
     "test:smoke": "bun ./scripts/smoke-wrangler-bundle.ts"
   },
   "dependencies": {
@@ -32,6 +33,7 @@
     "drizzle-orm": "1.0.0-rc.5",
     "fast-xml-parser": "5.11.2",
     "fast-xml-validator": "1.4.2",
+    "fflate": "0.8.3",
     "graphql": "16.14.2",
     "graphql-yoga": "5.24.6",
     "hast-util-to-text": "4.0.2",

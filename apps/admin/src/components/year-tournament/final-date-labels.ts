@@ -1,0 +1,114 @@
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
+import type { YearFinalDateSource } from '../../graphql/generated/graphql.ts';
+
+export const FINAL_DATE_SECTION_TITLE = 'Yearトーナメントの決勝実施日';
+
+export const FINAL_DATE_SECTION_DESCRIPTION =
+  '欧州サッカーのリーグ最終節に合わせて、各年の決勝実施日(日曜日)を設定します。未設定の年は5月の最終日曜日に行います。';
+
+export const FINAL_DATE_LABEL = '決勝実施日';
+
+export const FINAL_DATE_ACCEPT_UNTIL_LABEL = '受付期限';
+
+export const FINAL_DATE_DRAW_AT_LABEL = '組み合わせ決定';
+
+export const FINAL_DATE_CHANGE_LOCK_AT_LABEL = '変更期限';
+
+export const FINAL_DATE_UPDATED_AT_LABEL = '最後に変更した日時';
+
+export const FINAL_DATE_UPDATED_BY_LABEL = '変更した管理者';
+
+export const FINAL_DATE_NONE_LABEL = 'なし';
+
+export const FINAL_DATE_SOURCE_LABELS: Readonly<
+  Record<YearFinalDateSource, string>
+> = Object.freeze({
+  EXPLICIT: '設定済み',
+  DEFAULT: '既定(5月の最終日曜日)',
+});
+
+export const FINAL_DATE_SUPER_ADMIN_ONLY_NOTICE =
+  '最上位管理者だけが変更できます。';
+
+export const FINAL_DATE_LOCKED_NOTICE =
+  '変更期限(決勝の7日前)を過ぎたため変更できません。';
+
+export const FINAL_DATE_LOCKED_MESSAGE =
+  '決勝実施日の7日前を過ぎたため変更できません。';
+
+export const FINAL_DATE_VERSION_CONFLICT_MESSAGE =
+  '他の管理者が設定を変更しました。最新の内容を読み込んでから操作してください。';
+
+export const FINAL_DATE_VIOLATION_REASONS = Object.freeze([
+  'year_not_editable',
+  'not_sunday',
+  'out_of_year',
+  'too_soon',
+  'too_far_from_previous',
+  'too_far_from_next',
+] as const);
+
+export type FinalDateViolationReason =
+  (typeof FINAL_DATE_VIOLATION_REASONS)[number];
+
+export const isFinalDateViolationReason = (
+  code: string | undefined,
+): code is FinalDateViolationReason =>
+  FINAL_DATE_VIOLATION_REASONS.some((reason) => reason === code);
+
+export interface FinalDateNeighbors {
+  readonly previousYearFinalDate: string | null;
+  readonly nextYearFinalDate: string | null;
+}
+
+export const yearLabelOf = (year: number): string => `${String(year)}年`;
+
+export const nextYearGapWarningOf = (nextYearDefaultDate: string): string =>
+  `翌年の決勝実施日が未設定のため、既定の${formatBusinessDateWithWeekdayLabel(nextYearDefaultDate)}では64週以上空きます。参加数を64以下に保つため、翌年の決勝実施日を設定してください。`;
+
+const neighborLabelOf = (date: string | null): string =>
+  date === null ? '' : formatBusinessDateWithWeekdayLabel(date);
+
+export const finalDateViolationMessageOf = (
+  reason: FinalDateViolationReason,
+  neighbors: FinalDateNeighbors,
+): string => {
+  switch (reason) {
+    case 'year_not_editable':
+      return '現在の年か翌年を選んでください。';
+    case 'not_sunday':
+      return '日曜日を選んでください。';
+    case 'out_of_year':
+      return '対象年の日付を選んでください。';
+    case 'too_soon':
+      return '現在から8日後以降の日付を選んでください。';
+    case 'too_far_from_previous':
+      return `前年の決勝実施日(${neighborLabelOf(neighbors.previousYearFinalDate)})から64週以上空く日付は選べません。`;
+    case 'too_far_from_next':
+      return `翌年の決勝実施日(${neighborLabelOf(neighbors.nextYearFinalDate)})まで64週以上空く日付は選べません。`;
+  }
+};
+
+export const FINAL_DATE_NO_CHOICES_MESSAGE = '選べる日付がありません。';
+
+export const FINAL_DATE_SUBMIT_LABEL = '保存する';
+
+export const FINAL_DATE_CONFIRM_LABEL = '保存する';
+
+export const FINAL_DATE_SAVED_MESSAGE = '決勝実施日を保存しました。';
+
+// 「<年>年の決勝実施日を<日付>に変更しますか?」の日付の前後の文言
+export const finalDateConfirmTitleOf = (
+  year: number,
+): { readonly before: string; readonly after: string } =>
+  Object.freeze({
+    before: `${yearLabelOf(year)}の決勝実施日を`,
+    after: 'に変更しますか?',
+  });
+
+// 「受付期限は<日時>、組み合わせ決定は<日時>になり、対象となるWeek優勝の期間も変わります。」の日時の前後の文言
+export const FINAL_DATE_CONFIRM_DESCRIPTION = Object.freeze({
+  beforeAcceptUntil: '受付期限は',
+  beforeDrawAt: '、組み合わせ決定は',
+  after: 'になり、対象となるWeek優勝の期間も変わります。',
+});

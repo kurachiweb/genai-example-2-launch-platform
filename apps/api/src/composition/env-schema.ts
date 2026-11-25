@@ -24,6 +24,8 @@ export interface ApiEnv extends PlatformEnv {
   readonly APP_ENVIRONMENT: AppEnvironment;
   readonly CLIENT_SITE_ORIGIN: string;
   readonly ADMIN_SITE_ORIGIN: string;
+  readonly PUBLIC_API_RATE_LIMITER: RateLimit;
+  readonly IMAGES_ORIGIN: string;
   // ローカル環境だけ省略できる。空文字は未設定として扱う
   readonly DISIFY_API_KEY?: string;
   // 未登録のローカルとCIでも起動できるよう任意にする。未設定なら決済の機能だけが縮退する
@@ -47,6 +49,8 @@ export const apiEnvSchema = z
     APP_ENVIRONMENT: z.enum(APP_ENVIRONMENTS),
     CLIENT_SITE_ORIGIN: z.string().refine(isHttpOrigin),
     ADMIN_SITE_ORIGIN: z.string().refine(isHttpOrigin),
+    PUBLIC_API_RATE_LIMITER: bindingSchema<RateLimit>(),
+    IMAGES_ORIGIN: z.string().refine(isHttpOrigin),
     DISIFY_API_KEY: z.string().optional(),
     ...paymentsApiEnvShape,
   })

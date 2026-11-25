@@ -33,6 +33,7 @@ import {
   SUPER_ADMIN_ACCOUNT,
 } from '../../../test/admin-accounts-fixtures.ts';
 import { ADMIN_NICKNAME } from '../../../test/admin-viewer-fixtures.ts';
+import { watchAuditLogQueries } from '../../../test/audit-log-queries.ts';
 import {
   createPageRouterContext,
   SERVED_IMAGES_ORIGIN,
@@ -325,7 +326,7 @@ describe('管理者の招待', () => {
     expect(invite).toHaveBeenCalledOnce();
   });
 
-  test('メールアドレスと任意の理由で招待し、監査ログに記録される旨を示し、閉じた後に一覧を取り直す', async () => {
+  test('メールアドレスと任意の理由で招待し、監査ログに記録される旨を示し、閉じた後に一覧を取り直して監査ログの照会を無効にする', async () => {
     const invite = vi.fn(() =>
       success({ inviteAdmin: { ...INVITED_ACCOUNT, email: NEW_EMAIL } }),
     );
@@ -333,7 +334,10 @@ describe('管理者の招待', () => {
       role: 'MODERATOR',
       handlers: new Map([[AdminInviteDocument, invite]]),
     });
-    await renderAccountsPage('MODERATOR');
+    const router = await renderAccountsPage('MODERATOR');
+    const auditLogsInvalidated = watchAuditLogQueries(
+      router.options.context.queryClient,
+    );
 
     await inviteButton().click();
     await expect.element(inviteDialog()).toBeVisible();
@@ -354,6 +358,7 @@ describe('管理者の招待', () => {
       .poll(() => callsOf(executeGraphQL, AdminAccountsDocument).length)
       .toBe(2);
     await expect.element(inviteButton()).toHaveFocus();
+    expect(auditLogsInvalidated()).toBe(true);
   });
 
   test('理由を空にすると理由を送らない', async () => {

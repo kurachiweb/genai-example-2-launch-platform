@@ -29,8 +29,9 @@ export interface ConfirmActionInput {
 export interface ConfirmActionDialogProps {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
-  readonly title: string;
-  readonly description: string;
+  // 題名は見出し(<h2>)、説明は段落(<p>)の中に描くため、文字列か、日時の<time>などの文中に置ける要素だけを渡す
+  readonly title: ReactNode;
+  readonly description: ReactNode;
   readonly confirmLabel: string;
   readonly reason: ConfirmActionReason;
   readonly audited: boolean;
@@ -41,6 +42,8 @@ export interface ConfirmActionDialogProps {
   readonly failureActionOf?: (error: unknown) => ReactNode;
   // 確定で開いた元の要素が消える操作(削除など)で、閉じた後のフォーカスの移り先
   readonly returnFocusRef?: RefObject<HTMLElement | null>;
+  // 確定の前に示すべき内容を読み込めていない間など、理由の他の条件で確定を止める
+  readonly confirmDisabled?: boolean;
 }
 
 interface ReasonFormInput {
@@ -71,6 +74,7 @@ interface ConfirmActionFormProps {
   readonly audited: boolean;
   readonly confirmLabel: string;
   readonly pending: boolean;
+  readonly confirmDisabled: boolean;
   readonly onSubmit: (input: ConfirmActionInput) => Promise<void>;
   readonly failureMessageOf: (error: unknown) => string;
   readonly failureActionOf: ((error: unknown) => ReactNode) | undefined;
@@ -88,6 +92,7 @@ function ConfirmActionForm({
   audited,
   confirmLabel,
   pending,
+  confirmDisabled,
   onSubmit,
   failureMessageOf,
   failureActionOf,
@@ -142,7 +147,9 @@ function ConfirmActionForm({
         >
           {CONFIRM_ACTION_CANCEL_LABEL}
         </Button>
-        <SubmitButton variant="destructive">{confirmLabel}</SubmitButton>
+        <SubmitButton variant="destructive" disabled={confirmDisabled}>
+          {confirmLabel}
+        </SubmitButton>
       </DialogFooter>
     </AppForm>
   );
@@ -160,6 +167,7 @@ export function ConfirmActionDialog({
   failureMessageOf,
   failureActionOf,
   returnFocusRef,
+  confirmDisabled = false,
 }: ConfirmActionDialogProps) {
   const [pending, setPending] = useState(false);
   // 処理中の状態は再描画の後に効くため、同じ描画の間に届いた閉じる操作もここで止める
@@ -231,6 +239,7 @@ export function ConfirmActionDialog({
           audited={audited}
           confirmLabel={confirmLabel}
           pending={pending}
+          confirmDisabled={confirmDisabled}
           onSubmit={confirm}
           failureMessageOf={failureMessageOf}
           failureActionOf={failureActionOf}

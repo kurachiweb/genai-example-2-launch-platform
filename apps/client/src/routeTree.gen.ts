@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AtChar123handleChar125RouteImport } from './routes/@{$handle}'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as ApiDocsRouteImport } from './routes/api-docs'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
@@ -32,12 +33,15 @@ import { Route as AuthenticatedCheckoutReturnRouteImport } from './routes/_authe
 import { Route as AuthenticatedInquiriesInquiryIdRouteImport } from './routes/_authenticated/inquiries/$inquiryId'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
+import { Route as AuthenticatedSettingsApiKeysRouteImport } from './routes/_authenticated/settings/api-keys'
 import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_authenticated/settings/billing'
+import { Route as AuthenticatedSettingsExportRouteImport } from './routes/_authenticated/settings/export'
 import { Route as AuthenticatedSettingsFollowsRouteImport } from './routes/_authenticated/settings/follows'
 import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
 import { Route as AuthenticatedSettingsPlanRouteImport } from './routes/_authenticated/settings/plan'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings/profile'
 import { Route as AuthenticatedSettingsSecurityRouteImport } from './routes/_authenticated/settings/security'
+import { Route as AuthenticatedSettingsSponsorshipsRouteImport } from './routes/_authenticated/settings/sponsorships'
 import { Route as AuthEmailChangeConfirmRouteImport } from './routes/auth/email-change/confirm'
 import { Route as AuthPasswordChangeConfirmRouteImport } from './routes/auth/password-change/confirm'
 import { Route as AuthPasswordResetIndexRouteImport } from './routes/auth/password-reset/index'
@@ -45,6 +49,8 @@ import { Route as AuthPasswordResetConfirmRouteImport } from './routes/auth/pass
 import { Route as LegalRevisionsVersionNumberRouteImport } from './routes/legal/revisions/$versionNumber'
 import { Route as PrivacyRevisionsVersionNumberRouteImport } from './routes/privacy/revisions/$versionNumber'
 import { Route as TermsRevisionsVersionNumberRouteImport } from './routes/terms/revisions/$versionNumber'
+import { Route as TournamentsWeekWeekRouteImport } from './routes/tournaments/week/$week'
+import { Route as TournamentsYearYearRouteImport } from './routes/tournaments/year/$year'
 import { Route as AuthenticatedMyProductsIndexRouteImport } from './routes/_authenticated/my/products/index'
 import { Route as AuthenticatedMyProductsNewRouteImport } from './routes/_authenticated/my/products/new'
 import { Route as AuthenticatedMyProductsHandleEditRouteImport } from './routes/_authenticated/my/products/$handle/edit'
@@ -61,6 +67,11 @@ const AtChar123handleChar125Route = AtChar123handleChar125RouteImport.update({
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocsRoute = ApiDocsRouteImport.update({
+  id: '/api-docs',
+  path: '/api-docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -169,10 +180,22 @@ const AuthenticatedSettingsAccountRoute =
     path: '/account',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedSettingsApiKeysRoute =
+  AuthenticatedSettingsApiKeysRouteImport.update({
+    id: '/api-keys',
+    path: '/api-keys',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
 const AuthenticatedSettingsBillingRoute =
   AuthenticatedSettingsBillingRouteImport.update({
     id: '/billing',
     path: '/billing',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
+const AuthenticatedSettingsExportRoute =
+  AuthenticatedSettingsExportRouteImport.update({
+    id: '/export',
+    path: '/export',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
 const AuthenticatedSettingsFollowsRoute =
@@ -203,6 +226,12 @@ const AuthenticatedSettingsSecurityRoute =
   AuthenticatedSettingsSecurityRouteImport.update({
     id: '/security',
     path: '/security',
+    getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
+const AuthenticatedSettingsSponsorshipsRoute =
+  AuthenticatedSettingsSponsorshipsRouteImport.update({
+    id: '/sponsorships',
+    path: '/sponsorships',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
 const AuthEmailChangeConfirmRoute = AuthEmailChangeConfirmRouteImport.update({
@@ -245,6 +274,16 @@ const TermsRevisionsVersionNumberRoute =
     path: '/terms/revisions/$versionNumber',
     getParentRoute: () => rootRouteImport,
   } as any)
+const TournamentsWeekWeekRoute = TournamentsWeekWeekRouteImport.update({
+  id: '/tournaments/week/$week',
+  path: '/tournaments/week/$week',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TournamentsYearYearRoute = TournamentsYearYearRouteImport.update({
+  id: '/tournaments/year/$year',
+  path: '/tournaments/year/$year',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedMyProductsIndexRoute =
   AuthenticatedMyProductsIndexRouteImport.update({
     id: '/my/products/',
@@ -267,6 +306,7 @@ const AuthenticatedMyProductsHandleEditRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/@{$handle}': typeof AtChar123handleChar125Route
+  '/api-docs': typeof ApiDocsRoute
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
   '/unsubscribe': typeof UnsubscribeRoute
@@ -286,18 +326,23 @@ export interface FileRoutesByFullPath {
   '/checkout/return': typeof AuthenticatedCheckoutReturnRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/settings/api-keys': typeof AuthenticatedSettingsApiKeysRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
+  '/settings/export': typeof AuthenticatedSettingsExportRoute
   '/settings/follows': typeof AuthenticatedSettingsFollowsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
+  '/settings/sponsorships': typeof AuthenticatedSettingsSponsorshipsRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/legal/revisions/$versionNumber': typeof LegalRevisionsVersionNumberRoute
   '/privacy/revisions/$versionNumber': typeof PrivacyRevisionsVersionNumberRoute
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
+  '/tournaments/week/$week': typeof TournamentsWeekWeekRoute
+  '/tournaments/year/$year': typeof TournamentsYearYearRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/my/products/new': typeof AuthenticatedMyProductsNewRoute
@@ -307,6 +352,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/@{$handle}': typeof AtChar123handleChar125Route
+  '/api-docs': typeof ApiDocsRoute
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
   '/unsubscribe': typeof UnsubscribeRoute
@@ -325,18 +371,23 @@ export interface FileRoutesByTo {
   '/checkout/return': typeof AuthenticatedCheckoutReturnRoute
   '/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/settings/api-keys': typeof AuthenticatedSettingsApiKeysRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
+  '/settings/export': typeof AuthenticatedSettingsExportRoute
   '/settings/follows': typeof AuthenticatedSettingsFollowsRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/settings/security': typeof AuthenticatedSettingsSecurityRoute
+  '/settings/sponsorships': typeof AuthenticatedSettingsSponsorshipsRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/legal/revisions/$versionNumber': typeof LegalRevisionsVersionNumberRoute
   '/privacy/revisions/$versionNumber': typeof PrivacyRevisionsVersionNumberRoute
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
+  '/tournaments/week/$week': typeof TournamentsWeekWeekRoute
+  '/tournaments/year/$year': typeof TournamentsYearYearRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset': typeof AuthPasswordResetIndexRoute
   '/my/products/new': typeof AuthenticatedMyProductsNewRoute
@@ -348,6 +399,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/@{$handle}': typeof AtChar123handleChar125Route
+  '/api-docs': typeof ApiDocsRoute
   '/contact': typeof ContactRoute
   '/pricing': typeof PricingRoute
   '/unsubscribe': typeof UnsubscribeRoute
@@ -367,18 +419,23 @@ export interface FileRoutesById {
   '/_authenticated/checkout/return': typeof AuthenticatedCheckoutReturnRoute
   '/_authenticated/inquiries/$inquiryId': typeof AuthenticatedInquiriesInquiryIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
+  '/_authenticated/settings/api-keys': typeof AuthenticatedSettingsApiKeysRoute
   '/_authenticated/settings/billing': typeof AuthenticatedSettingsBillingRoute
+  '/_authenticated/settings/export': typeof AuthenticatedSettingsExportRoute
   '/_authenticated/settings/follows': typeof AuthenticatedSettingsFollowsRoute
   '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
   '/_authenticated/settings/plan': typeof AuthenticatedSettingsPlanRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
   '/_authenticated/settings/security': typeof AuthenticatedSettingsSecurityRoute
+  '/_authenticated/settings/sponsorships': typeof AuthenticatedSettingsSponsorshipsRoute
   '/auth/email-change/confirm': typeof AuthEmailChangeConfirmRoute
   '/auth/password-change/confirm': typeof AuthPasswordChangeConfirmRoute
   '/auth/password-reset/confirm': typeof AuthPasswordResetConfirmRoute
   '/legal/revisions/$versionNumber': typeof LegalRevisionsVersionNumberRoute
   '/privacy/revisions/$versionNumber': typeof PrivacyRevisionsVersionNumberRoute
   '/terms/revisions/$versionNumber': typeof TermsRevisionsVersionNumberRoute
+  '/tournaments/week/$week': typeof TournamentsWeekWeekRoute
+  '/tournaments/year/$year': typeof TournamentsYearYearRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/auth/password-reset/': typeof AuthPasswordResetIndexRoute
   '/_authenticated/my/products/new': typeof AuthenticatedMyProductsNewRoute
@@ -390,6 +447,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/@{$handle}'
+    | '/api-docs'
     | '/contact'
     | '/pricing'
     | '/unsubscribe'
@@ -409,18 +467,23 @@ export interface FileRouteTypes {
     | '/checkout/return'
     | '/inquiries/$inquiryId'
     | '/settings/account'
+    | '/settings/api-keys'
     | '/settings/billing'
+    | '/settings/export'
     | '/settings/follows'
     | '/settings/notifications'
     | '/settings/plan'
     | '/settings/profile'
     | '/settings/security'
+    | '/settings/sponsorships'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
     | '/auth/password-reset/confirm'
     | '/legal/revisions/$versionNumber'
     | '/privacy/revisions/$versionNumber'
     | '/terms/revisions/$versionNumber'
+    | '/tournaments/week/$week'
+    | '/tournaments/year/$year'
     | '/settings/'
     | '/auth/password-reset/'
     | '/my/products/new'
@@ -430,6 +493,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/@{$handle}'
+    | '/api-docs'
     | '/contact'
     | '/pricing'
     | '/unsubscribe'
@@ -448,18 +512,23 @@ export interface FileRouteTypes {
     | '/checkout/return'
     | '/inquiries/$inquiryId'
     | '/settings/account'
+    | '/settings/api-keys'
     | '/settings/billing'
+    | '/settings/export'
     | '/settings/follows'
     | '/settings/notifications'
     | '/settings/plan'
     | '/settings/profile'
     | '/settings/security'
+    | '/settings/sponsorships'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
     | '/auth/password-reset/confirm'
     | '/legal/revisions/$versionNumber'
     | '/privacy/revisions/$versionNumber'
     | '/terms/revisions/$versionNumber'
+    | '/tournaments/week/$week'
+    | '/tournaments/year/$year'
     | '/settings'
     | '/auth/password-reset'
     | '/my/products/new'
@@ -470,6 +539,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/@{$handle}'
+    | '/api-docs'
     | '/contact'
     | '/pricing'
     | '/unsubscribe'
@@ -489,18 +559,23 @@ export interface FileRouteTypes {
     | '/_authenticated/checkout/return'
     | '/_authenticated/inquiries/$inquiryId'
     | '/_authenticated/settings/account'
+    | '/_authenticated/settings/api-keys'
     | '/_authenticated/settings/billing'
+    | '/_authenticated/settings/export'
     | '/_authenticated/settings/follows'
     | '/_authenticated/settings/notifications'
     | '/_authenticated/settings/plan'
     | '/_authenticated/settings/profile'
     | '/_authenticated/settings/security'
+    | '/_authenticated/settings/sponsorships'
     | '/auth/email-change/confirm'
     | '/auth/password-change/confirm'
     | '/auth/password-reset/confirm'
     | '/legal/revisions/$versionNumber'
     | '/privacy/revisions/$versionNumber'
     | '/terms/revisions/$versionNumber'
+    | '/tournaments/week/$week'
+    | '/tournaments/year/$year'
     | '/_authenticated/settings/'
     | '/auth/password-reset/'
     | '/_authenticated/my/products/new'
@@ -512,6 +587,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AtChar123handleChar125Route: typeof AtChar123handleChar125Route
+  ApiDocsRoute: typeof ApiDocsRoute
   ContactRoute: typeof ContactRoute
   PricingRoute: typeof PricingRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
@@ -532,6 +608,8 @@ export interface RootRouteChildren {
   LegalRevisionsVersionNumberRoute: typeof LegalRevisionsVersionNumberRoute
   PrivacyRevisionsVersionNumberRoute: typeof PrivacyRevisionsVersionNumberRoute
   TermsRevisionsVersionNumberRoute: typeof TermsRevisionsVersionNumberRoute
+  TournamentsWeekWeekRoute: typeof TournamentsWeekWeekRoute
+  TournamentsYearYearRoute: typeof TournamentsYearYearRoute
   AuthPasswordResetIndexRoute: typeof AuthPasswordResetIndexRoute
 }
 
@@ -556,6 +634,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api-docs': {
+      id: '/api-docs'
+      path: '/api-docs'
+      fullPath: '/api-docs'
+      preLoaderRoute: typeof ApiDocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -698,11 +783,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
+    '/_authenticated/settings/api-keys': {
+      id: '/_authenticated/settings/api-keys'
+      path: '/api-keys'
+      fullPath: '/settings/api-keys'
+      preLoaderRoute: typeof AuthenticatedSettingsApiKeysRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
     '/_authenticated/settings/billing': {
       id: '/_authenticated/settings/billing'
       path: '/billing'
       fullPath: '/settings/billing'
       preLoaderRoute: typeof AuthenticatedSettingsBillingRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
+    '/_authenticated/settings/export': {
+      id: '/_authenticated/settings/export'
+      path: '/export'
+      fullPath: '/settings/export'
+      preLoaderRoute: typeof AuthenticatedSettingsExportRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
     '/_authenticated/settings/follows': {
@@ -738,6 +837,13 @@ declare module '@tanstack/react-router' {
       path: '/security'
       fullPath: '/settings/security'
       preLoaderRoute: typeof AuthenticatedSettingsSecurityRouteImport
+      parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
+    '/_authenticated/settings/sponsorships': {
+      id: '/_authenticated/settings/sponsorships'
+      path: '/sponsorships'
+      fullPath: '/settings/sponsorships'
+      preLoaderRoute: typeof AuthenticatedSettingsSponsorshipsRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
     '/auth/email-change/confirm': {
@@ -789,6 +895,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRevisionsVersionNumberRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tournaments/week/$week': {
+      id: '/tournaments/week/$week'
+      path: '/tournaments/week/$week'
+      fullPath: '/tournaments/week/$week'
+      preLoaderRoute: typeof TournamentsWeekWeekRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tournaments/year/$year': {
+      id: '/tournaments/year/$year'
+      path: '/tournaments/year/$year'
+      fullPath: '/tournaments/year/$year'
+      preLoaderRoute: typeof TournamentsYearYearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/my/products/': {
       id: '/_authenticated/my/products/'
       path: '/my/products'
@@ -815,25 +935,32 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedSettingsRouteRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
+  AuthenticatedSettingsApiKeysRoute: typeof AuthenticatedSettingsApiKeysRoute
   AuthenticatedSettingsBillingRoute: typeof AuthenticatedSettingsBillingRoute
+  AuthenticatedSettingsExportRoute: typeof AuthenticatedSettingsExportRoute
   AuthenticatedSettingsFollowsRoute: typeof AuthenticatedSettingsFollowsRoute
   AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
   AuthenticatedSettingsPlanRoute: typeof AuthenticatedSettingsPlanRoute
   AuthenticatedSettingsProfileRoute: typeof AuthenticatedSettingsProfileRoute
   AuthenticatedSettingsSecurityRoute: typeof AuthenticatedSettingsSecurityRoute
+  AuthenticatedSettingsSponsorshipsRoute: typeof AuthenticatedSettingsSponsorshipsRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
 
 const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteChildren =
   {
     AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
+    AuthenticatedSettingsApiKeysRoute: AuthenticatedSettingsApiKeysRoute,
     AuthenticatedSettingsBillingRoute: AuthenticatedSettingsBillingRoute,
+    AuthenticatedSettingsExportRoute: AuthenticatedSettingsExportRoute,
     AuthenticatedSettingsFollowsRoute: AuthenticatedSettingsFollowsRoute,
     AuthenticatedSettingsNotificationsRoute:
       AuthenticatedSettingsNotificationsRoute,
     AuthenticatedSettingsPlanRoute: AuthenticatedSettingsPlanRoute,
     AuthenticatedSettingsProfileRoute: AuthenticatedSettingsProfileRoute,
     AuthenticatedSettingsSecurityRoute: AuthenticatedSettingsSecurityRoute,
+    AuthenticatedSettingsSponsorshipsRoute:
+      AuthenticatedSettingsSponsorshipsRoute,
     AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   }
 
@@ -870,6 +997,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AtChar123handleChar125Route: AtChar123handleChar125Route,
+  ApiDocsRoute: ApiDocsRoute,
   ContactRoute: ContactRoute,
   PricingRoute: PricingRoute,
   UnsubscribeRoute: UnsubscribeRoute,
@@ -890,6 +1018,8 @@ const rootRouteChildren: RootRouteChildren = {
   LegalRevisionsVersionNumberRoute: LegalRevisionsVersionNumberRoute,
   PrivacyRevisionsVersionNumberRoute: PrivacyRevisionsVersionNumberRoute,
   TermsRevisionsVersionNumberRoute: TermsRevisionsVersionNumberRoute,
+  TournamentsWeekWeekRoute: TournamentsWeekWeekRoute,
+  TournamentsYearYearRoute: TournamentsYearYearRoute,
   AuthPasswordResetIndexRoute: AuthPasswordResetIndexRoute,
 }
 export const routeTree = rootRouteImport

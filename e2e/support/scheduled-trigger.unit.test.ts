@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import {
+  addBusinessDays as addBackendBusinessDays,
+  businessWeekdayOf,
+  businessWeekOf,
+  parseBusinessDate,
+} from '../../apps/backend-lib/core/time/business-time.ts';
+import {
   addBusinessDays,
   buildScheduledTriggerURL,
   businessDateOf,
@@ -284,6 +290,35 @@ describe('addBusinessDays', () => {
   ])('$dateに$days日を加えると$expectedになる', ({ date, days, expected }) => {
     expect(addBusinessDays(date, days)).toBe(expected);
   });
+
+  test.each([
+    { date: '2026-10-31', days: 1 },
+    { date: '2028-02-28', days: 1 },
+    { date: '2027-01-01', days: -1 },
+    { date: '2026-11-18', days: -365 },
+  ])(
+    '$dateに$days日を加えた日付は、バックエンドの業務日付の加算と同じ日付になる',
+    ({ date, days }) => {
+      expect(addBusinessDays(date, days)).toBe(
+        addBackendBusinessDays(parseBusinessDate(date), days),
+      );
+    },
+  );
+
+  test.each(['2026-12-31', '2027-01-03', '2028-02-29'])(
+    '%sに7日を加えた日付は、バックエンドの業務日付の曜日が同じで次のISO週に属する',
+    (date) => {
+      const next = parseBusinessDate(addBusinessDays(date, 7));
+      const week = businessWeekOf(parseBusinessDate(date));
+
+      expect(businessWeekdayOf(next)).toBe(
+        businessWeekdayOf(parseBusinessDate(date)),
+      );
+      expect(businessWeekOf(next).start).toBe(
+        parseBusinessDate(addBusinessDays(week.start, 7)),
+      );
+    },
+  );
 
   test('不正な業務日付は例外になる', () => {
     expect(() => addBusinessDays('2026-02-30', 1)).toThrow(RangeError);

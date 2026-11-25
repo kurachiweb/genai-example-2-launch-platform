@@ -1,3 +1,8 @@
+import {
+  type TournamentStage,
+  roundLabel,
+} from '../../../common-lib/tournament/round-name.ts';
+
 export type MatchKindValue = 'QUALIFIER' | 'WEEK' | 'YEAR';
 
 export type MatchStageValue = 'QUARTERFINAL' | 'SEMIFINAL' | 'FINAL';
@@ -37,23 +42,13 @@ const TOURNAMENT_NAMES: Readonly<
   YEAR: 'Year',
 };
 
-const STAGE_NAMES: Readonly<Record<MatchStageValue, string>> = {
-  QUARTERFINAL: '準々決勝',
-  SEMIFINAL: '準決勝',
-  FINAL: '決勝',
+const STAGES: Readonly<Record<MatchStageValue, TournamentStage>> = {
+  QUARTERFINAL: 'quarterfinal',
+  SEMIFINAL: 'semifinal',
+  FINAL: 'final',
 };
 
 const LAST_UPVOTE_NOTE = '(最終Upvote時刻が早いため)';
-
-const roundNameOf = (
-  round: number | null,
-  stage: MatchStageValue | null,
-): string | null => {
-  if (stage !== null) {
-    return STAGE_NAMES[stage];
-  }
-  return round === null ? null : `${String(round)}回戦`;
-};
 
 // 種別の印は表記規則の例外として、種別名とラウンド名を半角スペースで区切る
 export function matchStageLabel({
@@ -65,7 +60,10 @@ export function matchStageLabel({
     return QUALIFIER_LABEL;
   }
   const tournament = TOURNAMENT_NAMES[kind];
-  const roundName = roundNameOf(round, stage);
+  const roundName = roundLabel({
+    round,
+    stage: stage === null ? null : STAGES[stage],
+  });
   return roundName === null ? tournament : `${tournament} ${roundName}`;
 }
 

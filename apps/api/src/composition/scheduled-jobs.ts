@@ -1,9 +1,11 @@
-import { QUALIFIER_SCHEDULE } from '../../lib/core/match/match-model.ts';
+import { MATCH_SCHEDULE } from '../../lib/core/match/match-model.ts';
 import type { ScheduledJobDefinition } from '../../lib/core/scheduling/cron-registry.ts';
 import type { ScheduledRunBudget } from '../../lib/core/scheduling/run-budget.ts';
 import { SEARCH_TYPES } from '../../lib/core/search/identifiers.ts';
 import { ADMIN_TYPES } from '../application/admin/admin-types.ts';
 import { API_EMAIL_TYPES } from '../application/email/email-cleanup-job.ts';
+import { ARCHIVE_EXPIRY_JOB_DEFINITION } from '../application/data-export/jobs/archive-expiry-job.ts';
+import { GENERATION_RECOVERY_JOB_DEFINITION } from '../application/data-export/jobs/generation-recovery-job.ts';
 import { COMMENT_ANONYMIZATION_JOB_DEFINITION } from '../application/engagement/comment-anonymization-job.ts';
 import { IDENTITY_TYPES } from '../application/identity/identity-types.ts';
 import { GUEST_INQUIRY_RETENTION_JOB_DEFINITION } from '../application/inquiry/jobs/guest-inquiry-retention-job.ts';
@@ -15,6 +17,8 @@ import {
   QUALIFIER_PAIRING_JOB_DEFINITION,
 } from '../application/match/match-jobs.ts';
 import { MEDIA_JOB_TYPES } from '../application/media/media-daily-jobs.ts';
+import { MODERATION_MAINTENANCE_JOB_DEFINITION } from '../application/moderation/jobs/moderation-maintenance-job.ts';
+import { WEEKLY_STATISTICS_JOB_DEFINITION } from '../application/moderation/jobs/weekly-statistics-job.ts';
 import {
   EVENING_DISPATCH_JOB_DEFINITION,
   MORNING_DISPATCH_JOB_DEFINITION,
@@ -26,7 +30,19 @@ import { PENDING_CHECKOUT_SWEEP_JOB_DEFINITION } from '../application/payments/j
 import { PRODUCT_LIFECYCLE_REDISPATCH_JOB_DEFINITION } from '../application/product/jobs/product-lifecycle-redispatch-job.ts';
 import { PRODUCT_PURGE_ORCHESTRATOR_JOB_DEFINITION } from '../application/product/jobs/product-purge-orchestrator-job.ts';
 import { ORPHANED_FILE_SWEEP_JOB_DEFINITION } from '../application/profile/jobs/orphaned-file-sweep-job.ts';
+import { REPORT_NOTICE_REDISPATCH_JOB_DEFINITION } from '../application/reporting/jobs/report-notice-redispatch-job.ts';
+import { REPORT_RETENTION_JOB_DEFINITION } from '../application/reporting/jobs/report-retention-job.ts';
+import { SPONSORSHIP_DAILY_NOTICES_JOB_DEFINITION } from '../application/sponsorship/jobs/daily-notices-job.ts';
+import { SPONSORSHIP_MAINTENANCE_JOB_DEFINITION } from '../application/sponsorship/jobs/maintenance-job.ts';
 import { PENDING_DISPATCH_SWEEP_JOB_DEFINITION } from '../application/ultras/jobs/pending-dispatch-sweep-job.ts';
+import {
+  ENTRY_FOLLOW_UP_JOB_DEFINITION,
+  EVENING_BRACKET_JOB_DEFINITION,
+} from '../application/week-tournament/week-tournament-jobs.ts';
+import {
+  YEAR_ENTRY_FOLLOW_UP_JOB_DEFINITION,
+  YEAR_EVENING_BRACKET_JOB_DEFINITION,
+} from '../application/year-tournament/year-tournament-jobs.ts';
 
 export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   {
@@ -94,6 +110,15 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   MATCH_EVENT_CLEANUP_JOB_DEFINITION,
   NOTIFICATION_MAINTENANCE_JOB_DEFINITION,
   COMMENT_ANONYMIZATION_JOB_DEFINITION,
+  ENTRY_FOLLOW_UP_JOB_DEFINITION,
+  SPONSORSHIP_MAINTENANCE_JOB_DEFINITION,
+  YEAR_ENTRY_FOLLOW_UP_JOB_DEFINITION,
+  WEEKLY_STATISTICS_JOB_DEFINITION,
+  MODERATION_MAINTENANCE_JOB_DEFINITION,
+  REPORT_NOTICE_REDISPATCH_JOB_DEFINITION,
+  REPORT_RETENTION_JOB_DEFINITION,
+  ARCHIVE_EXPIRY_JOB_DEFINITION,
+  GENERATION_RECOVERY_JOB_DEFINITION,
   {
     name: 'content-processing.keyword-reextraction',
     at: { hour: 4, minute: 21 },
@@ -105,7 +130,10 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   QUALIFIER_PAIRING_JOB_DEFINITION,
   MATCH_KICKOFF_JOB_DEFINITION,
   EVENING_DISPATCH_JOB_DEFINITION,
+  EVENING_BRACKET_JOB_DEFINITION,
+  YEAR_EVENING_BRACKET_JOB_DEFINITION,
   MORNING_DISPATCH_JOB_DEFINITION,
+  SPONSORSHIP_DAILY_NOTICES_JOB_DEFINITION,
   // 4:21のメールの後始末と、送り直したイベントの波及処理による抑止記録の削除が同じ起動で重ならないよう、12時間離す
   {
     name: 'identity-auth.lifecycle-redispatch',
@@ -118,7 +146,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
 // 4:21の起動には複数のドメインのジョブが順に集まり、23:40・23:45・0:00の起動のマッチの日次の処理は1日のマッチの数に比例して長くなるため、1回の起動の合計の所要時間に予算を置き、超過を警告する。ジョブの無い時刻の予算は誤りにならない
 export const SCHEDULED_RUN_BUDGETS: readonly ScheduledRunBudget[] = [
   { at: { hour: 4, minute: 21 }, maxTotalDurationMs: 300_000 },
-  { at: QUALIFIER_SCHEDULE.fullTime, maxTotalDurationMs: 300_000 },
-  { at: QUALIFIER_SCHEDULE.pairing, maxTotalDurationMs: 300_000 },
-  { at: QUALIFIER_SCHEDULE.kickoff, maxTotalDurationMs: 300_000 },
+  { at: MATCH_SCHEDULE.fullTime, maxTotalDurationMs: 300_000 },
+  { at: MATCH_SCHEDULE.pairing, maxTotalDurationMs: 300_000 },
+  { at: MATCH_SCHEDULE.kickoff, maxTotalDurationMs: 300_000 },
 ];

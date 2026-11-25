@@ -30,7 +30,7 @@
 - 未確認の利用者のキーの発行: FR-USER-006の制限(投稿・評価・コメント・Upvote・フォロー・決済・加入・データエクスポート)にAPIキーの発行は無い。プロフィールの更新(user-profile-socialの4.12)とプロダクトの編集(product-launchの確認済み事項)も未確認を拒否しない。
 - 発行の回数の制限と編集: FR-RLMIT-005は「新規発行操作」を数える。名前と権限スコープの編集は新規発行ではない。FR-PAPI-005の「編集時」により、既存のキーの権限スコープの編集を設ける(名前も同じフォームで編集できる)。
 - 回数の制限の期間とリセット: backend-platformの`RateLimitCounter`(最初の要求で期間を始め、Alarmで記録を消す)がFR-RLMIT-017・019の「期間の開始から1時間・1分でAlarmによりリセット」をそのまま満たす。
-- IP単位の制限の部品: backend-platformのresearch.md(Generalization)が「public-apiのFR-RLMIT-008も`bindingRateLimit`で実装できる」としている。プリフライトは公開APIの操作ではないため数えない(Worker単位の10秒100回の制限は掛かる)。
+- IP単位の制限の部品: backend-platformのresearch.md(Generalization)が「public-apiのFR-RLMIT-008も`bindingRateLimit`で実装できる」としている。プリフライトは公開APIの操作ではないため数えない(Worker単位の10秒500回の制限は掛かる)。
 - 波及処理と`order`: 退会のAPIキーの削除は同期の波及処理(`order`を持たない)で行う。4:21のジョブと非同期の波及処理は無い(物理削除の時点では退会の同期の処理でキーが消えており、発行の書き込みの`CASE`式で退会済み・停止中の利用者のキーを作らない)。roadmapの帯(1800番台)の使用中の値は「—」のままである。
 - 新しいパッケージ: `swagger-ui-dist`(仮4)だけである。APIキーの乱数・ハッシュはWeb Crypto API(backend-platformの`KeyedHasher`)、REST・OpenAPIは`@hono/zod-openapi`(api-gateway)、画面はfrontend-platformのshadcn/uiの部品を使う。
 - steering: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替する(directory-discoveryと同じ)。
@@ -289,3 +289,146 @@
 - **きっかけ**: paymentsの実装前のギャップ分析(2026-11-05)で、frontend-platformの環境のスキーマはclientとadminで共有し、`apps/{client,admin}/test/config/worker-env-contract.ts`が「スキーマの必須のキーがすべてEnvにあること」を型で確かめると分かった。本specの`PUBLIC_API_ORIGIN`(clientだけ必須)を共有のスキーマで必須にすると、管理者側の型検査と起動の検証が失敗する。本specが前例に挙げたcontent-processingの`CLIENT_SITE_ORIGIN`は両アプリで必須の変数で、paymentsの`STRIPE_PUBLISHABLE_KEY`は同じ理由で任意の変数に改めた。
 - **決定**: 開発者が、client専用の任意の変数の前例(frontend-platformの`WEB_ANALYTICS_TOKEN`・paymentsの`STRIPE_PUBLISHABLE_KEY`)と同じ形を選んだ(推奨どおり)。共有のスキーマで`PUBLIC_API_ORIGIN`を任意にし(値があれば許可先の形まで検証する)、`FrontendAppProfile`(`apps/frontend-lib/server/entry/app-profile.ts`)に公開APIの仕様書の有無の欄`publicApiDocs`(clientは真、adminは偽)を加え、`PublicRuntimeConfig.publicApiOrigin`へ`profile.publicApiDocs ? env.PUBLIC_API_ORIGIN : undefined`を渡す。CSPの`connect-src`には欄が真で値があるときだけ加える。clientのWranglerには3環境とも値を置き、値があることはclientの設定の単体テストで保証する。adminのWranglerには置かない。値が無い環境では、`/api-docs`の`SwaggerUiViewer`は仕様書を取得せず`ErrorState`(要件15.5の文言)を表示する。要件は変えていない。
 - **変えた箇所**: design.mdのModified Files(frontend-libの環境と公開設定の行)・ClientEnvExtension・`SwaggerUiViewer`、tasks.mdの1.5。
+
+---
+
+## 実装前のギャップ分析(2026-11-19、`/kiro-validate-gap`)
+
+### 分析の要約
+
+- 本specの設計(2026-11-02承認)は上流の実装前に作られた。その後、api-gateway・backend-platform・identity-auth・directory-discovery・product-launch・match-engine・engagement・user-profile-social・media-pipeline・tournament-week・tournament-year・ultras-subscription・sponsorshipが実装され、設計が前提にした部品はすべてコードに存在する。本specの成果物(`api_keys`・`core/public-api`・`PUBLIC_API_RATE_LIMITER`・`/api-docs`など)はまだ1つも無い。
+- 上流への依頼(api-gatewayの改訂1の`createRestModule(routes, { info })`と相対の`servers`、backend-platformの改訂1の`lsk_`の伏せ字、product-launchの仮12のエラーコードと文言、infra-deliveryの改訂1の変数の値の表)は、いずれも契約どおりに実装済みである。
+- 一方で、設計の手順や写像が前提にした上流の引数・型・エラーコード・置き場所に、コードと食い違う箇所が約20件ある(下の「設計とコードの相違点」)。大半は設計の記述の局所的な修正で済むが、カーソルの形式違反のエラーコード・応答ヘッダーのCORSの公開・CSPの許可先の受け渡しの3件は、外部の利用者に見える振る舞いか上流のファイルの変更を伴うため、実装前に方針を決める必要がある。
+- 実装の残りの規模はL(1〜2週間)、リスクはMediumと見積もる。
+
+### 調べた範囲
+
+- 4つの観点(backend-platform・identity-auth/directory-discovery・product-launch・media-pipeline/match-engine・engagement・user-profile-social/frontend-platform・client・infra・docs・E2E)で、design.mdのAllowed Dependencies・Components and Interfacesの各手順・Modified Filesの前提を、現在のコードと照合した。
+- 照合した時点のmainの最新のコミットは`27c4b399`である。
+
+### 要件と既存の資産の対応
+
+| 要件                            | 使う既存の資産                                                                                                                                                      | ギャップ                                                                                                                                                               |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1・3・4(キーの管理と発行の制限) | `KeyedHasher`・`hashPurpose`(用途の登録簿は無く、`public-api-key`は未使用)・`RateLimitCounterClient`・`CounterRule`・`ulidPrimaryKey`・`timestamps`・`AccountGuard` | Missing: `api_keys`・ストア・ユースケース・GraphQLのスキーマモジュール一式                                                                                             |
+| 2(権限スコープ)                 | なし(純粋な規則)                                                                                                                                                    | Missing: `common-lib/public-api`・`domain/public-api`                                                                                                                  |
+| 5(退会・停止)                   | `USER_LIFECYCLE_SYNC_HANDLERS`(`{ name, events, handler }`、`withdrawn`)・`AccountGuard.requireUser`/`requireWritableUser`                                          | Missing: 波及処理。Constraint: 波及処理はapiのinfrastructure層に置く(契約`UserLifecycleSyncHandler`がinfrastructure層にあるため)                                       |
+| 6(管理画面)                     | 設定のシェル・`SETTINGS_NAV_ITEMS`(90は予約済み)・`useAppForm`・`AppForm`・`ErrorState`・`EmptyState`・`DateTime`・`buildSitePageHead`                              | Missing: 画面と部品一式。Constraint: ページ配置の`/settings/api-keys`の行が「引き継ぎ再発行」のまま(仮2と矛盾)                                                         |
+| 7・13(認証と回数の制限)         | `AccountGuard`(`sessionId`を照合しない)・`bindingRateLimit`(子のアプリの`use`で使える)・`hashRateLimitKey`・固定窓の`applyHit`(最初の要求から窓が始まる)            | Missing: `PUBLIC_API_RATE_LIMITER`(1005・2005・3005は空き)。Constraint: エラーの経路は`X-RateLimit-*`を付けない・CORSが応答ヘッダーを公開しない                        |
+| 8(プロダクト)                   | `DirectoryReader`・`DirectoryCategoryReader`・`ProductPageReader`・`resolveProductPage`・`toMediaImage`の判定                                                       | Missing: apiの`IMAGES_ORIGIN`と画像の絶対URLの部品。Constraint: 一覧と詳細のビューは投稿者の表示情報を持たない(`ownerUserId`だけ)                                      |
+| 9(ローンチ・マッチ・Upvote)     | `ProductPageView.launches[].rows`・`opponents`・`MatchDirectory.findMatches`・`SupporterDirectory.listSupporters`・`UpvoteHistoryReader.read`                       | Constraint: カーソルの符号化の部品が表現層(GraphQL)にある。Unknown: Upvote履歴の未掲載のプロダクトの表し方                                                             |
+| 10(コメント・評価)              | `CommentReader.page`・`RatingService.read`                                                                                                                          | Constraint: `null`が「ローンチが無い」以外(未掲載・非公開化)も表す                                                                                                     |
+| 11(プロフィール)                | `MyProfileReader`・`ProfileEditor`(bot判定はリゾルバ側)・`PublicProfileReader`・`UserProfileDirectory`                                                              | Constraint: GraphQLの入力の正規化(前後の空白・空文字のnull化)は表現層にあり、RESTで同じ正規化を持つ必要がある                                                          |
+| 12(説明文)                      | `MyProductsReader.list`/`find`・`ProductDescriptionEditor`(3つのエラーコードと文言が仮12どおり、保存の登録口はストアの中で動く)                                     | Constraint: `list`の`first`が必須                                                                                                                                      |
+| 14(形式・CORS・仕様書)          | `dataEnvelope`・`offsetListEnvelope`・`cursorListEnvelope`・`errorResponses`・`createPublicApiCorsPolicy`・`createRestModule`の`info`                               | Constraint: カーソルの形式違反は上流が`invalid_cursor`を投げる                                                                                                         |
+| 15(Swagger UI)                  | Viteの動的な`import()`による遅延読み込みの前例(マークダウンの入力欄)・CSPの`script-src 'self' 'nonce-…'`・`style-src 'unsafe-inline'`                               | Missing: `swagger-ui-dist`の導入・`/api-docs`。Unknown: Swagger UIの`eval`の使用の有無。Constraint: `runtimeSecurityPolicySources`がアプリのプロファイルを受け取らない |
+| 16(連携と運用)                  | `core/<ドメイン>`+`workers/<ドメイン>`の配置の前例(17ドメイン)・`REDACTION_PATTERNS`の`lsk_`                                                                        | Missing: `core/public-api`・`workers/public-api`。data-exportは未実装のため後方の利用者はまだいない                                                                    |
+| 17(文書とテスト)                | `backend/020`・`frontend/019`は空き・`resolveLocalWorkerOrigin('api')`・`security-assertions.ts`                                                                    | Constraint: 既存の2つのWrangler設定の単体テストが2つ目の回数の制限のバインディングで失敗する                                                                           |
+
+### 設計とコードの相違点
+
+#### 振る舞いか上流の変更を伴うもの(実装前に方針を決める)
+
+1. **カーソルの形式違反のエラーコード**: 設計(14.2、`PublicSupporterReader`、design.mdの1013行)は形式違反の`cursor`を`AppError(bad_request, validation_error)`(`details`の`field`が`cursor`)にするとした。上流の`MyProductsReader.list`・`UpvoteHistoryReader.read`・`CommentReader.page`は、復号できないカーソルで`AppError(bad_request, 'invalid_cursor')`(`apps/backend-lib/core/errors/invalid-cursor.ts`)を投げる。
+   - 案A: 公開APIの表現層で`invalid_cursor`を捕まえて`validation_error`(`cursor`)へ変える。設計の応答のまま、全ての一覧の経路で同じ形になる。
+   - 案B: 公開APIも`invalid_cursor`をそのまま返し、仕様書とエラーコードの表に加える。変換が要らず、GraphQLと同じコードになる。
+2. **応答ヘッダーのCORSの公開**: api-gatewayの`createPublicApiCorsPolicy`(`apps/api/src/presentation/rest/cors-policy.ts`)は`Access-Control-Expose-Headers`を返さない。他のオリジンのブラウザ(`/api-docs`のSwagger UIを含む)のスクリプトは、要件13.7の`X-RateLimit-*`、要件13.5の`Retry-After`、要件7.2の`WWW-Authenticate`を読めない。(訂正: 分析の時点では「要件にも設計にも記載が無い」と書いたが誤りだった。2026-10-24に開発者がapi-gatewayの改訂1で`Access-Control-Expose-Headers`を採用しないと決めており、api-gatewayのrequirements.md・research.mdと本書の「タスクの承認の後の確定の反映」に記録がある。本specのdesign.mdからもその時に取り除いていた。)
+   - 案A: api-gatewayの改訂として、CORSの方針に`Access-Control-Expose-Headers: Retry-After, WWW-Authenticate, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset`を加える(上流のファイルの変更)。
+   - 案B: 本specの範囲外として記録し、ブラウザからは状態コードだけで判断させる。
+3. **CSPの`connect-src`への公開APIのオリジンの追加**: 設計は`runtimeSecurityPolicySources(env)`が「プロファイルの欄`publicApiDocs`が真で値があるとき」だけ加えるとしたが、実際の関数(`apps/frontend-lib/server/http/security-policy.ts:151-161`)は環境だけを受け取り、プロファイルを受け取らない。前例とした`WEB_ANALYTICS_TOKEN`・`STRIPE_PUBLISHABLE_KEY`も、CSPの許可先は`CLIENT_SECURITY_POLICY`(`apps/client/src/composition/security-policy.ts`)に固定で書いており、この関数を通らない。値の形の検証に使う`ORIGIN_PATTERN`も公開されていない(環境のスキーマの`isOrigin`はより緩い)。
+   - 案A: `runtimeSecurityPolicySources`にプロファイルの引数を加え、呼び出し側(`create-frontend-server-entry.ts:335`)を変える(設計の意図どおり)。
+   - 案B: 関数は環境だけを見て、`PUBLIC_API_ORIGIN`に値があるときだけ加える。adminのWranglerには値を置かないため、プロファイルの欄は`PublicRuntimeConfig`の算出にだけ使う。
+   - どちらの案でも、`ORIGIN_PATTERN`を公開するか、環境のスキーマ側に同じ規則を置く必要がある。
+
+#### 設計の記述の局所的な修正で済むもの
+
+| #   | 設計の前提                                                             | 現在のコード                                                                                                                                                                                                                                                           |
+| --- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4   | `MyProductsReader.list(user, { after })`                               | `list(user, { first, after })`で、`first`は1〜20の必須(範囲外は`RangeError`)                                                                                                                                                                                           |
+| 5   | `MyProduct.id`の元は`id`                                               | `MyProductView.productId`。最新のローンチ日の項目は無い(並びは取り消しを含む最新のローンチ日の降順)                                                                                                                                                                    |
+| 6   | `MediaFileView.objectKey`がnullなら画像はnull(design.mdの1155行)       | `objectKey`は常に文字列。配信できるかは`stored && !eraseRequested && !quarantined`で、apiの`toMediaImage`(`presentation/graphql/modules/media/mappers.ts`)が同じ判定を持つ。`fallbackFormatOf`は`ImageMediaType`だけを受け取り、`isImageMediaType`で絞り込む必要がある |
+| 7   | `PublicSupporterReader`がdirectory-discoveryと同じ`encodeCursor`を使う | `encodeCursor`・`decodeCursor`は`presentation/graphql/pagination.ts`にあり、application層から読み込めない。`SupporterListReader`は構造化した位置を返し、符号化はリゾルバが行う。続きの有無は`limit: 1`の追加の読み取りで判定している                                   |
+| 8   | `CounterDecision`から`limit`・`remaining`・`resetAt`を返す             | `CounterDecision`は`{ allowed, count, remaining, resetAt }`(`resetAt`はミリ秒)で`limit`を持たない。`limit`は`CounterRule.limit`から取る                                                                                                                                |
+| 9   | `assertWithinLimit`は`workers`の関数                                   | `RateLimitCounterClient`のメソッド`assertWithinLimit(decision, now: number)`。`CounterRule`・`CounterDecision`・`hashRateLimitKey`は`core/rate-limit`にあり、application層からも読める                                                                                 |
+| 10  | `AccountGuard`の識別子は`IDENTITY_TYPES`                               | `IDENTITY_PLATFORM_TYPES.AccountGuard`(`core/identity/identifiers.ts`)。`AccountGuard`は`sessionId`を照合しないため、疑似のセッションIDの再検証の条件は発生していない                                                                                                  |
+| 11  | `PUBLIC_API_PLATFORM_MODULE`は`AppModule`                              | 既存の束縛は`Omit<AppModule, 'routes'>`で`name: '<ドメイン>-platform'`・`inSingletonScope()`                                                                                                                                                                           |
+| 12  | `REDACTION_PATTERNS`の先頭に`lsk_`                                     | `lsk_`の型は2番目(先頭は問い合わせの値の型)。振る舞いは同じ                                                                                                                                                                                                            |
+| 13  | 回数の制限のエラーにも`X-RateLimit-*`を付ける                          | 共通のエラー処理(`toErrorResponse`)は`Cache-Control`と`Retry-After`だけを付ける。`ApiKeyAuth`が`PublicApiRateLimitError`を捕まえて応答を作るか、ヘッダーを足して投げ直す仕組みが要る                                                                                   |
+| 14  | 一覧の項目と詳細に投稿者の表示情報                                     | `DirectoryItemView`・`ProductPageView`は`ownerUserId`だけ。GraphQLは`UserProfileDirectory.findSummaries(ids, 'visible')`で一括に引く。設計の`MediaLookup`の一括の照会と同じ方式でよい                                                                                  |
+| 15  | `website_url`をそのまま返す                                            | GraphQLは`checkExternalUrl`に通らないURLを空にしている(`verifiedWebsiteUrl`)。RESTも同じ扱いにするか決める                                                                                                                                                             |
+| 16  | `CommentReader`の`null`は`launch_not_found`                            | 未ログインの閲覧者では、未掲載・非公開化・投稿者の停止のプロダクトでも`null`。経路の先頭でプロダクトを解決して404にするため結果は同じだが、エラーコードの割り当ての前提を確かめる                                                                                      |
+| 17  | Upvote履歴の`product`はnullになり得る                                  | `product`は常に値を持ち、`logoFileId`は文字列。未掲載のプロダクト(`listed: false`)は除かれない(公開プロフィールの画面と同じ)                                                                                                                                           |
+| 18  | プロフィールの入力の規則は`common-lib/profile`                         | ニックネームの規則は`common-lib/identity/account-input-rules.ts`の`checkNickname`。ハンドルの形式は`common-lib/handles/handle-rules.ts`の`checkHandleFormat`                                                                                                           |
+| 19  | GraphQLと同じ入力の正規化                                              | ニックネームの前後の空白の除去・空のヘッドラインと自己紹介のnull化は、表現層の`UPDATE_MY_PROFILE_ARGS`にある。RESTのスキーマで同じ正規化を持つ必要がある                                                                                                               |
+| 20  | `buildPageHead`                                                        | clientの各ページは`buildSitePageHead`(`apps/client/src/head/page-heads.ts`)を使う。`DateTime`は`format`が必須                                                                                                                                                          |
+| 21  | `e2e/support/public-api.ts`で公開APIのオリジンを解決する               | `e2e/support/local-worker-origins.ts`の`resolveLocalWorkerOrigin('api', env)`が既にあり、重複する                                                                                                                                                                      |
+| 22  | `apps/api/test/config/wrangler-config.unit.test.ts`の検査を足すだけ    | 同ファイルの272行目がapi・eventの`ratelimits`の名前を`['IP_RATE_LIMITER']`と完全一致で確かめ、`apps/admin/test/config/wrangler-config.unit.test.ts`の313〜323行目が`namespace_id`の数を「環境の数×アプリの数(12)」で確かめており、2件とも直す必要がある                |
+| 23  | `PublicRuntimeConfig`を直に書いたファイルは設計の列挙のとおり          | 19ファイルある(frontend-libのブラウザテスト6件・`start/router-context.unit.test.ts`・clientの`checkout/$purchaseId.tsx`とそのテスト・client/adminの`composition.unit.test.ts`・adminの監査ログと問い合わせの単体テストなど)                                            |
+
+#### 上流の新しい機能による変化
+
+- tournament-week・tournament-yearにより、マッチの種別は`qualifier`・`week`・`year`の3つ、`stage`は`quarterfinal`・`semifinal`・`final`の3つを実際に取る。設計の`kind: string`・`round | null`・`stage | null`の型で受け取れるが、仕様書に列挙する場合は3値ずつ書く。受賞(`awards`)も実データを持つ。
+- ultras-subscriptionにより、公開プロフィールの`ultras`は読み取りの時点の権利の判定で、判定に失敗すると`false`になる。
+- sponsorshipの広告は一覧の読み取りに混ざらない(画面側の別の読み取り)。公開APIへの影響は無い。
+
+### 実装の方式の選択肢
+
+#### 案A: 既存の部品の拡張を主にする
+
+- 公開RESTの経路を、GraphQLのリゾルバと同じ上流のユースケースへ直に繋ぎ、写像と正規化はGraphQLの表現層の部品(`toMediaImage`・`encodeCursor`・`UPDATE_MY_PROFILE_ARGS`・`verifiedWebsiteUrl`)を読み込んで流用する。
+- ✅ 新しいファイルが少なく、画面とAPIの写像が自然に揃う。
+- ❌ 設計のDependency Directionが禁じる「`presentation/rest`から`presentation/graphql`の読み込み」になる。GraphQLの部品の変更がRESTの公開の契約(`/v1`)を壊し得る。
+
+#### 案B: 設計どおり公開API専用の部品を新設する
+
+- 設計のFile Structure Planのとおり、`presentation/rest/public-api`に専用の写像・スキーマ・画像の絶対URLの部品を作り、カーソルの符号化と入力の正規化も専用に持つ。
+- ✅ `/v1`の契約がGraphQLの変更から独立し、写像の単体テストで固定できる。
+- ❌ `toMediaImage`の判定・URLの検証・入力の正規化を重複して持ち、画面とAPIでずれる恐れがある。
+
+#### 案C: 共通の判定だけを下の層へ移し、残りは案Bで作る(混合)
+
+- 画面とAPIで同じでなければならない判定(配信できる画像の判定、カーソルの符号化と復号、外部URLの検証済みの値の判定)を`backend-lib/core`か`common-lib`の純粋な関数へ移し、GraphQLの表現層とRESTの表現層の両方から使う。写像と応答の形は案Bのとおり公開API専用に作る。
+- ✅ 公開範囲と画像の判定の重複を無くしつつ、`/v1`の形は独立に保てる。
+- ❌ 上流(media-pipeline・api-gateway・directory-discovery)のファイルの移動を伴い、設計の「上流のファイルの変更は登録箇所への追記に限る」の方針の改訂が要る。
+
+### 規模とリスク
+
+- **規模: L(1〜2週間)**。上流の部品は揃っているが、13経路・キーの管理のユースケースとGraphQL・2つの回数の制限・管理画面の8部品・Swagger UIの組み込み・E2E・技術ドキュメント2本を新しく作るため。
+- **リスク: Medium**。既存のパターン(厳密カウンタのinfrastructure層、`core`/`workers`の配置、波及処理の登録、clientの任意の変数)に沿って作れる一方、Swagger UIのCSPとの相性(`eval`の使用の有無)、CORSの応答ヘッダーの公開、カーソルのエラーコードは外部の利用者に見える振る舞いで、決めるまで不確定なため。
+
+### 設計フェーズ(設計の改訂)への申し送り
+
+- 上の「振る舞いか上流の変更を伴うもの」の3件(カーソルのエラーコード・応答ヘッダーのCORSの公開・CSPの許可先の受け渡し)を開発者に1件ずつ確かめ、design.mdとtasks.mdへ反映する。
+- 「局所的な修正で済むもの」の4〜23をdesign.mdの各コンポーネントの手順・写像・Modified Filesへ反映する。特に4(`first`)・6(画像の配信の判定)・7(カーソルの符号化の置き場所)・13(429の応答の`X-RateLimit-*`)は、実装でそのまま型検査やテストの失敗になる。
+- 案A〜Cのうち、設計の方針(案B)を保つか、判定だけを共通化する案Cへ改めるかを決める。
+- `docs/GUIDES/service/design/002-page-layouts.md`の691行目の「引き継ぎ再発行」を、tasks.mdの1.3で仮2に合わせて直す。
+- spec.jsonは`ready_for_implementation: false`のままである。上の反映の後に実装へ進む。
+
+### Research Needed
+
+- `swagger-ui-dist`5.33系が、`script-src 'self' 'nonce-…'`(`unsafe-eval`なし)の下で動作するか。動的な`import()`でバンドルした場合の`SwaggerUIBundle`の読み込み方と、ワーカーやインラインのスクリプトの有無を、導入時に確かめる。
+- Upvote履歴とサポーターの項目で、未掲載のプロダクト(`listed: false`)を、ハンドルとページのURLを含めずに名称だけで表すか(マッチの対戦相手の公開範囲と揃えるか)。公開プロフィールの画面の表し方を確かめて決める。
+- `SupporterDirectory.listSupporters`の続きの有無を、directory-discoveryの`SupporterListReader`と同じ追加の読み取りで判定するか、設計どおり「20件なら続きあり」とするか。
+
+## 実装前のギャップ分析の決定の反映(2026-11-19、開発者の決定)
+
+ギャップ分析の「振る舞いか上流の変更を伴うもの」の3件と、分析の途中で生じた論点を、開発者に1件ずつ確かめた。推奨と異なる案が選ばれたのは「Upvote履歴の未掲載のプロダクト」と「`website_url`の表し方」の2件である。
+
+| 論点                                    | 決定                                                                                                                                                                                                                                                  | 推奨との関係 |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| カーソルの形式違反のエラーコード        | 上流と`decodeCursor`が投げる`invalid_cursor`(400)をそのまま返し、仕様書とエラーコードの表に載せる。`validation_error`(`cursor`)へは変換しない                                                                                                         | 推奨どおり   |
+| `Access-Control-Expose-Headers`         | 2026-10-24の決定を維持し、加えない。api-gatewayは変えない。ブラウザからは状態コードで判断する旨を仕様書の説明と技術ドキュメントに書く                                                                                                                 | 推奨どおり   |
+| CSPの`connect-src`への公開APIのオリジン | `runtimeSecurityPolicySources(env)`は環境だけを見て、`PUBLIC_API_ORIGIN`に値があるときだけ加える。プロファイルは受け取らず、エントリの呼び出しは変えない。`ORIGIN_PATTERN`を公開して環境の検証で使い、adminに値が無いことを設定の単体テストで保証する | 推奨どおり   |
+| 画面とAPIで同じであるべき判定の置き場所 | 案C。配信できる画像の判定を`backend-lib/core/media`の`isServableImageFile`、外部URLの検証済みの値を`common-lib/url`の`verifiedExternalUrl`へ移し、GraphQLと公開APIの両方が使う                                                                        | 推奨どおり   |
+| Upvote履歴の未掲載のプロダクト          | ハンドルも返し、`listed: false`を添える(`product`は常に値を持つ)                                                                                                                                                                                      | 推奨と異なる |
+| サポーターの一覧の作り方                | directory-discoveryの`SupporterListReader`を使い、`PublicSupporterReader`はそのプロダクトの側の`entryId`を求めるだけにする                                                                                                                            | 推奨どおり   |
+| `SupporterListPage`にUpvoteの日時が無い | 既存の結果に`supporters: { userId, upvotedAt }[]`を加える(`userIds`とGraphQLは変えない)。前の質問で既存の部品を推奨した際に結果の形を確かめておらず、改めて確かめた                                                                                   | 推奨どおり   |
+| カーソルの符号化と復号の置き場所        | `encodeCursor`・`decodeCursor`を`backend-lib/core/pagination/opaque-cursor.ts`へ移し、GraphQLと公開APIの両方が使う                                                                                                                                    | 推奨どおり   |
+| 検証に通らない`website_url`の表し方     | GraphQLと同じ空文字列にし、型は`string`のまま。公開プロフィールの`websites`はGraphQLと同じく出力の時点で検証し直さない                                                                                                                                | 推奨と異なる |
+
+- **共通化の水平展開**: sponsorshipのGraphQLにも同じURLの判定(通らない値を`null`にする)があったため、`verifiedExternalUrl`は`string | null`を返し、directory-discoveryのGraphQLと公開APIは`?? ''`、sponsorshipは`null`のまま使う。既存の応答は変わらない。
+- **上流のファイルの変更の例外**: design.mdのAllowed Dependenciesの「上流のファイルへの変更は登録箇所への追記と、clientの環境の拡張に限る」に、上の4件(3つの判定の移動と`SupporterListPage`の項目の追加)の例外を書き、「上流への影響」に各変更を記録した。実装は新しいtasks.mdの1.6で行う。
+- **局所的な相違点(4〜23)**: すべてdesign.mdとtasks.mdへ反映した。主な反映先は、Allowed Dependencies(上流の部品の置き場所・引数・識別子)、Modified Files(Wrangler設定の既存の2つのテスト、`PublicRuntimeConfig`を直に書いた19ファイル、共通化の移動、ページ配置の691行目)、`PublicApiRateLimits`・`ApiKeyAuthorizer`・`PublicSupporterReader`・`OwnProductDescriptionService`・`PublicProfileUpdater`の手順、`ApiKeyAuth`の429の応答、経路の注記(コメントと評価の`null`・Upvote履歴・プロフィールの検証と正規化・カーソル・マッチの種別)、写像の注記、ClientEnvExtension、clientの部品(`buildSitePageHead`・`DateTime`の`format`・公開設定の読み方)、エラーコードの表、Testing Strategy。
+- **tasks.mdの変更**: 1.6を新設した(番号は変えていない)。1.1・1.3・1.4・1.5(1.4への依存を追加。adminの設定の検査のファイルを共有するため)・3.1・3.2(1.6への依存)・4.1・4.2・5.1(1.4・1.6への依存)・5.2〜5.7・6.4・6.5・7.1〜7.3・8.1・9.1・9.2を直した。
+- **要件**: 決定はいずれも受け入れ基準の範囲内(14.2はカーソルのエラーコードを定めず、14.5はExpose-Headersを求めない)のため、requirements.mdは変えていない。
+- **承認**: spec.jsonの承認の状態は変えていない。反映の後、開発者の指示で`ready_for_implementation`を`true`にした(2026-11-19)。

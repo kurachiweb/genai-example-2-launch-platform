@@ -150,7 +150,10 @@ export function TopPage({
           {slotsOf('main')}
         </div>
         {groups.aside.length > 0 && (
-          <div className="flex flex-col gap-6 lg:shrink-0">
+          <div
+            data-top-page-aside=""
+            className="flex flex-col gap-6 lg:shrink-0"
+          >
             {slotsOf('aside')}
           </div>
         )}

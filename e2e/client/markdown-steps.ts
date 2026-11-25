@@ -8,6 +8,10 @@ import {
   LINK_DIALOG_TITLE,
   LINK_URL_LABEL,
 } from '../../apps/frontend-lib/utilities/messages/markdown-messages.ts';
+import {
+  REACTION_TIMEOUT_MS,
+  RETRY_TIMEOUT_MS,
+} from '../support/hydration-retry.ts';
 
 // 編集領域が選択を状態に取り込むと、その選択の直上に現れる浮動ツールバー。取り込む前にダイアログへフォーカスを移すと、選択が空のままリンクが付かない
 const FLOATING_TOOLBAR_SELECTOR = '.milkdown-toolbar[data-show="true"]';
@@ -19,6 +23,17 @@ export interface MarkdownLink {
 
 export const markdownEditable = (scope: Locator, label: string): Locator =>
   scope.getByRole('textbox', { name: label, exact: true });
+
+// 入力の直後の選択は、編集領域が最後の入力を状態へ取り込む時にカーソルを末尾へ書き戻されて消えることがあるため、浮動ツールバーが現れるまで行を選び直す
+async function selectLineUntilToolbarShown(page: Page): Promise<void> {
+  await expect(async () => {
+    await page.keyboard.press('End');
+    await page.keyboard.press('Shift+Home');
+    await expect(page.locator(FLOATING_TOOLBAR_SELECTOR)).toBeVisible({
+      timeout: REACTION_TIMEOUT_MS,
+    });
+  }).toPass({ timeout: RETRY_TIMEOUT_MS });
+}
 
 // 入力欄は読み込みの後に編集できるようになり、値はフォーカスが外れた時に確定する。書式のツールが押せるようになってから入力し、次の操作のフォーカスの移動で確定させる。リンクは、段落を分けて入力した文字を行頭まで選んで書式のツールバーの「リンク」のダイアログで設定する。選択の直上に編集領域の浮動ツールバーが現れて書式のツールバーの押下を遮るため、ボタンへ直接クリックを送る
 export async function fillMarkdownWithLink(
@@ -38,8 +53,7 @@ export async function fillMarkdownWithLink(
   await page.keyboard.type(text);
   await page.keyboard.press('Enter');
   await page.keyboard.type(link.text);
-  await page.keyboard.press('Shift+Home');
-  await expect(page.locator(FLOATING_TOOLBAR_SELECTOR)).toBeVisible();
+  await selectLineUntilToolbarShown(page);
   await toolbar
     .getByRole('button', { name: LINK_ACTION_LABEL, exact: true })
     .dispatchEvent('click');

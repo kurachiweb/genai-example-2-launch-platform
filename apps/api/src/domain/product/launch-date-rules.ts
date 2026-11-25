@@ -4,8 +4,8 @@ import {
   type QualifierOutcome,
 } from '../../../lib/core/product/launch-status.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
-  fromBusinessDateTime,
   toBusinessDateTime,
 } from '../../../lib/core/time/business-time.ts';
 
@@ -43,19 +43,6 @@ export type LaunchDateCheck =
 
 const RELAUNCH_INTERVAL_DAYS = 7;
 const ENTITLED_RELAUNCH_INTERVAL_DAYS = 2;
-const MILLISECONDS_PER_DAY = 86_400_000;
-const START_OF_DAY = Object.freeze({ hour: 0, minute: 0 });
-
-// 業務時刻は固定のオフセットで夏時間が無いため、0:00に日数分のミリ秒を足した時点の業務日付が日数後の日になる
-export function addBusinessDays(
-  date: BusinessDate,
-  days: number,
-): BusinessDate {
-  const midnight = fromBusinessDateTime(date, START_OF_DAY);
-  return toBusinessDateTime(
-    new Date(midnight.getTime() + days * MILLISECONDS_PER_DAY),
-  ).date;
-}
 
 function isBeforeSelectionCutoff(now: Date): boolean {
   const { hour, minute } = toBusinessDateTime(now);

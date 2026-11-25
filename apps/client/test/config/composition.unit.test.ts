@@ -19,6 +19,7 @@ import {
   pageRequest,
 } from '../../lib/test/server-entry-fixtures.ts';
 import { CLIENT_PROFILE } from '../../src/composition/app-profile.ts';
+import { DATA_EXPORT_DOWNLOAD_RELAY_ROUTE } from '../../src/composition/data-export-relay-route.ts';
 import { RELAY_ROUTES } from '../../src/composition/relay-routes.ts';
 import { CLIENT_SECURITY_POLICY } from '../../src/composition/security-policy.ts';
 
@@ -41,6 +42,8 @@ const LINK_CHECKOUT_API_ORIGIN = 'https://checkout-cookies.link.com';
 const LINK_STATICS_ORIGIN = 'https://statics.link.com';
 
 const STRIPE_PUBLISHABLE_KEY = `pk_test_${'0'.repeat(32)}`;
+
+const PUBLIC_API_ORIGIN = 'https://public-api.example';
 
 afterEach(() => {
   resetSync();
@@ -99,6 +102,43 @@ describe('CLIENT_PROFILE', () => {
 
     expect(onlyRenderContextOf(harness).publicConfig.stripePublishableKey).toBe(
       STRIPE_PUBLISHABLE_KEY,
+    );
+  });
+
+  test('公開APIの仕様書を持ち、公開APIのオリジンを公開設定に渡してページのCSPの接続先に加える', async () => {
+    expect(CLIENT_PROFILE.publicApiDocs).toBe(true);
+    const harness = createHarness({
+      profile: CLIENT_PROFILE,
+      env: { PUBLIC_API_ORIGIN },
+      entryOptions: {
+        relayRoutes: RELAY_ROUTES,
+        securityPolicy: CLIENT_SECURITY_POLICY,
+      },
+    });
+
+    const response = await harness.fetch(pageRequest());
+
+    expect(onlyRenderContextOf(harness).publicConfig.publicApiOrigin).toBe(
+      PUBLIC_API_ORIGIN,
+    );
+    expect(
+      directiveSourcesOf(
+        response.headers.get('Content-Security-Policy'),
+        'connect-src',
+      ),
+    ).toContain(PUBLIC_API_ORIGIN);
+  });
+
+  test('公開APIのオリジンが無ければ、公開設定に渡さずページのCSPの接続先にも加えない', async () => {
+    const harness = clientHarness();
+
+    const response = await harness.fetch(pageRequest());
+
+    expect(
+      onlyRenderContextOf(harness).publicConfig.publicApiOrigin,
+    ).toBeUndefined();
+    expect(response.headers.get('Content-Security-Policy')).not.toContain(
+      PUBLIC_API_ORIGIN,
     );
   });
 
@@ -198,11 +238,12 @@ describe('CLIENT_SECURITY_POLICY', () => {
 });
 
 describe('RELAY_ROUTES', () => {
-  test('GraphQLの中継の経路の後に、アップロードとダウンロードの中継の経路を持つ', () => {
+  test('GraphQLの中継の経路の後に、アップロード・ファイルのダウンロード・データエクスポートのダウンロードの中継の経路を持つ', () => {
     expect(RELAY_ROUTES).toEqual([
       GRAPHQL_RELAY_ROUTE,
       UPLOAD_RELAY_ROUTE,
       FILE_DOWNLOAD_RELAY_ROUTE,
+      DATA_EXPORT_DOWNLOAD_RELAY_ROUTE,
     ]);
   });
 

@@ -17,6 +17,12 @@ type Documents = {
     "fragment AdminHelpArticleRow on AdminHelpArticleRow {\n  id\n  handle\n  title\n  categoryId\n  categoryName\n  status\n  pinned\n  sortOrder\n  creatorAdminId\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  createdAt\n  updatedAt\n}": typeof types.AdminHelpArticleRowFragmentDoc,
     "fragment AdminHelpArticle on AdminHelpArticle {\n  id\n  handle\n  previousHandle\n  title\n  subtitle\n  body\n  categoryId\n  categoryName\n  status\n  pinned\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  revision\n  createdAt\n  updatedAt\n}": typeof types.AdminHelpArticleFragmentDoc,
     "fragment HelpCategory on HelpCategory {\n  id\n  name\n  systemDefault\n  sortOrder\n  articleCount\n}": typeof types.HelpCategoryFragmentDoc,
+    "fragment AdminModerationMediaFile on AdminMediaFile {\n  id\n  path\n  image {\n    id\n    objectKey\n    fallbackFormat\n    width\n    height\n  }\n  quarantined\n  quarantineReasons\n}": typeof types.AdminModerationMediaFileFragmentDoc,
+    "fragment AdminModerationNote on ModerationNote {\n  reason\n  occurredAt\n}": typeof types.AdminModerationNoteFragmentDoc,
+    "fragment AdminModerationProduct on AdminProduct {\n  id\n  handle\n  name\n  logo {\n    id\n    path\n    image {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    quarantined\n    quarantineReasons\n  }\n  owner {\n    ...AdminModerationUserSummary\n  }\n  category {\n    id\n    name\n  }\n  latestLaunchDate\n  latestLaunchState\n  visibility\n}": typeof types.AdminModerationProductFragmentDoc,
+    "fragment AdminModerationRating on AdminRating {\n  id\n  rater {\n    ...AdminModerationUserSummary\n  }\n  productName\n  productId\n  score\n  createdAt\n  updatedAt\n  state\n  latestInvalidation {\n    ...AdminModerationNote\n  }\n}": typeof types.AdminModerationRatingFragmentDoc,
+    "fragment AdminModerationUserSummary on AdminUserSummary {\n  id\n  handle\n  nickname\n  suspended\n}": typeof types.AdminModerationUserSummaryFragmentDoc,
+    "fragment AdminReportCaseSummary on AdminReportCase {\n  id\n  target {\n    kind\n    id\n    detached\n    available\n    handle\n    label\n    excerpt\n    productId\n    productName\n    productHandle\n  }\n  status\n  reportCount\n  categoryCounts {\n    categoryId\n    name\n    count\n  }\n  firstReportedAt\n  lastReportedAt\n  infringement\n  responseTime {\n    startedAt\n    completedAt\n    elapsedSeconds\n    alerts\n  }\n}": typeof types.AdminReportCaseSummaryFragmentDoc,
     "query AdminAccounts {\n  adminAccounts {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": typeof types.AdminAccountsDocument,
     "mutation AdminChangeRole($id: ID!, $role: AdminRole!, $reason: String) {\n  changeAdminRole(id: $id, role: $role, reason: $reason) {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": typeof types.AdminChangeRoleDocument,
     "mutation AdminDelete($id: ID!, $reason: String) {\n  deleteAdmin(id: $id, reason: $reason)\n}": typeof types.AdminDeleteDocument,
@@ -66,20 +72,66 @@ type Documents = {
     "query AdminLegalDocuments {\n  adminLegalDocuments {\n    kind\n    latestVersionNumber\n    latestPublishedAt\n    hasDraft\n  }\n}": typeof types.AdminLegalDocumentsDocument,
     "mutation AdminPublishLegalDocument($input: PublishLegalDocumentInput!) {\n  publishLegalDocument(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminPublishLegalDocumentDocument,
     "mutation AdminSaveLegalDocumentDraft($input: SaveLegalDocumentDraftInput!) {\n  saveLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminSaveLegalDocumentDraftDocument,
+    "mutation AdminApproveQuarantinedImage($fileId: ID!, $reason: String) {\n  approveQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminApproveQuarantinedImageDocument,
+    "query AdminComments($filter: AdminCommentFilter, $first: Int!, $after: String) {\n  adminComments(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      excerpt\n      author {\n        ...AdminModerationUserSummary\n      }\n      productName\n      productId\n      launchId\n      launchNumber\n      createdAt\n      state\n      latestHide {\n        ...AdminModerationNote\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.AdminCommentsDocument,
+    "mutation AdminDeleteQuarantinedImage($fileId: ID!, $reason: String) {\n  deleteQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminDeleteQuarantinedImageDocument,
+    "mutation AdminHideComment($id: ID!, $reason: String!) {\n  hideComment(id: $id, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminHideCommentDocument,
+    "mutation AdminHideProduct($id: ID!, $reason: String!) {\n  hideProduct(id: $id, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminHideProductDocument,
+    "mutation AdminInvalidateRating($id: ID!, $reason: String!) {\n  invalidateRating(id: $id, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminInvalidateRatingDocument,
+    "query AdminModerationCategoryOptions {\n  adminModerationCategoryOptions {\n    id\n    name\n  }\n}": typeof types.AdminModerationCategoryOptionsDocument,
+    "query AdminProductRatings($productId: ID!, $first: Int!, $after: String) {\n  adminProductRatings(productId: $productId, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationRating\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.AdminProductRatingsDocument,
+    "query AdminProduct($id: ID!) {\n  adminProduct(id: $id) {\n    product {\n      ...AdminModerationProduct\n    }\n    tagline\n    descriptionMarkdown\n    websiteUrl\n    screenshots {\n      ...AdminModerationMediaFile\n    }\n    hiddenAt\n    latestHide {\n      ...AdminModerationNote\n    }\n    ratingSummary {\n      average\n      count\n    }\n    launches {\n      id\n      number\n      launchDate\n      status\n      matches {\n        id\n        kind\n        round\n        stage\n        matchDate\n        upvoteCount\n        result\n        phase\n        decision\n        opponentName\n      }\n    }\n  }\n}": typeof types.AdminProductDocument,
+    "query AdminProducts($filter: AdminProductFilter, $first: Int!, $after: String) {\n  adminProducts(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationProduct\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.AdminProductsDocument,
+    "mutation AdminQuarantineImage($fileId: ID!, $reason: String) {\n  quarantineImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminQuarantineImageDocument,
+    "query AdminQuarantinedImages($reason: QuarantineReason!, $after: String) {\n  adminQuarantinedImages(reason: $reason, after: $after) {\n    items {\n      file {\n        ...AdminModerationMediaFile\n      }\n      purpose\n      owner {\n        kind\n        id\n        nickname\n        handle\n      }\n      quarantinedAt\n      findings\n    }\n    nextCursor\n  }\n}": typeof types.AdminQuarantinedImagesDocument,
+    "query AdminRatings($filter: AdminRatingFilter, $first: Int!, $after: String) {\n  adminRatings(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationRating\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.AdminRatingsDocument,
+    "mutation AdminReleaseQuarantinedImage($fileId: ID!, $reason: String) {\n  releaseQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminReleaseQuarantinedImageDocument,
+    "mutation AdminRevalidateRating($id: ID!, $reason: String!) {\n  revalidateRating(id: $id, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminRevalidateRatingDocument,
+    "mutation AdminSuspendUser($id: ID!, $reason: String!) {\n  suspendUser(id: $id, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminSuspendUserDocument,
+    "mutation AdminUnhideComment($id: ID!, $reason: String!) {\n  unhideComment(id: $id, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminUnhideCommentDocument,
+    "mutation AdminUnhideProduct($id: ID!, $reason: String!) {\n  unhideProduct(id: $id, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminUnhideProductDocument,
+    "mutation AdminUnsuspendUser($id: ID!, $reason: String!) {\n  unsuspendUser(id: $id, reason: $reason) {\n    changed\n  }\n}": typeof types.AdminUnsuspendUserDocument,
+    "query AdminUsers($filter: AdminUserFilter, $first: Int!, $after: String) {\n  adminUsers(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      handle\n      nickname\n      avatar {\n        ...AdminModerationMediaFile\n      }\n      registeredAt\n      disposableEmail\n      status\n      suspendedAt\n      latestSuspension {\n        ...AdminModerationNote\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.AdminUsersDocument,
+    "query AdminWeeklyStatistics {\n  adminWeeklyStatistics {\n    weeks {\n      weekStart\n      finalized\n      netRevenue {\n        amount\n        currency\n      }\n      users\n      products\n      qualifierMatches\n      upvotes\n    }\n    lastComputedAt\n  }\n}": typeof types.AdminWeeklyStatisticsDocument,
+    "mutation AdminWithdrawUserByAdministrator($input: AdministrativeWithdrawalInput!) {\n  withdrawUserByAdministrator(input: $input) {\n    changed\n  }\n}": typeof types.AdminWithdrawUserByAdministratorDocument,
     "query AdminNotificationSenderInfo {\n  notificationSenderInfo {\n    info {\n      businessName\n      contactEmail\n      postalAddress\n    }\n    version\n    updatedAt\n    updatedByNickname\n  }\n}": typeof types.AdminNotificationSenderInfoDocument,
     "mutation AdminUpdateNotificationSenderInfo($input: UpdateNotificationSenderInfoInput!) {\n  updateNotificationSenderInfo(input: $input) {\n    info {\n      businessName\n      contactEmail\n      postalAddress\n    }\n    version\n    updatedAt\n    updatedByNickname\n  }\n}": typeof types.AdminUpdateNotificationSenderInfoDocument,
     "query AdminProductCategories {\n  adminProductCategories {\n    id\n    name\n    handle\n    systemDefault\n  }\n}": typeof types.AdminProductCategoriesDocument,
     "mutation AdminCreateProductCategory($input: ProductCategoryInput!) {\n  createProductCategory(input: $input) {\n    id\n  }\n}": typeof types.AdminCreateProductCategoryDocument,
     "mutation AdminDeleteProductCategory($id: ID!) {\n  deleteProductCategory(id: $id)\n}": typeof types.AdminDeleteProductCategoryDocument,
     "mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}": typeof types.AdminUpdateProductCategoryDocument,
+    "query AdminReportCase($id: ID!) {\n  adminReportCase(id: $id) {\n    case {\n      ...AdminReportCaseSummary\n    }\n    statusChangedAt\n    resolution\n    closingReason\n    closedAt\n    lastInquiry {\n      sentAt\n      message\n      deadline\n      overdue\n    }\n    inquiryAvailable\n    reports {\n      id\n      categoryName\n      reason\n      reportedAt\n      reporter {\n        kind\n        nickname\n        handle\n        hasContact\n      }\n    }\n  }\n}": typeof types.AdminReportCaseDocument,
+    "query AdminReportCases($filter: AdminReportCaseFilter, $first: Int!, $after: String) {\n  adminReportCases(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminReportCaseSummary\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.AdminReportCasesDocument,
+    "query AdminReportCategories {\n  adminReportCategories {\n    id\n    name\n    systemDefault\n    infringement\n    reportCount\n  }\n}": typeof types.AdminReportCategoriesDocument,
+    "mutation AdminChangeReportCaseStatus($id: ID!, $from: ReportCaseStatus!, $to: ReportCaseStatus!, $reason: String) {\n  changeReportCaseStatus(id: $id, from: $from, to: $to, reason: $reason) {\n    status\n  }\n}": typeof types.AdminChangeReportCaseStatusDocument,
+    "mutation AdminCreateReportCategory($name: String!) {\n  createReportCategory(name: $name) {\n    id\n  }\n}": typeof types.AdminCreateReportCategoryDocument,
+    "mutation AdminDeleteReportCategory($id: ID!) {\n  deleteReportCategory(id: $id) {\n    reassignedCount\n  }\n}": typeof types.AdminDeleteReportCategoryDocument,
+    "mutation AdminRejectReportCase($id: ID!, $reason: String!) {\n  rejectReportCase(id: $id, reason: $reason) {\n    status\n  }\n}": typeof types.AdminRejectReportCaseDocument,
+    "mutation AdminRenameReportCategory($id: ID!, $name: String!) {\n  renameReportCategory(id: $id, name: $name) {\n    id\n  }\n}": typeof types.AdminRenameReportCategoryDocument,
+    "mutation AdminResolveReportCaseWithMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithMeasure(id: $id, reason: $reason) {\n    status\n  }\n}": typeof types.AdminResolveReportCaseWithMeasureDocument,
+    "mutation AdminResolveReportCaseWithoutMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithoutMeasure(id: $id, reason: $reason) {\n    status\n  }\n}": typeof types.AdminResolveReportCaseWithoutMeasureDocument,
+    "mutation AdminSendInfringementInquiry($id: ID!, $message: String!, $reason: String) {\n  sendInfringementInquiry(id: $id, message: $message, reason: $reason) {\n    sentAt\n    deadline\n  }\n}": typeof types.AdminSendInfringementInquiryDocument,
+    "query AdminProductReportSummary($productId: ID!) {\n  adminProductReportSummary(productId: $productId) {\n    reportCount\n    openCase {\n      id\n      status\n    }\n  }\n}": typeof types.AdminProductReportSummaryDocument,
+    "query AdminUnhandledReportSummary {\n  adminUnhandledReportSummary {\n    open\n    infringementOpen\n  }\n}": typeof types.AdminUnhandledReportSummaryDocument,
+    "query AdminSponsorships($filter: AdminSponsorshipFilter, $first: Int!, $after: String) {\n  adminSponsorships(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      productName\n      productHandle\n      productDeleted\n      applicantNickname\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminable\n      purchaseId\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": typeof types.AdminSponsorshipsDocument,
+    "query AdminSponsorshipTerminationPreview($id: ID!) {\n  sponsorshipTerminationPreview(id: $id) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n  }\n}": typeof types.AdminSponsorshipTerminationPreviewDocument,
+    "mutation AdminTerminateSponsorship($id: ID!, $reason: String!) {\n  terminateSponsorship(id: $id, reason: $reason) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n    terminatedOn\n    terminationRefundStatus\n    stopRefundStatus\n    terminationRefundRequested {\n      amount\n      currency\n    }\n    stopRefundRequested {\n      amount\n      currency\n    }\n    purchaseId\n  }\n}": typeof types.AdminTerminateSponsorshipDocument,
     "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": typeof types.AdminSystemStatusDocument,
     "query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": typeof types.AdminUltrasPromotionSettingDocument,
     "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": typeof types.AdminUpdateUltrasPromotionSettingDocument,
+    "mutation AdminUpdateYearFinalDate($input: UpdateYearFinalDateInput!) {\n  updateYearFinalDate(input: $input) {\n    year\n    finalDate\n    source\n    acceptUntil\n    deadlineAt\n    drawAt\n    changeLockAt\n    changeable\n    choices\n    previousYearFinalDate\n    nextYearFinalDate\n    nextYearSource\n    nextYearGapWarningDate\n    version\n    updatedAt\n    updatedBy {\n      nickname\n    }\n  }\n}": typeof types.AdminUpdateYearFinalDateDocument,
+    "query AdminYearFinalDateSettings {\n  yearFinalDateSettings {\n    serverTime\n    settings {\n      year\n      finalDate\n      source\n      acceptUntil\n      deadlineAt\n      drawAt\n      changeLockAt\n      changeable\n      choices\n      previousYearFinalDate\n      nextYearFinalDate\n      nextYearSource\n      nextYearGapWarningDate\n      version\n      updatedAt\n      updatedBy {\n        nickname\n      }\n    }\n  }\n}": typeof types.AdminYearFinalDateSettingsDocument,
 };
 const documents: Documents = {
     "fragment AdminHelpArticleRow on AdminHelpArticleRow {\n  id\n  handle\n  title\n  categoryId\n  categoryName\n  status\n  pinned\n  sortOrder\n  creatorAdminId\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  createdAt\n  updatedAt\n}": types.AdminHelpArticleRowFragmentDoc,
     "fragment AdminHelpArticle on AdminHelpArticle {\n  id\n  handle\n  previousHandle\n  title\n  subtitle\n  body\n  categoryId\n  categoryName\n  status\n  pinned\n  creator {\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n  }\n  revision\n  createdAt\n  updatedAt\n}": types.AdminHelpArticleFragmentDoc,
     "fragment HelpCategory on HelpCategory {\n  id\n  name\n  systemDefault\n  sortOrder\n  articleCount\n}": types.HelpCategoryFragmentDoc,
+    "fragment AdminModerationMediaFile on AdminMediaFile {\n  id\n  path\n  image {\n    id\n    objectKey\n    fallbackFormat\n    width\n    height\n  }\n  quarantined\n  quarantineReasons\n}": types.AdminModerationMediaFileFragmentDoc,
+    "fragment AdminModerationNote on ModerationNote {\n  reason\n  occurredAt\n}": types.AdminModerationNoteFragmentDoc,
+    "fragment AdminModerationProduct on AdminProduct {\n  id\n  handle\n  name\n  logo {\n    id\n    path\n    image {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    quarantined\n    quarantineReasons\n  }\n  owner {\n    ...AdminModerationUserSummary\n  }\n  category {\n    id\n    name\n  }\n  latestLaunchDate\n  latestLaunchState\n  visibility\n}": types.AdminModerationProductFragmentDoc,
+    "fragment AdminModerationRating on AdminRating {\n  id\n  rater {\n    ...AdminModerationUserSummary\n  }\n  productName\n  productId\n  score\n  createdAt\n  updatedAt\n  state\n  latestInvalidation {\n    ...AdminModerationNote\n  }\n}": types.AdminModerationRatingFragmentDoc,
+    "fragment AdminModerationUserSummary on AdminUserSummary {\n  id\n  handle\n  nickname\n  suspended\n}": types.AdminModerationUserSummaryFragmentDoc,
+    "fragment AdminReportCaseSummary on AdminReportCase {\n  id\n  target {\n    kind\n    id\n    detached\n    available\n    handle\n    label\n    excerpt\n    productId\n    productName\n    productHandle\n  }\n  status\n  reportCount\n  categoryCounts {\n    categoryId\n    name\n    count\n  }\n  firstReportedAt\n  lastReportedAt\n  infringement\n  responseTime {\n    startedAt\n    completedAt\n    elapsedSeconds\n    alerts\n  }\n}": types.AdminReportCaseSummaryFragmentDoc,
     "query AdminAccounts {\n  adminAccounts {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": types.AdminAccountsDocument,
     "mutation AdminChangeRole($id: ID!, $role: AdminRole!, $reason: String) {\n  changeAdminRole(id: $id, role: $role, reason: $reason) {\n    id\n    email\n    nickname\n    title\n    avatar {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    role\n    status\n    createdAt\n  }\n}": types.AdminChangeRoleDocument,
     "mutation AdminDelete($id: ID!, $reason: String) {\n  deleteAdmin(id: $id, reason: $reason)\n}": types.AdminDeleteDocument,
@@ -129,15 +181,55 @@ const documents: Documents = {
     "query AdminLegalDocuments {\n  adminLegalDocuments {\n    kind\n    latestVersionNumber\n    latestPublishedAt\n    hasDraft\n  }\n}": types.AdminLegalDocumentsDocument,
     "mutation AdminPublishLegalDocument($input: PublishLegalDocumentInput!) {\n  publishLegalDocument(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": types.AdminPublishLegalDocumentDocument,
     "mutation AdminSaveLegalDocumentDraft($input: SaveLegalDocumentDraftInput!) {\n  saveLegalDocumentDraft(input: $input) {\n    kind\n    stateVersion\n    latestBody\n    draft {\n      body\n      savedAt\n      savedBy {\n        id\n        nickname\n      }\n    }\n    revisions {\n      versionNumber\n      publishedAt\n      changeSummary\n      publishedBy {\n        id\n        nickname\n      }\n    }\n  }\n}": types.AdminSaveLegalDocumentDraftDocument,
+    "mutation AdminApproveQuarantinedImage($fileId: ID!, $reason: String) {\n  approveQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}": types.AdminApproveQuarantinedImageDocument,
+    "query AdminComments($filter: AdminCommentFilter, $first: Int!, $after: String) {\n  adminComments(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      excerpt\n      author {\n        ...AdminModerationUserSummary\n      }\n      productName\n      productId\n      launchId\n      launchNumber\n      createdAt\n      state\n      latestHide {\n        ...AdminModerationNote\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.AdminCommentsDocument,
+    "mutation AdminDeleteQuarantinedImage($fileId: ID!, $reason: String) {\n  deleteQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}": types.AdminDeleteQuarantinedImageDocument,
+    "mutation AdminHideComment($id: ID!, $reason: String!) {\n  hideComment(id: $id, reason: $reason) {\n    changed\n  }\n}": types.AdminHideCommentDocument,
+    "mutation AdminHideProduct($id: ID!, $reason: String!) {\n  hideProduct(id: $id, reason: $reason) {\n    changed\n  }\n}": types.AdminHideProductDocument,
+    "mutation AdminInvalidateRating($id: ID!, $reason: String!) {\n  invalidateRating(id: $id, reason: $reason) {\n    changed\n  }\n}": types.AdminInvalidateRatingDocument,
+    "query AdminModerationCategoryOptions {\n  adminModerationCategoryOptions {\n    id\n    name\n  }\n}": types.AdminModerationCategoryOptionsDocument,
+    "query AdminProductRatings($productId: ID!, $first: Int!, $after: String) {\n  adminProductRatings(productId: $productId, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationRating\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.AdminProductRatingsDocument,
+    "query AdminProduct($id: ID!) {\n  adminProduct(id: $id) {\n    product {\n      ...AdminModerationProduct\n    }\n    tagline\n    descriptionMarkdown\n    websiteUrl\n    screenshots {\n      ...AdminModerationMediaFile\n    }\n    hiddenAt\n    latestHide {\n      ...AdminModerationNote\n    }\n    ratingSummary {\n      average\n      count\n    }\n    launches {\n      id\n      number\n      launchDate\n      status\n      matches {\n        id\n        kind\n        round\n        stage\n        matchDate\n        upvoteCount\n        result\n        phase\n        decision\n        opponentName\n      }\n    }\n  }\n}": types.AdminProductDocument,
+    "query AdminProducts($filter: AdminProductFilter, $first: Int!, $after: String) {\n  adminProducts(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationProduct\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.AdminProductsDocument,
+    "mutation AdminQuarantineImage($fileId: ID!, $reason: String) {\n  quarantineImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}": types.AdminQuarantineImageDocument,
+    "query AdminQuarantinedImages($reason: QuarantineReason!, $after: String) {\n  adminQuarantinedImages(reason: $reason, after: $after) {\n    items {\n      file {\n        ...AdminModerationMediaFile\n      }\n      purpose\n      owner {\n        kind\n        id\n        nickname\n        handle\n      }\n      quarantinedAt\n      findings\n    }\n    nextCursor\n  }\n}": types.AdminQuarantinedImagesDocument,
+    "query AdminRatings($filter: AdminRatingFilter, $first: Int!, $after: String) {\n  adminRatings(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationRating\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.AdminRatingsDocument,
+    "mutation AdminReleaseQuarantinedImage($fileId: ID!, $reason: String) {\n  releaseQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}": types.AdminReleaseQuarantinedImageDocument,
+    "mutation AdminRevalidateRating($id: ID!, $reason: String!) {\n  revalidateRating(id: $id, reason: $reason) {\n    changed\n  }\n}": types.AdminRevalidateRatingDocument,
+    "mutation AdminSuspendUser($id: ID!, $reason: String!) {\n  suspendUser(id: $id, reason: $reason) {\n    changed\n  }\n}": types.AdminSuspendUserDocument,
+    "mutation AdminUnhideComment($id: ID!, $reason: String!) {\n  unhideComment(id: $id, reason: $reason) {\n    changed\n  }\n}": types.AdminUnhideCommentDocument,
+    "mutation AdminUnhideProduct($id: ID!, $reason: String!) {\n  unhideProduct(id: $id, reason: $reason) {\n    changed\n  }\n}": types.AdminUnhideProductDocument,
+    "mutation AdminUnsuspendUser($id: ID!, $reason: String!) {\n  unsuspendUser(id: $id, reason: $reason) {\n    changed\n  }\n}": types.AdminUnsuspendUserDocument,
+    "query AdminUsers($filter: AdminUserFilter, $first: Int!, $after: String) {\n  adminUsers(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      handle\n      nickname\n      avatar {\n        ...AdminModerationMediaFile\n      }\n      registeredAt\n      disposableEmail\n      status\n      suspendedAt\n      latestSuspension {\n        ...AdminModerationNote\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.AdminUsersDocument,
+    "query AdminWeeklyStatistics {\n  adminWeeklyStatistics {\n    weeks {\n      weekStart\n      finalized\n      netRevenue {\n        amount\n        currency\n      }\n      users\n      products\n      qualifierMatches\n      upvotes\n    }\n    lastComputedAt\n  }\n}": types.AdminWeeklyStatisticsDocument,
+    "mutation AdminWithdrawUserByAdministrator($input: AdministrativeWithdrawalInput!) {\n  withdrawUserByAdministrator(input: $input) {\n    changed\n  }\n}": types.AdminWithdrawUserByAdministratorDocument,
     "query AdminNotificationSenderInfo {\n  notificationSenderInfo {\n    info {\n      businessName\n      contactEmail\n      postalAddress\n    }\n    version\n    updatedAt\n    updatedByNickname\n  }\n}": types.AdminNotificationSenderInfoDocument,
     "mutation AdminUpdateNotificationSenderInfo($input: UpdateNotificationSenderInfoInput!) {\n  updateNotificationSenderInfo(input: $input) {\n    info {\n      businessName\n      contactEmail\n      postalAddress\n    }\n    version\n    updatedAt\n    updatedByNickname\n  }\n}": types.AdminUpdateNotificationSenderInfoDocument,
     "query AdminProductCategories {\n  adminProductCategories {\n    id\n    name\n    handle\n    systemDefault\n  }\n}": types.AdminProductCategoriesDocument,
     "mutation AdminCreateProductCategory($input: ProductCategoryInput!) {\n  createProductCategory(input: $input) {\n    id\n  }\n}": types.AdminCreateProductCategoryDocument,
     "mutation AdminDeleteProductCategory($id: ID!) {\n  deleteProductCategory(id: $id)\n}": types.AdminDeleteProductCategoryDocument,
     "mutation AdminUpdateProductCategory($id: ID!, $input: ProductCategoryInput!) {\n  updateProductCategory(id: $id, input: $input) {\n    id\n  }\n}": types.AdminUpdateProductCategoryDocument,
+    "query AdminReportCase($id: ID!) {\n  adminReportCase(id: $id) {\n    case {\n      ...AdminReportCaseSummary\n    }\n    statusChangedAt\n    resolution\n    closingReason\n    closedAt\n    lastInquiry {\n      sentAt\n      message\n      deadline\n      overdue\n    }\n    inquiryAvailable\n    reports {\n      id\n      categoryName\n      reason\n      reportedAt\n      reporter {\n        kind\n        nickname\n        handle\n        hasContact\n      }\n    }\n  }\n}": types.AdminReportCaseDocument,
+    "query AdminReportCases($filter: AdminReportCaseFilter, $first: Int!, $after: String) {\n  adminReportCases(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminReportCaseSummary\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.AdminReportCasesDocument,
+    "query AdminReportCategories {\n  adminReportCategories {\n    id\n    name\n    systemDefault\n    infringement\n    reportCount\n  }\n}": types.AdminReportCategoriesDocument,
+    "mutation AdminChangeReportCaseStatus($id: ID!, $from: ReportCaseStatus!, $to: ReportCaseStatus!, $reason: String) {\n  changeReportCaseStatus(id: $id, from: $from, to: $to, reason: $reason) {\n    status\n  }\n}": types.AdminChangeReportCaseStatusDocument,
+    "mutation AdminCreateReportCategory($name: String!) {\n  createReportCategory(name: $name) {\n    id\n  }\n}": types.AdminCreateReportCategoryDocument,
+    "mutation AdminDeleteReportCategory($id: ID!) {\n  deleteReportCategory(id: $id) {\n    reassignedCount\n  }\n}": types.AdminDeleteReportCategoryDocument,
+    "mutation AdminRejectReportCase($id: ID!, $reason: String!) {\n  rejectReportCase(id: $id, reason: $reason) {\n    status\n  }\n}": types.AdminRejectReportCaseDocument,
+    "mutation AdminRenameReportCategory($id: ID!, $name: String!) {\n  renameReportCategory(id: $id, name: $name) {\n    id\n  }\n}": types.AdminRenameReportCategoryDocument,
+    "mutation AdminResolveReportCaseWithMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithMeasure(id: $id, reason: $reason) {\n    status\n  }\n}": types.AdminResolveReportCaseWithMeasureDocument,
+    "mutation AdminResolveReportCaseWithoutMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithoutMeasure(id: $id, reason: $reason) {\n    status\n  }\n}": types.AdminResolveReportCaseWithoutMeasureDocument,
+    "mutation AdminSendInfringementInquiry($id: ID!, $message: String!, $reason: String) {\n  sendInfringementInquiry(id: $id, message: $message, reason: $reason) {\n    sentAt\n    deadline\n  }\n}": types.AdminSendInfringementInquiryDocument,
+    "query AdminProductReportSummary($productId: ID!) {\n  adminProductReportSummary(productId: $productId) {\n    reportCount\n    openCase {\n      id\n      status\n    }\n  }\n}": types.AdminProductReportSummaryDocument,
+    "query AdminUnhandledReportSummary {\n  adminUnhandledReportSummary {\n    open\n    infringementOpen\n  }\n}": types.AdminUnhandledReportSummaryDocument,
+    "query AdminSponsorships($filter: AdminSponsorshipFilter, $first: Int!, $after: String) {\n  adminSponsorships(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      productName\n      productHandle\n      productDeleted\n      applicantNickname\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminable\n      purchaseId\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}": types.AdminSponsorshipsDocument,
+    "query AdminSponsorshipTerminationPreview($id: ID!) {\n  sponsorshipTerminationPreview(id: $id) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n  }\n}": types.AdminSponsorshipTerminationPreviewDocument,
+    "mutation AdminTerminateSponsorship($id: ID!, $reason: String!) {\n  terminateSponsorship(id: $id, reason: $reason) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n    terminatedOn\n    terminationRefundStatus\n    stopRefundStatus\n    terminationRefundRequested {\n      amount\n      currency\n    }\n    stopRefundRequested {\n      amount\n      currency\n    }\n    purchaseId\n  }\n}": types.AdminTerminateSponsorshipDocument,
     "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}": types.AdminSystemStatusDocument,
     "query AdminUltrasPromotionSetting {\n  ultrasPromotionSetting {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": types.AdminUltrasPromotionSettingDocument,
     "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}": types.AdminUpdateUltrasPromotionSettingDocument,
+    "mutation AdminUpdateYearFinalDate($input: UpdateYearFinalDateInput!) {\n  updateYearFinalDate(input: $input) {\n    year\n    finalDate\n    source\n    acceptUntil\n    deadlineAt\n    drawAt\n    changeLockAt\n    changeable\n    choices\n    previousYearFinalDate\n    nextYearFinalDate\n    nextYearSource\n    nextYearGapWarningDate\n    version\n    updatedAt\n    updatedBy {\n      nickname\n    }\n  }\n}": types.AdminUpdateYearFinalDateDocument,
+    "query AdminYearFinalDateSettings {\n  yearFinalDateSettings {\n    serverTime\n    settings {\n      year\n      finalDate\n      source\n      acceptUntil\n      deadlineAt\n      drawAt\n      changeLockAt\n      changeable\n      choices\n      previousYearFinalDate\n      nextYearFinalDate\n      nextYearSource\n      nextYearGapWarningDate\n      version\n      updatedAt\n      updatedBy {\n        nickname\n      }\n    }\n  }\n}": types.AdminYearFinalDateSettingsDocument,
 };
 
 /**
@@ -166,6 +258,30 @@ export function graphql(source: "fragment AdminHelpArticle on AdminHelpArticle {
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "fragment HelpCategory on HelpCategory {\n  id\n  name\n  systemDefault\n  sortOrder\n  articleCount\n}"): (typeof documents)["fragment HelpCategory on HelpCategory {\n  id\n  name\n  systemDefault\n  sortOrder\n  articleCount\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment AdminModerationMediaFile on AdminMediaFile {\n  id\n  path\n  image {\n    id\n    objectKey\n    fallbackFormat\n    width\n    height\n  }\n  quarantined\n  quarantineReasons\n}"): (typeof documents)["fragment AdminModerationMediaFile on AdminMediaFile {\n  id\n  path\n  image {\n    id\n    objectKey\n    fallbackFormat\n    width\n    height\n  }\n  quarantined\n  quarantineReasons\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment AdminModerationNote on ModerationNote {\n  reason\n  occurredAt\n}"): (typeof documents)["fragment AdminModerationNote on ModerationNote {\n  reason\n  occurredAt\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment AdminModerationProduct on AdminProduct {\n  id\n  handle\n  name\n  logo {\n    id\n    path\n    image {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    quarantined\n    quarantineReasons\n  }\n  owner {\n    ...AdminModerationUserSummary\n  }\n  category {\n    id\n    name\n  }\n  latestLaunchDate\n  latestLaunchState\n  visibility\n}"): (typeof documents)["fragment AdminModerationProduct on AdminProduct {\n  id\n  handle\n  name\n  logo {\n    id\n    path\n    image {\n      id\n      objectKey\n      fallbackFormat\n      width\n      height\n    }\n    quarantined\n    quarantineReasons\n  }\n  owner {\n    ...AdminModerationUserSummary\n  }\n  category {\n    id\n    name\n  }\n  latestLaunchDate\n  latestLaunchState\n  visibility\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment AdminModerationRating on AdminRating {\n  id\n  rater {\n    ...AdminModerationUserSummary\n  }\n  productName\n  productId\n  score\n  createdAt\n  updatedAt\n  state\n  latestInvalidation {\n    ...AdminModerationNote\n  }\n}"): (typeof documents)["fragment AdminModerationRating on AdminRating {\n  id\n  rater {\n    ...AdminModerationUserSummary\n  }\n  productName\n  productId\n  score\n  createdAt\n  updatedAt\n  state\n  latestInvalidation {\n    ...AdminModerationNote\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment AdminModerationUserSummary on AdminUserSummary {\n  id\n  handle\n  nickname\n  suspended\n}"): (typeof documents)["fragment AdminModerationUserSummary on AdminUserSummary {\n  id\n  handle\n  nickname\n  suspended\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment AdminReportCaseSummary on AdminReportCase {\n  id\n  target {\n    kind\n    id\n    detached\n    available\n    handle\n    label\n    excerpt\n    productId\n    productName\n    productHandle\n  }\n  status\n  reportCount\n  categoryCounts {\n    categoryId\n    name\n    count\n  }\n  firstReportedAt\n  lastReportedAt\n  infringement\n  responseTime {\n    startedAt\n    completedAt\n    elapsedSeconds\n    alerts\n  }\n}"): (typeof documents)["fragment AdminReportCaseSummary on AdminReportCase {\n  id\n  target {\n    kind\n    id\n    detached\n    available\n    handle\n    label\n    excerpt\n    productId\n    productName\n    productHandle\n  }\n  status\n  reportCount\n  categoryCounts {\n    categoryId\n    name\n    count\n  }\n  firstReportedAt\n  lastReportedAt\n  infringement\n  responseTime {\n    startedAt\n    completedAt\n    elapsedSeconds\n    alerts\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -365,6 +481,94 @@ export function graphql(source: "mutation AdminSaveLegalDocumentDraft($input: Sa
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "mutation AdminApproveQuarantinedImage($fileId: ID!, $reason: String) {\n  approveQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminApproveQuarantinedImage($fileId: ID!, $reason: String) {\n  approveQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminComments($filter: AdminCommentFilter, $first: Int!, $after: String) {\n  adminComments(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      excerpt\n      author {\n        ...AdminModerationUserSummary\n      }\n      productName\n      productId\n      launchId\n      launchNumber\n      createdAt\n      state\n      latestHide {\n        ...AdminModerationNote\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"): (typeof documents)["query AdminComments($filter: AdminCommentFilter, $first: Int!, $after: String) {\n  adminComments(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      excerpt\n      author {\n        ...AdminModerationUserSummary\n      }\n      productName\n      productId\n      launchId\n      launchNumber\n      createdAt\n      state\n      latestHide {\n        ...AdminModerationNote\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminDeleteQuarantinedImage($fileId: ID!, $reason: String) {\n  deleteQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminDeleteQuarantinedImage($fileId: ID!, $reason: String) {\n  deleteQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminHideComment($id: ID!, $reason: String!) {\n  hideComment(id: $id, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminHideComment($id: ID!, $reason: String!) {\n  hideComment(id: $id, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminHideProduct($id: ID!, $reason: String!) {\n  hideProduct(id: $id, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminHideProduct($id: ID!, $reason: String!) {\n  hideProduct(id: $id, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminInvalidateRating($id: ID!, $reason: String!) {\n  invalidateRating(id: $id, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminInvalidateRating($id: ID!, $reason: String!) {\n  invalidateRating(id: $id, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminModerationCategoryOptions {\n  adminModerationCategoryOptions {\n    id\n    name\n  }\n}"): (typeof documents)["query AdminModerationCategoryOptions {\n  adminModerationCategoryOptions {\n    id\n    name\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminProductRatings($productId: ID!, $first: Int!, $after: String) {\n  adminProductRatings(productId: $productId, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationRating\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"): (typeof documents)["query AdminProductRatings($productId: ID!, $first: Int!, $after: String) {\n  adminProductRatings(productId: $productId, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationRating\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminProduct($id: ID!) {\n  adminProduct(id: $id) {\n    product {\n      ...AdminModerationProduct\n    }\n    tagline\n    descriptionMarkdown\n    websiteUrl\n    screenshots {\n      ...AdminModerationMediaFile\n    }\n    hiddenAt\n    latestHide {\n      ...AdminModerationNote\n    }\n    ratingSummary {\n      average\n      count\n    }\n    launches {\n      id\n      number\n      launchDate\n      status\n      matches {\n        id\n        kind\n        round\n        stage\n        matchDate\n        upvoteCount\n        result\n        phase\n        decision\n        opponentName\n      }\n    }\n  }\n}"): (typeof documents)["query AdminProduct($id: ID!) {\n  adminProduct(id: $id) {\n    product {\n      ...AdminModerationProduct\n    }\n    tagline\n    descriptionMarkdown\n    websiteUrl\n    screenshots {\n      ...AdminModerationMediaFile\n    }\n    hiddenAt\n    latestHide {\n      ...AdminModerationNote\n    }\n    ratingSummary {\n      average\n      count\n    }\n    launches {\n      id\n      number\n      launchDate\n      status\n      matches {\n        id\n        kind\n        round\n        stage\n        matchDate\n        upvoteCount\n        result\n        phase\n        decision\n        opponentName\n      }\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminProducts($filter: AdminProductFilter, $first: Int!, $after: String) {\n  adminProducts(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationProduct\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"): (typeof documents)["query AdminProducts($filter: AdminProductFilter, $first: Int!, $after: String) {\n  adminProducts(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationProduct\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminQuarantineImage($fileId: ID!, $reason: String) {\n  quarantineImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminQuarantineImage($fileId: ID!, $reason: String) {\n  quarantineImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminQuarantinedImages($reason: QuarantineReason!, $after: String) {\n  adminQuarantinedImages(reason: $reason, after: $after) {\n    items {\n      file {\n        ...AdminModerationMediaFile\n      }\n      purpose\n      owner {\n        kind\n        id\n        nickname\n        handle\n      }\n      quarantinedAt\n      findings\n    }\n    nextCursor\n  }\n}"): (typeof documents)["query AdminQuarantinedImages($reason: QuarantineReason!, $after: String) {\n  adminQuarantinedImages(reason: $reason, after: $after) {\n    items {\n      file {\n        ...AdminModerationMediaFile\n      }\n      purpose\n      owner {\n        kind\n        id\n        nickname\n        handle\n      }\n      quarantinedAt\n      findings\n    }\n    nextCursor\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminRatings($filter: AdminRatingFilter, $first: Int!, $after: String) {\n  adminRatings(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationRating\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"): (typeof documents)["query AdminRatings($filter: AdminRatingFilter, $first: Int!, $after: String) {\n  adminRatings(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminModerationRating\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminReleaseQuarantinedImage($fileId: ID!, $reason: String) {\n  releaseQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminReleaseQuarantinedImage($fileId: ID!, $reason: String) {\n  releaseQuarantinedImage(fileId: $fileId, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminRevalidateRating($id: ID!, $reason: String!) {\n  revalidateRating(id: $id, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminRevalidateRating($id: ID!, $reason: String!) {\n  revalidateRating(id: $id, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminSuspendUser($id: ID!, $reason: String!) {\n  suspendUser(id: $id, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminSuspendUser($id: ID!, $reason: String!) {\n  suspendUser(id: $id, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminUnhideComment($id: ID!, $reason: String!) {\n  unhideComment(id: $id, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminUnhideComment($id: ID!, $reason: String!) {\n  unhideComment(id: $id, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminUnhideProduct($id: ID!, $reason: String!) {\n  unhideProduct(id: $id, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminUnhideProduct($id: ID!, $reason: String!) {\n  unhideProduct(id: $id, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminUnsuspendUser($id: ID!, $reason: String!) {\n  unsuspendUser(id: $id, reason: $reason) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminUnsuspendUser($id: ID!, $reason: String!) {\n  unsuspendUser(id: $id, reason: $reason) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminUsers($filter: AdminUserFilter, $first: Int!, $after: String) {\n  adminUsers(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      handle\n      nickname\n      avatar {\n        ...AdminModerationMediaFile\n      }\n      registeredAt\n      disposableEmail\n      status\n      suspendedAt\n      latestSuspension {\n        ...AdminModerationNote\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"): (typeof documents)["query AdminUsers($filter: AdminUserFilter, $first: Int!, $after: String) {\n  adminUsers(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      handle\n      nickname\n      avatar {\n        ...AdminModerationMediaFile\n      }\n      registeredAt\n      disposableEmail\n      status\n      suspendedAt\n      latestSuspension {\n        ...AdminModerationNote\n      }\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminWeeklyStatistics {\n  adminWeeklyStatistics {\n    weeks {\n      weekStart\n      finalized\n      netRevenue {\n        amount\n        currency\n      }\n      users\n      products\n      qualifierMatches\n      upvotes\n    }\n    lastComputedAt\n  }\n}"): (typeof documents)["query AdminWeeklyStatistics {\n  adminWeeklyStatistics {\n    weeks {\n      weekStart\n      finalized\n      netRevenue {\n        amount\n        currency\n      }\n      users\n      products\n      qualifierMatches\n      upvotes\n    }\n    lastComputedAt\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminWithdrawUserByAdministrator($input: AdministrativeWithdrawalInput!) {\n  withdrawUserByAdministrator(input: $input) {\n    changed\n  }\n}"): (typeof documents)["mutation AdminWithdrawUserByAdministrator($input: AdministrativeWithdrawalInput!) {\n  withdrawUserByAdministrator(input: $input) {\n    changed\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "query AdminNotificationSenderInfo {\n  notificationSenderInfo {\n    info {\n      businessName\n      contactEmail\n      postalAddress\n    }\n    version\n    updatedAt\n    updatedByNickname\n  }\n}"): (typeof documents)["query AdminNotificationSenderInfo {\n  notificationSenderInfo {\n    info {\n      businessName\n      contactEmail\n      postalAddress\n    }\n    version\n    updatedAt\n    updatedByNickname\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -389,6 +593,70 @@ export function graphql(source: "mutation AdminUpdateProductCategory($id: ID!, $
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "query AdminReportCase($id: ID!) {\n  adminReportCase(id: $id) {\n    case {\n      ...AdminReportCaseSummary\n    }\n    statusChangedAt\n    resolution\n    closingReason\n    closedAt\n    lastInquiry {\n      sentAt\n      message\n      deadline\n      overdue\n    }\n    inquiryAvailable\n    reports {\n      id\n      categoryName\n      reason\n      reportedAt\n      reporter {\n        kind\n        nickname\n        handle\n        hasContact\n      }\n    }\n  }\n}"): (typeof documents)["query AdminReportCase($id: ID!) {\n  adminReportCase(id: $id) {\n    case {\n      ...AdminReportCaseSummary\n    }\n    statusChangedAt\n    resolution\n    closingReason\n    closedAt\n    lastInquiry {\n      sentAt\n      message\n      deadline\n      overdue\n    }\n    inquiryAvailable\n    reports {\n      id\n      categoryName\n      reason\n      reportedAt\n      reporter {\n        kind\n        nickname\n        handle\n        hasContact\n      }\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminReportCases($filter: AdminReportCaseFilter, $first: Int!, $after: String) {\n  adminReportCases(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminReportCaseSummary\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"): (typeof documents)["query AdminReportCases($filter: AdminReportCaseFilter, $first: Int!, $after: String) {\n  adminReportCases(filter: $filter, first: $first, after: $after) {\n    nodes {\n      ...AdminReportCaseSummary\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminReportCategories {\n  adminReportCategories {\n    id\n    name\n    systemDefault\n    infringement\n    reportCount\n  }\n}"): (typeof documents)["query AdminReportCategories {\n  adminReportCategories {\n    id\n    name\n    systemDefault\n    infringement\n    reportCount\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminChangeReportCaseStatus($id: ID!, $from: ReportCaseStatus!, $to: ReportCaseStatus!, $reason: String) {\n  changeReportCaseStatus(id: $id, from: $from, to: $to, reason: $reason) {\n    status\n  }\n}"): (typeof documents)["mutation AdminChangeReportCaseStatus($id: ID!, $from: ReportCaseStatus!, $to: ReportCaseStatus!, $reason: String) {\n  changeReportCaseStatus(id: $id, from: $from, to: $to, reason: $reason) {\n    status\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminCreateReportCategory($name: String!) {\n  createReportCategory(name: $name) {\n    id\n  }\n}"): (typeof documents)["mutation AdminCreateReportCategory($name: String!) {\n  createReportCategory(name: $name) {\n    id\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminDeleteReportCategory($id: ID!) {\n  deleteReportCategory(id: $id) {\n    reassignedCount\n  }\n}"): (typeof documents)["mutation AdminDeleteReportCategory($id: ID!) {\n  deleteReportCategory(id: $id) {\n    reassignedCount\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminRejectReportCase($id: ID!, $reason: String!) {\n  rejectReportCase(id: $id, reason: $reason) {\n    status\n  }\n}"): (typeof documents)["mutation AdminRejectReportCase($id: ID!, $reason: String!) {\n  rejectReportCase(id: $id, reason: $reason) {\n    status\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminRenameReportCategory($id: ID!, $name: String!) {\n  renameReportCategory(id: $id, name: $name) {\n    id\n  }\n}"): (typeof documents)["mutation AdminRenameReportCategory($id: ID!, $name: String!) {\n  renameReportCategory(id: $id, name: $name) {\n    id\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminResolveReportCaseWithMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithMeasure(id: $id, reason: $reason) {\n    status\n  }\n}"): (typeof documents)["mutation AdminResolveReportCaseWithMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithMeasure(id: $id, reason: $reason) {\n    status\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminResolveReportCaseWithoutMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithoutMeasure(id: $id, reason: $reason) {\n    status\n  }\n}"): (typeof documents)["mutation AdminResolveReportCaseWithoutMeasure($id: ID!, $reason: String!) {\n  resolveReportCaseWithoutMeasure(id: $id, reason: $reason) {\n    status\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminSendInfringementInquiry($id: ID!, $message: String!, $reason: String) {\n  sendInfringementInquiry(id: $id, message: $message, reason: $reason) {\n    sentAt\n    deadline\n  }\n}"): (typeof documents)["mutation AdminSendInfringementInquiry($id: ID!, $message: String!, $reason: String) {\n  sendInfringementInquiry(id: $id, message: $message, reason: $reason) {\n    sentAt\n    deadline\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminProductReportSummary($productId: ID!) {\n  adminProductReportSummary(productId: $productId) {\n    reportCount\n    openCase {\n      id\n      status\n    }\n  }\n}"): (typeof documents)["query AdminProductReportSummary($productId: ID!) {\n  adminProductReportSummary(productId: $productId) {\n    reportCount\n    openCase {\n      id\n      status\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminUnhandledReportSummary {\n  adminUnhandledReportSummary {\n    open\n    infringementOpen\n  }\n}"): (typeof documents)["query AdminUnhandledReportSummary {\n  adminUnhandledReportSummary {\n    open\n    infringementOpen\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminSponsorships($filter: AdminSponsorshipFilter, $first: Int!, $after: String) {\n  adminSponsorships(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      productName\n      productHandle\n      productDeleted\n      applicantNickname\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminable\n      purchaseId\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"): (typeof documents)["query AdminSponsorships($filter: AdminSponsorshipFilter, $first: Int!, $after: String) {\n  adminSponsorships(filter: $filter, first: $first, after: $after) {\n    nodes {\n      id\n      productName\n      productHandle\n      productDeleted\n      applicantNickname\n      tier\n      startsOn\n      endsOn\n      days\n      amountPaid {\n        amount\n        currency\n      }\n      status\n      terminable\n      purchaseId\n      createdAt\n    }\n    pageInfo {\n      hasNextPage\n      endCursor\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminSponsorshipTerminationPreview($id: ID!) {\n  sponsorshipTerminationPreview(id: $id) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n  }\n}"): (typeof documents)["query AdminSponsorshipTerminationPreview($id: ID!) {\n  sponsorshipTerminationPreview(id: $id) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminTerminateSponsorship($id: ID!, $reason: String!) {\n  terminateSponsorship(id: $id, reason: $reason) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n    terminatedOn\n    terminationRefundStatus\n    stopRefundStatus\n    terminationRefundRequested {\n      amount\n      currency\n    }\n    stopRefundRequested {\n      amount\n      currency\n    }\n    purchaseId\n  }\n}"): (typeof documents)["mutation AdminTerminateSponsorship($id: ID!, $reason: String!) {\n  terminateSponsorship(id: $id, reason: $reason) {\n    id\n    days\n    amountPaid {\n      amount\n      currency\n    }\n    unexposedDays\n    refundEstimate {\n      amount\n      currency\n    }\n    stoppedDays\n    stopRefundAmount {\n      amount\n      currency\n    }\n    terminatedOn\n    terminationRefundStatus\n    stopRefundStatus\n    terminationRefundRequested {\n      amount\n      currency\n    }\n    stopRefundRequested {\n      amount\n      currency\n    }\n    purchaseId\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}"): (typeof documents)["query AdminSystemStatus {\n  systemStatus {\n    serverTime\n    databaseReachable\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -398,6 +666,14 @@ export function graphql(source: "query AdminUltrasPromotionSetting {\n  ultrasPr
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}"): (typeof documents)["mutation AdminUpdateUltrasPromotionSetting($input: UpdateUltrasPromotionSettingInput!) {\n  updateUltrasPromotionSetting(input: $input) {\n    enabled\n    updatedAt\n    updatedByNickname\n    version\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation AdminUpdateYearFinalDate($input: UpdateYearFinalDateInput!) {\n  updateYearFinalDate(input: $input) {\n    year\n    finalDate\n    source\n    acceptUntil\n    deadlineAt\n    drawAt\n    changeLockAt\n    changeable\n    choices\n    previousYearFinalDate\n    nextYearFinalDate\n    nextYearSource\n    nextYearGapWarningDate\n    version\n    updatedAt\n    updatedBy {\n      nickname\n    }\n  }\n}"): (typeof documents)["mutation AdminUpdateYearFinalDate($input: UpdateYearFinalDateInput!) {\n  updateYearFinalDate(input: $input) {\n    year\n    finalDate\n    source\n    acceptUntil\n    deadlineAt\n    drawAt\n    changeLockAt\n    changeable\n    choices\n    previousYearFinalDate\n    nextYearFinalDate\n    nextYearSource\n    nextYearGapWarningDate\n    version\n    updatedAt\n    updatedBy {\n      nickname\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query AdminYearFinalDateSettings {\n  yearFinalDateSettings {\n    serverTime\n    settings {\n      year\n      finalDate\n      source\n      acceptUntil\n      deadlineAt\n      drawAt\n      changeLockAt\n      changeable\n      choices\n      previousYearFinalDate\n      nextYearFinalDate\n      nextYearSource\n      nextYearGapWarningDate\n      version\n      updatedAt\n      updatedBy {\n        nickname\n      }\n    }\n  }\n}"): (typeof documents)["query AdminYearFinalDateSettings {\n  yearFinalDateSettings {\n    serverTime\n    settings {\n      year\n      finalDate\n      source\n      acceptUntil\n      deadlineAt\n      drawAt\n      changeLockAt\n      changeable\n      choices\n      previousYearFinalDate\n      nextYearFinalDate\n      nextYearSource\n      nextYearGapWarningDate\n      version\n      updatedAt\n      updatedBy {\n        nickname\n      }\n    }\n  }\n}"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

@@ -6,20 +6,21 @@ Cloudflare Workersのアプリで、決まった時刻に処理を起こす定�
 
 実行環境にCloudflare Workers(Cron Triggers・Queues)、DIコンテナにInversify、入力値の検証にZodを使い、バックエンドの共通ライブラリにある次の部品で定期実行とメッセージを振り分ける構成を前提とする。定期実行は1つのアプリ(`<定期実行を受け持つアプリ>`)だけが持つ。メッセージは全てのアプリが送信でき、1つのアプリ(`<メッセージを受信するアプリ>`)だけが受信する。
 
-| 部品                                                                                                             | 置き場所(共通ライブラリ内)                     | 役割                                                            |
-| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------- |
-| `toUtcCronExpression`・`toBusinessDateTime`・`fromBusinessDateTime`                                              | `core/time/business-time.ts`                   | 業務時刻とUTCの時点・cron式の変換                               |
-| `createCronRegistry`・`ScheduledJobDefinition`・`ScheduledJobHandler`・`CronRegistryError`                       | `core/scheduling/cron-registry.ts`             | ジョブの定義の検査と、起動時刻ごとの実行順                      |
-| `createRunBudgetTable`・`ScheduledRunBudget`・`exceedsRunBudget`                                                 | `core/scheduling/run-budget.ts`                | 起動時刻ごとの時間の予算と、超過の判定                          |
-| `createScheduledDispatcher`                                                                                      | `workers/scheduling/scheduled-dispatcher.ts`   | 定期実行の起動で、その時刻のジョブを順に実行する                |
-| `defineMessageContract`・`MessageHandler`・`MessageHandlerRegistration`                                          | `core/messaging/message-contract.ts`           | メッセージの契約(種別と検証規則)と、処理の登録の型              |
-| `MESSAGE_CONTRACTS`                                                                                              | `core/messaging/contracts/index.ts`            | 全ての契約の集約点                                              |
-| `QueueEnvelope`・`DeadLetterNotice`・`parseEnvelope`・`isDeadLetterNotice`                                       | `core/messaging/envelope.ts`                   | 封筒とデッドレターの通知の形と解析                              |
-| `DEFAULT_RETRY_POLICY`・`decideOnFailure`                                                                        | `core/messaging/retry-policy.ts`               | 再試行の間隔と、デッドレターへ移す判定                          |
-| `MessagePublisher`・`MessagePublishError`・`MAX_DELAY_SECONDS`                                                   | `workers/messaging/queue-publisher.ts`         | 契約で本文を検証し、封筒を付けて送る                            |
-| `RawQueueRegistration`・`RawMessageHandler`・`RawQueueRegistrationError`                                         | `core/messaging/raw-queue.ts`                  | 封筒を持たないQueueの登録の型と検査                             |
-| `createQueueDispatcher`                                                                                          | `workers/messaging/queue-consumer.ts`          | 本体Queue・デッドレター・封筒を持たないQueueのconsumer          |
-| `triggerScheduled`・`buildScheduledTriggerURL`・`businessDateOf`・`addBusinessDays`・`isNearBusinessDayBoundary` | リポジトリの`e2e/support/scheduled-trigger.ts` | ローカルの定期実行を、業務日付と業務時刻を指定してE2Eから起こす |
+| 部品                                                                                                             | 置き場所(共通ライブラリ内)                     | 役割                                                                         |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| `toUtcCronExpression`・`toBusinessDateTime`・`fromBusinessDateTime`・`addBusinessDays`・`businessWeekdayOf`      | `core/time/business-time.ts`                   | 業務時刻とUTCの時点・cron式の変換、業務日付の日数の加算(負は過去)とISOの曜日 |
+| `utcYearsBefore`                                                                                                 | `core/time/utc-calendar.ts`                    | 保持期間の期限に使う、UTCの暦で年数を引いた同じ時刻(2月29日は月末へ寄せる)   |
+| `createCronRegistry`・`ScheduledJobDefinition`・`ScheduledJobHandler`・`CronRegistryError`                       | `core/scheduling/cron-registry.ts`             | ジョブの定義の検査と、起動時刻ごとの実行順                                   |
+| `createRunBudgetTable`・`ScheduledRunBudget`・`exceedsRunBudget`                                                 | `core/scheduling/run-budget.ts`                | 起動時刻ごとの時間の予算と、超過の判定                                       |
+| `createScheduledDispatcher`                                                                                      | `workers/scheduling/scheduled-dispatcher.ts`   | 定期実行の起動で、その時刻のジョブを順に実行する                             |
+| `defineMessageContract`・`MessageHandler`・`MessageHandlerRegistration`                                          | `core/messaging/message-contract.ts`           | メッセージの契約(種別と検証規則)と、処理の登録の型                           |
+| `MESSAGE_CONTRACTS`                                                                                              | `core/messaging/contracts/index.ts`            | 全ての契約の集約点                                                           |
+| `QueueEnvelope`・`DeadLetterNotice`・`parseEnvelope`・`isDeadLetterNotice`                                       | `core/messaging/envelope.ts`                   | 封筒とデッドレターの通知の形と解析                                           |
+| `DEFAULT_RETRY_POLICY`・`decideOnFailure`                                                                        | `core/messaging/retry-policy.ts`               | 再試行の間隔と、デッドレターへ移す判定                                       |
+| `MessagePublisher`・`MessagePublishError`・`MAX_DELAY_SECONDS`                                                   | `workers/messaging/queue-publisher.ts`         | 契約で本文を検証し、封筒を付けて送る                                         |
+| `RawQueueRegistration`・`RawMessageHandler`・`RawQueueRegistrationError`                                         | `core/messaging/raw-queue.ts`                  | 封筒を持たないQueueの登録の型と検査                                          |
+| `createQueueDispatcher`                                                                                          | `workers/messaging/queue-consumer.ts`          | 本体Queue・デッドレター・封筒を持たないQueueのconsumer                       |
+| `triggerScheduled`・`buildScheduledTriggerURL`・`businessDateOf`・`addBusinessDays`・`isNearBusinessDayBoundary` | リポジトリの`e2e/support/scheduled-trigger.ts` | ローカルの定期実行を、業務日付と業務時刻を指定してE2Eから起こす              |
 
 | 用語                                             | 意味                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -149,7 +150,8 @@ Wrangler設定の`triggers.crons`は、登録したジョブの起動時刻か�
 
 - 予算を適用する起動時刻(`<予算を適用する起動時刻>`)は、重いジョブが集まる時刻を選んでプロジェクトごとに決める。予算は全ての起動時刻に置く必要は無い。
 - 目安の30秒を超えるジョブは、対象を列挙してメッセージを送るジョブと、1件ずつ処理するメッセージ処理へ分割する(「[ジョブとメッセージの使い分け](#ジョブとメッセージの使い分け)」)。
-- 上限と各ジョブの目安は、ディスパッチャの警告の対象にしない。要約のログの`totalDurationMs`とジョブごとの`durationMs`で確かめる。
+- 上限と各ジョブの目安は、ディスパッチャの警告の対象にせず、アプリのコードにも値を持たない。実行時に上限で処理を止める仕組みも置かない。上限は予算より大きいため、上限を超えた起動は予算の超過の警告で気付ける。
+- 上限と目安は、性能の検証の判定の道具が、要約のログのジョブごとの`durationMs`で確かめる。全体の所要時間はジョブの`durationMs`の和で数え、要約の`totalDurationMs`(最初のジョブの開始から最後のジョブの終了まで)との差は参考として並べる(「[日次の定期実行の時間の予算](../testing/003-performance-verification.md#日次の定期実行の時間の予算)」)。上限と目安の値は判定の道具に固定し、プロジェクト固有の値の一覧と一致させる。
 
 予算は`ScheduledRunBudget`の一覧として`<定期実行の登録箇所>`に置き、`createRunBudgetTable`で検査してから、`createScheduledDispatcher`の第3引数の`budgets`に渡す。
 
@@ -573,7 +575,7 @@ Queuesの配送は少なくとも1回(at-least-once)で、同じメッセージ�
 
 - 冪等性のキーを決める。同じメッセージの再配信と遅延再送では`meta.id`が変わらないため、メッセージ単位の重複は`meta.id`で判定できる。ただし送信側の再実行では別のIDになるため、同じ業務上の出来事が2回送られ得る場合は、本文に業務上のキー(対象のIDと業務日付など)を入れ、そのキーで判定する。ジョブはジョブの名前と業務日付をキーにする。
 - 状態の変更は1回だけ成立する形で書く。現在の状態を条件にした更新(`UPDATE ... WHERE status = '<変更前の状態>'`)、一意制約と`INSERT ... ON CONFLICT DO NOTHING`、既に処理済みかの確認の後の早期の終了を使う。
-- メールの送信や外部APIの呼び出しのような取り消せない副作用は、相手が受け付ける冪等キー(`meta.id`や業務上のキー)を渡すか、送信済みの記録を一意制約で先に確保してから行う。メールはメール送信の仕組みが送信要求ごとに重複を防ぐため、各ドメインの処理は送信の依頼を業務上のキーで1回に保てばよい(「[メール送信の経路](#メール送信の経路)」)。
+- メールの送信や外部APIの呼び出しのような取り消せない副作用は、相手が受け付ける冪等キー(`meta.id`や業務上のキー)を渡すか、送信済みの記録を一意制約で先に確保してから行う。メールはメール送信の仕組みが送信要求ごとに重複を防ぐため、各ドメインの処理は送信の依頼を業務上のキーで1回に保てばよい。依頼の後の状態の記録だけが失敗して送り直し得る処理は、業務上のキーを送信要求の冪等のキーにも渡し、メール送信の仕組みに2通目を捨てさせる(「[メール送信の経路](#メール送信の経路)」)。
 - 1回の処理で複数の対象を扱うと、途中で失敗したときに全体が再試行される。対象ごとに冪等にするか、対象ごとのメッセージに分ける。
 - 配信の順序に依存しない。古いメッセージが後から届いても新しい状態を上書きしないよう、送信日時(`meta.sentAt`)や版の番号で比べる。
 - 異なる起動時刻のジョブの間で完了を待つ必要がある場合は、時刻の差で完了を仮定せず、ドメインの状態で判定する。
@@ -633,7 +635,7 @@ flowchart LR
 - 送信期限の無いメールは、送信上限が解けるまで待機を続ける。遅延再送の待つ期限の規約(「[遅延再送](#遅延再送)」)の例外で、送信上限は時間が経てば必ず解けるためである。
 - 一時的な障害が続いた場合、最初の失敗から送信不能になるまでは約30分(間隔の合計1,800秒)である。送信処理が試行回数の上限で自ら完了するため、デッドレターへ移るのはconsumerの異常終了などの場合だけになる。
 - 待機で送り直すと試行回数が1から数え直されるため、待機をまたぐと一時的な障害の再試行の合計は5回を超え得る。
-- 重複配信は、送信の成功後に送信要求の識別子を送信済みの記録に残し、送信前に確かめて防ぐ。送信側の処理の再実行で別の封筒になった送信要求は防げないため、送信側は業務上のキーで冪等にする(「[重複配信と冪等性](#重複配信と冪等性)」)。
+- 重複配信は、送信の成功後に送信要求の識別子を送信済みの記録に残し、送信前に確かめて防ぐ。送信側の処理の再実行で別の封筒になった送信要求は、送信要求に冪等のキーがあれば同じ種別で同じキーの送信済みの記録で防ぎ、無ければ防げない。送信側は業務上のキーで冪等にする(「[重複配信と冪等性](#重複配信と冪等性)」)。
 
 ### 配信不能イベントの受け取り
 

@@ -1,3 +1,7 @@
+import {
+  DATA_EXPORT_GENERATE_MESSAGE,
+  DATA_EXPORT_WATCHDOG_MESSAGE,
+} from '../../data-export/data-export-messages.ts';
 import { EMAIL_SEND_MESSAGE } from '../../email/send-message.ts';
 import {
   MODERATE_IMAGE_MESSAGE,
@@ -18,6 +22,10 @@ import {
 } from './notifications.ts';
 import { RUN_PRODUCT_LIFECYCLE_MESSAGE } from './product.ts';
 import { SEARCH_INDEX_REFRESH_MESSAGE } from './search-index-refresh.ts';
+import {
+  SPONSORSHIP_DISPATCH_NOTICES_MESSAGE,
+  SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
+} from './sponsorship.ts';
 
 export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
   Object.freeze([
@@ -34,4 +42,8 @@ export const MESSAGE_CONTRACTS: readonly MessageContract<string, unknown>[] =
     RUN_MATCH_EVENT_MESSAGE,
     FLUSH_NOTIFICATION_SLOT_MESSAGE,
     EXPAND_NOTIFICATION_EVENT_MESSAGE,
+    SPONSORSHIP_DISPATCH_NOTICES_MESSAGE,
+    SPONSORSHIP_SETTLE_PERIOD_END_MESSAGE,
+    DATA_EXPORT_GENERATE_MESSAGE,
+    DATA_EXPORT_WATCHDOG_MESSAGE,
   ]);

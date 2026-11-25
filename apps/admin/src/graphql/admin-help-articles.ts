@@ -10,6 +10,7 @@ import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-optio
 import { GraphQLClientError } from '../../lib/utilities/graphql/graphql-result.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
 import type { MediaImageView } from '../../lib/utilities/media/picture-sources.ts';
+import { invalidateAuditLogQueries } from './admin-audit-logs.ts';
 import { adminHelpCategoriesQueryOptions } from './admin-help-categories.ts';
 import {
   AdminHelpArticleDocument,
@@ -228,12 +229,12 @@ export const mergeReorderedHelpArticles = (
   };
 };
 
-// 記事の作成・削除・カテゴリの変更はカテゴリの記事の件数を変え、ハンドルの保存は使用可否を変えるため、それらの取得もまとめて無効にする
+// 記事の作成・保存・並べ替えの成功の後に呼ぶ。記事の作成・削除・カテゴリの変更はカテゴリの記事の件数を変え、ハンドルの保存は使用可否を変えるため、それらの取得もまとめて無効にする。操作は監査ログに残るため、監査ログの照会も無効にする
 export async function invalidateHelpArticleQueries(
   queryClient: QueryClient,
 ): Promise<void> {
-  await Promise.all(
-    [
+  await Promise.all([
+    ...[
       documentIdOf(AdminHelpArticlesDocument),
       documentIdOf(AdminHelpArticleDocument),
       documentIdOf(AdminHelpArticleHandleAvailabilityDocument),
@@ -241,7 +242,8 @@ export async function invalidateHelpArticleQueries(
     ].map((documentId) =>
       queryClient.invalidateQueries({ queryKey: [documentId] }),
     ),
-  );
+    invalidateAuditLogQueries(queryClient),
+  ]);
 }
 
 // 一覧と記事の並べ替えの画面は全件を読み、絞り込みとカテゴリの選択を画面の中で行うため、条件で取得し直さない。失敗は例外にせずキャッシュに残し、一覧・並びの位置に再試行とともに示す

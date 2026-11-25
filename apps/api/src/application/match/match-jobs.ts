@@ -3,7 +3,7 @@ import { inject, injectable } from 'inversify';
 import { PLATFORM_TYPES } from '../../../lib/core/di/identifiers.ts';
 import { getAppLogger } from '../../../lib/core/logging/app-logger.ts';
 import { MATCH_PLATFORM_TYPES } from '../../../lib/core/match/identifiers.ts';
-import { QUALIFIER_SCHEDULE } from '../../../lib/core/match/match-model.ts';
+import { MATCH_SCHEDULE } from '../../../lib/core/match/match-model.ts';
 import type {
   MatchEventDispatcher,
   MatchEventStore,
@@ -13,11 +13,7 @@ import type {
   ScheduledJobDefinition,
   ScheduledJobHandler,
 } from '../../../lib/core/scheduling/cron-registry.ts';
-import {
-  type BusinessDate,
-  fromBusinessDateTime,
-  toBusinessDateTime,
-} from '../../../lib/core/time/business-time.ts';
+import { addBusinessDays } from '../../../lib/core/time/business-time.ts';
 import type { Clock } from '../../../lib/core/time/clock.ts';
 import type { MatchKickoff } from './match-kickoff.ts';
 import {
@@ -44,7 +40,7 @@ const MATCH_JOB_ORDER = 1100;
 export const MATCH_SETTLEMENT_JOB_DEFINITION: ScheduledJobDefinition =
   Object.freeze({
     name: 'match-engine.match-settlement',
-    at: QUALIFIER_SCHEDULE.fullTime,
+    at: MATCH_SCHEDULE.fullTime,
     order: MATCH_JOB_ORDER,
     handler: MATCH_TYPES.MatchSettlementJob,
   });
@@ -52,7 +48,7 @@ export const MATCH_SETTLEMENT_JOB_DEFINITION: ScheduledJobDefinition =
 export const QUALIFIER_PAIRING_JOB_DEFINITION: ScheduledJobDefinition =
   Object.freeze({
     name: 'match-engine.qualifier-pairing',
-    at: QUALIFIER_SCHEDULE.pairing,
+    at: MATCH_SCHEDULE.pairing,
     order: MATCH_JOB_ORDER,
     handler: MATCH_TYPES.QualifierPairingJob,
   });
@@ -60,7 +56,7 @@ export const QUALIFIER_PAIRING_JOB_DEFINITION: ScheduledJobDefinition =
 export const MATCH_KICKOFF_JOB_DEFINITION: ScheduledJobDefinition =
   Object.freeze({
     name: 'match-engine.match-kickoff',
-    at: QUALIFIER_SCHEDULE.kickoff,
+    at: MATCH_SCHEDULE.kickoff,
     order: MATCH_JOB_ORDER,
     handler: MATCH_TYPES.MatchKickoffJob,
   });
@@ -124,14 +120,6 @@ export async function sweepMissingDecidedEvents(
   }
 }
 
-// 業務時刻は固定のオフセットで夏時間が無いため、0:00の24時間後の業務日付が翌日になる
-function nextBusinessDate(date: BusinessDate): BusinessDate {
-  const startOfDay = fromBusinessDateTime(date, QUALIFIER_SCHEDULE.kickoff);
-  return toBusinessDateTime(
-    new Date(startOfDay.getTime() + MILLISECONDS_PER_DAY),
-  ).date;
-}
-
 @injectable()
 export class MatchSettlementJob implements ScheduledJobHandler {
   constructor(
@@ -192,7 +180,7 @@ export class QualifierPairingJob implements ScheduledJobHandler {
     if (settled > 0) {
       this.reporter.report({ kind: 'match-settlement-late', count: settled });
     }
-    const matchDate = nextBusinessDate(business.date);
+    const matchDate = addBusinessDays(business.date, 1);
     const { launches, matches } = await this.pairing.pair(matchDate);
     logger.info('翌日の予選を組みました', {
       swept,

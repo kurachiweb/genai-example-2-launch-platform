@@ -1,0 +1,5 @@
+mutation AdminInvalidateRating($id: ID!, $reason: String!) {
+  invalidateRating(id: $id, reason: $reason) {
+    changed
+  }
+}

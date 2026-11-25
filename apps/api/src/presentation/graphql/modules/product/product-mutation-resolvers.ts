@@ -8,7 +8,11 @@ import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
 import { INPUT_ARGUMENT } from './errors.ts';
-import { REGISTER_PRODUCT_ARGS, UPDATE_PRODUCT_ARGS } from './inputs.ts';
+import {
+  DELETE_PRODUCT_ARGS,
+  REGISTER_PRODUCT_ARGS,
+  UPDATE_PRODUCT_ARGS,
+} from './inputs.ts';
 import { toMyProduct } from './mappers.ts';
 import {
   accountGuardOf,
@@ -75,21 +79,17 @@ export const productMutationResolvers = {
       ),
     ),
     deleteProduct: clientOnly(
-      async (
-        _parent: unknown,
-        args: { productHandle: string; expectedVersion: number },
-        context: GraphQLContext,
-      ) => {
-        const current = await accountGuardOf(context).requireWritableUser(
-          context.session,
-        );
-        await assertHuman(context, PRODUCT_BOT_ACTIONS.delete);
-        await deletionOf(context).delete(current, {
-          productHandle: args.productHandle,
-          expectedVersion: args.expectedVersion,
-        });
-        return true;
-      },
+      withValidatedArgs(
+        DELETE_PRODUCT_ARGS,
+        async (_parent: unknown, args, context) => {
+          const current = await accountGuardOf(context).requireWritableUser(
+            context.session,
+          );
+          await assertHuman(context, PRODUCT_BOT_ACTIONS.delete);
+          await deletionOf(context).delete(current, args);
+          return true;
+        },
+      ),
     ),
   },
 } satisfies Resolvers;

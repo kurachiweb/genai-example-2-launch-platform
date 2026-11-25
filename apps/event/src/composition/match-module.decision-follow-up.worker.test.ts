@@ -67,6 +67,7 @@ import {
   T0,
   userIdOf,
 } from '../../lib/workers/product/testing/product-fixtures.ts';
+import { clearWeekTournamentRows } from '../../lib/workers/week-tournament/testing/week-tournament-fixtures.ts';
 import {
   AccountDecisionFollowUpHandler,
   ProductDecisionFollowUpHandler,
@@ -266,6 +267,7 @@ beforeEach(async () => {
   for (const method of ['debug', 'info', 'warn', 'error'] as const) {
     vi.spyOn(console, method).mockImplementation(() => {});
   }
+  await clearWeekTournamentRows();
   await clearDirectoryTables();
   await seedDirectoryOwners();
 });
@@ -301,6 +303,9 @@ describe('即時の終了の後続の処理の登録', () => {
       'payments.open-checkout-expiry',
       'ultras-subscription.subscription-cancellation',
       ACCOUNT_HANDLER_NAME,
+      'tournament-week.account-entry-loss',
+      'tournament-year.account-entry-loss',
+      'data-export.archive-erasure',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(
@@ -334,7 +339,11 @@ describe('即時の終了の後続の処理の登録', () => {
     ).toStrictEqual(['product-launch.image-quarantine', PRODUCT_HANDLER_NAME]);
     expect(
       registry.handlersFor('deleted').map(({ name }) => name),
-    ).toStrictEqual([PRODUCT_HANDLER_NAME]);
+    ).toStrictEqual([
+      PRODUCT_HANDLER_NAME,
+      'tournament-week.product-entry-loss',
+      'tournament-year.product-entry-loss',
+    ]);
   });
 
   test.each(INVOCATION_KINDS)(

@@ -1,0 +1,9 @@
+query AdminReportCategories {
+  adminReportCategories {
+    id
+    name
+    systemDefault
+    infringement
+    reportCount
+  }
+}

@@ -20,7 +20,7 @@
 | 仮2  | 性能の検証に使うデータの規模                     | 要件定義書に件数の定めが無い。directory-discovery(勝利10万件)・engagement(返信500件)・sponsorship(広告1,000件)・ugc-moderation・content-reporting・notifications・data-exportのresearch.mdの申し送り                                                                        | (A)上流が挙げた値+1年目の想定(利用者5万・プロダクト2万・コメント20万・フォロワー1万・案件5,000・監査ログ10万・上限まで投稿した利用者1人) / (B)上流が挙げた項目だけ / (C)開発者が事業計画の値を与える | 推奨・採用は(A)。上流が挙げた値は各specが設計の判断(写しのテーブル・ページ分けなど)の閾値として使っており、そのまま検証する。挙げていない項目も、一覧・検索・日次バッチの件数に効くため、同じ桁の規模を置く。1年目の想定は、1日の予選の勝利数百件(directory-discovery)から逆算した登録の規模である。(C)の値が得られれば置き換える(2026-10-24に開発者が確定)                                                                                                                                                                                                          |
 | 仮3  | FCPを確かめるページと計測の条件                  | NFR-PERF-001(Observatoryで確認)、UI-001(レスポンシブ)、frontend-platform(FCPの実測はlaunch-readinessがObservatoryで行う)、モックアップの4画面とページ配置                                                                                                                   | (A)利用者側6ページのモバイルとデスクトップ+管理者側2ページのデスクトップ、リリース前は合成テスト、リリース後は実利用者の75パーセンタイル / (B)デスクトップだけ / (C)本番の実利用者の計測値だけ       | 推奨・採用は(A)。リリース前は実利用者がいないため、合成テストで判定するしかない。利用者側は携帯端末の閲覧が想定され、モバイルの条件(遅い回線の模擬)が厳しい方の判定になる。管理者側はデスクトップでの業務の画面である。リリース後は実利用者の値で確かめ直す(2026-10-24に開発者が確定)                                                                                                                                                                                                                                                                                |
 | 仮4  | GraphQLのp95のリリース前の確かめ方               | NFR-PERF-007(`@sentry/tanstackstart-react`のBrowser Tracing、10回に1回)、frontend-platformの`tracesSampleRate`と`tracePropagationTargets`、stagingではbot判定が実際のウィジェットであること                                                                                 | (A)stagingで未ログインの閲覧の流れを繰り返し、エラートラッキングの計測で主要な公開の操作ごとに200件以上で判定する / (B)負荷試験の道具の計測値で代える / (C)本番リリース後にだけ確かめる              | 推奨・採用は(A)。要件は計測の方法をエラートラッキングのブラウザの計測と定めており、負荷試験の道具はブラウザの描画と中継の時間を含まない。10回に1回の割合のまま200件を集めるには1つの操作を約2,000回呼ぶ必要があり、E2Eの道具で閲覧の流れを60〜90分繰り返せば足りる。ログイン中の操作はstagingのbot判定のためにブラウザで自動化できず、リリース後のアラートで見張る(2026-10-24に開発者が確定)                                                                                                                                                                         |
-| 仮5  | 同時接続100人の負荷の掛け方                      | NFR-PERF-004、backend-platformのWorker単位のIP制限(100回/10秒)、stagingのbot判定(自動化できない)、match-engine(同時のUpvoteはlaunch-readinessで確かめる)、Claude設定のdeny(`gh workflow run`)                                                                               | (A)複数の送信元(GitHub Actionsの手動起動のジョブの並列)で合計100人、送信元ごとにIP制限を下回る。書き込みの同時実行はローカル / (B)1つの送信元で制限を下回る量だけ / (C)検証の間だけ制限を緩める      | 推奨・採用は(A)。100人が数秒〜十数秒ごとに要求すると合計で毎秒10件を超え、1つの送信元ではIP制限で拒否される。(B)は100人の同時接続にならない。(C)は検証の対象の設定を変え、戻し忘れの危険がある。GitHubのホストのランナーは並列のジョブごとに送信元が分かれるため、5並列で各20人にすれば制限を下回る。手動の起動は開発者が行う。書き込みはbot判定のために、テスト用のキーが使えるローカルで確かめる(2026-10-24に開発者が確定)                                                                                                                                         |
+| 仮5  | 同時接続100人の負荷の掛け方                      | NFR-PERF-004、backend-platformのWorker単位のIP制限(500回/10秒)、stagingのbot判定(自動化できない)、match-engine(同時のUpvoteはlaunch-readinessで確かめる)、Claude設定のdeny(`gh workflow run`)                                                                               | (A)複数の送信元(GitHub Actionsの手動起動のジョブの並列)で合計100人、送信元ごとにIP制限を下回る。書き込みの同時実行はローカル / (B)1つの送信元で制限を下回る量だけ / (C)検証の間だけ制限を緩める      | 推奨・採用は(A)。100人が数秒〜十数秒ごとに要求すると合計で毎秒10件を超え、1つの送信元ではIP制限で拒否される。(B)は100人の同時接続にならない。(C)は検証の対象の設定を変え、戻し忘れの危険がある。GitHubのホストのランナーは並列のジョブごとに送信元が分かれるため、5並列で各20人にすれば制限を下回る。手動の起動は開発者が行う。書き込みはbot判定のために、テスト用のキーが使えるローカルで確かめる(2026-10-24に開発者が確定)                                                                                                                                         |
 | 仮6  | 負荷試験の道具(新しいツール)(2026-10-24確定)     | tech-stack.mdに負荷試験の道具が無い。CLAUDE.md(新しいパッケージは候補を挙げて質問する)                                                                                                                                                                                      | (A)k6 / (B)Artillery / (C)autocannon / (D)Bunで自作する                                                                                                                                              | 推奨は(A)。仮想の利用者と待ち時間・段階的な負荷・95パーセンタイルの閾値での合否を標準で持ち、Grafanaが継続して保守している。単体の実行ファイルで、アプリの依存に加わらない。(B)はnpmで導入でき同等の機能を持つが依存が大きい。(C)はHTTPの一定の負荷に向き、待ち時間のある利用者の模擬に向かない。(D)は合否の集計と負荷の段階を自作することになる。承認まで負荷試験の台本・ワークフロー・実行のタスクを保留するとしていた(確定により解除。2026-10-24に開発者が確定)                                                                                                   |
 | 仮7  | ソースマップのアップロードの道具(2026-10-24確定) | infra-deliveryの申し送り(ソースマップのアップロードの手順の追加はlaunch-readiness)、Wranglerのバンドル(esbuild)とViteのビルド                                                                                                                                               | (A)`@sentry/cli` / (B)`@sentry/vite-plugin`と`@sentry/esbuild-plugin`の組                                                                                                                            | 推奨は(A)。ViteとWranglerの両方のビルドの出力に、同じ手順(デバッグIDの埋め込み→アップロード)を掛けられ、ビルドの設定にプラグインを足さずに済む。(B)はclient・adminのVite設定へプラグインを足せるが、api・eventはWranglerが内部でバンドルするためプラグインを差し込めず、2つの方式になる。承認までデプロイの仕組みへのアップロードの追加のタスクを保留するとしていた(確定により解除。2026-10-24に開発者が確定)                                                                                                                                                        |
 | 仮8  | 縮退運転の確かめ方                               | NFR-AVAIL-002、各specの外部サービスの失敗の扱い(content-processingの縮退索引、paymentsの`payments_unavailable`、email-deliveryの再試行と日次上限、identity-authの漏洩照合とDISIFYの未判定、media-pipelineの判定の再試行)、上流のWorkers統合テストの`fetch`の差し替え        | (A)対応表と上流の自動テスト+ローカルで鍵・宛先を無効にして読み取りの回帰を通す / (B)stagingで鍵を無効にしてデプロイする演習 / (C)対応表だけ                                                          | 推奨・採用は(A)。障害の種類ごとの振る舞いは上流の自動テストが`fetch`の差し替え(部品への`fetch`の代わりの注入、または`vi.spyOn(globalThis, 'fetch')`。`@cloudflare/vitest-pool-workers` 0.23.0の`cloudflare:test`は`fetchMock`を持たない)で確かめており、重複して書かない。サービス全体の主張(読み取りが外部サービスに依存しない)は、外部サービスを止めた状態の通しの確認でしか示せない。ローカルでは各Workerの環境の値を起動の時に差し替えられる。(B)はstagingへの変更がmainへのマージを要し、戻すまでstagingの他の検証が止まる(2026-10-24に開発者が確定)            |
@@ -325,3 +325,190 @@
 
 - **外部への通信の差し替え**: `@cloudflare/vitest-pool-workers` 0.23.0の`cloudflare:test`は`fetchMock`を持たない(content-processingの差分の分析のG-5)。仮8の上流の自動テストの記述を、部品への`fetch`の代わりの注入か`vi.spyOn(globalThis, 'fetch')`による差し替えに改めた。方針(A)は変えていない。
 - 要件と受け入れ基準は変えていない。
+
+---
+
+## 上流の実装の完了後のギャップ分析(2026-11-23、`/cc-sdd:kiro-validate-gap`)
+
+`/cc-sdd:kiro-validate-gap launch-readiness`で、承認済みの要件・設計・タスク(2026-10-24の作成と2026-10-30までの改訂)を、その後に実装された上流の実コードと突き合わせた。設計の時点で実装済みだったのはdev-toolingだけだったが、現在は上流の28specが全て実装済みである。未完了のサブタスクは、infra-deliveryの9.2(stagingの識別子の反映。値は2026-11-16に反映済みで、チェックが付いていないだけと見られる)と、paymentsの1.4・11.2(開発者のsandboxの準備と、stagingでの決済手段の表示の確認)だけである。本specのタスクは0/63で、本specのコード・文書は無い。`spec.json`の`ready_for_implementation`は、全specの中で本specだけが`false`のままである(3つの承認は`true`)。ステアリングは`roadmap.md`だけで、`product.md`・`tech.md`・`structure.md`は無いため、CLAUDE.mdと技術ドキュメントを代わりに参照した。
+
+### 分析の要約
+
+- 設計が依存する上流の部品(`ScheduledDispatcher`の予算の警告・`triggerScheduled`と業務日付の補助・`security-assertions.ts`・`signInAsNewAdmin`・`executeLocalD1`・`/health`・伏せ字・Workerごとの`STRIPE_API_KEY`のフォルダ・`/system/status`のprodでの404・`PAYMENTS_SMOKE_ENABLED`のprodの`false`・Ultrasの機能フラグの初期値のオフ)は、全て設計どおりに実装されている。4:21のジョブは30件で、日次タイムラインの表(`007-daily-timeline.md`)ともroadmapの帯の表とも完全に一致し、2200番台は使われていない。
+- 設計の記述と実コードの食い違いのうち、実装の前に設計を直さないと詰まるものが6件ある(G-1〜G-6)。特に、`CronBudgetJudge`が読む要約のログの項目名と、GraphQLの操作名の取り方が実際の形と合わない。
+- 設計の作成の後に上流が加えた本番の作業と確認のうち、チェックリストに無いか一部しか無いものが10件ある(H-1〜H-10)。中でも、`prod.json`の`infisical.identityId`がstagingと同じ値に設定済みであることは、prodのシークレットを読める主体の範囲に関わる。
+- 開発者の判断が要る論点は6件ある(D-1〜D-6)。
+- 工数はXL(2週間超)、リスクはMedium〜High。新設のコードの多くは既存の型(`scripts/delivery`の層・E2Eの補助・SQLの組み立て)に沿えるが、ソースマップのアップロードはWranglerの束ね方とデプロイの手順の組み替えを伴い、前例が無い。また、検証の大半は開発者のstagingの操作に依存する。
+
+### 要件と既存の資産の対応
+
+| 要件                                 | 既存の資産                                                                                                                                                                                                                                               | 状態                                                                                                                                                        |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1(FCP)                               | 利用者側の6ページの経路は全てある(`/`・`/p/$handle`・`/@{$handle}`・`/help/`・`/pricing`、ディレクトリは`/p/`)。Web Analyticsのビーコンはclientだけで出す(`web-analytics.ts`)                                                                            | Missing: 計測の手順と記録。Constraint: prodの`WEB_ANALYTICS_TOKEN`は仮の値(0が32桁)                                                                         |
+| 2(GraphQLのp95)                      | APIサーバーのGraphQLの実行のスパン`graphql <type> <name>`と、ルートのスパンの属性`graphql.operation.name`(`operation-observability.ts:118-130`)。ブラウザのスパンの宛先は`/_bff/graphql`だけで、本文は`documentId`(永続化した文書)のため操作名を持たない | Constraint(G-2): 操作名はAPIサーバーのスパンの属性から得る。Missing: `LatencyReport`                                                                        |
+| 3(負荷)                              | IP制限の上限(10秒あたり500回)、k6はtech-stack.mdに記載済み                                                                                                                                                                                               | Missing: k6の導入(Dockerfile・`setup-toolchain`・`tool-versions.ts`)と台本。Unknown: 100人のログイン済み利用者の作り方(G-6)                                 |
+| 4(想定規模のデータ)                  | テーブル定義(`apps/db/schema`の22の機能のディレクトリ)、`sql-string-literal.ts`、E2Eの`*-fixture-sql.ts`(SQLの組み立ての前例が9つある)                                                                                                                   | Missing: 合成データの生成。Constraint: 全文検索の索引文書の行はアプリのコードが書き、トリガーはFTS5の表の同期だけ(G-5)                                      |
+| 5(日次バッチの予算)                  | `SCHEDULED_RUN_BUDGETS`(5分。4:21に加え23:40・23:45・0:00にも同じ値)と超過の`warning`、要約のログ                                                                                                                                                        | Constraint(G-1): 要約のログの項目名が設計と異なる。上限(10分)と目安(30秒)はコードに無く、`infra/003`の文書だけにある(設計どおり)。D-2: 4:21以外の予算の扱い |
+| 6(縮退運転)                          | 6つの外部サービスの全てに分類と縮退があり、自動テストがある(下の「縮退運転の対応表の材料」)                                                                                                                                                              | 対応表の材料はそろっている。Missing: 対応表と`@degraded`の起動                                                                                              |
+| 7(無停止デプロイとロールバック)      | `operations/002`(判断の流れ・戻す順序・データベースの復元)、`deploy.yml`の段階                                                                                                                                                                           | Missing: `ProbeTally`と演習                                                                                                                                 |
+| 8(D1の復旧)                          | `operations/002`の「データベースの復元」                                                                                                                                                                                                                 | Missing: 演習の手順と記録                                                                                                                                   |
+| 9・10(監視とアラート)                | `/health`(apiとevent、DBに触れない)、clientとadminは`/health`を持たず`/system/status`(prodで404)。トレースの割合はlocal `0`・staging `1`・prod `0.1`(4つのWorkerで同じ)                                                                                  | Missing: 監視・アラートの文書と設定の手順、ソースマップ。Constraint(D-3): 要件10.5の「stagingの設定で10回に1回」はstagingの`1`と合わない                    |
+| 11(ログ)                             | 4つのWorkerの`observability.enabled: true`・`invocation_logs: false`、`scrub-event.ts`・`sentry-scrub.ts`、`dataCollection`でIPを集めない                                                                                                                | Unknown: 保持期間7日はWorkers Logsのプランの既定に依存する(Research Needed)。SentryのプロジェクトのIPの保存の無効化は文書に無い                             |
+| 12(アクセシビリティ)                 | `runAxe`・`runAxeOnDocument`(`apps/frontend-lib/test/a11y.ts`、WCAG 2.2のAとAAのタグ)、約530のファイルのブラウザテスト。E2Eでのaxeの利用は無い。経路は利用者側44・管理者側30(`FileRoutesByFullPath`)                                                     | Missing: E2Eの全経路の検査と`RouteInventory`。Constraint: `axe-core`は4.14.0(G-4)                                                                           |
+| 13(セキュリティ)                     | `security-headers.ts`・`security-policy.ts`、`security-assertions.ts`(`@smoke`の`system-status.e2e.test.ts`が使う)                                                                                                                                       | 一部あり: ヘッダーとCSPの検査は`@smoke`に既にある(選択肢A)。Missing: 根拠の対応表と監査                                                                     |
+| 14(全体のE2E回帰)                    | `match-steps.ts`(`startQualifiers`など)・各機能のfixture・`mailpit.ts`・`triggerScheduled`。`match-fixtures.ts`は無い                                                                                                                                    | Missing: 回帰のE2E。Constraint(G-3): 依存先の名前を直す                                                                                                     |
+| 15(運用ドキュメント)                 | `operations/001`〜`004`。`testing/003`・`004`、`security/009`、`operations/005`・`006`の番号は空いている                                                                                                                                                 | Missing: 新しい文書5つ。Constraint(D-5): `operations/004`はライブモードの設定を各節の中で扱い、独立した本番の節を持たない                                   |
+| 16・17(チェックリストと本番リリース) | `preflight`は仮の値(`PLACEHOLDER_ID_PATTERN`)を検出してprodのデプロイを止める(`commands/preflight.ts:45-47`)                                                                                                                                             | Missing: チェックリスト。H-1〜H-10の追加が要る                                                                                                              |
+| 18・19(記録・文書・テスト)           | `scripts/delivery/layering.unit.test.ts`(禁止の読み込みと呼び出しをTypeScriptの構文木で検査する)、`gitignore.unit.test.ts`                                                                                                                               | Missing: 本specの道具と単体テスト。`.gitignore`に`/tmp/`は無い                                                                                              |
+
+### 設計と実コードの食い違い(実装の前に設計を直す)
+
+| #   | 箇所                                     | 設計の記述                                                                                        | 実コード                                                                                                                                                                                                                                                                                                                                                                                | 影響                                                                                                                                                                            |
+| --- | ---------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G-1 | `CronBudgetJudge`の`ScheduledRunSummary` | `cron`・`scheduledTime`・`jobs[].outcome`・`jobs[].durationMs`                                    | 要約のログ(`scheduled-dispatcher.ts:188-197`、`info`、`定期実行を終えました`)は`kind: 'scheduled'`・`cron`・`result`・`jobs[].{name,result,durationMs}`・`totalDurationMs`。`scheduledTime`は無く、日時は基底の`time`(ログの出力の時刻)。予算の超過は要約より先に`warn`と、Sentryの`warning`(`fingerprint: ['scheduled-run-budget', cron]`・タグ`cron`・`contexts.scheduled_run`)で出る | 判定の入力の型と、記録の起動の識別(`time`と`cron`)を直す。合計は`totalDurationMs`を使うか、ジョブの和と照合する                                                                 |
+| G-2 | `LatencyReport`の操作名                  | 「エラートラッキングのスパンの説明から得る」                                                      | ブラウザのスパンは`POST /_bff/graphql`で操作名を持たない(永続化した文書の`documentId`を本文で送る)。APIサーバーは実行のスパン`graphql query <name>`と、ルートのスパンの属性`graphql.operation.name`を持つ。ルートのスパンの名前は、Sentryのhonoの計装が経路の名前へ書き戻す                                                                                                             | 操作名はAPIサーバーのスパンの属性から得て、同じトレースのブラウザのスパンの所要時間と結び付けるか、APIサーバーの所要時間で判定する(D-4)                                         |
+| G-3 | 依存するE2Eの補助                        | `match-fixtures.ts`(match-engine)、`apps/api/scripts/admin/invitation-sql.ts`の`sqlStringLiteral` | `match-fixtures.ts`は無く、マッチの用意は`e2e/client/match-steps.ts`(`createMatchCategory`・`moveLaunchesToDate`・`startQualifiers`・`isNearQualifierFullTime`など)と`directory-fixtures.ts`の`createEndedQualifier`が担う。`sqlStringLiteral`の定義は`sql-string-literal.ts`で、`invitation-sql.ts`と`local-d1.ts`が再輸出する                                                         | Allowed Dependenciesと4.1・4.4の依存先を直す。E2Eのテストが`e2e/support/*`だけを読み込む規則は、`e2e/client/*-steps.ts`の利用を許すよう改める                                   |
+| G-4 | `axe-core`の版                           | 4.13.0をルートの`devDependencies`へ                                                               | frontend-lib・client・adminは4.14.0                                                                                                                                                                                                                                                                                                                                                     | 4.14.0にそろえる。導入先が4つになり、`coding/002`の主要パッケージの一覧の条件(複数の導入先で版をそろえる)に当たる(D-6)                                                          |
+| G-5 | 合成データのヘルプ記事と全文検索         | 「全文検索の索引は索引文書のトリガーで入る」、本文の上限100,000文字                               | `help_article_search_documents`の行はアプリのコード(`workers/search/targets/help-articles.ts`)が書き、トリガーは索引文書からFTS5の表への同期だけ。上限`HELP_BODY_MAX`は書記素の数で数える                                                                                                                                                                                               | (取り下げ。設計は既に索引文書の行を`INSERT ... SELECT`で作り、FTS5の表はトリガーで入るとしており、書記素で数えることも記している。下の「ギャップ分析の論点の決定と反映」を参照) |
+| G-6 | `BulkUsers`(100人のログイン済み利用者)   | identity-authのパスワードのハッシュとセッションの形式を再現する                                   | 上流のfixtureは利用者を`UNUSABLE_PASSWORD_HASH`で入れ、ログインしない。セッションの照合は鍵付きハッシュ(`HASH_PEPPER`)による                                                                                                                                                                                                                                                            | ローカルの`HASH_PEPPER`を使ってセッションを直接入れるか、UIでの登録を100回行うかを設計で決める(Research Needed)。`apps/*/src`を読み込まない規則と両立させる                     |
+
+### 設計の後に上流が加えた本番の作業(チェックリストへの追加の候補)
+
+| #    | 元                               | 内容                                                                                                                                                                                                                                                                                         | 現在のチェックリスト                                                    |
+| ---- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| H-1  | infra-delivery(実コード)         | `prod.json`の`infisical.identityId`は、stagingと同じ値(`408ab354-…`)に設定済みである(commit e81b63909、2026-11-16)。`projectId`もstagingと共有する。仮の値ではないため、`preflight`はprodの主体の未準備を検出しない。`project-values.md:576`は「3つとも0の仮の値」と書いたまま               | B-04・B-05は仮の値を前提にしている(D-1)                                 |
+| H-2  | infra-delivery                   | `prod.json`の`cloudflare.accountId`・`zoneId`と`apps/infra/backends/prod.s3.hcl`の`endpoints.s3`も仮の値(0)で、prodの準備で埋める(`operations/001`の「本番環境の準備」の手順5)                                                                                                               | B-05は`identityId`だけ                                                  |
+| H-3  | identity-auth                    | ユーザーライフサイクルの送り直しのジョブが業務時刻16:21(`21 0 * * *`)へ移った。apiのCronの式は6つ                                                                                                                                                                                            | D-02は0:00・0:07・4:21・23:40・23:45の5つだけ                           |
+| H-4  | match-engineほか                 | 23:40・23:45・0:00にも予算(5分)と超過の警告がある。アラートAL-09はこれらでも鳴る                                                                                                                                                                                                             | 要件5・S-05・`CronBudgetJudge`は4:21だけ(D-2)                           |
+| H-5  | legal-pages・frontend-platform   | サーバーでの描画中にコンポーネントが例外を投げると、500でなく200が返り得ることと、描画の失敗の後にハイドレーションで誤りの文言が変わること(`GraphQLClientError`が復元されない)を、ローカルで確かめられず本specへ申し送った(`legal-pages/tasks.md:186,219`、`frontend-platform/tasks.md:789`) | 無い                                                                    |
+| H-6  | legal-pages・directory-discovery | prodのプライバシーポリシーの公開の前に、本文がTurnstileのPrivacy Addendumに触れていることと、プロダクトのタグラインを自然言語APIへ送ることに合っていることを確かめる                                                                                                                         | E-02は3つの文書の公開だけ                                               |
+| H-7  | payments                         | `operations/004`(2026-11-05の追記)のライブモードの項目: Adaptive Pricingの無効化・prodの決済手段のドメインの登録・不審請求の申し立ての不服申し立ての無効のまま                                                                                                                               | C-06は「`operations/004`の本番の節」を参照するだけで、3つを挙げていない |
+| H-8  | data-export                      | stagingの計測に基づき、eventの`limits.cpu_ms`(または別のキュー)を開発者が決める(`data-export/design.md:1242`)                                                                                                                                                                                | S-14はCPU時間を計るが、決定を記録する項目が無い                         |
+| H-9  | data-export                      | 未完了のマルチパートアップロードは、R2の既定のライフサイクルの規則(7日)に頼る。IaCにライフサイクルの規則を足すと既定が置き換わる。実際のR2での`NoSuchUpload`(10024)の確認がstagingに残る                                                                                                     | 無い                                                                    |
+| H-10 | payments                         | 11.2(決済手段の表示)の一部はstagingでしか確かめられない                                                                                                                                                                                                                                      | stagingの開発者の作業(S-xx)に無い                                       |
+
+- media-pipelineの10.2の後のstagingの確認(prodの`ctx.cache`と削除・`exports`のデプロイ・中継の`Content-Length`・wasmを含む起動の時間・末尾がドットのホスト名)は、開発者への申し送りで本specの宛てではないが、stagingの検証の機会が同じため、検証の記録の参考の項目にできる。
+- inquiry-chat(実装済み)は本specへの申し送りを持たない。4:21のジョブ(`order` 300)は、日次タイムラインの表を実装の時点で写す方式で含まれる。
+
+### 縮退運転の対応表の材料(要件6)
+
+| 外部サービス | 失敗の分類と振る舞い                                                                                                                                                                       | 運用者への通知                                     | 自動テスト(例)                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Rekognition  | 10秒の時間切れ。上限と5xxは一時的としてキューで5回まで再試行(画像は公開のまま)、最後は`undetermined`。認証の失敗は`misconfigured`。4:21の`media-pipeline.moderation-requeue`が後で送り直す | `warning`(判定できない)、`error`(設定の誤り)       | `rekognition-moderation-provider.worker.test.ts`・`moderate-image-handler.unit.test.ts`              |
+| GCP NL       | 10秒の時間切れ。上限と5xxは再試行し、使い切ると抽出の入力を語にした縮退の索引(`fallback`)。設定の誤りは直ちに縮退                                                                          | `error`(設定の誤り)                                | `google-natural-language-extractor.worker.test.ts`・`sentry-search-incident-reporter.worker.test.ts` |
+| Stripe       | 10秒の時間切れ。接続・上限・5xxは`StripeUnavailableError`(apiは`payments_unavailable`、eventの返金は再試行)。認証の失敗を含む他は`StripeRejectedError`                                     | ゲートウェイは`warn`のログだけで、Sentryへ送らない | `stripe-client.worker.test.ts`・`stripe-gateway*.worker.test.ts`                                     |
+| メール送信   | 30秒の時間切れ。一時的な失敗は再試行、上限と日次上限は延期、使い切ると配信不能                                                                                                             | `warning`(日次上限、間引きあり)、`error`(配信不能) | `cloudflare-email-provider.worker.test.ts`・`send-email-handler*.unit.test.ts`                       |
+| HIBP         | 3秒の時間切れ。失敗は`unavailable`でパスワードを受け付ける(fail-open、再試行なし)                                                                                                          | `warning`                                          | `hibp-pwned-password-checker.worker.test.ts`                                                         |
+| DISIFY       | 3秒の時間切れ。失敗は`undetermined`として保存し、遅延の再確認のメッセージと4:21の`identity-auth.disposable-recheck-sweep`が後で確かめる。デプロイ先では`DISIFY_API_KEY`が必須(2026-11-03)  | `warning`                                          | `disify-client.worker.test.ts`・`disposable-email-check.unit.test.ts`                                |
+
+- Stripeの認証の失敗(鍵の誤り)はSentryへ送られないため、要件6.5の「通知されない障害」の指摘の候補になる。実装の後の確認(タスク7.5)では、想定外の例外としてSentryへ届くが、決済の障害として区別されず、決済の開始と価格の照会が縮退の案内にならなかった。
+- 縮退の起動の差し替え(`DegradedOverrides`)は、ローカルの既定では`MODERATION_PROVIDER`が`stub`、`KEYWORD_EXTRACTOR`が`disabled`で、Rekognitionと自然言語APIは呼ばれない。実装では、この2つは既定を外して実サービスへ無効な鍵で向けることで止める(`--var`で`MODERATION_PROVIDER`・`KEYWORD_EXTRACTOR`と鍵を渡す)。ローカルで止めて確かめられるのは、Rekognition・GCP NL・Stripe・メール(Mailpitの宛先)・DISIFYの5つで、HIBPは差し替えの手段が無く対応表だけで確かめる。Stripeは無効な鍵だと401が恒久的な拒否(`StripeRejectedError`)になり縮退の案内にならないため、鍵を起動の環境から外して「鍵が未設定」の縮退にする。
+
+### 実装の方法の選択肢
+
+#### 選択肢A: 既存の部品の拡張を優先する
+
+- セキュリティの基線(要件13.2)は、既存の`@smoke`の`e2e/{client,admin}/system-status.e2e.test.ts`の検査を広げ、新しい`security-baseline.e2e.test.ts`を作らない。
+- 回帰のE2Eは、上流の`*-steps.ts`と各機能のfixtureを組み合わせ、新しい補助は作らない。
+- `operations/004`は、既存の節の「環境ごとの確認の一覧」へ本番の確認を足し、独立した本番の節を作らない。
+- ✅ 新しいファイルが少なく、上流の検査と重ならない。
+- ❌ `@smoke`は全ての経路を対象にしないため、全経路の検査(要件13.2)には足りない。`@prod-check`の意味(prodへ実行してよい読み取りだけ)と`@smoke`の意味が混ざる。`system-status`のテストは疎通確認の画面を前提にし、prodでは404になる。
+
+#### 選択肢B: 設計どおりに新設する
+
+- `scripts/readiness/`・`apps/api/scripts/readiness/`・E2Eの補助4つ・E2E14ファイル・文書5つを、設計のファイルの構成どおりに作る。G-1〜G-6の食い違いは、名前と型だけを直す。
+- ✅ 設計・タスクの変更が最小で、本specの責務の境界が明確である。
+- ❌ セキュリティヘッダーの検査が`@smoke`と重なる。`operations/004`の既存の書き方(各節の中でライブモードを扱う)と、独立した本番の節の書き方が混ざる。
+
+#### 選択肢C: 混成
+
+- 道具・合成データ・全経路のアクセシビリティ・回帰・負荷・ソースマップは設計どおりに新設する(選択肢B)。
+- セキュリティの基線は、`security-assertions.ts`の判定をそのまま使い、全経路に広げる部分だけを新設する。`@smoke`の既存の検査は変えない。
+- `operations/004`は、既存の各節へ本番の確認を足し、チェックリストからその節を参照する。
+- H-1〜H-10をチェックリストと開発者の作業へ足し、G-1〜G-6を設計へ反映する。
+- ✅ 既存の検査と文書の構成を崩さずに、設計の責務の境界を保てる。
+- ❌ 設計の改訂の範囲が広く(依存先・型・チェックリスト・文書の追記先)、設計とタスクのレビューをやり直す必要がある。
+
+### 工数とリスク
+
+- **工数: XL(2週間超)**。AIが作るものだけでも、道具4つ・合成データ9つ・E2Eの補助4つ・E2E14ファイル・ソースマップのアップロード・k6の台本とワークフロー・文書5つと追記がある。さらに、stagingの検証(7.x)は開発者の操作と、4:21と0:00の実際の時刻を待つ必要があり、暦の日数がかかる。
+- **リスク: Medium〜High**。
+  - 道具・E2E・SQLの組み立ては、既存の型(`scripts/delivery`の層と層の検査、`*-fixture-sql.ts`、`triggerScheduled`)に沿えるため低い。
+  - ソースマップのアップロードは前例が無い。api・eventはWranglerが束ね、client・adminはViteが束ねるため、デバッグIDの埋め込みとアップロードを`deploy-worker`の手順のどこに入れるかが決まっていない。
+  - 画像変換の無料枠はstagingとprodで共有するため、検証の閲覧と負荷試験がprodの枠を消費する。
+  - H-1の主体の共有は、prodのシークレットを読める範囲に関わる。
+
+### 設計の段階への推奨
+
+- **推奨の方針**: 選択肢C。設計の承認の後の改訂として、G-1〜G-6とH-1〜H-10を設計・タスク・チェックリストへ反映し、設計とタスクのレビューをやり直す。
+- **開発者の判断が要る論点**:
+  - **D-1(H-1)**: `prod.json`の`infisical.identityId`がstagingと同じ主体であることを意図したか。prodの主体`ci-deploy-prod`を別に作る(`operations/001`の手順どおり。B-04・B-05は変えない)か、共有を認める(B-04・B-05を「共有の主体がprodの環境を読めることと、stagingのジョブからprodを読めないことの確認」に改め、`project-values.md:576`を直す)か。推奨は別に作る案である。共有の主体がprodの環境を読めると、stagingのデプロイのジョブからもprodのシークレットを読め、staging用の主体の漏えいがprodに及ぶため。
+  - **D-2(H-4)**: 予算の検証の対象を4:21だけにする(要件5のまま。23:40・23:45・0:00は本番のアラートAL-09で見張る)か、予算を持つ4つの起動の全てに広げる(要件5の改訂)か。推奨は4:21だけにして、他の3つの起動は合成データの投入の後のstagingの要約のログを参考の値として記録する案である。合成データの規模で最も重いのは4:21で、他の3つの起動は利用者とマッチの数に比例するため。
+  - **D-3**: 要件10.5の「stagingの設定で10回に1回」を、「stagingは`1`(1本のトレースの確認のため)、prodは`0.1`であることを設定で確かめる」に改めるか。設計は既にstagingの`1`を前提にしている(改訂1)ため、改訂を推奨する。
+  - **D-4(G-2)**: GraphQLのp95を、ブラウザのスパンの所要時間(利用者から見た時間)とAPIサーバーの属性の操作名をトレースで結び付けて求めるか、APIサーバーの実行のスパンの所要時間で求めるか。要件2の目的(利用者から見て)に合うのは前者だが、Sentryからの書き出しでトレースを結ぶ手間がかかる。
+  - **D-5**: `operations/004`に独立した「ライブモードの本番の手順」の節を足すか(設計どおり)、既存の各節の「環境ごとの確認の一覧」に本番の確認を足すか。現在の文書は各節の中でライブモードを扱っているため、後者を推奨する。
+  - **D-6(G-4)**: ルートへ`axe-core`を加えて導入先が4つになるため、`coding/002`の主要パッケージの一覧へ加えて版の照合の対象にするか。
+  - H-5(サーバーでの描画の例外とハイドレーション)は、本specの監査(要件12・13)の一部としてstagingで確かめるか、frontend-platformへ戻すかも決める必要がある。推奨は本specでstagingの確認の項目として扱い、不具合ならfrontend-platformへ依頼する案である(仮11の方針と合う)。
+- **Research Needed**:
+  - Sentryの`@sentry/cli`で、Wranglerの束ね(`wrangler deploy --outdir`または`--dry-run --outdir`)の出力へデバッグIDを埋め込み、アップロードした後に同じ束ねをデプロイする手順。Viteの`build.sourcemap: 'hidden'`と、`excludeLocalSecretsFile`と同じ型の`.map`の除去。`upload_source_maps`(Cloudflareの側のソースマップ)との関係。
+  - Sentryから、スパンの属性(`graphql.operation.name`)ごとの所要時間を書き出す方法(Explore・Discoverの列、APIのエンドポイント)と、無料のプランでの保持期間と件数の上限。
+  - Workers Logsの保持期間がプランで決まり、7日(要件11.1)を満たすか。
+  - FlareWardenの複数の地域からの監視・内容の確認・外部ステータスページの機能と、無料のプランの範囲。
+  - 100人のログイン済み利用者を、`HASH_PEPPER`による鍵付きハッシュのセッションの直接の投入で作れるか(G-6)。
+  - k6の版と、`tool-versions.ts`・規則W9・`repo-contract.unit.test.ts`への追加の手順。
+
+### ドキュメントとコードの相違点
+
+- `docs/onboardings/project-values.md:576`は、prodの3つの主体の識別子を「0の仮の値」と書くが、`apps/infra/environments/prod.json:75`の`infisical.identityId`はstagingと同じ実際の値である(H-1)。
+- 本specの`design.md`の`ScheduledRunSummary`(`scheduledTime`・`jobs[].outcome`)は、`scheduled-dispatcher.ts`と`infra/004`の要約のログの項目(`jobs[].result`・`totalDurationMs`)と異なる(G-1)。
+- 本specの`design.md`は`match-fixtures.ts`・`SentryScrubber`・`axe-core` 4.13.0を前提にするが、実際は`match-steps.ts`・`scrub-event.ts`・4.14.0である(G-3・G-4)。
+- 本specの`design.md`のD-02はCronの式を5つとするが、`apps/api/wrangler.jsonc:13-22`は16:21を含む6つである(H-3)。
+- (取り下げ)G-5の「設計は索引文書がトリガーで入るとする」は読み違いで、設計と実コードは一致していた。
+- infra-deliveryの`tasks.md`の9.2は、stagingの識別子が反映済み(2026-11-16)でもチェックが付いていない。
+
+## ギャップ分析の論点の決定と反映(2026-11-23、開発者の回答)
+
+上のギャップ分析の論点D-1〜D-6とH-5を、開発者へ1件ずつ選択肢と推奨を示して質問した。D-1だけが推奨と異なる案である。D-1は、回答の後に前提の事実(下記)が見つかったため、もう一度質問した。
+
+### 決定
+
+| 論点 | 決定                                                                                                                                                                      | 推奨との関係 |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| D-1  | Infisicalの主体は、検査・staging・prodで1つ(`408ab354-…`)を共有したままにする。任意のブランチのプルリクエストの検査のジョブからprodのシークレットを読める危険を受け入れる | 推奨と異なる |
+| D-2  | 予算の判定は4:21だけにし、23:40・23:45・0:00は投入の後のstagingの要約のログを参考の値として記録する(要件5は変えない)                                                      | 推奨どおり   |
+| D-3  | 要件10.5を、stagingは`1`・prodは`0.1`であることを4つのWorkerとブラウザの設定で確かめる形に改める(承認後の改訂2)                                                           | 推奨どおり   |
+| D-4  | GraphQLのp95は、ブラウザの中継の要求のスパンの所要時間に、同じトレースのAPIサーバーのスパンの属性`graphql.operation.name`の操作名を付けて判定する                         | 推奨どおり   |
+| D-5  | `operations/004`に独立した本番の節を作らず、既存の各節の本番(ライブモード)の記載と「環境ごとの確認の一覧」へ足す                                                          | 推奨どおり   |
+| D-6  | ルートへ`axe-core`を加える変更と同じ変更で、`coding/002`の主要パッケージの一覧へ`axe-core`を加える                                                                        | 推奨どおり   |
+| H-5  | サーバーでの描画の失敗(状態コードとハイドレーションの後の表示)を本specで確かめ、不具合ならfrontend-platformへ依頼する(要件13.8を加える。承認後の改訂3)                    | 推奨どおり   |
+
+### D-1の前提の事実と再質問
+
+- 最初の質問は「`prod.json`の主体がstagingと同じ」ことだけを前提にしていた。反映の途中で、同じIDが検査のワークフローの主体`CHECK_SECRETS_IDENTITY`(`scripts/delivery/catalog/check-secrets.ts:19`)にも使われていることが分かった。`project-values.md`の主体の表は、検査の主体のOIDCの縛りを`repo:<リポジトリ>:*`と`checks.yml@*`とし、どのブランチのプルリクエストでもログインできる。また、Freeプランの閲覧のロールはプロジェクト全体に効く(「環境ごとの権限が無い料金プランのリスク」)。そのため、主体を共有したままprodのシークレットを登録すると、任意のブランチのプルリクエストの検査のジョブ(ワークフローを書き換えたものを含む)からprodのシークレットを読め、prodへのマージに人間の承認を求める保護はシークレットの読み取りには効かない。
+- この事実を示して、「3つとも分ける(推奨)」「検査だけ分け、stagingとprodは共有」「3つとも共有のまま」で再質問し、開発者は「3つとも共有のまま」を選んだ。
+- 反映: 仮11の基準(重大度が重大・高のセキュリティの指摘はリリースを止める)の例外として、検証の記録に「受け入れた危険」の節を設け、決定の日・決定者・理由・見直しの条件とともに最初の行に置く(リリースを止める指摘に数えない)。チェックリストのB-04を「主体を作らず、共有の主体がprodのデプロイからログインできることを確かめ、受け入れた危険を記入する」に、B-05を「アカウントIDとゾーンIDと状態の保管先の接続先の反映と、主体のIDが共有の値であることの確認」に改めた。要件16.2・17.2を改めた(承認後の改訂4)。
+- `security/003`の「主体の分離」(環境ごとに1つ作る規則)と`operations/001`の「本番環境の準備」の手順4は、同じ技術選定の他のプロジェクトへ写す一般の規則のため変えない。本プロジェクトの例外と受け入れた危険は、`project-values.md`の「IaC定義とデプロイのパイプライン」の主体の表の注記に記した(この反映と同じ変更。古い「3つの主体のIDは全桁0の仮の値」の記述を置き換えた)。
+
+### H-5の確かめる場所
+
+- 選んだ案は「本specでstagingで確かめる」だったが、デプロイ済みのstagingには部品の描画中の例外を起こす手段が無い(診断の経路をコミットするとprodへも配信される)。また、データの取得の失敗をIPアドレス単位の制限の使い切りで起こす方法(legal-pagesの7.6)は、送信元のIPアドレスをCloudflareが付けるstagingでは使えない。そのため、確かめる場所を、ローカルで本番と同じビルドを動かすプレビューの段階に置いた(タスク7.16)。本specで確かめ、不具合ならfrontend-platformへ依頼するという決定の要点は変えていない。
+
+### その他の反映
+
+- G-1: `CronBudgetJudge`の`ScheduledRunSummary`を実装の要約のログの項目(`time`・`cron`・`result`・`jobs[].{name,result,durationMs}`・`totalDurationMs`)に改め、ジョブの失敗の行と予算の超過の行を要約でない行として扱い、`totalDurationMs`とジョブの和の差を表に並べるようにした。
+- G-2: `LatencyReport`にブラウザのスパンとAPIサーバーのスパンを結ぶ`joinBrowserSpansWithOperations`を加えた(D-4)。
+- G-3: 依存先を`e2e/client/match-steps.ts`と`sql-string-literal.ts`に直し、E2Eのテストが`e2e/{client,admin}/**/*-steps.ts`を読み込めるよう依存の向きを改めた。`SentryScrubber`の記述を`scrub-event.ts`に直した。
+- G-4: `axe-core`の版を4.14.0に直した(D-6)。
+- G-5: 取り下げた。設計は既に、索引文書の行を記事の行から`INSERT ... SELECT`で作り、FTS5の表はトリガーで入ると記しており、列(`source_id`・`source_version`・`keyword_status`・`status_changed_at`)とhelp-centerの`markPending`の形も実装と一致していた。分析の時点の読み違いである。
+- G-6: `BulkUsers`は、1人目をUIで登録して`users.password_hash`を読み、残りの利用者へ同じ文字列を書く方式にした。保存の形式(`pbkdf2-sha512$100000$<ソルト>$<導出の値>`)は文字列にソルトを含むため、同じパスワードで照合が通る。これにより、E2Eの過程へ`HASH_PEPPER`を注入する前提と、`apps/*/src`の処理を写す必要が無くなった(タスク3.3・4.4)。
+- H-2: ProdConfigReflectionとB-05・タスク9.1に、`prod.json`の`cloudflare.accountId`・`zoneId`と`backends/prod.s3.hcl`の`endpoints.s3`を加えた。
+- H-3: D-02とタスク9.2のCronの式を、16:21を含む6つにした。
+- H-6: E-02に、プライバシーポリシーの本文がTurnstileのPrivacy Addendumとプロダクトのタグラインの自然言語APIへの送信に合っていることの確認を加えた。
+- H-7: C-06とタスク8.3に、Adaptive Pricingの無効化・prodの決済手段のドメインの登録・不審請求の申し立ての不服申し立ての無効を加えた(D-5)。
+- H-8: チェックリストにA-10(eventの`limits.cpu_ms`の要否の決定)を加え、タスク7.11で記録する。
+- H-9: チェックリストにC-11(prodの`FILES_BUCKET`のライフサイクルの規則が既定のままであることの確認)を加え、タスク9.2で確かめる。
+- H-10: stagingの開発者の作業にS-23(決済手段の表示の確認)を加え、タスク7.11で依頼する。タスク1.6の写す範囲をS-01〜S-23に直した(S-22の追加の時に直されていなかった)。
+- 要件の改訂: 2.1と10.5(改訂2)・13.8の追加(改訂3)・13.7と16.2と17.2(改訂4)と、Boundary Contextの秘密でない設定値の記述とAdjacent expectationsの計測の割合。改訂は`requirements.md`の「承認後の改訂」の表に記録した。
+- タスクの数は63から64になった(7.16の追加)。8.6の`_Depends:_`に7.16を加えた。
+- `spec.json`の承認の状態と`ready_for_implementation`は変えていない。
+- 反映のレビュー(2026-11-23): 変更部分を新しいサブエージェントによる独立した確認でレビューした。判定はNEEDS_FIXES(必須5件・軽微7件)で、全てを直した。必須の指摘は次の5件である。(1)本番リリースの図に主体の作成と`identityId`の反映が残っていた。(2)identity-authの依存の行が`HASH_PEPPER`による再現のままだった。(3)`TraceSpanRow`がスパンのIDと親のスパンのIDを持たず、フロントエンドサーバーの中継のスパンが間に入ることを扱えなかった(`getTraceData`はフロントエンドサーバーの現在のスパンを引き継ぐため、APIサーバーのルートのスパンの祖先をたどってブラウザのスパンに着く形にした)。(4)要件2.1の計測の括弧が「リクエスト10回に1回」のままだった。(5)受け入れた危険が要件13.7の「リリースの前に解消する」の例外として要件に書かれていなかった(13.7・改訂4・タスク7.4に足した)。軽微の指摘(`project-values.md`の`<マシンアイデンティティのID>`の行、9.1のA-10、7.11の要件、コンポーネントの表の13.8と追跡表の並び、`createBulkUsers`の引数とパスワードの定数、予算の超過の行の水準の`warning`、4.1の経緯の注記)も直した。再レビューは行っていない。

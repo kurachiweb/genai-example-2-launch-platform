@@ -10,6 +10,7 @@ import type {
   ScheduledJobHandler,
 } from '../../../../lib/core/scheduling/cron-registry.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
   fromBusinessDateTime,
 } from '../../../../lib/core/time/business-time.ts';
@@ -38,11 +39,10 @@ interface PurgeStartSummary {
   readonly hasMore: boolean;
 }
 
-// 業務時刻は固定のオフセットのため、業務日付の0:00から日数分のミリ秒を引けば前の業務日付の0:00になる
 function purgeBoundaryOf(date: BusinessDate): Date {
-  const midnight = fromBusinessDateTime(date, MIDNIGHT);
-  return new Date(
-    midnight.getTime() - (PURGE_START_AFTER_BUSINESS_DAYS - 1) * DAY_MS,
+  return fromBusinessDateTime(
+    addBusinessDays(date, -(PURGE_START_AFTER_BUSINESS_DAYS - 1)),
+    MIDNIGHT,
   );
 }
 

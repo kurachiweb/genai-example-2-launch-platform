@@ -3,6 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { CategoryMasterItem } from '../../lib/components/admin/category-master-editor.tsx';
 import { graphqlQueryOptions } from '../../lib/start/graphql/graphql-query-options.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
+import { invalidateAuditLogQueries } from './admin-audit-logs.ts';
 import {
   AdminProductCategoriesDocument,
   type AdminProductCategoriesQuery,
@@ -22,11 +23,14 @@ export const toAdminProductCategoryItems = ({
     systemDefault,
   }));
 
-// 管理画面でプロダクトカテゴリを表すのはこの一覧だけのため、一覧の取得だけを無効にする
+// カテゴリの追加・編集・削除の成功の後に呼ぶ。管理画面でプロダクトカテゴリを表すのはこの一覧だけのため、一覧の取得を無効にし、操作は監査ログに残るため監査ログの照会も無効にする
 export async function invalidateProductCategoryQueries(
   queryClient: QueryClient,
 ): Promise<void> {
-  await queryClient.invalidateQueries({
-    queryKey: [documentIdOf(AdminProductCategoriesDocument)],
-  });
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: [documentIdOf(AdminProductCategoriesDocument)],
+    }),
+    invalidateAuditLogQueries(queryClient),
+  ]);
 }

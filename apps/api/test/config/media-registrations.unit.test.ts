@@ -9,6 +9,8 @@ import {
   ATTACHMENT_MEDIA_TYPES,
   IMAGE_MEDIA_TYPES,
 } from '../../common-lib/media/media-types.ts';
+import { ADMIN_PLATFORM_TYPES } from '../../lib/core/admin/identifiers.ts';
+import type { AdminDirectory } from '../../lib/core/admin/ports.ts';
 import type { AccountGuard } from '../../lib/core/identity/account-guard.ts';
 import { IDENTITY_PLATFORM_TYPES } from '../../lib/core/identity/identifiers.ts';
 import {
@@ -24,6 +26,7 @@ import {
   FILE_ACCESS_TYPES,
 } from '../../src/application/media/file-access-policies.ts';
 import { MEDIA_JOB_TYPES } from '../../src/application/media/media-daily-jobs.ts';
+import { AdminRoleMediaReviewPolicy } from '../../src/application/moderation/admin-role-media-review-policy.ts';
 import {
   UPLOAD_ACCESS_TYPES,
   type UploaderEligibility,
@@ -33,7 +36,6 @@ import { MEDIA_REVIEW_POLICY_BINDINGS } from '../../src/composition/media-review
 import { SCHEDULED_JOBS } from '../../src/composition/scheduled-jobs.ts';
 import { UPLOAD_PURPOSES } from '../../src/composition/upload-purposes.ts';
 import { UPLOADER_ELIGIBILITY_BINDINGS } from '../../src/composition/uploader-eligibility.ts';
-import { DenyAllAdminMediaReviewPolicy } from '../../src/infrastructure/media/deny-all-admin-media-review-policy.ts';
 import { imageFileViewOf } from '../support/media-file-view.ts';
 
 const API_WRANGLER_CONFIG = join(
@@ -120,6 +122,23 @@ const activeUserGuard: AccountGuard = {
   requireVerifiedUser: unusedGuardMethod,
 };
 
+const activeAdminDirectory: AdminDirectory = {
+  findProfiles: (ids) =>
+    Promise.resolve(
+      new Map(
+        ids
+          .filter((id) => id === ADMIN_PRINCIPAL.subjectId)
+          .map(
+            (id) =>
+              [
+                id,
+                { id, nickname: '管理者', title: null, avatarFileId: null },
+              ] as const,
+          ),
+      ),
+    ),
+};
+
 function readTriggerCrons(wranglerEnv: string | undefined): readonly string[] {
   const raw: unknown = unstable_readConfig(
     { config: API_WRANGLER_CONFIG, env: wranglerEnv },
@@ -176,18 +195,27 @@ describe('メディアの登録箇所の既定値', () => {
     ]);
   });
 
-  test('管理者の画像確認には、管理者側の管理者にも常に拒否する既定の実装を束縛する', async () => {
+  test('管理者の画像確認には、管理者の名簿で有効な管理者だけに画像を許す判定を束縛する', async () => {
     const container = new Container();
     container.load(MEDIA_REVIEW_POLICY_BINDINGS);
+    container
+      .bind<AdminDirectory>(ADMIN_PLATFORM_TYPES.AdminDirectory)
+      .toConstantValue(activeAdminDirectory);
 
     const policy = container.get<AdminMediaReviewPolicy>(
       FILE_ACCESS_TYPES.AdminMediaReviewPolicy,
     );
 
-    expect(policy).toBeInstanceOf(DenyAllAdminMediaReviewPolicy);
+    expect(policy).toBeInstanceOf(AdminRoleMediaReviewPolicy);
     expect(
       await policy.canReview({
         principal: ADMIN_PRINCIPAL,
+        file: imageFileViewOf(),
+      }),
+    ).toBe(true);
+    expect(
+      await policy.canReview({
+        principal: USER_PRINCIPAL,
         file: imageFileViewOf(),
       }),
     ).toBe(false);

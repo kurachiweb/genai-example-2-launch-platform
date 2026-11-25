@@ -3,7 +3,9 @@ import { describe, expect, test } from 'bun:test';
 import {
   EMAIL_SEND_MESSAGE,
   type EmailSendBody,
+  isValidEmailIdempotencyKey,
   isWithinEmailSendBodyLimit,
+  MAX_EMAIL_IDEMPOTENCY_KEY_LENGTH,
   MAX_EMAIL_SEND_BODY_BYTES,
 } from './send-message.ts';
 
@@ -45,6 +47,18 @@ describe('EMAIL_SEND_MESSAGE', () => {
         'List-Unsubscribe': '<https://app.example/unsubscribe?token=abc123>',
         'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       },
+    };
+
+    expect(EMAIL_SEND_MESSAGE.schema.safeParse(body)).toEqual({
+      success: true,
+      data: body,
+    });
+  });
+
+  test('任意の冪等のキーを引き継ぐ', () => {
+    const body: EmailSendBody = {
+      ...BODY,
+      idempotencyKey: '01JQ0ACT000000000000000001',
     };
 
     expect(EMAIL_SEND_MESSAGE.schema.safeParse(body)).toEqual({
@@ -97,6 +111,9 @@ describe('EMAIL_SEND_MESSAGE', () => {
       { ...BODY, headers: { 'List-Unsubscribe': '<http://app.example/u>' } },
     ],
     ['文字列でないヘッダーの値', { ...BODY, headers: { Precedence: 1 } }],
+    ['空の冪等のキー', { ...BODY, idempotencyKey: '' }],
+    ['空白を含む冪等のキー', { ...BODY, idempotencyKey: 'a b' }],
+    ['数値の冪等のキー', { ...BODY, idempotencyKey: 1 }],
   ])('%sの本文を拒否する', (_label, body) => {
     expect(EMAIL_SEND_MESSAGE.schema.safeParse(body).success).toBe(false);
   });
@@ -153,5 +170,31 @@ describe('isWithinEmailSendBodyLimit', () => {
     expect(isWithinEmailSendBodyLimit({ ...BODY, input: circular })).toBe(
       false,
     );
+  });
+});
+
+describe('isValidEmailIdempotencyKey', () => {
+  test('冪等のキーの上限は128文字である', () => {
+    expect(MAX_EMAIL_IDEMPOTENCY_KEY_LENGTH).toBe(128);
+  });
+
+  test.each([
+    ['ULID', '01JQ0ACT000000000000000001'],
+    ['区切りを含むキー', 'ugc-moderation.notice:01JQ0ACT_1'],
+    ['1文字', 'a'],
+    ['128文字', 'a'.repeat(128)],
+  ])('%sを受け付ける', (_label, key) => {
+    expect(isValidEmailIdempotencyKey(key)).toBe(true);
+  });
+
+  test.each([
+    ['空文字', ''],
+    ['129文字', 'a'.repeat(129)],
+    ['空白', 'a b'],
+    ['改行', 'a\nb'],
+    ['スラッシュ', 'a/b'],
+    ['日本語', '措置'],
+  ])('%sを拒否する', (_label, key) => {
+    expect(isValidEmailIdempotencyKey(key)).toBe(false);
   });
 });

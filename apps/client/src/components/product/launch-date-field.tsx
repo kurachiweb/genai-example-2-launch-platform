@@ -12,6 +12,10 @@ import {
   type LaunchPlanView,
 } from '../../graphql/my-products.ts';
 import { PRICING_HREF } from '../layout/site-links.ts';
+import {
+  businessDateOfCalendarDay,
+  calendarDayOf,
+} from '../time/business-date-calendar.ts';
 import { useBoundaryRefresh } from '../time/use-boundary-refresh.ts';
 import { UltrasPromotionGate } from '../ultras/ultras-promotion-gate.tsx';
 import {
@@ -20,11 +24,7 @@ import {
   selectionCutoffsFrom,
 } from './business-time.ts';
 import { KickoffTime } from './kickoff-time.tsx';
-import {
-  businessDateOfCalendarDay,
-  calendarDayOf,
-  unavailableReasonOn,
-} from './launch-date-calendar.ts';
+import { unavailableReasonOn } from './launch-date-calendar.ts';
 import {
   type LaunchDateFieldValues,
   showsLaunchDateCalendar,

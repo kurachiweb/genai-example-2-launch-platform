@@ -8,6 +8,7 @@ import {
   type ServiceFetcher,
   validateFrontendEnv,
 } from '../../lib/server/env/frontend-env.ts';
+import { runtimeSecurityPolicySources } from '../../lib/server/http/security-policy.ts';
 import { z } from '../../lib/utilities/validation/zod.ts';
 
 const APP_DIR = join(import.meta.dirname, '..', '..');
@@ -120,6 +121,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       CLIENT_SITE_ORIGIN: 'http://localhost:48044',
       WEB_ANALYTICS_TOKEN: '',
       STRIPE_PUBLISHABLE_KEY: LOCAL_STRIPE_PUBLISHABLE_KEY,
+      PUBLIC_API_ORIGIN: 'http://localhost:48042',
     },
     validatedWebAnalyticsToken: undefined,
     requiredSecrets: ['HASH_PEPPER'],
@@ -141,6 +143,8 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
         'https://genai-example-2-client-staging.lab.kurachiweb.com',
       WEB_ANALYTICS_TOKEN: STAGING_WEB_ANALYTICS_TOKEN,
       STRIPE_PUBLISHABLE_KEY: STAGING_STRIPE_PUBLISHABLE_KEY,
+      PUBLIC_API_ORIGIN:
+        'https://genai-example-2-api-staging.lab.kurachiweb.com',
     },
     validatedWebAnalyticsToken: STAGING_WEB_ANALYTICS_TOKEN,
     requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
@@ -160,6 +164,7 @@ const EXPECTED_ENVIRONMENTS: readonly ExpectedEnvironment[] = [
       CLIENT_SITE_ORIGIN: 'https://genai-example-2-client.lab.kurachiweb.com',
       WEB_ANALYTICS_TOKEN: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
       STRIPE_PUBLISHABLE_KEY: PLACEHOLDER_LIVE_STRIPE_PUBLISHABLE_KEY,
+      PUBLIC_API_ORIGIN: 'https://genai-example-2-api.lab.kurachiweb.com',
     },
     validatedWebAnalyticsToken: PLACEHOLDER_WEB_ANALYTICS_TOKEN,
     requiredSecrets: ['HASH_PEPPER', 'SENTRY_DSN'],
@@ -239,12 +244,12 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     ]);
   });
 
-  test('IP制限は10秒あたり100回で、利用者側の環境ごとの名前空間を使う', () => {
+  test('IP制限は10秒あたり500回で、利用者側の環境ごとの名前空間を使う', () => {
     expect(config.ratelimits).toStrictEqual([
       {
         name: 'IP_RATE_LIMITER',
         namespace_id: env.rateLimitNamespaceId,
-        simple: { limit: 100, period: 10 },
+        simple: { limit: 500, period: 10 },
       },
     ]);
   });
@@ -300,6 +305,22 @@ describe.each(EXPECTED_ENVIRONMENTS)('Wrangler設定の実効値($label)', (env)
     );
   });
 
+  test('公開APIのオリジンを持ち、その値が共通部品の環境の検証を通ってCSPの接続先に加わる', () => {
+    const validation = validateFrontendEnv({
+      ...config.vars,
+      ...bindingsOf(config),
+      ...secretsOf(config),
+    });
+
+    expect(env.vars['PUBLIC_API_ORIGIN']).toBeString();
+    expect(validation.ok && validation.env.PUBLIC_API_ORIGIN).toBe(
+      env.vars['PUBLIC_API_ORIGIN'],
+    );
+    expect(
+      validation.ok && runtimeSecurityPolicySources(validation.env).connectSrc,
+    ).toContain(env.vars['PUBLIC_API_ORIGIN']);
+  });
+
   test('必須のシークレットは、全環境のペッパーとstaging・prodのSentryのDSNである', () => {
     expect(config.secrets?.required ?? []).toEqual([...env.requiredSecrets]);
   });
@@ -348,7 +369,18 @@ describe('Wrangler設定の環境をまたぐ整合', () => {
     },
   );
 
-  test('IP制限の名前空間が、利用者側・管理者側・api・eventの環境・Workerごとにすべて異なる', () => {
+  test.each(EXPECTED_ENVIRONMENTS)(
+    '公開APIのオリジンは利用者側だけが持ち、管理者側は持たない($label)',
+    ({ wranglerEnv }) => {
+      const adminVars = varsSchema.parse(
+        readRawConfig('admin', wranglerEnv),
+      ).vars;
+
+      expect(Object.keys(adminVars)).not.toContain('PUBLIC_API_ORIGIN');
+    },
+  );
+
+  test('レート制限の名前空間が、利用者側・管理者側・api・eventの環境・Workerごとの全バインディング(各Workerの制限とapiの公開APIの制限)ですべて異なる', () => {
     const namespaceIds = EXPECTED_ENVIRONMENTS.flatMap(({ wranglerEnv }) =>
       RATE_LIMITED_APPS.flatMap((app) =>
         rateLimitNamespaceIdsOf(app, wranglerEnv),
@@ -356,7 +388,8 @@ describe('Wrangler設定の環境をまたぐ整合', () => {
     );
 
     expect(namespaceIds).toHaveLength(
-      EXPECTED_ENVIRONMENTS.length * RATE_LIMITED_APPS.length,
+      EXPECTED_ENVIRONMENTS.length * RATE_LIMITED_APPS.length +
+        EXPECTED_ENVIRONMENTS.length,
     );
     expect(new Set(namespaceIds).size).toBe(namespaceIds.length);
   });

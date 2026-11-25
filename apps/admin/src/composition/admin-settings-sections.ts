@@ -4,6 +4,8 @@ import { SENDER_INFO_TITLE } from '../components/notifications/sender-info-messa
 import { SenderInfoSection } from '../components/notifications/sender-info-section.tsx';
 import { PROMOTION_SETTING_TITLE } from '../components/ultras/promotion-setting-messages.ts';
 import { PromotionSettingSection } from '../components/ultras/promotion-setting-section.tsx';
+import { FINAL_DATE_SECTION_TITLE } from '../components/year-tournament/final-date-labels.ts';
+import { FinalDateSection } from '../components/year-tournament/final-date-section.tsx';
 
 export interface AdminSettingsSection {
   // '<spec名>.<名詞句>'
@@ -19,6 +21,12 @@ export interface AdminSettingsSection {
 // 設定のページに並べる区画の登録箇所。各specが自分の設定の区画を追記する
 export const ADMIN_SETTINGS_SECTIONS: readonly AdminSettingsSection[] =
   Object.freeze([
+    {
+      id: 'tournament-year.final-date',
+      order: 10,
+      title: FINAL_DATE_SECTION_TITLE,
+      component: FinalDateSection,
+    },
     {
       id: 'ultras-subscription.promotion-flag',
       order: 20,

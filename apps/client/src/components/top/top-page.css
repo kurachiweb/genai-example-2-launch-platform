@@ -1,0 +1,15 @@
+/* 横の列の区画が全て何も描かなかったとき(枠に目印の要素しか無いとき)は、列ごと外して本文の幅と列の間隔を残さない */
+[data-top-page-aside]:not(
+  :has(> div > :not([data-top-page-section-rendered]))
+) {
+  display: none;
+}
+
+/* 広い画面だけ(data-wide-only)の要素は1024px未満では表示されないため、それ以外に描いた区画が無ければ本文の下の列ごと外す */
+@media (width < 64rem) {
+  [data-top-page-aside]:not(
+    :has(> div > :not([data-top-page-section-rendered], [data-wide-only]))
+  ) {
+    display: none;
+  }
+}

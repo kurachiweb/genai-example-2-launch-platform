@@ -1739,6 +1739,7 @@ export declare function unsubscribeQuestion(topicLabel: string): string; // '「
   - ダイアログの`onConfirm({ reason })`が`updateNotificationSenderInfo`を送る。成功ならダイアログを閉じて`onSubmit`のPromiseを解決し、「送信者情報を保存しました。」を通知する。
   - `validation_error`ならダイアログを閉じ、`onSubmit`のPromiseをその`GraphQLClientError`で拒否する。`AppForm`が`serverFieldPrefix="input"`で欄ごとの詳細を欄に付け、欄に当たらない詳細は`onSubmitError`へ渡す(11.4)。`onConfirm`は例外を投げずに終える。
   - それ以外の失敗は`onConfirm`から投げ、ダイアログの中に`failureMessageOf`の文言で示す(`version_conflict`はAPIの最新を読み直す案内、11.7)。ダイアログを閉じたら(取り消しを含む)`onSubmit`のPromiseを何もせずに解決し、入力欄のフォームを送信中から戻す。
+- 監査ログの照会の無効化: 送信者情報の保存の成功の後は、監査ログの検索の照会を`invalidateAuditLogQueries`で無効にする。競合・入力の誤りなどの失敗の後は無効にしない(`docs/GUIDES/tech/frontend/009-admin-console-shell.md`の「監査ログを残す操作の後の照会の無効化」)。
 - `SenderInfoSection`の取得は、値が無い間の失敗を`throwOnError: (_error, query) => query.state.data === undefined`で投げ、設定ページの`RecoverableSlot`と`SectionFallback`(見出しの補いと`ADMIN_PROFILE.contactAvailable`による文言)に描かせる(前例`promotion-setting-section.tsx`)。区画は`ErrorState`を自分で描かない。
 
 ### docs・e2e

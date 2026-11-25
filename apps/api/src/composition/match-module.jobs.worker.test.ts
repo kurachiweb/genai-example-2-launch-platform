@@ -18,7 +18,7 @@ import {
 } from 'vitest';
 
 import { qualifierPairings } from '../../db/schema/match/qualifier-pairings.ts';
-import { QUALIFIER_SCHEDULE } from '../../lib/core/match/match-model.ts';
+import { MATCH_SCHEDULE } from '../../lib/core/match/match-model.ts';
 import {
   fromBusinessDateTime,
   parseBusinessDate,
@@ -184,8 +184,8 @@ describe('APIサーバーのマッチのモジュールの日次のジョブの�
   test('23:40と23:45の起動で前日の業務日付の翌日の予選を組み、0:00の起動はペアリングの遅れを報告しない', async () => {
     const logs = recordConsole();
 
-    await runScheduled(PREVIOUS_DATE, QUALIFIER_SCHEDULE.fullTime);
-    await runScheduled(PREVIOUS_DATE, QUALIFIER_SCHEDULE.pairing);
+    await runScheduled(PREVIOUS_DATE, MATCH_SCHEDULE.fullTime);
+    await runScheduled(PREVIOUS_DATE, MATCH_SCHEDULE.pairing);
 
     expect((await readMatchRows()).map(({ matchDate }) => matchDate)).toEqual([
       MATCH_DATE,
@@ -193,7 +193,7 @@ describe('APIサーバーのマッチのモジュールの日次のジョブの�
     ]);
     expect(await readDayStatus()).toBe('completed');
 
-    await runScheduled(DATE, QUALIFIER_SCHEDULE.kickoff);
+    await runScheduled(DATE, MATCH_SCHEDULE.kickoff);
 
     expect(await readMatchRows()).toHaveLength(2);
     expect(logs.some(({ message }) => message === PAIRING_LATE_MESSAGE)).toBe(
@@ -211,7 +211,7 @@ describe('APIサーバーのマッチのモジュールの日次のジョブの�
   test('23:45のペアリングが行われていなければ、0:00の起動が当日の予選を組んで遅れを報告する', async () => {
     const logs = recordConsole();
 
-    await runScheduled(DATE, QUALIFIER_SCHEDULE.kickoff);
+    await runScheduled(DATE, MATCH_SCHEDULE.kickoff);
 
     expect(await readMatchRows()).toHaveLength(2);
     expect(await readDayStatus()).toBe('completed');

@@ -63,3 +63,7 @@ export const externalUrlHost = (value: string): string => {
   }
   return parseUrl(url)?.hostname ?? '';
 };
+
+// 保存の後に検証の規則が変わっても危険なリンクを出さないよう、表示の時点で検証の済まないURLを除く
+export const verifiedExternalUrl = (value: string): string | null =>
+  checkExternalUrl(value) === 'ok' ? value : null;

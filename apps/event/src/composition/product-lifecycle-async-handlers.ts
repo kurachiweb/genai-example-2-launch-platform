@@ -2,7 +2,12 @@ import type { ProductLifecycleAsyncRegistration } from '../../lib/core/product/p
 import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-types.ts';
 import { EVENT_ENGAGEMENT_TYPES } from '../application/engagement/event-engagement-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
+import { EVENT_MODERATION_TYPES } from '../application/moderation/event-moderation-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
+import { EVENT_REPORTING_TYPES } from '../application/reporting/event-reporting-types.ts';
+import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
+import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
+import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 
 // プロダクトの非公開化・復元・論理削除・物理削除の時期の到来の後にイベントサーバーで自分のデータを変える機能が、登録をここへ追記する。
 // orderは機能ごとに割り当てた帯を使い、物理削除の時期の到来では全ての処理の後に実行器がプロダクトの行を物理削除する
@@ -49,5 +54,47 @@ export const PRODUCT_LIFECYCLE_ASYNC_HANDLERS: readonly ProductLifecycleAsyncReg
       events: ['purge_due'],
       order: 1400,
       handler: EVENT_ENGAGEMENT_TYPES.ProductErasureHandler,
+    },
+    {
+      name: 'tournament-week.product-entry-loss',
+      events: ['deleted'],
+      order: 1500,
+      handler: EVENT_WEEK_TOURNAMENT_TYPES.ProductEntryLossHandler,
+    },
+    {
+      name: 'tournament-week.entry-unlink',
+      events: ['purge_due'],
+      order: 1500,
+      handler: EVENT_WEEK_TOURNAMENT_TYPES.EntryUnlinkHandler,
+    },
+    {
+      name: 'sponsorship.product-purge',
+      events: ['purge_due'],
+      order: 1600,
+      handler: EVENT_SPONSORSHIP_TYPES.ProductPurgeHandler,
+    },
+    {
+      name: 'tournament-year.product-entry-loss',
+      events: ['deleted'],
+      order: 1700,
+      handler: EVENT_YEAR_TOURNAMENT_TYPES.ProductEntryLossHandler,
+    },
+    {
+      name: 'tournament-year.entry-unlink',
+      events: ['purge_due'],
+      order: 1700,
+      handler: EVENT_YEAR_TOURNAMENT_TYPES.EntryUnlinkHandler,
+    },
+    {
+      name: 'content-reporting.product-report-erasure',
+      events: ['purge_due'],
+      order: 1800,
+      handler: EVENT_REPORTING_TYPES.ProductReportErasureHandler,
+    },
+    {
+      name: 'ugc-moderation.product-record-erasure',
+      events: ['purge_due'],
+      order: 1900,
+      handler: EVENT_MODERATION_TYPES.ProductRecordErasureHandler,
     },
   ]);

@@ -1,5 +1,8 @@
 const MediaFiles: unique symbol = Symbol.for('media.MediaFiles');
 const MediaQuarantine: unique symbol = Symbol.for('media.MediaQuarantine');
+const MediaModerationControl: unique symbol = Symbol.for(
+  'media.MediaModerationControl',
+);
 const MediaEraser: unique symbol = Symbol.for('media.MediaEraser');
 const UploadReceiver: unique symbol = Symbol.for('media.UploadReceiver');
 const MediaFileStore: unique symbol = Symbol.for('media.MediaFileStore');
@@ -11,6 +14,7 @@ const UploadPurposeRegistry: unique symbol = Symbol.for(
 export const MEDIA_TYPES = Object.freeze({
   MediaFiles,
   MediaQuarantine,
+  MediaModerationControl,
   MediaEraser,
   UploadReceiver,
   MediaFileStore,

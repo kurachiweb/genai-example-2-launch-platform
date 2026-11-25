@@ -1,0 +1,7 @@
+mutation AdminWithdrawUserByAdministrator(
+  $input: AdministrativeWithdrawalInput!
+) {
+  withdrawUserByAdministrator(input: $input) {
+    changed
+  }
+}

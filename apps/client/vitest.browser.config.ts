@@ -49,6 +49,7 @@ const PREBUNDLED_DEPENDENCIES = [
   '@stripe/stripe-js/pure',
   '@stripe/react-stripe-js',
   '@stripe/react-stripe-js/checkout',
+  'swagger-ui-dist/swagger-ui-bundle.js',
   ...EDITOR_PREBUNDLED_DEPENDENCIES,
 ];
 

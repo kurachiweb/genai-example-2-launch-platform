@@ -11,10 +11,6 @@ import {
   CHECKOUT_SUMMARY_TITLE,
   PURCHASED_DESTINATIONS,
 } from '../../apps/client/src/components/payments/checkout-messages.ts';
-import {
-  CHECKOUT_RETURN_RECHECK_INTERVAL_MS,
-  CHECKOUT_RETURN_RECHECK_LIMIT,
-} from '../../apps/client/src/components/payments/checkout-return-rules.ts';
 import { SETTINGS_NAVIGATION_LABEL } from '../../apps/client/src/components/settings/settings-messages.ts';
 import {
   PLAN_PAGE_TITLE,
@@ -54,7 +50,10 @@ import {
   type TestAccount,
   userMenuButton,
 } from './auth/account-steps.ts';
-import { CHECKOUT_FLOW_TIMEOUT_MS } from './checkout-steps.ts';
+import {
+  CHECKOUT_FLOW_TIMEOUT_MS,
+  RETURN_COMPLETION_TIMEOUT_MS,
+} from './checkout-steps.ts';
 
 export const ULTRAS_CHECKOUT_SKIP_REASON =
   'Stripeのsandboxのキーが無い環境のため、Ultrasの加入のE2Eを飛ばします';
@@ -79,10 +78,6 @@ const START_ULTRAS_CHECKOUT_DOCUMENT_ID = documentIdOf(
 
 const CHECKOUT_PATH_PATTERN =
   /^\/checkout\/(?<purchaseId>[0-9A-HJKMNP-TV-Z]{26})$/u;
-
-// 決済後のランディングは処理中の間、一定の間隔で上限の回数まで確かめ直すため、その合計に初回の確認の余裕を足す
-const RETURN_COMPLETION_TIMEOUT_MS =
-  CHECKOUT_RETURN_RECHECK_INTERVAL_MS * CHECKOUT_RETURN_RECHECK_LIMIT + 15_000;
 
 // 要件が設定のナビゲーションの項目の名前と画面の題名を同じ「プラン」と定めるため、項目は題名の文言で探す
 const PLAN_NAV_LABEL = PLAN_PAGE_TITLE;

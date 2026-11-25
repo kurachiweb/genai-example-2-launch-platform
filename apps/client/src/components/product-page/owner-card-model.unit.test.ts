@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import type { LaunchPlanView } from '../../graphql/my-products.ts';
-import { relaunchReservationOf } from './owner-card-model.ts';
+import { relaunchReservationOf, withActionReport } from './owner-card-model.ts';
 
 const planOf = (overrides: Partial<LaunchPlanView> = {}): LaunchPlanView => ({
   mode: 'new',
@@ -102,5 +102,26 @@ describe('relaunchReservationOf', () => {
       kind: 'available',
       earliestLaunchDate: null,
     });
+  });
+});
+
+describe('withActionReport', () => {
+  test('真の申告は操作を加え、偽の申告は操作を除く', () => {
+    const reports = withActionReport(new Set(), 'test.first', true);
+
+    expect([...reports]).toStrictEqual(['test.first']);
+    expect([...withActionReport(reports, 'test.first', false)]).toStrictEqual(
+      [],
+    );
+  });
+
+  test('状態が変わらない申告は同じ集合を返し、元の集合を変えない', () => {
+    const reports: ReadonlySet<string> = new Set(['test.first']);
+
+    expect(withActionReport(reports, 'test.first', true)).toBe(reports);
+    expect(withActionReport(reports, 'test.second', false)).toBe(reports);
+    const added = withActionReport(reports, 'test.second', true);
+    expect([...added]).toStrictEqual(['test.first', 'test.second']);
+    expect([...reports]).toStrictEqual(['test.first']);
   });
 });

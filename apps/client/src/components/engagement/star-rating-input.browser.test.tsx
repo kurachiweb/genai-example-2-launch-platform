@@ -12,6 +12,7 @@ import {
   ringOutline,
   tokenColorOf,
 } from '../../../lib/test/computed-style.ts';
+import { elementsOverflowingContainer } from '../../../lib/test/overflow.ts';
 import { StarRatingInput } from './star-rating-input.tsx';
 
 const LABEL = 'あなたの評価';
@@ -22,6 +23,8 @@ const REASON =
   'この操作にはメールアドレスの確認が必要です。確認メールをご確認ください。';
 
 const OUTSIDE = '星の外の領域';
+
+const NARROW_TEST_ID = 'narrow-rating';
 
 // 前に実行したテストのポインターの位置が残ると、同じ位置に描いた星へポインターが重なった扱いになり予告で塗られるため、描画の後にポインターを外へ移す
 async function renderAwayFromPointer(element: ReactNode) {
@@ -47,6 +50,9 @@ const starIconOf = (score: number): SVGElement => {
   }
   return icon;
 };
+
+const rectOf = (score: number): DOMRect =>
+  star(score).element().getBoundingClientRect();
 
 const isFilled = (score: number): boolean =>
   getComputedStyle(starIconOf(score)).fill === tokenColorOf('primary');
@@ -273,6 +279,30 @@ describe('StarRatingInput', () => {
 
     expect(widthOf('小さい星')).toBe(20);
     expect(widthOf('大きい星')).toBe(28);
+  });
+
+  test('5つの星が1行に収まらない狭い幅では星を折り返し、幅からはみ出さない', async () => {
+    await renderAwayFromPointer(
+      <div data-testid={NARROW_TEST_ID} className="w-24">
+        <ControlledStarRatingInput initial={null} />
+      </div>,
+    );
+    const container = page.getByTestId(NARROW_TEST_ID).element();
+
+    expect(elementsOverflowingContainer(container)).toStrictEqual([]);
+    expect(rectOf(5).top).toBeGreaterThan(rectOf(1).top);
+  });
+
+  test('5つの星が1行に収まる幅では、折り返さずに1行に並べる', async () => {
+    await renderAwayFromPointer(
+      <div className="w-80">
+        <ControlledStarRatingInput initial={null} />
+      </div>,
+    );
+
+    expect(
+      [2, 3, 4, 5].map((score) => rectOf(score).top - rectOf(1).top),
+    ).toStrictEqual([0, 0, 0, 0]);
   });
 
   describe('無効のとき', () => {

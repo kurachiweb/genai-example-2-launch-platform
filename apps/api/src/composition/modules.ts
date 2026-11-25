@@ -8,17 +8,25 @@ import {
   type BotVerifier,
   createTurnstileVerifier,
 } from '../../lib/workers/bot-protection/turnstile-verifier.ts';
+import { createDataExportPlatformModule } from '../../lib/workers/data-export/data-export-platform-module.ts';
 import { DIRECTORY_PLATFORM_MODULE } from '../../lib/workers/directory/directory-platform-module.ts';
 import { EMAIL_PLATFORM_MODULE } from '../../lib/workers/email/email-platform-module.ts';
 import { ENGAGEMENT_PLATFORM_MODULE } from '../../lib/workers/engagement/engagement-platform-module.ts';
 import type { PlatformHonoEnv } from '../../lib/workers/http/hono-env.ts';
 import { IDENTITY_PLATFORM_MODULE } from '../../lib/workers/identity/identity-platform-module.ts';
+import { MODERATION_PLATFORM_MODULE } from '../../lib/workers/moderation/moderation-platform-module.ts';
 import { PRODUCT_PLATFORM_MODULE } from '../../lib/workers/product/product-platform-module.ts';
 import { PROFILE_PLATFORM_MODULE } from '../../lib/workers/profile/profile-platform-module.ts';
+import { PUBLIC_API_PLATFORM_MODULE } from '../../lib/workers/public-api/public-api-platform-module.ts';
 import {
   createRateLimitCounterClient,
   type RateLimitCounterClient,
 } from '../../lib/workers/rate-limit/rate-limit-counter-client.ts';
+import { REPORTING_PLATFORM_MODULE } from '../../lib/workers/reporting/reporting-platform-module.ts';
+import { createSponsorshipPlatformModule } from '../../lib/workers/sponsorship/sponsorship-platform-module.ts';
+import { createTournamentPlatformModule } from '../../lib/workers/tournament/tournament-platform-module.ts';
+import { createWeekTournamentPlatformModule } from '../../lib/workers/week-tournament/week-tournament-platform-module.ts';
+import { createYearTournamentPlatformModule } from '../../lib/workers/year-tournament/year-tournament-platform-module.ts';
 import {
   type DatabaseProbe,
   DefaultSystemStatusQuery,
@@ -30,6 +38,7 @@ import { createInternalRoutesModule } from '../presentation/gateway/internal-onl
 import allowlist from '../presentation/graphql/generated/allowlist.json';
 import { createGraphQLModule } from '../presentation/graphql/graphql-module.ts';
 import { ADMIN_MODULE } from './admin-module.ts';
+import { DATA_EXPORT_MODULE } from './data-export-module.ts';
 import { DIRECTORY_MODULE } from './directory-module.ts';
 import { API_EMAIL_MODULE } from './email-module.ts';
 import { ENGAGEMENT_MODULE } from './engagement-module.ts';
@@ -42,6 +51,7 @@ import { LEGAL_MODULE } from './legal-module.ts';
 import { API_MATCH_MODULE, API_MATCH_PLATFORM_MODULE } from './match-module.ts';
 import { API_MEDIA_MODULE, API_MEDIA_PLATFORM_MODULE } from './media-module.ts';
 import { MEDIA_REVIEW_POLICY_BINDINGS } from './media-review-policy.ts';
+import { MODERATION_MODULE } from './moderation-module.ts';
 import {
   API_NOTIFICATIONS_PLATFORM_MODULE,
   NOTIFICATIONS_MODULE,
@@ -52,16 +62,21 @@ import {
 } from './payments-module.ts';
 import { PRODUCT_MODULE } from './product-module.ts';
 import { PROFILE_MODULE } from './profile-module.ts';
+import { PUBLIC_API_MODULE } from './public-api-module.ts';
+import { REPORTING_MODULE } from './reporting-module.ts';
 import {
   API_SEARCH_MODULE,
   API_SEARCH_PLATFORM_MODULE,
 } from './search-module.ts';
 import { SESSION_BINDINGS } from './session.ts';
+import { SPONSORSHIP_API_MODULE } from './sponsorship-module.ts';
 import {
   API_ULTRAS_MODULE,
   API_ULTRAS_PLATFORM_MODULE,
 } from './ultras-module.ts';
 import { UPLOADER_ELIGIBILITY_BINDINGS } from './uploader-eligibility.ts';
+import { WEEK_TOURNAMENT_API_MODULE } from './week-tournament-module.ts';
+import { YEAR_TOURNAMENT_API_MODULE } from './year-tournament-module.ts';
 
 function parseExpectedHostnames(value: string): readonly string[] {
   return value
@@ -120,13 +135,17 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_EMAIL_MODULE,
   IDENTITY_PLATFORM_MODULE,
   IDENTITY_MODULE,
+  PUBLIC_API_PLATFORM_MODULE,
   ADMIN_PLATFORM_MODULE,
   PROFILE_PLATFORM_MODULE,
   PRODUCT_PLATFORM_MODULE,
   API_MATCH_PLATFORM_MODULE,
+  createTournamentPlatformModule('api'),
   DIRECTORY_PLATFORM_MODULE,
   API_NOTIFICATIONS_PLATFORM_MODULE,
   ENGAGEMENT_PLATFORM_MODULE,
+  MODERATION_PLATFORM_MODULE,
+  REPORTING_PLATFORM_MODULE,
   ADMIN_MODULE,
   API_SEARCH_PLATFORM_MODULE,
   API_SEARCH_MODULE,
@@ -140,6 +159,14 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   API_PAYMENTS_PLATFORM_MODULE,
   API_PAYMENTS_MODULE,
   API_ULTRAS_PLATFORM_MODULE,
+  createWeekTournamentPlatformModule('api'),
+  createYearTournamentPlatformModule('api'),
+  createSponsorshipPlatformModule('api'),
+  createDataExportPlatformModule('api'),
+  WEEK_TOURNAMENT_API_MODULE,
+  YEAR_TOURNAMENT_API_MODULE,
+  SPONSORSHIP_API_MODULE,
+  DATA_EXPORT_MODULE,
   API_ULTRAS_MODULE,
   PROFILE_MODULE,
   PRODUCT_MODULE,
@@ -147,4 +174,7 @@ export const MODULES: readonly AppModule<Hono<PlatformHonoEnv<Env>>>[] = [
   DIRECTORY_MODULE,
   NOTIFICATIONS_MODULE,
   ENGAGEMENT_MODULE,
+  MODERATION_MODULE,
+  REPORTING_MODULE,
+  PUBLIC_API_MODULE,
 ];

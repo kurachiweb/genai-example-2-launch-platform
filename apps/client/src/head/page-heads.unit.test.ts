@@ -11,6 +11,7 @@ import {
   buildInquiryChatHead,
   buildLegalDocumentHead,
   buildLegalVersionHead,
+  buildMySponsorshipsHead,
   buildPricingHead,
   buildProductPageHead,
   buildPublicProfileHead,
@@ -235,6 +236,18 @@ describe('buildCheckoutHead', () => {
     expect(buildCheckoutHead()).toStrictEqual({
       meta: [
         { title: 'お支払い | Launch Stadium' },
+        { name: 'robots', content: 'noindex, nofollow' },
+      ],
+      links: [],
+    });
+  });
+});
+
+describe('buildMySponsorshipsHead', () => {
+  test('スポンサー広告のタイトルを付け、本人だけが読む自分の広告一覧のため検索の索引の対象外にする', () => {
+    expect(buildMySponsorshipsHead()).toStrictEqual({
+      meta: [
+        { title: 'スポンサー広告 | Launch Stadium' },
         { name: 'robots', content: 'noindex, nofollow' },
       ],
       links: [],

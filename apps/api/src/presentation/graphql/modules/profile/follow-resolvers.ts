@@ -1,3 +1,4 @@
+import { encodeCursor } from '../../../../../lib/core/pagination/opaque-cursor.ts';
 import type { FollowListReader } from '../../../../application/profile/follow-list-reader.ts';
 import type { FollowService } from '../../../../application/profile/follow-service.ts';
 import type {
@@ -7,9 +8,10 @@ import type {
 import { PROFILE_TYPES } from '../../../../application/profile/profile-types.ts';
 import type { Resolvers } from '../../generated/resolvers-types.ts';
 import type { GraphQLContext } from '../../graphql-context.ts';
-import { encodeCursor, toConnection } from '../../pagination.ts';
+import { toConnection } from '../../pagination.ts';
 import { withValidatedArgs } from '../../validated-args.ts';
 import { FOLLOW_LIST_ARGS, followListPositionOf } from './follow-inputs.ts';
+import { FOLLOW_TARGET_ARGS } from './inputs.ts';
 import {
   accountGuardOf,
   assertHuman,
@@ -58,7 +60,7 @@ const followListResolver = (direction: FollowDirection) =>
     ),
   );
 
-// フォローはメールアドレスの確認済み、解除は書き込み可能な利用者に限る。どちらもbot判定は状態の確認の後に行い、拒否できる要求でトークンを消費させない
+// フォローはメールアドレスの確認済み、解除は書き込み可能な利用者に限る。どちらも入力の検証→利用者の状態の確認→bot判定の順に行い、拒否できる要求でトークンを消費させない
 export const followResolvers = {
   Query: {
     myFollowing: followListResolver('following'),
@@ -66,22 +68,28 @@ export const followResolvers = {
   },
   Mutation: {
     followUser: clientOnly(
-      async (_parent: unknown, { handle }: { handle: string }, context) => {
-        const current = await accountGuardOf(context).requireVerifiedUser(
-          context.session,
-        );
-        await assertHuman(context, PROFILE_BOT_ACTIONS.follow);
-        return serviceOf(context).follow(current, handle);
-      },
+      withValidatedArgs(
+        FOLLOW_TARGET_ARGS,
+        async (_parent: unknown, { handle }, context) => {
+          const current = await accountGuardOf(context).requireVerifiedUser(
+            context.session,
+          );
+          await assertHuman(context, PROFILE_BOT_ACTIONS.follow);
+          return serviceOf(context).follow(current, handle);
+        },
+      ),
     ),
     unfollowUser: clientOnly(
-      async (_parent: unknown, { handle }: { handle: string }, context) => {
-        const current = await accountGuardOf(context).requireWritableUser(
-          context.session,
-        );
-        await assertHuman(context, PROFILE_BOT_ACTIONS.follow);
-        return serviceOf(context).unfollow(current, handle);
-      },
+      withValidatedArgs(
+        FOLLOW_TARGET_ARGS,
+        async (_parent: unknown, { handle }, context) => {
+          const current = await accountGuardOf(context).requireWritableUser(
+            context.session,
+          );
+          await assertHuman(context, PROFILE_BOT_ACTIONS.follow);
+          return serviceOf(context).unfollow(current, handle);
+        },
+      ),
     ),
   },
 } satisfies Resolvers;

@@ -50,7 +50,7 @@ export function ProductItem({ entry, query, imagesBroken }: Props) {
               <Link
                 to="/client/p/$handle"
                 params={{ handle: product.handle }}
-                className="text-foreground no-underline group-hover:underline after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus-visible:outline-none focus-visible:after:ring-3 focus-visible:after:ring-ring/50"
+                className="text-foreground no-underline group-hover:underline after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus-visible:after:ring-3 focus-visible:after:ring-ring/50"
               >
                 <HighlightedText text={product.name} query={query} />
               </Link>

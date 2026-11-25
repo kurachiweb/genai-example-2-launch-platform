@@ -36,8 +36,13 @@ describe('コメントの匿名化のジョブの定期実行の一覧への登�
     expect(jobs.slice(index - 1, index + 2)).toEqual([
       { name: 'notifications.maintenance', order: 1300 },
       { name: 'engagement.comment-anonymization', order: 1400 },
-      { name: 'content-processing.keyword-reextraction', order: 2300 },
+      { name: 'tournament-week.entry-follow-up', order: 1500 },
     ]);
+    expect(
+      jobs.findIndex(
+        ({ name }) => name === 'content-processing.keyword-reextraction',
+      ),
+    ).toBeGreaterThan(index);
   });
 
   test('4:21の起動の合計の所要時間の予算(300秒)を、他の機能のジョブと共有する', () => {

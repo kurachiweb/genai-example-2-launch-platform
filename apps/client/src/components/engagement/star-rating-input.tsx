@@ -68,7 +68,7 @@ export function StarRatingInput({
       aria-label={label}
       aria-describedby={describedBy}
       aria-disabled={disabled}
-      className="inline-flex items-center gap-0.5"
+      className="inline-flex flex-wrap items-center gap-0.5"
       onPointerLeave={() => {
         setHovered(null);
       }}

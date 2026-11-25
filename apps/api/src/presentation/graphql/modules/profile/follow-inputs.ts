@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 import { invalidCursorError } from '../../../../../lib/core/errors/invalid-cursor.ts';
 import { UPPERCASE_ULID_PATTERN } from '../../../../../lib/core/ids/uppercase-ulid.ts';
+import { decodeCursor } from '../../../../../lib/core/pagination/opaque-cursor.ts';
 import type { FollowListPosition } from '../../../../application/profile/ports.ts';
-import { decodeCursor } from '../../pagination.ts';
 
 export const FOLLOW_LIST_MAX_PAGE_SIZE = 20;
 

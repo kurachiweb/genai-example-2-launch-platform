@@ -18,6 +18,7 @@ const runtimeIn = (timeZone: string) =>
       sentry: { dsn: undefined, environment: 'local', tracesSampleRate: 0 },
       webAnalyticsToken: undefined,
       stripePublishableKey: undefined,
+      publicApiOrigin: undefined,
     },
     display: { timeZone, locale: 'ja-JP' },
   });

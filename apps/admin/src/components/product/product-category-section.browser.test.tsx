@@ -27,6 +27,7 @@ import {
   AdminInquiryCategoriesDocument,
   AdminProductCategoriesDocument,
   type AdminProductCategoriesQuery,
+  AdminReportCategoriesDocument,
   type AdminRole,
   AdminUpdateProductCategoryDocument,
 } from '../../graphql/generated/graphql.ts';
@@ -46,6 +47,8 @@ const SECTION_TITLE = 'プロダクトカテゴリ';
 const HELP_SECTION_TITLE = 'ヘルプ記事カテゴリ';
 
 const INQUIRY_SECTION_TITLE = '問い合わせカテゴリ';
+
+const REPORT_SECTION_TITLE = '通報カテゴリ';
 
 const AUDITED_NOTICE = 'この操作は監査ログに記録されます。';
 
@@ -107,6 +110,18 @@ const HELP_CATEGORIES = {
   ],
 };
 
+const REPORT_CATEGORIES = {
+  adminReportCategories: [
+    {
+      id: '01JE0000000000000000000002',
+      name: 'その他',
+      systemDefault: true,
+      infringement: false,
+      reportCount: 0,
+    },
+  ],
+};
+
 const INTERNAL_ERROR = Object.freeze({
   code: 'internal_error',
   message: 'サーバーで問題が発生しました。時間をおいて再度お試しください。',
@@ -141,6 +156,7 @@ const respondCategories = (
       [AdminDeleteProductCategoryDocument, remove],
       [AdminHelpCategoriesDocument, () => success(HELP_CATEGORIES)],
       [AdminInquiryCategoriesDocument, () => success(INQUIRY_CATEGORIES)],
+      [AdminReportCategoriesDocument, () => success(REPORT_CATEGORIES)],
     ]),
   });
 };
@@ -239,7 +255,12 @@ describe('プロダクトカテゴリの区画', () => {
         .getByRole('heading', { level: 2 })
         .elements()
         .map((heading) => heading.textContent),
-    ).toStrictEqual([SECTION_TITLE, HELP_SECTION_TITLE, INQUIRY_SECTION_TITLE]);
+    ).toStrictEqual([
+      SECTION_TITLE,
+      HELP_SECTION_TITLE,
+      INQUIRY_SECTION_TITLE,
+      REPORT_SECTION_TITLE,
+    ]);
     expect(rowCells()).toStrictEqual([
       ['開発ツール', 'dev-tools'],
       ['デザイン', 'Design_2'],

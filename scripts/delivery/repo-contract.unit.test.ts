@@ -188,6 +188,7 @@ describe('ツールの版', () => {
         infisicalCli: '0.44.8',
         wranglerTool: '4.152.0',
         mailpit: '1.32.0',
+        k6: '2.3.0',
         playwright: '1.64.1',
       },
     });
@@ -267,6 +268,7 @@ describe('ワークフローの検査', () => {
     '.github/workflows/release-pr.yml',
     '.github/workflows/checks.yml',
     '.github/workflows/deploy.yml',
+    '.github/workflows/readiness-load.yml',
     '.github/CODEOWNERS',
     '.github/actions/setup-toolchain/action.yml',
     '.github/trufflehog-exclude-paths.txt',
@@ -301,6 +303,7 @@ describe('ワークフローのジョブの上限時間と起動条件', () => {
     ],
     ['.github/workflows/deploy.yml', { deploy: 60 }],
     ['.github/workflows/release-pr.yml', { 'release-pr': 10 }],
+    ['.github/workflows/readiness-load.yml', { plan: 5, load: 45 }],
   ])('%sの手順を持つ全ジョブに設計の上限時間がある', (path, expected) => {
     const jobs = jobsOf(path);
 
@@ -323,6 +326,43 @@ describe('ワークフローのジョブの上限時間と起動条件', () => {
       GITHUB_TOKEN: '${{ github.token }}',
       RELEASE_HEAD: '${{ inputs.head }}',
     });
+  });
+});
+
+describe('負荷試験のワークフロー', () => {
+  const LOAD_WORKFLOW = '.github/workflows/readiness-load.yml';
+
+  interface LoadWorkflow {
+    readonly on: Record<string, unknown>;
+  }
+
+  const workflow = Bun.YAML.parse(readRepoText(LOAD_WORKFLOW)) as LoadWorkflow;
+
+  test('手動の起動だけで動き、対象の環境にstagingだけを選べる', () => {
+    const inputs = (
+      workflow.on.workflow_dispatch as {
+        inputs: Record<string, { type?: string; options?: string[] }>;
+      }
+    ).inputs;
+
+    expect(Object.keys(workflow.on)).toEqual(['workflow_dispatch']);
+    expect(inputs.environment?.type).toBe('choice');
+    expect(inputs.environment?.options).toEqual(['staging']);
+  });
+
+  test('シークレットとOIDCのトークンを使わない', () => {
+    const text = readRepoText(LOAD_WORKFLOW);
+
+    expect(text).not.toContain('secrets.');
+    expect(text).not.toContain('id-token');
+    expect(text).not.toContain('infisical');
+  });
+
+  test('並列の数の既定は5で、1つの台本が1並列あたり20人の仮想の利用者を動かす', () => {
+    const text = readRepoText(LOAD_WORKFLOW);
+
+    expect(text).toMatch(/parallel:[\s\S]*?default: '5'/u);
+    expect(text).toContain("VUS: '20'");
   });
 });
 

@@ -98,7 +98,7 @@ export function ProfileTabs({
       <TabsContent
         key={active.id}
         value={active.id}
-        className="mt-5 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        className="mt-5 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <h2 className="sr-only">{active.label}</h2>
         <ProfileTabPanel Panel={active.Panel} context={context} />

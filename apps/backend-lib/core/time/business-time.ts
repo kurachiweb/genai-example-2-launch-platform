@@ -1,3 +1,10 @@
+import {
+  addBusinessDays as addCalendarDays,
+  formatCalendarDate,
+  parseCalendarDate,
+  utcMidnightOf,
+} from '../../../common-lib/time/business-date-arithmetic.ts';
+
 export type BusinessDate = string & { readonly __brand: 'BusinessDate' };
 export type IsoWeekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -28,26 +35,9 @@ const DAYS_PER_WEEK = 7;
 const ISO_THURSDAY = 4;
 const BUSINESS_OFFSET_MILLISECONDS =
   BUSINESS_UTC_OFFSET_MINUTES * MILLISECONDS_PER_MINUTE;
-const BUSINESS_DATE_PATTERN = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/u;
-
-interface CalendarDate {
-  readonly year: number;
-  readonly month: number;
-  readonly day: number;
-}
-
-function utcMidnightOf({ year, month, day }: CalendarDate): Date {
-  const date = new Date(0);
-  // Date.UTCは0〜99年を1900年代に読み替えるため、年を直接設定する
-  date.setUTCFullYear(year, month - 1, day);
-  return date;
-}
 
 function formatBusinessDate(utcMidnight: Date): BusinessDate {
-  const year = String(utcMidnight.getUTCFullYear()).padStart(4, '0');
-  const month = String(utcMidnight.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(utcMidnight.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}` as BusinessDate;
+  return formatCalendarDate(utcMidnight) as BusinessDate;
 }
 
 function isoWeekdayOf(utcMidnight: Date): IsoWeekday {
@@ -56,30 +46,6 @@ function isoWeekdayOf(utcMidnight: Date): IsoWeekday {
 
 function addDays(utcMidnight: Date, days: number): Date {
   return new Date(utcMidnight.getTime() + days * MILLISECONDS_PER_DAY);
-}
-
-function toCalendarDate(value: string): CalendarDate {
-  const groups = BUSINESS_DATE_PATTERN.exec(value)?.groups;
-  if (groups === undefined) {
-    throw new RangeError(
-      `業務日付はYYYY-MM-DDの形式で指定してください: ${value}`,
-    );
-  }
-  const calendarDate = {
-    year: Number(groups.year),
-    month: Number(groups.month),
-    day: Number(groups.day),
-  };
-  const utcMidnight = utcMidnightOf(calendarDate);
-  const exists =
-    calendarDate.year >= 1 &&
-    utcMidnight.getUTCFullYear() === calendarDate.year &&
-    utcMidnight.getUTCMonth() + 1 === calendarDate.month &&
-    utcMidnight.getUTCDate() === calendarDate.day;
-  if (!exists) {
-    throw new RangeError(`存在しない業務日付です: ${value}`);
-  }
-  return calendarDate;
 }
 
 function assertTimeOfDay({ hour, minute }: BusinessTimeOfDay): void {
@@ -98,7 +64,7 @@ function assertTimeOfDay({ hour, minute }: BusinessTimeOfDay): void {
 }
 
 export function parseBusinessDate(value: string): BusinessDate {
-  toCalendarDate(value);
+  parseCalendarDate(value);
   return value as BusinessDate;
 }
 
@@ -127,7 +93,7 @@ export function fromBusinessDateTime(
   time: BusinessTimeOfDay,
 ): Date {
   assertTimeOfDay(time);
-  const utcMidnight = utcMidnightOf(toCalendarDate(date));
+  const utcMidnight = utcMidnightOf(parseCalendarDate(date));
   const minutesOfDay = time.hour * MINUTES_PER_HOUR + time.minute;
   return new Date(
     utcMidnight.getTime() +
@@ -136,8 +102,19 @@ export function fromBusinessDateTime(
   );
 }
 
+export function addBusinessDays(
+  date: BusinessDate,
+  days: number,
+): BusinessDate {
+  return addCalendarDays(date, days) as BusinessDate;
+}
+
+export function businessWeekdayOf(date: BusinessDate): IsoWeekday {
+  return isoWeekdayOf(utcMidnightOf(parseCalendarDate(date)));
+}
+
 export function businessWeekOf(date: BusinessDate): BusinessWeek {
-  const utcMidnight = utcMidnightOf(toCalendarDate(date));
+  const utcMidnight = utcMidnightOf(parseCalendarDate(date));
   const weekday = isoWeekdayOf(utcMidnight);
   const monday = addDays(utcMidnight, 1 - weekday);
   // ISO週は木曜日が属する年の週として数え、第1週はその年の最初の木曜日を含む週になる

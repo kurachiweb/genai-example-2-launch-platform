@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   desiredLocation,
+  isServableImageFile,
+  type MediaFileView,
   type MediaLocation,
   type MediaOwner,
   type ModerationFinding,
@@ -207,5 +209,63 @@ describe('ModerationFinding', () => {
     };
 
     expect(finding.source).toBe('svg');
+  });
+});
+
+describe('isServableImageFile', () => {
+  const IMAGE_FILE: MediaFileView = Object.freeze({
+    id: '01JC0F11E00000000000000001',
+    objectKey: '0123456789abcdef'.repeat(2),
+    purpose: 'product-image',
+    storage: 'images',
+    location: 'images',
+    owner: Object.freeze({ kind: 'user', id: '01JC0VSER00000000000000001' }),
+    originalFileName: 'screenshot.png',
+    contentType: 'image/png',
+    byteSize: 1024,
+    width: 640,
+    height: 480,
+    stored: true,
+    attached: true,
+    deletedAt: null,
+    eraseRequested: false,
+    moderationStatus: 'passed',
+    quarantineReasons: Object.freeze([]),
+    quarantined: false,
+    createdAt: new Date('2026-11-01T00:00:00.000Z'),
+  });
+
+  const FLAGS = [true, false] as const;
+
+  const COMBINATIONS = FLAGS.flatMap((stored) =>
+    FLAGS.flatMap((eraseRequested) =>
+      FLAGS.map(
+        (quarantined) => [stored, eraseRequested, quarantined] as const,
+      ),
+    ),
+  );
+
+  test('保存済み・削除待ち・隔離中の全8通りを確かめる', () => {
+    expect(new Set(COMBINATIONS.map((flags) => flags.join(','))).size).toBe(8);
+  });
+
+  test.each(COMBINATIONS)(
+    '保存済み=%p・削除待ち=%p・隔離中=%pなら、保存済みで削除待ちでも隔離中でもないときだけ配信できる',
+    (stored, eraseRequested, quarantined) => {
+      const file = { ...IMAGE_FILE, stored, eraseRequested, quarantined };
+
+      expect(isServableImageFile(file)).toBe(
+        stored && !eraseRequested && !quarantined,
+      );
+    },
+  );
+
+  test('論理削除済みでも物理削除の前なら配信できる', () => {
+    expect(
+      isServableImageFile({
+        ...IMAGE_FILE,
+        deletedAt: new Date('2026-11-02T00:00:00.000Z'),
+      }),
+    ).toBe(true);
   });
 });

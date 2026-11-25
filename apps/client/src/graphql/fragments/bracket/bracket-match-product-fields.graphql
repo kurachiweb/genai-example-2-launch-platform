@@ -1,0 +1,19 @@
+fragment BracketMatchProductFields on MatchProduct {
+  handle
+  name
+  tagline
+  category {
+    id
+    name
+    handle
+  }
+  websiteUrl
+  logo {
+    id
+    objectKey
+    fallbackFormat
+    width
+    height
+  }
+  listed
+}

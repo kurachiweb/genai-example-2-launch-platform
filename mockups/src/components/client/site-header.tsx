@@ -128,7 +128,7 @@ function UserMenu({ user }: { user: User }) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 rounded-full border border-border bg-card p-0.5 text-sm font-medium hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:pr-3"
+          className="flex items-center gap-2 rounded-full border border-border bg-card p-0.5 text-sm font-medium hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 sm:pr-3"
           aria-label={`${user.nickname}のユーザーメニュー`}
         >
           <UserAvatar user={user} size={28} />

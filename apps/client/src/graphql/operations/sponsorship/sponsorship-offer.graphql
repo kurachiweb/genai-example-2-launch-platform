@@ -1,0 +1,23 @@
+query ClientSponsorshipOffer {
+  sponsorshipOffer {
+    tiers {
+      tier
+      unitPrice {
+        amount
+        currency
+      }
+    }
+    eligibleProducts {
+      id
+      handle
+      name
+      logo {
+        id
+        objectKey
+        fallbackFormat
+        width
+        height
+      }
+    }
+  }
+}

@@ -334,7 +334,13 @@ describe('EmailPurchaseNotifierの購入確認メール', () => {
 
     expect(outcome).toBe('failed');
     expect(await confirmationStatusOf(1)).toBe('pending');
-    expect(logs.filter(({ method }) => method === 'warn')).toHaveLength(1);
+    const warnings = logs.filter(({ method }) => method === 'warn');
+    expect(warnings.map(({ args }) => args[0])).toMatchObject([
+      {
+        purchaseId: purchaseIdOf(1),
+        mailKind: PAYMENTS_PURCHASE_CONFIRMATION_KIND.name,
+      },
+    ]);
     expect(JSON.stringify(logs)).not.toContain(emailOf(1));
 
     const { sender, sent } = createRecordingSender();
@@ -399,7 +405,11 @@ describe('EmailPurchaseNotifierの購入確認メール', () => {
       expect(await confirmationStatusOf(1)).toBe('skipped');
       const warnings = logs.filter(({ method }) => method === 'warn');
       expect(warnings.map(({ args }) => args[0])).toMatchObject([
-        { purchaseId: purchaseIdOf(1), reason },
+        {
+          purchaseId: purchaseIdOf(1),
+          mailKind: PAYMENTS_PURCHASE_CONFIRMATION_KIND.name,
+          reason,
+        },
       ]);
       expect(await notifier.notifyPurchase(purchaseIdOf(1))).toBe(
         'not_pending',
@@ -535,7 +545,11 @@ describe('EmailPurchaseNotifierの自動返金の通知', () => {
     expect(await noticeStatusOf(1)).toBe('skipped');
     const warnings = logs.filter(({ method }) => method === 'warn');
     expect(warnings.map(({ args }) => args[0])).toMatchObject([
-      { refundRequestId: refundIdOf(1), reason: 'unknown_refund_reason' },
+      {
+        refundRequestId: refundIdOf(1),
+        mailKind: PAYMENTS_AUTOMATIC_REFUND_KIND.name,
+        reason: 'unknown_refund_reason',
+      },
     ]);
   });
 });

@@ -1,0 +1,31 @@
+query AdminSponsorships(
+  $filter: AdminSponsorshipFilter
+  $first: Int!
+  $after: String
+) {
+  adminSponsorships(filter: $filter, first: $first, after: $after) {
+    nodes {
+      id
+      productName
+      productHandle
+      productDeleted
+      applicantNickname
+      tier
+      startsOn
+      endsOn
+      days
+      amountPaid {
+        amount
+        currency
+      }
+      status
+      terminable
+      purchaseId
+      createdAt
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

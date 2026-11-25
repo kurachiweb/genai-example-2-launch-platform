@@ -38,6 +38,7 @@ import {
   stopLogCapture,
 } from './email-log-capture.fixtures.ts';
 import {
+  AFTER_SEND,
   bodyOf,
   createHarness,
   metaOf,
@@ -62,6 +63,8 @@ beforeEach(clearCapturedLogs);
 
 const SENT_PORTS = ['hasSent', 'senderInfo', 'render', 'send', 'markSent'];
 
+const IDEMPOTENCY_KEY = '01JQ0ACT000000000000000001';
+
 describe('SendEmailHandler', () => {
   describe('送信前の判定', () => {
     test('送信済みの送信要求なら、他のポートを呼ばずに重複として完了する', async () => {
@@ -82,6 +85,50 @@ describe('SendEmailHandler', () => {
         attempts: 2,
         durationMs: 0,
       });
+    });
+
+    test('冪等のキーを持つ送信要求は、種別とキーを添えて送信済みかを確かめ、送信の後にキーを添えて記録する', async () => {
+      const { handler, calls } = createHarness();
+
+      await handler.handle(
+        bodyOf({ idempotencyKey: IDEMPOTENCY_KEY }),
+        metaOf(),
+      );
+
+      expect(calls[0]).toEqual({
+        port: 'hasSent',
+        requestId: REQUEST_ID,
+        idempotency: { kind: TRANSACTIONAL_KIND.name, key: IDEMPOTENCY_KEY },
+      });
+      expect(calls.at(-1)).toEqual({
+        port: 'markSent',
+        requestId: REQUEST_ID,
+        kind: TRANSACTIONAL_KIND.name,
+        sentAt: AFTER_SEND,
+        idempotencyKey: IDEMPOTENCY_KEY,
+      });
+    });
+
+    test('冪等のキーで送信済みと分かった送信要求は、描画も送信もせずに重複として完了する', async () => {
+      const { handler, calls } = createHarness({ sent: true });
+
+      const result = await handler.handle(
+        bodyOf({ idempotencyKey: IDEMPOTENCY_KEY }),
+        metaOf(),
+      );
+
+      expect(result).toEqual<MessageHandlingResult>({ kind: 'done' });
+      expect(portsOf(calls)).toEqual(['hasSent']);
+      expect(resultLog().properties).toMatchObject({ result: 'duplicate' });
+    });
+
+    test('冪等のキーを持たない送信要求は、識別子だけで送信済みかを確かめて記録する', async () => {
+      const { handler, calls } = createHarness();
+
+      await handler.handle(bodyOf(), metaOf());
+
+      expect(calls[0]).toEqual({ port: 'hasSent', requestId: REQUEST_ID });
+      expect(calls.at(-1)).not.toHaveProperty('idempotencyKey');
     });
 
     test.each([

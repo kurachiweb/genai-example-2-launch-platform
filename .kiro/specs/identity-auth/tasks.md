@@ -451,6 +451,13 @@
   - 完了状態: 一括検査と一括テストが成功してカバレッジが閾値を満たし、手作業の一覧が報告に含まれている
   - _Requirements: 20.1, 20.3_
 
+- [x] 14. launch-readinessの検証の指摘の修正
+
+- [x] 14.1 登録の同意の欄のフォーカスと読み上げの順序を見た目と合わせる(launch-readinessのF-8、WCAG 2.4.3・1.3.2)
+  - 同意の欄を`FormField`の`labelPlacement="end"`で描き、グリッドの並べ替え(`col-start-2`・`row-start-1`)をやめて、チェックボックス・利用規約・プライバシーポリシーの文書・Tab・読み上げの順序を見た目と合わせる
+  - `register-form.browser.test.tsx`で文書とTabの順序を確かめ、E2Eの`keyboard-flows`の登録と`client-routes`の`/auth/register`の通過を確かめる
+  - _Requirements: 1.3, 18.11_
+
 ## Implementation Notes
 
 - 1.1: 導入確認のテストは`apps/api/src/infrastructure/auth/identity-packages.worker.test.ts`と`apps/frontend-lib/components/auth/qr-code-package.browser.test.ts`(後のタスクで本来のテストに置き換える)。`uqr`の`encode`は既定で四辺に1セルの余白(`border: 1`)を加える。`bowser`は解釈できないUser-Agentに空文字列のブラウザ名・OS名を返す。`otpauth`の`validate({ window: 1 })`は一致した時間窓の差分(0・-1・1)を返し、範囲外は`null`。TOTPの試験用の秘密鍵はBase32の文字列で書くとBetterleaksに誤検知されるため、`Secret.fromLatin1(...)`で組み立てる
@@ -511,3 +518,4 @@
 - 最終検証の後の修正: 管理画面向けの利用者の一覧の不正なカーソルは、既存のページングと同じ`invalid_cursor`(共有の`backend-lib/core/errors/invalid-cursor.ts`の`invalidCursorError()`)にした。上流(frontend-platform)への申し送りの3件は、送信をトークン無しのbot判定の失敗(`bot_verification_failed`)のときだけ次のトークンを待って1回送り直す`sendWithTurnstile`、`AppForm`の`method="post"`の固定、水和の直後に入力欄の値をフォームの状態へ取り込む処理で解消した
 - 最終検証の後の修正(開発者の決定): パスワードは識別子としてメールアドレス全体と`@`より前の部分の両方と比べ、文言を「ハンドル・ニックネーム・メールアドレス(@より前の部分を含む)と同じパスワードは使えません。」にした(要件12.2も改めた)。`DISIFY_API_KEY`が無いときは判定サービスを呼ばずに`regular`とし、`APP_ENVIRONMENT`が`staging`・`prod`ならapi・eventの環境の検証とWrangler設定の`secrets.required`で必須にした(`OPTIONAL_WORKER_SECRETS`から外した)。eventにも`APP_ENVIRONMENT`を加え、環境の種別の定義は共有の`backend-lib/core/env/app-environment.ts`へ移した(apiの`gateway-headers.ts`は再エクスポート)。デプロイ先の環境を再現するapiのWorkers統合テストとeventのWorkers統合テストの環境は、テスト用のキーを持つ
 - 共通部品の修正(user-profile-socialの10.1のE2Eで発見した不具合): `6ca5da82`とこの修正で、`DialogContent`・`SheetContent`・`PopoverContent`・`SelectContent`・`DropdownMenuContent`・`TooltipContent`が`submit`の伝播を止める(共通の`stopSubmitPropagation`)。ポータルの中のフォームの`submit`は外側の`<form>`へ伝わらないため、外側のフォームの送信をポータルの中から起こす使い方はできない
+- 2026-11-24(launch-readinessのF-8): 登録の同意の欄は`FormField`の`labelPlacement="end"`で描き、チェックボックス→利用規約→プライバシーポリシーの順に文書とTabを揃えた

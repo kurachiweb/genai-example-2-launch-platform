@@ -1,0 +1,6 @@
+query AdminModerationCategoryOptions {
+  adminModerationCategoryOptions {
+    id
+    name
+  }
+}

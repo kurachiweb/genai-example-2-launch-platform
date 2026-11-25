@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
+import { parseIsoWeek } from '../../../common-lib/tournament/week-period.ts';
+import { parseTournamentYear } from '../../../common-lib/tournament/year-period.ts';
 import { UPPERCASE_ULID_PATTERN } from '../ids/uppercase-ulid.ts';
-import { businessWeekOf, parseBusinessDate } from '../time/business-time.ts';
 
 export const NOTIFICATION_EVENT_TYPES = Object.freeze([
   'match_preview',
@@ -31,34 +32,18 @@ export type NotificationEvent =
 
 export const NOTIFICATION_PUBLISH_EVENT_LIMIT = 50;
 
-const WEEK_PERIOD_PATTERN = /^(?<year>\d{4})-W(?<week>\d{2})$/u;
-const YEAR_PERIOD_PATTERN = /^\d{4}$/u;
 // <spec名>の形で、各部分の文字の規則はライフサイクルの処理の名前と同じにする
 const PUBLISHER_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u;
-const MIN_WEEK = 1;
 
 // 送信枠のキー・重複のキーが同じIDから同じ文字列になるよう、採番の表記である大文字だけを受け付ける
 const ulid = z.ulid().regex(UPPERCASE_ULID_PATTERN);
 
 function isExistingYear(year: string): boolean {
-  return YEAR_PERIOD_PATTERN.test(year) && Number(year) >= 1;
-}
-
-// 12月28日を含む週がその年の最後のISO週になる
-function weeksInIsoYear(year: string): number {
-  return businessWeekOf(parseBusinessDate(`${year}-12-28`)).isoWeek;
+  return parseTournamentYear(year) !== undefined;
 }
 
 function isIsoWeekPeriod(period: string): boolean {
-  const groups = WEEK_PERIOD_PATTERN.exec(period)?.groups;
-  if (groups?.year === undefined || groups.week === undefined) {
-    return false;
-  }
-  if (!isExistingYear(groups.year)) {
-    return false;
-  }
-  const week = Number(groups.week);
-  return week >= MIN_WEEK && week <= weeksInIsoYear(groups.year);
+  return parseIsoWeek(period) !== undefined;
 }
 
 const PERIOD_RULES: Readonly<Record<AwardKind, (period: string) => boolean>> =

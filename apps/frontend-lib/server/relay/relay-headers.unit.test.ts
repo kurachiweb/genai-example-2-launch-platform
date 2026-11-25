@@ -27,6 +27,7 @@ const profileOf = (
   webAnalytics: false,
   contactAvailable: false,
   payments: false,
+  publicApiDocs: false,
 });
 
 const CLIENT_PROFILE = profileOf('client', '__Host-test_session');

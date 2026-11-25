@@ -1,0 +1,10 @@
+mutation AdminSendInfringementInquiry(
+  $id: ID!
+  $message: String!
+  $reason: String
+) {
+  sendInfringementInquiry(id: $id, message: $message, reason: $reason) {
+    sentAt
+    deadline
+  }
+}

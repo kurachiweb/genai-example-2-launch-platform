@@ -1,0 +1,12 @@
+fragment DataExportFields on DataExport {
+  id
+  status
+  failureKind
+  requestedAt
+  completedAt
+  expiresAt
+  failedAt
+  fileName
+  byteSize
+  downloadPath
+}

@@ -70,7 +70,7 @@ export function FollowListPage({
         <TabsContent
           key={direction}
           value={direction}
-          className="mt-5 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          className="mt-5 rounded-xl focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           <FollowList
             key={direction}

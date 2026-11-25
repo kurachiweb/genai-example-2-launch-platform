@@ -170,14 +170,23 @@ export const REGISTER_PRODUCT_ARGS = z.object({
   input: z.object({ fields: PRODUCT_FIELDS, launchDate }),
 });
 
-// 編集画面を開いたハンドルは照合だけに使い、一致しなければユースケースがproduct_not_foundにする。nullはローンチを変えない
+// 編集と削除の対象は編集画面が表示中のプロダクトのハンドルで指すため、規則に合わない値は画面の誤りとして拒否する。
+// 規則に合うハンドルは照合だけに使い、一致しなければユースケースがproduct_not_foundにする
+const productHandle = handle;
+
+// nullはローンチを変えない
 export const UPDATE_PRODUCT_ARGS = z.object({
   input: z.object({
-    productHandle: z.string(),
+    productHandle,
     expectedVersion: z.int(),
     fields: PRODUCT_FIELDS,
     launchDate: launchDate.nullish().transform((value) => value ?? null),
   }),
+});
+
+export const DELETE_PRODUCT_ARGS = z.object({
+  productHandle,
+  expectedVersion: z.int(),
 });
 
 const reason = inputRuleOf((value) =>

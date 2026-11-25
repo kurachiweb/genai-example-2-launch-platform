@@ -420,6 +420,7 @@ describe('awardPeriodLabel', () => {
     ['product_of_the_week', '2026-W7'],
     ['product_of_the_year', '2026-W37'],
     ['product_of_the_year', '26'],
+    ['product_of_the_year', '0000'],
   ] as const)('%sの期間%sは形式違反として例外を投げる', (award, period) => {
     expect(() => awardPeriodLabel(award, period)).toThrow(RangeError);
   });

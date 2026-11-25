@@ -13,8 +13,14 @@ import {
 } from '../lib/test/fake-turnstile.tsx';
 import type { ProductDeleteNotice } from '../src/components/product/product-section-types.ts';
 import {
+  ALIVE_ENTRY,
+  PAID_ENTITLED_ENTRY,
+} from '../src/components/week-tournament/week-entry-fixtures.ts';
+import { WEEK_ENTRY_DELETE_NOTICE } from '../src/components/week-tournament/week-entry-messages.ts';
+import {
   ClientDeleteProductDocument,
   ClientMyProductDocument,
+  ClientMyWeekEntryDocument,
 } from '../src/graphql/generated/graphql.ts';
 import {
   callsOf,
@@ -126,6 +132,37 @@ describe('プロダクトの削除', () => {
     await expect.element(dialog()).not.toBeInTheDocument();
     await expect.element(deleteButton()).toHaveFocus();
     expect(callsOf(ClientDeleteProductDocument)).toHaveLength(0);
+  });
+
+  test('Weekトーナメントの参加資格を得た枠があれば、確認のダイアログに参加資格の喪失と参加費の返金の注意書きを示す', async () => {
+    respond({ weekEntry: PAID_ENTITLED_ENTRY });
+    await renderEditProduct();
+
+    await userEvent.click(deleteButton());
+
+    await expect
+      .element(dialog().getByText(WEEK_ENTRY_DELETE_NOTICE, { exact: true }))
+      .toBeVisible();
+  });
+
+  test('Weekトーナメントの参加の枠が組み合わせに入った後は、注意書きを示さない', async () => {
+    respond({ weekEntry: ALIVE_ENTRY });
+    await renderEditProduct();
+
+    await userEvent.click(deleteButton());
+
+    await expect
+      .element(dialog().getByRole('heading', { name: DIALOG_TITLE }))
+      .toBeVisible();
+    await expect
+      .poll(() => callsOf(ClientMyWeekEntryDocument).length)
+      .toBeGreaterThan(0);
+    await expect
+      .poll(() =>
+        dialog().element().querySelector('[data-slot="loading-skeleton"]'),
+      )
+      .toBeNull();
+    expect(dialog().getByText(WEEK_ENTRY_DELETE_NOTICE).query()).toBeNull();
   });
 
   test('bot対策のトークンと読み込んだ版を添えて削除し、成功すると削除した旨を示して自分のプロダクトの一覧へ戻る', async () => {

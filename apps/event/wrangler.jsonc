@@ -8,6 +8,8 @@
   "workers_dev": false,
   "preview_urls": false,
   "cache": { "enabled": false },
+  // デプロイの手順がデバッグIDを埋め込んでエラートラッキングへ送れるよう、バンドルのソースマップを書き出す
+  "upload_source_maps": true,
   // 既定のエクスポートが返すAPIの応答はキャッシュせず、変換した画像の応答だけを前段に保存して2回目以降の読み出しと変換を省く
   "exports": {
     "default": { "type": "worker", "cache": { "enabled": false } },
@@ -65,7 +67,7 @@
     {
       "name": "IP_RATE_LIMITER",
       "namespace_id": "1002",
-      "simple": { "limit": 100, "period": 10 },
+      "simple": { "limit": 500, "period": 10 },
     },
   ],
   "images": { "binding": "IMAGES" },
@@ -164,7 +166,7 @@
         {
           "name": "IP_RATE_LIMITER",
           "namespace_id": "2002",
-          "simple": { "limit": 100, "period": 10 },
+          "simple": { "limit": 500, "period": 10 },
         },
       ],
       "images": { "binding": "IMAGES" },
@@ -271,7 +273,7 @@
         {
           "name": "IP_RATE_LIMITER",
           "namespace_id": "3002",
-          "simple": { "limit": 100, "period": 10 },
+          "simple": { "limit": 500, "period": 10 },
         },
       ],
       "images": { "binding": "IMAGES" },

@@ -550,9 +550,12 @@ describe('退会・停止での未完了の決済セッションの失効', () =
       statusesFor(indexesFrom(1, 51), 'expired'),
     );
     await expect(completedHandlerNames()).resolves.toStrictEqual([
+      'data-export.archive-erasure',
       EMAIL_SUPPRESSION_CLEANUP,
       'match-engine.account-decision-follow-up',
       OPEN_CHECKOUT_EXPIRY,
+      'tournament-week.account-entry-loss',
+      'tournament-year.account-entry-loss',
       SUBSCRIPTION_CANCELLATION,
     ]);
     await expect(readEvent(LIFECYCLE_EVENT)).resolves.toMatchObject({

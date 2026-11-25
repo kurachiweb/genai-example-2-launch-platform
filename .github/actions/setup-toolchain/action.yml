@@ -16,6 +16,9 @@ inputs:
   mailpit:
     description: Mailpitを導入する
     default: 'false'
+  k6:
+    description: 負荷試験の道具(k6)を導入する
+    default: 'false'
 outputs:
   mailpit-bin:
     description: Mailpitの実行ファイルの場所(mailpitを導入しない時は空)
@@ -78,3 +81,20 @@ runs:
         curl -fsSLO "https://github.com/axllent/mailpit/releases/download/v${MAILPIT_VERSION}/${archive}"
         tar -xzf "$archive" -C "$install_dir" mailpit
         echo "bin=$install_dir/mailpit" >> "$GITHUB_OUTPUT"
+    # 開発コンテナと同じく、チェックサムを検証して取得した実行ファイルだけを取り出す
+    - if: inputs.k6 == 'true'
+      shell: bash
+      env:
+        K6_VERSION: '2.3.0'
+      run: |
+        case "$RUNNER_ARCH" in X64) arch=amd64 ;; ARM64) arch=arm64 ;; *) echo "unsupported architecture: $RUNNER_ARCH" >&2; exit 1 ;; esac
+        archive="k6-v${K6_VERSION}-linux-${arch}.tar.gz"
+        release="https://github.com/grafana/k6/releases/download/v${K6_VERSION}"
+        download_dir="$(mktemp -d "$RUNNER_TEMP/k6-download.XXXXXX")"
+        install_dir="$RUNNER_TEMP/k6"
+        mkdir -p "$install_dir"
+        cd "$download_dir"
+        curl -fsSLO "${release}/${archive}"
+        curl -fsSL "${release}/k6-v${K6_VERSION}-checksums.txt" | grep " ${archive}\$" | sha256sum -c -
+        tar -xzf "$archive" -C "$install_dir" --strip-components=1 "k6-v${K6_VERSION}-linux-${arch}/k6"
+        echo "$install_dir" >> "$GITHUB_PATH"

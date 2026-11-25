@@ -1,17 +1,23 @@
 import { createRoute } from '@tanstack/react-router';
 
 import type { ProductLiveMatchView } from '../src/components/product-page/live-match-fixtures.ts';
+import type { WeekEntryPanelView } from '../src/components/week-tournament/week-entry-model.ts';
 import {
   ClientLaunchCommentCountsDocument,
   ClientLaunchCommentsDocument,
+  ClientMyWeekEntryDocument,
+  ClientMyYearEntryDocument,
   ClientProductLiveMatchDocument,
   ClientProductOwnerStatusDocument,
   ClientProductPageDocument,
   type ClientProductPageQuery,
   ClientProductRatingDocument,
+  ClientProductTrophiesDocument,
+  ClientSponsoredPlacementsDocument,
 } from '../src/graphql/generated/graphql.ts';
 import { Route as ProductPageRoute } from '../src/routes/p/$handle.tsx';
 import { GUEST_VIEWER_QUERY, renderPageRouter } from './page-router.tsx';
+import { NO_SPONSORED_PLACEMENTS_RESULT } from './sponsored-placements-stub.ts';
 import { signedInViewerQuery } from './viewer-fixtures.ts';
 
 interface ExecuteGraphQLMock {
@@ -59,6 +65,8 @@ export interface ProductRouteResponses {
   >;
   // 取得のたびに先頭の結果を返し、最後の結果は返し続ける。結果の代わりに失敗の結果も置ける
   readonly liveMatches?: readonly (ProductLiveMatchView | null | object)[];
+  // 投稿者本人向けの操作のWeekトーナメントの参加の枠
+  readonly weekEntry?: WeekEntryPanelView | null;
 }
 
 const isFailure = (value: unknown): boolean =>
@@ -67,7 +75,7 @@ const isFailure = (value: unknown): boolean =>
   'ok' in value &&
   value.ok === false;
 
-// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄)の取得には、評価もコメントも無い結果を返す
+// 詳細ページに登録された他の機能の区画(評価欄・ローンチのコメント欄・トロフィー・WeekとYearのトーナメントの参加費の導線・スポンサー広告)の取得には、評価もコメントも受賞も参加の枠も広告も無い結果を返す
 export const respondOtherSections = (
   document: unknown,
   variables: unknown,
@@ -85,8 +93,20 @@ export const respondOtherSections = (
       }),
     );
   }
+  if (document === ClientProductTrophiesDocument) {
+    return Promise.resolve(ok({ productTrophies: [] }));
+  }
+  if (document === ClientMyWeekEntryDocument) {
+    return Promise.resolve(ok({ myWeekEntry: null }));
+  }
+  if (document === ClientMyYearEntryDocument) {
+    return Promise.resolve(ok({ myYearEntry: null }));
+  }
   if (document === ClientLaunchCommentCountsDocument) {
     return Promise.resolve(ok({ launchCommentCounts: [] }));
+  }
+  if (document === ClientSponsoredPlacementsDocument) {
+    return Promise.resolve(NO_SPONSORED_PLACEMENTS_RESULT);
   }
   if (document === ClientLaunchCommentsDocument) {
     return Promise.resolve(
@@ -103,7 +123,7 @@ export const respondOtherSections = (
 
 export const respondProductRoute = (
   executeGraphQL: ExecuteGraphQLMock,
-  { pages, liveMatches = [null] }: ProductRouteResponses,
+  { pages, liveMatches = [null], weekEntry = null }: ProductRouteResponses,
 ): void => {
   const queue = [...liveMatches];
   executeGraphQL.mockImplementation((document, variables) => {
@@ -119,6 +139,9 @@ export const respondProductRoute = (
     }
     if (document === ClientProductOwnerStatusDocument) {
       return Promise.resolve(ok({ productOwnerStatus: null }));
+    }
+    if (document === ClientMyWeekEntryDocument) {
+      return Promise.resolve(ok({ myWeekEntry: weekEntry }));
     }
     return (
       respondOtherSections(document, variables) ??

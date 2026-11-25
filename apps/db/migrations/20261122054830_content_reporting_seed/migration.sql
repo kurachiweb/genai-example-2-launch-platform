@@ -1,0 +1,4 @@
+INSERT INTO `report_categories` (`id`, `name`, `system_default`, `created_at`, `updated_at`) VALUES
+	('01JE0000000000000000000001', '権利侵害', 1, 1733019303936, 1733019303936),
+	('01JE0000000000000000000002', 'その他', 1, 1733019303936, 1733019303936)
+ON CONFLICT (`name`) DO NOTHING;

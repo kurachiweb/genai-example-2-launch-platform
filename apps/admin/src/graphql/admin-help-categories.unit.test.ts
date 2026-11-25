@@ -3,6 +3,7 @@ import { QueryClient } from '@tanstack/react-query';
 
 import { HELP_CATEGORY_OTHER_ID } from '../../common-lib/help/help-category-constants.ts';
 import { documentIdOf } from '../../lib/utilities/graphql/persisted-document.ts';
+import { auditLogsQueryOptions } from './admin-audit-logs.ts';
 import {
   adminHelpCategoriesQueryOptions,
   invalidateHelpCategoryQueries,
@@ -90,10 +91,11 @@ describe('toHelpCategoryEntries', () => {
 });
 
 describe('invalidateHelpCategoryQueries', () => {
-  test('カテゴリの一覧と、カテゴリ名と紐付けを表す記事の一覧・1件の取得を無効にし、他の取得は残す', async () => {
+  test('カテゴリの一覧と、カテゴリ名と紐付けを表す記事の一覧・1件と、操作を記録した監査ログの検索の取得を無効にし、他の取得は残す', async () => {
     const queryClient = new QueryClient();
     const keys = [
       adminHelpCategoriesQueryOptions().queryKey,
+      auditLogsQueryOptions({}).queryKey,
       [documentIdOf(AdminHelpArticlesDocument), {}],
       [documentIdOf(AdminHelpArticleDocument), { id: 'article' }],
     ];

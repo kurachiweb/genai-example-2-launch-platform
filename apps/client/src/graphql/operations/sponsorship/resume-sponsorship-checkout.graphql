@@ -1,0 +1,5 @@
+mutation ClientResumeSponsorshipCheckout($id: ID!) {
+  resumeSponsorshipCheckout(id: $id) {
+    purchaseId
+  }
+}

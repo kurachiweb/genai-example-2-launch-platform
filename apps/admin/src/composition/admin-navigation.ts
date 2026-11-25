@@ -8,7 +8,14 @@ export interface AdminNavItem {
 // 管理画面のメニューに並べる項目の登録箇所。各specが自分の画面のURLとorderで項目を追記する。全ロールが全メニューを参照できるため、項目はロールで隠さない
 export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = Object.freeze([
   { to: '/', label: 'ダッシュボード', order: 10 },
+  { to: '/users', label: 'ユーザー', order: 20 },
+  { to: '/products', label: 'プロダクト', order: 30 },
+  { to: '/comments', label: 'コメント', order: 40 },
+  { to: '/ratings', label: '評価', order: 50 },
+  { to: '/media-moderation', label: '画像モデレーション', order: 60 },
+  { to: '/reports', label: '通報', order: 70 },
   { to: '/inquiries', label: '問い合わせ', order: 80 },
+  { to: '/sponsorships', label: 'スポンサー広告', order: 90 },
   { to: '/help-articles', label: 'ヘルプ記事', order: 100 },
   { to: '/categories', label: 'カテゴリ', order: 110 },
   { to: '/legal-documents', label: '法務文書', order: 120 },

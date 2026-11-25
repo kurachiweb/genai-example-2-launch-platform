@@ -59,6 +59,22 @@ const config: CodegenConfig = {
             '../modules/product/mappers.ts#LaunchHistoryProductModel',
           LaunchComment:
             '../modules/engagement/engagement-views.ts#LaunchCommentModel',
+          WeekTournamentRoundBoard:
+            '../modules/week-tournament/mappers.ts#WeekTournamentRoundBoardModel',
+          BracketRound:
+            '../modules/week-tournament/mappers.ts#BracketRoundSource',
+          BracketNode:
+            '../modules/week-tournament/mappers.ts#BracketNodeSource',
+          BracketSlot:
+            '../modules/week-tournament/mappers.ts#BracketSlotSource',
+          YearTournamentRoundBoard:
+            '../modules/year-tournament/mappers.ts#YearTournamentRoundBoardModel',
+          SponsorableProduct:
+            '../modules/sponsorship/sponsorship-views.ts#SponsorableProductModel',
+          SponsoredAd:
+            '../modules/sponsorship/sponsorship-views.ts#SponsoredAdModel',
+          SponsorshipProduct:
+            '../modules/sponsorship/sponsorship-views.ts#SponsorshipProductModel',
           HelpArticleAuthor:
             '../modules/help/author-fields.ts#HelpArticleAuthorSource',
         },

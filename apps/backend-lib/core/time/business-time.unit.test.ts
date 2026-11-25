@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  addBusinessDays,
   BUSINESS_UTC_OFFSET_MINUTES,
+  businessWeekdayOf,
   businessWeekOf,
   fromBusinessDateTime,
   parseBusinessDate,
@@ -209,6 +211,75 @@ describe('businessWeekOf', () => {
   test('型を偽った不正な業務日付を例外にする', () => {
     expect(() =>
       businessWeekOf('2026-13-01' as ReturnType<typeof parseBusinessDate>),
+    ).toThrow(RangeError);
+  });
+});
+
+describe('addBusinessDays', () => {
+  test.each([
+    ['同じ月の中', '2026-09-07', 7, '2026-09-14'],
+    ['1日後は翌日', '2026-09-15', 1, '2026-09-16'],
+    ['0日はそのままの日', '2026-09-07', 0, '2026-09-07'],
+    ['30日の月末をまたぐ', '2026-09-30', 1, '2026-10-01'],
+    ['31日の月末をまたぐ', '2026-01-31', 1, '2026-02-01'],
+    ['平年の2月末をまたぐ', '2026-02-28', 1, '2026-03-01'],
+    ['年末をまたぐ', '2026-12-31', 1, '2027-01-01'],
+    ['年末から90日後', '2026-12-31', 90, '2027-03-31'],
+    ['448日後', '2026-01-04', 448, '2027-03-28'],
+    ['うるう年の2月28日の翌日はうるう日', '2028-02-28', 1, '2028-02-29'],
+    ['うるう日の翌日は3月1日', '2028-02-29', 1, '2028-03-01'],
+    ['負の日数で年末をまたいで戻る', '2027-01-05', -12, '2026-12-24'],
+    ['負の日数でうるう日へ戻る', '2028-03-01', -1, '2028-02-29'],
+    ['負の日数で月末へ戻る', '2026-05-01', -1, '2026-04-30'],
+  ])('%s: %s + %d日 = %s', (_, date, days, expected) => {
+    expect(addBusinessDays(parseBusinessDate(date), days)).toBe(
+      parseBusinessDate(expected),
+    );
+  });
+
+  test('業務日付の0:00に日数分の時間を足した時点の業務日付と一致する', () => {
+    const date = parseBusinessDate('2026-03-07');
+    const startOfDay = fromBusinessDateTime(date, { hour: 0, minute: 0 });
+
+    for (const days of [-400, -1, 1, 2, 30, 400]) {
+      expect(addBusinessDays(date, days)).toBe(
+        toBusinessDateTime(new Date(startOfDay.getTime() + days * 86_400_000))
+          .date,
+      );
+    }
+  });
+
+  test('型を偽った不正な業務日付を例外にする', () => {
+    expect(() =>
+      addBusinessDays('2026-02-30' as ReturnType<typeof parseBusinessDate>, 1),
+    ).toThrow(RangeError);
+  });
+});
+
+describe('businessWeekdayOf', () => {
+  test.each([
+    ['2026-11-16', 1],
+    ['2026-11-17', 2],
+    ['2026-11-18', 3],
+    ['2026-11-19', 4],
+    ['2026-11-20', 5],
+    ['2026-11-21', 6],
+    ['2026-11-22', 7],
+    ['2028-02-29', 2],
+    ['2027-01-01', 5],
+  ] as const)('%s の曜日は %d である', (date, expected) => {
+    expect(businessWeekdayOf(parseBusinessDate(date))).toBe(expected);
+  });
+
+  test('toBusinessDateTimeの曜日と一致する', () => {
+    const business = toBusinessDateTime(new Date('2026-10-26T07:59:59.999Z'));
+
+    expect(businessWeekdayOf(business.date)).toBe(business.weekday);
+  });
+
+  test('型を偽った不正な業務日付を例外にする', () => {
+    expect(() =>
+      businessWeekdayOf('2026-13-01' as ReturnType<typeof parseBusinessDate>),
     ).toThrow(RangeError);
   });
 });

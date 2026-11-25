@@ -31,7 +31,7 @@
 - 措置の規則(`apps/common-lib/moderation/`): 措置の種類・理由の要否と上限・通知の要否・表示名(状態・隔離理由・用途・使い捨て判定)。監査ログの操作種別`apps/common-lib/admin/audit-actions/ugc-moderation.ts`(13種)。
 - 統計の週の規則(`apps/backend-lib/core/moderation/`)と、3つのメール種別`ugc-moderation.user-suspended`・`ugc-moderation.product-hidden`・`ugc-moderation.comment-hidden`(`core/email/kinds/ugc-moderation.ts`)。
 - 措置の記録の共有部品: 契約(`NewModerationRecord`・`ModerationRecord`・`LatestModeration`・`ModerationRecordStore`)は`apps/backend-lib/core/moderation/ports.ts`、DIの識別子`MODERATION_PLATFORM_TYPES`は`core/moderation/identifiers.ts`に置く。記録の挿入の文を返す`ModerationRecordStatements`(apiのinfrastructure層だけが使う)・D1の実装`D1ModerationRecordStore`と`MODERATION_PLATFORM_MODULE`は`apps/backend-lib/workers/moderation/`に置く。api・eventのapplication層が契約と識別子を読み込むため、`workers`に置かない。
-- apiの書き込みの単位: application層のポート`ModerationRecordWriter`(記録と監査ログの単独の一括の書き込み)・`EngagementModerationWriter`(コメント・評価の状態の変更と記録と監査ログの一体の確定)と、infrastructure層の実装`D1ModerationRecordWriter`・`ControlEngagementModerationWriter`、記録と監査ログの文の組み立て`D1ModerationStatements`(infrastructure層の内部の部品)。
+- apiの書き込みの単位: application層のポート`ImageModerationWriter`(画像の隔離理由の変更・削除待ちの印と記録と監査ログの一体の確定)・`EngagementModerationWriter`(コメント・評価の状態の変更と記録と監査ログの一体の確定)と、infrastructure層の実装`ControlImageModerationWriter`・`ControlEngagementModerationWriter`、記録と監査ログの文の組み立て`D1ModerationStatements`(infrastructure層の内部の部品)。
 - 書き込みの参加者の登録口: 措置の入力の値だけの参加`ModerationWriteParticipation`(application層の`ports.ts`)、文を返す参加者の契約`ModerationWriteParticipant`・`ModerationWriteContext`・`ModerationWriteParticipantRegistration`と解決の部品`ModerationWriteParticipants`(`createModerationWriteParticipants`)(apiの`infrastructure/moderation/moderation-write-participant.ts`)、登録の一覧`MODERATION_WRITE_PARTICIPANTS`(apiの`composition/moderation-write-participants.ts`、初版は空、後続specが追記)。
 - apiのスキーマモジュール`moderation`、措置のユースケース6つ(`UserModerationService`・`AdministrativeWithdrawalService`・`ProductModerationService`・`CommentModerationService`・`RatingModerationService`・`ImageModerationService`)、照会6つ、要求単位の保留中の措置`PendingModerationRecord`と同期の処理`ugc-moderation.user-moderation-record`・`ugc-moderation.product-moderation-record`、通知`ModerationNotifier`、隔離画像の閲覧の判定`AdminRoleMediaReviewPolicy`、ジョブ`ugc-moderation.weekly-statistics`(4:21、1900)・`ugc-moderation.maintenance`(4:21、1910)。
 - eventの処理`ugc-moderation.account-record-erasure`(ユーザーの`purge_due`、1900)・`ugc-moderation.product-record-erasure`(プロダクトの`purge_due`、1900)と3つのテンプレート。
@@ -43,7 +43,7 @@
 - `users`の状態の遷移・退会の確定・物理削除(identity-auth)。本specは`UserSuspension`・`AdministrativeWithdrawal`を呼び、`users`へ書き込まない。
 - `products`・`product_launches`の状態の遷移・未開始のローンチの取り消し・ロゴとスクリーンショットの隔離(product-launch)。本specは`ProductVisibilityControl`を呼ぶ。
 - `launch_comments`・`product_ratings`の状態の変更(engagement)。本specはinfrastructure層の`ControlEngagementModerationWriter`から`CommentModerationControl`・`RatingModerationControl`を呼ぶ。
-- 隔離理由のデータ・バケット間の移動・削除の実行・FR-ADMUG-050の不変条件(media-pipeline)。本specは`MediaQuarantine`・`MediaFiles`を呼び、`AdminMediaReviewPolicy`の束縛を差し替える。
+- 隔離理由のデータ・バケット間の移動・削除の実行・FR-ADMUG-050の不変条件(media-pipeline)。本specは`MediaQuarantine`(一覧)・`MediaFiles`(照会)を呼び、画像の操作はinfrastructure層の`ControlImageModerationWriter`から`MediaModerationControl`を呼ぶ。`AdminMediaReviewPolicy`の束縛を差し替える。`MediaModerationControl`の追加と`DenyAllAdminMediaReviewPolicy`の削除は、本specのタスクがmedia-pipelineの共有ディレクトリとapiの束縛へ行う(2026-11-20に開発者が決定)。
 - 停止・停止解除に伴う画像の隔離理由の付け外し(user-profile-social)、マッチの即時の終了・Upvoteの論理削除(match-engine)、索引(directory-discovery)、広告の表示の条件と表示停止の日割り返金(sponsorship)、トーナメントの分類と自動返金(tournament-week・tournament-year)、Ultrasの解約(ultras-subscription)。
 - 監査ログのテーブル・記録の部品・閲覧画面、`user.email-search`の定義(admin-foundation)。問い合わせのデータと画面(inquiry-chat)。決済履歴のデータ(payments)。
 - 通報からの措置の画面・申出者への通知(content-reporting)。本specは措置のユースケースとプロダクト詳細の区画の登録口を提供するだけである。
@@ -51,15 +51,15 @@
 
 ### Allowed Dependencies
 
-- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く)・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`)・`ScheduledJobDefinition`・`ScheduledJobHandler`、E2Eの`e2e/support/scheduled-trigger.ts`(`triggerScheduled`、backend-platformの改訂2)。形を変えない。
-- api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`・`caller`・`loaders`)・`withValidatedArgs`・`CURSOR_PAGE_ARGS`・`encodeCursor`・`decodeCursor`・`toConnection`・`PageInfo`・`DateTime`、`SessionView`。
-- admin-foundation: `requireAdmin`・`CurrentAdmin`・`AdminRole`・`hasRole`・`AuditLogRecorder`(`prepare`・`record`)・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AUDIT_REASON_MAX`・`checkAuditReason`・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`(契約と識別子は`core/admin`)、adminの`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCard`・`DashboardCardFrame`・`RoleGate`・`useAdminRole`、frontend-libの`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`、E2Eの`e2e/support/admin-bootstrap.ts`(`signInAsNewAdmin`)・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。
-- identity-auth: `IDENTITY_TYPES.UserSuspension`・`IDENTITY_TYPES.AdministrativeWithdrawal`・`SuspensionResult`・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`DisposableEmailStatus`・`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`(`AdminUserDirectory`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserStatus`、identity-authの仮7が実装・束縛)、E2Eの`e2e/support/mailpit.ts`。`IDENTITY_PLATFORM_TYPES`の契約と識別子は`core/identity`にある。
-- product-launch: `PRODUCT_TYPES`の`ProductVisibilityControl`・`VisibilityChangeResult`・`ProductLifecycleEvent`・`ProductLifecycleSyncHandler`・`ProductLifecycleSyncRegistration`・`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`ProductLifecycleAsyncHandler`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、`PRODUCT_PLATFORM_TYPES`の`ProductDirectory`(`findSummaries`・`findDetail`・`listLaunches`・`resolveHandle`)・`ProductCategoryDirectory`・`LaunchStatus`・`deriveLaunchStatus`、`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`(`AdminProductDirectory`・`AdminProductRecord`・`AdminProductSearchFilter`・`AdminProductLaunchState`・`AdminProductVisibility`、product-launchの仮13が実装・束縛)。`PRODUCT_PLATFORM_TYPES`の契約と識別子は`core/product`にある。
+- backend-platform: `AppModule`・`PLATFORM_TYPES`(`Database`・`Clock`・`IdGenerator`)・`AppError`・`getAppLogger`・`captureEvent`による定型の通知の規約(`infra/004`の「同じ文言を繰り返し送る通知」。文言は`logentry`、まとめる単位は`fingerprint`に置く。`captureEvent`はinfrastructure層だけが呼び、application層は`@sentry/*`を型も含めて読めない)・`ulidPrimaryKey`・`timestamps`・`BusinessTime`(`toBusinessDateTime`・`fromBusinessDateTime`・`parseBusinessDate`・`BusinessDate`・`businessWeekOf`・`addBusinessDays`)・`ScheduledJobDefinition`・`ScheduledJobHandler`、E2Eの`e2e/support/scheduled-trigger.ts`(`triggerScheduled`、backend-platformの改訂2)。形を変えない。
+- api-gateway: `defineSchemaModule`・`GraphQLContext`(`resolve`・`session`(`principal()`は`Promise<Principal>`)・`caller`・`loaders`)・`withValidatedArgs`・`PageInfo`・`DateTime`、`SessionView`、生成したリゾルバの型`Resolvers`(apiの`bun run graphql:generate`が`presentation/graphql/generated/`に作る)、IDの引数の検証の`UPPERCASE_ULID_PATTERN`(`coding/005`)。`CURSOR_PAGE_ARGS`(1〜100)と`toConnection`(1件多く読んだ行を前提にする)は使わず、件数の規則(1〜50)をモジュールの`inputs.ts`に置き、上流の照会の`nextCursor`から`{ nodes, pageInfo: { hasNextPage, endCursor } }`を組み立てる(sponsorshipの管理者側のリゾルバと同じ)。
+- admin-foundation: `requireAdmin`・`CurrentAdmin`・`AdminRole`・`hasRole`・`AuditLogRecorder`(`prepare`・`record`)・`PreparedAuditEntry`・`buildAuditLogStatements`・`defineAuditAction`・`AUDIT_ACTIONS`・`AUDIT_REASON_MAX`・`checkAuditReason`・`AdminDirectory`・`ADMIN_PLATFORM_TYPES`(契約と識別子は`core/admin`)、adminの`ADMIN_NAV_ITEMS`・`DASHBOARD_CARDS`・`DashboardCard`・`DashboardCardFrame`・`RoleGate`・`useAdminRole`、frontend-libの`AdminPageHeader`・`AdminDataTable`・`AdminFilterBar`・`ConfirmActionDialog`・`ReasonField`・`AdminAvatar`、E2Eの`e2e/support/admin-bootstrap.ts`(`signInAsNewAdmin`)・`e2e/support/local-d1.ts`(`executeLocalD1`・`sqlStringLiteral`)。実装時の追加(2026-11-20): adminの`graphql/admin-audit-logs.ts`の`invalidateAuditLogQueries`(措置で状態が変わった後に監査ログの照会を無効にする。本specが同じファイルに加える)。
+- identity-auth: `IDENTITY_TYPES.UserSuspension`・`IDENTITY_TYPES.AdministrativeWithdrawal`・`SuspensionResult`・`UserLifecycleEvent`・`UserLifecycleSyncHandler`・`UserLifecycleSyncRegistration`(この2つはapiの`infrastructure/identity/user-lifecycle-sync-handler.ts`にあり、本specのinfrastructure層の同期の処理だけが読み込む)・`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleAsyncHandler`・`UserLifecycleAsyncRegistration`・`USER_LIFECYCLE_ASYNC_HANDLERS`・`LifecycleHandlerOutcome`・`assertLifecycleHandlerName`・`IDENTITY_PLATFORM_TYPES.UserContactDirectory`・`DisposableEmailStatus`・`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`(`AdminUserDirectory`・`AdminUserRecord`・`AdminUserSearchFilter`・`AdminUserStatus`、identity-authの仮7が実装・束縛)、E2Eの`e2e/support/mailpit.ts`。`IDENTITY_PLATFORM_TYPES`の契約と識別子は`core/identity`にある。
+- product-launch: `PRODUCT_TYPES`の`ProductVisibilityControl`・`VisibilityChangeResult`(識別子の群に入るのはこの操作口だけ)、`ProductLifecycleEvent`・`ProductLifecycleAsyncHandler`・`ProductLifecycleAsyncRegistration`(`core/product/product-lifecycle.ts`)、`ProductLifecycleSyncHandler`・`ProductLifecycleSyncRegistration`(apiの`infrastructure/product/product-lifecycle-sync-handler.ts`)、`PRODUCT_LIFECYCLE_SYNC_HANDLERS`・`PRODUCT_LIFECYCLE_ASYNC_HANDLERS`、`PRODUCT_PLATFORM_TYPES`の`ProductDirectory`(`findSummaries`・`findDetail`・`listLaunches(ids, now)`・`resolveHandle`)・`ProductCategoryDirectory`・`LaunchStatus`・`deriveLaunchStatus`、`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`(`AdminProductDirectory`・`AdminProductRecord`・`AdminProductSearchFilter`・`AdminProductLaunchState`・`AdminProductVisibility`、product-launchの仮13が実装・束縛)。`PRODUCT_PLATFORM_TYPES`の契約と識別子は`core/product`にある。
 - engagement: `ENGAGEMENT_TYPES`の`CommentModerationControl`・`RatingModerationControl`(契約と実装は`apps/api/src/infrastructure/engagement/comment-moderation-control.ts`・`rating-moderation-control.ts`、結果の型`ModerationChangeResult`は`comment-moderation-control.ts`にある)、`ENGAGEMENT_PLATFORM_TYPES`の`CommentStore.findByIds`・`RatingStore.summaries`、`ENGAGEMENT_PLATFORM_TYPES`の`AdminCommentDirectory`・`AdminRatingDirectory`(`AdminCommentRecord`・`AdminCommentSearchFilter`・`AdminCommentState`・`AdminRatingRecord`・`AdminRatingState`、engagementの仮6が実装・束縛)。`ENGAGEMENT_PLATFORM_TYPES`の契約と識別子は`core/engagement`にある。`CommentModerationControl`・`RatingModerationControl`は呼び出し側の文を受け取るためapiのinfrastructure層にあり、本specはinfrastructure層の`ControlEngagementModerationWriter`からだけ呼ぶ。
-- media-pipeline: `MEDIA_TYPES`の`MediaFiles`(`findMany`・`eraseNow`)・`MediaQuarantine`(`addReason`・`removeReason`・`listByReason`)・`MediaFileView`・`QuarantineReason`・`QuarantinedImage`・`ModerationFinding`、apiの`AdminMediaReviewPolicy`・`FILE_ACCESS_TYPES`と束縛の置き場所`composition/media-review-policy.ts`、frontend-libの`downloadPathOf`・`MediaPlaceholder`、adminの中継の経路`FILE_DOWNLOAD_RELAY_ROUTE`(media-pipelineが登録済み)。
+- media-pipeline: `MEDIA_TYPES`の`MediaFiles`(`findMany`)・`MediaQuarantine`(`listByReason`)・`MediaModerationControl`(`addReason`・`removeReason`・`requestErase`。本specが`workers/media`に加える、呼び出し側の文を受け取る契約)・`MediaFileView`・`QuarantineReason`・`QuarantinedImage`・`ModerationFinding`、apiの`AdminMediaReviewPolicy`・`FILE_ACCESS_TYPES`と束縛の置き場所`composition/media-review-policy.ts`、common-libの`downloadPathOf`(`apps/common-lib/media/upload-protocol.ts`)、frontend-libの`MediaPlaceholder`(`{ kind, placeholder, alt, size }`が必須)、adminの中継の経路`FILE_DOWNLOAD_RELAY_ROUTE`(media-pipelineが登録済み)。
 - user-profile-social: `PROFILE_PLATFORM_TYPES.UserProfileDirectory`(`findSummaries`・`resolveHandle`。契約と識別子は`core/profile`)。
-- match-engine: `MATCH_PLATFORM_TYPES.MatchDirectory`(`summarizeDaily`・`listByLaunches`。契約と識別子は`core/match`)・`MatchKind`・`MatchStage`・`EntryResult`。
+- match-engine: `MATCH_PLATFORM_TYPES.MatchDirectory`(`summarizeDaily`(最大366日)・`listByLaunches(ids, now)`。契約と識別子は`core/match`)・`MatchKind`・`MatchStage`・`EntryResult`。実装時の追加(2026-11-20): `MatchPhase`・`MatchDecision`(`core/match/match-model.ts`。プロダクトの詳細のマッチの段階と決着から勝敗の表示を決める)。adminの`components/moderation/products/match-result-labels.ts`・`shared/moderation-messages.ts`が持つ値の写しは、`config/ugc-moderation-contract-copies.unit.test.ts`が`MATCH_KINDS`・`ENTRY_RESULTS`・`MATCH_PHASES`・`MATCH_DECISIONS`と照合する。
 - payments: `MinorUnitAmount`、GraphQLの`Money`、`PAYMENTS_TYPES.PaymentRevenueReport`(`PaymentRevenueReport`・`RevenuePeriod`、統計の群、paymentsの仮7が実装・束縛)。
 - content-processing: `countGraphemes`、adminの`MarkdownContent`。
 - email-delivery: `defineEmailKind`・`EMAIL_KINDS`・`EmailSender`・`EMAIL_TYPES`・`defineEmailTemplate`・`EMAIL_TEMPLATES`・`formatUtcDateTime`。
@@ -72,28 +72,31 @@
 - `moderation_actions`の列・措置の種類の値・通知の状態の値(content-reporting)。
 - 措置のユースケースの入力(`participation`を含む)と結果`ModerationOutcome`の形、参加者の登録口(`ModerationWriteParticipant`・`ModerationWriteContext`・`ModerationWriteParticipantRegistration`・`MODERATION_WRITE_PARTICIPANTS`)の形と、参加者の文を状態の変更・記録・監査ログと同じ一括の書き込みに入れてその文の違反で全体を取り消す規則、`ADMIN_PRODUCT_DETAIL_SECTIONS`の`AdminProductDetailContext`(content-reporting)。
 - 監査ログの操作種別13種の名前・対象の種類・理由の要否・詳細の鍵(admin-foundation・content-reporting)。
-- `core/moderation`の契約(`ModerationRecordStore`など)と`MODERATION_PLATFORM_TYPES`の置き場所、文を返す`ModerationRecordStatements`を`workers/moderation`に置きinfrastructure層だけが使う規則、application層の書き込みの単位のポート`ModerationRecordWriter`・`EngagementModerationWriter`の形、文を返す参加者の契約`ModerationWriteParticipant`をinfrastructure層に置きapplication層は値だけの参加`ModerationWriteParticipation`を渡す規則。application層が`**/lib/workers/**`を読み込めず文・接続・一括の書き込みを扱わない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(api・eventのapplication層が読み込むため)。
+- `core/moderation`の契約(`ModerationRecordStore`など)と`MODERATION_PLATFORM_TYPES`の置き場所、文を返す`ModerationRecordStatements`を`workers/moderation`に置きinfrastructure層だけが使う規則、application層の書き込みの単位のポート`ImageModerationWriter`・`EngagementModerationWriter`の形、文を返す参加者の契約`ModerationWriteParticipant`をinfrastructure層に置きapplication層は値だけの参加`ModerationWriteParticipation`を渡す規則。application層が`**/lib/workers/**`を読み込めず文・接続・一括の書き込みを扱わない規則(backend-platform)が変わっても、置き場所を`workers`へ戻さない(api・eventのapplication層が読み込むため)。
 - ジョブ・処理の名前と`order`(4:21の1900・1910、`purge_due`の1900)(日次タイムラインの表)。
 - 上流が提供する管理画面の照会(措置の群): `AdminUserDirectory`(identity-authの仮7)・`AdminProductDirectory`(product-launchの仮13)・`AdminCommentDirectory`・`AdminRatingDirectory`(engagementの仮6)の形と、検索の照合(仮3)・絞り込みの値(仮6)・コメントの状態の意味。所有するspecが変えたら、本specの照会(`AdminUserReader`・`AdminProductReader`・`AdminCommentReader`・`AdminRatingReader`)と措置のユースケース(`UserModerationService`・`AdministrativeWithdrawalService`・`RatingModerationService`)を確かめ直す。
 - 週ごとの統計の継ぎ目(統計の群。措置の群とは別に確かめ直す): `moderation_weekly_statistics`の列と確定の規則、統計の値の定義(仮1)とグラフ(仮2)、上流が提供する`PaymentRevenueReport`(paymentsの仮7)の形と純収益の解釈(`payment_records`の`kind`・`status`・`purpose`・金額の符号)、上流が提供する`AdminUserDirectory.countRegisteredAt`・`AdminProductDirectory.countRegisteredAt`(identity-authの仮7・product-launchの仮13)の時点の総数の定義、`MatchDirectory.summarizeDaily`の形、`DASHBOARD_CARDS`。変われば統計のタスク群(タスク7)の部品(`StatisticsWeek`・`WeeklyStatisticsStore`・`WeeklyStatisticsJob`・`WeeklyStatisticsReader`・統計のカード・表・グラフ)だけを確かめ直し、措置の部品には及ばない。
 - 仮1〜仮9は2026-10-24に開発者が確定した。今後の改訂で決定(統計の定義・グラフ・検索の照合・代理の退会の権限と起点と知らせ・絞り込みの値・画像の記録・通知の文面と返金の扱い・理由の要否)が変われば、該当する規則を確かめ直す。sponsorshipの仮3(広告の日割り返金)や要件14.9(返金しない条件)の文言が変われば、通知のテンプレートの広告の段落を確かめ直す。
-- 上流の`UserSuspension`・`AdministrativeWithdrawal`・`ProductVisibilityControl`・`CommentModerationControl`・`RatingModerationControl`・`MediaQuarantine`・`MediaFiles`・`AdminMediaReviewPolicy`の形、ライフサイクルの同期の処理を状態の変更と同じ一括の書き込みに入れて処理単位のコンテナから解決する規則、`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements`、`ADMIN_NAV_ITEMS`、`UserContactDirectory`・`UserProfileDirectory`・`ProductDirectory`・`MatchDirectory.listByLaunches`の形を変えたら、本specを確かめ直す。
+- 上流の`UserSuspension`・`AdministrativeWithdrawal`・`ProductVisibilityControl`・`CommentModerationControl`・`RatingModerationControl`・`MediaQuarantine`・`MediaFiles`・`MediaModerationControl`・`AdminMediaReviewPolicy`の形、ライフサイクルの同期の処理を状態の変更と同じ一括の書き込みに入れて処理単位のコンテナから解決する規則、`requireAdmin`・`AuditLogRecorder`・`buildAuditLogStatements`、`ADMIN_NAV_ITEMS`、`UserContactDirectory`・`UserProfileDirectory`・`ProductDirectory`・`MatchDirectory.listByLaunches`の形を変えたら、本specを確かめ直す。
 
 ### 上流への影響
 
-| 上流spec          | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 影響と再検証                                                                                                                                                                                        |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| identity-auth     | (1)`AdminUserDirectory`(`D1AdminUserDirectory`・`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`、`IDENTITY_PLATFORM_MODULE`の束縛)はidentity-authの仮7が所有・実装・束縛する。本specは使うだけで、identity-authのディレクトリへファイルを加えない。(2)apiの`composition/user-lifecycle-sync-handlers.ts`に`ugc-moderation.user-moderation-record`、eventの`composition/user-lifecycle-async-handlers.ts`に`ugc-moderation.account-record-erasure`(`purge_due`、1900)                                                                                                                        | (1)identity-authの仮7(identity-authのタスク3.7)の完了が、本specの利用者の照会・停止・代理の退会(措置の群)と統計の集計(統計の群)のタスクの前提。(2)は契約どおり                                      |
-| product-launch    | (1)`AdminProductDirectory`(`D1AdminProductDirectory`・`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`、`PRODUCT_PLATFORM_MODULE`の束縛)はproduct-launchの仮13が所有・実装・束縛する。本specは使うだけで、product-launchのディレクトリへファイルを加えない。(2)apiの`composition/product-lifecycle-sync-handlers.ts`に`ugc-moderation.product-moderation-record`、eventの`composition/product-lifecycle-async-handlers.ts`に`ugc-moderation.product-record-erasure`(`purge_due`、1900)                                                                                                     | (1)product-launchの仮13(product-launchのタスク2.6)の完了が、本specのプロダクトの一覧の照会(措置の群)と統計の集計(統計の群)のタスクの前提。(2)は契約どおり                                           |
-| engagement        | `AdminCommentDirectory`・`AdminRatingDirectory`(契約は`core/engagement/ports.ts`、D1の実装は`workers/engagement/d1-admin-comment-directory.ts`・`d1-admin-rating-directory.ts`、`ENGAGEMENT_PLATFORM_TYPES`・`ENGAGEMENT_PLATFORM_MODULE`の束縛)はengagementの仮6が所有・実装・束縛する(2026-10-24に開発者が確定)。本specは使うだけで、engagementのディレクトリへファイルを加えない。apiのinfrastructure層の`CommentModerationControl`・`RatingModerationControl`は本specのinfrastructure層の`ControlEngagementModerationWriter`から呼び、記録・監査ログ・参加者の文を`statements`で渡す | engagementの仮6(engagementのタスク2.7、識別子はタスク2.1)の完了が、本specのコメントと評価の照会・評価の措置のタスクの前提。形(シグネチャ)は本書の写しと同じ                                         |
-| payments          | `PaymentRevenueReport`・`RevenuePeriod`(`core/payments/ports.ts`、`PAYMENTS_TYPES.PaymentRevenueReport`、`workers/payments/d1-payment-revenue-report.ts`、`createPaymentsPlatformModule(<アプリ名>)`(モジュール名`payments-platform`、`workers/payments/payments-platform-module.ts`)の束縛)はpaymentsの仮7が所有・実装・束縛する(2026-10-24に開発者が確定)。本specは使うだけで、paymentsのディレクトリへファイルを加えない。返金は依頼しない(仮8)                                                                                                                                       | paymentsの仮7(paymentsのタスク5.5・5.7)の完了が、本specの統計の集計のタスクの前提。形(シグネチャ)と純収益の解釈は本書の写しと同じ                                                                   |
-| inquiry-chat      | 変更しない。代理の退会の起点はユーザー一覧だけになり(仮4)、問い合わせの詳細の操作の登録口と問い合わせの依頼者の照会(inquiry-chatの仮7)を使わない                                                                                                                                                                                                                                                                                                                                                                                                                                         | inquiry-chatの仮7は取り下げられた。inquiry-chatの設計は代理の退会をユーザー一覧から行う記述に直っている(反映済み)。問い合わせの詳細の操作の登録口に本specの予定は残っていない(2026-10-24に確かめた) |
-| media-pipeline    | apiの`composition/media-review-policy.ts`の`FILE_ACCESS_TYPES.AdminMediaReviewPolicy`の束縛を、既定の全拒否から本specの`AdminRoleMediaReviewPolicy`へ差し替える                                                                                                                                                                                                                                                                                                                                                                                                                          | media-pipelineの契約どおり(「ugc-moderationが`AdminMediaReviewPolicy`を差し替える」)。既定の全拒否の単体テストの期待値は本specのタスクが直す                                                        |
-| admin-foundation  | `apps/common-lib/admin/audit-actions/ugc-moderation.ts`と`index.ts`の連結、adminの`composition/admin-navigation.ts`に5件(20・30・40・50・60)、`composition/dashboard-cards.ts`に1件(10)。代理の退会は最上位管理者だけ(仮4)で、Q3の「モデレーターは要件が最上位管理者に限っていない更新操作を行える」の例外としてページ配置のロールの一覧に載せる(本specのタスクが書く)                                                                                                                                                                                                                   | 契約どおり(仮6のURLと`order`、Q2のカード)                                                                                                                                                           |
-| backend-platform  | apiの`composition/scheduled-jobs.ts`に2件(4:21の式は上流で追加済み)、api・eventの`composition/modules.ts`に`MODERATION_PLATFORM_MODULE`、apiに`MODERATION_MODULE`、eventに`EVENT_MODERATION_MODULE`                                                                                                                                                                                                                                                                                                                                                                                      | 契約どおり                                                                                                                                                                                          |
-| api-gateway       | apiの`composition/graphql-modules.ts`に`moderationSchemaModule`、adminの許可リストの再生成                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 契約どおり                                                                                                                                                                                          |
-| email-delivery    | `core/email/kinds/index.ts`に3種別、eventの`infrastructure/email/templates/index.ts`に3テンプレート                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | 契約どおり                                                                                                                                                                                          |
-| frontend-platform | `apps/admin/package.json`に`recharts`(仮2、2026-10-24に確定。版を完全に固定する)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | SSRでは描画しない部品として追加し、`ADMIN_SECURITY_POLICY`は変えない                                                                                                                                |
+| 上流spec            | 変更                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | 影響と再検証                                                                                                                                                                                                                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| identity-auth       | (1)`AdminUserDirectory`(`D1AdminUserDirectory`・`IDENTITY_PLATFORM_TYPES.AdminUserDirectory`、`IDENTITY_PLATFORM_MODULE`の束縛)はidentity-authの仮7が所有・実装・束縛する。本specは使うだけで、identity-authのディレクトリへファイルを加えない。(2)apiの`composition/user-lifecycle-sync-handlers.ts`に`ugc-moderation.user-moderation-record`、eventの`composition/user-lifecycle-async-handlers.ts`に`ugc-moderation.account-record-erasure`(`purge_due`、1900)                                                                                                                          | (1)identity-authの仮7(identity-authのタスク3.7)の完了が、本specの利用者の照会・停止・代理の退会(措置の群)と統計の集計(統計の群)のタスクの前提。(2)は契約どおり                                                                                                                                                             |
+| product-launch      | (1)`AdminProductDirectory`(`D1AdminProductDirectory`・`PRODUCT_PLATFORM_TYPES.AdminProductDirectory`、`PRODUCT_PLATFORM_MODULE`の束縛)はproduct-launchの仮13が所有・実装・束縛する。本specは使うだけで、product-launchのディレクトリへファイルを加えない。(2)apiの`composition/product-lifecycle-sync-handlers.ts`に`ugc-moderation.product-moderation-record`、eventの`composition/product-lifecycle-async-handlers.ts`に`ugc-moderation.product-record-erasure`(`purge_due`、1900)                                                                                                       | (1)product-launchの仮13(product-launchのタスク2.6)の完了が、本specのプロダクトの一覧の照会(措置の群)と統計の集計(統計の群)のタスクの前提。(2)は契約どおり                                                                                                                                                                  |
+| engagement          | `AdminCommentDirectory`・`AdminRatingDirectory`(契約は`core/engagement/ports.ts`、D1の実装は`workers/engagement/d1-admin-comment-directory.ts`・`d1-admin-rating-directory.ts`、`ENGAGEMENT_PLATFORM_TYPES`・`ENGAGEMENT_PLATFORM_MODULE`の束縛)はengagementの仮6が所有・実装・束縛する(2026-10-24に開発者が確定)。本specは使うだけで、engagementのディレクトリへファイルを加えない。apiのinfrastructure層の`CommentModerationControl`・`RatingModerationControl`は本specのinfrastructure層の`ControlEngagementModerationWriter`から呼び、記録・監査ログ・参加者の文を`statements`で渡す   | engagementの仮6(engagementのタスク2.7、識別子はタスク2.1)の完了が、本specのコメントと評価の照会・評価の措置のタスクの前提。形(シグネチャ)は本書の写しと同じ                                                                                                                                                                |
+| payments            | `PaymentRevenueReport`・`RevenuePeriod`(`core/payments/ports.ts`、`PAYMENTS_TYPES.PaymentRevenueReport`、`workers/payments/d1-payment-revenue-report.ts`、`createPaymentsPlatformModule(<アプリ名>)`(モジュール名`payments-platform`、`workers/payments/payments-platform-module.ts`)の束縛)はpaymentsの仮7が所有・実装・束縛する(2026-10-24に開発者が確定)。本specは使うだけで、paymentsのディレクトリへファイルを加えない。返金は依頼しない(仮8)                                                                                                                                         | paymentsの仮7(paymentsのタスク5.5・5.7)の完了が、本specの統計の集計のタスクの前提。形(シグネチャ)と純収益の解釈は本書の写しと同じ                                                                                                                                                                                          |
+| inquiry-chat        | 変更しない。代理の退会の起点はユーザー一覧だけになり(仮4)、問い合わせの詳細の操作の登録口と問い合わせの依頼者の照会(inquiry-chatの仮7)を使わない                                                                                                                                                                                                                                                                                                                                                                                                                                           | inquiry-chatの仮7は取り下げられた。inquiry-chatの設計は代理の退会をユーザー一覧から行う記述に直っている(反映済み)。問い合わせの詳細の操作の登録口に本specの予定は残っていない(2026-10-24に確かめた)                                                                                                                        |
+| media-pipeline      | (1)apiの`composition/media-review-policy.ts`の`FILE_ACCESS_TYPES.AdminMediaReviewPolicy`の束縛を、既定の全拒否から本specの`AdminRoleMediaReviewPolicy`へ差し替え、使われなくなる`DenyAllAdminMediaReviewPolicy`(`application/media/file-access-policies.ts`)とその単体テストを削除する。(2)`workers/media/media-moderation-control.ts`に呼び出し側の文を受け取る`MediaModerationControl`(契約とD1の実装)を加え、識別子`MEDIA_TYPES.MediaModerationControl`を`core/media/identifiers.ts`に、束縛を`workers/media/media-platform-module.ts`に加える(2026-11-20に開発者が決定)                | (1)media-pipelineの契約どおり(「ugc-moderationが`AdminMediaReviewPolicy`を差し替える」)。束縛の単体テスト`apps/api/test/config/media-registrations.unit.test.ts`の期待値は本specのタスクが直す。(2)既存の`MediaQuarantine`・`MediaFiles`の形と振る舞いは変えない。media-pipelineの文書の該当箇所は本specのタスクが更新する |
+| admin-foundation    | `apps/common-lib/admin/audit-actions/ugc-moderation.ts`と`index.ts`の連結、adminの`composition/admin-navigation.ts`に5件(20・30・40・50・60)、`composition/dashboard-cards.ts`に1件(10)。代理の退会は最上位管理者だけ(仮4)で、Q3の「モデレーターは要件が最上位管理者に限っていない更新操作を行える」の例外としてページ配置のロールの一覧に載せる(本specのタスクが書く)。実装時の追加(2026-11-20): adminの`graphql/admin-audit-logs.ts`に`invalidateAuditLogQueries`(監査ログの照会の無効化)を加え、措置で状態が変わった後に`components/moderation/shared/use-moderation-mutation.ts`が呼ぶ | 契約どおり(仮6のURLと`order`、Q2のカード)。実装時の追加は監査ログの照会の形とページの振る舞いを変えない                                                                                                                                                                                                                    |
+| backend-platform    | apiの`composition/scheduled-jobs.ts`に2件(4:21の式は上流で追加済み)、api・eventの`composition/modules.ts`に`MODERATION_PLATFORM_MODULE`、apiに`MODERATION_MODULE`、eventに`EVENT_MODERATION_MODULE`。実装時の追加(2026-11-20): apiの`vitest.worker.config.ts`のカバレッジの分母から、単体テストが検査する`src/presentation`のソースを外す(`listUnitTestedSources`の対象に加える)                                                                                                                                                                                                           | 契約どおり。実装時の追加は計測の対象だけで、実行するテストは変えない                                                                                                                                                                                                                                                       |
+| api-gateway         | apiの`composition/graphql-modules.ts`に`moderationSchemaModule`、adminの許可リストの再生成。実装時の追加(2026-11-20): apiの`composition/graphql-modules.worker.test.ts`に、措置の群の照会・13種の措置の操作・列挙型がスキーマに含まれることを確かめるテストを追記                                                                                                                                                                                                                                                                                                                          | 契約どおり                                                                                                                                                                                                                                                                                                                 |
+| email-delivery      | `core/email/kinds/index.ts`に3種別、eventの`infrastructure/email/templates/index.ts`に3テンプレート。検証の後の修正(2026-11-20に開発者が決定、12.8): 送信要求に任意の冪等のキー(`EmailSendRequest.idempotencyKey`・`EmailSendBody.idempotencyKey`、理由`invalid-idempotency-key`)、`SendRecordStore`の任意の引数、`email_send_records.idempotency_key`と種別とキーの一意索引(マイグレーション`20261120110505_email_idempotency`)、eventの`SendEmailHandler`が送る前に同じ種別で同じキーの送信済みを確かめる                                                                                | 契約どおり。冪等のキーの追加はキーを持たない既存の送信要求の振る舞いと記録の保持期間(14日)を変えない。email-deliveryのdesign.mdの注記1                                                                                                                                                                                     |
+| match-engine        | 実装時の追加(2026-11-20): match-engineのファイルは変えない。`MatchPhase`・`MatchDecision`(`core/match/match-model.ts`)を読み、adminの表示の値の写しを`config/ugc-moderation-contract-copies.unit.test.ts`で`MATCH_KINDS`・`ENTRY_RESULTS`・`MATCH_PHASES`・`MATCH_DECISIONS`と照合する                                                                                                                                                                                                                                                                                                     | match-engineが種別・結果・段階・決着の値を変えたら写しの照合が失敗し、adminの表示名を確かめ直す                                                                                                                                                                                                                            |
+| tournament-year     | 実装時の追加(2026-11-20): `apps/api/test/config/year-tournament-scheduled-jobs.unit.test.ts`の4:21の後続の期待値を、検索のキーワードの再抽出(2300)から本specの`ugc-moderation.weekly-statistics`(1900)に変える                                                                                                                                                                                                                                                                                                                                                                             | 期待値だけの更新で、Yearトーナメントの再処理の`order`は変えない                                                                                                                                                                                                                                                            |
+| directory-discovery | 実装時の追加(2026-11-20): E2Eの補助`e2e/support/directory-fixture-sql.ts`の利用者の`pseudonymousId`を、他のIDと同じ採番(`nextId()`)から`randomUUID()`に変える(監査ログは利用者を仮名化IDで指し、UUIDの形でない識別子の記録を拒否するため)                                                                                                                                                                                                                                                                                                                                                  | 作る行とその他の列は変えない。directory-discoveryのE2Eはそのまま通る                                                                                                                                                                                                                                                       |
+| frontend-platform   | `apps/admin/package.json`に`recharts`(仮2、2026-10-24に確定。版を完全に固定する)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | SSRでは描画せず動的な`import()`で遅延読み込みする部品として追加し、shadcn/uiの`chart`は使わない(G3)。`ADMIN_SECURITY_POLICY`は変えない                                                                                                                                                                                     |
 
 - roadmapの帯の割り当ての表の本specの「使用中の値」は「4:21は1900・1910、波及処理は1900」になる(ユーザー・プロダクトの`purge_due`の1900)。本specはroadmapを編集しないため、コントローラーへ報告する。
 
@@ -104,7 +107,7 @@
 - 上流の25specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする。実装済みはdev-toolingだけである。
 - apiはクリーンアーキテクチャ(`domain`→`application`→`infrastructure`・`presentation`→`composition`)と処理単位(HTTPの要求ごと)のDIコンテナ、D1の`db.batch()`による1トランザクションの書き込み、`CASE`式のNOT NULL制約の違反による取り消しを使う。
 - identity-authの`UserLifecycleCommitter`とproduct-launchの`ProductLifecycleCommitter`は、イベントの挿入(版・状態の条件付き)→状態の更新→自分の文→登録された同期の処理の文を1つの`db.batch()`で確定し、同期の処理は処理単位のコンテナから解決される。条件を満たさなければ全体が取り消される。
-- engagementの`CommentModerationControl`・`RatingModerationControl`は呼び出し側の`statements`を状態の変更と同じ一括の書き込みに入れる。media-pipelineの`MediaQuarantine`は理由を確定してから移動を依頼し、呼び出し側の文は受け取らない。
+- engagementの`CommentModerationControl`・`RatingModerationControl`は呼び出し側の`statements`を状態の変更と同じ一括の書き込みに入れる。media-pipelineの`MediaQuarantine`は理由を確定してから移動を依頼し、呼び出し側の文は受け取らない。依頼の送信に失敗すると理由は確定したまま`storage_unavailable`を投げるため、操作の後に記録を書くと再実行で記録と監査ログが欠ける(2026-11-20の実装前のギャップ分析のG1)。本specは、理由の変更と呼び出し側の文を同じ一括の書き込みで確定する`MediaModerationControl`を`workers/media`に加えて使う。
 
 ### Architecture Pattern & Boundary Map
 
@@ -171,24 +174,24 @@ graph TB
 
 **Architecture Integration**:
 
-- Selected pattern: クリーンアーキテクチャ。措置の規則は`common-lib`・`core`の純粋な関数、措置の記録は`core/moderation`の契約を`workers/moderation`で実装したストア(apiとeventの両方に束縛)、措置・照会・通知・統計はapiのアプリケーション層、文の組み立てと一括の書き込み(監査ログの文を含む)はapiのインフラ層(アプリケーション層は書き込みの単位のポート`ModerationRecordWriter`・`EngagementModerationWriter`だけを受け取る)、上流のデータは上流の操作口と照会越しに使う。
+- Selected pattern: クリーンアーキテクチャ。措置の規則は`common-lib`・`core`の純粋な関数、措置の記録は`core/moderation`の契約を`workers/moderation`で実装したストア(apiとeventの両方に束縛)、措置・照会・通知・統計はapiのアプリケーション層、文の組み立てと一括の書き込み(監査ログの文を含む)はapiのインフラ層(アプリケーション層は書き込みの単位のポート`ImageModerationWriter`・`EngagementModerationWriter`だけを受け取る)、上流のデータは上流の操作口と照会越しに使う。
 - Domain/feature boundaries: 本specのテーブルは措置の記録と統計だけで、利用者・プロダクト・コメント・評価・画像の状態は上流が持つ。上流の状態の変更と本specの記録は、上流の確定の一括の書き込みに本specの文を載せて一体にする(同期の処理またはengagementの操作口の`statements`)。後続spec(content-reporting)の記録は、措置の入力の値だけの参加`participation`と参加者の登録口`MODERATION_WRITE_PARTICIPANTS`を通して、本specのinfrastructure層が参加者の文を同じ一括の書き込みに入れる。
 - Existing patterns preserved: `backend-lib/core/<ドメイン>`の契約と識別子・`backend-lib/workers/<ドメイン>`の実装と共有の束縛、`<spec名>.<名詞句>`の名前、帯の`order`、登録箇所への追記、`buildAuditLogStatements`を操作と同じ一括の書き込みに含める規約(admin-foundationの`backend/008`)、管理画面の`DashboardCardFrame`・`ConfirmActionDialog`・`AdminDataTable`、依頼待ちの記録と日次の送り直し(payments・sponsorship)、登録の一覧と処理単位のコンテナからの解決(identity-authの`USER_LIFECYCLE_SYNC_HANDLERS`・`UserLifecycleSyncHandler`)。
 - New components rationale: `PendingModerationRecord`は、文を受け取らない上流の操作口(`UserSuspension`・`AdministrativeWithdrawal`・`ProductVisibilityControl`)でも、上流の確定と同じ一括の書き込みで記録を確定するため(research.mdの「記録の一体の確定」)。参加者の登録口(`ModerationWriteParticipant`・`MODERATION_WRITE_PARTICIPANTS`)は、application層が文を扱わないまま、後続specの記録を措置と同じ一括の書き込みで確定するため(application層は種類と値だけを渡し、文は後続specのinfrastructure層の参加者が組み立てる)。上流の照会の追加は、管理画面の一覧と統計が、各specが直接の読み取りを禁じた表を読む必要があるため(利用者・プロダクト・コメント・評価・収益の照会はすべて所有するspecが作る)。
 - 週ごとの統計は、措置とは独立した継ぎ目(テーブル・週の規則・収益の照会・ジョブ・照会・カード)として扱い、タスク群とRevalidation Triggersを措置の群と分ける。措置の部品は統計の部品を読み込まず、統計の部品は措置の部品を読み込まない(共有するのは、apiの`MODERATION_TYPES`・`MODERATION_MODULE`・スキーマモジュール`moderation`の置き場所、adminのGraphQLの許可リスト、`common-lib/moderation`の統計の表示の週数`STATISTICS_WEEKS_SHOWN`だけである)。
 - Steering compliance: `@inject`の明示、D1の制約(`db.batch()`・バインド変数100個以内・`transaction()`を使わない)、800行以内のファイル、1ファイル1コンポーネント、日時の`<time datetime>`、ログに個人情報を含めない。
 
-**Dependency direction**: `apps/common-lib/moderation` → `apps/db/schema/moderation` → `backend-lib/core/moderation` → `backend-lib/workers/moderation` → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`core/moderation`は`BusinessTime`と`common-lib/moderation`だけを読み込み、`workers`・`apps/db`を読み込まない。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、措置の記録の契約と識別子`MODERATION_PLATFORM_TYPES`は`core/moderation`に置き、文を返す`ModerationRecordStatements`とD1の実装・束縛だけを`workers/moderation`に置く(identity-authの`core/identity`と同じ配置)。`workers/moderation`は本specのテーブルだけを読み書きし、上流のテーブル定義を読み込まない。上流の照会は上流specが持ち、本specはそのDIの識別子と型だけを使う。apiの`application/moderation`は文・接続・一括の書き込みを扱わず、`infrastructure/admin`(`buildAuditLogStatements`)・`workers/moderation`・engagementの`infrastructure/engagement`(`CommentModerationControl`・`RatingModerationControl`)を読み込まない。記録と監査ログの書き込みは書き込みの単位のポート`ModerationRecordWriter`・`EngagementModerationWriter`越しに、infrastructure層の実装が文を組み立てて行う。措置の入力の`participation`は値だけで、application層は`BatchItem`を型も含めて読み込まない。文を返す参加者の契約`ModerationWriteParticipant`はapiの`infrastructure/moderation`に置き、本specのinfrastructure層(同期の処理・`ControlEngagementModerationWriter`)と後続specのinfrastructure層の参加者の実装だけが読み込む。adminはGraphQLの操作と上流の部品だけを読み込む。違反はレビューで誤りとして扱う。
+**Dependency direction**: `apps/common-lib/moderation` → `backend-lib/core/moderation` → `backend-lib/workers/moderation`(と`apps/db/schema/moderation`) → 各アプリの`src`(`application` → `infrastructure`・`presentation` → `composition`)。`apps/db/schema/moderation`は`drizzle-orm`・`ulid`と`apps/db`の自身のファイルだけを読み込み(`backend/002`)、`common-lib/moderation`を読み込まない。措置の種類・対象の種類・通知の状態のCHECKの値は写しとしてテーブル定義に持ち(`inArray(...).inlineParams()`で値を埋め込む)、ルートの`config/ugc-moderation-contract-copies.unit.test.ts`が`common-lib/moderation`の値と一致することを確かめる。`core/moderation`は`BusinessTime`と`common-lib/moderation`だけを読み込み、`workers`・`apps/db`を読み込まない。api・eventのapplication層は`**/lib/workers/**`を型も含めて読み込めないため、措置の記録の契約と識別子`MODERATION_PLATFORM_TYPES`は`core/moderation`に置き、文を返す`ModerationRecordStatements`とD1の実装・束縛だけを`workers/moderation`に置く(identity-authの`core/identity`と同じ配置)。`workers/moderation`は本specのテーブルだけを読み書きし、上流のテーブル定義を読み込まない。上流の照会は上流specが持ち、本specはそのDIの識別子と型だけを使う。apiの`application/moderation`は文・接続・一括の書き込みを扱わず、`infrastructure/admin`(`buildAuditLogStatements`)・`workers/moderation`・engagementの`infrastructure/engagement`(`CommentModerationControl`・`RatingModerationControl`)・`workers/media`(`MediaModerationControl`)を読み込まない。記録と監査ログの書き込みは書き込みの単位のポート`ImageModerationWriter`・`EngagementModerationWriter`越しに、infrastructure層の実装が文を組み立てて行う。措置の入力の`participation`は値だけで、application層は`BatchItem`を型も含めて読み込まない。文を返す参加者の契約`ModerationWriteParticipant`はapiの`infrastructure/moderation`に置き、本specのinfrastructure層(同期の処理・`ControlEngagementModerationWriter`)と後続specのinfrastructure層の参加者の実装だけが読み込む。adminはGraphQLの操作と上流の部品だけを読み込む。違反はレビューで誤りとして扱う。
 
 ### Technology Stack
 
-| Layer     | Choice / Version                                                                         | Role in Feature                                                   | Notes                                                     |
-| --------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------- |
-| Frontend  | TanStack Start・Router・Query・shadcn/ui(上流)、Recharts 3.10.1(または3系の最新の安定版) | 5ページ・カード・代理の退会の操作、統計のグラフ                   | Rechartsは新規(仮2、確定)。SSRでは描画しない              |
-| Backend   | Hono・Inversify・GraphQL Yoga(上流)                                                      | スキーマモジュール・ユースケース・同期の処理・ジョブ・eventの処理 | 既存                                                      |
-| Data      | Cloudflare D1(Drizzle)                                                                   | 2テーブル、上流の照会                                             | 新規のマイグレーション2つ(措置の記録と週ごとの統計)       |
-| Messaging | Cron Triggers・Queues(上流)                                                              | 4:21のジョブ、ライフサイクルの`purge_due`、メールの送信の依頼     | 新しいメッセージ種別・Cronの式なし                        |
-| Storage   | Cloudflare R2(media-pipeline越し)                                                        | 隔離画像の同一オリジンの表示                                      | media-pipelineの`/_bff/files/*`と`AdminMediaReviewPolicy` |
+| Layer     | Choice / Version                                                                         | Role in Feature                                                   | Notes                                                                                                            |
+| --------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Frontend  | TanStack Start・Router・Query・shadcn/ui(上流)、Recharts 3.10.1(または3系の最新の安定版) | 5ページ・カード・代理の退会の操作、統計のグラフ                   | Rechartsは新規(仮2、確定)。SSRでは描画せず、動的な`import()`で遅延読み込みする。shadcn/uiの`chart`は使わない(G3) |
+| Backend   | Hono・Inversify・GraphQL Yoga(上流)                                                      | スキーマモジュール・ユースケース・同期の処理・ジョブ・eventの処理 | 既存                                                                                                             |
+| Data      | Cloudflare D1(Drizzle)                                                                   | 2テーブル、上流の照会                                             | 新規のマイグレーション2つ(措置の記録と週ごとの統計)                                                              |
+| Messaging | Cron Triggers・Queues(上流)                                                              | 4:21のジョブ、ライフサイクルの`purge_due`、メールの送信の依頼     | 新しいメッセージ種別・Cronの式なし                                                                               |
+| Storage   | Cloudflare R2(media-pipeline越し)                                                        | 隔離画像の同一オリジンの表示                                      | media-pipelineの`/_bff/files/*`と`AdminMediaReviewPolicy`                                                        |
 
 ## File Structure Plan
 
@@ -198,26 +201,31 @@ graph TB
 apps/
 ├── common-lib/moderation/                                   # 4アプリ共通(各ファイルに同名の*.unit.test.ts)
 │   ├── moderation-actions.ts                                # 措置の種類・対象の種類・理由の要否・通知の要否・イベントの種類との対応
-│   └── moderation-labels.ts                                 # 措置・状態・隔離理由・用途・使い捨て判定・ローンチ状態の表示名
+│   └── moderation-labels.ts                                 # 措置・状態・隔離理由・用途・使い捨て判定・ローンチ状態の表示名(上流の値の写しを含む)
 ├── common-lib/admin/audit-actions/ugc-moderation.ts         # 監査ログの操作種別13種
-├── db/schema/moderation/                                    # テーブル定義(同名の*.unit.test.ts)
-│   ├── moderation-actions.ts
-│   ├── moderation-weekly-statistics.ts
-│   └── index.ts
+├── db/
+│   ├── schema/moderation/                                   # テーブル定義(同名の*.unit.test.ts。common-libを読み込まず、CHECKの値は写しを持つ)
+│   │   ├── moderation-actions.ts
+│   │   ├── moderation-weekly-statistics.ts
+│   │   ├── moderation-migration.unit.test.ts                # マイグレーションの文とテーブル定義の照合
+│   │   └── index.ts
+│   └── ugc-moderation-schema.worker.test.ts                 # 実際のD1での制約(CHECK・一意索引)の検証
 ├── backend-lib/
 │   ├── core/moderation/                                     # api・eventのapplication層が読み込める部品
 │   │   ├── statistics-week.ts                               # 週の開始・範囲・確定の判定・表示の対象の週(*.unit.test.ts)
 │   │   ├── ports.ts                                         # NewModerationRecord・ModerationRecord・LatestModeration・ModerationRecordStore(型だけ)
 │   │   └── identifiers.ts                                   # MODERATION_PLATFORM_TYPES(api・event共通の識別子、identifiers.unit.test.ts)
 │   ├── core/email/kinds/ugc-moderation.ts                   # 3つのメール種別(入力のzodスキーマ)
-│   └── workers/moderation/                                  # core/moderationの契約の実装と束縛(Workers統合テスト)
-│       ├── moderation-record-statements.ts                  # ModerationRecordStatements(記録の挿入の文を返す契約。apiのinfrastructure層だけが使う)
-│       ├── d1-moderation-record-store.ts                    # D1ModerationRecordStore(ModerationRecordStoreとModerationRecordStatementsのD1実装)
-│       └── moderation-platform-module.ts                    # MODERATION_PLATFORM_MODULE
-├── api/src/
-│   ├── application/moderation/                              # ユースケース(Bunの単体テスト)
-│   │   ├── moderation-types.ts                              # MODERATION_TYPES(テストなし)
-│   │   ├── ports.ts                                         # ModerationRecordWriter・EngagementModerationWriter・WeeklyStatisticsStore・ModerationCommand・ModerationWriteParticipation・ModerationOutcome
+│   ├── workers/moderation/                                  # core/moderationの契約の実装と束縛(Workers統合テスト)
+│   │   ├── moderation-record-statements.ts                  # ModerationRecordStatements(記録の挿入の文を返す契約。apiのinfrastructure層だけが使う)
+│   │   ├── d1-moderation-record-store.ts                    # D1ModerationRecordStore(ModerationRecordStoreとModerationRecordStatementsのD1実装)
+│   │   └── moderation-platform-module.ts                    # MODERATION_PLATFORM_MODULE
+│   └── workers/media/media-moderation-control.ts            # media-pipelineの共有ディレクトリへ加えるMediaModerationControl(契約とD1の実装、*.worker.test.ts)
+├── api/
+│   ├── src/application/moderation/                          # ユースケース(Bunの単体テスト)
+│   │   ├── moderation-types.ts                              # MODERATION_TYPES('moderation.api.<名前>'、moderation-types.unit.test.ts)
+│   │   ├── ports.ts                                         # ImageModerationWriter・EngagementModerationWriter・ModerationIncidentReporter・WeeklyStatisticsStore・ModerationCommand・ModerationWriteParticipation・ModerationOutcome(型だけ)
+│   │   ├── moderation-errors.ts                             # ユースケースが投げるエラーコード・種類・文言(*.unit.test.ts)
 │   │   ├── pending-moderation-record.ts                     # 要求単位の保留中の措置
 │   │   ├── moderation-reason.ts                             # 理由の正規化と検証(要否・500書記素)
 │   │   ├── user-moderation-service.ts                       # 停止・停止解除
@@ -235,73 +243,89 @@ apps/
 │   │   ├── weekly-statistics-reader.ts
 │   │   ├── admin-role-media-review-policy.ts                # AdminMediaReviewPolicyの実装
 │   │   └── jobs/
-│   │       ├── weekly-statistics-job.ts                     # 4:21(order 1900)
-│   │       └── moderation-maintenance-job.ts                # 4:21(order 1910)
-│   ├── infrastructure/moderation/                           # Workers統合テスト
+│   │       ├── weekly-statistics-job.ts                     # 4:21(order 1900)。WEEKLY_STATISTICS_JOB_DEFINITIONを持つ
+│   │       └── moderation-maintenance-job.ts                # 4:21(order 1910)。MODERATION_MAINTENANCE_JOB_DEFINITIONを持つ
+│   ├── src/infrastructure/moderation/                       # Workers統合テスト
 │   │   ├── d1-moderation-statements.ts                      # 記録と監査ログの文の組み立て(infrastructure層の内部の部品)
-│   │   ├── d1-moderation-record-writer.ts                   # ModerationRecordWriterの実装(記録と監査ログの単独の一括の書き込み)
+│   │   ├── control-image-moderation-writer.ts               # ImageModerationWriterの実装(media-pipelineのMediaModerationControlへ記録と監査ログの文を渡す)
 │   │   ├── control-engagement-moderation-writer.ts          # EngagementModerationWriterの実装(engagementの操作口へ記録と監査ログと参加者の文を渡す)
 │   │   ├── moderation-write-participant.ts                  # 参加者の契約・登録の型・createModerationWriteParticipants(*.unit.test.ts)
+│   │   ├── sentry-moderation-incident-reporter.ts           # ModerationIncidentReporterの実装(captureEvent、*.unit.test.ts)
 │   │   ├── user-moderation-record-sync-handler.ts           # ugc-moderation.user-moderation-record
 │   │   ├── product-moderation-record-sync-handler.ts        # ugc-moderation.product-moderation-record
 │   │   └── d1-weekly-statistics-store.ts                    # 週の行のupsert・読み取り
-│   ├── presentation/graphql/modules/moderation/             # スキーマモジュール(Workers統合テスト)
+│   ├── src/presentation/graphql/modules/moderation/         # スキーマモジュール(Workers統合テスト)
 │   │   ├── type-defs.ts
-│   │   ├── inputs.ts                                        # 引数の検証(withValidatedArgs)
-│   │   ├── errors.ts                                        # エラーコードと文言
+│   │   ├── inputs.ts                                        # 引数の検証(withValidatedArgs、件数1〜50、IDのULID)
+│   │   ├── errors.ts                                        # application/moderation/moderation-errors.tsを参照してGraphQLのエラーへ写す
+│   │   ├── resolver-support.ts                              # adminOnly(管理者側以外の呼び出しを入力の検証の前に拒否する)・moderationOperatorOf(ロールの判定)と接続の組み立て(*.unit.test.ts)
 │   │   ├── statistics-resolvers.ts
 │   │   ├── user-resolvers.ts                                # 一覧・停止・停止解除・代理の退会
 │   │   ├── product-resolvers.ts
 │   │   ├── engagement-resolvers.ts                          # コメントと評価
 │   │   ├── image-resolvers.ts
-│   │   └── index.ts                                         # moderationSchemaModule
-│   └── composition/
-│       ├── moderation-module.ts                             # MODERATION_MODULE(apiの束縛・同期の処理・ジョブ・参加者の解決)
-│       └── moderation-write-participants.ts                 # MODERATION_WRITE_PARTICIPANTS(後続specが追記、初版は空)
+│   │   └── index.ts                                         # moderationSchemaModule(リゾルバの表はsatisfies Resolvers)
+│   ├── src/composition/
+│   │   ├── moderation-module.ts                             # MODERATION_MODULE(apiの束縛・同期の処理・ジョブ・参加者の解決)
+│   │   └── moderation-write-participants.ts                 # MODERATION_WRITE_PARTICIPANTS(後続specが追記、初版は空)
+│   └── test/config/ugc-moderation-scheduled-jobs.unit.test.ts # 4:21の2つのジョブの帯・前後の順・予算
 ├── event/src/
 │   ├── application/moderation/                              # Bunの単体テスト
-│   │   ├── event-moderation-types.ts
+│   │   ├── event-moderation-types.ts                        # EVENT_MODERATION_TYPES('moderation.event.<名前>'、*.unit.test.ts)
 │   │   ├── account-record-erasure-handler.ts                # ユーザーのpurge_due 1900
 │   │   └── product-record-erasure-handler.ts                # プロダクトのpurge_due 1900
 │   ├── infrastructure/email/templates/ugc-moderation/       # 本文の*-body.tsxと定義の*-template.ts(3種)
 │   └── composition/moderation-module.ts                     # EVENT_MODERATION_MODULE
-└── admin/src/
-    ├── routes/_authenticated/
-    │   ├── users.tsx · comments.tsx · ratings.tsx · media-moderation.tsx
+└── admin/
+    ├── src/routes/_authenticated/                           # ルートは薄くし、validateSearch・loaderDeps・loader・head(buildAdminPageHead)・componentだけを持つ
+    │   ├── users/index.tsx · comments/index.tsx · ratings/index.tsx · media-moderation/index.tsx
     │   └── products/index.tsx · products/$productId.tsx
-    ├── composition/admin-product-detail-sections.ts         # ADMIN_PRODUCT_DETAIL_SECTIONS(初版は空、後続specが追記)
-    ├── components/moderation/                               # 1ファイル1コンポーネント(browser testを併置)
+    ├── src/components/pages/                                # ページの部品(*.browser.test.tsx)
+    │   ├── users-page.tsx · products-page.tsx · product-detail-page.tsx
+    │   └── comments-page.tsx · ratings-page.tsx · media-moderation-page.tsx
+    ├── src/composition/admin-product-detail-sections.ts     # ADMIN_PRODUCT_DETAIL_SECTIONSと文脈の型AdminProductDetailContext(初版は空、後続specが追記)
+    ├── src/graphql/                                         # 生成物の型を画面の型へ変える変換と一覧のloader(同名の*.unit.test.ts)
+    │   ├── admin-moderation-users.ts · admin-moderation-products.ts · admin-moderation-engagement.ts
+    │   └── admin-quarantined-images.ts · admin-weekly-statistics.ts
+    ├── src/components/moderation/                           # 1ファイル1コンポーネント(browser testを併置)
     │   ├── shared/
     │   │   ├── moderation-search.ts                         # 検索パラメータのスキーマと変換(*.unit.test.ts)
+    │   │   ├── moderation-messages.ts                       # 見出し・確認・成功・状態の文言(*.unit.test.ts)
     │   │   ├── use-moderation-mutation.ts                   # 措置の実行・通知・照会の無効化
-    │   │   ├── moderation-action-dialog.tsx                 # ConfirmActionDialogに影響の一覧を添える
-    │   │   ├── admin-media-image.tsx                        # 同一オリジンの画像と代わりの表示
+    │   │   ├── moderation-action-dialog.tsx                 # ConfirmActionDialogの説明の文に措置の影響を含める
+    │   │   ├── moderation-dialog-host.tsx · moderation-dialog-context.ts  # 一覧の単位に1つ置く措置の確認のダイアログと、行の操作から開く文脈(実装の後の変更(2026-11-20))
+    │   │   ├── admin-media-image.tsx                        # 公開中は変換配信、隔離中は同一オリジンの中継の画像と代わりの表示
     │   │   └── moderation-note.tsx                          # 最新の措置の理由と日時
     │   ├── statistics/
     │   │   ├── statistics-series.ts                         # 週の値から系列と増減を作る(*.unit.test.ts)
     │   │   ├── weekly-statistics-card.tsx                   # DASHBOARD_CARDSの10
     │   │   ├── weekly-statistics-table.tsx                  # 数値の表
-    │   │   ├── weekly-statistics-chart.tsx                  # グラフ(Recharts、SSRでは描画しない)
-    │   │   └── chart/                                       # shadcn/uiのchartの部品(部分ごとのファイル、1ファイル1コンポーネント。共有ディレクトリに置かない)
+    │   │   ├── weekly-statistics-chart.tsx                  # ClientOnlyとReact.lazyで遅延読み込みする枠(SSRでは描画しない)
+    │   │   └── weekly-statistics-line-charts.tsx            # Rechartsを直接使う5つの折れ線グラフ(動的なimport()の読み込み先。shadcn/uiのchartは写さない)
     │   ├── users/ user-filters.tsx · user-table.tsx · user-status-cell.tsx · user-moderation-actions.tsx
+    │   │   · administrative-withdrawal-action.tsx  # 代理の退会(実装時の変更(2026-11-20): withdrawal/ではなく起点のユーザー一覧と同じusers/に置く)
     │   ├── products/ product-filters.tsx · product-table.tsx · product-detail-view.tsx · product-images-panel.tsx
     │   │   · product-ratings-panel.tsx · product-launches-panel.tsx · product-visibility-actions.tsx
-    │   │   · admin-product-detail-sections-view.tsx · admin-product-detail-section-types.ts(型、テストなし)
+    │   │   · admin-product-detail-sections-view.tsx
     │   ├── comments/ comment-filters.tsx · comment-table.tsx · comment-moderation-actions.tsx
     │   ├── ratings/ rating-filters.tsx · rating-table.tsx · rating-moderation-actions.tsx
-    │   ├── media/ quarantine-reason-tabs.tsx · quarantined-image-list.tsx · quarantined-image-card.tsx
-    │   │   · image-moderation-actions.tsx · quarantine-image-button.tsx
-    │   └── withdrawal/ administrative-withdrawal-action.tsx · administrative-withdrawal-dialog.tsx
-    └── graphql/operations/moderation/                       # 1ファイル1操作の.graphql(操作名はAdminで始める)
-        ├── weekly-statistics.graphql · users.graphql · products.graphql · product.graphql
-        │   · moderation-category-options.graphql · product-ratings.graphql · comments.graphql
-        │   · ratings.graphql · quarantined-images.graphql                      # 9つの照会(AdminWeeklyStatistics・AdminUsersなど)
-        └── suspend-user.graphql など13の措置の操作                          # AdminSuspendUser〜AdminDeleteQuarantinedImage
+    │   └── media/ quarantine-reason-tabs.tsx · quarantined-image-list.tsx · quarantined-image-card.tsx
+    │       · image-moderation-actions.tsx · quarantine-image-button.tsx
+    ├── src/graphql/operations/moderation/                   # 1ファイル1操作の.graphql(操作名はAdminで始める)
+    │   ├── weekly-statistics.graphql · users.graphql · products.graphql · product.graphql
+    │   │   · moderation-category-options.graphql · product-ratings.graphql · comments.graphql
+    │   │   · ratings.graphql · quarantined-images.graphql                      # 9つの照会(AdminWeeklyStatistics・AdminUsersなど)
+    │   └── suspend-user.graphql など13の措置の操作                          # AdminSuspendUser〜AdminDeleteQuarantinedImage
+    └── test/moderation-fixtures.ts                          # ブラウザテストの照会の結果のfixture(renderInRouterとexecuteGraphQLのvi.mockで使う)
+config/ugc-moderation-contract-copies.unit.test.ts          # common-lib・DBのテーブル定義に写した上流と本specの値の照合
 e2e/
-├── support/moderation-fixtures.ts                           # ローカルD1に措置の対象(コメント・評価・停止中の利用者など)を作る補助
-└── admin/
+├── support/
+│   ├── moderation-fixture-sql.ts                            # 措置の対象(コメント・評価・停止中の利用者など)を作るSQLを組み立てる純粋な関数(*.unit.test.ts)
+│   └── moderation-fixtures.ts                               # 上のSQLをローカルD1で実行する補助
+└── admin/                                                   # テストはadmin-test.tsのtestを使い、画面の操作の手順は<名前>-steps.tsに置く
     ├── user-moderation.e2e.test.ts · product-moderation.e2e.test.ts · engagement-moderation.e2e.test.ts
     ├── media-moderation.e2e.test.ts · administrative-withdrawal.e2e.test.ts · weekly-statistics.e2e.test.ts
+    └── user-moderation-steps.ts · product-moderation-steps.ts · engagement-moderation-steps.ts · media-moderation-steps.ts
 docs/
 ├── GUIDES/tech/backend/021-cross-aggregate-admin-action-records.md
 ├── GUIDES/tech/db/008-weekly-aggregate-snapshots.md
@@ -309,22 +333,30 @@ docs/
 └── GUIDES/service/features/006-content-moderation.md
 ```
 
-テストは各ファイルの隣に置く(`*.unit.test.ts`・`*.worker.test.ts`・`*.browser.test.tsx`)。`AdminUserDirectory`・`AdminProductDirectory`・`AdminCommentDirectory`・`AdminRatingDirectory`・`PaymentRevenueReport`のファイルとテストは各上流spec(identity-authの仮7・product-launchの仮13・engagementの仮6・paymentsの仮7)が作るため、本specの計画に含めない。技術ドキュメントの番号は、全ての完了済みspecのdesign.mdが使う番号(`backend`001〜020・`frontend`001〜019・`db`001〜007)の後の最小の空き番号`backend/021`・`frontend/020`・`db/008`に固定する。
+テストは各ファイルの隣に置く(`*.unit.test.ts`・`*.worker.test.ts`・`*.browser.test.tsx`)。単体テストのパターンは`**/*.unit.test.ts`だけで、`.tsx`の単体テストは拾われないため、部品の検査はブラウザテストに置く。カバレッジはファイルごとに80%で、型だけのファイル以外(識別子のファイルを含む)は分母に入るため、識別子のファイルにも単体テストを置く。DBのテストは、テーブル定義の単体テスト・マイグレーションの照合(`moderation-migration.unit.test.ts`)・実際のD1での制約の検証(`apps/db/ugc-moderation-schema.worker.test.ts`)の3点にする。管理者側のブラウザテストは`apps/admin/test/page-router.tsx`の`renderInRouter`と`execute-graphql.ts`の`vi.mock`で照会を差し替え、fixtureは`apps/admin/test/moderation-fixtures.ts`に置く。`AdminUserDirectory`・`AdminProductDirectory`・`AdminCommentDirectory`・`AdminRatingDirectory`・`PaymentRevenueReport`のファイルとテストは各上流spec(identity-authの仮7・product-launchの仮13・engagementの仮6・paymentsの仮7)が作るため、本specの計画に含めない。技術ドキュメントの番号は、全ての完了済みspecのdesign.mdが使う番号(`backend`001〜020・`frontend`001〜019・`db`001〜007)の後の最小の空き番号`backend/021`・`frontend/020`・`db/008`に固定する。
 
 ### Modified Files
 
 - `apps/db/schema/index.ts`・`apps/db/migrations/<日時>_ugc_moderation/migration.sql`・`apps/db/migrations/<日時>_ugc_moderation_statistics/migration.sql` — 本specのテーブルの再エクスポートと、措置の記録(`moderation_actions`)と週ごとの統計(`moderation_weekly_statistics`)の別々に生成したマイグレーション(CHECK・索引)。統計の群を措置の群と別に作れるよう分ける。それぞれmainの最新を取り込んでから生成する。
-- `apps/common-lib/admin/audit-actions/index.ts` — 連結に`ugc-moderation`を加える。
-- `apps/backend-lib/core/email/kinds/index.ts`・`apps/event/src/infrastructure/email/templates/index.ts` — 3種別と3テンプレート。
+- `apps/db/schema/index.unit.test.ts` — テーブル名の一覧に本specの2テーブルを加える。
+- `apps/common-lib/admin/audit-actions/index.ts`・`index.unit.test.ts` — 連結に`ugc-moderation`を加え、全種別の名前を完全一致で列挙する期待値(19〜61行)に13種を加える(U3)。
+- `apps/backend-lib/core/media/identifiers.ts`(と同名の単体テスト)・`apps/backend-lib/workers/media/media-platform-module.ts`(と同名のWorkers統合テスト) — `MEDIA_TYPES.MediaModerationControl`の識別子と束縛(G1、2026-11-20に開発者が決定)。
+- `apps/api/src/infrastructure/media/deny-all-admin-media-review-policy.ts`と同名の単体テスト(削除)・`default-file-access-policies.unit.test.ts`と`apps/api/src/presentation/media/file-content-route.worker.test.ts`の全拒否を使う箇所・`apps/api/test/config/media-registrations.unit.test.ts` — `DenyAllAdminMediaReviewPolicy`の削除と、束縛の期待値の`AdminRoleMediaReviewPolicy`への変更(2026-11-20に開発者が決定)。テストが全拒否の振る舞いを前提にする箇所は、試験用の判定に置き換える。`.kiro/specs/media-pipeline/design.md`の既定の全拒否の記述(File Structure Plan・追跡表・管理者の画像確認・認可)には、本specが差し替えて削除した旨の注記を加える。
+- `apps/backend-lib/core/email/kinds/index.ts`・`apps/event/src/infrastructure/email/templates/index.ts` — 3種別と3テンプレート。種別とテンプレートは同じタスクで対に加える(`templates/index.worker.test.tsx`が対の欠けを検査するため)。
 - `apps/api/src/composition/modules.ts`・`graphql-modules.ts`・`scheduled-jobs.ts`・`user-lifecycle-sync-handlers.ts`・`product-lifecycle-sync-handlers.ts`・`media-review-policy.ts` — モジュール・スキーマモジュール・2つのジョブ・2つの同期の処理・隔離画像の閲覧の判定の差し替え。
+- `apps/api/src/composition/search-module.worker.test.ts`・`search-module.reextraction.worker.test.ts` — 4:21のジョブの名前を完全一致で列挙する一覧に本specの2つのジョブを加える(U5)。
+- apiの生成物`src/presentation/graphql/generated/schema.graphql`・`resolvers-types.ts` — スキーマの変更の後にapiの`bun run graphql:generate`で作り直す(U6。漏れると`graphql:check`とCIが失敗する)。
 - `apps/event/src/composition/modules.ts`・`user-lifecycle-async-handlers.ts`・`product-lifecycle-async-handlers.ts` — モジュール・2つの物理削除の処理。
 - `apps/admin/src/composition/admin-navigation.ts`・`dashboard-cards.ts` — メニュー5件・カード。
+- `apps/admin/src/components/layout/admin-nav-order.unit.test.ts`(28〜38行)・`admin-navigation.browser.test.tsx`(118〜129行以降) — `ADMIN_NAV_ITEMS`を全件一致で確かめる期待値に5件を加える(U1)。
+- `apps/admin/src/components/inquiry/unhandled-inquiries-card.browser.test.tsx`(115〜122行) — `DASHBOARD_CARDS`を全件一致で確かめる期待値に統計のカードを加える(U2。`frontend/009`の「カードを足す機能は空の状態を確かめるテストを更新する」)。
 - `apps/admin/package.json`・`bun.lock` — `recharts`(版を完全に固定、`^`・`~`を付けない)。 管理者側の`vitest.browser.config.ts`の事前バンドルの一覧(`PREBUNDLED_DEPENDENCIES`)にも加える(テストの実行中に初めて読み込まれて事前バンドルがやり直されると、ページが再読み込みされReactが2つ読み込まれるため)。
 - adminの生成物`src/graphql/generated/`(adminの`bun run graphql:generate`)と、apiの許可リスト(apiの`bun run graphql:allowlist`)。
 - `docs/GUIDES/tech/backend/README.md`・`db/README.md`・`frontend/README.md` — 文書一覧の行。
+- `docs/GUIDES/tech/infra/004-logging-and-error-tracking.md` — 定型の通知の送信の表に、本specの`moderation_incident`の3つの理由の行(指紋`['moderation', <理由>]`)を加える(U7)。
 - `docs/onboardings/project-values.md` — ジョブ・処理・同期の処理・登録の名前と`order`、メール種別、監査ログの操作種別、統計の表示の週数。
 - `docs/onboardings/tech-stack.md` — 変更しない(「グラフ描画」のRechartsの項は開発者の承認の際に追加済み)。`docs/GUIDES/tech/coding/002-dependency-versions.md`の主要パッケージの一覧は、アプリ間で版をそろえるパッケージだけを載せるため、管理者側だけが使うRechartsは載せない。
-- `docs/GUIDES/service/design/002-page-layouts.md` — 管理者側のユーザー・プロダクト(一覧と詳細)・コメント・評価・画像モデレーションのページの構成、ダッシュボードの統計のカード、ユーザー一覧の代理の退会の操作(最上位管理者だけ)と、メニューごとの必要なロールの一覧の代理の退会の行。
+- `docs/GUIDES/service/design/002-page-layouts.md` — 管理者側のユーザー・プロダクト(一覧と詳細)・コメント・評価・画像モデレーションのページの構成、ダッシュボードの統計のカード、ユーザー一覧の代理の退会の操作(最上位管理者だけ)と、メニューごとの必要なロールの一覧の代理の退会の行。メニューの5件・代理の退会の行・カードの順序10は記載済みのため、実装に合わせて状態を改め、1367行の「…10項目は実装済み」の件数を直す(U8)。
 - `docs/GUIDES/service/design/003-text-and-copy-rules.md` — 本specのエラー・確認・状態の文言、通知メールの本文の要点(広告の段落の文はsponsorshipが載せる項目を参照し、本specは書き直さない)。
 - `docs/GUIDES/service/legal/001-compliance-policy.md` — データ保持期間の一覧に措置の記録(3年、または対象の利用者・プロダクトの物理削除まで)・週ごとの統計(無期限、個人を含まない集計値)、「モデレーションと透明性」に代理の退会(最上位管理者がユーザー一覧から行い、本人の意思の確かめと完了の知らせは運営者がシステムの外のメールで行う。仮4・仮5)。
 - `docs/GUIDES/service/overview/007-daily-timeline.md` — 4:21の表に`ugc-moderation.weekly-statistics`(1900)・`ugc-moderation.maintenance`(1910)。
@@ -362,9 +394,9 @@ sequenceDiagram
 ```
 
 - `UserSuspension`が`unchanged`を返したとき(既に同じ状態)はイベントも同期の処理も無く、保留中の措置を破棄して`changed: false`を返す(4.7)。版の競合は`account_state_conflict`で、記録も監査ログも残らない(4.11)。
-- `changed`なのに保留中の措置が取り出されていなければ、束縛の誤りとして`captureEvent`(`moderation-record-missing`)で通知する。状態は変わっているため結果は成功として返す。
+- `changed`なのに保留中の措置が取り出されていなければ、束縛の誤りとして`ModerationIncidentReporter.report('moderation-record-missing')`で通知する(application層は`@sentry/*`を読めないため、ポート越しに送る)。状態は変わっているため結果は成功として返すが、その結果は`{ changed: true, actionId: null }`で、措置の記録・監査ログに加えて`participation`の参加者の文も一括の書き込みに入っていない。呼び出し側はこの組を「状態は変わったが、措置の記録と参加者の記録は確定していない」と読む。
 - プロダクトの非公開化・復元(`ProductVisibilityControl`→`ProductLifecycleCommitter`→`ProductModerationRecordSyncHandler`)と代理の退会(`AdministrativeWithdrawal`→`withdrawn`)も同じ流れである。コメントと評価は保留中の措置を使わず、`EngagementModerationWriter`の実装がengagementの操作口の`statements`へ直接渡す。
-- 呼び出し側(content-reporting)が措置の入力に`participation`(種類と値だけ)を付けたときは、保留中の措置(またはコメント・評価の書き込みの単位)がその値を運ぶ。同期の処理(または`ControlEngagementModerationWriter`)が`ModerationWriteParticipants.statementsFor(participation, context)`で登録された参加者の文を解決し、記録と監査ログの文の後に並べる。`context.actionId`は保留中の措置の記録のID(ユースケースが上流の操作の前に採番する)で、参加者は自分の記録に措置の記録のIDを同じ一括の書き込みで残せる。参加者の文がNOT NULL制約などに違反すれば、上流の状態・イベント・記録・監査ログごと取り消される。登録の無い種類は`AppError(internal)`で、何も書かない。
+- 呼び出し側(content-reporting)が措置の入力に`participation`(種類と値だけ)を付けたときは、保留中の措置(またはコメント・評価の書き込みの単位)がその値を運ぶ。同期の処理(または`ControlEngagementModerationWriter`)が`ModerationWriteParticipants.statementsFor(participation, context)`で登録された参加者の文を解決し、記録と監査ログの文の後に並べる。`context.actionId`は保留中の措置の記録のID(ユースケースが上流の操作の前に採番する)で、参加者は自分の記録に措置の記録のIDを同じ一括の書き込みで残せる。参加者の文がNOT NULL制約などに違反すれば、上流の状態・イベント・記録・監査ログごと取り消される。登録の無い種類は通常の`Error`で、何も書かない。
 
 ### 代理の退会
 
@@ -392,17 +424,18 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-    Start[job at 4 21] --> Weeks[current week and previous week]
-    Weeks --> Prev{previous week finalized}
-    Prev -- no --> ComputePrev[compute as of previous week end and finalize]
-    Prev -- yes --> Current
-    ComputePrev --> Current[compute current week as of now]
+    Start[job at 4 21] --> Weeks[current week and 26 finished weeks]
+    Weeks --> Finalized[read finalized week starts in range once]
+    Finalized --> Finished[compute each finished week not finalized as of its end and finalize]
+    Finished --> Current[compute current week as of now]
     Current --> Upsert[upsert rows skipping finalized]
     Upsert --> Done[log counts]
 ```
 
+- 集計する週: 表示の範囲(今週の前の`STATISTICS_WEEKS_SHOWN`(26)週)の終わった週のうち、確定していない週(未確定の行がある週と、行が無い週)を全て週の終わりの時点で集計して確定し、今週を実行時刻の時点で集計する(2.1・2.5)。どの週が確定済みかは`WeeklyStatisticsStore.findFinalizedWeekStarts(範囲の最も古い週の開始日)`の1回で読む。ジョブが7日を超えて止まっても、再開した最初の成功した集計が範囲の中の終わった週を全て確定する。範囲より前の週は集計しない(2026-11-20の検証の後に開発者が決定)。
 - 各週の値: 収益は`PaymentRevenueReport.netRevenue`、利用者数とプロダクト数は`countRegisteredAt(週の終わり、今週は実行時刻)`、予選実施数とUpvote数は`MatchDirectory.summarizeDaily({ from: 週の月曜日, to: 週の日曜日(今週は実行日) })`の合計(仮1)。
-- 書き込みは`INSERT ... ON CONFLICT(week_start) DO UPDATE ... WHERE moderation_weekly_statistics.finalized = 0`で、確定した週を書き換えず、何度実行しても行は1つ(2.5・2.6)。ジョブが1週間以上止まると間の週は欠け、表に出ない(Risks)。
+- 照会の回数: 収益は全ての週の期間を`netRevenue`の1回(最大27期間。上限60)、予選実施数とUpvote数は最も古い対象の週の月曜日から実行日までの`summarizeDaily`の1回(最大189日。上限366日)、利用者数とプロダクト数は集計する週ごとに`countRegisteredAt`を並べて呼ぶ(最大27回ずつ)。通常の日は今週だけ(月曜日は前週も)を集計するため、照会は4回(月曜日は6回)である。
+- 書き込みは`week_start`の一意索引を対象にした`INSERT ... ON CONFLICT(week_start) DO UPDATE ... WHERE moderation_weekly_statistics.finalized = 0`(新しい行の`id`はULIDを採番し、既存の行の`id`は変えない)で、確定した週を書き換えず、何度実行しても行は1つ(2.5・2.6)。1行は11個、文ごとに2個のバインド変数を使うため、D1の1文の上限(100個)に収まる8行ずつの文に分け、分けた文を1つの`db.batch()`で実行する(最大27行で4文。一部の週だけが保存されることは無い)。止まっていた間の週を後から週の終わりの時点で求めるため、その間に物理削除された利用者・プロダクトは時点の総数に数えられない(Risks)。
 
 ### 画像の操作
 
@@ -417,8 +450,9 @@ stateDiagram-v2
 ```
 
 - 公開承認は自動判定の理由、隔離の解除は管理者操作の理由だけを外し、非公開化・ユーザー停止の理由は外さない(11.6・11.9・11.12)。公開に戻すかはmedia-pipelineの`desiredLocation`が全理由で決める(FR-ADMUG-050)。
-- 削除は隔離画像(理由が1つ以上)だけを受け付け、`MediaFiles.eraseNow`を呼ぶ。公開中の画像は先に個別の隔離を経る。
-- 記録は媒体の操作の後に、措置の記録と監査ログを1つの一括の書き込みで書く。記録の失敗はエラーを返し、再実行は媒体の操作が冪等(理由の追加・解除は変化が無ければ何もしない、削除済みのファイルは記録だけを書く)なため結果が重ならない。
+- 削除は隔離画像(理由が1つ以上)だけを受け付け、`MediaModerationControl.requestErase`で削除待ちの印を付けてから即時の削除を試みる。公開中の画像は先に個別の隔離を経る。
+- 措置の記録と監査ログは、理由の変更(または削除待ちの印)と同じ一括の書き込みで確定する(13.4。2026-11-20に開発者が決定したG1)。`ControlImageModerationWriter`が記録と監査ログの文を`MediaModerationControl`へ渡し、媒体の側が状態の変更の後に並べて確定する。既に目的の状態なら文は書かれず`changed: false`になり、同時の操作で状態の変更が効かなければ文ごと取り消される。
+- 確定の後の移動の依頼(隔離・隔離の解除・公開承認)または即時の削除が失敗すると`storage_unavailable`を返すが、状態・記録・監査ログは確定済みである。保存先は4:21の`media-pipeline.location-reconciliation`(830)、削除は`media-pipeline.expired-file-erasure`(810)が後でそろえる。管理者が再実行すると、隔離は保存先が食い違っていれば移動を依頼し直して`changed: false`、隔離の解除・公開承認は必要な理由が既に無いため`image_action_not_applicable`(11.14)、削除は削除待ちのため`changed: false`になり、記録を重ねない。
 
 ## Requirements Traceability
 
@@ -443,30 +477,31 @@ stateDiagram-v2
 
 ## Components and Interfaces
 
-| Component                                                                           | Domain/Layer                                                | Intent                                                       | Req Coverage                                                                                                              | Key Dependencies (P0/P1)                                                                                               | Contracts      |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------- |
-| ModerationActions・ModerationLabels                                                 | common-lib                                                  | 措置の種類・理由と通知の要否・表示名                         | 4.9, 8.9, 9.10, 10.9, 11.13, 12.9, 13.1                                                                                   | AUDIT_REASON_MAX (P0)                                                                                                  | State          |
-| ModerationAuditActions                                                              | common-lib/admin                                            | 監査ログの操作種別13種                                       | 13.1, 13.2, 11.13                                                                                                         | defineAuditAction (P0)                                                                                                 | State          |
-| ModerationSchema                                                                    | db                                                          | 措置の記録と週ごとの統計のテーブル                           | 2.5, 2.6, 13.5, 12.8                                                                                                      | Drizzle (P0)                                                                                                           | State          |
-| StatisticsWeek                                                                      | backend-lib/core                                            | 週の開始・範囲・確定・表示の週                               | 1.2, 1.5, 2.1, 2.5                                                                                                        | BusinessTime (P0)                                                                                                      | Service        |
-| ModerationEmailKinds                                                                | backend-lib/core                                            | 3つのメール種別                                              | 12.1, 12.2, 12.3, 12.4, 12.5, 12.6                                                                                        | defineEmailKind (P0)                                                                                                   | Event          |
-| ModerationRecordStore                                                               | backend-lib/core(契約・識別子)・workers(D1の実装・文の契約) | 措置の記録の文・照会・通知の状態・削除                       | 13.5, 13.6, 13.7, 12.7, 12.8                                                                                              | D1 (P0)                                                                                                                | Service, State |
-| AdminUserDirectory(identity-authの仮7が提供)                                        | core/identity(契約)・workers/identity(D1の実装)             | 利用者の一覧・ID・メールアドレス・時点の総数(使うだけ)       | 3.1, 3.2, 3.4, 2.3, 5.5                                                                                                   | users (P0)                                                                                                             | Service        |
-| AdminProductDirectory(product-launchの仮13が提供)                                   | core/product(契約)・workers/product(D1の実装)               | プロダクトの一覧・時点の総数(使うだけ)                       | 6.1, 6.2, 6.3, 2.3                                                                                                        | products (P0)                                                                                                          | Service        |
-| AdminCommentDirectory・AdminRatingDirectory(engagementの仮6が提供)                  | core/engagement(契約)・workers/engagement(D1の実装)         | コメントと評価の一覧(使うだけ)                               | 9.1, 9.2, 9.3, 10.1, 10.2, 7.2                                                                                            | launch_comments・product_ratings (P0)                                                                                  | Service        |
-| PaymentRevenueReport(統計の群、paymentsの仮7が提供)                                 | core/workers payments                                       | 期間ごとの純収益(使うだけ)                                   | 2.2                                                                                                                       | payment_records (P0)                                                                                                   | Service        |
-| PendingModerationRecord・RecordSyncHandlers                                         | api                                                         | 文を受けない操作口での記録の一体の確定                       | 4.4, 5.8, 8.4, 13.4, 15.7                                                                                                 | ライフサイクルの確定(P0)・ModerationWriteParticipants (P0)                                                             | Service, Event |
-| D1ModerationStatements・D1ModerationRecordWriter・ControlEngagementModerationWriter | api/infrastructure                                          | 記録と監査ログの文・書き込みの単位の実装                     | 9.8, 10.6, 11.13, 13.4                                                                                                    | buildAuditLogStatements (P0)・CommentModerationControl・RatingModerationControl (P0)・ModerationWriteParticipants (P0) | Service        |
-| ModerationWriteParticipants・MODERATION_WRITE_PARTICIPANTS                          | api/infrastructure・composition                             | 後続specの参加者の文を措置と同じ一括の書き込みに入れる登録口 | 15.7                                                                                                                      | 処理単位のコンテナ(P0)                                                                                                 | Service        |
-| 措置のユースケース6つ                                                               | api/application                                             | 検証・対象の確かめ・上流の操作・結果                         | 4.2〜4.11, 5.5〜5.11, 5.13, 8.2〜8.10, 9.6〜9.10, 10.4〜10.9, 11.6〜11.14, 15.1, 15.7                                     | 上流の操作口(P0)・ModerationRecordWriter・EngagementModerationWriter (P0)                                              | Service        |
-| ModerationNotifier                                                                  | api/application                                             | 通知の組み立てと送信の依頼                                   | 12.1〜12.10                                                                                                               | EmailSender (P0)・UserContactDirectory (P0)                                                                            | Service        |
-| 照会6つ                                                                             | api/application                                             | 一覧・詳細・統計の照会                                       | 1.9, 3.1〜3.6, 6.1〜6.6, 7.1〜7.8, 9.1〜9.3, 10.1〜10.2, 11.1〜11.2, 15.6                                                 | 上流の照会(P0)                                                                                                         | Service        |
-| AdminRoleMediaReviewPolicy                                                          | api/application                                             | 隔離画像を閲覧できる管理者の判定                             | 11.3, 11.4                                                                                                                | AdminDirectory (P0)                                                                                                    | Service        |
-| WeeklyStatisticsJob・ModerationMaintenanceJob                                       | api/application                                             | 統計・通知の送り直し・保持期間                               | 2.1〜2.8, 12.8, 13.7, 15.5                                                                                                | 上流の照会(P0)                                                                                                         | Batch          |
-| ModerationSchemaModule                                                              | api/presentation                                            | GraphQLの照会と措置・認可                                    | 14.2, 14.3, 14.4                                                                                                          | requireAdmin (P0)                                                                                                      | API            |
-| RecordErasureHandlers                                                               | event                                                       | 物理削除の時期の記録の削除                                   | 13.6                                                                                                                      | ModerationRecordStore (P0)                                                                                             | Event          |
-| ModerationEmailTemplates                                                            | event                                                       | 3つの本文                                                    | 12.4, 12.5, 12.6                                                                                                          | defineEmailTemplate (P0)                                                                                               | —              |
-| admin画面の部品                                                                     | admin                                                       | 5ページ・カード・操作                                        | 1.1〜1.8, 3.7〜3.10, 4.1, 4.12, 5.1〜5.4, 5.10, 5.12, 6.4, 7.5, 8.1, 8.11, 9.4, 9.5, 9.11, 10.3, 11.10, 11.16, 14.1〜14.8 | GraphQLの操作(P0)                                                                                                      | State          |
+| Component                                                                               | Domain/Layer                                                | Intent                                                                         | Req Coverage                                                                                                              | Key Dependencies (P0/P1)                                                                                                                       | Contracts      |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| ModerationActions・ModerationLabels                                                     | common-lib                                                  | 措置の種類・理由と通知の要否・表示名                                           | 4.9, 8.9, 9.10, 10.9, 11.13, 12.9, 13.1                                                                                   | AUDIT_REASON_MAX (P0)                                                                                                                          | State          |
+| ModerationAuditActions                                                                  | common-lib/admin                                            | 監査ログの操作種別13種                                                         | 13.1, 13.2, 11.13                                                                                                         | defineAuditAction (P0)                                                                                                                         | State          |
+| ModerationSchema                                                                        | db                                                          | 措置の記録と週ごとの統計のテーブル                                             | 2.5, 2.6, 13.5, 12.8                                                                                                      | Drizzle (P0)                                                                                                                                   | State          |
+| StatisticsWeek                                                                          | backend-lib/core                                            | 週の開始・範囲・確定・表示の週                                                 | 1.2, 1.5, 2.1, 2.5                                                                                                        | BusinessTime (P0)                                                                                                                              | Service        |
+| ModerationEmailKinds                                                                    | backend-lib/core                                            | 3つのメール種別                                                                | 12.1, 12.2, 12.3, 12.4, 12.5, 12.6                                                                                        | defineEmailKind (P0)                                                                                                                           | Event          |
+| ModerationRecordStore                                                                   | backend-lib/core(契約・識別子)・workers(D1の実装・文の契約) | 措置の記録の文・照会・通知の状態・削除                                         | 13.5, 13.6, 13.7, 12.7, 12.8                                                                                              | D1 (P0)                                                                                                                                        | Service, State |
+| AdminUserDirectory(identity-authの仮7が提供)                                            | core/identity(契約)・workers/identity(D1の実装)             | 利用者の一覧・ID・メールアドレス・時点の総数(使うだけ)                         | 3.1, 3.2, 3.4, 2.3, 5.5                                                                                                   | users (P0)                                                                                                                                     | Service        |
+| AdminProductDirectory(product-launchの仮13が提供)                                       | core/product(契約)・workers/product(D1の実装)               | プロダクトの一覧・時点の総数(使うだけ)                                         | 6.1, 6.2, 6.3, 2.3                                                                                                        | products (P0)                                                                                                                                  | Service        |
+| AdminCommentDirectory・AdminRatingDirectory(engagementの仮6が提供)                      | core/engagement(契約)・workers/engagement(D1の実装)         | コメントと評価の一覧(使うだけ)                                                 | 9.1, 9.2, 9.3, 10.1, 10.2, 7.2                                                                                            | launch_comments・product_ratings (P0)                                                                                                          | Service        |
+| PaymentRevenueReport(統計の群、paymentsの仮7が提供)                                     | core/workers payments                                       | 期間ごとの純収益(使うだけ)                                                     | 2.2                                                                                                                       | payment_records (P0)                                                                                                                           | Service        |
+| PendingModerationRecord・RecordSyncHandlers                                             | api                                                         | 文を受けない操作口での記録の一体の確定                                         | 4.4, 5.8, 8.4, 13.4, 15.7                                                                                                 | ライフサイクルの確定(P0)・ModerationWriteParticipants (P0)                                                                                     | Service, Event |
+| D1ModerationStatements・ControlImageModerationWriter・ControlEngagementModerationWriter | api/infrastructure                                          | 記録と監査ログの文・書き込みの単位の実装                                       | 9.8, 10.6, 11.13, 13.4                                                                                                    | buildAuditLogStatements (P0)・MediaModerationControl・CommentModerationControl・RatingModerationControl (P0)・ModerationWriteParticipants (P0) | Service        |
+| ModerationWriteParticipants・MODERATION_WRITE_PARTICIPANTS                              | api/infrastructure・composition                             | 後続specの参加者の文を措置と同じ一括の書き込みに入れる登録口                   | 15.7                                                                                                                      | 処理単位のコンテナ(P0)                                                                                                                         | Service        |
+| 措置のユースケース6つ                                                                   | api/application                                             | 検証・対象の確かめ・上流の操作・結果                                           | 4.2〜4.11, 5.5〜5.11, 5.13, 8.2〜8.10, 9.6〜9.10, 10.4〜10.9, 11.6〜11.14, 15.1, 15.7                                     | 上流の操作口(P0)・ImageModerationWriter・EngagementModerationWriter (P0)                                                                       | Service        |
+| ModerationNotifier                                                                      | api/application                                             | 通知の組み立てと送信の依頼                                                     | 12.1〜12.10                                                                                                               | EmailSender (P0)・UserContactDirectory (P0)                                                                                                    | Service        |
+| 照会6つ                                                                                 | api/application                                             | 一覧・詳細・統計の照会                                                         | 1.9, 3.1〜3.6, 6.1〜6.6, 7.1〜7.8, 9.1〜9.3, 10.1〜10.2, 11.1〜11.2, 15.6                                                 | 上流の照会(P0)                                                                                                                                 | Service        |
+| AdminRoleMediaReviewPolicy                                                              | api/application                                             | 隔離画像を閲覧できる管理者の判定                                               | 11.3, 11.4                                                                                                                | AdminDirectory (P0)                                                                                                                            | Service        |
+| WeeklyStatisticsJob・ModerationMaintenanceJob                                           | api/application                                             | 統計・通知の送り直し・保持期間                                                 | 2.1〜2.8, 12.8, 13.7, 15.5                                                                                                | 上流の照会(P0)                                                                                                                                 | Batch          |
+| ModerationIncidentReporter・SentryModerationIncidentReporter                            | api/application(ポート)・infrastructure(実装)               | 定型の通知(取り出し漏れ・統計の失敗・送り直しの失敗)をエラートラッキングへ送る | 2.7, 12.8                                                                                                                 | captureEvent (P0)                                                                                                                              | Service        |
+| ModerationSchemaModule                                                                  | api/presentation                                            | GraphQLの照会と措置・認可                                                      | 14.2, 14.3, 14.4                                                                                                          | requireAdmin (P0)                                                                                                                              | API            |
+| RecordErasureHandlers                                                                   | event                                                       | 物理削除の時期の記録の削除                                                     | 13.6                                                                                                                      | ModerationRecordStore (P0)                                                                                                                     | Event          |
+| ModerationEmailTemplates                                                                | event                                                       | 3つの本文                                                                      | 12.4, 12.5, 12.6                                                                                                          | defineEmailTemplate (P0)                                                                                                                       | —              |
+| admin画面の部品                                                                         | admin                                                       | 5ページ・カード・操作                                                          | 1.1〜1.8, 3.7〜3.10, 4.1, 4.12, 5.1〜5.4, 5.10, 5.12, 6.4, 7.5, 8.1, 8.11, 9.4, 9.5, 9.11, 10.3, 11.10, 11.16, 14.1〜14.8 | GraphQLの操作(P0)                                                                                                                              | State          |
 
 ### common-lib
 
@@ -538,7 +573,7 @@ export declare const ADMIN_COMMENT_STATE_LABELS: Readonly<
 ```
 
 - 理由の要否(仮9、2026-10-24に開発者が確定): 画像の4つの操作(`image.*`)だけ`optional`、他の9種(停止・停止解除・代理の退会・非公開化・復元・コメントの非公開化と復元・無効化・無効化の取り消し)は`required`。通知(12.9): `deferred`は`user.suspend`・`product.hide`・`comment.hide`、他は`none`(代理の退会も`none`、仮5)。
-- `QuarantineReason`(media-pipeline)と`AdminProductLaunchState`・`AdminCommentState`(上流が提供する照会)は型だけを読み込む。common-libは他の層を読み込まない規則のため、型の写しを`moderation-labels.ts`に置き、単体テストで上流の値の一覧と一致することを確かめる。
+- `QuarantineReason`(media-pipeline)と`AdminProductLaunchState`・`AdminCommentState`(上流が提供する照会)は型だけを読み込む。common-libは他の層を読み込まない規則のため、型の写しを`moderation-labels.ts`に置く。common-libのテストは`backend-lib/core`を読めない(管理者側のアプリには配置されない)ため、上流の値の一覧との一致はルートの`config/ugc-moderation-contract-copies.unit.test.ts`がソースを読んで確かめる(`config/sponsorship-contract-copies.unit.test.ts`と同じ方式)。
 
 #### ModerationAuditActions
 
@@ -569,9 +604,12 @@ export declare function weekOf(at: Date): StatisticsWeekRange;
 export declare function previousWeek(
   week: StatisticsWeekRange,
 ): StatisticsWeekRange;
-export declare function weeksToCompute(now: Date): {
+export declare function weeksToCompute(
+  now: Date,
+  finishedWeeks: number, // 0以上の整数。ジョブはSTATISTICS_WEEKS_SHOWN(26)を渡す
+): {
   readonly current: StatisticsWeekRange;
-  readonly previous: StatisticsWeekRange;
+  readonly finished: readonly StatisticsWeekRange[]; // 今週の前のfinishedWeeks週、週の古い順
 };
 export declare function isWeekFinished(
   week: StatisticsWeekRange,
@@ -590,7 +628,7 @@ export declare function lastDayOf(week: StatisticsWeekRange): BusinessDate; // �
 | `ugc-moderation.product-hidden` | transactional | `{ nickname, productName, reason, hiddenAt, contactUrl }`          | プロダクトの公開が停止されました |
 | `ugc-moderation.comment-hidden` | transactional | `{ nickname, productName, excerpt, reason, hiddenAt, contactUrl }` | コメントの公開が停止されました   |
 
-- 日時はISO 8601(UTC)の文字列で、本文は`formatUtcDateTime`でUTCを明記する。`contactUrl`は`<CLIENT_SITE_ORIGIN>/contact`。停止と非公開化の本文の固定の段落(要件12.4・12.5、仮8)はテンプレートが持ち、入力に含めない。配信停止のリンクを持たない(トランザクションメール)。
+- 日時はISO 8601(UTC)の文字列で、本文は`formatUtcDateTime`でUTCを明記する。`contactUrl`は`<CLIENT_SITE_ORIGIN>/contact`で、問い合わせの経路の共通の定数は無いため、identity-authの`email-identity-mailer.ts`と同じく`ModerationNotifier`の中の定数で組み立てる。送信の依頼は措置の記録のIDを冪等のキー(`idempotencyKey`)にする。送信の成功の後に`markNotice(pending→requested)`だけが失敗して送り直しても、email-deliveryの送信処理が同じ種別で同じキーの送信済みの記録を見つけて2通目を送らない(12.8。2026-11-20の検証の後の修正で開発者が決定)。停止と非公開化の本文の固定の段落(要件12.4・12.5、仮8)はテンプレートが持ち、入力に含めない。配信停止のリンクを持たない(トランザクションメール)。
 - 広告の段落は、sponsorshipの仮3の確定によりsponsorshipが文言規則へ載せる次の文と一字一句同じにする。
   - `ugc-moderation.user-suspended`: 「停止中は、あなたのスポンサー広告は表示されません。掲載期間は延長されませんが、表示を停止した日数分(1日のうち一部でも停止した日を含みます)の広告料金を、各広告の掲載期間が終わった時点で日割りにより自動で返金します。掲載期間が終わる前に退会した場合や、プロダクトを削除した場合は返金されません。」
   - `ugc-moderation.product-hidden`: 「このプロダクトのスポンサー広告は、公開を停止している間は表示されません。掲載期間は延長されませんが、表示を停止した日数分(1日のうち一部でも停止した日を含みます)の広告料金を、広告の掲載期間が終わった時点で日割りにより自動で返金します。掲載期間が終わる前に退会した場合や、プロダクトを削除した場合は返金されません。」
@@ -670,7 +708,7 @@ export declare class D1ModerationRecordStore
 
 - `latestFor`は`(target_kind, target_id, occurred_at)`の索引で、対象ごとに指定した種類の最新の1件を1回の問い合わせ(ウィンドウ関数または相関副問い合わせ)で読む。
 - 削除は`id IN (SELECT id ... LIMIT ?)`の1文で、件数が上限に達したら`remaining: true`。
-- `MODERATION_PLATFORM_MODULE`(`workers/moderation/moderation-platform-module.ts`)がapiとeventの`composition/modules.ts`の両方へ入り、`ModerationRecordStore`・`ModerationRecordStatements`を`D1ModerationRecordStore`に束縛する。DIの識別子は`core/moderation/identifiers.ts`の`MODERATION_PLATFORM_TYPES`(`Symbol.for('moderation.<名前>')`)。
+- `MODERATION_PLATFORM_MODULE`(`workers/moderation/moderation-platform-module.ts`)がapiとeventの`composition/modules.ts`の両方へ入り、`ModerationRecordStore`・`ModerationRecordStatements`を`D1ModerationRecordStore`に束縛する。DIの識別子は`core/moderation/identifiers.ts`の`MODERATION_PLATFORM_TYPES`(`Symbol.for('moderation.<名前>')`)。`Symbol.for`は全体で共有される登録簿のため、apiの`MODERATION_TYPES`は`Symbol.for('moderation.api.<名前>')`、eventの`EVENT_MODERATION_TYPES`は`Symbol.for('moderation.event.<名前>')`にして、同名のメンバーでも識別子が衝突しないようにする(sponsorshipの`sponsorship.api.`・`sponsorship.event.`と同じ)。3つとも凍結し、各ファイルに単体テストを置く。
 - 置き場所: 文を返す`insertStatement`は`ModerationRecordStore`から分けて`workers`の`ModerationRecordStatements`に置く。application層は`**/lib/workers/**`を読み込めず、文も扱わないため、記録の挿入の文はinfrastructure層の`D1ModerationStatements`だけが組み立てる。
 
 ### backend-lib(上流の共有ディレクトリの照会)
@@ -854,12 +892,23 @@ export interface PaymentRevenueReport {
 
 ### api/application
 
-#### PendingModerationRecord・ModerationRecordWriter・EngagementModerationWriter
+#### PendingModerationRecord・ImageModerationWriter・EngagementModerationWriter
 
 **Contracts**: Service [x]
 
 ```typescript
-// ports.ts(NewModerationRecordはcore/moderation/ports.ts、PreparedAuditEntryはadmin-foundationのapplication層から読み込む)
+// ports.ts(NewModerationRecordはcore/moderation/ports.ts、QuarantineReasonはcore/media/media-file.ts、PreparedAuditEntryはcore/admin/audit-log.tsから読み込む)
+export type ModerationIncident =
+  | 'moderation-record-missing'
+  | 'statistics-failed'
+  | 'notice-redispatch-failed';
+export interface ModerationIncidentReporter {
+  // application層は@sentry/*を読めないため、定型の通知をこのポート越しに送る。実装はinfrastructure層のSentryModerationIncidentReporter
+  report(
+    incident: ModerationIncident,
+    context: { readonly job?: string; readonly count?: number },
+  ): void;
+}
 export interface ModerationOperator {
   readonly adminId: string;
 }
@@ -876,14 +925,27 @@ export interface ModerationWriteParticipation<TPayload = unknown> {
 }
 export interface ModerationOutcome {
   readonly changed: boolean;
-  readonly actionId: string | null; // 変化が無ければnull
+  readonly actionId: string | null; // 変化が無ければnull。changed: trueでnullなら保留中の措置を取り出せず(束縛の誤り)、措置の記録・監査ログ・参加者の文が書かれていない
 }
 export interface ModerationRecordWrite {
   readonly record: NewModerationRecord;
   readonly audit: PreparedAuditEntry;
 }
-export interface ModerationRecordWriter {
-  commit(write: ModerationRecordWrite): Promise<void>; // 記録と監査ログの単独の一括の書き込み(画像の操作)
+export interface ImageModerationWrite extends ModerationRecordWrite {
+  readonly fileId: string;
+}
+export type ImageModerationChange = 'changed' | 'unchanged' | 'not-found';
+export interface ImageModerationWriter {
+  // 理由の変更(または削除待ちの印)と記録と監査ログを同じ一括の書き込みで確定する。確定の後の移動の依頼・即時の削除の失敗はAppError(unavailable, 'storage_unavailable')
+  addReason(
+    write: ImageModerationWrite,
+    reason: QuarantineReason,
+  ): Promise<ImageModerationChange>;
+  removeReason(
+    write: ImageModerationWrite,
+    reason: QuarantineReason,
+  ): Promise<ImageModerationChange>;
+  requestErase(write: ImageModerationWrite): Promise<ImageModerationChange>;
 }
 export interface EngagementModerationWrite extends ModerationRecordWrite {
   readonly targetId: string; // コメント・評価のID
@@ -914,7 +976,7 @@ export interface PendingModeration {
   readonly participation: ModerationWriteParticipation | undefined; // ModerationCommand.participationをそのまま運ぶ
 }
 export interface PendingModerationRecord {
-  set(pending: PendingModeration): void; // 1つの要求に1件。置き済みならAppError(internal)
+  set(pending: PendingModeration): void; // 1つの要求に1件。置き済みならError
   take(event: {
     readonly type: string;
     readonly targetId: string;
@@ -931,10 +993,30 @@ export declare class D1ModerationStatements {
     audit: PreparedAuditEntry,
   ): readonly BatchItem<'sqlite'>[]; // 記録の挿入と監査ログの文
 }
-// infrastructure/moderation/d1-moderation-record-writer.ts
-export declare class D1ModerationRecordWriter implements ModerationRecordWriter {
-  constructor(db: Database, statements: D1ModerationStatements); // @inject(PLATFORM_TYPES.Database)・@inject(MODERATION_TYPES.ModerationStatements)
+// infrastructure/moderation/control-image-moderation-writer.ts
+export declare class ControlImageModerationWriter implements ImageModerationWriter {
+  constructor(
+    statements: D1ModerationStatements, // @inject(MODERATION_TYPES.ModerationStatements)
+    media: MediaModerationControl, // @inject(MEDIA_TYPES.MediaModerationControl)
+  );
 }
+
+// backend-lib/workers/media/media-moderation-control.ts(media-pipelineの共有ディレクトリへ本specが加える。呼び出し側の文を受け取るため、apiのinfrastructure層だけが使う)
+export type MediaModerationResult = 'changed' | 'unchanged' | 'not-found';
+export interface MediaModerationInput {
+  readonly fileId: string;
+  readonly statements: readonly BatchItem<'sqlite'>[]; // 状態の変更の後に同じ一括の書き込みへ並べる
+}
+export interface MediaModerationControl {
+  addReason(
+    input: MediaModerationInput & { readonly reason: QuarantineReason },
+  ): Promise<MediaModerationResult>;
+  removeReason(
+    input: MediaModerationInput & { readonly reason: QuarantineReason },
+  ): Promise<MediaModerationResult>;
+  requestErase(input: MediaModerationInput): Promise<MediaModerationResult>;
+}
+export declare class D1MediaModerationControl implements MediaModerationControl {} // MEDIA_TYPES.MediaModerationControl(core/media/identifiers.ts)、media-platformモジュールで束縛
 // infrastructure/moderation/control-engagement-moderation-writer.ts
 export declare class ControlEngagementModerationWriter implements EngagementModerationWriter {
   constructor(
@@ -959,7 +1041,7 @@ export interface ModerationWriteParticipant {
   statementsFor(
     participation: ModerationWriteParticipation,
     context: ModerationWriteContext,
-  ): Promise<readonly BatchItem<'sqlite'>[]>; // 読み取りはしてよいが、書き込みは返す文だけ。payloadの形が違えばAppError(internal)
+  ): Promise<readonly BatchItem<'sqlite'>[]>; // 読み取りはしてよいが、書き込みは返す文だけ。payloadの形が違えばError
 }
 export interface ModerationWriteParticipantRegistration {
   readonly kind: string; // '<spec名>.<名詞句>'
@@ -969,7 +1051,7 @@ export interface ModerationWriteParticipants {
   statementsFor(
     participation: ModerationWriteParticipation | undefined,
     context: ModerationWriteContext,
-  ): Promise<readonly BatchItem<'sqlite'>[]>; // undefinedなら[]。登録の無い種類はAppError(internal)
+  ): Promise<readonly BatchItem<'sqlite'>[]>; // undefinedなら[]。登録の無い種類はError
 }
 export declare function createModerationWriteParticipants(
   registrations: readonly ModerationWriteParticipantRegistration[],
@@ -980,14 +1062,20 @@ export declare function createModerationWriteParticipants(
 export declare const MODERATION_WRITE_PARTICIPANTS: readonly ModerationWriteParticipantRegistration[]; // 初版は空。content-reportingが追記
 ```
 
-- `PendingModerationRecord`は処理単位のコンテナで1つ(要求をまたがない)。同期の処理は同じコンテナから解決されるため、保留中の措置を読める。
+- `PendingModerationRecord`は処理単位のコンテナで1つ(要求をまたがない)。コンテナの既定のスコープは`Transient`(`backend-lib/workers/di/invocation-container.ts`)のため、`MODERATION_MODULE`は`inSingletonScope()`で束縛する(処理単位のコンテナの中で1つになり、要求をまたがない)。同期の処理は同じコンテナから解決されるため、保留中の措置を読める。
+- `SentryModerationIncidentReporter`(`infrastructure/moderation/sentry-moderation-incident-reporter.ts`): `ModerationIncidentReporter`の実装。`captureEvent`で文言を`logentry`に、`fingerprint`を`['moderation', <incident>]`に、タグを`moderation_incident`(と`job`)に置く(`infra/004`の「同じ文言を繰り返し送る通知」。前例は`ProductIncidentReporter`)。
 - `UserModerationRecordSyncHandler.statementsFor(event, db)`: `take({ type: event.type, targetId: event.userId })`が無ければ`[]`(本人の退会など、措置でないイベント)。あれば`D1ModerationStatements.forRecord({ ...record, lifecycleEventId: event.id, occurredAt: event.occurredAt }, audit)`と、`ModerationWriteParticipants.statementsFor(participation, { actionId: record.id, action: record.action, targetId: record.targetId, occurredAt: event.occurredAt })`の文をこの順に返す。登録は`USER_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'ugc-moderation.user-moderation-record', events: ['suspended', 'unsuspended', 'withdrawn'], handler: MODERATION_TYPES.UserModerationRecordSyncHandler }`。
 - `ProductModerationRecordSyncHandler`も同じで、対象は`event.productId`、登録は`PRODUCT_LIFECYCLE_SYNC_HANDLERS`に`{ name: 'ugc-moderation.product-moderation-record', events: ['hidden', 'unhidden'], handler: MODERATION_TYPES.ProductModerationRecordSyncHandler }`(product-launchの`ProductLifecycleSyncRegistration`の必須の`handler`)。
-- `D1ModerationStatements.forRecord`: `ModerationRecordStatements.insertStatement`→`buildAuditLogStatements(db, audit)`の順。同期の処理・`D1ModerationRecordWriter`・`ControlEngagementModerationWriter`だけが使う。
-- `D1ModerationRecordWriter.commit`: `forRecord`の文を単独の一括の書き込み(`db.batch`)で確定する。
+- `D1ModerationStatements.forRecord`: `ModerationRecordStatements.insertStatement`→`buildAuditLogStatements(db, audit)`の順。同期の処理・`ControlImageModerationWriter`・`ControlEngagementModerationWriter`だけが使う。
+- `ControlImageModerationWriter`: `forRecord(record, audit)`の文を`MediaModerationControl.addReason`・`removeReason`・`requestErase`の`statements`へ渡し、結果をそのまま返す。画像の操作は参加者の文を持たない。
+- `MediaModerationControl`(media-pipelineの`workers/media`へ本specが加える。2026-11-20に開発者が決定したG1): 既存の`MediaQuarantine`・`MediaFiles`の形と振る舞いは変えない。
+  - 対象のファイルが無い・削除待ちなら`not-found`(`requestErase`は削除待ちなら`unchanged`)。画像用の用途でなければ`AppError(bad_request, 'quarantine_not_applicable')`(`MediaQuarantine`と同じ)。
+  - 既に目的の状態(理由を持つ・持たない、削除待ち)なら呼び出し側の文を書かず`unchanged`。そうでなければ、理由の行の追加・削除(または`erase_requested_at`の設定)と呼び出し側の文を1つの`db.batch`で確定し`changed`。同時の操作で状態の変更が効かなかったときは、変更が効いたことを条件とする文(engagementの`setHidden`と同じ判定のやり直し)で全体を取り消し、読み直して`unchanged`または`not-found`を返す。
+  - `addReason`・`removeReason`は、確定の後(`unchanged`のときも)保存先が`desiredLocation`と食い違えば`RELOCATE_FILES_MESSAGE`で移動を依頼する。依頼の失敗は`AppError(unavailable, 'storage_unavailable')`で、状態と呼び出し側の文は確定済みのまま残る。
+  - `requestErase`は、確定の後に`MediaEraser.erase([fileId])`を試み、失敗は`storage_unavailable`(日次の`media-pipeline.expired-file-erasure`が完了させる)。
 - `ControlEngagementModerationWriter`: `forRecord(record, audit)`と`ModerationWriteParticipants.statementsFor(participation, { actionId: record.id, action: record.action, targetId: record.targetId, occurredAt: record.occurredAt })`の文をこの順に連結して、engagementの`CommentModerationControl.hide`・`unhide`・`RatingModerationControl.invalidate`・`revalidate`の`statements`へ渡し、上流の結果(`changed`・`unchanged`)をそのまま返す。上流が`unchanged`なら記録と監査ログの文も書かれない。
-- 置き場所: application層は文・接続・一括の書き込みを扱わないため(`backend/002`)、記録と監査ログの文の組み立てと一括の書き込みは書き込みの単位のポート(`ModerationRecordWriter`・`EngagementModerationWriter`)の実装としてinfrastructure層に置く。engagementの操作口は呼び出し側の文を受け取るためinfrastructure層にあり、application層のユースケースは直接呼ばない。`ModerationCommand.participation`・`EngagementModerationWrite.participation`・`PendingModeration.participation`は種類と値だけで、application層は中身を読まず、infrastructure層の書き込みの単位(同期の処理・`ControlEngagementModerationWriter`)へそのまま渡す。文を返す参加者の契約は、文を扱うinfrastructure層だけが読み込むため`infrastructure/moderation`に置く(実装する後続specもapiのinfrastructure層に参加者を置く)。
-- `createModerationWriteParticipants`: 登録の`kind`が`<spec名>.<名詞句>`の形でない、または重複すれば例外を投げる(コンテナの組み立て時に気付く)。`statementsFor`は`participation`が`undefined`なら`[]`、登録の無い`kind`なら`AppError({ kind: 'internal' })`を投げ(束縛の誤り。同期の処理の中で投げるため上流の確定は行われず、何も書かれない)、あれば`resolve(participant)`で処理単位のコンテナから参加者を解決して`statementsFor(participation, context)`の文を返す。`MODERATION_MODULE`が`MODERATION_TYPES.ModerationWriteParticipants`を`createModerationWriteParticipants(MODERATION_WRITE_PARTICIPANTS, resolve)`で処理単位に束縛する。
+- 置き場所: application層は文・接続・一括の書き込みを扱わないため(`backend/002`)、記録と監査ログの文の組み立てと一括の書き込みは書き込みの単位のポート(`ImageModerationWriter`・`EngagementModerationWriter`)の実装としてinfrastructure層に置く。engagementの操作口と`MediaModerationControl`は呼び出し側の文を受け取るためinfrastructure層(`MediaModerationControl`は`workers/media`)にあり、application層のユースケースは直接呼ばない。`ModerationCommand.participation`・`EngagementModerationWrite.participation`・`PendingModeration.participation`は種類と値だけで、application層は中身を読まず、infrastructure層の書き込みの単位(同期の処理・`ControlEngagementModerationWriter`)へそのまま渡す。文を返す参加者の契約は、文を扱うinfrastructure層だけが読み込むため`infrastructure/moderation`に置く(実装する後続specもapiのinfrastructure層に参加者を置く)。
+- `createModerationWriteParticipants`: 登録の`kind`が`<spec名>.<名詞句>`の形でない、または重複すれば例外を投げる(コンテナの組み立て時に気付く)。`statementsFor`は`participation`が`undefined`なら`[]`、登録の無い`kind`なら通常の`Error`(束縛か呼び出し側の誤りで、運用者に知らせるため`AppError`にしない)を投げ(束縛の誤り。同期の処理の中で投げるため上流の確定は行われず、何も書かれない)、あれば`resolve(participant)`で処理単位のコンテナから参加者を解決して`statementsFor(participation, context)`の文を返す。`MODERATION_MODULE`が`MODERATION_TYPES.ModerationWriteParticipants`を`createModerationWriteParticipants(MODERATION_WRITE_PARTICIPANTS, resolve)`で処理単位に束縛する。
 - `context.actionId`は、ユースケースが上流の操作の前に採番した`NewModerationRecord.id`(ULID)で、措置の結果の`ModerationOutcome.actionId`と同じ値である。参加者はこの値を自分の記録に同じ一括の書き込みで残せる。参加者の文の並びは記録と監査ログの文の後で、参加者の文の違反(NOT NULL制約など)は上流の確定の全体を取り消す。
 
 #### 措置のユースケース
@@ -1033,12 +1121,12 @@ export interface ImageModerationService {
 ```
 
 - 共通の手順: `checkModerationReason`(違反は`AppError(bad_request, validation_error)`、詳細`reason`)→対象を上流の照会で読む(無ければ`not_found`と各コード)→既に同じ状態なら`{ changed: false, actionId: null }`→`AuditLogRecorder.prepare`と記録のID(`PLATFORM_TYPES.IdGenerator`のULID。結果の`actionId`と参加者の`context.actionId`になる)の採番→上流の操作→`deferred`の通知なら`ModerationNotifier.dispatch(actionId)`(例外は`warning`のログで握り、結果は成功)。
-- `UserModerationService`: 対象は`AdminUserDirectory.findByIds`(`not_found`は`user_not_found`)。監査ログの対象は仮名化ID、記録の`subjectUserId`は利用者のID。`PendingModerationRecord.set`(`participation`を含む)→`UserSuspension.suspend`・`unsuspend`。`account_state_conflict`はそのまま返す(4.11)。
+- `UserModerationService`: 対象は`AdminUserDirectory.findByIds`(`not_found`は`user_not_found`)。監査ログの対象は仮名化ID、記録の`subjectUserId`は利用者のID。`PendingModerationRecord.set`(`participation`を含む)→`UserSuspension.suspend`・`unsuspend`。`account_state_conflict`はそのまま返す(4.11)。一覧の読み取りの後に退会が重なると上流の`StoreUserSuspension`が`not_found`(文言「対象が見つかりません。」)を投げるため、代理の退会と同じく`user_not_found`へ変える。
 - `AdministrativeWithdrawalService`: 「代理の退会」の流れ。理由は必須。対象は`AdminUserDirectory.findByIds`(退会済み・不在は`user_not_found`)。監査ログの対象は仮名化ID、記録の`subjectUserId`は利用者のID、通知の状態は`none`。`PendingModerationRecord.set`→`AdministrativeWithdrawal.withdraw({ userId, caller, operator: principal, at })`。上流の`not_found`は`user_not_found`、`account_state_conflict`はそのまま返す。メールを送らない(仮5)。
 - `ProductModerationService`: 対象は`ProductDirectory.findSummaries([id], 'not-deleted')`(`product_not_found`)。`hidden`で状態を判定する。記録の`subjectUserId`は投稿者、`productId`は対象。`PendingModerationRecord.set`(`participation`を含む)→`ProductVisibilityControl.hide`・`unhide`。
 - `CommentModerationService`: 対象は`CommentStore.findByIds`(`comment_not_found`)、状態は`hiddenAt`。`EngagementModerationWriter.hideComment`・`unhideComment`に記録・監査ログ・呼び出し側の`participation`を渡す(infrastructure層の実装が記録と監査ログと参加者の文を`CommentModerationControl`へ同じ一括の書き込みの文として渡す)。上流が`unchanged`を返したら(同時の変更)記録の文も書かれないため、`changed: false`とする。
 - `RatingModerationService`: 対象は`AdminRatingDirectory.findByIds`(`rating_not_found`)、状態は`invalidatedAt`。`EngagementModerationWriter.invalidateRating`・`revalidateRating`に記録・監査ログ・呼び出し側の`participation`を渡す。上流が`unchanged`を返したら`changed: false`とする。通知しない(10.7)。
-- `ImageModerationService`: 対象は`MediaFiles.findMany`。画像用の用途で削除待ちでないことを求める(`image_not_found`)。`approve`は`auto`、`release`は`admin_action`の理由を持つこと、`remove`は理由が1つ以上あることを求め、満たさなければ`image_action_not_applicable`(`unprocessable`)。`quarantine`は`admin_action`を既に持てば`changed: false`。媒体の操作の後に`ModerationRecordWriter.commit({ record, audit })`。`remove`で既に削除済み(記録が無い)の再実行は`image_not_found`を返す。画像の操作は`participation`を受け付けず、付いていれば上流を呼ばずに`AppError({ kind: 'internal' })`とする(呼び出し側の誤り)。
+- `ImageModerationService`: 対象は`MediaFiles.findMany`。画像用の用途でない・ファイルの記録が無い(削除済みを含む)なら`image_not_found`。削除待ちのファイルは、`remove`なら`{ changed: false, actionId: null }`(削除と記録は確定済み)、他の操作なら`image_not_found`。`approve`は`auto`、`release`は`admin_action`の理由を持つこと、`remove`は理由が1つ以上あることを求め、満たさなければ`image_action_not_applicable`(`unprocessable`、11.14)。`quarantine`は前提を求めず、既に`admin_action`を持つときも`ImageModerationWriter.addReason`を呼ぶ(保存先の食い違いがあれば移動を依頼し直すため。結果は`unchanged`)。`approve`・`release`は`ImageModerationWriter.removeReason`、`remove`は`requestErase`に、記録と監査ログを渡す(記録と監査ログは状態の変更と同じ一括の書き込みで確定する、13.4。2026-11-20に開発者が決定したG1)。書き込みの単位が`unchanged`なら`changed: false`、`not-found`なら`image_not_found`。`storage_unavailable`はそのまま返す(状態・記録・監査ログは確定済み。再実行の結果は「画像の操作」の流れのとおり)。画像の操作は`participation`を受け付けず、付いていれば上流を呼ばずに通常の`Error`(束縛か呼び出し側の誤りで、運用者に知らせるため`AppError`にしない)とする(呼び出し側の誤り)。
 - 全ユースケースは`requireAdmin`を行わない。認可はリゾルバ(`requireAdmin(context, 'moderator')`、代理の退会は`'super_admin'`)と、content-reportingのリゾルバが行う(15.7)。
 
 #### ModerationNotifier
@@ -1052,7 +1140,7 @@ export interface ModerationNotifier {
 ```
 
 - `find(actionId)`が`pending`でなければ`not-pending`。種類ごとに入力を組み立てる: 停止は`UserContactDirectory.findContact(subjectUserId)`、非公開化は`ProductDirectory.findSummaries([productId], 'not-deleted')`の名称と投稿者の連絡先、コメントは`CommentStore.findByIds`の本文の先頭100書記素(`countGraphemes`の分割)と対象のプロダクトの名称と投稿者の連絡先。宛先が`undefined`(退会済み・物理削除済み)なら`markNotice(pending→skipped)`(12.7)。
-- `EmailSender.send`の成功の後に`markNotice(pending→requested)`。送信の例外は呼び出し元へ投げ、状態は`pending`のまま残る(ジョブが送り直す、12.8)。
+- `EmailSender.send`(`idempotencyKey`は措置の記録のID)の成功の後に`markNotice(pending→requested)`。送信と依頼済みへの更新の例外は呼び出し元へ投げ、状態は`pending`のまま残る(ジョブが送り直す、12.8)。依頼済みへの更新だけが失敗した後の送り直しは同じキーで依頼するため、email-deliveryの送信処理が2通目を送らずに完了する(同じ措置の通知を2回以上送らない、12.8)。
 
 #### 照会
 
@@ -1075,10 +1163,10 @@ export interface ModerationNotifier {
 
 **Contracts**: Batch [x]
 
-| ジョブの名前                       | 時刻 | `order` | 処理                                                                                                                                                                                                              |
-| ---------------------------------- | ---- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ugc-moderation.weekly-statistics` | 4:21 | 1900    | 「週ごとの統計の集計」の流れ。前週が未確定なら週の終わりの時点で集計して確定し、今週を実行時刻の時点で集計する。照会の失敗は`captureEvent`(`statistics-failed`)で、次の実行で集計し直す                           |
-| `ugc-moderation.maintenance`       | 4:21 | 1910    | (1)`listPendingNotices({ occurredBefore: 実行時刻 − 1時間, limit: 100 })`を`dispatch`し、失敗の件数が1以上なら`captureEvent`(`notice-redispatch-failed`)。(2)`eraseOccurredBefore(実行時刻 − 3年, 500)`を最大10回 |
+| ジョブの名前                       | 時刻 | `order` | 処理                                                                                                                                                                                                                                                                |
+| ---------------------------------- | ---- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ugc-moderation.weekly-statistics` | 4:21 | 1900    | 「週ごとの統計の集計」の流れ。表示の範囲(直近26週)の終わった週のうち確定していない週(行が無い週を含む)を全て週の終わりの時点で集計して確定し、今週を実行時刻の時点で集計する。照会の失敗は`ModerationIncidentReporter`の`statistics-failed`で、次の実行で集計し直す |
+| `ugc-moderation.maintenance`       | 4:21 | 1910    | (1)`listPendingNotices({ occurredBefore: 実行時刻 − 1時間, limit: 100 })`を`dispatch`し、失敗の件数が1以上なら`ModerationIncidentReporter`の`notice-redispatch-failed`。(2)`eraseOccurredBefore(実行時刻 − 3年, 500)`を最大10回                                     |
 
 - Trigger: apiのCron Triggers(`21 12 * * *`、上流で追加済み)。どちらも2回実行しても結果が変わらない。上流の値より前に動く必要は無い。
 
@@ -1097,8 +1185,8 @@ export interface WeeklyStatisticsRow {
 }
 export interface WeeklyStatisticsStore {
   upsert(rows: readonly WeeklyStatisticsRow[]): Promise<void>; // 確定済みの週は書き換えない
-  findFinalized(weekStart: BusinessDate): Promise<boolean>;
-  listRecent(limit: number): Promise<readonly WeeklyStatisticsRow[]>; // 週の古い順
+  findFinalizedWeekStarts(from: BusinessDate): Promise<readonly BusinessDate[]>; // 開始日がfrom以降の確定した週、週の古い順
+  listRecent(limit: number): Promise<readonly WeeklyStatisticsRow[]>; // 週の古い順。確定した週と最も新しい週だけを返し、確定できないまま後の週に追い越された週(次に成功した集計が確定させるまでの間)は返さない
 }
 ```
 
@@ -1155,6 +1243,7 @@ type ModerationNote {
 type AdminMediaFile {
   id: ID!
   path: String!
+  image: MediaImage!
   quarantined: Boolean!
   quarantineReasons: [QuarantineReason!]!
 }
@@ -1360,11 +1449,14 @@ type Mutation {
 }
 ```
 
-- `*Connection`はapi-gatewayの`toConnection`の形。`AdminMediaFile.path`は`downloadPathOf(id)`(`/_bff/files/<id>`)。`Money`はpaymentsの型を使い、本specは定義しない。型の拡張は`Query`・`Mutation`だけで上流の型を変えない。
+- `*Connection`はapi-gatewayの接続の形(`nodes`・`pageInfo { hasNextPage, endCursor }`)。上流の照会は項目の配列と`nextCursor`(例: `AdminUserDirectory.search`の`{ users, nextCursor }`)を返すため`toConnection`(1件多く読んだ行を前提にする)は使わず、`resolver-support.ts`の部品が`nextCursor`から`pageInfo`を組み立てる(`modules/sponsorship/admin-resolvers.ts`と同じ)。カーソルは上流の値をそのまま中継し、本specは符号化しない。`AdminMediaFile.path`は`downloadPathOf(id)`(`/_bff/files/<id>`)。`Money`はpaymentsの型を使い、本specは定義しない。型の拡張は`Query`・`Mutation`だけで上流の型を変えない。
 - 照会の名前: 管理者側の操作は全specで1つのスキーマと1つの生成物(adminの`src/graphql/generated/graphql.ts`)に入るため、照会・操作の名前を他のspecと重ねない。プロダクト一覧の絞り込みのカテゴリの選択肢は`adminModerationCategoryOptions: [AdminCategoryRef!]!`(操作`AdminModerationCategoryOptions`)とし、プロダクトカテゴリの管理画面の照会(product-launch)と分ける。
-- 認可: 全`Query`は`requireAdmin(context, 'viewer')`、全`Mutation`は`requireAdmin(context, 'moderator')`(`withdrawUserByAdministrator`だけは`'super_admin'`、仮4)(14.2〜14.4・5.10)。`requireAdmin`は呼び出し元が管理者側でない要求を拒否する。
-- 入力の検証(`withValidatedArgs`): `first`は1〜50、ハンドル・ニックネーム・名称の検索語は1〜100文字(前後の空白を除く)、メールアドレスは254文字以内、期間は`postedFrom < postedBefore`、理由は500書記素以内(要否はユースケースが判定)。
-- エラーコード: `validation_error`(詳細`reason`など)・`user_not_found`・`product_not_found`・`comment_not_found`・`rating_not_found`・`image_not_found`(`not_found`)、`image_action_not_applicable`(`unprocessable`)、`account_state_conflict`(`conflict`)、`forbidden`・`unauthenticated`。文言は文言規則に載せる。
+- 認可: 全`Query`は`requireAdmin(context, 'viewer')`、全`Mutation`は`requireAdmin(context, 'moderator')`(`withdrawUserByAdministrator`だけは`'super_admin'`、仮4)(14.2〜14.4・5.10)。`requireAdmin`は呼び出し元が管理者側でない要求を拒否する。各リゾルバは`resolver-support.ts`の`adminOnly`で包み、入力の検証より前に管理者側以外の呼び出しを拒否する(`security/007`の「操作の認可」、`modules/sponsorship/resolver-support.ts`と同じ)。リゾルバの表は`satisfies Resolvers`で生成した型に合わせる。
+- 入力の検証(`withValidatedArgs`): `first`は1〜50(`CURSOR_PAGE_ARGS`の1〜100を使わず、`inputs.ts`に件数の規則を置く)、IDの引数(`id`・`fileId`・`productId`・絞り込みのカテゴリのID)は`z.ulid({ error, abort: true }).regex(UPPERCASE_ULID_PATTERN, message)`で検証し、文言は存在しない対象と同じにする(`coding/005`)、ハンドル・ニックネーム・名称の検索語は1〜100文字(前後の空白を除く)、メールアドレスは254文字以内、期間は`postedFrom < postedBefore`、理由は500書記素以内(要否はユースケースが判定)。
+- エラーコード: `validation_error`(詳細`reason`など)・`user_not_found`・`product_not_found`・`comment_not_found`・`rating_not_found`・`image_not_found`(`not_found`)、`image_action_not_applicable`(`unprocessable`)、`account_state_conflict`(`conflict`)、`invalid_cursor`(`bad_request`。上流の4つの管理画面の照会が不正な`after`で投げるコードと文言「ページの位置の指定が正しくありません。」を変換せずに返す。2026-11-20に開発者が決定)、`storage_unavailable`(`unavailable`。画像の操作の確定の後の移動の依頼・即時の削除の失敗で、media-pipelineの文言をそのまま返す)、`forbidden`・`unauthenticated`。文言は文言規則に載せる。ユースケースが投げるコード(`user_not_found`・`image_not_found`・`image_action_not_applicable`など)は`application/moderation/moderation-errors.ts`に種類と文言をまとめて置き、表現層の`errors.ts`はそれを参照する(application層は表現層を読めないため。`application/sponsorship/sponsorship-errors.ts`と同じ)。
+- 画像のファイルの写像(2026-11-20の検証の後に開発者が決定): `AdminMediaFile`は、同一オリジンの中継の経路`path`と、mediaのスキーマモジュールの`MediaImage`(`objectKey`は隔離中・削除待ち・保存未完了で空)の`image`を返す。`image`はmediaの`toMediaImage`で作り、`AdminUserReader`・`AdminProductReader`・`QuarantinedImageReader`は画像の`MediaFileView`をそのまま返す。管理画面は公開中の画像を変換配信から、隔離中の画像を同一オリジンの中継から表示する(FR-ADMUG-018)。adminの`AdminModerationProduct`のフラグメントは、入れ子の深さの上限(8)に収めるため、ロゴの項目を`AdminModerationMediaFile`のフラグメントの入れ子にせず直接選ぶ
+- 隔離画像の写像: `findings`は`ModerationFinding`の3種(`labels`・`svg`・`unprocessable`)をそれぞれ文字列にする。保有者が`system`(IDなし)の画像は`owner`をnullにする。画像以外への個別の隔離は上流の`quarantine_not_applicable`を`image_not_found`に変える(要件11.14の「画像用の用途でない」)。
+- スキーマを変えたら、apiの`bun run graphql:generate`で`generated/schema.graphql`・`resolvers-types.ts`を作り直し、adminの`bun run graphql:generate`とapiの`bun run graphql:allowlist`を続けて行う。`presentation/graphql/modules/**`はBunで読み込まれるため、`cloudflare:*`・`@sentry/*`・infrastructure層を読み込まない。
 
 ### event
 
@@ -1388,25 +1480,26 @@ type Mutation {
 
 画面の部品はGraphQLの操作と上流の部品だけを使う、新しい境界を持たない部品である。
 
-| 部品                                      | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 登録(admin-navigation・dashboard-cards)   | `ADMIN_NAV_ITEMS`にユーザー`/users`(20)・プロダクト`/products`(30)・コメント`/comments`(40)・評価`/ratings`(50)・画像モデレーション`/media-moderation`(60)。`DASHBOARD_CARDS`に`{ id: 'ugc-moderation.weekly-statistics', order: 10, width: 'full', component: WeeklyStatisticsCard }`                                                                                                                                                                                                                                                                                                             |
-| `WeeklyStatisticsCard`                    | `adminWeeklyStatistics`を取得し、`DashboardCardFrame`(題「週ごとの統計」)で状態を出す。各指標の直近の確定した週の値と前週からの増減(`StatisticsSeries`)、グラフ(`WeeklyStatisticsChart`)、同じ値の`WeeklyStatisticsTable`。行が無ければ「統計はまだ集計されていません。」                                                                                                                                                                                                                                                                                                                          |
-| `WeeklyStatisticsTable`                   | `<table>`の`<caption>`・週の開始日の`<time datetime>`・金額の`MoneyText`・今週の行に「集計中」                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `WeeklyStatisticsChart`                   | 指標ごとの小さな折れ線グラフ5つ(Recharts、shadcn/uiの`chart`の部品)。`chart`の部品は`components/moderation/statistics/chart/`に部分ごとのファイルへ分けて置き、フロントエンド共通ファイルに置かない(共有ディレクトリがRechartsを読み込まないため)。TanStack Routerの`ClientOnly`(fallbackは同じ高さの空の枠)で包んでクライアントでだけ描画し、図には`aria-hidden`を付けて表を正とする(要件1.4)                                                                                                                                                                                                     |
-| `ModerationSearch`                        | 各ページの検索パラメータのZodのスキーマ(Zodの値は共通部品の`lib/utilities/validation/zod.ts`の`z`から読む。空文字は未指定、ページは`after`)と、GraphQLの絞り込みへの変換。TanStack Routerの`validateSearch`に渡す(3.8・6.4・9.4・10.2)                                                                                                                                                                                                                                                                                                                                                             |
-| `ModerationActionDialog`                  | `ConfirmActionDialog`(`reason`は措置の要否、`audited: true`、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)に、影響の一覧(4.12・5.12・8.11)を添える。措置の失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す(14.7。`account_state_conflict`などの`GraphQLClientError`はサーバーの文言のまま)                                                                                                                                                                                                      |
-| `UseModerationMutation`                   | 措置の操作を実行し、成功で`notify`(「◯◯しました」・変化が無ければ「既に◯◯です」)と該当する照会の無効化(14.6)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `AdminMediaImage`                         | `<img src={path}>`(同一オリジン)と、読み込みの失敗・削除済みで`MediaPlaceholder`(11.16)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `/users`の部品                            | `UserFilters`(ハンドル・ニックネーム・メールアドレス・停止状態、メールアドレスの欄の近くに「メールアドレスの検索は監査ログに記録されます。」)、`UserTable`(`AdminDataTable`)、`UserStatusCell`(停止日時と最新の理由)、`UserModerationActions`(`RoleGate minimum="moderator"`、停止・停止解除・プロフィール画像の隔離)                                                                                                                                                                                                                                                                              |
-| `/products`・`/products/$productId`の部品 | `ProductFilters`(カテゴリの選択肢は`adminModerationCategoryOptions`。操作は`AdminModerationCategoryOptions`(`moderation-category-options.graphql`)で、生成物の`AdminModerationCategoryOptionsDocument`・`AdminModerationCategoryOptionsQuery`を読む)、`ProductTable`、`ProductDetailView`(説明文は`MarkdownContent`、外部URLは`rel="noopener noreferrer"`)、`ProductImagesPanel`(ロゴとスクリーンショットと`QuarantineImageButton`)、`ProductRatingsPanel`(`adminProductRatings`と`RatingModerationActions`)、`ProductLaunchesPanel`、`ProductVisibilityActions`、`AdminProductDetailSectionsView` |
-| `ADMIN_PRODUCT_DETAIL_SECTIONS`           | `{ id: string; order: number; component: ComponentType<{ product: AdminProductDetailContext }> }`、`AdminProductDetailContext`は`{ productId: string; ownerUserId: string \| null }`。`order`順に並べ区画ごとにエラー境界で包み、空なら何も描画しない(7.5)                                                                                                                                                                                                                                                                                                                                         |
-| `/comments`・`/ratings`の部品             | 絞り込み・表・措置の操作。本文の抜粋は文字列として表示する(9.11)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `/media-moderation`の部品                 | `QuarantineReasonTabs`(4つの理由、URLの`reason`)、`QuarantinedImageList`(続きの読み込み)、`QuarantinedImageCard`(画像・用途・保有者・日時・全理由・検出内容)、`ImageModerationActions`(理由に応じて公開承認・公開拒否・隔離の解除・削除)                                                                                                                                                                                                                                                                                                                                                           |
-| `AdministrativeWithdrawalAction`          | `UserTable`の各項目の操作に置き、`RoleGate minimum="super_admin"`で最上位管理者にだけ表示する。`AdministrativeWithdrawalDialog`で対象の利用者(ニックネーム・ハンドル・停止状態)、退会は取り消せない旨、本人の意思の確かめと退会の完了の知らせは運営者がシステムの外のメールで行う旨を示し、理由を必須で受けて`withdrawUserByAdministrator`を呼ぶ。ダイアログは`ModerationActionDialog`(`ConfirmActionDialog`の`audited: true`)の上に作り、監査ログに記録される旨と理由の欄の個人情報の注記を示す(5.1〜5.4・5.10・5.12・13.3・14.5)                                                                 |
+| 部品                                      | 内容                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 登録(admin-navigation・dashboard-cards)   | `ADMIN_NAV_ITEMS`にユーザー`/users`(20)・プロダクト`/products`(30)・コメント`/comments`(40)・評価`/ratings`(50)・画像モデレーション`/media-moderation`(60)。`DASHBOARD_CARDS`に`{ id: 'ugc-moderation.weekly-statistics', order: 10, width: 'full', component: WeeklyStatisticsCard }`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `WeeklyStatisticsCard`                    | `adminWeeklyStatistics`を取得し、`DashboardCardFrame`(題「週ごとの統計」)で状態を出す。各指標の直近の確定した週の値と前週からの増減(`StatisticsSeries`)、グラフ(`WeeklyStatisticsChart`)、同じ値の`WeeklyStatisticsTable`。行が無ければ「統計はまだ集計されていません。」                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `WeeklyStatisticsTable`                   | `<table>`の`<caption>`・週の開始日(業務日付のため`DateTime`を使わず、`formatBusinessDateWithWeekdayLabel`(`common-lib/time/business-date-label.ts`)の表示と`<time dateTime={日付}>`。前例は`admin-sponsorship-table.tsx`)・金額の`MoneyText`・今週の行に「集計中」                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `WeeklyStatisticsChart`                   | 指標ごとの小さな折れ線グラフ5つ。Rechartsの部品(`ResponsiveContainer`・`LineChart`・`Line`・`XAxis`・`YAxis`など)を直接使い、shadcn/uiの`chart`の部品は写さない。線と軸の色は配色のトークンのCSSの変数(`var(--…)`)を`stroke`などの属性で渡し、`<style>`の注入(`dangerouslySetInnerHTML`)を使わない(管理者側の生のHTMLの例外の検査が0件を求めるため。2026-11-20に開発者が決定したG3)。Rechartsを読み込む部品は動的な`import()`で別のチャンクにし、TanStack Routerの`ClientOnly`の中で`React.lazy`と`Suspense`で読み込む。`ClientOnly`の`fallback`と読み込み中の`Suspense`の`fallback`は同じ高さの空の枠で、ダッシュボードのルートのチャンクにRechartsを含めない(2026-11-20に開発者が決定)。図には`aria-hidden`を付けて表を正とする(要件1.4)。Rechartsはフロントエンド共通ファイルに置かない(共有ディレクトリがRechartsを読み込まないため)                                                                                                                                         |
+| `ModerationSearch`                        | 各ページの検索パラメータのZodのスキーマ(Zodの値は共通部品の`lib/utilities/validation/zod.ts`の`z`から読む。空文字は未指定、ページは`after`)と、GraphQLの絞り込みへの変換。TanStack Routerの`validateSearch`に渡す(3.8・6.4・9.4・10.2)。一覧のルートは`frontend/014`の形にし、`loaderDeps`で検索パラメータを渡し、`loader`は`src/graphql/admin-moderation-*.ts`の読み込みの関数(`queryClient`の取得の失敗を`undefined`で握り、`cause !== 'stay'`のときだけ待つ)、ページの部品は`useQuery`の`placeholderData: keepPreviousData`で読む。ページ送りは`utilities/pagination/cursor-trail.ts`を使う(前例は`routes/_authenticated/sponsorships/index.tsx`)                                                                                                                                                                                                                                                                                                                             |
+| `ModerationActionDialog`                  | `ConfirmActionDialog`(`reason`は措置の要否、`audited: true`、`failureMessageOf`は`(error) => errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`)を使い、措置の影響(4.12・5.12・8.11)は`description`の文の中に含める(文言規則に追加する確認の文。`description`は段落の中に描かれ、一覧の要素を置けないため、sponsorshipの強制終了のダイアログと同じく文で示す。2026-11-20に開発者が決定したG2)。措置の失敗は、部品が理由の入力を保ったままダイアログの中に`failureMessageOf(error)`の文言を`role="alert"`で示す(14.7。`account_state_conflict`などの`GraphQLClientError`はサーバーの文言のまま)。確定や対象の不在の失敗で一覧を取り直すと開いた元の行が消えるため、行の中に置かず、一覧(表・区画・タブの区画)の単位に1つ置く`ModerationDialogHost`が描き、行の操作は文脈(`useOpenModerationDialog`)から対象と開いた時の文言を渡して開く。閉じた後のフォーカスは、確定した時と開いた元の操作が消えた時は一覧の見出し、取り消しでは押した操作へ移す(実装の後の変更(2026-11-20)) |
+| `UseModerationMutation`                   | 措置の操作を実行し、成功で`notify`(「◯◯しました」・変化が無ければ「既に◯◯です」)と該当する照会の無効化(14.6)。対象の不在の失敗(`GraphQLClientError`でコードが`user_not_found`・`product_not_found`・`comment_not_found`・`rating_not_found`・`image_not_found`のもの)では、影響する照会を無効化してから失敗を投げ直す。プロダクトの詳細のページ(非公開化・復元と、画像・評価の区画)は、取り直しでプロダクトが消えると詳細ごと見つからない表示に替わり確認のダイアログも外れるため、`deferTargetMissingRefresh`で無効化をダイアログを閉じるまで遅らせる。`ProductDetailPage`は取り直しで消えたプロダクトを`notFound()`へ投げずに`ProductNotFoundPage`(`replacedDetail`)を描き、フォーカスが`<body>`にある時だけ不在の区画へ移す(実装の後の変更(2026-11-20): 文言規則の「ダイアログの中に文言を示し、一覧を取り直す」に合わせた)                                                                                                                                                   |
+| `AdminMediaImage`                         | 隔離理由が無く`image.objectKey`がある画像は共通部品の`MediaPicture`(画像配信のオリジンからの`<picture>`)、隔離中・`objectKey`が空の画像は`<img src={path}>`(同一オリジン)で表示し、読み込みの失敗・削除済みで`MediaPlaceholder`(`{ kind, placeholder, alt, size }`を渡す、11.16)。`AdminAvatar`は画像の変換配信の`MediaImageView \| null`だけを受け取り、隔離中の画像は代わりの表示になるため、隔離画像と隔離の操作の対象の画像は`AdminMediaImage`で表示する(2026-11-20の検証の後に開発者が決定)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `/users`の部品                            | `UserFilters`(ハンドル・ニックネーム・メールアドレス・停止状態、メールアドレスの欄の近くに「メールアドレスの検索は監査ログに記録されます。」)、`UserTable`(`AdminDataTable`)、`UserStatusCell`(停止日時と最新の理由)、`UserModerationActions`(`RoleGate minimum="moderator"`、停止・停止解除・プロフィール画像の隔離)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `/products`・`/products/$productId`の部品 | `ProductFilters`(カテゴリの選択肢は`adminModerationCategoryOptions`。操作は`AdminModerationCategoryOptions`(`moderation-category-options.graphql`)で、生成物の`AdminModerationCategoryOptionsDocument`・`AdminModerationCategoryOptionsQuery`を読む)、`ProductTable`、`ProductDetailView`(説明文は`MarkdownContent`、外部URLは`rel="noopener noreferrer"`)、`ProductImagesPanel`(ロゴとスクリーンショットと`QuarantineImageButton`)、`ProductRatingsPanel`(`adminProductRatings`と`RatingModerationActions`)、`ProductLaunchesPanel`、`ProductVisibilityActions`、`AdminProductDetailSectionsView`                                                                                                                                                                                                                                                                                                                                                                               |
+| `ADMIN_PRODUCT_DETAIL_SECTIONS`           | `{ id: string; order: number; title: string; component: ComponentType<{ product: AdminProductDetailContext }> }`、`AdminProductDetailContext`は`{ productId: string; ownerUserId: string \| null }`。型は登録の一覧と同じ`composition/admin-product-detail-sections.ts`に置く(前例は`composition/inquiry-detail-actions.ts`)。`order`順に並べ、区画は自分でデータを取得するため区画ごとに`RecoverableSlot`(`frontend/006`)で包み、失敗の表示に`title`を見出しとして出す。空なら何も描画しない(7.5)                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `/comments`・`/ratings`の部品             | 絞り込み・表・措置の操作。本文の抜粋は文字列として表示する(9.11)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `/media-moderation`の部品                 | `QuarantineReasonTabs`(4つの理由、URLの`reason`)、`QuarantinedImageList`(続きの読み込み)、`QuarantinedImageCard`(画像・用途・保有者・日時・全理由・検出内容)、`ImageModerationActions`(理由に応じて公開承認・公開拒否・隔離の解除・削除)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `AdministrativeWithdrawalAction`          | `UserTable`の各項目の操作に置き、`RoleGate minimum="super_admin"`で最上位管理者にだけ表示する。一覧の単位の`ModerationDialogHost`の確認のダイアログで対象の利用者(ニックネーム・ハンドル・停止状態)、退会は取り消せない旨、本人の意思の確かめと退会の完了の知らせは運営者がシステムの外のメールで行う旨を示し、理由を必須で受けて`withdrawUserByAdministrator`を呼ぶ。ダイアログは`ModerationActionDialog`(`ConfirmActionDialog`の`audited: true`)の上に作り、監査ログに記録される旨と理由の欄の個人情報の注記を示す(5.1〜5.4・5.10・5.12・13.3・14.5)                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
-- 操作はadminの`src/graphql/operations/moderation/`に1ファイル1操作の`.graphql`で書き、`graphql()`を呼ばない。操作名は`Admin`で始め(照会は`AdminWeeklyStatistics`・`AdminUsers`・`AdminModerationCategoryOptions`など、措置は`AdminSuspendUser`〜`AdminDeleteQuarantinedImage`)、画面は`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型を読み、`gql.ts`・`index.ts`を読まない(frontend-platformの「操作の追加手順」)。
-- 管理者側には問い合わせの画面が無いため、どの部品も問い合わせの導線と問い合わせを促す文を出さない。一覧・詳細のページの取得の失敗は`ErrorState`(再試行)、カード・区画の取得の失敗は`PartialErrorState`(または`DashboardCardFrame`のエラーの状態)で示し、`ErrorState`に`contactHref`を渡さない。`GraphQLClientError`でない例外に代えて出す文言(`ErrorState`・`PartialErrorState`・`AdminDataTable`の`error.message`・`ModerationActionDialog`(`AdministrativeWithdrawalDialog`を含む)の`ConfirmActionDialog`に渡す`failureMessageOf`・トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ。
+- 操作はadminの`src/graphql/operations/moderation/`に1ファイル1操作の`.graphql`で書き、`graphql()`を呼ばない。操作名は`Admin`で始め(照会は`AdminWeeklyStatistics`・`AdminUsers`・`AdminModerationCategoryOptions`など、措置は`AdminSuspendUser`〜`AdminDeleteQuarantinedImage`)、`src/graphql/generated/graphql.ts`の`<操作名>Document`と生成された型は`src/graphql/admin-moderation-*.ts`・`admin-quarantined-images.ts`・`admin-weekly-statistics.ts`(同名の単体テスト)だけが読み、画面の型へ変えて部品へ渡す。部品は生成物の型に直接依存せず、`gql.ts`・`index.ts`を読まない(frontend-platformの「操作の追加手順」、`frontend/006`)。
+- ページの配置: ルート(`routes/_authenticated/<メニュー>/index.tsx`、詳細は`products/$productId.tsx`)は`validateSearch`・`loaderDeps`・`loader`・`head: () => buildAdminPageHead({ title })`・`component`だけを持ち、ページの部品は`components/pages/<名前>-page.tsx`に置く。見出し・確認・成功・状態の文言は`components/moderation/shared/moderation-messages.ts`(単体テスト付き)に置く(前例はsponsorshipの`admin-sponsorships-messages.ts`)。
+- 管理者側には問い合わせの画面が無いため、どの部品も問い合わせの導線と問い合わせを促す文を出さない。一覧・詳細のページの取得の失敗は`ErrorState`(再試行)、カード・区画の取得の失敗は`PartialErrorState`(または`DashboardCardFrame`のエラーの状態)で示し、`ErrorState`に`contactHref`を渡さない。`GraphQLClientError`でない例外に代えて出す文言(`ErrorState`・`PartialErrorState`・`AdminDataTable`の`error.message`・`ModerationActionDialog`(代理の退会を含む)の`ConfirmActionDialog`に渡す`failureMessageOf`・トースト)は`errorMessageOf(error, ADMIN_PROFILE.contactAvailable)`で選ぶ。
 
 ## Data Models
 
@@ -1423,7 +1516,7 @@ type Mutation {
 | テーブル                       | 列(共通カラム以外)                                                                                                                                                                                                                                  | 制約・索引                                                                                                                                                                                   |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `moderation_actions`           | `action` text・`target_kind` text・`target_id` text・`subject_user_id` text?・`product_id` text?・`operator_admin_id` text・`reason` text?・`lifecycle_event_id` text?・`occurred_at` integer・`notice_status` text・`notice_requested_at` integer? | `action`・`target_kind`・`notice_status`のCHECK、`(target_kind, target_id, occurred_at)`・`(notice_status, occurred_at)`・`subject_user_id`・`product_id`・`occurred_at`の索引。外部キーなし |
-| `moderation_weekly_statistics` | `week_start` text(主キー)・`net_revenue` integer・`users_total` integer・`products_total` integer・`qualifier_matches` integer・`upvotes` integer・`finalized` integer(0・1)・`computed_at` integer                                                 | `finalized`のCHECK、件数の0以上のCHECK。`ulidPrimaryKey()`を使わず`week_start`を主キーにする                                                                                                 |
+| `moderation_weekly_statistics` | `week_start` text・`net_revenue` integer・`users_total` integer・`products_total` integer・`qualifier_matches` integer・`upvotes` integer・`finalized` integer(0・1)・`computed_at` integer                                                         | 主キーは他のテーブルと同じ`ulidPrimaryKey()`(2026-11-20に開発者が決定したG4)。`week_start`の一意索引(upsertの`ON CONFLICT(week_start)`の対象)、`finalized`のCHECK、件数の0以上のCHECK        |
 
 - `reason`は500書記素以内で、検証はアプリケーション層。メールアドレス・検索文字列は保存しない。
 
@@ -1449,41 +1542,46 @@ type Mutation {
 | 権限               | 閲覧のみの措置、最上位管理者でない代理の退会、管理者側以外・未ログイン                       | `forbidden`・`unauthenticated`                                                                 |
 | 対象なし           | 退会済みの利用者、論理削除済みのプロダクト                                                   | `*_not_found`                                                                                  |
 | 業務の規則         | 自動判定の理由が無い画像の公開承認                                                           | `image_action_not_applicable`                                                                  |
+| ページの位置の誤り | 復号できない一覧の`after`                                                                    | `invalid_cursor`(上流のコードと文言のまま)                                                     |
+| 画像の後続の失敗   | 隔離理由の確定の後の移動の依頼、削除待ちの印の後の即時の削除の失敗                           | `storage_unavailable`(状態・記録・監査ログは確定済み。保存先と削除は日次の処理がそろえる)      |
 | 競合               | 同じ利用者の同時の状態の変更                                                                 | `account_state_conflict`(画面は読み直しの案内)                                                 |
 | 既に同じ状態       | 停止中の利用者の停止                                                                         | `changed: false`(エラーにしない)                                                               |
-| 外部の一時的な失敗 | メールの送信の依頼・D1・Queue                                                                | 通知は`pending`のまま送り直し、ジョブは`captureEvent`                                          |
-| 記録の取り出し漏れ | 状態は変わったが同期の処理が記録を返さない                                                   | `captureEvent`(`moderation-record-missing`)                                                    |
-| 参加者の誤り       | 登録の無い`participation.kind`、参加者が解釈できない`payload`、画像の操作への`participation` | `AppError(internal)`(何も書かない)                                                             |
+| 外部の一時的な失敗 | メールの送信の依頼・D1・Queue                                                                | 通知は`pending`のまま送り直し、ジョブは`ModerationIncidentReporter`                            |
+| 記録の取り出し漏れ | 状態は変わったが同期の処理が記録を返さない                                                   | `ModerationIncidentReporter`の`moderation-record-missing`                                      |
+| 参加者の誤り       | 登録の無い`participation.kind`、参加者が解釈できない`payload`、画像の操作への`participation` | 通常の`Error`(何も書かない)                                                                    |
 | 参加者の文の違反   | 呼び出し側の記録の条件(NOT NULL制約)を満たさない                                             | 上流の確定の全体を取り消し、上流のエラーまたは`AppError`をそのまま返す(呼び出し側が振り分ける) |
 
 ### Monitoring
 
-- ログは`getAppLogger`で、措置の種類・対象と操作者のID・結果・件数だけを記録し、メールアドレス・ハンドル・ニックネーム・名称・理由・検索文字列を含めない(15.4)。`captureEvent`(文言は`logentry`、`fingerprint`は理由)のタグは`job`・理由(`statistics-failed`・`notice-redispatch-failed`・`moderation-record-missing`)。
+- ログは`getAppLogger`で、措置の種類・対象と操作者のID・結果・件数だけを記録し、メールアドレス・ハンドル・ニックネーム・名称・理由・検索文字列を含めない(15.4)。定型の通知はapplication層の`ModerationIncidentReporter`越しに、infrastructure層の`SentryModerationIncidentReporter`が`captureEvent`で送る(文言は`logentry`、`fingerprint`は`['moderation', <理由>]`、タグは`moderation_incident`(理由: `statistics-failed`・`notice-redispatch-failed`・`moderation-record-missing`)と`job`)。`docs/GUIDES/tech/infra/004-logging-and-error-tracking.md`の送信の表に本specの行を加える(U7)。
 
 ## Testing Strategy
 
 - 単体テスト(`*.unit.test.ts`):
-  - `moderation-actions`: 13種の定義、理由の要否と500・501書記素と空白だけ、通知の要否、イベントの種類との対応(16.2)。`moderation-labels`の上流の値との一致。
+  - `moderation-actions`: 13種の定義、理由の要否と500・501書記素と空白だけ、通知の要否、イベントの種類との対応(16.2)。`moderation-labels`の表示名の網羅。上流の値(`QuarantineReason`・`AdminProductLaunchState`・`AdminCommentState`)とDBのテーブル定義のCHECKの写しの一致は、ルートの`config/ugc-moderation-contract-copies.unit.test.ts`で確かめる。
   - `statistics-week`: 月曜日0:00の前後、日曜日23:59、年をまたぐ週(12月29日〜1月4日)、`isWeekFinished`の境界(16.2)。
-  - `identifiers`(`core/moderation`): `MODERATION_PLATFORM_TYPES`の各値が`Symbol.for('moderation.<名前>')`で、オブジェクトが凍結されていること。
+  - 識別子: `MODERATION_PLATFORM_TYPES`(`core/moderation`)・`MODERATION_TYPES`(api)・`EVENT_MODERATION_TYPES`(event)の各値が`Symbol.for('moderation.<名前>')`・`'moderation.api.<名前>'`・`'moderation.event.<名前>'`で、オブジェクトが凍結されていること。
+  - 4:21のジョブ: `apps/api/test/config/ugc-moderation-scheduled-jobs.unit.test.ts`で、2つのジョブの帯(1900番台)・前後の順・予算を確かめる(`sponsorship-scheduled-jobs.unit.test.ts`と同じ形)。
+  - `SentryModerationIncidentReporter`: 3つの理由の`logentry`・`fingerprint`・タグ。
   - 監査の操作種別: 13種の検証と集約の重複の検査。
-  - `moderation-write-participant`: `createModerationWriteParticipants`が種類の形式違反と重複で例外を投げること、`participation`が無いときに`[]`を返し参加者を解決しないこと、登録の無い種類の`AppError(internal)`、登録した参加者へ`participation`と`context`をそのまま渡すこと。`MODERATION_WRITE_PARTICIPANTS`の種類の形式と重複の検査。
+  - `moderation-write-participant`: `createModerationWriteParticipants`が種類の形式違反と重複で例外を投げること、`participation`が無いときに`[]`を返し参加者を解決しないこと、登録の無い種類の通常の`Error`、登録した参加者へ`participation`と`context`をそのまま渡すこと。`MODERATION_WRITE_PARTICIPANTS`の種類の形式と重複の検査。
   - アプリケーション層: 各措置のユースケース(理由の検証・対象なし・既に同じ状態・`unchanged`での保留の破棄・取り出し漏れの通知・通知の例外を握ること・`participation`を中身を読まずに保留中の措置と書き込みの単位へ渡すこと・結果の`actionId`が記録のIDであること)、`AdministrativeWithdrawalService`(理由の必須、退会済み・不在、停止中の受け付け、メールを送らないこと)、`ImageModerationService`の理由ごとの可否、`ModerationNotifier`の種類ごとの入力と宛先なし、照会のメールアドレス検索の記録と記録の失敗、`AdminRoleMediaReviewPolicy`、2つのジョブ、eventの2つの処理。
   - adminの`moderation-search`・`statistics-series`(増減、行の欠け、今週)。
+  - ロールの判定(16.2): apiの`resolver-support.unit.test.ts`で、本物の`StoreAdminAuthorizer`に保存済みの管理者だけを差し替えた文脈(`apps/api/test/support/admin-authorization-context.ts`)を使い、`moderationOperatorOf`が閲覧のみ・モデレーター・最上位管理者のそれぞれに最低限のロール(閲覧のみ以上・モデレーター以上・最上位管理者だけ)で許可と拒否をすること、利用者側の呼び出し元を管理者を読まずに拒否すること、未ログインと利用者のセッションを未認証にすること、`adminOnly`がロールの確認とリゾルバより前に利用者側の呼び出しを拒否することを確かめる。上流の`admin-guard.ts`(`requireAdmin`・`requireSelfOrRole`とロールの不足の拒否のログ)は同じ文脈で`admin-guard.unit.test.ts`が確かめ、両ファイルは兄弟の単体テストを持つためWorkers統合テストのカバレッジから外れ、単体テストのカバレッジで数える。
 - Workers統合テスト(`*.worker.test.ts`):
   - 停止・停止解除: 状態・イベント・措置の記録・監査ログ(仮名化ID)が1回の一括の書き込みで確定、既に同じ状態で何も残らない、版の競合で何も残らない、本人の退会では記録が作られない(4.4・4.7・4.11・13.4)。
   - 非公開化・復元: 状態・未開始のローンチの取り消し・記録・監査ログの一体の確定と、`unchanged`(8.4・8.7)。
   - コメント・評価: `ControlEngagementModerationWriter`がengagementの操作口へ渡す記録・監査ログ・参加者の文の一体の確定と`unchanged`(9.8・10.6)。
-  - 参加者の登録口: テストの中で登録した試験用の参加者を使い、停止・プロダクトの非公開化(同期の処理の経路)とコメントの非公開化・評価の無効化(`ControlEngagementModerationWriter`の経路)のそれぞれで、参加者の文が状態の変更・記録・監査ログと同じ一括の書き込みで確定し`context.actionId`が結果の`actionId`と記録のIDに一致すること、参加者の文の違反(NOT NULL制約)で上流の状態・イベント・記録・監査ログを含む全体が取り消されること、登録の無い種類で`AppError(internal)`になり何も書かれないこと、上流の`unchanged`・既に同じ状態で参加者の文も書かれないこと(15.7)。
+  - 参加者の登録口: テストの中で登録した試験用の参加者を使い、停止・プロダクトの非公開化(同期の処理の経路)とコメントの非公開化・評価の無効化(`ControlEngagementModerationWriter`の経路)のそれぞれで、参加者の文が状態の変更・記録・監査ログと同じ一括の書き込みで確定し`context.actionId`が結果の`actionId`と記録のIDに一致すること、参加者の文の違反(NOT NULL制約)で上流の状態・イベント・記録・監査ログを含む全体が取り消されること、登録の無い種類で通常の`Error`になり何も書かれないこと、上流の`unchanged`・既に同じ状態で参加者の文も書かれないこと(15.7)。
   - 代理の退会: 退会の確定と記録・監査ログの一体の確定、メールを送らないこと、退会済みの`user_not_found`、最上位管理者以外の拒否(5.5〜5.10)。
-  - 画像: 理由の追加・解除の後の記録、削除、権限の判定で隔離画像が管理者側だけから読めること(11.4・11.6〜11.13)。
+  - 画像: 理由の追加・解除・削除待ちの印と記録と監査ログが同じ一括の書き込みで確定すること、既に目的の状態で文が書かれないこと、同時の操作で状態の変更が効かなければ記録と監査ログも残らないこと、移動の依頼・即時の削除の失敗で`storage_unavailable`を返しつつ状態と記録が残ること、その後の再実行で記録を重ねないこと(隔離は移動を依頼し直す)、権限の判定で隔離画像が管理者側だけから読めること(11.4・11.6〜11.14・13.4)。`MediaModerationControl`自体の確定・取り消し・移動の依頼のWorkers統合テストは`workers/media/media-moderation-control.worker.test.ts`に置く。
   - メールアドレス検索の監査ログ(結果の仮名化ID・0件の対象なし・検索文字列を含まない、3.5)。
-  - 統計: 2回実行して行が1つ、確定した週を書き換えない、前週の確定(2.5・2.6)。上流の照会(`netRevenue`の値の解釈、`AdminCommentDirectory`・`AdminRatingDirectory`の絞り込みとカーソル、`countRegisteredAt`、利用者・プロダクトの検索の部分一致の逃がし)は、paymentsの仮7・engagementの仮6・identity-authの仮7・product-launchの仮13のテストが確かめる。
-  - 通知の送り直し: `pending`の1時間以上前だけ、`requested`へ1回だけ進む、宛先なしの`skipped`(12.7・12.8)。
+  - 統計: 2回実行して行が1つ、確定した週を書き換えない、前週の確定、ジョブが7日を超えて止まった後に表示の範囲の未確定・行の無い終わった週を全て確定し範囲より前を集計しないこと、照会の回数(2.1・2.5・2.6)。上流の照会(`netRevenue`の値の解釈、`AdminCommentDirectory`・`AdminRatingDirectory`の絞り込みとカーソル、`countRegisteredAt`、利用者・プロダクトの検索の部分一致の逃がし)は、paymentsの仮7・engagementの仮6・identity-authの仮7・product-launchの仮13のテストが確かめる。
+  - 通知の送り直し: `pending`の1時間以上前だけ、`requested`へ1回だけ進む、宛先なしの`skipped`(12.7・12.8)。依頼済みへの更新だけが失敗した後の送り直しも措置の記録のIDを冪等のキーにする(`ModerationNotifier`の単体テスト)。同じ種別で同じキーの2つ目の送信要求を送らない(eventの`composition/email-module.worker.test.ts`のWorkers統合テスト、12.8)。
   - 物理削除: 利用者・プロダクトの記録の削除と`continue`、保持期間の削除(13.6・13.7)。
   - GraphQL: ロールごとの許可と拒否、各エラーコード、接続の形(14.2〜14.4)。
-- ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `WeeklyStatisticsCard`(値・増減・集計中・行なし・エラーの縮退)、`WeeklyStatisticsTable`、5ページの絞り込みとURLの保持・表・空の状態、`ModerationActionDialog`(理由の要否・上限・影響の一覧・失敗で入力を保つ)、`UserStatusCell`、`ProductDetailView`の各区画と`ADMIN_PRODUCT_DETAIL_SECTIONS`の空と失敗、`QuarantinedImageCard`の理由ごとの操作、`AdminMediaImage`の代わりの表示、`AdministrativeWithdrawalAction`(最上位管理者だけに表示・確認の文・理由の必須)、`WeeklyStatisticsChart`(5つの指標のグラフが直近26週と今週の値を持つこと・サーバー側の描画(`renderToString`)がfallbackの枠の目印だけで`svg`を含まずクライアントの描画でグラフが出ること・表の上に並ぶこと)。
-- E2E(管理者は`signInAsNewAdmin`のモデレーター、代理の退会だけ最上位管理者。利用者は`mailpit.ts`で登録し、掲載中のプロダクトはdirectory-discoveryの`directory-fixtures.ts`で作る):
+- ブラウザテスト(`*.browser.test.tsx`、`runAxe`の違反0件): `WeeklyStatisticsCard`(値・増減・集計中・行なし・エラーの縮退)、`WeeklyStatisticsTable`、5ページの絞り込みとURLの保持・表・空の状態、`ModerationActionDialog`(理由の要否・上限・説明の文の影響・失敗で入力を保つ)、`UserStatusCell`、`ProductDetailView`の各区画と`ADMIN_PRODUCT_DETAIL_SECTIONS`の空と失敗、`QuarantinedImageCard`の理由ごとの操作、`AdminMediaImage`の代わりの表示、`AdministrativeWithdrawalAction`(最上位管理者だけに表示・確認の文・理由の必須)、`WeeklyStatisticsChart`(5つの指標のグラフが直近26週と今週の値を持つこと・サーバー側の描画(`renderToString`)がfallbackの枠の目印だけで`svg`を含まず、遅延読み込みの後のクライアントの描画でグラフが出ること・読み込み中も同じ高さの枠を保つこと・表の上に並ぶこと)。
+- E2E(テストは`e2e/admin/admin-test.ts`の`test`を使い、画面の操作の手順は`<名前>-steps.ts`に置く。措置の対象のSQLは`e2e/support/moderation-fixture-sql.ts`の純粋な関数で組み立てて単体テストを置き、`moderation-fixtures.ts`が実行する。管理者は`signInAsNewAdmin`のモデレーター、代理の退会だけ最上位管理者。利用者は`mailpit.ts`で登録し、掲載中のプロダクトはdirectory-discoveryの`directory-fixtures.ts`で作る):
   - `user-moderation.e2e.test.ts`: `/users`でハンドルを検索して停止→ディレクトリからその利用者のプロダクトが消える→Mailpitに「アカウントが停止されました」→`/audit-logs`に「ユーザーの停止」→停止解除で戻る(16.4)。
   - `product-moderation.e2e.test.ts`: プロダクトの詳細で非公開化→利用者側のプロダクト詳細が他者に404→通知メール→復元(16.4)。
   - `engagement-moderation.e2e.test.ts`: `moderation-fixtures.ts`で作ったコメントを非公開化→利用者側で「このコメントは削除されました。」、評価の無効化で平均が変わる。
@@ -1503,11 +1601,11 @@ type Mutation {
 
 - 一覧は1ページ50件で、上流の照会・表示名・最新の理由をそれぞれ1回(90件ずつ)にまとめる(15.6)。プロダクトの詳細はローンチ・マッチ・対戦相手・画像・評価の照会を各1回にする。
 - 部分一致の検索は索引を使えないが、管理画面の利用者だけが使い、件数の上限とカーソルのページ分けで1回の読み取りを抑える。件数が増えて遅くなる場合の全文検索への移行はlaunch-readinessの性能の検証で判断する(Risks)。
-- 統計は日次の集計の結果を読むだけで、表示のたびに集計しない。集計はD1への集計の問い合わせを週ごとに数回で、4:21の直列のジョブの予算(roadmapのRequirement Ambiguities)に収まる。
+- 統計は日次の集計の結果を読むだけで、表示のたびに集計しない。通常の日の集計は上流の照会4回(月曜日は6回)で、4:21の直列のジョブの予算(roadmapのRequirement Ambiguities)に収まる。最初の実行やジョブの停止の後は、最大27週分の時点の総数の照会(2つの照会を27回ずつ)を並べて呼ぶ。
 
 ## Migration Strategy
 
-- 新しいテーブルだけを足すマイグレーション2つ(措置の記録と週ごとの統計。統計の群を別に作るため分ける)。既存のデータの移行は無い。統計は最初の4:21のジョブから、その週と前週の行ができる(それより前の週は無い)。上流への照会の追加はテーブルを変えない。
+- 新しいテーブルだけを足すマイグレーション2つ(措置の記録と週ごとの統計。統計の群を別に作るため分ける)。既存のデータの移行は無い。統計は最初の4:21のジョブで、表示の範囲(直近26週)の終わった週と今週の行ができる。終わった週は最初の実行の時点で週の終わりの時点の値を求めるため、それまでに物理削除された利用者・プロダクトは数えられない。上流への照会の追加はテーブルを変えない。
 
 ## Supporting References
 
@@ -1528,6 +1626,6 @@ type Mutation {
 - 見出しと説明: 「ユーザー」「プロダクト」「コメント」「評価」「画像モデレーション」「週ごとの統計」と各ページの説明。
 - 確認: 停止「<ニックネーム>を停止しますか?この利用者のプロフィール・プロダクト・コメント・評価は他の利用者に表示されなくなり、未開始のマッチ予定は取り消されます(停止を解除しても戻りません)。利用者へ停止の通知を送ります。」、停止解除、非公開化「<名称>を非公開にしますか?未開始のマッチ予定は取り消され、復元しても戻りません。投稿者へ通知を送ります。」、復元、コメントの非公開化と復元、評価の無効化と取り消し、画像の公開承認・公開拒否・隔離・隔離の解除・削除、代理の退会「<ニックネーム>を退会させますか?退会は取り消せず、利用者のデータは退会の規則どおりに削除されます。」と注記「本人の意思の確かめと退会の完了の知らせは、システムの外のメールで行ってください。」。
 - 成功: 「<措置>しました。」、変化なし: 「既に停止中です。」「既に利用中です。」「既に非公開です。」「既に公開中です。」など。
-- エラー: 「理由を入力してください。」・「理由は500文字以内で入力してください。」(`validation_error`)、「利用者が見つかりません。」(`user_not_found`)、「プロダクトが見つかりません。」(`product_not_found`)、「コメントが見つかりません。削除された可能性があります。」(`comment_not_found`。engagementの操作口が投げる`ENGAGEMENT_ERRORS`の文言で、利用者の画面と同じ)、「評価が見つかりません。」(`rating_not_found`)、「画像が見つかりません。」(`image_not_found`)、「この画像にはこの操作を行えません。」(`image_action_not_applicable`)、「他の操作で状態が変わりました。最新の内容を読み込んでからやり直してください。」(`account_state_conflict`)。
+- エラー: 「理由を入力してください。」・「理由は500文字以内で入力してください。」(`validation_error`)、「利用者が見つかりません。」(`user_not_found`)、「プロダクトが見つかりません。」(`product_not_found`)、「コメントが見つかりません。削除された可能性があります。」(`comment_not_found`。engagementの操作口が投げる`ENGAGEMENT_ERRORS`の文言で、利用者の画面と同じ)、「評価が見つかりません。」(`rating_not_found`)、「画像が見つかりません。」(`image_not_found`)、「この画像にはこの操作を行えません。」(`image_action_not_applicable`)、「他の操作で状態が変わりました。最新の内容を読み込んでからやり直してください。」(`account_state_conflict`)、「ページの位置の指定が正しくありません。」(`invalid_cursor`。共通の文言を参照し、本specは書き直さない)。
 - 状態: 「利用中」「停止中」、使い捨て判定「使い捨て」「通常」「判定できず」「未確認」、公開状態「公開中」「非公開化中」「投稿者が停止中」、コメントの状態「表示中」「管理者が非公開化」「投稿者が削除」「匿名化済み」「投稿者が退会・停止中」、評価「有効」「無効化済み」、隔離理由「自動判定」「非公開化」「ユーザー停止」「管理者操作」、「集計中」「統計はまだ集計されていません。」、「メールアドレスの検索は監査ログに記録されます。」。
 - 通知メール: 件名(「ModerationEmailKinds」)と、停止・非公開化の固定の段落(要件12.4・12.5)。

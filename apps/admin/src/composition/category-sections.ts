@@ -6,6 +6,8 @@ import { InquiryCategorySection } from '../components/inquiry/inquiry-category-s
 import { INQUIRY_CATEGORIES_TITLE } from '../components/inquiry/inquiry-category-messages.ts';
 import { PRODUCT_CATEGORIES_TITLE } from '../components/product/product-category-messages.ts';
 import { ProductCategorySection } from '../components/product/product-category-section.tsx';
+import { REPORT_CATEGORIES_TITLE } from '../components/reporting/categories/report-category-messages.ts';
+import { ReportCategorySection } from '../components/reporting/categories/report-category-section.tsx';
 
 export interface CategorySection {
   // '<spec名>.<名詞句>'
@@ -37,5 +39,11 @@ export const CATEGORY_SECTIONS: readonly CategorySection[] = Object.freeze([
     order: 30,
     title: INQUIRY_CATEGORIES_TITLE,
     component: InquiryCategorySection,
+  },
+  {
+    id: 'content-reporting.report-categories',
+    order: 40,
+    title: REPORT_CATEGORIES_TITLE,
+    component: ReportCategorySection,
   },
 ]);

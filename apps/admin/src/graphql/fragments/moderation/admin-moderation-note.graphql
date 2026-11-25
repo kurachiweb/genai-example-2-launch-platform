@@ -1,0 +1,4 @@
+fragment AdminModerationNote on ModerationNote {
+  reason
+  occurredAt
+}

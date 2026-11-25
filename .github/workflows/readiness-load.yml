@@ -1,0 +1,118 @@
+name: readiness-load
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 負荷をかける環境(stagingだけ選べる)
+        type: choice
+        required: true
+        default: staging
+        options:
+          - staging
+      parallel:
+        description: 並列の数(送信元の数。1以上10以下)
+        type: string
+        required: true
+        default: '5'
+      duration_minutes:
+        description: 負荷をかける時間(分。1以上30以下)
+        type: string
+        required: true
+        default: '15'
+      product_handles:
+        description: 合成データの見本のプロダクトのハンドル(カンマ区切り、空白なし)
+        type: string
+        required: true
+      profile_handles:
+        description: 合成データの見本の利用者のハンドル(カンマ区切り、空白なし)
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  # 入力の検証と、負荷をかける先のURLの取り出しだけを行う。シークレットは使わず、URLは資源一覧(Git管理下)から読む
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      generators: ${{ steps.plan.outputs.generators }}
+      duration: ${{ steps.plan.outputs.duration }}
+      client_base_url: ${{ steps.plan.outputs.client_base_url }}
+      api_base_url: ${{ steps.plan.outputs.api_base_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: plan
+        env:
+          TARGET_ENVIRONMENT: ${{ inputs.environment }}
+          PARALLEL: ${{ inputs.parallel }}
+          DURATION_MINUTES: ${{ inputs.duration_minutes }}
+          PRODUCT_HANDLES: ${{ inputs.product_handles }}
+          PROFILE_HANDLES: ${{ inputs.profile_handles }}
+        run: |
+          fail() { echo "::error::$1" >&2; exit 1; }
+          handle='[A-Za-z0-9][A-Za-z0-9_-]*'
+          list="^${handle}(,${handle})*\$"
+          [ "$TARGET_ENVIRONMENT" = staging ] || fail "負荷をかけられる環境はstagingだけです"
+          [[ "$PARALLEL" =~ ^[1-9][0-9]?$ ]] && [ "$PARALLEL" -le 10 ] || fail "並列の数は1以上10以下の整数で指定してください"
+          [[ "$DURATION_MINUTES" =~ ^[1-9][0-9]?$ ]] && [ "$DURATION_MINUTES" -le 30 ] || fail "負荷をかける時間は1以上30以下の整数(分)で指定してください"
+          [[ "$PRODUCT_HANDLES" =~ $list ]] || fail "見本のプロダクトのハンドルはカンマ区切り(空白なし)で指定してください"
+          [[ "$PROFILE_HANDLES" =~ $list ]] || fail "見本の利用者のハンドルはカンマ区切り(空白なし)で指定してください"
+          resources="apps/infra/environments/${TARGET_ENVIRONMENT}.json"
+          client_host="$(jq -er '.hostnames.client.hostname' "$resources")"
+          api_host="$(jq -er '.hostnames.api.hostname' "$resources")"
+          {
+            echo "generators=$(jq -nc --argjson n "$PARALLEL" '[range(1; $n + 1)]')"
+            echo "duration=${DURATION_MINUTES}m"
+            echo "client_base_url=https://${client_host}"
+            echo "api_base_url=https://${api_host}"
+          } >> "$GITHUB_OUTPUT"
+
+  # 並列ごとに別のランナー(別の送信元)で台本を動かし、1つの送信元に要求が集中しないようにする
+  load:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        generator: ${{ fromJSON(needs.plan.outputs.generators) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-toolchain
+        with:
+          k6: 'true'
+      - env:
+          CLIENT_BASE_URL: ${{ needs.plan.outputs.client_base_url }}
+          API_BASE_URL: ${{ needs.plan.outputs.api_base_url }}
+          PRODUCT_HANDLES: ${{ inputs.product_handles }}
+          PROFILE_HANDLES: ${{ inputs.profile_handles }}
+          DURATION: ${{ needs.plan.outputs.duration }}
+          VUS: '20'
+          SUMMARY_PATH: ${{ runner.temp }}/load/summary.json
+          LOAD_OUTPUT_DIR: ${{ runner.temp }}/load
+        shell: bash
+        run: |
+          mkdir -p "$LOAD_OUTPUT_DIR"
+          k6 run --quiet --no-color scripts/readiness/load/browse-scenario.ts | tee "$LOAD_OUTPUT_DIR/report.md"
+      - if: always()
+        env:
+          REPORT: ${{ runner.temp }}/load/report.md
+          GENERATOR: ${{ matrix.generator }}
+        shell: bash
+        run: |
+          if [ -f "$REPORT" ]; then
+            { echo "### 並列 $GENERATOR"; echo; cat "$REPORT"; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: load-summary-${{ matrix.generator }}
+          path: ${{ runner.temp }}/load
+          if-no-files-found: warn

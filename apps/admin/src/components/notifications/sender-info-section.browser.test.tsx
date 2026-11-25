@@ -17,6 +17,7 @@ import { emulateBrowserDisplay } from '../../../lib/test/display-emulation.ts';
 import { UNEXPECTED_ERROR_MESSAGE_WITHOUT_CONTACT } from '../../../lib/utilities/messages/state-messages.ts';
 import { failure, success } from '../../../test/admin-accounts-fixtures.ts';
 import { adminWithRole } from '../../../test/admin-viewer-fixtures.ts';
+import { watchAuditLogQueries } from '../../../test/audit-log-queries.ts';
 import { renderInRouter } from '../../../test/page-router.tsx';
 import { toAdminViewer } from '../../graphql/admin-viewer.ts';
 import {
@@ -415,12 +416,15 @@ describe('保存', () => {
     await expect.element(confirmButton()).toBeVisible();
   });
 
-  test('確定で、前後の空白を除いた3項目・読み込んだ版・理由を送り、表示を保存の後の値に置き換えてトーストで知らせる', async () => {
+  test('確定で、前後の空白を除いた3項目・読み込んだ版・理由を送り、表示を保存の後の値に置き換えてトーストで知らせ、監査ログの照会を無効にする', async () => {
     const update = vi.fn<UpdateHandler>(() =>
       success({ updateNotificationSenderInfo: UPDATED_STATE }),
     );
     respond(stateOf(SAVED_STATE), update);
-    await renderSection();
+    const router = await renderSection();
+    const auditLogsInvalidated = watchAuditLogQueries(
+      router.options.context.queryClient,
+    );
     await expect.element(businessNameInput()).toBeEnabled();
 
     await userEvent.fill(businessNameInput(), ' 新しい運営事務局 ');
@@ -447,6 +451,7 @@ describe('保存', () => {
     expect(valueOf(UPDATED_BY_LABEL)).toBe('運営の担当');
     await expect.element(submitButton()).not.toHaveAttribute('aria-busy');
     expect(stateCalls()).toHaveLength(1);
+    expect(auditLogsInvalidated()).toBe(true);
   });
 
   test('未設定からの保存は版0を送り、理由が空なら送らず、未設定の警告を取り除く', async () => {
@@ -533,7 +538,7 @@ describe('保存', () => {
     await expect.element(reasonField()).toHaveValue('確認のため');
   });
 
-  test('他の管理者が先に保存していた時は、理由の入力を保ったまま競合の文言をダイアログの中に示し、最新の値を読み直して、閉じた後に最新の値を見せる', async () => {
+  test('他の管理者が先に保存していた時は、理由の入力を保ったまま競合の文言をダイアログの中に示し、最新の値を読み直して、閉じた後に最新の値を見せ、監査ログの照会は無効にしない', async () => {
     let current: SenderInfoState = SAVED_STATE;
     const update = vi.fn<UpdateHandler>(() => {
       current = { ...UPDATED_STATE, updatedByNickname: '別の担当' };
@@ -544,7 +549,10 @@ describe('保存', () => {
       });
     });
     respond(() => stateOf(current)(), update);
-    await renderSection();
+    const router = await renderSection();
+    const auditLogsInvalidated = watchAuditLogQueries(
+      router.options.context.queryClient,
+    );
     await expect.element(businessNameInput()).toBeEnabled();
 
     await userEvent.fill(businessNameInput(), '手元の事業者名');
@@ -586,6 +594,7 @@ describe('保存', () => {
     await expect.element(businessNameInput()).toHaveValue('新しい運営事務局');
     expect(valueOf(UPDATED_BY_LABEL)).toBe('別の担当');
     await expect.element(submitButton()).not.toHaveAttribute('aria-busy');
+    expect(auditLogsInvalidated()).toBe(false);
   });
 
   test('GraphQLClientErrorでない失敗は、理由の入力を保ったまま問い合わせを促す文を含まない文言をダイアログの中に示し、保存しない', async () => {

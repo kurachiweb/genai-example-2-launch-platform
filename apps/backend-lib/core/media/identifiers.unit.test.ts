@@ -5,6 +5,7 @@ import { MEDIA_TYPES } from './identifiers.ts';
 const EXPECTED_NAMES = [
   'MediaFiles',
   'MediaQuarantine',
+  'MediaModerationControl',
   'MediaEraser',
   'UploadReceiver',
   'MediaFileStore',
@@ -13,7 +14,7 @@ const EXPECTED_NAMES = [
 ] as const;
 
 describe('MEDIA_TYPES', () => {
-  test('両アプリとドメインspecが共有する7種の識別子だけを持つ', () => {
+  test('両アプリとドメインspecが共有する8種の識別子だけを持つ', () => {
     expect(Object.keys(MEDIA_TYPES).toSorted()).toEqual(
       [...EXPECTED_NAMES].toSorted(),
     );

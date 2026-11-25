@@ -9,10 +9,10 @@ import type {
   ScheduledJobHandler,
 } from '../../../../lib/core/scheduling/cron-registry.ts';
 import {
+  addBusinessDays,
   type BusinessDate,
   fromBusinessDateTime,
 } from '../../../../lib/core/time/business-time.ts';
-import { addBusinessDays } from '../../../domain/product/launch-date-rules.ts';
 import type {
   ProductIncidentReporter,
   ProductMessagePublisher,

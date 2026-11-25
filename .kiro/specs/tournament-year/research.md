@@ -44,6 +44,7 @@
 - 波及処理・ジョブ・イベントの処理の`order`: 本specの1700番台(roadmapの帯の割り当て)。23:45のジョブはmatch-engine(1100)・notifications(1300)・tournament-weekの`tournament-week.evening-bracket`(1500)の後に動き、上流の値より前に動く必要のある処理は無い。Ultrasの知らせの処理の`order`は100以上の規則のもとで帯と同じ1700・1710とし、tournament-week(1500・1510)と重ならない。
 - 新しいパッケージ: 無い。日付の選択は`<select>`とshadcn/uiの部品、ブラケットはtournament-weekの部品、日付の計算は`BusinessTime`の関数で足りる。
 - steering: `.kiro/steering`にはroadmap.mdだけがあり、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specで代替する(tournament-weekと同じ)。
+- 実装では、日付の選択は`<select>`ではなく共通部品の`Select`(shadcn/uiの部品)で書いた。新しいパッケージは加えていない。
 
 ## Research Log
 
@@ -115,12 +116,14 @@
 - **Rationale**: 前年の組み合わせ決定が前年の対象をすべて終えるため、残った枠は常に開催前の年の対象であり、初年度の起点なしと決勝日の変更がそのまま成り立つ。
 - **Trade-offs**: 年の行の作成の規則(組み合わせ決定の時刻が未来の年だけ作る)を守る必要がある。行を過去の年に作ると、その年の組み合わせ決定が遅れの回復として動いてしまう。
 - **Follow-up**: 決済期限日の前日と当日のWeek優勝、開催しなかった前年、変更で移る枠の判定を単体テストとWorkers統合テストで確かめる。
+- 実装では、分類の対象を`status IN ('awaiting_payment', 'entitled')`かつWeek優勝の日が`[前年の行の決済期限日, その年の決済期限日)`の枠にした(下限は前年の行があるときだけ付け、`YearEntryStore.listCandidates`は範囲`YearCandidateRange`を受ける)。遅れの回復で2年が同時に到来し前の年が分類の途中で失敗しても、後の年が前の年の受付中の枠を分類しないためである。複数の枠をまとめて扱う部品(Week優勝の取り込み・再ローンチの判定)は、`resolveAward`を枠ごとに呼ばず、`YearCalendar.describe`を1回読んで純粋な`resolveTargetYear`を当てる(結果は同じ)。
 
 ### Decision: 期限は年の行の列を正とし、決勝日の保存と同じ一括の書き込みで書き直す
 
 - **Context**: 決勝日の変更、E2Eで時刻を進める必要(tournament-weekと同じ)、変更期限の判定。
 - **Selected Approach**: `year_tournaments`に`final_date`・`final_date_source`・`deadline_date`・`accept_until`・`deadline_at`・`draw_at`・`change_lock_at`を持つ。行の作成時と決勝日の保存時に`yearScheduleFor`で求めて書き、以後の判定(決済の可否・反映・Ultrasの付与・再ローンチ・組み合わせ決定の到来・追記・画面)は列を読む。保存の文は`final_date_version = ? AND draw_started_at IS NULL AND change_lock_at > ?`を`CASE`式の条件にし、満たさなければNOT NULL制約の違反で監査ログごと取り消す。
 - **Rationale**: 変更期限と版と凍結の検査を1つの文で行え、監査ログと保存が一体で確定する(notificationsの送信者情報・ultras-subscriptionの機能フラグと同じ形)。
+- 実装では、保存の取り消しを`CASE`式のNOT NULL制約の違反ではなく、監査ログのガード(`{ kind: 'condition' }`)の拒否で行った。条件(年・版・`draw_started_at IS NULL`・`change_lock_at > now`)を監査ログのガードとUPDATEのWHEREで共有し、`isAuditGuardRejection`で判定する(監査ログのガイドと先例の`D1SenderInfoWriter`・`D1PromotionSettingWriter`に倣う)。一括の書き込みは行の用意→監査ログ→UPDATEの順とした(ガードが行を読むため)。機能全体の検証で、隣の年を同時に保存すると64週の間隔の検証を通り抜け得ることが分かり、条件に前年と翌年の版の一致(行が無い年は0)を加えた。
 
 ### Decision: 参加数の上限はWeek優勝の日時が新しい順に64件(仮2)
 
@@ -133,6 +136,7 @@
 - **Context**: FR-ADMCF-001〜003・006・007、仮8、アクセシビリティ。
 - **Selected Approach**: サーバーが現在の年と翌年について、実効の決勝日・出どころ・期限・変更の可否と理由・候補の日付(最大53件)・前年と翌年の日付・注意を返し、画面は候補の`<select>`と理由の入力欄を`ConfirmActionDialog`で確定する。サーバーは同じ純粋な規則で再検証する。
 - **Rationale**: カレンダーの部品で選べない日を灰色にするより、候補だけを並べる方がキーボードと読み上げで扱いやすく、検証の規則を1か所に保てる。新しいパッケージが要らない。
+- 実装では、候補の選択を`<select>`ではなく共通部品の`Select`(`role="combobox"`、`Label`を結ぶ)で書いた。確認のダイアログの決勝日は業務日付の`<time>`、変更後の受付期限と組み合わせ決定は`DateTime`で示し(`ConfirmActionDialog`の題名と説明が要素を受ける)。
 
 ### Decision: ブラケットのページはtournament-weekの共用の部品を再利用する(表示の組み立ての汎用化はtournament-weekの仮7で提供済み)
 
@@ -306,3 +310,226 @@
 
 - ultras-subscriptionの実装前のギャップ分析への開発者の決定で、管理画面の設定ページの区画の登録口`ADMIN_SETTINGS_SECTIONS`の形が、adminの前例に合わせて`id`(`'<spec名>.<名詞句>'`。`CATEGORY_SECTIONS`・`DASHBOARD_CARDS`の前例)・`order`・`title`(区画の見出し。`CATEGORY_SECTIONS`の前例)・`component`になった。ページは区画ごとにfrontend-libへ移した`RecoverableSlot`で包み、1つの区画の描画や取得の失敗をその区画の位置に留め、読み込み中と失敗の間は`title`の見出しを補う。
 - 本specの登録に、部品が描く見出しと同じ文言の`title`を加えた(design.mdの登録の行、tasks.mdの登録のタスク)。要件と受け入れ基準は変えていない。タスクの番号は変えていない。
+
+## 上流のtournament-weekのフラグメントの置き場所の改訂の反映(2026-11-16)
+
+- tournament-weekの実装前のギャップ分析への開発者の決定(tournament-weekのG3)で、clientの`codegen.unit.test.ts`が`src/graphql/operations/`の各ファイルに操作を1つだけ求めるため、フラグメントだけのファイルを`src/graphql/fragments/`へ置くことになった。Yearと共用する`BracketRoundFields`・`BracketMatchProductFields`はclientの`src/graphql/fragments/bracket/`に置く。フラグメントの名前・選択・生成される型の名前は変わらない。
+- 本specのdesign.mdのAllowed Dependenciesと「上流への影響」の表、tasks.mdの`ClientYearBracket`のタスクの、フラグメントの置き場所の記述を改めた。要件と受け入れ基準は変えていない。
+- 申し送り: tournament-weekのG2(週の表記とラウンド名を共用部品へ一本化する)で、`weekLabel`が参照する`formatWeekPeriodLabel`などの関数の名前が変わり得る。tournament-weekの設計の改訂で名前が確定した後に、本specの文書を合わせる。
+- (解決済み、2026-11-16)tournament-weekの設計の改訂で、週の表記とラウンド名を共用部品へ一本化しても公開の名前(`formatWeekPeriodLabel`・`tournamentRoundName`など)と置き場所(`common-lib/tournament`)は変えないことになった。上の申し送りによる本specの文書の変更は不要である。
+
+---
+
+## 実装前のギャップ分析(2026-11-17、`/kiro-validate-gap`)
+
+### 分析の前提
+
+- 本specの要件・設計・タスクは承認済み(受け入れ基準131件・58のサブタスク)だが、作成の時点で実装済みの上流はdev-toolingだけだった。その後、上流のtournament-week(2026-11-17に最終検証GO)・match-engine・payments・ultras-subscription・notifications・product-launch・directory-discovery・identity-auth・email-delivery・admin-foundation・frontend-platform・backend-platformが実装された。本分析は、設計が前提にした上流の契約と現在のコードの食い違い、tournament-weekの実装と技術ドキュメント(`backend/017`・`frontend/016`)が定めた規約との差、要件定義書の番号との差を洗い出す。
+- Yearトーナメントの実装(テーブル・`core/year-tournament`・`workers/year-tournament`・画面)はまだ無い。`PURCHASE_KINDS`の`year_tournament_entry`と、トップページの区画の並びのテストの`tournament-year.final`(`showcase`)は上流が先に用意している。
+- `.kiro/steering`はroadmap.mdだけで、product.md・tech.md・structure.mdは無い。CLAUDE.md・tech-stack.md・上流specと実装で代替した。
+- 外部の依存の調査は不要(新しいパッケージ・外部APIなし)。
+- 判断は行わず、選択肢と影響を示す。
+
+### 照合の結果の要約
+
+上流の契約の名前・置き場所・形は概ね設計どおりに実装されている。本specが使う登録口の`order`(マッチイベント1700・1710、ライフサイクル1700、Ultrasの知らせ1700・1710、結果通知の追記1700、判定の供給元1700、トロフィーの供給元10、23:45と4:21のジョブ1700)と区画の`order`(トップページの`main` 10・`showcase` 10、`PRODUCT_OWNER_ACTIONS`・`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`の20、`ADMIN_SETTINGS_SECTIONS`の10)はすべて空いている。tournament-weekの仮7(`buildBracketRoundsView`・`components/bracket/`の4部品と`BracketViewProps`・`fragments/bracket/`の2つのフラグメント)も設計どおりにある。
+
+食い違いの多くは、tournament-weekの実装前のギャップ分析(本specと同じ型の設計をWeekで見直したもの)で見つかって直された点が、本specの設計に残っているものである。実装を壊すもの6件・形の違い6件・規約の違い7件・既存の部品との重複5件・古い記述3件を挙げる。
+
+### 要件と既存の資産の対応
+
+| 要件                      | 使う既存の資産                                                                                                                                                                                   | ギャップ                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| 1 決勝日と期限            | `BusinessTime`(`fromBusinessDateTime`・`toBusinessDateTime`・`parseBusinessDate`)、`bracketShape`、`dailyRoundPolicy`、`matchWindow`                                                             | Missing: 年の規則とテーブル。Constraint: S-2・D-3                             |
+| 2 決勝実施日の設定        | `ADMIN_SETTINGS_SECTIONS`(`id`・`order`・`title`・`component`、10は予約済み)、`requireAdmin`、`AuditLogRecorder.prepare`・`buildAuditLogStatements`、`defineAuditAction`、送信者情報の区画(前例) | Missing: 区画・保存・操作種別。Constraint: D-5                                |
+| 3 参加の枠                | `WeekChampionDirectory.listChampions`(`tournamentId`・`weekStart`・`productId`・`launchId`・`ownerUserId`・`awardedAt`)、`MatchDirectory.findQualifierResults`・`findMatches`                    | Missing: 枠の全部。Constraint: S-3                                            |
+| 4 参加費の決済            | `PurchaseOfferPolicy`・`PurchaseFulfillment`・`CheckoutStarter.start`・`PriceCatalog`・`PURCHASE_KINDS`(`year_tournament_entry`は追加済み)                                                       | Missing: 購入種別の口の実装と登録。Constraint: S-5・C-2                       |
+| 5 Ultrasの免除            | `UltrasEntitlements.wasEntitledDuring`・`entitledUsersDuring`、`UltrasActivation`(`userId`・`activatedAt`)、`OpenCheckoutExpirer.expireOpen`                                                     | Missing: 2つのハンドラ。Constraint: B-5                                       |
+| 6 喪失・停止と自動返金    | `PaymentRefunds.request`(拒否は5種類)、ライフサイクルの登録口(`deleted`・`withdrawn`・`purge_due`)、`ProductDirectory.findSummaries('not-deleted')`                                              | Missing: 返金の依頼と知らせ。Constraint: B-3・C-1                             |
+| 7〜9 組み合わせ・進行・賞 | `BracketDraw.create`・`BracketProgression.advance`・`AdvanceResult`・`BracketStore`、`backend/017`の凍結・分類・発行の順序の規約                                                                 | Missing: Yearの分類・上限・記録。Constraint: B-1・B-2・D-1                    |
+| 10 トップページの区画     | `TOP_PAGE_SECTIONS`、`MatchCard`・`useUpvote`・`ByeList`(Yearの文言・`matchStageLabel`の`YEAR`は実装済み)、tournament-weekのトップページの区画の部品群                                           | Missing: 区画。Constraint: D-4・B-6                                           |
+| 11 ブラケットのページ     | `buildBracketRoundsView`、`components/bracket/`、`fragments/bracket/`、Weekの経路`/tournaments/week/$week`(前例)                                                                                 | Missing: 経路と照会。Constraint: S-6                                          |
+| 12 プロダクトの画面の区画 | `PRODUCT_OWNER_ACTIONS`・`MY_PRODUCT_SECTIONS`・`PRODUCT_DELETE_NOTICES`・`TOURNAMENT_TROPHY_SOURCES`・`TrophyShelf`(`year`を先頭に並べる処理は実装済み)                                         | Missing: 区画と供給元。Constraint: B-4                                        |
+| 13 再ローンチと編集の制限 | `RELAUNCH_CONDITION_SOURCES`・`PRODUCT_LOCK_SOURCES`・`LAUNCH_SUMMARY_SOURCES`(`DecisionSourceRegistration`)、`BracketStore.findAliveRefs`・`findParticipantStandings`                           | Missing: 3つの供給元。Constraint: B-4・S-4                                    |
+| 14 通知                   | `NotificationEventPublisher`(`product_of_the_year`と4桁の年の期間を受け付ける)・`RESULT_NOTICE_SUPPLEMENTS`・`EveningDispatchGate.markReady`・`EVENING_DISPATCH_PARTICIPANTS`                    | Missing: 発行と追記。Constraint: B-1・B-2・B-5                                |
+| 15 連携と運用             | `ScheduledJobDefinition`、Weekの`WeekTournamentIncidentReporter`(前例)、`SCHEDULED_RUN_BUDGETS`                                                                                                  | Constraint: C-3・C-5                                                          |
+| 16 ドキュメントとテスト   | `triggerScheduled`・`executeLocalD1`・`signInAsNewAdmin`・`runAxe`、Weekの`e2e/support/week-tournament-fixture-sql.ts`(前例)                                                                     | Missing: 2つの技術ドキュメント・サービス仕様の残り。Constraint: C-6・D-5・O-1 |
+
+### 上流の契約との食い違い
+
+#### 実装を壊すもの(設計の改訂を要する)
+
+- **B-1 通知イベントの発行は1件の違反で全件を拒否する**(tournament-weekのB-2・G1と同じ): 設計の`publishRound`は「`match-not-previewable`は`info`のログで捨てる」としているが、`NotificationEventPublisher.publish`は1件でも違反があれば何も記録せずに`NotificationPublishError(reason, eventIndex)`を投げる。そのままでは同じ50件の残りの通知が失われる。技術ドキュメント[違反を除いた発行](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md#違反を除いた発行)は「違反の1件を除いて発行し直す」と定める。Weekの実装(`violationOf`)は`workers/week-tournament/week-notification-publisher.ts`の非公開の関数で、本設計の依存の規則(`workers/year-tournament`は`workers/week-tournament`を読み込まない)では再利用できない。
+- **B-2 進行の後処理の順序**: 設計の`applyResult`は「`finished`なら`recordFinish`し、確定させた場合だけ`publishAward`」で、記録を先に置く。技術ドキュメント[発行を記録より先にする](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md#発行を記録より先にする)とWeekの実装(`WeekProgressionService.applyResult`)は、結果と予告→受賞→終了の記録の順で、記録を最後に置く(記録の後の発行の失敗を取り返せないため)。Weekは終えたときに予告を発行しない。設計の順のままでは、`recordFinish`の後に受賞の発行が失敗すると、再試行では`recordFinish`が偽を返して受賞を発行し直さず、同じ夜の`publishEvening`の補いも失敗すると受賞の通知が失われる。夜の発行の受賞の範囲も、ドキュメントは「当日の0:00から発行の時刻(組み合わせ決定と進行の後に時計を読み直した時刻)までに受賞を記録したトーナメント」とし、設計の「受賞の日時の業務日付が`date`」と表し方が異なる。
+- **B-3 返金の依頼の拒否**(tournament-weekのS-7・G4と同じ): `PaymentRefunds.request`の拒否は`purchase_not_found`・`not_paid`・`invalid_amount`・`amount_exceeds_refundable`・`invalid_request_key`の5種類で、理由の形式違反は`RangeError`になる。設計の`YearEntryFollowUp.process`は前の2つしか扱わない。技術ドキュメント[返金の後処理](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md#返金の後処理)は拒否のコードごとの返金の状態(返金不要・返金済み・拒否)、1件の失敗で止めず全件を試して最後に投げる(`AggregateError`)こと、試した枠のIDを覚えることを定める。設計の枠の`refund_status`(`none`・`pending`・`requested`・`not_needed`)には返金済み・拒否の値が無い。Weekの写像`refundRejectionOutcome`は`core/week-tournament/week-entry-rules.ts`にWeekの名前で置かれ、本設計の依存の規則(`core/year-tournament`は`core/week-tournament`を読み込まない)では再利用できない。
+- **B-4 受賞の供給値に`productId`が要る**(tournament-weekのB-4と同じ): `LaunchSummarySource.summarize`の`awards`の要素は`ProductAwardContribution { productId, kind, label }`である。設計の`summarize`は`{ kind: 'year', label: '<対象年>年' }`で`productId`を持たない。
+- **B-5 空の登録口・登録の一覧の完全一致を前提にした上流のテスト**(tournament-weekのB-5と同じ): tournament-weekの登録を名前で参照する上流のテストが約60ファイルあり、その多くが登録口の一覧を`toStrictEqual`で確かめている(例: `apps/api/src/composition/evening-dispatch-participants.unit.test.ts`の`['tournament-week.evening-bracket']`、`apps/backend-lib/workers/payments/payments-platform-module.worker.test.ts`の登録の解決、`apps/client/src/components/top/top-page-section-order.unit.test.ts`の`main`の並び、eventの各モジュールのWorkers統合テスト)。設計の「上流への影響」は全行「契約どおり」とだけ書き、これらの書き換えを挙げていない。Weekの2回目のタスクのサニティレビューと同じく、登録口の名前を参照せずに振る舞いで影響を受けるテスト(夜の送り出しの前提の追加で変わる`notifications-module.jobs.worker.test.ts`など)は検索で拾えないため、apiとeventのWorkers統合テストの全件の実行が要る。
+- **B-6 引数の検証の失敗のエラーコード**(tournament-weekのB-3と同じ): 設計のエラーの表の`yearTournamentBoard`の`bad_user_input`はコードに無い。`withValidatedArgs`は`AppError{ kind: 'bad_request', code: 'validation_error' }`を投げる。
+
+#### 形の違い(実装時に合わせる)
+
+- **S-1** `MatchDirectory.listForDate({ date, kinds, now })`は`now`を必須にする。設計の`publishEvening`の2つの呼び出しは`now`を省いている(`YearBoardReader.read`の呼び出しは`now`を渡している)。
+- **S-2** マッチの時間帯は、tournament-weekのG5でmatch-engineの`MATCH_SCHEDULE`・`matchWindow`(`core/match/match-model.ts`)へ改名され、`core/tournament`に時間帯は無い。設計の追跡表(1.4・1.5)と`drawDue`の記述の`tournamentMatchWindow`は存在しない。
+- **S-3** `WeekChampion`は`tournamentId`(Weekトーナメントの行のID)と`weekStart`(業務日付)を持ち、`'2026-W37'`の週の識別子を持たない。枠の`weekPeriod`は`common-lib/tournament`の`isoWeekKey(weekStart)`で求める。設計の`NewYearEntry`の`weekTournamentId`・`weekPeriod`の出どころを明記するとよい。
+- **S-4** `BracketStore`に、参加者ごとのブラケットの形・敗退のラウンド・優勝を1回で返す`findParticipantStandings(kind, refs)`が加わった。設計の`YearEntryPanelReader`の`progress`(`findAliveRefs`・年の行の`champion_entry_id`・参加者の`eliminatedRound`の組み合わせ)と`summarize`のラウンド名は、これ1つで求められる(Weekの`week-launch-standings.ts`が前例)。
+- **S-5** `PurchaseOfferDecision`の`unavailable`は`code`と`message`の両方を必須にする。Weekは拒否の文言`WEEK_ENTRY_OFFER_REJECTION_MESSAGES`を`workers/week-tournament/week-entry-offer-policy.ts`に置き、apiのpresentation層の`errors.ts`・`mappers.ts`がそこから読み込む(文言の唯一の出どころ)。設計の`describe`はコードだけを挙げる。
+- **S-6** clientの画面の組み立て: Weekのブラケットのページは、loaderで`queryClient.query({ ...weekBracketQueryOptions(viewer, week), staleTime: 0 })`(取得の補助`src/graphql/week-tournament.ts`)を使い、`head`は`head/page-heads.ts`の`buildWeekBracketHead`、`errorComponent`・`notFoundComponent`を持ち、経路の引数ごとに部品を作り直す。設計の`YearBracketPage`は`ensureQueryData`と`buildPageHead`の直接の呼び出しで、取得の補助のファイル(`src/graphql/year-tournament.ts`)と`page-heads.ts`への追記がFile Structure Planに無い。
+
+#### 規約の違い
+
+- **C-1** メール種別とテンプレートの置き場所(tournament-weekのC-1と同じ): 種別は`core/email/kinds/<ドメイン>.ts`に`*_KIND`の名前と`<ドメイン>_EMAIL_KINDS`の一覧で置き、テンプレートは`apps/event/src/infrastructure/email/templates/<ドメイン>/`(`index.ts`で一覧を書き出す)に置く。設計は`core/year-tournament/year-entry-refund-email.ts`の`TOURNAMENT_YEAR_ENTRY_REFUND_EMAIL`と`templates/`直下のファイルである。
+- **C-2** 購入種別の登録(tournament-weekのC-2と同じ): Weekは`workers/week-tournament/week-tournament-registrations.ts`が定数`WEEK_TOURNAMENT_PURCHASE_KIND_REGISTRATION`を書き出し、paymentsの`purchase-kind-registrations.ts`がそれを読み込む。設計はpaymentsの側で`YEAR_TOURNAMENT_TYPES`から組み立てる。
+- **C-3** apiの`application`のジョブの失敗の通知(tournament-weekのC-3と同じ): Weekは通知のポート`WeekTournamentIncidentReporter`(`apps/api/src/application/week-tournament/ports.ts`。`evening-bracket-failed`・`entry-follow-up-failed`)越しにし、Sentryの`captureEvent`はinfrastructureの実装だけが呼ぶ。設計の`YearTournamentJobs`は`captureEvent`を直接呼ぶ。
+- **C-4** テーブル定義の置き場所: tournament-weekは汎用のブラケットとWeekの4テーブルを`apps/db/schema/tournament/`の1つのドメインのディレクトリに置き、マイグレーションの内容の単体テスト(`tournament-week-migration.unit.test.ts`)を持つ。設計は`apps/db/schema/year-tournament/`である([テーブル定義の配置](../../../docs/GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)はドメインごとのディレクトリを求めるだけで、どちらも規約に反しない)。
+- **C-5** 23:45の起動のジョブの合計の所要時間の予算(`SCHEDULED_RUN_BUDGETS`の300秒。超過は警告だけ)は、match-engine(1100)・notifications(1300)・tournament-week(1500)と共有する。Yearの組み合わせ決定(最大64件と上限を超えた分の分類)の見積りが設計に無い。
+- **C-6** E2Eの置き場所: CLAUDE.mdとWeekの前例は、`e2e/client/<名前>.e2e.test.ts`と画面の操作の手順`<名前>-steps.ts`を並べ、ローカルD1へ入れるSQLの組み立てを単体テスト付きの`e2e/support/<名前>-fixture-sql.ts`に分ける。設計のFile Structure Planは手順のファイルとSQLの組み立てを持たない。
+- **C-7** adminのディレクトリ名: adminの既存の部品と操作はドメインの名前(`components/notifications`・`components/ultras`・`operations/ultras`)で置かれる。設計はadminを`tournament-year`(spec名)、clientを`year-tournament`(ドメイン名)とし、同じ機能で名前が分かれる(軽微)。
+
+#### 既存の部品との重複
+
+- **D-1 並びの比較**: `core/week-tournament/week-ordering.ts`の`weekSeedOrder`・`weekNonSeedOrder`(`WeekOrderingKey`)は、設計の`yearSeedOrder`・`yearNonSeedOrder`(`YearOrderingKey`)と同じ規則・同じ型である。設計は「`core/week-tournament`に依存しないため同じ規則の関数を持つ」と意図して重複させている。
+- **D-2 違反を除いた発行と返金の拒否の写像**: B-1・B-3のとおり、`backend/017`の規約の実装がWeek専用の場所(`workers/week-tournament`の非公開の関数、`core/week-tournament`の`refundRejectionOutcome`)にある。
+- **D-3 業務日付の日数の計算**: 業務日付にN日を足す関数が、`core/week-tournament/week-schedule.ts`(非公開の`addBusinessDays`)、`core/tournament/round-schedule.ts`(`nextBusinessDate`)、`apps/api/src/domain/product/launch-date-rules.ts`(`addBusinessDays`)、`apps/api/src/application/match/match-jobs.ts`・`apps/event/src/infrastructure/notifications/evening-collector.ts`(非公開の`nextBusinessDate`)に散在し、`core/time/business-time.ts`の`isoWeekdayOf`・`addDays`は非公開である。本specの規則(決勝日の6・7日前、1回戦の0〜5日前、日曜日の判定、5月の最終日曜日、448日の間隔)はこれらを必要とする。
+- **D-4 トップページの区画とブラケットのページの画面部品**: tournament-weekはclientに、盤面の取得と定期の取り直し(`use-week-board.ts`・`week-board-model.ts`)、決勝の行の結果待ちの取り直しと追いかけの打ち切り(`week-final-model.ts`・`week-final-round.tsx`・`week-final-showcase.tsx`と演出のCSS)、見出し(`week-section-heading.tsx`)、Upvoteを持つ対戦カード(`week-match-card.tsx`)、ブラケットのページの取り直しと失敗の表示(`week-bracket-model.ts`・`week-bracket-error.tsx`)を作った。多くは[集計値と残り時間を表示し続ける画面](../../../docs/GUIDES/tech/frontend/013-live-scoreboard.md)と[トーナメントのブラケットの表示](../../../docs/GUIDES/tech/frontend/016-tournament-bracket-view.md#開催中だけの定期再取得)の規約の実装で、Week固有の部分は文言と照会の名前に限られる。設計の`YearTournamentSection`・`YearFinalShowcase`・`YearSectionHeading`・`YearBracketPage`は「tournament-weekと同じ構成」とするが、これらの部品の再利用・共用化に触れていない。
+- **D-5 業務日付を選ばせる画面の技術ドキュメント**: [業務日付のカレンダー](../../../docs/GUIDES/tech/frontend/012-business-date-calendar.md)(CLAUDE.mdの参照先「業務日付をカレンダーで選ばせる画面…を作る前に」)が、選べる範囲と規則をサーバーが決めて画面は規則を持たない形、選べない日の示し方、業務日付の`<time>`での表示、境界の時刻での取り直しを既に定めている。設計が新設する`frontend/018-server-provided-date-choices.md`(サーバーが返す候補の`<select>`、候補が無いときと変更できないときの表示、業務日付の`<time datetime>`)と主題が重なる。
+
+#### 古い記述
+
+- **O-1** 設計のExisting Architecture Analysisの「実装済みはdev-toolingだけ」、上流への影響のtournament-weekの行の「仮7で提供(予定)」、4:21の「上流(100〜1600)の後」(実際は2300の`content-processing.keyword-reextraction`もあり、1700はその前に動く)、tasks.mdの前提の「dev-tooling〜sponsorshipの23specの全タスクが完了」(sponsorshipは未実装だが、本specはsponsorshipの部品を使わない)。サービス仕様のうち、法的通知の大枠の返金ポリシー(Yearの上限による停止の行)と決済実装方針の購入種別の表(Yearの行)は更新済みで、Modified Filesの該当の作業は一致の確認だけになる。Yearトーナメント規則の「参加数上限 64(決勝日設定の制約により保証)」は未修正のまま残る。
+- **O-2** 要件の追跡のID: 要件定義書の改訂(2026-10-25の番号の振り直しを含む)で、仮決定や本specの受け入れ基準に当たる要件が追加された。requirements.mdは次のIDを参照しておらず、2か所は振り直しの前の番号のままである。
+
+| 要件定義書のID    | 内容                                                   | 対応する本specの受け入れ基準 | 現在の参照                          |
+| ----------------- | ------------------------------------------------------ | ---------------------------- | ----------------------------------- |
+| FR-TOURY-002      | 前年の決勝実施日が未設定なら既定の日(仮1)              | 3.6                          | FR-TOURY-001・FR-ADMCF-003          |
+| FR-TOURY-003      | 初年度は期間の起点を設けない(仮1)                      | 3.5                          | FR-TOURY-001                        |
+| FR-TOURY-006      | 優勝の確定時点のUltrasの免除                           | 5.1                          | FR-TOURY-005・FR-PPLAN-006          |
+| FR-TOURY-007      | 優勝の後の加入による免除                               | 5.2                          | 無し                                |
+| FR-TOURY-008      | 決済期限の後の反映と新しいローンチ(仮6)                | 4.8                          | 仮6                                 |
+| FR-TOURY-010      | 組み合わせ決定の時点の非公開化・停止の除外             | 6.4                          | 無し                                |
+| FR-TOURY-011      | 参加数の上限64を超えた分の停止(仮2)                    | 6.5                          | FR-TOURY-012(誤り)                  |
+| FR-TOURY-017〜023 | Upvoteの確定値・勝敗の判定・即時の終了・開始時点の決着 | 8.3                          | FR-TOURY-017〜019・021〜023(旧番号) |
+| FR-TOURY-025      | 次ラウンドの遅れの回復                                 | 8.9                          | 無し                                |
+| FR-PYMNT-011      | 停止・上限による参加資格の停止の自動返金               | 6.6                          | 無し                                |
+| FR-PYMNT-012      | 返金の非同期の処理                                     | 6.8                          | 無し                                |
+| FR-PYMNT-017      | 付与できない購入の自動返金                             | 4.7・4.8                     | 無し                                |
+
+受け入れ基準の振る舞いは変わらない。
+
+#### 情報(設計の変更は不要)
+
+- `tournament-week.entry-unlink`(`purge_due`、1500)は`BracketStore.unlinkProduct`を種類によらず呼び、Yearのブラケットの参加者の紐付けも解除する。設計の前提どおりである。
+- `TrophyShelf`の並び(`ProductTrophyReader`)は`year`を先頭にする順を実装済みで、トロフィーの供給元の登録の形は`{ name, order, source }`である。
+- 通知イベントの契約は`award: 'product_of_the_year'`と4桁の年の`period`を受け付け、重複のキーは`award:<種類>:<期間>:<プロダクトID>`である。
+- `ResultNoticeSupplement`の制限(見出し50書記素・1〜5行・1行200書記素・ボタン30書記素)に設計の追記の文言は収まる。
+- `ADMIN_SETTINGS_SECTIONS`のコメントは本specの10を予約済みで、送信者情報の区画(`SenderInfoSection`・`D1SenderInfoWriter`・`failureMessageOf`)が保存と監査ログと確認のダイアログの前例になる。
+- 技術ドキュメントの番号`backend/019`・`frontend/018`は空いており、sponsorship(`backend/018`・`frontend/017`)・public-api(`backend/020`・`frontend/019`)の計画とも重ならない。
+
+### 実装の進め方の選択肢
+
+#### 選択肢A: 設計とタスクを先に改訂してから実装する
+
+- B・S・C・D・Oのすべてをdesign.md・tasks.mdへ反映し、変更部分のレビューを経て承認し直してから`/kiro-impl`を始める(tournament-weekが取った進め方)。
+- ✅ tournament-weekで確かめた規約(`backend/017`)と同じ形を最初から書け、同じ指摘の繰り返しを避けられる
+- ✅ 共用化の判断(D-1〜D-4)を、Weekのコードを書き換える前に開発者が決められる
+- ❌ 設計の改訂・タスクの再生成・レビューの手間が先に掛かる
+
+#### 選択肢B: 実装の中で吸収し、Implementation Notesへ記録する
+
+- 設計を変えずに実装を始め、各タスクで既存のコードとWeekの前例に合わせ、相違をtasks.mdのImplementation Notesと最終の報告に残す。
+- ✅ すぐに着手でき、S・C・Oの多くは名前と引数の小さな違いである
+- ❌ B-1〜B-3は進行・通知・返金の正しさに関わり、実装者が設計と規約の食い違いを都度判断することになる
+- ❌ D-1〜D-4の共用化はtournament-weekのコードの変更を伴い、本specのタスクの範囲(上流のファイルは登録箇所への追記だけ)を超える
+
+#### 選択肢C: 壊すものと共用化の判断だけ先に直す(折衷)
+
+- B-1〜B-6と、共用化の方針(D-1〜D-5)を先に設計とタスクへ反映し、S・C・Oの残りは実装時に既存のコードへ合わせてImplementation Notesに残す。
+- ✅ 改訂の範囲を手戻りの大きい箇所に絞れる
+- ❌ C-1〜C-3はWeekで既に規約として確定しており、後回しにしても判断の余地が無い(先に直しても手間は小さい)
+
+### 工数とリスク
+
+- **工数: L〜XL(1.5〜2週間)** — 58のサブタスク、2テーブル・共有モジュール・apiとeventの十数の登録・clientとadminの部品・E2Eにわたる。ブラケットの規則・記録・進行と多くの画面の規約はtournament-weekにあり、作成時の見積りより統合の不確実さは小さい。D-4で画面部品を共用化する場合は、Weekの部品の書き換えとテストの分だけ増える。
+- **リスク: Medium** — 技術の未知は無いが、決勝日の変更と凍結・対象年の判定(枠に対象年を保存しない設計)・同じ23:45のWeekとの順序・`backend/017`の発行と記録の順序の正しさが要で、B-1・B-2のように規約から外れると通知の欠落につながる箇所がある。
+
+### 設計フェーズ(改訂)への推奨
+
+- 推奨は選択肢A。tournament-weekの実装前のギャップ分析とほぼ同じ指摘が並び、B-1〜B-6・C-1〜C-3はWeekで既に方針が確定しているため、設計へ写す作業が中心になる。開発者の判断が要るのは主に共用化の論点である。
+- 先に決める論点:
+  - D-1・D-2(B-1・B-3): 並びの比較・違反を除いた発行・返金の拒否の写像を、`core/tournament`(または`core/payments`・`workers/notifications`)へ種類によらない名前で移してWeekとYearが共用するか、本specに同じ規則の複製を持つか。共用する場合は「`core/year-tournament`は`core/week-tournament`を読み込まない」規則を保ったまま、Weekのコードの書き換え(水平展開)を本specのタスクに含める
+  - B-2: `applyResult`を`backend/017`とWeekの順(結果と予告→受賞→終了の記録)に改め、夜の発行の受賞の範囲をドキュメントの表し方にそろえるか
+  - B-3: 枠の返金の状態にWeekと同じ`already_refunded`・`rejected`を足し、拒否のコードの扱いをWeekのG4にそろえるか
+  - D-3: 業務日付の日数の加算と曜日の関数を`core/time/business-time.ts`から公開して既存の重複を寄せるか、本specも非公開の関数を持つか
+  - D-4: トップページの区画・決勝の演出・ブラケットのページの取り直しの部品を、tournament-weekの部品から種類によらない共用の部品(例: `components/tournament/`)へ移して両方で使うか、Weekの部品を写してYear用に持つか
+  - D-5: `frontend/018`を新設するか、`frontend/012`(業務日付のカレンダー)に「候補が少ない日付は`<select>`で選ばせる」節を加えるか、決勝実施日の区画を`Calendar`で作るか
+  - C-4・C-7: テーブルを`apps/db/schema/tournament/`へ置くか、adminのディレクトリ名をclientと同じ`year-tournament`にそろえるか
+- Research Needed:
+  - C-5: 23:45の起動の300秒の予算のうち、Weekの組み合わせ決定と同じ夜(月曜日に重なる年)にYearの組み合わせ決定(最大64件の分類と上限超過の除外・返金の依頼)が収まるかの見積り
+  - B-5: Yearの登録で書き換えが要る上流のテストの一覧(Weekのタスクのサニティレビューと同じく、検索と全件の実行で洗い出す)
+
+## 実装前のギャップ分析の決定事項(2026-11-17に開発者が確定)
+
+### 開発者が確定した論点
+
+前節の論点のうち、判断が分かれる9件を開発者へ1件ずつ質問し、次のとおり確定した(いずれも推奨どおり)。`requirements.md`の「実装前のギャップ分析での決定事項」にも同じ行がある。
+
+| #   | 論点(前節の番号)                        | 確定した案                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 他の選択肢                                                                        | 影響する箇所                                                                                                                                                                                                                        |
+| --- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1  | 進行の後処理の順序(B-2)                 | `applyResult`を`backend/017`とWeekの実装の順(その回の結果と予告の発行→終えた場合は優勝の枠を読み直して受賞の発行→`recordFinish`)に改め、記録を最後に置く。終えたときは予告を発行しない。`publishEvening`の受賞の範囲を「当日の0:00から発行の時刻(組み合わせ決定と進行の後に時計を読み直した時刻)までに受賞を記録した年」にそろえる                                                                                                                                                             | 順序だけ改め夜の範囲は設計どおり / 設計どおり記録を先にする                       | 設計の`YearProgressionService.applyResult`・`publishEvening`・`YearTournamentStore`(受賞の記録の時刻で読む照会)、単体テストとWorkers統合テスト                                                                                      |
+| G2  | 並びの比較の重複(D-1)                   | `core/week-tournament/week-ordering.ts`の規則を、種類によらない名前(例: `launchSeedOrder`・`launchNonSeedOrder`・`LaunchOrderingKey`。名前は設計の改訂で確定)で`core/tournament`へ移し、Weekの参照と単体テストを書き換える(水平展開)。`core/year-tournament`は引き続き`core/week-tournament`を読み込まない                                                                                                                                                                                     | Yearに複製を持つ / 依存の規則を緩めWeekのものを直接読む                           | 設計の`year-ordering.ts`(`selectWithinCapacity`だけを残す)、tournament-weekの`week-ordering.ts`・`week-draw-service.ts`などの参照、`backend/017`の記述                                                                              |
+| G3  | 違反を除いた発行の重複(D-2・B-1)        | `core/notifications`に、発行の口・発行元の名前・ロガーを受け取り、50件ずつに分けて違反の1件を除いて発行し直す共用の関数(例: `publishExcludingViolations`。名前は設計の改訂で確定)を置き、WeekとYearの両方が使う。Weekの`WeekTournamentNotificationPublisher`の非公開の処理を書き換える(水平展開)                                                                                                                                                                                               | `core/tournament`の共用の関数にする / Yearに複製を持つ                            | 設計の`YearNotificationPublisher`、tournament-weekの`week-notification-publisher.ts`とその単体テスト、notificationsの技術ドキュメント`backend/016`と`backend/017`の記述                                                             |
+| G4  | 返金の依頼の拒否(B-3・D-2)              | 拒否の扱いをWeekのG4にそろえる(`not_paid`・`purchase_not_found`は返金不要、`amount_exceeds_refundable`は返金済みとして運用者へ知らせる、`invalid_amount`・`invalid_request_key`と理由の形式違反の`RangeError`は拒否として運用者へ知らせ再処理から外す、知らせのメールは返金不要・返金済み・拒否のいずれも送らない)。写像`refundRejectionOutcome`を種類によらない名前で`core/tournament`へ移して共用し、Weekの参照を書き換える。Yearの枠の`refund_status`に`already_refunded`・`rejected`を足す | `core/payments`へ移して共用 / Yearに複製を持つ                                    | 要件6.8(本決定を加えた)、設計の`YearEntryFollowUp.process`・`year-entry-rules.ts`・テーブルのCHECK・`YearEntryRecord.refundStatus`・運用者への知らせの種類、tournament-weekの`week-entry-rules.ts`・`week-entry-follow-up.ts`の参照 |
+| G5  | 業務日付の日数の計算の重複(D-3)         | `core/time/business-time.ts`から日数の加算と曜日の関数(例: `addBusinessDays`・`businessWeekdayOf`。名前は設計の改訂で確定)を公開し、Yearが使うと同時に既存の5か所(`core/week-tournament/week-schedule.ts`・`core/tournament/round-schedule.ts`の`nextBusinessDate`・`apps/api/src/domain/product/launch-date-rules.ts`・`apps/api/src/application/match/match-jobs.ts`・`apps/event/src/infrastructure/notifications/evening-collector.ts`)をそれを使う形に寄せる(水平展開)                    | `core/time`から公開するだけ / Yearに非公開の関数を持つ                            | 設計の`year-schedule.ts`・`final-date-choice.ts`、Modified Files(tournament-week・match-engine・notifications・product-launchのファイルとテスト)                                                                                    |
+| G6  | 画面部品の重複(D-4)                     | tournament-weekのclientの部品のうち、トップページの区画(盤面の取得と定期の取り直し・見出し・対戦カード)・決勝の演出と結果待ちの取り直し・ブラケットのページの取り直しと失敗の表示・参加費の導線(状態の文言の選び方・決済の開始)を、種類によらない共用の部品(clientの`components/tournament/`)へ移し、照会・文言・経路を引数で受ける。Weekの画面を書き換えてYearも使う(水平展開)。Weekの振る舞いと文言は変えない                                                                                | モデルとフックだけ移し見た目の部品はYear用に持つ / Weekの部品を写してYear用に持つ | 設計のclientの節とFile Structure Plan、tournament-weekの`components/week-tournament/`の部品とブラウザテスト、`frontend/013`・`frontend/016`の記述                                                                                   |
+| G7  | 日付の候補の選択の技術ドキュメント(D-5) | `frontend/018-server-provided-date-choices.md`を新設せず、`frontend/012-business-date-calendar.md`に「候補が少なく曜日などで限られる日付は、サーバーが返す候補の`<select>`で選ばせる」節(候補が無いとき・変更できないときの表示、確認のダイアログでの影響の明示、版の競合の案内を含む)を加える                                                                                                                                                                                                 | `frontend/018`を新設する / 決勝実施日も共通部品の`Calendar`で選ばせる             | 要件16.5(本決定を加えた)、設計のYearTechDocs・File Structure Plan・Modified Files(`frontend/README.md`の行は不要になる)、`CLAUDE.md`の参照先の文言                                                                                  |
+| G8  | テーブル定義の置き場所(C-4)             | `apps/db/schema/tournament/`に`year-tournaments.ts`・`year-tournament-entries.ts`を置き、Weekと同じくマイグレーションの内容の単体テスト(`tournament-year-migration.unit.test.ts`)を持つ                                                                                                                                                                                                                                                                                                        | 設計どおり`apps/db/schema/year-tournament/`                                       | 設計のThis Spec Owns・File Structure Plan・Modified Files・Dependency direction                                                                                                                                                     |
+| G9  | adminのディレクトリ名(C-7)              | adminも`components/year-tournament/`・`src/graphql/operations/year-tournament/`にし、clientとbackend-libのドメイン名にそろえる                                                                                                                                                                                                                                                                                                                                                                 | 設計どおり`tournament-year`                                                       | 設計のFile Structure Plan・adminの節                                                                                                                                                                                                |
+
+実装では次の点が変わった(確定した案の記録は変えない)。G7の`frontend/012`の節は、候補を`<select>`ではなく共通部品の`Select`で選ばせる形で書いた。G6の共用の部品の契約は、`useTournamentBoard`が盤面ではなく閲覧者を受ける、文言の型に`title`・`awardName`を足し`TournamentBracketCopy.pageTitle`を除く、返金の文を喪失と除外に分ける、共用のページと導線に任意の受け口(決勝日・決済の導線の案内)を足す形になった(design.mdの「TournamentClientParts」が実装の形)。曜日つきの業務日付の表記は、backend-lib・client・adminで共用のcommon-libの`formatBusinessDateWithWeekdayLabel`に寄せ、ブラケットのページの年の形式はcommon-libの`parseTournamentYear`でclientとapiが共用する。
+
+### 既存のコードと規約に合わせて決めた事項
+
+開発者に質問せず、既存のコード・規約・tournament-weekの決定に合わせて次のとおり扱う(設計の改訂で反映する)。
+
+- B-1: G3の共用の関数を使う。予告できないマッチの違反はレベル`info`、それ以外の位置のある違反は`error`のログにし、位置の無い拒否は例外のまま投げる(`backend/017`の[違反を除いた発行](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md#違反を除いた発行))。
+- B-3: G4に加え、`YearEntryFollowUp.process`は1件の失敗で止めずに全件を試して最後に投げ(1件なら元の例外、複数なら`AggregateError`)、続きの位置を持たない読み取りで繰り返すときは試した枠のIDを覚える(`backend/017`の[返金の後処理](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md#返金の後処理))。
+- B-4: `summarize`の受賞は`{ productId, kind: 'year', label: '<対象年>年' }`を返す。
+- B-5: 空の登録口や登録の一覧の完全一致を確かめる上流のテストを、本specの登録に合わせて書き換える作業を設計の「上流への影響」とタスクに加える。各登録のタスクは、登録の前に上流のテストを検索で洗い出し、完了状態にapiとeventのWorkers統合テストの全件の実行を含める(tournament-weekのタスクのサニティレビューの指摘と同じ)。
+- B-6: 引数の検証の失敗は`withValidatedArgs`の`bad_request`・`validation_error`とする。
+- S-1〜S-6: 現在の契約の形に合わせる(`listForDate`の`now`、`matchWindow`・`MATCH_SCHEDULE`、`WeekChampion`の`tournamentId`・`weekStart`と`isoWeekKey`による週の識別子、`findParticipantStandings`による進行と敗退のラウンド、`unavailable`の`message`と拒否の文言の唯一の出どころ(`YEAR_ENTRY_OFFER_REJECTION_MESSAGES`を`workers/year-tournament/year-entry-offer-policy.ts`に置き、apiのpresentation層が読み込む)、clientの取得の補助`src/graphql/year-tournament.ts`と`head/page-heads.ts`への追記とWeekのページと同じloaderの形)。S-6のブラケットのページの組み立てはG6の共用の部品で行う。
+- C-1: メール種別は`core/email/kinds/tournament-year.ts`に`TOURNAMENT_YEAR_ENTRY_REFUND_KIND`と`TOURNAMENT_YEAR_EMAIL_KINDS`で置き、テンプレートは`apps/event/src/infrastructure/email/templates/tournament-year/`に置く(Weekの`tournament-week`と同じ形)。
+- C-2: 購入種別の登録は`workers/year-tournament/year-tournament-registrations.ts`が定数`YEAR_TOURNAMENT_PURCHASE_KIND_REGISTRATION`を書き出し、paymentsの`purchase-kind-registrations.ts`がそれを読み込む。
+- C-3: apiの`application`のジョブの失敗の通知は、通知のポート(`YearTournamentIncidentReporter`。Weekの`WeekTournamentIncidentReporter`と同じ形)越しにし、Sentryはinfrastructureの実装だけが呼ぶ。
+- C-5: Weekの組み合わせ決定と同じ夜(Yearの組み合わせ決定の日が月曜日の年)に、23:45の300秒の予算に収まるかを設計で見積もる(予算の超過は警告だけで処理は止まらない)。
+- C-6: E2Eは`e2e/client/year-tournament.e2e.test.ts`と`year-tournament-steps.ts`、`e2e/admin/`の同じ組、ローカルD1へ入れるSQLの組み立てを単体テスト付きの`e2e/support/year-tournament-fixture-sql.ts`に分ける。
+- O-1: 設計の古い記述(実装済みの上流、tournament-weekの仮7の行、4:21の上流の順序)を直す。tasks.mdの前提を、本specが実際に使う上流(sponsorshipを含めない)に絞る。サービス仕様のうち法的通知の大枠と決済実装方針は更新済みのため、Modified Filesの作業を一致の確認に改める。
+- O-2: requirements.mdの受け入れ基準が参照する要件IDを、要件定義書の現在の番号に合わせた(本決定の時点で反映済み。3.5・3.6・4.7・4.8・5.1・5.2・6.4・6.5・6.6・6.8・8.3・8.9)。
+- 進め方: 前節の選択肢A(全ての食い違いと決定を設計とタスクへ先に反映してから実装する)とする。spec.jsonの設計とタスクの承認を外した。`/kiro-spec-design tournament-year`で設計を改訂し、承認の後に`/kiro-spec-tasks tournament-year`でタスクを作り直す。
+
+### 上流・他specへの影響
+
+- tournament-week: G2〜G6でWeekのコード(`core/week-tournament`の並びと返金の拒否の写像、`workers/week-tournament`の通知の発行、`week-schedule.ts`の日数の計算、clientの`components/week-tournament/`の部品)を共用の部品へ移す。Weekの振る舞いとテストの期待値は変えない。技術ドキュメント(`backend/016`・`backend/017`・`frontend/013`・`frontend/016`)の部品の名前と置き場所の記述は、本specのタスク8.2で合わせる。承認済みのspecの記録であるtournament-weekのdesign.md・tasks.md(`.kiro/`)は書き換えず、移した後の名前と置き場所は本specの設計を正とする(タスクのサニティレビューの指摘による、2026-11-17)。
+- match-engine・notifications・product-launch: G5の寄せ替えで、各1ファイルの非公開の日数の計算を共用の関数に置き換える(振る舞いは変えない)。
+- data-export: `YearAwardExport.listForLaunches`の契約は変えない。G8でテーブル定義の置き場所が変わるが、data-exportは本specのテーブルを直接読まない。
+
+## 設計の改訂(2026-11-17、`/kiro-spec-design tournament-year`)
+
+- **発見の種別**: Extension(light discovery)。上流は実装済みで、契約の照合は「実装前のギャップ分析」で済んでいるため、決定G1〜G9と食い違いの反映に要る既存のコードだけを読み直した。tournament-weekの`week-ordering.ts`・`week-entry-rules.ts`(拒否の写像)・`week-notification-publisher.ts`(違反を除いた発行と`publishNight`)・`week-progression-service.ts`(`applyResult`の順)・`week-schedule.ts`・`round-schedule.ts`と各参照、`listAwardedBetween`、`week-tournament-platform-module.ts`の束縛の形(ストアは`@inject`、サービスは`toDynamicValue`)、apiの`week-tournament-jobs.ts`・`ports.ts`(`WeekTournamentIncidentReporter`)・`board-resolvers.ts`(`placementOf`)・`week-entry-panel-reader.ts`(`findParticipantStandings`・`listByLaunches`)・GraphQLの型、clientの`components/week-tournament/`の全モデルと部品の引数・`/tournaments/week/$week`の経路・`fragments/week-tournament/week-board-round-fields.graphql`、`core/email/kinds/tournament-week.ts`とテンプレートの置き場所、日数の計算の5か所(`launch-date-rules.ts`・`match-jobs.ts`・`evening-collector.ts`を含む)、`e2e/client`・`e2e/admin`・`e2e/support`の配置、サービス仕様のページ配置のトーナメント参加費の導線(YearにUltrasの案内と秒読みが無いこと)。外部の依存の調査は不要(新しいパッケージ・APIなし)。
+- **参照したスキルと規則**: cc-sddの`kiro-spec-design`の規則(design-discovery-light・design-synthesis・design-review-gate)、CLAUDE.mdの技術規則の参照先([単一敗退のブラケット](../../../docs/GUIDES/tech/backend/017-single-elimination-brackets.md)の発行と記録の順序・違反を除いた発行・夜の発行・返金の後処理、[トーナメントのブラケットの表示](../../../docs/GUIDES/tech/frontend/016-tournament-bracket-view.md)、[集計値と残り時間を表示し続ける画面](../../../docs/GUIDES/tech/frontend/013-live-scoreboard.md)、[業務日付のカレンダー](../../../docs/GUIDES/tech/frontend/012-business-date-calendar.md)、[共通化の対象](../../../docs/GUIDES/tech/frontend/005-shared-components.md#共通化の対象)、[テーブル定義の配置](../../../docs/GUIDES/tech/db/003-schema-conventions.md#テーブル定義の配置)、[依存方向と静的解析](../../../docs/GUIDES/tech/backend/002-layered-architecture-on-workers.md#依存方向と静的解析))。
+- **統合(synthesis)**:
+  - 一般化: WeekとYearで同じ規則を、種類によらない名前で`core/tournament`(並び`launchSeedOrder`・`launchNonSeedOrder`、拒否の写像`refundRejectionOutcome`)・`core/notifications`(`publishExcludingViolations`)・`core/time`(`addBusinessDays`・`businessWeekdayOf`)へ置いた(G2〜G5)。clientはWeekの部品を`components/tournament/`へ移し、種類の値(照会・文言・経路・Ultrasの案内・秒読みの有無)を引数で受ける形にした(G6)。参加費の導線は、包みがGraphQLの値を共用の入力`TournamentEntryInput`へ写し、Weekの`refundable = !exempt`とYearのサーバーの`refundable`の違いを包みに閉じ込めた。
+  - 一般化しなかったもの: Weekの`week-launch-standings.ts`(Weekの週の行と期限に依存)と、board-resolversの`placementOf`の呼び出し(数行)は共用にせず、Yearは同じ規則を自分の照会で行う。
+  - 既存に合わせる: `applyResult`と夜の発行の受賞の範囲を`backend/017`とWeekの実装の順と表し方にそろえ(G1)、ストアに`listAwardedBetween`を足して年の範囲の計算を除いた。返金の状態に`already_refunded`・`rejected`を足し`markRefundClosed`にまとめた(G4)。メール種別とテンプレート・購入種別の登録の定数・ジョブの失敗の通知のポート・E2Eの手順とSQLの組み立て・clientの取得の補助と`page-heads.ts`をWeekと同じ置き場所にした(C-1〜C-3・C-6・S-6)。
+  - 簡素化: `YearEntryStatusCopy`をやめ、表示の種類の判定は共用の`tournamentEntryDisplayOf`、文言は`TournamentEntryCopy`のYearの値にした。`year-ordering.ts`は上限の選択だけの`year-capacity.ts`にした。`frontend/018`は新設せず`frontend/012`への追記にした(G7)。
+  - 見積り(C-5): 23:45の300秒の予算は、Yearの組み合わせ決定が1年あたり数秒の見込みで、Weekと同じ夜でも収まる。超過は警告だけで処理は止まらないため、所要時間のテストは置かない(時間の検査は不安定になるため)。
+- **設計への反映**: Overview(Impact・Goals)、Boundary Commitments(テーブルの置き場所、メール種別、共用へ移す部品、登録の定数、ジョブの失敗の通知、admin・clientの部品の置き場所、技術ドキュメント)、Out of Boundary、Allowed Dependencies(実装された契約の形)、Revalidation Triggers、上流への影響(G2〜G6の書き換えとB-5の上流のテスト)、Existing Architecture Analysis・Architecture Integration・Dependency direction、File Structure Plan(全面的に改め、clientの共用の部品の対応表を加えた)、System Flows(週の識別子、共用の並び、参加0・1の後処理、返金の拒否)、追跡表、コンポーネントの表、`core/year-tournament`の契約(上限・返金の状態・メール種別)と共用の部品の契約、ストアの契約(`listAwardedBetween`・`markRefundClosed`)、購入の可否の口の文言と登録の定数、`applyResult`・発行・`publishEvening`・`process`、apiの照会(`placementOf`・`findParticipantStandings`)・`summarize`(`productId`)・ジョブ(失敗の通知のポート・時計の読み直し・4:21の順序・予算)、GraphQLのエラーの表、`byes`の分け方、eventのテンプレート、clientの節(共用の部品の契約とYearの包み)、adminの置き場所と区画の題名の定数、docs(`frontend/012`への追記)、データモデル、エラーの分類、Monitoring、Testing Strategy。
+- **レビューゲート**: 機械的な検査で、要件の131件の受け入れ基準がすべて追跡表にあること、境界の4節とファイル構成が空でないこと、新しい部品(`LaunchOrdering`・`RefundRejection`・`ViolationTolerantPublish`・`BusinessDateArithmetic`・`TournamentClientParts`・`YearCapacity`・`YearEmailKinds`・`YearTournamentRegistrations`・`YearTournamentIncidentReporter`・`UseYearBoard`・`YearEntryView`)のファイルがファイル構成にあること、古い名前(`tournamentMatchWindow`・`yearSeedOrder`・`YearOrderingKey`・`TOURNAMENT_YEAR_ENTRY_REFUND_EMAIL`・`bad_user_input`・`YearEntryStatusCopy`・`year-ordering.ts`・`schema/year-tournament`・adminの`tournament-year`のディレクトリ・`markRefundNotNeeded`・`frontend/018`の新設)が残っていないこと、api・eventの`application`がSentryを直接呼ばないことを確かめた。判断のレビューで、Yearのトップページのフラグメントの選択をWeekと同じとした記述の誤り(Yearは行の`finalDate`を持つ)と、組み合わせ決定の所要時間をテストで確かめる記述(不安定な検査)を直した。2回目の機械的な検査で問題は無かった。
+- **残る作業**: 設計の承認の後に`/kiro-spec-tasks tournament-year`でタスクを作り直す(G2〜G6の移設と書き換えのタスクを先に置き、Weekの既存のテストが期待値を変えずに通ることを完了状態にする。B-5の上流のテストの洗い出しを各登録のタスクに含める)。
+
+## タスクの計画の再生成(2026-11-17、`/kiro-spec-tasks tournament-year`、未承認)
+
+- 承認された改訂後の設計から、既存の`tasks.md`(58のサブタスク)を引き継ぐ形でタスクを作り直した。下書きは66のサブタスクで、共用の部品への移設(1.1 業務日付の計算とトーナメントの寄せ替え、1.2 他specの寄せ替え、1.3 並びと拒否の写像、1.4 違反を除いた発行、1.5〜1.7 clientの部品)を基盤の先頭に置き、Weekの既存のテストが期待値を変えずに成功することを完了状態にした。要件の131件の受け入れ基準がすべてタスクにあり、全てのサブタスクに完了状態があることを機械的に確かめた。
+- タスクのグラフのサニティレビュー(新しいサブエージェントによる独立した確認、上限2回):
+  - 1回目はNEEDS_FIXES(必須3件)。(1)見出しと決勝の行が読み込むブラケットへのリンクの移設がブラケットのページのタスクにあった(1.5へ移した)。(2)並行の6.3〜6.5がYearの文言とフィクスチャのファイルを同時に変える(6.2がトップページ・決勝・ブラケットの文言とフィクスチャをまとめて作り、6.5は参加費の導線の文言とフィクスチャを別のファイルに置く形にした)。(3)3.16に上流のテストの洗い出しとapi・eventのWorkers統合テストの全件の実行が無かった。軽微の指摘(1.1の分割、5.3・5.6の(P)、決勝実施日の書き込みのポートを作るタスク、8.2の`backend/017`の削った関数の名前の検査、8.1・8.4の不要な依存、Weekの文言のファイルの書き出しの担当、共用の部品のテストの値の置き場所)にも従った。research.mdの「上流・他specへの影響」の、tournament-weekのdesign.mdを書き換えるとした記述を、承認済みのspecの記録は書き換えない形に直した。
+  - 2回目もNEEDS_FIXES(必須1件)。1回目の3件の修正と番号の振り直しは確認された。必須の指摘は、6.3が`showcase` 10を加えると、登録の一覧を完全一致と位置で確かめる`top-page-sections.browser.test.ts`が失敗するのに、その書き換えの担当が無いことだった。
+- kiro-spec-tasksの規則(2回目の判定がPASSでなければ、`tasks.md`を書かず承認もせずに止める)に従い、`tasks.md`は書き換えていない(旧い58のサブタスクのまま)。2回目の必須の指摘(6.3に登録箇所のテストの書き換えを加える)と軽微の指摘(1.5のYearの例の担当、1.5でのWeekの部品の文言の読み込み元の修正、1.6・1.7のテストの値のファイル名の分離、8.5の補助の参照先)は下書きに反映し、参加費の導線用のフィクスチャ`year-entry-fixtures.ts`を設計のFile Structure Planに加えた。`/kiro-spec-tasks tournament-year`を再実行し、修正済みの下書きのサニティレビューがPASSになれば`tasks.md`を書いて承認できる。
+- **再実行(2026-11-17)**: `/kiro-spec-tasks tournament-year`を、前回の指摘を直した下書きを引き継ぐ形で再実行した。要件の131件の網羅と全サブタスクの完了状態を機械的に確かめ直し、新しいサブエージェントによる独立した確認(independent)を行った。判定はPASS(必須の修正なし)。軽微の指摘のうち、6.6の包みの部品の作成の明記、3.4の完了状態にbackend-libの型検査を加えること(3.1の契約に3.2〜3.4が実装を順に加えるため)、6.2の並びの確認を実際の登録を確かめる登録箇所のブラウザテストで行うことを反映した。1.5の分割(番号の振り直しが要る)、1.2・1.6・1.8の(P)の付け方、共用の部品のテストの値のファイルの設計への追記は、実行を妨げないため反映していない(テストの値のファイルは実装の報告で相違点として扱う)。`tasks.md`を書いた(8の大タスク・66のサブタスク、うち22が(P))。タスクの承認は開発者の確認を待つ。

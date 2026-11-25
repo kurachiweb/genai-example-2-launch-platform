@@ -1,4 +1,5 @@
 import { adminSchemaModule } from '../presentation/graphql/modules/admin/index.ts';
+import { dataExportSchemaModule } from '../presentation/graphql/modules/data-export/index.ts';
 import { directorySchemaModule } from '../presentation/graphql/modules/directory/index.ts';
 import { engagementSchemaModule } from '../presentation/graphql/modules/engagement/index.ts';
 import { helpSchemaModule } from '../presentation/graphql/modules/help/index.ts';
@@ -7,12 +8,18 @@ import { inquirySchemaModule } from '../presentation/graphql/modules/inquiry/ind
 import { legalSchemaModule } from '../presentation/graphql/modules/legal/index.ts';
 import { matchSchemaModule } from '../presentation/graphql/modules/match/index.ts';
 import { mediaSchemaModule } from '../presentation/graphql/modules/media/index.ts';
+import { moderationSchemaModule } from '../presentation/graphql/modules/moderation/index.ts';
 import { notificationsSchemaModule } from '../presentation/graphql/modules/notifications/index.ts';
 import { paymentsSchemaModule } from '../presentation/graphql/modules/payments/index.ts';
 import { productSchemaModule } from '../presentation/graphql/modules/product/index.ts';
 import { profileSchemaModule } from '../presentation/graphql/modules/profile/index.ts';
+import { publicApiSchemaModule } from '../presentation/graphql/modules/public-api/index.ts';
+import { reportingSchemaModule } from '../presentation/graphql/modules/reporting/index.ts';
+import { sponsorshipSchemaModule } from '../presentation/graphql/modules/sponsorship/index.ts';
 import { systemSchemaModule } from '../presentation/graphql/modules/system/index.ts';
 import { ultrasSchemaModule } from '../presentation/graphql/modules/ultras/index.ts';
+import { weekTournamentSchemaModule } from '../presentation/graphql/modules/week-tournament/index.ts';
+import { yearTournamentSchemaModule } from '../presentation/graphql/modules/year-tournament/index.ts';
 import type { GraphQLSchemaModule } from '../presentation/graphql/schema-module.ts';
 
 export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
@@ -31,4 +38,11 @@ export const GRAPHQL_SCHEMA_MODULES: readonly GraphQLSchemaModule[] = [
   directorySchemaModule,
   notificationsSchemaModule,
   engagementSchemaModule,
+  weekTournamentSchemaModule,
+  yearTournamentSchemaModule,
+  sponsorshipSchemaModule,
+  publicApiSchemaModule,
+  moderationSchemaModule,
+  reportingSchemaModule,
+  dataExportSchemaModule,
 ];

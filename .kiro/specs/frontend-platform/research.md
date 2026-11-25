@@ -9,7 +9,7 @@
   - 検査担当が自分自身の共有ディレクトリ(`apps/frontend-lib`)の`tsconfig.json`が相対パスの`extends`を持つと、配置先(`apps/client/lib`)では`extends`の先が見つからず、Viteのビルドが失敗し、開発サーバーの依存の事前解析も失敗する。`extends`を持たない自己完結の`tsconfig.json`なら両方とも成功した。
   - TanStack Start 1.168.60の独自のサーバーのエントリから`handler.fetch(request, { context })`で渡した値は、`getGlobalStartContext()`でルーターの生成時に読める。ルーターの`ssr.nonce`に渡すと、インラインのスクリプト(`head`の`scripts`を含む)・モジュールのスクリプト・`modulepreload`のすべてにnonceが付いた。
   - `createCsrfMiddleware()`を`src/start.ts`に絞り込み無しで登録すると、ページの`GET`も検証され、ヘッダーの無い要求が403になる。メソッドとサーバー関数の呼び出しで絞り込む必要がある。
-  - `vite dev`・`vite preview`のどちらからも、別のプロセスの`wrangler dev`で動くAPIの名前付きエントリポイント(`entrypoint: "ClientGateway"`)へService Bindingsで到達できた。Rate Limitingバインディングもローカルで動作し(101回目から429)、`request.cf.timezone`もローカルで得られた。
+  - `vite dev`・`vite preview`のどちらからも、別のプロセスの`wrangler dev`で動くAPIの名前付きエントリポイント(`entrypoint: "ClientGateway"`)へService Bindingsで到達できた。Rate Limitingバインディングもローカルで動作し(上限を超えた要求から429)、`request.cf.timezone`もローカルで得られた。
   - Sentry 11.4.0のサーバー側は、`@sentry/cloudflare`の`withSentry`と`@sentry/tanstackstart-react`の`captureException`の組み合わせでworkerd上で動作した。ただし既定のスパンの逐次送信では、`sendDefaultPii: false`でも`http.server`のスパンの属性に要求ヘッダー(Cookie・`CF-Connecting-IP`)・`user.ip_address`・URLのクエリが入り、`dataCollection`でも消えなかった。`beforeSendSpan`で属性を除けば消えた。`beforeSendTransaction`は逐次送信では呼ばれない。
 
 ## 要件フェーズ前の確認事項(2026-10-18)
@@ -43,7 +43,7 @@
 
 ### 確認済みのため質問しない事項
 
-- roadmapの「Requirement Ambiguities」: 本specが担当する行は無い。FR-RLMIT-009のclient・adminへの適用はbackend-platformのQ2で決定済みで、規約(バインディング`IP_RATE_LIMITER`・10秒あたり100回・キー`ip:<CF-Connecting-IP>`・`namespace_id`はclientが`1003`・`2003`・`3003`、adminが`1004`・`2004`・`3004`)をそのまま使う。超過時の画面は文言規則の「レート制限(429)」で、ページの要求にはHTML、それ以外には共通のエラー形式で返す。
+- roadmapの「Requirement Ambiguities」: 本specが担当する行は無い。FR-RLMIT-009のclient・adminへの適用はbackend-platformのQ2で決定済みで、規約(バインディング`IP_RATE_LIMITER`・10秒あたり500回・キー`ip:<CF-Connecting-IP>`・`namespace_id`はclientが`1003`・`2003`・`3003`、adminが`1004`・`2004`・`3004`)をそのまま使う。超過時の画面は文言規則の「レート制限(429)」で、ページの要求にはHTML、それ以外には共通のエラー形式で返す。
 - 静的なファイルの扱い(FR-RLMIT-009・NFR-SECUR-010): Workers Static Assetsが配信するファイルはWorkerを起動しないため数えない(backend-platformで画像のエッジキャッシュを対象外にしたのと同じ扱い)。セキュリティヘッダーは`_headers`で付ける。
 - briefの実現性チェックの2点: 設計で解消する。CSRFのミドルウェアは`src/start.ts`で絞り込みを付けて明示的に登録し、`CLOUDFLARE_ENV`はビルド時に指定する。別プロセスのAPIの名前付きエントリポイントへの接続は、scratchpadで`vite dev`・`vite preview`の両方で確かめた(Research Log)。
 - CSRFの検証の範囲(NFR-SECUR-003): 要件は「認証を要する状態変更リクエスト」だが、中継する操作が認証を要するかをフロントエンドサーバーは判別できないため、`GET`・`HEAD`・`OPTIONS`以外の全要求と、メソッドを問わないサーバー関数の呼び出しに適用する。正規の利用でサイト外から状態変更が届く経路は無い(Stripeの戻りは`GET`、RFC 8058の配信停止はイベントサーバー)。要件の文言より範囲を広げる判断のため、完了報告の「開発者の確認が必要な判断」に含める(開発者の指示)。`Referer`による代わりの判定は行わない(要件の手順に無いため。TanStackの既定は有効)。
@@ -104,7 +104,7 @@
 - **Findings**:
   - Wrangler設定の`services: [{ binding: "API", service: "<APIのWorker名>", entrypoint: "ClientGateway" }]`で、`vite dev`・`vite preview`のどちらからも名前付きエントリポイントへ到達し、APIは呼び出し元を`client`と判定した。
   - `vite build`は`dist/server/wrangler.json`に環境ごとの実効値(バインディング・`ratelimits`・`vars`・`observability`)を出力し、`vite preview`とデプロイはこれを使う。
-  - `ratelimits`のバインディングはローカルで模擬され、同じキーで101回目から`success: false`になった。
+  - `ratelimits`のバインディングはローカルで模擬され、同じキーで上限を超えた回(10秒あたり500回の設定では501回目)から`success: false`になった。
   - `request.cf.timezone`(例: `Asia/Tokyo`)と`Accept-Language`をローカルでも得られた。
 - **Implications**: `auxiliaryWorkers`は使わず、APIを先に`wrangler dev`で起動してからフロントエンドを起動する手順にする。デプロイ先の環境のビルドでは`CLOUDFLARE_ENV`を指定する。
 
@@ -244,7 +244,7 @@
 
 - backend-platform・api-gatewayのSentryの設定(`beforeSendTransaction`による除去)は、Sentry 11の既定のスパンの逐次送信では呼ばれず、`http.server`のスパンにCookie・IPアドレス・URLのクエリが残る可能性がある — 本specの除去関数と同じ`beforeSendSpan`の対策を、上流specの実装時に開発者へ確認する(完了報告に記載する)。
 - TanStack Startの更新でnonceの付与範囲やCSRFのミドルウェアの挙動が変わる — スモークテストで、すべての`<script>`のnonce・CSPの違反が無いこと・クロスサイトのPOSTの403を確かめる。
-- 中継とページの描画の両方でAPIを呼ぶため、APIのIP制限(100回/10秒)にフロントエンドのIP制限と同じ利用者が重ねて数えられる — 同じ上限で、ページの描画は1回の要求あたり数回の呼び出しに留める規約を`frontend/`の文書に記載する。
+- 中継とページの描画の両方でAPIを呼ぶため、APIのIP制限(500回/10秒)にフロントエンドのIP制限と同じ利用者が重ねて数えられる — 同じ上限で、ページの描画は1回の要求あたり数回の呼び出しに留める規約を`frontend/`の文書に記載する。
 - ストリーミングで送り始めた後に、遅れて完了した取得がセッションの更新を指示しても、Cookieを発行できない — セッションの指示はページの描画より前(ルートの`loader`)の取得でだけ反映し、後から届いた指示は警告ログに出して捨てる規約にする。
 - `eslint-plugin-jsx-a11y-x`はフォークで歴史が浅い — 版を固定し、本家がESLint 10へ対応したら移行を検討する。
 - `@cloudflare/vite-plugin`を1.53.0に留めるため、新しい機能の取り込みが遅れる — `@cloudflare/vitest-pool-workers`の更新と同時に3つを一括で更新する規則を文書化する。

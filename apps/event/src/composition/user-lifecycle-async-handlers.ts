@@ -1,14 +1,20 @@
 import type { UserLifecycleAsyncRegistration } from '../../lib/core/identity/user-lifecycle.ts';
+import { EVENT_DATA_EXPORT_TYPES } from '../application/data-export/event-data-export-types.ts';
 import { EVENT_DIRECTORY_TYPES } from '../application/directory/event-directory-types.ts';
 import { EVENT_ENGAGEMENT_TYPES } from '../application/engagement/event-engagement-types.ts';
 import { EVENT_IDENTITY_TYPES } from '../application/identity/event-identity-types.ts';
 import { EVENT_INQUIRY_TYPES } from '../application/inquiry/event-inquiry-types.ts';
 import { EVENT_MATCH_TYPES } from '../application/match/event-match-types.ts';
+import { EVENT_MODERATION_TYPES } from '../application/moderation/event-moderation-types.ts';
 import { EVENT_NOTIFICATIONS_TYPES } from '../application/notifications/event-notifications-types.ts';
 import { EVENT_PAYMENTS_TYPES } from '../application/payments/event-payments-types.ts';
 import { EVENT_PRODUCT_TYPES } from '../application/product/event-product-types.ts';
 import { EVENT_PROFILE_TYPES } from '../application/profile/event-profile-types.ts';
+import { EVENT_REPORTING_TYPES } from '../application/reporting/event-reporting-types.ts';
+import { EVENT_SPONSORSHIP_TYPES } from '../application/sponsorship/event-sponsorship-types.ts';
 import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts';
+import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
+import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 
 // 退会・停止・停止解除・物理削除の開始の後にイベントサーバーで自分のデータを変える機能が、登録をここへ追記する。
 // orderは0〜9999を各ドメインspecが使い、10000以上はアカウント機能が使う
@@ -97,6 +103,42 @@ export const USER_LIFECYCLE_ASYNC_HANDLERS: readonly UserLifecycleAsyncRegistrat
       events: ['purge_due'],
       order: 1400,
       handler: EVENT_ENGAGEMENT_TYPES.AccountErasureHandler,
+    },
+    {
+      name: 'tournament-week.account-entry-loss',
+      events: ['withdrawn'],
+      order: 1500,
+      handler: EVENT_WEEK_TOURNAMENT_TYPES.AccountEntryLossHandler,
+    },
+    {
+      name: 'sponsorship.account-purge',
+      events: ['purge_due'],
+      order: 1600,
+      handler: EVENT_SPONSORSHIP_TYPES.AccountPurgeHandler,
+    },
+    {
+      name: 'tournament-year.account-entry-loss',
+      events: ['withdrawn'],
+      order: 1700,
+      handler: EVENT_YEAR_TOURNAMENT_TYPES.AccountEntryLossHandler,
+    },
+    {
+      name: 'content-reporting.user-report-erasure',
+      events: ['purge_due'],
+      order: 1800,
+      handler: EVENT_REPORTING_TYPES.UserReportErasureHandler,
+    },
+    {
+      name: 'ugc-moderation.account-record-erasure',
+      events: ['purge_due'],
+      order: 1900,
+      handler: EVENT_MODERATION_TYPES.AccountRecordErasureHandler,
+    },
+    {
+      name: 'data-export.archive-erasure',
+      events: ['withdrawn', 'purge_due'],
+      order: 2100,
+      handler: EVENT_DATA_EXPORT_TYPES.ArchiveErasureHandler,
     },
     {
       name: 'identity-auth.email-suppression-cleanup',

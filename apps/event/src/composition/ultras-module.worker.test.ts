@@ -63,6 +63,8 @@ import { EVENT_ULTRAS_TYPES } from '../application/ultras/event-ultras-types.ts'
 import { RunActivationHandlersHandler } from '../application/ultras/run-activation-handlers-handler.ts';
 import { SubscriptionCancellationHandler } from '../application/ultras/subscription-cancellation-handler.ts';
 import { SubscriptionErasureHandler } from '../application/ultras/subscription-erasure-handler.ts';
+import { EVENT_WEEK_TOURNAMENT_TYPES } from '../application/week-tournament/event-week-tournament-types.ts';
+import { EVENT_YEAR_TOURNAMENT_TYPES } from '../application/year-tournament/event-year-tournament-types.ts';
 import { D1UltrasAccountDataEraser } from '../infrastructure/ultras/d1-ultras-account-data-eraser.ts';
 import { MESSAGE_HANDLERS } from './message-handlers.ts';
 import { MODULES } from './modules.ts';
@@ -384,6 +386,9 @@ describe('退会・停止の解約と物理削除の波及処理の登録', () =
       'payments.open-checkout-expiry',
       'ultras-subscription.subscription-cancellation',
       'match-engine.account-decision-follow-up',
+      'tournament-week.account-entry-loss',
+      'tournament-year.account-entry-loss',
+      'data-export.archive-erasure',
       'identity-auth.email-suppression-cleanup',
     ]);
     expect(namesFor('suspended')).toStrictEqual([
@@ -402,6 +407,10 @@ describe('退会・停止の解約と物理削除の波及処理の登録', () =
       'match-engine.upvote-erasure',
       'notifications.account-purge',
       'engagement.account-erasure',
+      'sponsorship.account-purge',
+      'content-reporting.user-report-erasure',
+      'ugc-moderation.account-record-erasure',
+      'data-export.archive-erasure',
     ]);
     expect(
       namesFor('unsuspended').filter((name) =>
@@ -412,11 +421,34 @@ describe('退会・停止の解約と物理削除の波及処理の登録', () =
 });
 
 describe('加入が有効になった知らせの処理の登録箇所', () => {
-  test('初版の登録箇所は空の凍結済みの配列で、登録の検証を通る', () => {
-    expect(ULTRAS_ACTIVATION_HANDLERS).toEqual([]);
+  test('登録箇所はtournament-weekの参加費の免除(1500)と未完了の参加費の決済の失効(1510)、tournament-yearの参加費の免除(1700)と未完了の参加費の決済の失効(1710)を持つ凍結済みの配列で、登録の検証を通る', () => {
+    const registrations = [
+      {
+        name: 'tournament-week.ultras-entry-exemption',
+        order: 1500,
+        handler: EVENT_WEEK_TOURNAMENT_TYPES.WeekUltrasEntryExemptionHandler,
+      },
+      {
+        name: 'tournament-week.open-entry-checkout-expiry',
+        order: 1510,
+        handler: EVENT_WEEK_TOURNAMENT_TYPES.WeekOpenEntryCheckoutExpiryHandler,
+      },
+      {
+        name: 'tournament-year.ultras-entry-exemption',
+        order: 1700,
+        handler: EVENT_YEAR_TOURNAMENT_TYPES.YearUltrasEntryExemptionHandler,
+      },
+      {
+        name: 'tournament-year.open-entry-checkout-expiry',
+        order: 1710,
+        handler: EVENT_YEAR_TOURNAMENT_TYPES.YearOpenEntryCheckoutExpiryHandler,
+      },
+    ];
+
+    expect(ULTRAS_ACTIVATION_HANDLERS).toEqual(registrations);
     expect(Object.isFrozen(ULTRAS_ACTIVATION_HANDLERS)).toBe(true);
     expect(createUltrasActivationRegistry(ULTRAS_ACTIVATION_HANDLERS)).toEqual(
-      [],
+      registrations,
     );
   });
 
@@ -454,7 +486,7 @@ describe('加入が有効になった知らせのメッセージの処理の登�
 });
 
 describe('加入が有効になった知らせのメッセージの処理', () => {
-  test('登録が空の初版でも、知らせの行に完了を記録してackし、同じ知らせの再配信は完了の時刻を変えずにackする', async () => {
+  test('本番の登録の処理が書き換える枠や決済を持たない利用者でも、知らせの行に完了を記録してackし、同じ知らせの再配信は完了の時刻を変えずにackする', async () => {
     await insertActivatedUserWithActivation();
     const envelope = activationEnvelope(ACTIVATION_ID);
 

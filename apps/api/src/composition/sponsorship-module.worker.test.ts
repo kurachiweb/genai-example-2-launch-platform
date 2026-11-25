@@ -1,0 +1,92 @@
+import { createExecutionContext } from 'cloudflare:test';
+import { env } from 'cloudflare:workers';
+import type { Container } from 'inversify';
+import { describe, expect, test } from 'vitest';
+
+import type { InvocationScopeInfo } from '../../lib/core/di/identifiers.ts';
+import { createInvocationContainer } from '../../lib/workers/di/invocation-container.ts';
+import { DailyNoticesJob } from '../application/sponsorship/jobs/daily-notices-job.ts';
+import { MaintenanceJob } from '../application/sponsorship/jobs/maintenance-job.ts';
+import { DefaultAdminSponsorshipsReader } from '../application/sponsorship/admin-sponsorships-reader.ts';
+import { DefaultMySponsorshipsReader } from '../application/sponsorship/my-sponsorships-reader.ts';
+import { DefaultSponsorshipApplication } from '../application/sponsorship/sponsorship-application.ts';
+import { DefaultSponsorshipOfferReader } from '../application/sponsorship/sponsorship-offer-reader.ts';
+import { DefaultSponsorshipTermination } from '../application/sponsorship/sponsorship-termination.ts';
+import { SPONSORSHIP_TYPES } from '../application/sponsorship/sponsorship-types.ts';
+import { AccountWithdrawalSyncHandler } from '../infrastructure/sponsorship/account-withdrawal-sync-handler.ts';
+import { D1TerminationWriter } from '../infrastructure/sponsorship/d1-termination-writer.ts';
+import {
+  AccountDisplayStopSyncHandler,
+  ProductDisplayStopSyncHandler,
+} from '../infrastructure/sponsorship/display-stop-sync-handlers.ts';
+import { ProductDeletionSyncHandler } from '../infrastructure/sponsorship/product-deletion-sync-handler.ts';
+import { MODULES } from './modules.ts';
+import { SPONSORSHIP_API_MODULE } from './sponsorship-module.ts';
+import { YEAR_TOURNAMENT_API_MODULE } from './year-tournament-module.ts';
+
+const INVOCATION_KINDS = ['fetch', 'scheduled'] as const;
+
+const IMPLEMENTATIONS = [
+  ['SponsorshipApplication', DefaultSponsorshipApplication],
+  ['SponsorshipOfferReader', DefaultSponsorshipOfferReader],
+  ['MySponsorshipsReader', DefaultMySponsorshipsReader],
+  ['AdminSponsorshipsReader', DefaultAdminSponsorshipsReader],
+  ['SponsorshipTermination', DefaultSponsorshipTermination],
+  ['SponsorshipTerminationWriter', D1TerminationWriter],
+  ['DailyNoticesJob', DailyNoticesJob],
+  ['MaintenanceJob', MaintenanceJob],
+  ['AccountWithdrawalSyncHandler', AccountWithdrawalSyncHandler],
+  ['ProductDeletionSyncHandler', ProductDeletionSyncHandler],
+  ['AccountDisplayStopSyncHandler', AccountDisplayStopSyncHandler],
+  ['ProductDisplayStopSyncHandler', ProductDisplayStopSyncHandler],
+] as const;
+
+function createContainer(kind: InvocationScopeInfo['kind']): Container {
+  return createInvocationContainer(
+    {
+      env,
+      executionCtx: createExecutionContext(),
+      info: {
+        kind,
+        correlationId: crypto.randomUUID(),
+        clientIp: undefined,
+      },
+    },
+    MODULES,
+  );
+}
+
+describe('APIサーバーのモジュールの一覧へのスポンサー広告の束縛の登録', () => {
+  test('apiのスポンサー広告のモジュールを、スポンサー広告の共通の束縛とapiのYearトーナメントのモジュールの後に1つだけ持つ', () => {
+    const names = MODULES.map(({ name }) => name);
+
+    expect(SPONSORSHIP_API_MODULE.name).toBe('api-sponsorship');
+    expect(names.filter((name) => name === 'api-sponsorship')).toHaveLength(1);
+    expect(MODULES.indexOf(SPONSORSHIP_API_MODULE)).toBeGreaterThan(
+      names.indexOf('sponsorship-platform'),
+    );
+    expect(MODULES.indexOf(SPONSORSHIP_API_MODULE)).toBeGreaterThan(
+      MODULES.indexOf(YEAR_TOURNAMENT_API_MODULE),
+    );
+  });
+
+  test('解決を確かめる識別子はSPONSORSHIP_TYPESの全てである', () => {
+    expect(IMPLEMENTATIONS.map(([name]) => name).toSorted()).toEqual(
+      Object.keys(SPONSORSHIP_TYPES).toSorted(),
+    );
+  });
+});
+
+describe.each(INVOCATION_KINDS)(
+  'APIサーバーのスポンサー広告の束縛(%s)',
+  (kind) => {
+    test.each(IMPLEMENTATIONS)(
+      'モジュールの一覧の処理単位のコンテナから%sを実装のクラスに解決する',
+      (name, implementation) => {
+        expect(
+          createContainer(kind).get(SPONSORSHIP_TYPES[name]),
+        ).toBeInstanceOf(implementation);
+      },
+    );
+  },
+);

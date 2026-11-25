@@ -269,6 +269,42 @@ describe('検索対象のある日次の再抽出', () => {
           result: 'succeeded',
         }),
         expect.objectContaining({
+          name: 'tournament-week.entry-follow-up',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: 'sponsorship.maintenance',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: 'tournament-year.entry-follow-up',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: 'ugc-moderation.weekly-statistics',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: 'ugc-moderation.maintenance',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: 'content-reporting.notice-redispatch',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: 'content-reporting.report-retention',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: 'data-export.archive-expiry',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: 'data-export.generation-recovery',
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
           name: REEXTRACTION_JOB_NAME,
           result: 'succeeded',
         }),

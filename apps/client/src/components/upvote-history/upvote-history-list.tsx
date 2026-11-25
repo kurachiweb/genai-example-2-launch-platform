@@ -2,6 +2,7 @@ import { useSuspenseInfiniteQuery } from '@tanstack/react-query';
 import { InfoIcon } from 'lucide-react';
 import { useId } from 'react';
 
+import { formatBusinessDateWithWeekdayLabel } from '../../../common-lib/time/business-date-label.ts';
 import { FormMessage } from '../../../lib/components/form/form-message.tsx';
 import { PathLink } from '../../../lib/components/navigation/path-link.tsx';
 import { EmptyState } from '../../../lib/components/state/empty-state.tsx';
@@ -14,10 +15,7 @@ import {
 import type { ClientViewer } from '../../graphql/viewer.ts';
 import { HOME_HREF } from '../layout/site-links.ts';
 import { useFollowListFocus } from '../profile/use-follow-list-focus.ts';
-import {
-  formatUpvoteHistoryDate,
-  upvoteHistoryDayCountLabel,
-} from './upvote-history-date.ts';
+import { upvoteHistoryDayCountLabel } from './upvote-history-date.ts';
 import { UpvoteHistoryItem } from './upvote-history-item.tsx';
 import {
   UPVOTE_HISTORY_EMPTY_OWNER_ACTION,
@@ -47,7 +45,9 @@ function UpvoteHistoryDay({ day }: { readonly day: UpvoteHistoryDayView }) {
         id={headingId}
         className="mb-2 flex items-baseline gap-2 border-b border-border pb-1.5 text-sm font-bold"
       >
-        <time dateTime={day.date}>{formatUpvoteHistoryDate(day.date)}</time>
+        <time dateTime={day.date}>
+          {formatBusinessDateWithWeekdayLabel(day.date)}
+        </time>
         <span className="text-xs font-normal text-muted-foreground">
           {upvoteHistoryDayCountLabel(day.count)}
         </span>

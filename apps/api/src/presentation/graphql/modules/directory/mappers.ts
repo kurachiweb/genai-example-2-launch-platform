@@ -2,7 +2,7 @@ import type {
   DirectorySort,
   DirectoryQuery,
 } from '../../../../../common-lib/directory/directory-query-rules.ts';
-import { checkExternalUrl } from '../../../../../common-lib/url/external-url.ts';
+import { verifiedExternalUrl } from '../../../../../common-lib/url/external-url.ts';
 import type {
   DirectoryItemView,
   DirectoryPageView,
@@ -65,10 +65,6 @@ const WIN_KIND_VALUES = Object.freeze({
   early: 'EARLY',
 } as const satisfies Record<BaseWinKind, DirectoryWinKindValue>);
 
-// 保存の後に検証の規則が変わっても危険なリンクを出さないよう、表示の時点で検証の済まないURLを空にする
-export const verifiedWebsiteUrl = (value: string): string =>
-  checkExternalUrl(value) === 'ok' ? value : '';
-
 const toAppliedQuery = (
   applied: DirectoryQuery,
 ): DirectoryAppliedQueryModel => ({
@@ -85,7 +81,7 @@ const toDirectoryItem = (item: DirectoryItemView): DirectoryItemModel => ({
   name: item.product.name,
   tagline: item.product.tagline,
   categoryId: item.product.category.id,
-  websiteUrl: verifiedWebsiteUrl(item.product.websiteUrl),
+  websiteUrl: verifiedExternalUrl(item.product.websiteUrl) ?? '',
   logoFileId: item.product.logoFileId,
   ownerUserId: item.product.ownerUserId,
   isViewerOwn: item.isViewerOwn,

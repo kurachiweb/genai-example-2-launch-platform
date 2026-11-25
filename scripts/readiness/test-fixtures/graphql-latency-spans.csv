@@ -1,0 +1,17 @@
+trace_id,span_id,parent_span_id,side,operation,duration_ms
+trace-01,browser-01,,browser,,180
+trace-01,frontend-01,browser-01,frontend,,150
+trace-01,api-01,frontend-01,api,HomeQuery,90
+trace-01,api-02,api-01,api,HomeQuery,80
+trace-02,browser-02,,browser,,240
+trace-02,frontend-02,browser-02,frontend,,200
+trace-02,api-03,frontend-02,api,HomeQuery,120
+trace-03,browser-03,,browser,,420
+trace-03,frontend-03,browser-03,frontend,,380
+trace-03,api-04,frontend-03,api,ProductQuery,300
+trace-03,browser-04,,browser,,310
+trace-03,frontend-04,browser-04,frontend,,290
+trace-03,api-05,frontend-04,api,ProductQuery,210
+trace-04,browser-05,,browser,,95
+trace-04,frontend-05,browser-05,frontend,,60
+trace-04,api-06,frontend-05,api,,40

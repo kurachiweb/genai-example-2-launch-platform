@@ -63,6 +63,21 @@ const MATCH_JOB_NAMES = [
 ];
 const NOTIFICATIONS_JOB_NAMES = ['notifications.maintenance'];
 const ENGAGEMENT_JOB_NAMES = ['engagement.comment-anonymization'];
+const WEEK_TOURNAMENT_JOB_NAMES = ['tournament-week.entry-follow-up'];
+const SPONSORSHIP_JOB_NAMES = ['sponsorship.maintenance'];
+const YEAR_TOURNAMENT_JOB_NAMES = ['tournament-year.entry-follow-up'];
+const UGC_MODERATION_JOB_NAMES = [
+  'ugc-moderation.weekly-statistics',
+  'ugc-moderation.maintenance',
+];
+const CONTENT_REPORTING_JOB_NAMES = [
+  'content-reporting.notice-redispatch',
+  'content-reporting.report-retention',
+];
+const DATA_EXPORT_JOB_NAMES = [
+  'data-export.archive-expiry',
+  'data-export.generation-recovery',
+];
 const REEXTRACTION_CATEGORY = 'api.search.reextraction';
 
 function createContainer() {
@@ -160,6 +175,12 @@ describe('APIサーバーの検索のモジュール', () => {
       ...MATCH_JOB_NAMES,
       ...NOTIFICATIONS_JOB_NAMES,
       ...ENGAGEMENT_JOB_NAMES,
+      ...WEEK_TOURNAMENT_JOB_NAMES,
+      ...SPONSORSHIP_JOB_NAMES,
+      ...YEAR_TOURNAMENT_JOB_NAMES,
+      ...UGC_MODERATION_JOB_NAMES,
+      ...CONTENT_REPORTING_JOB_NAMES,
+      ...DATA_EXPORT_JOB_NAMES,
       REEXTRACTION_JOB_NAME,
     ]);
   });
@@ -254,6 +275,42 @@ describe('定期実行からの日次の再抽出', () => {
         }),
         expect.objectContaining({
           name: ENGAGEMENT_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: WEEK_TOURNAMENT_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: SPONSORSHIP_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: YEAR_TOURNAMENT_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: UGC_MODERATION_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: UGC_MODERATION_JOB_NAMES[1],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: CONTENT_REPORTING_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: CONTENT_REPORTING_JOB_NAMES[1],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: DATA_EXPORT_JOB_NAMES[0],
+          result: 'succeeded',
+        }),
+        expect.objectContaining({
+          name: DATA_EXPORT_JOB_NAMES[1],
           result: 'succeeded',
         }),
         expect.objectContaining({

@@ -9,6 +9,11 @@ import { productLiveMatchOf } from '../src/components/product-page/live-match-fi
 import { historyLaunchOf } from '../src/components/product-page/match-history-fixtures.ts';
 import { productPageViewOf } from '../src/components/product-page/product-page-fixtures.ts';
 import {
+  serverTimeBeforeAcceptUntil,
+  weekEntryOf,
+} from '../src/components/week-tournament/week-entry-fixtures.ts';
+import {
+  ClientMyWeekEntryDocument,
   ClientProductLiveMatchDocument,
   ClientProductPageDocument,
 } from '../src/graphql/generated/graphql.ts';
@@ -109,6 +114,63 @@ describe('プロダクト詳細の経路', () => {
     expect(
       callsOf(executeGraphQL, ClientProductLiveMatchDocument)[0]?.[1],
     ).toEqual({ productHandle: 'pitch-notes' });
+  });
+
+  test('投稿者本人には投稿者本人向けの操作にWeekトーナメントの参加費の導線を描き、秒読みを持つ間は自動更新の切り替えを描いて、オフで秒読みを止める', async () => {
+    respondProductRoute(executeGraphQL, {
+      pages: { 'pitch-notes': productPageViewOf({ viewerIsOwner: true }) },
+      weekEntry: weekEntryOf({
+        serverTime: serverTimeBeforeAcceptUntil(3_600_000),
+        ultrasGuide: false,
+      }),
+    });
+
+    await renderProductRoute('/p/pitch-notes', { signedIn: true });
+
+    const ownerCard = main().getByRole('region', {
+      name: 'あなたのプロダクト',
+    });
+    const timer = () =>
+      ownerCard.getByRole('timer', { name: '決済期限までの残り時間' });
+    await expect
+      .element(
+        ownerCard.getByRole('group', {
+          name: 'Product of the Weekトーナメント',
+        }),
+      )
+      .toBeVisible();
+    await expect.element(timer()).toBeVisible();
+    const toggle = main().getByRole('switch', { name: '自動更新' });
+    await expect.element(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(
+      callsOf(executeGraphQL, ClientMyWeekEntryDocument)[0]?.[1],
+    ).toStrictEqual({ productHandle: 'Pitch-Notes' });
+
+    await userEvent.click(toggle);
+
+    await expect.element(toggle).toHaveAttribute('aria-checked', 'false');
+    await expect.element(timer()).not.toBeInTheDocument();
+  });
+
+  test('投稿者本人でも参加の枠が無ければ、参加費の導線と自動更新の切り替えを描かない', async () => {
+    respondProductRoute(executeGraphQL, {
+      pages: { 'pitch-notes': productPageViewOf({ viewerIsOwner: true }) },
+    });
+
+    await renderProductRoute('/p/pitch-notes', { signedIn: true });
+
+    await expect
+      .element(main().getByRole('region', { name: 'あなたのプロダクト' }))
+      .toBeVisible();
+    await expect
+      .poll(() => callsOf(executeGraphQL, ClientMyWeekEntryDocument).length)
+      .toBe(1);
+    await expect
+      .element(
+        main().getByRole('group', { name: 'Product of the Weekトーナメント' }),
+      )
+      .not.toBeInTheDocument();
+    expect(main().getByRole('switch').elements()).toHaveLength(0);
   });
 
   test.each(['a b', 'a.b', '-abc', 'a'.repeat(51)])(

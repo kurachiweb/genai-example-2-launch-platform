@@ -1,0 +1,5 @@
+mutation AdminDeleteQuarantinedImage($fileId: ID!, $reason: String) {
+  deleteQuarantinedImage(fileId: $fileId, reason: $reason) {
+    changed
+  }
+}

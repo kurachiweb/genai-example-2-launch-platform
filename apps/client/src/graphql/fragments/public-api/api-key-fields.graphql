@@ -1,0 +1,14 @@
+fragment ApiKeyFields on ApiKey {
+  id
+  name
+  scopes {
+    products
+    launches
+    upvotes
+    comments
+    ratings
+    profile
+    productDescriptions
+  }
+  createdAt
+}

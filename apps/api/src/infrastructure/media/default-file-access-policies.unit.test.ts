@@ -17,7 +17,6 @@ import {
   type FileReadPolicy,
   type FileReadPolicyRegistration,
 } from '../../application/media/file-access-policies.ts';
-import { DenyAllAdminMediaReviewPolicy } from './deny-all-admin-media-review-policy.ts';
 import { OwnerOnlyFileReadPolicy } from './owner-only-file-read-policy.ts';
 
 const USER: AuthenticatedPrincipal = Object.freeze({
@@ -40,6 +39,10 @@ const allowAll: FileReadPolicy = Object.freeze({
   canRead: () => Promise.resolve(true),
 });
 
+const denyReview: AdminMediaReviewPolicy = Object.freeze({
+  canReview: () => Promise.resolve(false),
+});
+
 function createDefaultAuthorizer(
   registrations: readonly FileReadPolicyRegistration[] = [],
 ): FileAccessAuthorizer {
@@ -49,7 +52,7 @@ function createDefaultAuthorizer(
     .to(OwnerOnlyFileReadPolicy);
   container
     .bind<AdminMediaReviewPolicy>(FILE_ACCESS_TYPES.AdminMediaReviewPolicy)
-    .to(DenyAllAdminMediaReviewPolicy);
+    .toConstantValue(denyReview);
   container.bind<FileReadPolicy>(INQUIRY_POLICY).toConstantValue(allowAll);
   return new PolicyFileAccessAuthorizer({
     registrations,
@@ -59,7 +62,7 @@ function createDefaultAuthorizer(
   });
 }
 
-describe('既定の2つの方針を束縛した閲覧の判定', () => {
+describe('既定の保有者の方針を束縛した閲覧の判定', () => {
   test.each<[string, MediaFileView, boolean]>([
     [
       'アップロードした主体のファイルは通す',
@@ -103,7 +106,7 @@ describe('既定の2つの方針を束縛した閲覧の判定', () => {
     expect(allowed).toBe(true);
   });
 
-  test('管理者の画像確認の判定が登録されていない間は、管理者側からの画像の要求を拒否する', async () => {
+  test('管理者の画像確認の判定が拒否すれば、管理者側からの画像の要求を拒否する', async () => {
     const authorizer = createDefaultAuthorizer();
 
     const allowed = await authorizer.canAccess({

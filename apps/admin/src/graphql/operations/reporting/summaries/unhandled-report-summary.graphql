@@ -1,0 +1,6 @@
+query AdminUnhandledReportSummary {
+  adminUnhandledReportSummary {
+    open
+    infringementOpen
+  }
+}

@@ -26,12 +26,19 @@ import {
   type AdminRole,
   AdminUltrasPromotionSettingDocument,
   type AdminUltrasPromotionSettingQuery,
+  AdminYearFinalDateSettingsDocument,
+  type AdminYearFinalDateSettingsQuery,
 } from '../../graphql/generated/graphql.ts';
 import { buildAdminPageHead } from '../../head/page-heads.ts';
 import { Route as AuthenticatedRoute } from '../../routes/_authenticated/route.tsx';
 import { Route as SettingsRoute } from '../../routes/_authenticated/settings/index.tsx';
 import { SenderInfoSection } from '../notifications/sender-info-section.tsx';
 import { PromotionSettingSection } from '../ultras/promotion-setting-section.tsx';
+import {
+  CURRENT_YEAR_SETTING,
+  NEXT_YEAR_SETTING,
+} from '../year-tournament/final-date-fixtures.ts';
+import { FinalDateSection } from '../year-tournament/final-date-section.tsx';
 
 const { executeGraphQL } = vi.hoisted(() => ({ executeGraphQL: vi.fn() }));
 
@@ -50,6 +57,8 @@ const SECTION_TITLE = 'Ultras導線の機能フラグ';
 const SWITCH_LABEL = '未加入者への導線と新規加入';
 
 const SENDER_INFO_TITLE = '通知メールの送信者情報';
+
+const FINAL_DATE_TITLE = 'Yearトーナメントの決勝実施日';
 
 const CONTACT_PHRASE = 'お問い合わせ';
 
@@ -75,6 +84,13 @@ const SENDER_INFO: AdminNotificationSenderInfoQuery = {
   },
 };
 
+const FINAL_DATE_SETTINGS: AdminYearFinalDateSettingsQuery = {
+  yearFinalDateSettings: {
+    serverTime: '2026-11-18T00:00:00.000Z',
+    settings: [CURRENT_YEAR_SETTING, NEXT_YEAR_SETTING],
+  },
+};
+
 const INTERNAL_ERROR = Object.freeze({
   code: 'internal_error',
   message: 'サーバーで問題が発生しました。時間をおいて再度お試しください。',
@@ -85,12 +101,14 @@ const respondSettings = (
   role: AdminRole,
   setting: GraphQLHandler = () => success(ENABLED_SETTING),
   senderInfo: GraphQLHandler = () => success(SENDER_INFO),
+  finalDate: GraphQLHandler = () => success(FINAL_DATE_SETTINGS),
 ): void => {
   respondAdminGraphQL(executeGraphQL, {
     role,
     handlers: new Map<unknown, GraphQLHandler>([
       [AdminUltrasPromotionSettingDocument, setting],
       [AdminNotificationSenderInfoDocument, senderInfo],
+      [AdminYearFinalDateSettingsDocument, finalDate],
     ]),
   });
 };
@@ -118,8 +136,9 @@ const renderSettingsPage = async (
   role: AdminRole,
   setting?: GraphQLHandler,
   senderInfo?: GraphQLHandler,
+  finalDate?: GraphQLHandler,
 ) => {
-  respondSettings(role, setting, senderInfo);
+  respondSettings(role, setting, senderInfo, finalDate);
   await renderPageRouter({
     path: SETTINGS_PATH,
     createRoutes,
@@ -132,6 +151,13 @@ const section = () => main().getByRole('region', { name: SECTION_TITLE });
 const toggle = () => section().getByRole('switch', { name: SWITCH_LABEL });
 const senderInfoSection = () =>
   main().getByRole('region', { name: SENDER_INFO_TITLE });
+const finalDateSection = () =>
+  main().getByRole('region', { name: FINAL_DATE_TITLE, exact: true });
+const finalDateCard = (year: number) =>
+  finalDateSection().getByRole('region', {
+    name: `${String(year)}年`,
+    exact: true,
+  });
 const businessNameInput = () =>
   senderInfoSection().getByRole('textbox', { name: '事業者名(必須)' });
 
@@ -144,8 +170,14 @@ afterEach(() => {
 });
 
 describe('設定の区画の登録口', () => {
-  test('Ultras導線の機能フラグの区画をorder 20、通知メールの送信者情報の区画をorder 30で登録し、凍結されている', () => {
+  test('Yearトーナメントの決勝実施日の区画をorder 10、Ultras導線の機能フラグの区画をorder 20、通知メールの送信者情報の区画をorder 30で登録し、凍結されている', () => {
     expect(ADMIN_SETTINGS_SECTIONS).toStrictEqual([
+      {
+        id: 'tournament-year.final-date',
+        order: 10,
+        title: FINAL_DATE_TITLE,
+        component: FinalDateSection,
+      },
       {
         id: 'ultras-subscription.promotion-flag',
         order: 20,
@@ -178,12 +210,14 @@ describe('設定のページ', () => {
     await expect
       .element(senderInfoSection().getByText('運営事務局'))
       .toBeVisible();
+    await expect.element(finalDateCard(2026)).toBeVisible();
+    await expect.element(finalDateCard(2027)).toBeVisible();
     expect(
       main()
         .getByRole('heading', { level: 2 })
         .elements()
         .map((heading) => heading.textContent),
-    ).toStrictEqual([SECTION_TITLE, SENDER_INFO_TITLE]);
+    ).toStrictEqual([FINAL_DATE_TITLE, SECTION_TITLE, SENDER_INFO_TITLE]);
     expect(main().getByRole('link').elements()).toHaveLength(0);
   });
 
@@ -248,12 +282,47 @@ describe('設定のページ', () => {
     expect(page.getByRole('alert').elements()).toHaveLength(0);
   });
 
+  test('決勝実施日の区画の取得の失敗はその区画の位置に見出しと再試行で示し、他の区画の表示を続ける', async () => {
+    let failing = true;
+    await renderSettingsPage('SUPER_ADMIN', undefined, undefined, () =>
+      failing ? failure(INTERNAL_ERROR) : success(FINAL_DATE_SETTINGS),
+    );
+
+    await expect
+      .element(finalDateSection().getByRole('alert'))
+      .toHaveTextContent(INTERNAL_ERROR.message);
+    await expect
+      .element(
+        finalDateSection().getByRole('heading', {
+          level: 2,
+          name: FINAL_DATE_TITLE,
+        }),
+      )
+      .toBeVisible();
+    await expect.element(toggle()).toHaveAttribute('aria-checked', 'true');
+    await expect.element(businessNameInput()).toHaveValue('運営事務局');
+    expect(document.body.textContent).not.toContain(CONTACT_PHRASE);
+
+    failing = false;
+    await userEvent.click(
+      finalDateSection().getByRole('button', { name: '再試行' }),
+    );
+
+    await expect.element(finalDateCard(2027)).toBeVisible();
+    expect(page.getByRole('alert').elements()).toHaveLength(0);
+  });
+
   test.each(COLOR_SCHEMES)(
     '%sの配色で、設定のページがWCAG 2.2 AAの自動検査に違反しない',
     async (scheme) => {
       applyColorScheme(scheme);
       await renderSettingsPage('SUPER_ADMIN');
       await expect.element(toggle()).toBeEnabled();
+      await expect
+        .element(
+          finalDateCard(2027).getByRole('combobox', { name: '決勝実施日' }),
+        )
+        .toBeVisible();
 
       expect(await runAxe(document.body)).toStrictEqual([]);
     },

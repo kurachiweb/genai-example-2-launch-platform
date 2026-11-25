@@ -28,6 +28,7 @@ import {
   renderHelpArticlesPage,
   respondAdminHelpArticlesGraphQL,
 } from '../../../test/admin-help-articles-fixtures.ts';
+import { watchAuditLogQueries } from '../../../test/audit-log-queries.ts';
 import { loadAdminHelpArticlePage } from '../../graphql/admin-help-articles.ts';
 import {
   AdminHelpArticleDocument,
@@ -287,7 +288,7 @@ describe('ヘルプ記事の編集の画面', () => {
 });
 
 describe('削除', () => {
-  test('確認のダイアログで記事のタイトルと元に戻せない旨と任意の理由を示し、確定すると削除してトーストで知らせ、一覧へ移す', async () => {
+  test('確認のダイアログで記事のタイトルと元に戻せない旨と任意の理由を示し、確定すると削除してトーストで知らせ、監査ログの照会を無効にして一覧へ移す', async () => {
     const remove = vi.fn<GraphQLHandler>(() =>
       success({ deleteHelpArticle: { id: ARTICLE.id } }),
     );
@@ -304,6 +305,9 @@ describe('削除', () => {
       articles,
       path: HELP_ARTICLES_PATH,
     });
+    const auditLogsInvalidated = watchAuditLogQueries(
+      router.options.context.queryClient,
+    );
     await userEvent.click(
       main().getByRole('link', { name: ARTICLE.title, exact: true }),
     );
@@ -359,11 +363,15 @@ describe('削除', () => {
       reason: '古い説明のため',
     });
     expect(shown).toStrictEqual([]);
+    expect(auditLogsInvalidated()).toBe(true);
   });
 
-  test('既に削除されていれば、ダイアログの中に削除された旨と一覧への導線を示す', async () => {
+  test('既に削除されていれば、ダイアログの中に削除された旨と一覧への導線を示し、監査ログの照会は無効にしない', async () => {
     const remove = vi.fn<GraphQLHandler>(() => failure(NOT_FOUND));
     const router = await renderWith({ remove });
+    const auditLogsInvalidated = watchAuditLogQueries(
+      router.options.context.queryClient,
+    );
 
     await userEvent.click(deleteButton());
     await userEvent.click(
@@ -373,6 +381,7 @@ describe('削除', () => {
     await expect
       .element(deleteDialog().getByRole('alert'))
       .toHaveTextContent(NOT_FOUND_MESSAGE);
+    expect(auditLogsInvalidated()).toBe(false);
     await userEvent.click(listLink(deleteDialog()));
     await expect
       .poll(() => router.state.location.pathname)

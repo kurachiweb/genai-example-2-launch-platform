@@ -1,0 +1,5 @@
+mutation AdminApproveQuarantinedImage($fileId: ID!, $reason: String) {
+  approveQuarantinedImage(fileId: $fileId, reason: $reason) {
+    changed
+  }
+}

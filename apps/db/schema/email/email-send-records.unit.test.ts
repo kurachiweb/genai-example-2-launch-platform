@@ -24,10 +24,11 @@ describe('email_send_records', () => {
     expect(config.name).toBe('email_send_records');
   });
 
-  test('送信要求の識別子・種別・送信日時と共通カラムだけを持ち、宛先・本文・入力を持たない', () => {
+  test('送信要求の識別子・種別・冪等のキー・送信日時と共通カラムだけを持ち、宛先・本文・入力を持たない', () => {
     expect(config.columns.map((column) => column.name)).toEqual([
       'id',
       'kind',
+      'idempotency_key',
       'sent_at',
       'created_at',
       'updated_at',
@@ -74,7 +75,15 @@ describe('email_send_records', () => {
     },
   );
 
-  test('送信日時に、一意でない索引を持つ', () => {
+  test('idempotency_keyはNULL可のテキストで、既定値を持たない', () => {
+    const key = columnOf('idempotency_key');
+
+    expect(key.getSQLType()).toBe('text');
+    expect(key.notNull).toBe(false);
+    expect(key.hasDefault).toBe(false);
+  });
+
+  test('送信日時に一意でない索引を、種別と冪等のキーの組に一意索引を持つ', () => {
     const indexes = config.indexes.map((index) => ({
       name: index.config.name,
       columns: index.config.columns.map(
@@ -88,6 +97,11 @@ describe('email_send_records', () => {
         name: 'email_send_records_sent_at_idx',
         columns: ['sent_at'],
         unique: false,
+      },
+      {
+        name: 'email_send_records_kind_idempotency_key_unique',
+        columns: ['kind', 'idempotency_key'],
+        unique: true,
       },
     ]);
   });
