@@ -95,7 +95,7 @@
 
 ### Existing Architecture Analysis
 
-- 上流の28specは設計・タスクとも承認済みで、本specのタスクはそれらの実装の完了を前提にする。実装済みはdev-toolingだけである。本specのタスクは各specの実装とstagingへの随時のデプロイの後に行う。
+- 上流の28specは全て実装済みで、本specのタスクはそれらの実装の完了を前提にする。本specのタスクは各specの実装とstagingへの随時のデプロイの後に行う。
 - infra-deliveryは、mainへのpushでstagingへ、prodへのpushでprodへデプロイし、prodの最初のリリースを2回(資源の作成と識別子の照合→識別子の反映の後のWorkerのデプロイ)で行う。stagingのデプロイの後に`@smoke`のE2Eを、prodのデプロイの後にヘルスチェックを行う。
 - backend-platformの`ScheduledDispatcher`は、Cronの式ごとに登録順でジョブを直列に動かし、最後にジョブごとの結果と所要時間と合計の所要時間の要約を`info`のログ(JSON)で出し、予算を定めた起動時刻(4:21)の合計が予算を超えたらエラートラッキングへ`warning`(タグ`cron`)を送る(改訂2)。ローカルの定期実行は上流の共有の補助`triggerScheduled`で業務日付と業務時刻を指定して起動できる。
 - E2Eは起動済みのアプリに対して実行し、対象はclient(48044)とadmin(48045)の2つである。apiは48042、eventは48043、Mailpitは48041で動く。
