@@ -745,9 +745,9 @@ APIサーバーとイベントサーバーは、メールアドレスの確認�
 
 - `apps/api`の`STRIPE_API_KEY`と、`apps/event`の`STRIPE_API_KEY`・`STRIPE_WEBHOOK_SECRET`は、Wrangler設定のルート(ローカル環境)と`env.staging`・`env.prod`の`secrets.required`にある。Wranglerは`secrets.required`に挙げたキーだけをWorkerへ渡す(「[Workersのコードから参照するシークレット](../GUIDES/tech/security/001-secret-management.md#workersのコードから参照するシークレット)」)ため、次の手順でInfisicalの`dev`へ登録すれば、Workerの指定付きで起動したローカル環境の`apps/api`・`apps/event`へ渡り、決済を試せる。
 - 未登録の間は、起動時にWranglerが足りないキーの名前を警告するが、環境の検証はStripeのキーを任意として扱うため起動は止まらない。警告は決済を試さない限り無視してよい。
-- Infisicalの`dev`は全ての開発者のローカル環境と、検査のE2E(CI。`e2e-stack`が`dev`の値をWorkerの指定付きで注入する)で共有する。登録すると、それらの疎通確認の決済のE2Eが飛ばされずに実行されるため、`apps/client`のローカルの`STRIPE_PUBLISHABLE_KEY`を同じsandboxの公開キーへ置き換える変更と合わせて登録する(仮の値のままでは決済画面のStripe.jsが公開キーを拒み、E2Eが失敗する)。
+- Infisicalの`dev`は全ての開発者のローカル環境と、検査のE2E(CI。`e2e-stack`が`dev`の値をWorkerの指定付きで注入する)で共有する。キーは登録済みで、Workerの指定付きで起動すれば疎通確認の決済のE2Eは飛ばされずに実行される。別のsandboxのキーへ登録し直すときは、`apps/client`のローカルの`STRIPE_PUBLISHABLE_KEY`を同じsandboxの公開キーへ置き換える変更と合わせる(公開キーが別のsandboxのものでは決済画面で決済セッションを開けず、E2Eが失敗する)。
 
-決済を試す開発者は、次の手順でdevのキーを用意して登録する。AIエージェントは登録しない。手順の詳細と権限は「[決済の環境とデータの運用](../GUIDES/tech/operations/004-payment-data-operations.md)」に従う。
+devのキーを作り直すときは、開発者が次の手順で用意して登録する。AIエージェントは登録しない。手順の詳細と権限は「[決済の環境とデータの運用](../GUIDES/tech/operations/004-payment-data-operations.md)」に従う。
 
 1. Stripeのダッシュボードで、ローカル環境とデプロイ先検証環境で共用する開発用のsandboxを開き(無ければ作り)、「[環境ごとのStripeの設定](../GUIDES/tech/operations/004-payment-data-operations.md#環境ごとのstripeの設定)」の価格(疎通確認用の`payments_smoke`を含む)・税・Adaptive Pricingの無効化・決済手段を設定する。
 2. 同じsandboxで、`apps/api`用と`apps/event`用の2つの制限付きキーを、「[制限付きキーの権限](../GUIDES/tech/operations/004-payment-data-operations.md#制限付きキーの権限)」の表の権限で別々に作る。
@@ -776,7 +776,7 @@ stripe listen \
 
 - 購読する15種は、イベントサーバーが受け付ける通知の種類(`apps/backend-lib/core/payments/stripe-event-mapping.ts`の`HANDLED_STRIPE_EVENT_TYPES`)と同じである。種類の意味と、署名の秘密・API版の扱いは「[ローカルの転送](../GUIDES/tech/operations/004-payment-data-operations.md#ローカルの転送)」に従う。
 - 転送の署名の秘密(`stripe listen --print-secret`)は、`stripe listen`を起動し直しても変わらない。`stripe login`をし直したときなどに`--print-secret`の値が登録した値と変わったら、`dev`の`STRIPE_WEBHOOK_SECRET`を登録し直し、イベントサーバーを起動し直す。
-- 転送の画面に、通知ごとにイベントサーバーの応答の状態コードが出る。200以外なら、イベントサーバーのログのカテゴリ`['event', 'payments', 'webhook']`で理由を確かめる。署名の不正(400)は署名の秘密の登録の誤り、503は署名の秘密がイベントサーバーへ渡っていないことを示す(上の「Wrangler設定のルートの`secrets.required`」の変更が入るまでは、登録しても503になる)。
+- 転送の画面に、通知ごとにイベントサーバーの応答の状態コードが出る。200以外なら、イベントサーバーのログのカテゴリ`['event', 'payments', 'webhook']`で理由を確かめる。署名の不正(400)は署名の秘密の登録の誤り、503は署名の秘密がイベントサーバーへ渡っていないことを示す(`dev`への`STRIPE_WEBHOOK_SECRET`の登録と、イベントサーバーを手順13のとおりシークレットの注入を付けて起動したかを確かめる。登録した後はイベントサーバーを起動し直す)。
 - 転送を止めている間は、定期課金・請求・返金・チャージバックの通知が反映されない。決済後のランディングは通知を待たずに決済セッションを取得して反映するため、即時の決済手段なら転送が無くても完了まで進む設計だが、転送を止めた状態の疎通確認の決済ではまだ確かめていない。
 
 ## DBスキーマを変更したとき

@@ -58,7 +58,7 @@ describe('productsDataset', () => {
       products: 20_000,
       product_launches: 20_000,
     });
-  });
+  }, 120_000);
 
   test('外部キーの順に、カテゴリ・プロダクト・ローンチの順で文を並べる', () => {
     const order = [

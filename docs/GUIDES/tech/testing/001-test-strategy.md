@@ -346,6 +346,8 @@ describe('fetchハンドラー', () => {
 });
 ```
 
+- `exports.default`で呼ぶWorkerのエントリは最初の呼び出しの時に読み込まれ、モジュールの多いアプリではCIで数秒から十数秒かかってテストの時間切れに数えられる。エントリを`import`で先に読み込む。`vi.mock`の差し替えがテストファイルの定数を参照する場合は、時間切れを明示した`beforeAll`の中で`await import()`する。
+- `exports.default`への同時の要求は件数に対して急激に遅くなる。回数の制限の上限を確かめるテストは、上限の手前までバインディングを直接呼んで回数を使い、エントリを通す要求を少数に留める。
 - D1を使うテストには、`miniflare.bindings`にテスト用のバインディング(例: `TEST_MIGRATIONS`)として`readNestedD1Migrations`の結果を渡し、`cloudflare:test`の`applyD1Migrations`で適用する。適用は`setupFiles`か、D1を使うテストファイルの`beforeAll`で行う。`setupFiles`で`cloudflare:test`を読み込むと、テストファイルの`vi.mock`より先にWorkerのエントリが読み込まれ、エントリが読み込むモジュールの差し替えが効かなくなる。エントリの読み込むモジュールを`vi.mock`で差し替えるテストを持つアプリでは、テストファイルで適用する。
 - 型検査設定の差分は「[Workers統合テストを持つアプリの差分](../coding/001-javascript-typescript-conventions.md#workers統合テストを持つアプリの差分)」に従う。
 - CIでシークレットを注入して実行すると、Wrangler設定の`secrets.required`のキーに開発用の値が入る。任意のシークレットが無い状態を確かめるテストは、`env`を展開した後にそのキーを`undefined`で上書きしてから渡す。

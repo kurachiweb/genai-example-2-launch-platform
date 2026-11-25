@@ -2,6 +2,7 @@ import { env, exports } from 'cloudflare:workers';
 import { ContainerModule } from 'inversify';
 import {
   afterEach,
+  beforeAll,
   describe,
   expect,
   type MockInstance,
@@ -25,7 +26,7 @@ import {
 import { createMessagePublisher } from '../lib/workers/messaging/queue-publisher.ts';
 import { consumeIpRateLimit } from './composition/testing/ip-rate-limit-quota.ts';
 
-// エントリが読み込む登録箇所に、テスト用の契約とハンドラーを追記した状態にする。エントリはテストからの最初の呼び出しで読み込まれるため、その時点で下の定数を参照できる
+// エントリが読み込む登録箇所に、テスト用の契約とハンドラーを追記した状態にする。エントリはbeforeAllで読み込むため、その時点で下の定数を参照できる
 vi.mock('./composition/message-handlers.ts', async (importOriginal) => {
   const original =
     await importOriginal<typeof import('./composition/message-handlers.ts')>();
@@ -47,6 +48,9 @@ vi.mock('./composition/modules.ts', async (importOriginal) => {
 
 const EVENT_ORIGIN = 'https://event.launch.example';
 const IP_LIMIT = 500;
+// エントリを通した同時の要求は件数に対して急激に遅くなるため、同時に届く状況を作るのに足りる数に留める
+const CONCURRENT_ALLOWED_REQUESTS = 20;
+const ENTRY_LOAD_TIMEOUT_MILLISECONDS = 120_000;
 const PERIOD_MILLISECONDS = 10_000;
 const BURST_MARGIN_MILLISECONDS = 4_000;
 const BURST_TEST_TIMEOUT_MILLISECONDS = 30_000;
@@ -122,6 +126,11 @@ function loggedObjects(spy: MockInstance<Console['info']>): LoggedObject[] {
   return spy.mock.calls.map(([object]) => object as LoggedObject);
 }
 
+// エントリのモジュールの読み込みは数秒かかる。最初の要求の中で読み込むと、期間の切り替わりを避ける待ちの後に期間をまたぎ得るため、先に読み込む
+beforeAll(async () => {
+  await import('./index.ts');
+}, ENTRY_LOAD_TIMEOUT_MILLISECONDS);
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -132,9 +141,13 @@ describe('イベントサーバーのエントリ', () => {
     'エントリへの最初の要求が同時に届いても、IP制限が同じキーで数え、上限を超えた分だけを429にする',
     async () => {
       await waitForFreshWindow();
+      await consumeIpRateLimit(
+        '203.0.113.9',
+        IP_LIMIT - CONCURRENT_ALLOWED_REQUESTS,
+      );
 
       const responses = await Promise.all(
-        Array.from({ length: IP_LIMIT + 1 }, () =>
+        Array.from({ length: CONCURRENT_ALLOWED_REQUESTS + 1 }, () =>
           exports.default.fetch(
             `${EVENT_ORIGIN}/health`,
             fromIp('203.0.113.9'),
@@ -147,7 +160,7 @@ describe('イベントサーバーのエントリ', () => {
       );
 
       expect(statuses.filter((status) => status === 200)).toHaveLength(
-        IP_LIMIT,
+        CONCURRENT_ALLOWED_REQUESTS,
       );
       expect(statuses.filter((status) => status === 429)).toHaveLength(1);
     },
